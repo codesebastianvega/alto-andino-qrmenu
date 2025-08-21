@@ -14,6 +14,7 @@ export default function CartDrawer({ open, onClose, onSendWhatsApp }) {
     decrement,
     removeItem,
     updateItem,
+
     note,
     setNote,
     setItemNote: setItemNoteCtx,
@@ -30,6 +31,7 @@ export default function CartDrawer({ open, onClose, onSendWhatsApp }) {
     if (item.qty <= 1) removeItem?.(item);
     else decrement?.(idx);
   };
+
 
   useEffect(() => {
     if (!open) return;
@@ -70,6 +72,7 @@ export default function CartDrawer({ open, onClose, onSendWhatsApp }) {
         <div className="px-4 space-y-3" style={{ maxHeight: "calc(100dvh - 280px)", overflowY: "auto" }}>
           {items.length ? items.map((it, idx) => (
             <SwipeRevealItem key={idx} onDelete={() => removeItem?.(it)}>
+
               <div className="p-3 bg-[#263229] ring-1 ring-white/10">
                 <div className="flex items-start gap-3">
                   {/* imagen opcional */}
@@ -105,6 +108,7 @@ export default function CartDrawer({ open, onClose, onSendWhatsApp }) {
                       >
                         ＋
                       </button>
+
                     </div>
 
                     {/* Nota por ítem */}
@@ -113,6 +117,7 @@ export default function CartDrawer({ open, onClose, onSendWhatsApp }) {
                         type="text"
                         value={it.note || ""}
                         onChange={(e) => setItemNote(idx, e.target.value)}
+
                         placeholder="Nota para este ítem (opcional)"
                         className="w-full rounded-lg bg-[#1b221d] text-white placeholder-white/45 ring-1 ring-white/10 focus:ring-2 focus:ring-white/30 px-2 py-1 text-xs"
                       />
