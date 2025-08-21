@@ -12,16 +12,16 @@ export default function Header() {
 
   return (
     <>
-      <div className="max-w-3xl mx-auto p-5 sm:p-6 md:p-8">
-        <header className="mb-6">
+      <div className="max-w-3xl mx-auto px-5 sm:px-6 md:px-8 pt-3 pb-2 sm:pt-4 sm:pb-3">
+        <header>
           {/* Logo centrado y sin fondo */}
           <div className="flex flex-col items-center text-center">
             <img
               src="/logoalto.png"
               alt="Alto Andino Delicatessen"
-              className="h-20 sm:h-24 md:h-28 mx-auto object-contain drop-shadow-sm"
+              className="mx-auto h-28 sm:h-32 md:h-36 w-auto object-contain drop-shadow-sm"
             />
-            <p className="text-[11px] sm:text-xs text-neutral-600">
+            <p className="mt-2 mb-2 text-sm sm:text-[15px] text-neutral-600">
               Ingredientes locales y de temporada · Pet Friendly
             </p>
 
@@ -31,19 +31,14 @@ export default function Header() {
                 Mesa {table}
               </span>
             )}
-          </div>
-
-          {/* Línea sutil y datos */}
-          <div className="mt-4 border-t border-neutral-200 pt-3">
-            <p className="text-center sm:text-left text-xs sm:text-sm text-neutral-700">
-              Carrera 15 # 1 – 111, San Pablo
-            </p>
+            <div className="my-2 h-px bg-black/10 w-full" />
           </div>
         </header>
       </div>
 
+      <div className="mb-1">
         <CategoryBar onOpenGuide={() => setOpenGuide(true)} />
-        <div className="h-2 sm:h-3" />
+      </div>
 
         <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
           <DietaryGuide />
