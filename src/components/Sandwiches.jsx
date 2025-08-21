@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Chip, Button } from "./Buttons";
+import { Chip, AddButton } from "./Buttons";
 import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
 import stock from "../data/stock.json"; // ← sin assert
@@ -119,14 +119,14 @@ export default function Sandwiches() {
               </div>
               <div className="text-right shrink-0">
                 <p className="font-semibold">${COP(priceFor(it.key))}</p>
-                <Button
-                  variant="outline"
+                <AddButton
                   className="mt-1"
                   onClick={() => add(it)}
                   disabled={disabled}
-                >
-                  {disabled ? "Agotado" : "Añadir"}
-                </Button>
+                />
+                {disabled && (
+                  <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+                )}
                 {priceByItem[it.key].unico && (
                   <p className="text-[11px] text-neutral-500 mt-1">
                     Precio único

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
-import { Button } from "./Buttons";
+import { AddButton } from "./Buttons";
 import BowlBuilderModal from "./BowlBuilderModal";
 import stock from "../data/stock.json";
 
@@ -87,14 +87,10 @@ export default function BowlsSection() {
         </div>
         <div className="text-right shrink-0">
           <p className="font-bold">${COP(PREBOWL.price)}</p>
-          <Button
-            variant="outline"
-            className="mt-1"
-            onClick={addPre}
-            disabled={disabled}
-          >
-            {disabled ? "Agotado" : "Añadir"}
-          </Button>
+          <AddButton className="mt-1" onClick={addPre} disabled={disabled} />
+          {disabled && (
+            <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+          )}
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import stock from "../data/stock.json"; // ← sin assert
+import { AddButton } from "./Buttons";
 
 // estado global: 'ok' | 'low' | 'out'
 function stateFor(productId) {
@@ -168,22 +169,21 @@ export function Desserts() {
               <div
                 key={s.id}
                 className={
-                  "flex items-center justify-between gap-2 rounded-lg border px-3 py-2 " +
+                  "rounded-lg border px-3 py-2 " +
                   (disabled ? "opacity-60" : "")
                 }
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">{s.label}</span>
-                  {st === "low" && (
-                    <span className="badge badge-warn">Pocas unidades</span>
-                  )}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{s.label}</span>
+                    {st === "low" && (
+                      <span className="badge badge-warn">Pocas unidades</span>
+                    )}
+                  </div>
+                  <span className="font-semibold">${COP(price)}</span>
                 </div>
-                <button
-                  disabled={disabled}
-                  className={
-                    "btn btn-outline " +
-                    (disabled ? "opacity-60 cursor-not-allowed" : "")
-                  }
+                <AddButton
+                  className="mt-2"
                   onClick={() =>
                     addItem({
                       productId: "cumbre",
@@ -192,9 +192,11 @@ export function Desserts() {
                       options: { Sabor: s.label },
                     })
                   }
-                >
-                  Añadir · ${COP(price)}
-                </button>
+                  disabled={disabled}
+                />
+                {disabled && (
+                  <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+                )}
               </div>
             );
           })}
@@ -238,18 +240,16 @@ function ProductRow({ item }) {
       </div>
       <div className="text-right shrink-0">
         <p className="font-semibold">${COP(item.price)}</p>
-        <button
-          disabled={disabled}
-          className={
-            "btn btn-outline mt-1 " +
-            (disabled ? "opacity-60 cursor-not-allowed" : "")
-          }
+        <AddButton
+          className="mt-1"
           onClick={() =>
             addItem({ productId: item.id, name: item.name, price: item.price })
           }
-        >
-          {disabled ? "Agotado" : "Añadir"}
-        </button>
+          disabled={disabled}
+        />
+        {disabled && (
+          <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+        )}
       </div>
     </li>
   );

@@ -1,4 +1,4 @@
-import { Button } from "./Buttons";
+import { AddButton } from "./Buttons";
 import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
 import stock from "../data/stock.json";
@@ -66,14 +66,14 @@ function List({ items, onAdd }) {
             </div>
             <div className="text-right shrink-0">
               <p className="font-semibold">${COP(p.price)}</p>
-              <Button
-                variant="outline"
+              <AddButton
                 className="mt-1"
                 onClick={() => onAdd(p)}
                 disabled={disabled}
-              >
-                {disabled ? "Agotado" : "Añadir"}
-              </Button>
+              />
+              {disabled && (
+                <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+              )}
             </div>
           </li>
         );
