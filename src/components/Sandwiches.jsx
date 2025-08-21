@@ -118,9 +118,7 @@ export default function Sandwiches() {
                   <StatusChip variant="soldout">Agotado</StatusChip>
                 )}
                 {priceByItem[it.key].unico && (
-                  <span className="text-[11px] text-neutral-500">
-                    Precio único
-                  </span>
+                  <StatusChip variant="neutral">Precio único</StatusChip>
                 )}
               </div>
               <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
