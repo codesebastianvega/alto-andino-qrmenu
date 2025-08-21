@@ -5,7 +5,6 @@ import CategoryBar from "./CategoryBar";
 import GuideModal from "./GuideModal";
 import DietaryGuide from "./DietaryGuide";
 
-
 export default function Header() {
   const table = getTableId();
   const [openGuide, setOpenGuide] = useState(false);
@@ -36,6 +35,7 @@ export default function Header() {
         {/* Línea sutil y datos */}
         <div className="mt-4 border-t border-neutral-200 pt-3">
           <p className="text-center sm:text-left text-xs sm:text-sm text-neutral-700">
+
             Carrera 15 # 1 – 111, San Pablo
           </p>
         </div>
