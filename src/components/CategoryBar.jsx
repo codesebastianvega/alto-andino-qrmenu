@@ -46,11 +46,18 @@ export default function CategoryBar() {
   };
 
   return (
-    <div className="sticky top-0 z-40 bg-[rgba(250,247,242,0.9)] backdrop-blur border-b border-black/5">
+    <div
+      className="sticky z-40 bg-[rgba(250,247,242,0.9)] backdrop-blur border-b border-black/5"
+      style={{ top: "env(safe-area-inset-top)" }}
+      aria-label="Categorías del menú"
+    >
       <div
         ref={containerRef}
-        className="max-w-3xl mx-auto px-4 py-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="max-w-3xl mx-auto px-4 py-2 overflow-x-auto min-h-[44px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden relative"
       >
+        {/* pistas de scroll a los lados */}
+        <span className="pointer-events-none absolute left-0 top-0 h-full w-6 bg-gradient-to-r from-[rgba(250,247,242,1)] to-[rgba(250,247,242,0)]" />
+        <span className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-[rgba(250,247,242,1)] to-[rgba(250,247,242,0)]" />
         <div className="flex gap-2">
           {sections.map(({ id, label }) => (
             <button

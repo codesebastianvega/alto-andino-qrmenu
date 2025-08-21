@@ -1,5 +1,5 @@
 // src/components/Header.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { getTableId } from "../utils/table";
 import CategoryBar from "./CategoryBar";
 import GuideModal from "./GuideModal";
@@ -27,6 +27,21 @@ const WA_LINK = `https://wa.me/${WA_NUM}`;
 export default function Header() {
   const table = getTableId();
   const [openGuide, setOpenGuide] = useState(false);
+
+  // Calcula altura de la barra del carrito si existe y la expone en --aa-cartbar-h
+  useEffect(() => {
+    const el = document.querySelector("[data-aa-cartbar]");
+    const setVar = (h) =>
+      document.documentElement.style.setProperty("--aa-cartbar-h", `${h || 0}px`);
+    if (!el) {
+      setVar(0);
+      return;
+    }
+    const ro = new ResizeObserver(() => setVar(el.offsetHeight));
+    ro.observe(el);
+    setVar(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
 
   return (
     <>
@@ -69,11 +84,23 @@ export default function Header() {
 
       <button
         onClick={() => setOpenGuide(true)}
-        className="fixed bottom-20 right-4 z-40 grid h-12 w-12 place-items-center rounded-full bg-[#2f4131] text-white shadow-lg ring-1 ring-black/5 hover:scale-105 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
         aria-label="Guía dietaria y alérgenos"
         title="Guía dietaria y alérgenos"
+        id="aa-guide-fab"
+        className={[
+          "fixed right-4 z-40",
+          "px-4 h-10 rounded-full",
+          "bg-[#2f4131] text-white shadow-lg ring-1 ring-black/5",
+          "hover:scale-105 active:scale-95 transition",
+          "focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]",
+        ].join(" ")}
+        // bottom dinámico via style; ver efecto más abajo
+        style={{
+          bottom:
+            "calc(env(safe-area-inset-bottom) + var(--aa-cartbar-h, 0px) + 1rem)",
+        }}
       >
-        i
+        Alérgenos
       </button>
 
       <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
