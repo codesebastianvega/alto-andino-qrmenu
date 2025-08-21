@@ -15,7 +15,7 @@ export default function DietaryGuide() {
   ];
   return (
     <div className="max-w-3xl mx-auto px-4 py-3 sm:py-4">
-      <h2 className="text-sm font-medium text-[#2f4131] mb-2">
+      <h2 className="text-base font-semibold text-[#2f4131] mb-2">
         Guía dietaria y alérgenos
       </h2>
       <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
