@@ -18,7 +18,7 @@ function optionsKey(opts) {
   if (!opts) return "";
   const entries = Object.entries(opts).map(([k, v]) => [
     k,
-    Array.isArray(v) ? [...v] : v,
+    Array.isArray(v) ? [...v].sort() : v,
   ]);
   entries.sort(([a], [b]) => a.localeCompare(b));
   return JSON.stringify(entries);
