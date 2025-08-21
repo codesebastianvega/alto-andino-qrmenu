@@ -1,54 +1,145 @@
-import { createContext, useContext, useMemo, useState } from "react";
+// src/context/CartContext.jsx
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+
 const CartCtx = createContext(null);
-function normalizeNote(note) {
-  return (note || "").trim().toLowerCase();
+const STORAGE_KEY = "aa_cart";
+
+function safeParse(json, fallback) {
+  try {
+    return JSON.parse(json);
+  } catch {
+    return fallback;
+  }
 }
-function lineKeyOf(item) {
-  const baseKey = item.productId + "|" + JSON.stringify(item.options || {});
-  const note = normalizeNote(item.note);
-  return note ? baseKey + "|note:" + note : baseKey + "|note:";
+
+// normaliza opciones para comparar
+function optionsKey(opts) {
+  if (!opts) return "";
+  const entries = Object.entries(opts).map(([k, v]) => [
+    k,
+    Array.isArray(v) ? [...v] : v,
+  ]);
+  entries.sort(([a], [b]) => a.localeCompare(b));
+  return JSON.stringify(entries);
 }
-export function CartProvider({ children }) {
-  const [items, setItems] = useState([]);
-  const addItem = (entry) => {
-    const withDefaults = { qty: 1, options: {}, note: "", ...entry };
-    const key = lineKeyOf(withDefaults);
-    setItems((prev) => {
-      const idx = prev.findIndex((it) => it._key === key);
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = { ...copy[idx], qty: copy[idx].qty + withDefaults.qty };
-        return copy;
-      }
-      return [...prev, { id: crypto.randomUUID(), _key: key, ...withDefaults }];
-    });
-  };
-  const updateItem = (id, patch) =>
-    setItems((prev) =>
-      prev.map((it) =>
-        it.id === id
-          ? { ...it, ...patch, _key: lineKeyOf({ ...it, ...patch }) }
-          : it
-      )
-    );
-  const removeItem = (id) =>
-    setItems((prev) => prev.filter((it) => it.id !== id));
-  const clear = () => setItems([]);
-  const count = useMemo(() => items.reduce((n, it) => n + it.qty, 0), [items]);
-  const total = useMemo(
-    () => items.reduce((n, it) => n + it.price * it.qty, 0),
-    [items]
-  );
+// identidad: productId + options + note
+function sameItem(a, b) {
   return (
-    <CartCtx.Provider
-      value={{ items, addItem, updateItem, removeItem, clear, count, total }}
-    >
-      {children}
-    </CartCtx.Provider>
+    a.productId === b.productId &&
+    optionsKey(a.options) === optionsKey(b.options) &&
+    String(a.note || "") === String(b.note || "")
   );
 }
+
+function normalize(items) {
+  const out = [];
+  for (const it of items) {
+    const idx = out.findIndex((x) => sameItem(x, it));
+    if (idx === -1) out.push({ ...it });
+    else out[idx] = { ...out[idx], qty: (out[idx].qty || 1) + (it.qty || 1) };
+  }
+  return out;
+}
+
+export function CartProvider({ children }) {
+  const [items, setItems] = useState(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return safeParse(raw, []);
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  }, [items]);
+
+  function addItem(newItem) {
+    const incoming = { qty: 1, ...newItem };
+    setItems((prev) => normalize([...prev, incoming]));
+  }
+  function removeAt(index) {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  }
+  function removeItem(productId) {
+    setItems((prev) => {
+      const idx = prev.findIndex((x) => x.productId === productId);
+      if (idx === -1) return prev;
+      const next = [...prev];
+      next.splice(idx, 1);
+      return next;
+    });
+  }
+  function increment(index) {
+    setItems((prev) => {
+      const next = [...prev];
+      if (next[index])
+        next[index] = { ...next[index], qty: (next[index].qty || 1) + 1 };
+      return next;
+    });
+  }
+  function decrement(index) {
+    setItems((prev) => {
+      const next = [...prev];
+      if (!next[index]) return prev;
+      const q = (next[index].qty || 1) - 1;
+      if (q <= 0) {
+        next.splice(index, 1);
+        return next;
+      }
+      next[index] = { ...next[index], qty: q };
+      return next;
+    });
+  }
+  function setQty(index, qty) {
+    const q = Math.max(1, Number(qty) || 1);
+    setItems((prev) => {
+      const next = [...prev];
+      if (next[index]) next[index] = { ...next[index], qty: q };
+      return next;
+    });
+  }
+  // ✅ actualizar campos del item (p. ej. note) y re-merge si coincide con otro
+  function updateItem(index, patch) {
+    setItems((prev) => {
+      const next = [...prev];
+      if (!next[index]) return prev;
+      next[index] = { ...next[index], ...patch };
+      return normalize(next);
+    });
+  }
+
+  function clear() {
+    setItems([]);
+  }
+
+  const { count, total } = useMemo(() => {
+    let c = 0,
+      t = 0;
+    for (const it of items) {
+      const q = it.qty || 1;
+      c += q;
+      t += (it.price || 0) * q;
+    }
+    return { count: c, total: t };
+  }, [items]);
+
+  const value = {
+    items,
+    count,
+    total,
+    addItem,
+    removeItem,
+    removeAt,
+    increment,
+    decrement,
+    setQty,
+    updateItem,
+    clear,
+  };
+
+  return <CartCtx.Provider value={value}>{children}</CartCtx.Provider>;
+}
+
 export function useCart() {
   const ctx = useContext(CartCtx);
-  if (!ctx) throw new Error("useCart must be used within CartProvider");
+  if (!ctx) throw new Error("useCart debe usarse dentro de <CartProvider>");
   return ctx;
 }
