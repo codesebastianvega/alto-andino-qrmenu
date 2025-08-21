@@ -232,8 +232,8 @@ function ProductRow({ item }) {
   const st = stateFor(item.id);
   const disabled = st === "out";
   return (
-    <li className="card p-3 relative">
-      <div className="flex items-start justify-between gap-4 pb-14 pr-4">
+    <li className="card p-3">
+      <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
           <p className="font-semibold">{item.name}</p>
           <p className="text-sm text-neutral-600">{item.desc}</p>
@@ -243,20 +243,26 @@ function ProductRow({ item }) {
             </span>
           )}
         </div>
-        <div className="text-right shrink-0">
-          <p className="font-semibold">${COP(item.price)}</p>
-          {disabled && (
-            <p className="mt-1 text-sm text-neutral-500">Agotado</p>
-          )}
+        <div className="flex items-start shrink-0">
+          <div className="text-right">
+            <p className="font-semibold">${COP(item.price)}</p>
+            {disabled && (
+              <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+            )}
+          </div>
+          <AddButton
+            className="ml-4 self-start"
+            onClick={() =>
+              addItem({
+                productId: item.id,
+                name: item.name,
+                price: item.price,
+              })
+            }
+            disabled={disabled}
+          />
         </div>
       </div>
-      <AddButton
-        className="absolute bottom-4 right-4"
-        onClick={() =>
-          addItem({ productId: item.id, name: item.name, price: item.price })
-        }
-        disabled={disabled}
-      />
     </li>
   );
 }
