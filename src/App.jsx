@@ -72,7 +72,7 @@ export default function App() {
           total={cart.total}
           onOpen={() => setOpen(true)}
         />
-        {open && <CartDrawer onClose={() => setOpen(false)} />}
+        <CartDrawer open={open} onClose={() => setOpen(false)} />
       </div>
     </div>
   );
