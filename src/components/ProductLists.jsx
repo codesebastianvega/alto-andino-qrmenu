@@ -1,7 +1,7 @@
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import stock from "../data/stock.json"; // ← sin assert
-import { AddIconButton } from "./Buttons";
+import { AddIconButton, StatusChip } from "./Buttons";
 
 // estado global: 'ok' | 'low' | 'out'
 function stateFor(productId) {
@@ -149,13 +149,13 @@ export function Desserts() {
   return (
     <div className="space-y-4">
       {/* Cumbre Andino con precio por sabor */}
-      <div className="card p-3">
+      <div className="rounded-2xl p-5 sm:p-6 shadow-sm bg-white">
         <p className="font-semibold">Cumbre Andino (sin azúcar)</p>
         <p className="text-xs text-neutral-600 mt-1">
           Yogur griego endulzado con alulosa, mermelada natural, galleta sin
           azúcar, chantilly con eritritol y fruta.
         </p>
-        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
           {cumbreSabores.map((s) => {
             const st =
               cumbreStock[s.id] === "low"
@@ -169,28 +169,25 @@ export function Desserts() {
               <div
                 key={s.id}
                 className={
-                  "rounded-lg border px-3 py-2 relative " +
+                  "relative rounded-xl border border-neutral-200/60 bg-white p-4 sm:p-5 pr-20 pb-12 " +
                   (disabled ? "opacity-60" : "")
                 }
               >
-                <div className="pb-6 pr-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">{s.label}</span>
-                      {st === "low" && (
-                        <span className="badge badge-warn">Pocas unidades</span>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <span className="font-semibold">${COP(price)}</span>
-                      {disabled && (
-                        <span className="badge badge-out mt-2 inline-block">Agotado</span>
-                      )}
-                    </div>
-                  </div>
+                <p className="text-sm">{s.label}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {st === "low" && (
+                    <StatusChip variant="low">Pocas unidades</StatusChip>
+                  )}
+                  {disabled && (
+                    <StatusChip variant="soldout">Agotado</StatusChip>
+                  )}
+                </div>
+                <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
+                  ${COP(price)}
                 </div>
                 <AddIconButton
-                  className="absolute bottom-4 right-4"
+                  className="absolute bottom-4 right-4 z-20"
+                  aria-label={"Añadir Cumbre Andino " + s.label}
                   onClick={() =>
                     addItem({
                       productId: "cumbre",
@@ -232,28 +229,23 @@ function ProductRow({ item }) {
   const st = stateFor(item.id);
   const disabled = st === "out";
   return (
-    <li className="card p-3 relative">
-      <div className="flex items-start justify-between gap-4 pb-6 pr-4">
-        <div className="flex-1">
-
-          <p className="font-semibold">{item.name}</p>
-          <p className="text-xs text-neutral-600 mt-1">{item.desc}</p>
-          {st === "low" && (
-            <span className="badge badge-warn mt-2 inline-block">
-              Pocas unidades
-            </span>
-          )}
-        </div>
-        <div className="text-right">
-          <p className="font-semibold">${COP(item.price)}</p>
-          {disabled && (
-            <span className="badge badge-out mt-2 inline-block">Agotado</span>
-
-          )}
-        </div>
+    <li className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12">
+      <p className="font-semibold">{item.name}</p>
+      <p className="text-xs text-neutral-600 mt-1">{item.desc}</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {st === "low" && (
+          <StatusChip variant="low">Pocas unidades</StatusChip>
+        )}
+        {disabled && (
+          <StatusChip variant="soldout">Agotado</StatusChip>
+        )}
+      </div>
+      <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
+        ${COP(item.price)}
       </div>
       <AddIconButton
-        className="absolute bottom-4 right-4"
+        className="absolute bottom-4 right-4 z-20"
+        aria-label={"Añadir " + item.name}
         onClick={() =>
           addItem({ productId: item.id, name: item.name, price: item.price })
         }

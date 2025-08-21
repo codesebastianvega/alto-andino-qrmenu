@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Chip, AddIconButton } from "./Buttons";
+import { Chip, AddIconButton, StatusChip } from "./Buttons";
 import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
 import stock from "../data/stock.json"; // ← sin assert
@@ -104,31 +104,31 @@ export default function Sandwiches() {
           const st = stateFor(productId); // 'ok' | 'low' | 'out'
           const disabled = st === "out";
           return (
-            <li key={it.key} className="card p-3 relative">
-              <div className="flex items-start justify-between gap-4 pb-6 pr-4">
-                <div className="flex-1">
-                  <p className="font-semibold">{it.name}</p>
-                  <p className="text-sm text-neutral-600">{it.desc}</p>
-                  {st === "low" && (
-                    <span className="badge badge-warn mt-2 inline-block">
-                      Pocas unidades
-                    </span>
-                  )}
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="font-semibold">${COP(priceFor(it.key))}</p>
-                  {disabled && (
-                    <span className="badge badge-out mt-2 inline-block">Agotado</span>
-                  )}
-                  {priceByItem[it.key].unico && (
-                    <p className="text-[11px] text-neutral-500 mt-1">
-                      Precio único
-                    </p>
-                  )}
-                </div>
+            <li
+              key={it.key}
+              className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12"
+            >
+              <p className="font-semibold">{it.name}</p>
+              <p className="text-sm text-neutral-600">{it.desc}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {st === "low" && (
+                  <StatusChip variant="low">Pocas unidades</StatusChip>
+                )}
+                {disabled && (
+                  <StatusChip variant="soldout">Agotado</StatusChip>
+                )}
+                {priceByItem[it.key].unico && (
+                  <span className="text-[11px] text-neutral-500">
+                    Precio único
+                  </span>
+                )}
+              </div>
+              <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
+                ${COP(priceFor(it.key))}
               </div>
               <AddIconButton
-                className="absolute bottom-4 right-4"
+                className="absolute bottom-4 right-4 z-20"
+                aria-label={"Añadir " + it.name}
                 onClick={() => add(it)}
                 disabled={disabled}
               />
