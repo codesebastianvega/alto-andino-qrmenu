@@ -1,5 +1,4 @@
 // src/utils/table.js
-// Lee el número de mesa (?t=) de la URL y lo recuerda en localStorage.
 export function getTableId() {
   try {
     const params = new URLSearchParams(window.location.search);
