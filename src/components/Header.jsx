@@ -42,11 +42,12 @@ export default function Header() {
         </header>
       </div>
 
-      <CategoryBar onOpenGuide={() => setOpenGuide(true)} />
+        <CategoryBar onOpenGuide={() => setOpenGuide(true)} />
+        <div className="h-2 sm:h-3" />
 
-      <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
-        <DietaryGuide />
-      </GuideModal>
+        <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
+          <DietaryGuide />
+        </GuideModal>
     </>
   );
 }
