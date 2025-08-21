@@ -65,7 +65,9 @@ export default function BowlsSection() {
           />
           <div className="absolute inset-0 p-4 sm:p-5 pr-28 pb-16 flex flex-col justify-between">
             <div>
-              <p className="text-white/85 text-xs font-medium">Personaliza a tu gusto</p>
+              <p className="text-white/85 text-xs font-medium">
+                Personaliza a tu gusto
+              </p>
               <h3 className="text-white font-semibold text-xl sm:text-2xl">
                 Armar bowl personalizado
               </h3>
@@ -96,9 +98,7 @@ export default function BowlsSection() {
           {st === "low" && (
             <StatusChip variant="low">Pocas unidades</StatusChip>
           )}
-          {disabled && (
-            <StatusChip variant="soldout">Agotado</StatusChip>
-          )}
+          {disabled && <StatusChip variant="soldout">Agotado</StatusChip>}
         </div>
         <div className="absolute top-5 right-5 z-10 text-neutral-800 font-bold">
           ${COP(PREBOWL.price)}
