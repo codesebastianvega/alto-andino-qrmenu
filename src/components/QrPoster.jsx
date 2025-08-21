@@ -2,13 +2,22 @@
 import QRCode from "react-qr-code";
 
 export default function QrPoster({ url }) {
+  // Lee ?t= de la URL para “Mesa”
+  const params =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : null;
+  const table = params?.get("t") || "";
+  // Si viene mesa, el QR apunta a url?t=XX; si no, a url “pelado”
+  const qrTarget = table ? `${url}?t=${encodeURIComponent(table)}` : url;
+
   const handlePrint = () => window.print();
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(qrTarget);
       alert("URL copiada al portapapeles");
     } catch {
-      alert("No se pudo copiar. Copia manualmente: " + url);
+      alert("No se pudo copiar. Copia manualmente: " + qrTarget);
     }
   };
 
@@ -20,16 +29,18 @@ export default function QrPoster({ url }) {
           alt="Alto Andino"
           className="h-20 w-20 mx-auto mb-3 object-contain"
         />
-        <h1 className="text-lg font-extrabold">Menú QR</h1>
+        <h1 className="text-lg font-extrabold">
+          Menú QR {table ? `· Mesa ${table}` : ""}
+        </h1>
         <p className="text-xs text-neutral-600 mb-4">
-          Escanéame para ver el menú
+          {table ? "Escanéame para esta mesa" : "Escanéame para ver el menú"}
         </p>
 
         <div className="bg-white p-4 rounded-2xl border inline-block">
-          <QRCode value={url} size={220} />
+          <QRCode value={qrTarget} size={220} />
         </div>
 
-        <p className="mt-4 text-[12px] break-all">{url}</p>
+        <p className="mt-4 text-[12px] break-all">{qrTarget}</p>
 
         <div className="mt-5 flex gap-2 justify-center no-print">
           <button
@@ -47,7 +58,7 @@ export default function QrPoster({ url }) {
         </div>
 
         <p className="mt-3 text-[10px] text-neutral-500 no-print">
-          Hecho con GPT-5 Thinking ✨
+          Hecho por Sebastian con GPT-5 Thinking ✨
         </p>
       </div>
     </div>
