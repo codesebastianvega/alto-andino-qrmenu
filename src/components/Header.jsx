@@ -1,5 +1,7 @@
 // src/components/Header.jsx
+import React, { useState } from "react";
 import { getTableId } from "../utils/table";
+import DietaryGuide from "./DietaryGuide";
 
 const IG_URL =
   import.meta.env.VITE_INSTAGRAM_URL ||
@@ -20,49 +22,9 @@ const WA_DISPLAY = WA_NUM.replace(/^57/, "").replace(
 ); // 320 900 9972
 const WA_LINK = `https://wa.me/${WA_NUM}`;
 
-function MarkersLegend() {
-  const markers = [
-    { icon: "🌿", label: "Veggie/Vegano" },
-    { icon: "🌶️", label: "Picante" },
-    { icon: "🐝", label: "Con miel" },
-    { icon: "🚫🍬", label: "Sin azúcar añadida" },
-    { icon: "🌾", label: "Gluten" },
-    { icon: "🥛", label: "Lácteos" },
-    { icon: "🥚", label: "Huevo" },
-    { icon: "🥜", label: "Frutos secos" },
-    { icon: "🫘", label: "Soya" },
-    { icon: "🐟", label: "Pescado/Mariscos" },
-  ];
-
-  return (
-    <details className="mt-3">
-      <summary
-        id="aa-guide-anchor"
-        className="text-xs font-medium text-alto-primary cursor-pointer select-none"
-      >
-        Guía dietaria y alérgenos
-      </summary>
-      <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {markers.map((m) => (
-          <div
-            key={m.label}
-            className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-alto-warmwhite px-2 py-1 text-xs"
-          >
-            <span className="text-base leading-none">{m.icon}</span>
-            <span className="text-neutral-700">{m.label}</span>
-          </div>
-        ))}
-      </div>
-      <p className="mt-2 text-[11px] text-neutral-600">
-        Si tienes alergias, avísanos. Algunas preparaciones comparten área;
-        podría haber trazas.
-      </p>
-    </details>
-  );
-}
-
 export default function Header() {
   const table = getTableId();
+  const [openGuide, setOpenGuide] = useState(false);
 
   return (
     <>
@@ -72,11 +34,8 @@ export default function Header() {
           <img
             src="/logoalto.png"
             alt="Alto Andino Delicatessen"
-            className="h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 object-contain drop-shadow-sm"
+            className="h-20 sm:h-24 md:h-28 mx-auto object-contain drop-shadow-sm"
           />
-          <h1 className="mt-2 text-alto-text text-base sm:text-lg font-extrabold tracking-tight">
-            Alto Andino Delicatessen
-          </h1>
           <p className="text-[11px] sm:text-xs text-neutral-600">
             Ingredientes locales y de temporada · Pet Friendly
           </p>
@@ -89,19 +48,16 @@ export default function Header() {
           )}
         </div>
 
-        {/* Línea sutil y datos + guía */}
+        {/* Línea sutil y datos */}
         <div className="mt-4 border-t border-neutral-200 pt-3">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 text-xs sm:text-sm text-neutral-700">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs sm:text-sm text-neutral-700">
             <p className="text-center sm:text-left">
               Carrera 15 # 1 – 111, San Pablo
             </p>
-            <div className="text-center text-sm text-neutral-700">
-              Instagram: <a href={IG_URL} target="_blank" rel="noreferrer" className="font-medium text-[#2f4131] hover:underline">@{IG_HANDLE.replace('@','')}</a>
+            <div className="text-center text-sm text-neutral-700 sm:text-right">
+              Instagram: <a href={IG_URL} target="_blank" rel="noreferrer" className="font-medium text-[#2f4131] hover:underline">@{IG_HANDLE.replace("@", "")}</a>
               {" · "}
               WhatsApp: <a href={WA_LINK} target="_blank" rel="noreferrer" className="font-medium text-[#2f4131] hover:underline">{WA_DISPLAY}</a>
-            </div>
-            <div className="sm:text-right">
-              <MarkersLegend />
             </div>
           </div>
         </div>
@@ -114,15 +70,22 @@ export default function Header() {
           </div>
           <button
             type="button"
-            onClick={() => {
-              const el = document.getElementById("aa-guide-anchor");
-              if (el) el.click();
-            }}
+            aria-expanded={openGuide}
+            onClick={() => setOpenGuide((v) => !v)}
             className="text-[#2f4131] text-sm font-medium underline decoration-[#2f4131]/40 hover:decoration-[#2f4131] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] rounded px-1"
           >
             Guía dietaria y alérgenos
           </button>
         </div>
+      </div>
+      <div
+        data-open={openGuide ? "true" : "false"}
+        className={[
+          "overflow-hidden transition-[max-height,opacity] duration-300 ease-out",
+          openGuide ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0",
+        ].join(" ")}
+      >
+        <DietaryGuide />
       </div>
     </>
   );
