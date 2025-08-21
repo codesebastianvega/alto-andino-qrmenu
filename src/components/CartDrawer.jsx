@@ -4,6 +4,14 @@ import SwipeRevealItem from "./SwipeRevealItem";
 
 const SHEET_BG = "#1f2621"; // fondo del sheet
 
+const formatCOP = (v) => {
+  if (v == null) return "";
+  if (typeof v === "string" && v.trim().startsWith("$")) return v;
+  const n = Number(String(v).replace(/[^\d.-]/g, ""));
+  if (!isFinite(n)) return String(v);
+  return n.toLocaleString("es-CO", { style: "currency", currency: "COP" });
+};
+
 export default function CartDrawer({ open, onClose, onSendWhatsApp }) {
   const cart = useCart?.() || {};
   const {
@@ -86,7 +94,9 @@ export default function CartDrawer({ open, onClose, onSendWhatsApp }) {
                         <p className="text-white font-medium truncate">{it.name}</p>
                         {it.variant && <p className="text-white/70 text-xs truncate">{it.variant}</p>}
                       </div>
-                      <p className="text-white font-semibold whitespace-nowrap">{it.priceFormatted || it.priceFmt || it.price}</p>
+                      <p className="text-white font-semibold whitespace-nowrap">
+                        {formatCOP(it.priceFormatted ?? it.priceFmt ?? it.price)}
+                      </p>
                     </div>
 
                     {/* Controles de cantidad (compactos) */}

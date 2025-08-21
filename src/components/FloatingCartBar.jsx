@@ -6,14 +6,14 @@ export default function FloatingCartBar({ items, total, onOpen, secondaryAction,
     <div
       data-aa-cartbar
       className="fixed bottom-0 inset-x-0 z-[70]"
-      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom,0px) + 8px)' }}
+      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom,0px) + 10px)' }}
     >
-      <div className="max-w-3xl mx-auto px-4">
-        <div className="relative rounded-t-2xl bg-[#1f2621] text-white shadow-2xl ring-1 ring-black/20 border-t border-white/10 before:content-[''] before:absolute before:inset-x-0 before:-top-px before:h-px before:bg-white/10">
-          <div className="relative grid grid-cols-[1fr_auto] items-center gap-3 py-3">
+      <div className="max-w-3xl mx-auto px-0">
+        <div className="mx-4 rounded-2xl bg-[#1f2621] text-white shadow-2xl ring-1 ring-black/20 border border-white/10">
+          <div className="px-4 py-3 flex items-center justify-between gap-3">
             <div>
-              <div className="text-sm text-white/85">Total</div>
-              <div className="font-semibold text-lg tabular-nums text-white">${COP(total)}</div>
+              <div className="text-xs text-white/70 leading-none">Total</div>
+              <div className="text-xl font-semibold tabular-nums leading-tight">${COP(total)}</div>
             </div>
             <div className="flex items-center gap-2">
               {secondaryAction && secondaryLabel && (
