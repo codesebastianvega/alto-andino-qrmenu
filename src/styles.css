@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global tweaks */
+:root {
+  color-scheme: light;
+}
+
+.card {
+  @apply rounded-2xl border border-alto-greige bg-alto-warmwhite shadow-card;
+}
+
+/* Buttons */
+.btn {
+  @apply inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold;
+}
+.btn-primary {
+  @apply bg-alto-primary text-white hover:bg-alto-primaryDark;
+}
+.btn-outline {
+  @apply border border-neutral-300 bg-white text-neutral-800 hover:border-neutral-400;
+}
+
+/* Section titles (nuevo, grandes, no-chip) */
+.section {
+  @apply mb-10;
+}
+.section-title {
+  @apply text-2xl sm:text-3xl font-extrabold tracking-tight text-alto-text;
+  position: relative;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.section-title::after {
+  content: "";
+  @apply block h-1 w-16 rounded-full bg-alto-primary;
+}
+
+/* Badges de estado */
+.badge {
+  @apply text-[11px] px-2 py-0.5 rounded-full border;
+}
+.badge-warn {
+  @apply border-amber-500 text-amber-700 bg-amber-50;
+}
+.badge-out {
+  @apply border-neutral-300 text-neutral-500 bg-neutral-100;
+}
+
+/* Header tweaks */
+summary {
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Chip cuadrado destacado (CTA “Desde”) */
+.chip-square {
+  @apply inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-[13px] font-semibold border shadow-md;
+}
+.chip-solid {
+  @apply bg-white text-emerald-900 border-emerald-100;
+}
+
+/* 🍣 flotando SOBRE la placa (z-15) pero debajo del chip (z-30) */
+.poke-decor-over {
+  position: absolute;
+  right: -10px;
+  bottom: 10px;
+  font-size: 80px;
+  opacity: 0.75;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.25));
+  animation: poke-float 6s ease-in-out infinite;
+  pointer-events: none;
+  user-select: none;
+  z-index: 15;
+}
+@keyframes poke-float {
+  0% {
+    transform: translateY(0) rotate(-6deg) scale(1);
+  }
+  50% {
+    transform: translateY(-8px) rotate(6deg) scale(1.03);
+  }
+  100% {
+    transform: translateY(0) rotate(-6deg) scale(1);
+  }
+}
+
+/* Opcional: refuerzo de las tarjetas de la guía */
+.details .legend-item {
+  /* si prefieres, añade una clase propia */
+  border-color: rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* —— Plantas decorativas en las 4 esquinas —— */
+.decor {
+  position: fixed; /* ancladas a la ventana, no al scroll de la card */
+  width: clamp(80px, 18vw, 220px);
+  height: clamp(80px, 18vw, 220px);
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  opacity: 0.9;
+  pointer-events: none; /* no bloquean toques/clicks */
+  z-index: 1; /* por debajo del contenido */
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.12));
+}
+
+/* —— Plantas decorativas —— */
+.decor-img {
+  position: fixed; /* pegadas a la ventana */
+  width: clamp(80px, 18vw, 220px);
+  height: auto;
+  opacity: 0.9;
+  pointer-events: none; /* no bloquean clics */
+  z-index: 1; /* por debajo del contenido (que va con z-10) */
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.12));
+  image-rendering: auto;
+}
+
+/* Posiciones + PNGs desde /public */
+.decor-tl {
+  top: 0;
+  left: 0;
+  transform: translate(-6%, -6%) rotate(-2deg);
+}
+.decor-tr {
+  top: 0;
+  right: 0;
+  transform: translate(6%, -4%) rotate(3deg);
+}
+.decor-bl {
+  bottom: 0;
+  left: 0;
+  transform: translate(-6%, 6%) rotate(2deg);
+}
+.decor-br {
+  bottom: 0;
+  right: 0;
+  transform: translate(6%, 6%) rotate(-3deg);
+}
+
+@media (max-width: 480px) {
+  .decor-img {
+    width: clamp(60px, 24vw, 120px);
+    opacity: 0.65;
+  }
+}

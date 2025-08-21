@@ -1,0 +1,57 @@
+{
+  "products": {
+    "des-sendero": true,
+    "des-cumbre": "low",
+    "des-huevos": true,
+    "des-caldo": false,
+    "des-amanecer": true,
+
+    "bowl-poke-hawaiano": true,
+    "bowl-personalizado": true,
+
+    "main-salmon": "low",
+    "main-trucha": true,
+    "main-bolo": true,
+    "main-champi": true,
+    "main-ceviche": true,
+    "main-burger": false,
+
+    "sandwich:cerdo": true,
+    "sandwich:pollo": "low",
+    "sandwich:pavo": true,
+    "sandwich:serrano": false,
+    "sandwich:cosecha": "low",
+
+    "smoothie:Brisas Tropicales": true,
+    "smoothie:El Néctar Andino": false,
+    "smoothie:Verde Amanecer de la Sabana": "low",
+
+    "post-red": true,
+    "post-tres": "low",
+    "post-tira": true,
+    "post-amap": true,
+    "post-vasca": false,
+    "post-fresas": true,
+
+    "cof-espresso": true,
+    "cof-americano": true,
+    "cof-tinto": true,
+    "cof-capuchino": true,
+    "cof-latte": true,
+    "cof-flat": true,
+    "cof-moca": true,
+    "cof-choco": true,
+
+    "inf-aromatica": true,
+    "inf-ginger": true,
+    "inf-verde": true,
+    "inf-manzanilla": "low",
+    "inf-chai": true
+  },
+  "cumbre": {
+    "rojos": "low",
+    "amarillos": true,
+    "blancos": false,
+    "choco": "low"
+  }
+}
