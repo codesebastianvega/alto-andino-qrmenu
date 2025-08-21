@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { AddIconButton, StatusChip } from "./Buttons";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
@@ -20,7 +20,7 @@ const COFFEES = [
     id: "cof-espresso",
     name: "Espresso",
     price: 6000,
-    desc: "25–30 ml de café concentrado.",
+    desc: "Café concentrado, 30–40 ml. 100% espresso.",
     milkPolicy: "optional",
     kind: "espresso",
   },
@@ -28,7 +28,7 @@ const COFFEES = [
     id: "cof-americano",
     name: "Americano",
     price: 7000,
-    desc: "Espresso con agua caliente (~1:2–1:3).",
+    desc: "Espresso diluido con agua caliente (~30% espresso, 70% agua).",
     milkPolicy: "optional",
     kind: "americano",
   },
@@ -46,7 +46,7 @@ const COFFEES = [
     id: "cof-capuchino",
     name: "Capuchino",
     price: 12000,
-    desc: "Espresso con leche al vapor y espuma (≈1:1:1).",
+    desc: "Espresso con leche al vapor y espuma fina (~33% espresso, 33% leche, 33% espuma).",
     milkPolicy: "required",
     kind: "milk",
   },
@@ -54,7 +54,7 @@ const COFFEES = [
     id: "cof-latte",
     name: "Latte",
     price: 12000,
-    desc: "Espresso con más leche y fina capa de espuma.",
+    desc: "Espresso con más leche y poca espuma (~20% espresso, 80% leche).",
     milkPolicy: "required",
     kind: "milk",
   },
@@ -62,7 +62,7 @@ const COFFEES = [
     id: "cof-flat",
     name: "Flat White",
     price: 13000,
-    desc: "Doble espresso + microespuma fina (taza pequeña).",
+    desc: "Doble espresso con leche microespumada (~40% espresso, 60% leche).",
     milkPolicy: "required",
     kind: "milk",
   },
@@ -70,7 +70,7 @@ const COFFEES = [
     id: "cof-moca",
     name: "Mocaccino",
     price: 13000,
-    desc: "Latte con chocolate y espuma ligera.",
+    desc: "Espresso con cacao, leche y crema (~25% espresso, 65% leche, 10% cacao/crema).",
     milkPolicy: "required",
     kind: "milk",
   },
@@ -217,23 +217,65 @@ export default function CoffeeSection() {
 
   // ————————————————————————————————————————
   // UI helpers
-  const MilkSelect = ({ id, disabled }) => (
-    <label className="block text-xs text-neutral-600">
-      Leche
-      <select
-        className="mt-1 w-full rounded-lg border px-2 py-1 text-xs"
-        value={milkOf(id)}
-        onChange={(e) => setMilk(id, e.target.value)}
-        disabled={disabled}
-      >
-        {MILK_OPTIONS.map((opt) => (
-          <option key={opt.id} value={opt.id}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
+  const MilkSelect = ({ id, disabled }) => {
+    const selectRef = useRef(null);
+    const [selectedMilk, setSelectedMilk] = useState(milkOf(id));
+
+    return (
+      <div className="mt-3">
+        <label className="sr-only">Leche</label>
+        <select
+          ref={selectRef}
+          className="sr-only"
+          value={selectedMilk}
+          onChange={(e) => {
+            setSelectedMilk(e.target.value);
+            setMilk(id, e.target.value);
+          }}
+          disabled={disabled}
+        >
+          {MILK_OPTIONS.map((opt) => (
+            <option key={opt.id} value={opt.id}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <div className="flex flex-wrap gap-2">
+          {!selectedMilk && (
+            <span className="inline-flex items-center rounded-full border border-dashed border-neutral-300 text-neutral-500 px-3 py-1 text-xs">
+              Escoge tu leche
+            </span>
+          )}
+          {MILK_OPTIONS.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => {
+                if (selectRef.current) {
+                  selectRef.current.value = opt.id;
+                  const evt = new Event("change", { bubbles: true });
+                  selectRef.current.dispatchEvent(evt);
+                }
+              }}
+              className={[
+                "px-3 py-1 rounded-full text-xs border transition",
+                selectedMilk === opt.id
+                  ? "bg-[#2f4131] text-white border-[#2f4131] shadow"
+                  : "bg-white text-neutral-800 border-neutral-300 hover:border-neutral-400",
+                disabled && "opacity-50 cursor-not-allowed",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-pressed={selectedMilk === opt.id}
+              disabled={disabled}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   const EspressoStyleSelect = ({ id }) => (
     <label className="block text-xs text-neutral-600">
@@ -274,9 +316,15 @@ export default function CoffeeSection() {
           {COFFEES.map((item) => {
             const st = stateFor(item.id);
             const disabled = st === "out";
+            const isAmericano = /americano/i.test(item.name);
+            const showAddMilk = item.milkPolicy === "optional" && !isAmericano;
+            const showEspressoStyle =
+              item.id === "cof-espresso" && addMilk[item.id];
             const showMilkSelect =
-              item.milkPolicy === "required" ||
-              (item.milkPolicy === "optional" && addMilk[item.id]);
+              (item.milkPolicy === "required" ||
+                (item.milkPolicy === "optional" && addMilk[item.id])) &&
+              !isAmericano;
+            const hasControls = showAddMilk || showEspressoStyle || showMilkSelect;
 
             return (
               <li
@@ -286,24 +334,24 @@ export default function CoffeeSection() {
                 <p className="font-semibold">{displayName(item)}</p>
                 <p className="text-xs text-neutral-600">{item.desc}</p>
                 {/* Controles contextuales */}
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {item.milkPolicy === "optional" && (
-                    <button
-                      className="text-xs text-alto-primary underline text-left"
-                      onClick={() => toggleAddMilk(item.id)}
-                    >
-                      {addMilk[item.id]
-                        ? "Quitar leche"
-                        : "+ Agregar leche"}
-                    </button>
-                  )}
-                  {item.id === "cof-espresso" && addMilk[item.id] && (
-                    <EspressoStyleSelect id={item.id} />
-                  )}
-                  {showMilkSelect && (
-                    <MilkSelect id={item.id} disabled={disabled} />
-                  )}
-                </div>
+                {hasControls && (
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {showAddMilk && (
+                      <button
+                        className="text-xs text-alto-primary underline text-left"
+                        onClick={() => toggleAddMilk(item.id)}
+                      >
+                        {addMilk[item.id]
+                          ? "Quitar leche"
+                          : "+ Agregar leche"}
+                      </button>
+                    )}
+                    {showEspressoStyle && <EspressoStyleSelect id={item.id} />}
+                    {showMilkSelect && (
+                      <MilkSelect id={item.id} disabled={disabled} />
+                    )}
+                  </div>
+                )}
                 <div className="mt-2 flex flex-wrap gap-2">
                   {st === "low" && (
                     <StatusChip variant="low">Pocas unidades</StatusChip>
