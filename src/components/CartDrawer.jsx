@@ -4,15 +4,41 @@ import SwipeRevealItem from "./SwipeRevealItem";
 
 const SHEET_BG = "#1f2621"; // fondo del sheet
 
+const safeNum = (raw) => {
+  const n = String(raw || "").replace(/\D/g, "");
+  return n.startsWith("57") ? n : (n ? `57${n}` : "");
+};
 const formatCOP = (v) => {
-  if (v == null) return "";
-  if (typeof v === "string" && v.trim().startsWith("$")) return v;
   const n = Number(String(v).replace(/[^\d.-]/g, ""));
   if (!isFinite(n)) return String(v);
-  return n.toLocaleString("es-CO", { style: "currency", currency: "COP" });
+  return n.toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
+};
+const getTable = () => {
+  try {
+    for (const k of ["aa_table","aa_table_num","aa_t","mesa","table"]) {
+      const v = localStorage.getItem(k);
+      if (v) return v;
+    }
+    const sp = new URL(location.href).searchParams.get("t");
+    return sp || "";
+  } catch { return ""; }
+};
+const buildWaText = ({ items = [], total = 0, note = "" }) => {
+  const mesa = getTable();
+  const lines = ["*Pedido Alto Andino*"];
+  if (mesa) lines.push(`Mesa: ${mesa}`);
+  items.forEach(it => {
+    const name = [it.name, it.variant].filter(Boolean).join(" · ");
+    const unit = Number(it.price ?? 0);
+    lines.push(`• ${it.qty}× ${name} — ${formatCOP(unit * it.qty)}`);
+    if (it.note) lines.push(`  ▸ Nota: ${it.note}`);
+  });
+  if (note) lines.push(`Nota general: ${note}`);
+  lines.push(`Total: ${formatCOP(total)}`);
+  return encodeURIComponent(lines.join("\n"));
 };
 
-export default function CartDrawer({ open, onClose, onSendWhatsApp }) {
+export default function CartDrawer({ open, onClose }) {
   const cart = useCart?.() || {};
   const {
     items = [],
@@ -28,6 +54,11 @@ export default function CartDrawer({ open, onClose, onSendWhatsApp }) {
     setItemNote: setItemNoteCtx,
     updateItemNote: updateItemNoteCtx,
   } = cart;
+
+  const waNum = safeNum(import.meta.env.VITE_WHATSAPP || "573209009972");
+  const waHref = items?.length
+    ? `https://wa.me/${waNum}?text=${buildWaText({ items, total, note })}`
+    : undefined;
 
   // setter flexible para nota por ítem (usa la disponible en el contexto)
   const setItemNote =
@@ -163,7 +194,21 @@ export default function CartDrawer({ open, onClose, onSendWhatsApp }) {
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button type="button" onClick={onClose} className="h-10 rounded-xl bg-white/10 text-white hover:bg-white/15 ring-1 ring-white/15">Seguir pidiendo</button>
-            <button type="button" onClick={onSendWhatsApp} className="h-10 rounded-xl bg-[#2f4131] text-white hover:bg-[#243326]">Enviar por WhatsApp</button>
+            <a
+              href={waHref}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => { if (!waHref) e.preventDefault(); }}
+              aria-disabled={!waHref}
+              className={[
+                "h-10 rounded-xl grid place-items-center",
+                waHref
+                  ? "bg-[#2f4131] text-white hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                  : "bg-white/10 text-white/60 ring-1 ring-white/15 cursor-not-allowed"
+              ].join(" ")}
+            >
+              Enviar por WhatsApp
+            </a>
           </div>
         </div>
       </div>
