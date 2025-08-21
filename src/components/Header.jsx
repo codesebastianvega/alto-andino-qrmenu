@@ -1,6 +1,8 @@
 // src/components/Header.jsx
 import React, { useState } from "react";
 import { getTableId } from "../utils/table";
+import CategoryBar from "./CategoryBar";
+import GuideModal from "./GuideModal";
 import DietaryGuide from "./DietaryGuide";
 
 const IG_URL =
@@ -63,30 +65,20 @@ export default function Header() {
         </div>
       </header>
 
-      <div className="sticky top-0 z-40 bg-[rgba(250,247,242,0.9)] backdrop-blur border-b border-black/5">
-        <div className="max-w-3xl mx-auto px-4 py-2 flex items-center justify-between">
-          <div className="font-semibold text-[#2f4131] text-base sm:text-lg">
-            Alto Andino Delicatessen
-          </div>
-          <button
-            type="button"
-            aria-expanded={openGuide}
-            onClick={() => setOpenGuide((v) => !v)}
-            className="text-[#2f4131] text-sm font-medium underline decoration-[#2f4131]/40 hover:decoration-[#2f4131] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] rounded px-1"
-          >
-            Guía dietaria y alérgenos
-          </button>
-        </div>
-      </div>
-      <div
-        data-open={openGuide ? "true" : "false"}
-        className={[
-          "overflow-hidden transition-[max-height,opacity] duration-300 ease-out",
-          openGuide ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0",
-        ].join(" ")}
+      <CategoryBar />
+
+      <button
+        onClick={() => setOpenGuide(true)}
+        className="fixed bottom-20 right-4 z-40 grid h-12 w-12 place-items-center rounded-full bg-[#2f4131] text-white shadow-lg ring-1 ring-black/5 hover:scale-105 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+        aria-label="Guía dietaria y alérgenos"
+        title="Guía dietaria y alérgenos"
       >
+        i
+      </button>
+
+      <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
         <DietaryGuide />
-      </div>
+      </GuideModal>
     </>
   );
 }

@@ -1,0 +1,31 @@
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
+
+export default function GuideModal({ open, onClose, children }) {
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose?.();
+    if (open) document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center"
+      aria-modal="true"
+      role="dialog"
+    >
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative max-w-md w-[92%] rounded-2xl bg-[#FAF7F2] p-5 shadow-lg">
+        <button
+          onClick={onClose}
+          aria-label="Cerrar"
+          className="absolute top-3 right-3 h-8 w-8 grid place-items-center rounded-full bg-black/5 hover:bg-black/10 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+        >×</button>
+        {children}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
