@@ -11,8 +11,9 @@ function safeParse(json, fallback) {
     return fallback;
   }
 }
+const asArray = (v) => (Array.isArray(v) ? v : []);
 
-// normaliza opciones para comparar
+// normaliza opciones para comparar items iguales
 function optionsKey(opts) {
   if (!opts) return "";
   const entries = Object.entries(opts).map(([k, v]) => [
@@ -22,18 +23,17 @@ function optionsKey(opts) {
   entries.sort(([a], [b]) => a.localeCompare(b));
   return JSON.stringify(entries);
 }
-// identidad: productId + options + note
 function sameItem(a, b) {
   return (
-    a.productId === b.productId &&
-    optionsKey(a.options) === optionsKey(b.options) &&
-    String(a.note || "") === String(b.note || "")
+    a?.productId === b?.productId &&
+    optionsKey(a?.options) === optionsKey(b?.options) &&
+    String(a?.note || "") === String(b?.note || "")
   );
 }
-
 function normalize(items) {
+  const list = asArray(items);
   const out = [];
-  for (const it of items) {
+  for (const it of list) {
     const idx = out.findIndex((x) => sameItem(x, it));
     if (idx === -1) out.push({ ...it });
     else out[idx] = { ...out[idx], qty: (out[idx].qty || 1) + (it.qty || 1) };
@@ -42,34 +42,42 @@ function normalize(items) {
 }
 
 export function CartProvider({ children }) {
+  // Lee el storage y sanea: si no es array, borra y arranca vacío
   const [items, setItems] = useState(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return safeParse(raw, []);
+    const parsed = safeParse(raw, []);
+    if (!Array.isArray(parsed)) {
+      localStorage.removeItem(STORAGE_KEY);
+      return [];
+    }
+    return parsed;
   });
 
+  // Persiste siempre como array
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(asArray(items)));
   }, [items]);
 
+  // API segura (siempre parte de un array)
   function addItem(newItem) {
-    const incoming = { qty: 1, ...newItem };
-    setItems((prev) => normalize([...prev, incoming]));
+    setItems((prev) => normalize([...asArray(prev), { qty: 1, ...newItem }]));
   }
   function removeAt(index) {
-    setItems((prev) => prev.filter((_, i) => i !== index));
+    setItems((prev) => asArray(prev).filter((_, i) => i !== index));
   }
   function removeItem(productId) {
     setItems((prev) => {
-      const idx = prev.findIndex((x) => x.productId === productId);
-      if (idx === -1) return prev;
-      const next = [...prev];
+      const base = asArray(prev);
+      const idx = base.findIndex((x) => x.productId === productId);
+      if (idx < 0) return base;
+      const next = [...base];
       next.splice(idx, 1);
       return next;
     });
   }
   function increment(index) {
     setItems((prev) => {
-      const next = [...prev];
+      const next = [...asArray(prev)];
       if (next[index])
         next[index] = { ...next[index], qty: (next[index].qty || 1) + 1 };
       return next;
@@ -77,8 +85,8 @@ export function CartProvider({ children }) {
   }
   function decrement(index) {
     setItems((prev) => {
-      const next = [...prev];
-      if (!next[index]) return prev;
+      const next = [...asArray(prev)];
+      if (!next[index]) return next;
       const q = (next[index].qty || 1) - 1;
       if (q <= 0) {
         next.splice(index, 1);
@@ -91,38 +99,37 @@ export function CartProvider({ children }) {
   function setQty(index, qty) {
     const q = Math.max(1, Number(qty) || 1);
     setItems((prev) => {
-      const next = [...prev];
+      const next = [...asArray(prev)];
       if (next[index]) next[index] = { ...next[index], qty: q };
       return next;
     });
   }
-  // ✅ actualizar campos del item (p. ej. note) y re-merge si coincide con otro
   function updateItem(index, patch) {
     setItems((prev) => {
-      const next = [...prev];
-      if (!next[index]) return prev;
+      const next = [...asArray(prev)];
+      if (!next[index]) return next;
       next[index] = { ...next[index], ...patch };
       return normalize(next);
     });
   }
-
   function clear() {
     setItems([]);
   }
 
   const { count, total } = useMemo(() => {
+    const list = asArray(items);
     let c = 0,
       t = 0;
-    for (const it of items) {
-      const q = it.qty || 1;
+    for (const it of list) {
+      const q = it?.qty || 1;
       c += q;
-      t += (it.price || 0) * q;
+      t += (it?.price || 0) * q;
     }
     return { count: c, total: t };
   }, [items]);
 
   const value = {
-    items,
+    items: asArray(items),
     count,
     total,
     addItem,
