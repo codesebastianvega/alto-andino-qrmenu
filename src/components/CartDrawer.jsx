@@ -1,13 +1,16 @@
 // src/components/CartDrawer.jsx
 import { useEffect, useState } from "react";
 import { useCart } from "../context/CartContext";
-import { COP } from "../utils/money";
 import { getTableId } from "../utils/table";
 
-// WhatsApp destino (formato internacional, sin +, sin espacios)
+function COP(n) {
+  try {
+    return new Intl.NumberFormat("es-CO").format(Math.round(n || 0));
+  } catch {
+    return String(n || 0);
+  }
+}
 const PHONE = import.meta.env.VITE_WHATSAPP || "573222285900";
-
-// nota general: persistimos de forma suave (opcional)
 const NOTE_KEY = "aa_order_note";
 
 function buildWhatsAppUrl(items, total, orderNote) {
@@ -33,14 +36,11 @@ function buildWhatsAppUrl(items, total, orderNote) {
     }
     if (it?.note) lines.push(`   Nota: ${it.note}`);
   });
-
   lines.push("");
   lines.push(`Total: $${COP(total || 0)}`);
-  if (orderNote?.trim()) {
-    lines.push("");
-    lines.push(`Nota general: ${orderNote.trim()}`);
+  if ((orderNote || "").trim()) {
+    lines.push("", `Nota general: ${(orderNote || "").trim()}`);
   }
-
   const message = lines.join("\n");
   return `https://wa.me/${PHONE}?text=${encodeURIComponent(message)}`;
 }
@@ -66,15 +66,13 @@ export default function CartDrawer({ onClose }) {
   );
   const table = getTableId();
 
-  // bloquear scroll del body
   useEffect(() => {
-    const prev = document.body.style.overflow;
+    const p = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = prev;
+      document.body.style.overflow = p;
     };
   }, []);
-
   useEffect(() => {
     localStorage.setItem(NOTE_KEY, orderNote || "");
   }, [orderNote]);
@@ -96,156 +94,282 @@ export default function CartDrawer({ onClose }) {
 
   const waUrl = buildWhatsAppUrl(items, total, orderNote);
 
-  return (
-    <div className="fixed inset-0 z-50">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+  // estilos rápidos
+  const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,.4)" };
+  const panel = {
+    position: "fixed",
+    top: 0,
+    right: 0,
+    height: "100vh",
+    width: "100%",
+    maxWidth: 420,
+    background: "#fff",
+    boxShadow: "-6px 0 24px rgba(0,0,0,.15)",
+    display: "flex",
+    flexDirection: "column",
+  };
+  const row = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  };
 
-      {/* Panel */}
-      <aside className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl border-l border-neutral-200 flex flex-col">
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 50 }}>
+      <div style={overlay} onClick={onClose} />
+      <aside style={panel}>
         {/* Header */}
-        <div className="p-4 border-b border-neutral-200 flex items-center justify-between">
-          <h3 className="text-base font-bold">Tu pedido</h3>
+        <div style={{ padding: 16, borderBottom: "1px solid #e5e5e5", ...row }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
+            Tu pedido
+          </h3>
           <button
-            className="text-sm text-neutral-600 hover:text-neutral-900"
             onClick={onClose}
-            aria-label="Cerrar"
+            style={{
+              fontSize: 13,
+              color: "#444",
+              background: "transparent",
+              border: "1px solid #ddd",
+              borderRadius: 8,
+              padding: "4px 8px",
+            }}
           >
             Cerrar ✕
           </button>
         </div>
 
         {/* Items */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
           {items.length > 0 ? (
             items.map((it, idx) => {
               const isEditing = editingIdx === idx;
               return (
                 <div
                   key={`${it?.productId || "it"}-${idx}`}
-                  className="rounded-xl border border-neutral-200 p-3"
+                  style={{
+                    border: "1px solid #e5e5e5",
+                    borderRadius: 12,
+                    padding: 12,
+                    marginBottom: 12,
+                  }}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
                         {it?.name || "Producto"}
-                      </p>
-                      <p className="text-sm text-neutral-600">
+                      </div>
+                      <div style={{ fontSize: 13, color: "#666" }}>
                         ${COP((it?.price || 0) * (it?.qty || 1))}
-                      </p>
+                      </div>
                     </div>
 
-                    {/* Controles cantidad + borrar */}
-                    <div className="shrink-0 flex items-center gap-2">
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 8 }}
+                    >
                       <button
-                        className="h-8 w-8 rounded-full border border-neutral-300 hover:bg-neutral-50"
                         aria-label="Disminuir"
                         onClick={() => decrement(idx)}
+                        style={{
+                          height: 32,
+                          width: 32,
+                          border: "1px solid #ddd",
+                          borderRadius: 16,
+                          background: "#fff",
+                        }}
                       >
                         −
                       </button>
-                      <span className="w-6 text-center tabular-nums">
+                      <span style={{ width: 24, textAlign: "center" }}>
                         {it?.qty || 1}
                       </span>
                       <button
-                        className="h-8 w-8 rounded-full border border-neutral-300 hover:bg-neutral-50"
                         aria-label="Aumentar"
                         onClick={() => increment(idx)}
+                        style={{
+                          height: 32,
+                          width: 32,
+                          border: "1px solid #ddd",
+                          borderRadius: 16,
+                          background: "#fff",
+                        }}
                       >
                         +
                       </button>
-
                       <button
-                        className="ml-2 h-8 w-8 rounded-full border border-red-200 text-red-600 hover:bg-red-50"
                         title="Eliminar"
                         aria-label="Eliminar"
                         onClick={() => removeAt(idx)}
+                        style={{
+                          height: 32,
+                          width: 32,
+                          border: "1px solid #f3b5b5",
+                          color: "#c00",
+                          borderRadius: 16,
+                          background: "#fff",
+                        }}
                       >
                         🗑️
                       </button>
                     </div>
                   </div>
 
-                  {/* Opciones */}
                   {it?.options && (
-                    <ul className="mt-2 text-xs text-neutral-700 space-y-1">
+                    <ul
+                      style={{
+                        marginTop: 8,
+                        paddingLeft: 16,
+                        fontSize: 12,
+                        color: "#444",
+                      }}
+                    >
                       {Object.entries(it.options).map(([k, v]) => (
                         <li key={k}>
-                          <span className="font-semibold">{k}:</span>{" "}
+                          <strong>{k}:</strong>{" "}
                           {Array.isArray(v) ? v.join(", ") : String(v)}
                         </li>
                       ))}
                     </ul>
                   )}
 
-                  {/* Notas por ítem */}
-                  <div className="mt-2">
+                  {/* Notas */}
+                  <div style={{ marginTop: 8 }}>
                     {!isEditing && !it?.note && (
                       <button
-                        className="text-xs text-emerald-700 hover:underline"
                         onClick={() => startEdit(idx, "")}
+                        style={{
+                          fontSize: 12,
+                          color: "#065f46",
+                          background: "transparent",
+                          border: "none",
+                          padding: 0,
+                        }}
                       >
                         + Agregar nota
                       </button>
                     )}
-
                     {!isEditing && it?.note && (
-                      <div className="text-xs text-neutral-700">
-                        <span className="font-semibold">Nota:</span> {it.note}{" "}
+                      <div style={{ fontSize: 12, color: "#333" }}>
+                        <strong>Nota:</strong> {it.note}{" "}
                         <button
-                          className="ml-2 text-emerald-700 hover:underline"
                           onClick={() => startEdit(idx, it.note)}
+                          style={{
+                            fontSize: 12,
+                            color: "#065f46",
+                            background: "transparent",
+                            border: "none",
+                          }}
                         >
                           Editar
                         </button>
                         <button
-                          className="ml-2 text-red-600 hover:underline"
                           onClick={() => removeNote(idx)}
+                          style={{
+                            fontSize: 12,
+                            color: "#b00020",
+                            background: "transparent",
+                            border: "none",
+                            marginLeft: 8,
+                          }}
                         >
                           Quitar
                         </button>
                       </div>
                     )}
-
                     {isEditing && (
-                      <div className="mt-2 rounded-lg border border-neutral-200 p-2">
+                      <div
+                        style={{
+                          marginTop: 8,
+                          border: "1px solid #eee",
+                          borderRadius: 8,
+                          padding: 8,
+                        }}
+                      >
                         <textarea
                           value={draftNote}
                           onChange={(e) =>
                             setDraftNote(e.target.value.slice(0, 140))
                           }
-                          className="w-full text-xs outline-none resize-none"
                           rows={3}
                           placeholder="Ej: sin sal, poco picante, bien cocido… (máx. 140)"
+                          style={{
+                            width: "100%",
+                            fontSize: 12,
+                            resize: "none",
+                          }}
                         />
-                        <div className="mt-2 flex flex-wrap gap-1">
+                        <div
+                          style={{
+                            marginTop: 6,
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: 6,
+                          }}
+                        >
                           {SUGGESTIONS.map((s) => (
                             <button
                               key={s}
                               type="button"
-                              className="px-2 py-1 rounded-full border text-[11px] hover:bg-neutral-50"
                               onClick={() =>
                                 setDraftNote((d) => (d ? `${d}, ${s}` : s))
                               }
+                              style={{
+                                fontSize: 11,
+                                padding: "3px 8px",
+                                border: "1px solid #ddd",
+                                borderRadius: 999,
+                              }}
                             >
                               {s}
                             </button>
                           ))}
                         </div>
-                        <div className="mt-2 flex items-center justify-between">
-                          <span className="text-[11px] text-neutral-500">
+                        <div
+                          style={{
+                            marginTop: 8,
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <span style={{ fontSize: 11, color: "#666" }}>
                             {(draftNote || "").length}/140
                           </span>
-                          <div className="flex gap-2">
+                          <div style={{ display: "flex", gap: 8 }}>
                             <button
-                              className="text-xs px-3 py-1 rounded-lg border hover:bg-neutral-50"
                               onClick={cancelEdit}
+                              style={{
+                                fontSize: 12,
+                                padding: "6px 10px",
+                                border: "1px solid #ddd",
+                                borderRadius: 8,
+                                background: "#fff",
+                              }}
                             >
                               Cancelar
                             </button>
                             <button
-                              className="text-xs px-3 py-1 rounded-lg bg-emerald-700 text-white hover:opacity-90"
                               onClick={saveEdit}
+                              style={{
+                                fontSize: 12,
+                                padding: "6px 10px",
+                                border: "none",
+                                borderRadius: 8,
+                                background: "#065f46",
+                                color: "#fff",
+                              }}
                             >
                               Guardar
                             </button>
@@ -258,65 +382,96 @@ export default function CartDrawer({ onClose }) {
               );
             })
           ) : (
-            <div className="text-sm text-neutral-600">
+            <div style={{ fontSize: 14, color: "#666" }}>
               Tu carrito está vacío.
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="border-t border-neutral-200 p-4 space-y-3">
-          {/* Nota general (opcional) */}
-          <div className="rounded-lg border border-neutral-200 p-2">
-            <label className="text-xs font-semibold text-neutral-700">
+        <div style={{ borderTop: "1px solid #e5e5e5", padding: 16 }}>
+          {/* Nota general */}
+          <div
+            style={{
+              border: "1px solid #eee",
+              borderRadius: 8,
+              padding: 8,
+              marginBottom: 12,
+            }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#333" }}>
               Nota general del pedido (opcional)
-            </label>
+            </div>
             <textarea
               value={orderNote}
               onChange={(e) => setOrderNote(e.target.value.slice(0, 200))}
-              className="mt-1 w-full text-xs outline-none resize-none"
               rows={2}
               placeholder="Ej: sin maní en ningún plato, entregar en recepción, etc. (máx. 200)"
+              style={{
+                width: "100%",
+                marginTop: 6,
+                fontSize: 12,
+                resize: "none",
+              }}
             />
-            <div className="mt-1 text-[11px] text-neutral-500 text-right">
+            <div style={{ textAlign: "right", fontSize: 11, color: "#666" }}>
               {(orderNote || "").length}/200
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-neutral-600">Total</span>
-            <span className="text-lg font-bold">${COP(total)}</span>
+          <div style={{ ...row, marginBottom: 12 }}>
+            <span style={{ fontSize: 13, color: "#666" }}>Total</span>
+            <span style={{ fontSize: 18, fontWeight: 800 }}>${COP(total)}</span>
           </div>
 
-          <div className="flex gap-2">
+          <div style={{ display: "flex", gap: 8 }}>
             <button
-              className="flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm hover:bg-neutral-50"
               onClick={onClose}
+              style={{
+                flex: 1,
+                padding: "10px 12px",
+                border: "1px solid #ddd",
+                borderRadius: 10,
+                background: "#fff",
+              }}
             >
               Seguir pidiendo
             </button>
             <button
-              className="flex-1 rounded-lg bg-emerald-700 text-white px-3 py-2 text-sm hover:opacity-90"
-              onClick={() =>
-                window.open(buildWhatsAppUrl(items, total, orderNote), "_blank")
-              }
+              onClick={() => window.open(waUrl, "_blank")}
               disabled={items.length === 0}
               title={table ? `Mesa ${table}` : undefined}
+              style={{
+                flex: 1,
+                padding: "10px 12px",
+                border: "none",
+                borderRadius: 10,
+                background: "#065f46",
+                color: "#fff",
+                opacity: items.length === 0 ? 0.5 : 1,
+              }}
             >
               Enviar por WhatsApp
             </button>
           </div>
 
-          <div className="flex justify-between items-center">
+          <div style={{ marginTop: 8, ...row }}>
             <button
-              className="text-xs text-neutral-500 hover:underline"
               onClick={clear}
               disabled={items.length === 0}
+              style={{
+                fontSize: 12,
+                color: "#666",
+                background: "transparent",
+                border: "none",
+                textDecoration: "underline",
+                opacity: items.length === 0 ? 0.5 : 1,
+              }}
             >
               Vaciar carrito
             </button>
-            <span className="text-[11px] text-neutral-500">
-              {table ? `Mesa: ${table}` : "Sin mesa"}
+            <span style={{ fontSize: 11, color: "#666" }}>
+              {getTableId() ? `Mesa: ${getTableId()}` : "Sin mesa"}
             </span>
           </div>
         </div>
