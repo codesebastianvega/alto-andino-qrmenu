@@ -11,7 +11,14 @@ function stateFor(productId) {
   return s === "low" ? "low" : s === false ? "out" : "ok";
 }
 
-const BASE_PRICE = 32000;
+const BASE_PRICE = Number(import.meta.env.VITE_BOWL_BASE_PRICE || 32000);
+
+const formatCOP = (n) =>
+  n.toLocaleString("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  });
 
 // Poke Hawaiano (único prearmado)
 const PREBOWL = {
@@ -48,31 +55,36 @@ export default function BowlsSection() {
   return (
     <div className="space-y-4">
       {/* CTA gigante (como otro “producto”) */}
-      <div
-        onClick={openBuilder}
-        role="button"
-        aria-label="Armar bowl"
-        className="relative h-40 rounded-2xl overflow-hidden ring-1 ring-black/10 bg-gradient-to-r from-[#2f4131] to-[#355242]"
-      >
-        {/* Imagen decorativa */}
-        <div className="absolute inset-y-0 right-0 w-40 opacity-70 pointer-events-none flex items-center justify-center">
-          🍣
-        </div>
-        <div className="absolute inset-0 p-4 sm:p-5 pr-28 pb-16 flex flex-col justify-between">
-          <div>
-            <p className="text-white/85 text-xs font-medium">Personaliza a tu gusto</p>
-            <h3 className="text-white font-semibold text-xl sm:text-2xl">
-              Armar bowl personalizado
-            </h3>
-            <p className="text-white/90 text-sm">
-              1 base, 1 proteína, 4 toppings, 3 extras y 1 salsa
-            </p>
-          </div>
-          <div className="mt-3 flex items-center justify-between">
-            <div className="absolute right-4 bottom-4 z-10 rounded-full bg-white text-[#2f4131] font-semibold px-3 h-9 grid place-items-center shadow">
-              Desde&nbsp;<span className="font-bold">${COP(BASE_PRICE)}</span>
+      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6">
+        <div className="relative overflow-hidden rounded-2xl ring-1 ring-black/10 bg-gradient-to-r from-[#2f4131] to-[#355242]">
+          <img
+            src="/poke1.png"
+            alt=""
+            aria-hidden
+            className="absolute bottom-2 right-24 w-40 sm:w-56 opacity-90 drop-shadow-xl pointer-events-none animate-[spin_40s_linear_infinite] z-10"
+          />
+          <div className="absolute inset-0 p-4 sm:p-5 pr-28 pb-16 flex flex-col justify-between">
+            <div>
+              <p className="text-white/85 text-xs font-medium">Personaliza a tu gusto</p>
+              <h3 className="text-white font-semibold text-xl sm:text-2xl">
+                Armar bowl personalizado
+              </h3>
+              <p className="text-white/90 text-sm">
+                1 base, 1 proteína, 4 toppings, 3 extras y 1 salsa
+              </p>
             </div>
           </div>
+          <div className="absolute top-4 right-4 z-10 h-9 px-3 rounded-full bg-white text-[#2f4131] font-semibold grid place-items-center shadow whitespace-nowrap">
+            Desde {formatCOP(BASE_PRICE)}
+          </div>
+          <button
+            onClick={openBuilder}
+            aria-label="Armar bowl personalizado"
+            className="absolute bottom-4 right-4 z-20 h-10 px-4 rounded-full bg-white text-[#2f4131] font-semibold shadow hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+          >
+            Armar
+          </button>
+          <div className="h-28 sm:h-36"></div>
         </div>
       </div>
 
