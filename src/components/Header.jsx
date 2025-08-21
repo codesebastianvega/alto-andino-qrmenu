@@ -27,9 +27,11 @@ export default function Header() {
 
             {/* ✅ Chip con la mesa (si existe en la URL o guardada) */}
             {table && (
-              <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-xs font-semibold">
-                Mesa {table}
-              </span>
+              <div className="mt-2 flex justify-center">
+                <span className="inline-flex items-center gap-1 h-7 px-3 rounded-full text-xs border border-neutral-300 bg-white text-neutral-800">
+                  Mesa {table}
+                </span>
+              </div>
             )}
             <div className="my-2 h-px bg-black/10 w-full" />
           </div>
