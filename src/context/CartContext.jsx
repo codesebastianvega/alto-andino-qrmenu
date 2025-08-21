@@ -65,10 +65,14 @@ export function CartProvider({ children }) {
   function removeAt(index) {
     setItems((prev) => asArray(prev).filter((_, i) => i !== index));
   }
-  function removeItem(productId) {
+  function removeItem(itemOrId, options, note) {
+    const ref =
+      typeof itemOrId === "object"
+        ? itemOrId
+        : { productId: itemOrId, options, note };
     setItems((prev) => {
       const base = asArray(prev);
-      const idx = base.findIndex((x) => x.productId === productId);
+      const idx = base.findIndex((x) => sameItem(x, ref));
       if (idx < 0) return base;
       const next = [...base];
       next.splice(idx, 1);
