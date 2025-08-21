@@ -42,12 +42,14 @@ function normalize(items) {
 }
 
 export function CartProvider({ children }) {
+  const hasWindow = typeof window !== "undefined";
   // Lee el storage y sanea: si no es array, borra y arranca vacío
   const [items, setItems] = useState(() => {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!hasWindow) return [];
+    const raw = window.localStorage.getItem(STORAGE_KEY);
     const parsed = safeParse(raw, []);
     if (!Array.isArray(parsed)) {
-      localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(STORAGE_KEY);
       return [];
     }
     return parsed;
@@ -55,8 +57,9 @@ export function CartProvider({ children }) {
 
   // Persiste siempre como array
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(asArray(items)));
-  }, [items]);
+    if (!hasWindow) return;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(asArray(items)));
+  }, [items, hasWindow]);
 
   // API segura (siempre parte de un array)
   function addItem(newItem) {
