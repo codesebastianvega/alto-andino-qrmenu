@@ -32,6 +32,8 @@ export default function BowlsSection() {
   const { addItem } = useCart();
   const [open, setOpen] = useState(false);
 
+  const openBuilder = () => setOpen(true);
+
   const addPre = () =>
     addItem({
       productId: PREBOWL.id,
@@ -46,28 +48,33 @@ export default function BowlsSection() {
   return (
     <div className="space-y-4">
       {/* CTA gigante (como otro “producto”) */}
-      <button onClick={() => setOpen(true)} className="relative w-full text-left">
-        <div className="relative rounded-2xl p-3 sm:p-4 bg-gradient-to-r from-[#2f4131] to-[#355242] ring-1 ring-black/10 text-white">
-          {/* 🍣 encima de la placa, debajo del chip */}
-          <div className="poke-decor-over opacity-80 saturate-0">🍣</div>
-
-          {/* Placa clara para contraste del texto */}
-          <div className="relative z-10 inline-block rounded-xl bg-white/10 backdrop-blur px-4 py-3 ring-1 ring-white/20 pr-28">
-            <p className="text-[11px]">Personaliza a tu gusto</p>
-            <h3 className="text-lg sm:text-xl font-extrabold tracking-tight">
+      <div
+        onClick={openBuilder}
+        role="button"
+        aria-label="Armar bowl"
+        className="relative rounded-2xl overflow-hidden ring-1 ring-black/10 bg-gradient-to-r from-[#2f4131] to-[#355242]"
+      >
+        {/* Imagen decorativa */}
+        <div className="absolute inset-y-0 right-0 w-40 opacity-70 pointer-events-none flex items-center justify-center">
+          🍣
+        </div>
+        <div className="absolute inset-0 p-4 sm:p-5 pr-28 pb-16 flex flex-col justify-between">
+          <div>
+            <p className="text-white/85 text-xs font-medium">Personaliza a tu gusto</p>
+            <h3 className="text-white font-semibold text-xl sm:text-2xl">
               Armar bowl personalizado
             </h3>
-            <p className="text-xs">
+            <p className="text-white/90 text-sm">
               1 base, 1 proteína, 4 toppings, 3 extras y 1 salsa
             </p>
           </div>
-
-          {/* Chip “Desde” arriba a la derecha, encima de todo */}
-          <div className="absolute right-4 top-4 z-30 rounded-full bg-white text-[#2f4131] font-semibold px-3 h-8 grid place-items-center shadow">
-            Desde&nbsp;<span className="font-bold">${COP(BASE_PRICE)}</span>
+          <div className="mt-3 flex items-center justify-between">
+            <div className="absolute right-4 bottom-4 z-10 rounded-full bg-white text-[#2f4131] font-semibold px-3 h-9 grid place-items-center shadow">
+              Desde&nbsp;<span className="font-bold">${COP(BASE_PRICE)}</span>
+            </div>
           </div>
         </div>
-      </button>
+      </div>
 
       {/* Card del prearmado */}
       <div className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12">
