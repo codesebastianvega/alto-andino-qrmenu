@@ -2,14 +2,8 @@
 import { useEffect, useState } from "react";
 import { useCart } from "../context/CartContext";
 import { getTableId } from "../utils/table";
+import { COP } from "../utils/money";
 
-function COP(n) {
-  try {
-    return new Intl.NumberFormat("es-CO").format(Math.round(n || 0));
-  } catch {
-    return String(n || 0);
-  }
-}
 const PHONE = import.meta.env.VITE_WHATSAPP || "573222285900";
 const NOTE_KEY = "aa_order_note";
 
