@@ -9,7 +9,6 @@ export default function Header() {
   const table = getTableId();
   const [openGuide, setOpenGuide] = useState(false);
 
-
   return (
     <>
       <div className="max-w-3xl mx-auto p-5 sm:p-6 md:p-8">
@@ -19,7 +18,7 @@ export default function Header() {
             <img
               src="/logoalto.png"
               alt="Alto Andino Delicatessen"
-              className="mx-auto h-28 sm:h-32 md:h-36 w-auto"
+              className="mx-auto h-40 sm:h-41 md:h-50 w-auto"
               decoding="async"
               loading="eager"
               fetchpriority="high"
@@ -45,12 +44,12 @@ export default function Header() {
         </header>
       </div>
 
-        <CategoryBar onOpenGuide={() => setOpenGuide(true)} />
-        <div className="h-2 sm:h-3" />
+      <CategoryBar onOpenGuide={() => setOpenGuide(true)} />
+      <div className="h-2 sm:h-3" />
 
-        <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
-          <DietaryGuide />
-        </GuideModal>
+      <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
+        <DietaryGuide />
+      </GuideModal>
     </>
   );
 }
