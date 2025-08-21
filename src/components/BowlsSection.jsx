@@ -46,16 +46,13 @@ export default function BowlsSection() {
   return (
     <div className="space-y-4">
       {/* CTA gigante (como otro “producto”) */}
-      <button
-        onClick={() => setOpen(true)}
-        className="relative w-full text-left rounded-2xl overflow-hidden shadow-card border border-alto-greige focus:outline-none focus:ring-2 focus:ring-emerald-600"
-      >
-        <div className="relative bg-gradient-to-br from-alto-primary via-emerald-600 to-green-700 p-5">
+      <button onClick={() => setOpen(true)} className="relative w-full text-left">
+        <div className="relative rounded-2xl p-3 sm:p-4 bg-gradient-to-r from-[#2f4131] to-[#355242] ring-1 ring-black/10 text-white">
           {/* 🍣 encima de la placa, debajo del chip */}
-          <div className="poke-decor-over">🍣</div>
+          <div className="poke-decor-over opacity-80 saturate-0">🍣</div>
 
           {/* Placa clara para contraste del texto */}
-          <div className="relative z-10 inline-block rounded-xl bg-white/90 backdrop-blur px-4 py-3 text-emerald-900 pr-28">
+          <div className="relative z-10 inline-block rounded-xl bg-white/10 backdrop-blur px-4 py-3 ring-1 ring-white/20 pr-28">
             <p className="text-[11px]">Personaliza a tu gusto</p>
             <h3 className="text-lg sm:text-xl font-extrabold tracking-tight">
               Armar bowl personalizado
@@ -65,11 +62,9 @@ export default function BowlsSection() {
             </p>
           </div>
 
-          {/* Chip “Desde” abajo a la derecha, encima de todo */}
-          <div className="absolute bottom-3 right-3 z-30">
-            <div className="chip-square chip-solid">
-              Desde&nbsp;<span className="font-bold">${COP(BASE_PRICE)}</span>
-            </div>
+          {/* Chip “Desde” arriba a la derecha, encima de todo */}
+          <div className="absolute right-4 top-4 z-30 rounded-full bg-white text-[#2f4131] font-semibold px-3 h-8 grid place-items-center shadow">
+            Desde&nbsp;<span className="font-bold">${COP(BASE_PRICE)}</span>
           </div>
         </div>
       </button>
