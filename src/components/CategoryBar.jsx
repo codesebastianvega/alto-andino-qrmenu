@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-// util para slug simple desde el título de la sección
 const slugify = (s) =>
   s
     .toLowerCase()
@@ -10,54 +9,61 @@ const slugify = (s) =>
     .replace(/(^-|-$)/g, "");
 
 export default function CategoryBar() {
+  const [sections, setSections] = useState([]);
   const [active, setActive] = useState(null);
-  const containerRef = useRef(null);
+  const barRef = useRef(null);
+  const ioRef = useRef(null);
 
-  // Leer secciones del DOM (Section.jsx añadirá data-aa-section y id)
-  const sections = useMemo(() => {
+  // Leer secciones del DOM cuando monta
+  useEffect(() => {
     const nodes = document.querySelectorAll("[data-aa-section]");
-    return Array.from(nodes).map((n) => ({
-      id: n.id || slugify(n.getAttribute("data-aa-section")),
-      label: n.getAttribute("data-aa-section"),
-      el: n,
-    }));
+    const list = Array.from(nodes).map((n) => {
+      const id = n.id || slugify(n.getAttribute("data-aa-section") || "");
+      if (!n.id) n.id = id;
+      return { id, label: n.getAttribute("data-aa-section") || id, el: n };
+    });
+    setSections(list);
   }, []);
 
+  // Observer con rootMargin basado en la altura real de la barra
   useEffect(() => {
     if (!sections.length) return;
-    const obs = new IntersectionObserver(
+    const barH = barRef.current?.offsetHeight || 48;
+    const marginTop = -(barH + 8);
+    const marginBottom = -Math.round(window.innerHeight * 0.45);
+
+    ioRef.current?.disconnect();
+    const io = new IntersectionObserver(
       (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) setActive(e.target.id);
-        });
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            setActive(e.target.id);
+          }
+        }
       },
-      { rootMargin: "-48px 0px -60% 0px", threshold: 0.2 }
+      { root: null, rootMargin: `${marginTop}px 0px ${marginBottom}px 0px`, threshold: [0.2, 0.4, 0.6] }
     );
-    sections.forEach(({ el }) => obs.observe(el));
-    return () => obs.disconnect();
+    sections.forEach(({ el }) => io.observe(el));
+    ioRef.current = io;
+    return () => io.disconnect();
   }, [sections]);
 
   const scrollTo = (id) => {
     const el = document.getElementById(id);
     if (!el) return;
-    const stickyH = 56; // altura aprox de la barra
-    const y = el.getBoundingClientRect().top + window.scrollY - stickyH - 8;
+    const barH = barRef.current?.offsetHeight || 48;
+    const y = el.getBoundingClientRect().top + window.scrollY - barH - 8;
+    setActive(id); // fallback visual inmediato
     window.scrollTo({ top: y, behavior: "smooth" });
   };
 
   return (
     <div
-      className="sticky z-40 bg-[rgba(250,247,242,0.9)] backdrop-blur border-b border-black/5"
-      style={{ top: "env(safe-area-inset-top)" }}
+      ref={barRef}
+      className="sticky top-0 z-50 bg-[rgba(250,247,242,0.92)] backdrop-blur border-b border-black/5"
       aria-label="Categorías del menú"
     >
-      <div
-        ref={containerRef}
-        className="max-w-3xl mx-auto px-4 py-2 overflow-x-auto min-h-[44px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden relative"
-      >
-        {/* pistas de scroll a los lados */}
-        <span className="pointer-events-none absolute left-0 top-0 h-full w-6 bg-gradient-to-r from-[rgba(250,247,242,1)] to-[rgba(250,247,242,0)]" />
-        <span className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-[rgba(250,247,242,1)] to-[rgba(250,247,242,0)]" />
+      <div className="max-w-3xl mx-auto px-4 py-2 overflow-x-auto min-h-[44px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex gap-2">
           {sections.map(({ id, label }) => (
             <button
@@ -68,7 +74,7 @@ export default function CategoryBar() {
                 "px-3 py-1 rounded-full text-sm border transition whitespace-nowrap",
                 active === id
                   ? "bg-[#2f4131] text-white border-[#2f4131] shadow"
-                  : "bg-white text-neutral-800 border-neutral-300 hover:border-neutral-400",
+                  : "bg-white text-neutral-800 border-neutral-300 hover:border-neutral-400"
               ].join(" ")}
             >
               {label}
