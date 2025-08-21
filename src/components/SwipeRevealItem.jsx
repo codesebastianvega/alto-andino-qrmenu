@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
 
 /**
- * Contenedor swipeable que revela un botón de eliminar a la derecha.
- * Mantiene la interacción de clicks normal. No toca la lógica del carrito.
+ * SwipeRevealItem: revela un panel de borrar a la derecha, full-height,
+ * manteniendo el contenido con bordes redondeados continuos.
  */
-export default function SwipeRevealItem({ children, onDelete, deleteWidth = 72 }) {
+export default function SwipeRevealItem({ children, onDelete, deleteWidth = 84 }) {
   const [tx, setTx] = useState(0);
   const startX = useRef(0);
   const dragging = useRef(false);
@@ -12,37 +12,38 @@ export default function SwipeRevealItem({ children, onDelete, deleteWidth = 72 }
   const begin = (x) => { dragging.current = true; startX.current = x; };
   const move = (x) => {
     if (!dragging.current) return;
-    const d = Math.min(0, x - startX.current);        // solo hacia la izquierda
-    setTx(Math.max(d, -deleteWidth));                  // límite
+    const d = Math.min(0, x - startX.current);         // solo izquierda
+    setTx(Math.max(d, -deleteWidth));
   };
   const end = () => {
     dragging.current = false;
-    // snap: si pasó el 60%, dejar abierto; si no, cerrar
     setTx((cur) => (Math.abs(cur) > deleteWidth * 0.6 ? -deleteWidth : 0));
   };
 
   return (
-    <div className="relative">
-      {/* Zona de borrar (siempre presente detrás) */}
+    <div className="relative rounded-xl overflow-hidden">
+      {/* Panel rojo detrás: full-height */}
       <button
         type="button"
         onClick={onDelete}
-        className="absolute right-0 top-1/2 -translate-y-1/2 h-10 w-[72px] grid place-items-center rounded-xl
-                   bg-red-500 text-white font-medium shadow-md"
+        className="absolute inset-y-0 right-0 w-[84px] grid place-items-center bg-red-500 text-white"
         aria-label="Eliminar"
       >
-        🗑
+        {/* Trash SVG para continuidad visual */}
+        <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+          <path d="M10 11v6M14 11v6"/>
+        </svg>
       </button>
 
-      {/* Contenido desplazable */}
+      {/* Contenido swipeable */}
       <div
         className="transition-[transform] duration-200 will-change-transform"
         style={{ transform: `translateX(${tx}px)` }}
-        // touch
         onTouchStart={(e) => begin(e.touches[0].clientX)}
         onTouchMove={(e) => move(e.touches[0].clientX)}
         onTouchEnd={end}
-        // mouse (soporte desktop)
         onMouseDown={(e) => begin(e.clientX)}
         onMouseMove={(e) => dragging.current && move(e.clientX)}
         onMouseUp={end}
