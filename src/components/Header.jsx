@@ -9,19 +9,19 @@ export default function Header() {
   const table = getTableId();
   const [openGuide, setOpenGuide] = useState(false);
 
-
   return (
     <>
       <div className="max-w-3xl mx-auto px-5 sm:px-6 md:px-8 pt-3 pb-2 sm:pt-4 sm:pb-3">
         <header>
           {/* Logo centrado y sin fondo */}
-          <div className="flex flex-col items-center text-center">
+          <div className="pt-3 sm:pt-4">
             <img
               src="/logoalto.png"
               alt="Alto Andino Delicatessen"
               className="mx-auto h-28 sm:h-32 md:h-36 w-auto object-contain drop-shadow-sm"
             />
             <p className="mt-2 mb-2 text-sm sm:text-[15px] text-neutral-600">
+
               Ingredientes locales y de temporada · Pet Friendly
             </p>
 
@@ -40,9 +40,10 @@ export default function Header() {
         <CategoryBar onOpenGuide={() => setOpenGuide(true)} />
       </div>
 
-        <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
-          <DietaryGuide />
-        </GuideModal>
+
+      <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
+        <DietaryGuide />
+      </GuideModal>
     </>
   );
 }
