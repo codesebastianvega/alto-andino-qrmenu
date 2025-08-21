@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Chip, AddButton } from "./Buttons";
+import { Chip, AddIconButton } from "./Buttons";
 import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
 import stock from "../data/stock.json"; // ← sin assert
@@ -105,7 +105,7 @@ export default function Sandwiches() {
           const disabled = st === "out";
           return (
             <li key={it.key} className="card p-3 relative">
-              <div className="flex items-start justify-between gap-4 pb-14 pr-4">
+              <div className="flex items-start justify-between gap-4 pb-6 pr-4">
                 <div className="flex-1">
                   <p className="font-semibold">{it.name}</p>
                   <p className="text-sm text-neutral-600">{it.desc}</p>
@@ -118,7 +118,7 @@ export default function Sandwiches() {
                 <div className="text-right shrink-0">
                   <p className="font-semibold">${COP(priceFor(it.key))}</p>
                   {disabled && (
-                    <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+                    <span className="badge badge-out mt-2 inline-block">Agotado</span>
                   )}
                   {priceByItem[it.key].unico && (
                     <p className="text-[11px] text-neutral-500 mt-1">
@@ -127,7 +127,7 @@ export default function Sandwiches() {
                   )}
                 </div>
               </div>
-              <AddButton
+              <AddIconButton
                 className="absolute bottom-4 right-4"
                 onClick={() => add(it)}
                 disabled={disabled}

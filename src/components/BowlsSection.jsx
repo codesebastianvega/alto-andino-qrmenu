@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
-import { AddButton } from "./Buttons";
+import { AddIconButton } from "./Buttons";
 import BowlBuilderModal from "./BowlBuilderModal";
 import stock from "../data/stock.json";
 
@@ -76,7 +76,7 @@ export default function BowlsSection() {
 
       {/* Card del prearmado */}
       <div className="card p-4 relative">
-        <div className="flex items-start justify-between gap-4 pb-14 pr-4">
+        <div className="flex items-start justify-between gap-4 pb-6 pr-4">
           <div className="flex-1">
             <p className="font-semibold">{PREBOWL.name}</p>
             <p className="text-sm text-neutral-600">{PREBOWL.desc}</p>
@@ -89,11 +89,11 @@ export default function BowlsSection() {
           <div className="text-right shrink-0">
             <p className="font-bold">${COP(PREBOWL.price)}</p>
             {disabled && (
-              <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+              <span className="badge badge-out mt-2 inline-block">Agotado</span>
             )}
           </div>
         </div>
-        <AddButton
+        <AddIconButton
           className="absolute bottom-4 right-4"
           onClick={addPre}
           disabled={disabled}

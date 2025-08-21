@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AddButton } from "./Buttons";
+import { AddIconButton } from "./Buttons";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import stock from "../data/stock.json";
@@ -280,7 +280,7 @@ export default function CoffeeSection() {
 
             return (
               <li key={item.id} className="card p-3 relative">
-                <div className="flex items-start justify-between gap-4 pb-14 pr-4">
+                <div className="flex items-start justify-between gap-4 pb-6 pr-4">
                   <div className="flex-1">
                     <p className="font-semibold">{displayName(item)}</p>
                     <p className="text-xs text-neutral-600">{item.desc}</p>
@@ -316,11 +316,11 @@ export default function CoffeeSection() {
                     <p className="text-xs text-neutral-500">Precio</p>
                     <p className="font-semibold">${COP(finalPrice(item))}</p>
                     {disabled && (
-                      <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+                      <span className="badge badge-out mt-2 inline-block">Agotado</span>
                     )}
                   </div>
                 </div>
-                <AddButton
+                <AddIconButton
                   className="absolute bottom-4 right-4"
                   onClick={() => addToCart(item)}
                   disabled={disabled}
@@ -345,7 +345,7 @@ export default function CoffeeSection() {
 
             return (
               <li key={item.id} className="card p-3 relative">
-                <div className="flex items-start justify-between gap-4 pb-14 pr-4">
+                <div className="flex items-start justify-between gap-4 pb-6 pr-4">
                   <div className="flex-1">
                     <p className="font-semibold">{displayName(item)}</p>
                     <p className="text-xs text-neutral-600">{item.desc}</p>
@@ -367,11 +367,11 @@ export default function CoffeeSection() {
                     <p className="text-xs text-neutral-500">Precio</p>
                     <p className="font-semibold">${COP(finalPrice(item))}</p>
                     {disabled && (
-                      <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+                      <span className="badge badge-out mt-2 inline-block">Agotado</span>
                     )}
                   </div>
                 </div>
-                <AddButton
+                <AddIconButton
                   className="absolute bottom-4 right-4"
                   onClick={() => addToCart(item)}
                   disabled={disabled}

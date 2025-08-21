@@ -1,7 +1,7 @@
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import stock from "../data/stock.json"; // ← sin assert
-import { AddButton } from "./Buttons";
+import { AddIconButton } from "./Buttons";
 
 // estado global: 'ok' | 'low' | 'out'
 function stateFor(productId) {
@@ -173,7 +173,7 @@ export function Desserts() {
                   (disabled ? "opacity-60" : "")
                 }
               >
-                <div className="pb-14 pr-4">
+                <div className="pb-6 pr-4">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span className="text-sm">{s.label}</span>
@@ -184,12 +184,12 @@ export function Desserts() {
                     <div className="text-right">
                       <span className="font-semibold">${COP(price)}</span>
                       {disabled && (
-                        <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+                        <span className="badge badge-out mt-2 inline-block">Agotado</span>
                       )}
                     </div>
                   </div>
                 </div>
-                <AddButton
+                <AddIconButton
                   className="absolute bottom-4 right-4"
                   onClick={() =>
                     addItem({
@@ -232,8 +232,8 @@ function ProductRow({ item }) {
   const st = stateFor(item.id);
   const disabled = st === "out";
   return (
-    <li className="card p-3">
-      <div className="flex items-start justify-between gap-4">
+    <li className="card p-3 relative">
+      <div className="flex items-start justify-between gap-4 pb-6 pr-4">
         <div className="flex-1">
           <p className="font-semibold">{item.name}</p>
           <p className="text-xs text-neutral-600 mt-1">{item.desc}</p>
@@ -243,35 +243,20 @@ function ProductRow({ item }) {
             </span>
           )}
         </div>
-        <div className="flex items-start shrink-0">
-          <div className="text-right">
-            <p className="font-semibold">${COP(item.price)}</p>
-            {disabled && (
-              <p className="mt-1 text-sm text-neutral-500">Agotado</p>
-            )}
-          </div>
-          <AddButton
-            className="ml-4 self-start"
-            onClick={() =>
-              addItem({
-                productId: item.id,
-                name: item.name,
-                price: item.price,
-              })
-            }
-            disabled={disabled}
-          />
+        <div className="text-right">
+          <p className="font-semibold">${COP(item.price)}</p>
+          {disabled && (
+            <span className="badge badge-out mt-2 inline-block">Agotado</span>
+          )}
         </div>
       </div>
-      <AddButton
-        hideText
+      <AddIconButton
         className="absolute bottom-4 right-4"
         onClick={() =>
           addItem({ productId: item.id, name: item.name, price: item.price })
         }
         disabled={disabled}
       />
-
     </li>
   );
 }

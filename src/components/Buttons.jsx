@@ -60,4 +60,28 @@ export function AddButton({
   );
 }
 
+export function AddIconButton({ onClick, disabled, className = "", type = "button", ariaLabel = "Añadir" }) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      className={[
+        "grid place-items-center rounded-full shadow-sm border select-none transition",
+        "bg-[#2f4131] text-white hover:bg-[#243326] border-black/10",
+        "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[rgba(47,65,49,0.3)]",
+        "h-10 w-10 sm:h-9 sm:w-9",
+        "active:translate-y-[1px]",
+        "disabled:bg-neutral-200 disabled:text-neutral-500 disabled:border-neutral-200 disabled:cursor-not-allowed",
+        className,
+      ].join(" ")}
+    >
+      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <path d="M12 5v14M5 12h14" />
+      </svg>
+    </button>
+  );
+}
+
 export default AddButton;
