@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Button } from "./Buttons";
+import { AddButton } from "./Buttons";
 import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
 
@@ -329,12 +329,9 @@ export default function BowlBuilderModal({ open, onClose }) {
             <div className="rounded-xl border bg-neutral-50 p-3">
               <p className="text-xs text-neutral-600">Total</p>
               <p className="text-xl font-bold">${COP(price)}</p>
-              <button
-                className="btn btn-primary mt-2 w-full"
-                onClick={addToCart}
-              >
+              <AddButton className="mt-2" onClick={addToCart}>
                 Añadir al carrito
-              </button>
+              </AddButton>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "./Buttons";
+import { AddButton } from "./Buttons";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import stock from "../data/stock.json";
@@ -315,14 +315,14 @@ export default function CoffeeSection() {
                   <div className="text-right shrink-0">
                     <p className="text-xs text-neutral-500">Precio</p>
                     <p className="font-semibold">${COP(finalPrice(item))}</p>
-                    <Button
-                      variant="outline"
+                    <AddButton
                       className="mt-1"
                       onClick={() => addToCart(item)}
                       disabled={disabled}
-                    >
-                      {disabled ? "Agotado" : "Añadir"}
-                    </Button>
+                    />
+                    {disabled && (
+                      <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+                    )}
                   </div>
                 </div>
               </li>
@@ -366,14 +366,14 @@ export default function CoffeeSection() {
                   <div className="text-right shrink-0">
                     <p className="text-xs text-neutral-500">Precio</p>
                     <p className="font-semibold">${COP(finalPrice(item))}</p>
-                    <Button
-                      variant="outline"
+                    <AddButton
                       className="mt-1"
                       onClick={() => addToCart(item)}
                       disabled={disabled}
-                    >
-                      {disabled ? "Agotado" : "Añadir"}
-                    </Button>
+                    />
+                    {disabled && (
+                      <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+                    )}
                   </div>
                 </div>
               </li>
