@@ -184,7 +184,7 @@ export function Desserts() {
                     <div className="text-right">
                       <span className="font-semibold">${COP(price)}</span>
                       {disabled && (
-                        <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+                        <span className="badge badge-out mt-2 inline-block">Agotado</span>
                       )}
                     </div>
                   </div>
@@ -233,8 +233,9 @@ function ProductRow({ item }) {
   const disabled = st === "out";
   return (
     <li className="card p-3 relative">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 pb-6 pr-4">
+      <div className="flex items-start justify-between gap-4 pb-6 pr-4">
+        <div className="flex-1">
+
           <p className="font-semibold">{item.name}</p>
           <p className="text-xs text-neutral-600 mt-1">{item.desc}</p>
           {st === "low" && (
@@ -246,7 +247,8 @@ function ProductRow({ item }) {
         <div className="text-right">
           <p className="font-semibold">${COP(item.price)}</p>
           {disabled && (
-            <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+            <span className="badge badge-out mt-2 inline-block">Agotado</span>
+
           )}
         </div>
       </div>

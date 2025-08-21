@@ -89,7 +89,7 @@ export default function BowlsSection() {
           <div className="text-right shrink-0">
             <p className="font-bold">${COP(PREBOWL.price)}</p>
             {disabled && (
-              <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+              <span className="badge badge-out mt-2 inline-block">Agotado</span>
             )}
           </div>
         </div>

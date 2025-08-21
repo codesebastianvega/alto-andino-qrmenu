@@ -316,7 +316,7 @@ export default function CoffeeSection() {
                     <p className="text-xs text-neutral-500">Precio</p>
                     <p className="font-semibold">${COP(finalPrice(item))}</p>
                     {disabled && (
-                      <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+                      <span className="badge badge-out mt-2 inline-block">Agotado</span>
                     )}
                   </div>
                 </div>
@@ -367,7 +367,7 @@ export default function CoffeeSection() {
                     <p className="text-xs text-neutral-500">Precio</p>
                     <p className="font-semibold">${COP(finalPrice(item))}</p>
                     {disabled && (
-                      <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+                      <span className="badge badge-out mt-2 inline-block">Agotado</span>
                     )}
                   </div>
                 </div>
