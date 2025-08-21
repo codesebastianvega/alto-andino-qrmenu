@@ -77,7 +77,7 @@ export default function CategoryBar({ onOpenGuide }) {
                   "px-3 py-1 rounded-full text-sm border transition whitespace-nowrap",
                   active === id
                     ? "bg-[#2f4131] text-white border-[#2f4131] shadow"
-                    : "bg-white text-neutral-800 border-neutral-300 hover:border-neutral-400"
+                    : "bg-white text-neutral-800 border-neutral-300 hover:border-neutral-400",
                 ].join(" ")}
               >
                 {label}
@@ -90,8 +90,7 @@ export default function CategoryBar({ onOpenGuide }) {
         <button
           type="button"
           onClick={onOpenGuide}
-          className="shrink-0 px-3 h-9 rounded-full bg-[#2f4131] text-white shadow-sm ring-1 ring-black/5 hover:scale-105 active:scale-95 transition
-                   focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+          className="shrink-0 h-8 px-2.5 rounded-full text-xs border border-[#2f4131]/30 text-[#2f4131] bg-white/50 hover:bg-[#2f4131] hover:text-white hover:border-[#2f4131] shadow-sm ring-1 ring-black/5 transition focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
           aria-label="Guía dietaria y alérgenos"
         >
           Alérgenos

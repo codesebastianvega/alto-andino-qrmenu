@@ -38,40 +38,42 @@ export default function App() {
 
   // ✅ Modo menú normal
   return (
-    <div className="mx-auto max-w-3xl bg-alto-beige text-alto-text p-5 sm:p-6 md:p-8 leading-snug">
+    <div className="bg-alto-beige text-alto-text leading-snug">
       <Header />
 
-      <Section title="Desayunos">
-        <Breakfasts />
-      </Section>
-      <Section title="Bowls">
-        <BowlsSection />
-      </Section>
-      <Section title="Platos Fuertes">
-        <Mains />
-      </Section>
-      <Section title="Sándwiches">
-        <Sandwiches />
-      </Section>
-      <Section title="Smoothies & Funcionales">
-        <SmoothiesSection />
-      </Section>
-      <Section title="Café de especialidad">
-        <CoffeeSection />
-      </Section>
-      <Section title="Postres">
-        <Desserts />
-      </Section>
+      <div className="mx-auto max-w-3xl p-5 sm:p-6 md:p-8">
+        <Section title="Desayunos">
+          <Breakfasts />
+        </Section>
+        <Section title="Bowls">
+          <BowlsSection />
+        </Section>
+        <Section title="Platos Fuertes">
+          <Mains />
+        </Section>
+        <Section title="Sándwiches">
+          <Sandwiches />
+        </Section>
+        <Section title="Smoothies & Funcionales">
+          <SmoothiesSection />
+        </Section>
+        <Section title="Café de especialidad">
+          <CoffeeSection />
+        </Section>
+        <Section title="Postres">
+          <Desserts />
+        </Section>
 
-      <Footer />
+        <Footer />
 
-      {/* Barra flotante y Drawer del carrito */}
-      <FloatingCartBar
-        count={cart.count}
-        total={cart.total}
-        onOpen={() => setOpen(true)}
-      />
-      {open && <CartDrawer onClose={() => setOpen(false)} />}
+        {/* Barra flotante y Drawer del carrito */}
+        <FloatingCartBar
+          count={cart.count}
+          total={cart.total}
+          onOpen={() => setOpen(true)}
+        />
+        {open && <CartDrawer onClose={() => setOpen(false)} />}
+      </div>
     </div>
   );
 }
