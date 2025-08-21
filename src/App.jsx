@@ -68,7 +68,7 @@ export default function App() {
 
         {/* Barra flotante y Drawer del carrito */}
         <FloatingCartBar
-          count={cart.count}
+          items={cart.items}
           total={cart.total}
           onOpen={() => setOpen(true)}
         />
