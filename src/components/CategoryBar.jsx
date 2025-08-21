@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { PILL_XS, PILL_SM } from "./Buttons";
 
 const slugify = (s) =>
   s
@@ -90,7 +91,13 @@ export default function CategoryBar({ onOpenGuide }) {
         <button
           type="button"
           onClick={onOpenGuide}
-          className="shrink-0 h-8 px-2.5 rounded-full text-xs border border-[#2f4131]/30 text-[#2f4131] bg-white/50 hover:bg-[#2f4131] hover:text-white hover:border-[#2f4131] shadow-sm ring-1 ring-black/5 transition focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+          className={[
+            "shrink-0 rounded-full border border-[#2f4131]/30 text-[#2f4131] bg-white/50",
+            "hover:bg-[#2f4131] hover:text-white hover:border-[#2f4131]",
+            "shadow-sm ring-1 ring-black/5 transition focus:outline-none",
+            "focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]",
+            PILL_XS, "sm:" + PILL_SM
+          ].join(" ")}
           aria-label="Guía dietaria y alérgenos"
         >
           Alérgenos
