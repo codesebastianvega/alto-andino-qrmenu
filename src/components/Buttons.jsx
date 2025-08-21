@@ -113,4 +113,8 @@ export function StatusChip({ variant = "neutral", className = "", children }) {
   );
 }
 
+// Tamaños reutilizables para pills
+export const PILL_XS = "h-7 px-2.5 text-xs";
+export const PILL_SM = "h-8 px-3 text-sm";
+
 export default AddButton;
