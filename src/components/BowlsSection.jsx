@@ -62,10 +62,13 @@ export default function BowlsSection() {
             alt=""
             aria-hidden
             className="absolute bottom-[-6px] right-0 sm:right-2 w-44 sm:w-60 md:w-72 object-contain drop-shadow-xl pointer-events-none animate-[spin_40s_linear_infinite] z-10"
+
           />
           <div className="absolute inset-0 p-4 sm:p-5 pr-40 sm:pr-48 flex flex-col justify-between">
             <div>
-              <p className="text-white/85 text-xs font-medium">Personaliza a tu gusto</p>
+              <p className="text-white/85 text-xs font-medium">
+                Personaliza a tu gusto
+              </p>
               <h3 className="text-white font-semibold text-xl sm:text-2xl">
                 Armar bowl personalizado
               </h3>
@@ -106,9 +109,7 @@ export default function BowlsSection() {
           {st === "low" && (
             <StatusChip variant="low">Pocas unidades</StatusChip>
           )}
-          {disabled && (
-            <StatusChip variant="soldout">Agotado</StatusChip>
-          )}
+          {disabled && <StatusChip variant="soldout">Agotado</StatusChip>}
         </div>
         <div className="absolute top-5 right-5 z-10 text-neutral-800 font-bold">
           ${COP(PREBOWL.price)}

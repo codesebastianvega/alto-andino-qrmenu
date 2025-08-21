@@ -2,12 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { PILL_XS, PILL_SM } from "./Buttons";
 
 const slugify = (s) =>
-  s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+  s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+   .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
 export default function CategoryBar({ onOpenGuide }) {
   const [sections, setSections] = useState([]);
@@ -15,7 +11,6 @@ export default function CategoryBar({ onOpenGuide }) {
   const barRef = useRef(null);
   const ioRef = useRef(null);
 
-  // Leer secciones del DOM cuando monta
   useEffect(() => {
     const nodes = document.querySelectorAll("[data-aa-section]");
     const list = Array.from(nodes).map((n) => {
@@ -26,23 +21,18 @@ export default function CategoryBar({ onOpenGuide }) {
     setSections(list);
   }, []);
 
-  // Observer con rootMargin basado en la altura real de la barra
   useEffect(() => {
     if (!sections.length) return;
-    const barH = barRef.current?.offsetHeight || 48;
+    const barH = barRef.current?.offsetHeight || 44;
     const marginTop = -(barH + 8);
     const marginBottom = -Math.round(window.innerHeight * 0.45);
 
     ioRef.current?.disconnect();
     const io = new IntersectionObserver(
       (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            setActive(e.target.id);
-          }
-        }
+        for (const e of entries) if (e.isIntersecting) setActive(e.target.id);
       },
-      { root: null, rootMargin: `${marginTop}px 0px ${marginBottom}px 0px`, threshold: [0.2, 0.4, 0.6] }
+      { root: null, rootMargin: `${marginTop}px 0px ${marginBottom}px 0px`, threshold: [0.2, 0.5] }
     );
     sections.forEach(({ el }) => io.observe(el));
     ioRef.current = io;
@@ -52,21 +42,22 @@ export default function CategoryBar({ onOpenGuide }) {
   const scrollTo = (id) => {
     const el = document.getElementById(id);
     if (!el) return;
-    const barH = barRef.current?.offsetHeight || 48;
-    const y = el.getBoundingClientRect().top + window.scrollY - barH - 8;
-    setActive(id); // fallback visual inmediato
-    window.scrollTo({ top: y, behavior: "smooth" });
+    const barH = barRef.current?.offsetHeight || 44;
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - barH - 8, behavior: "smooth" });
+    setActive(id);
   };
 
   return (
+    // STICKY en el WRAPPER EXTERNO (no meter overflow aquí)
     <div
       ref={barRef}
-      className="sticky z-50 bg-[rgba(250,247,242,0.92)] backdrop-blur border-b border-black/5"
+      className="sticky z-[60] bg-[rgba(250,247,242,0.92)] backdrop-blur border-b border-black/5"
       style={{ top: "env(safe-area-inset-top, 0px)" }}
       aria-label="Categorías del menú"
     >
+      {/* full-bleed */}
       <div className="w-full px-3 sm:px-4 py-2 flex items-center gap-2">
-        {/* Carril scrolleable de categorías */}
+        {/* carril scrolleable */}
         <div className="flex-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex gap-2 w-max">
             {sections.map(({ id, label }) => (
@@ -78,7 +69,7 @@ export default function CategoryBar({ onOpenGuide }) {
                   "px-3 py-1 rounded-full text-sm border transition whitespace-nowrap",
                   active === id
                     ? "bg-[#2f4131] text-white border-[#2f4131] shadow"
-                    : "bg-white text-neutral-800 border-neutral-300 hover:border-neutral-400",
+                    : "bg-white text-neutral-800 border-neutral-300 hover:border-neutral-400"
                 ].join(" ")}
               >
                 {label}
@@ -87,7 +78,7 @@ export default function CategoryBar({ onOpenGuide }) {
           </div>
         </div>
 
-        {/* Botón Alérgenos fijo a la derecha */}
+        {/* botón Guía / Alérgenos (tamaño XS/SM) */}
         <button
           type="button"
           onClick={onOpenGuide}
@@ -99,6 +90,7 @@ export default function CategoryBar({ onOpenGuide }) {
             PILL_XS, "sm:" + PILL_SM
           ].join(" ")}
           aria-label="Guía dietaria y alérgenos"
+
         >
           Alérgenos
         </button>
@@ -106,4 +98,3 @@ export default function CategoryBar({ onOpenGuide }) {
     </div>
   );
 }
-
