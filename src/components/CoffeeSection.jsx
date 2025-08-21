@@ -279,8 +279,8 @@ export default function CoffeeSection() {
               (item.milkPolicy === "optional" && addMilk[item.id]);
 
             return (
-              <li key={item.id} className="card p-3">
-                <div className="flex items-start justify-between gap-4">
+              <li key={item.id} className="card p-3 relative">
+                <div className="flex items-start justify-between gap-4 pb-14 pr-4">
                   <div className="flex-1">
                     <p className="font-semibold">{displayName(item)}</p>
                     <p className="text-xs text-neutral-600">{item.desc}</p>
@@ -311,20 +311,20 @@ export default function CoffeeSection() {
                     </div>
                   </div>
 
-                  {/* Precio y añadir */}
+                  {/* Precio */}
                   <div className="text-right shrink-0">
                     <p className="text-xs text-neutral-500">Precio</p>
                     <p className="font-semibold">${COP(finalPrice(item))}</p>
-                    <AddButton
-                      className="mt-1"
-                      onClick={() => addToCart(item)}
-                      disabled={disabled}
-                    />
                     {disabled && (
                       <p className="mt-1 text-sm text-neutral-500">Agotado</p>
                     )}
                   </div>
                 </div>
+                <AddButton
+                  className="absolute bottom-4 right-4"
+                  onClick={() => addToCart(item)}
+                  disabled={disabled}
+                />
               </li>
             );
           })}
@@ -344,8 +344,8 @@ export default function CoffeeSection() {
             const showChaiMilk = isChai && modeOf(item.id) === "latte";
 
             return (
-              <li key={item.id} className="card p-3">
-                <div className="flex items-start justify-between gap-4">
+              <li key={item.id} className="card p-3 relative">
+                <div className="flex items-start justify-between gap-4 pb-14 pr-4">
                   <div className="flex-1">
                     <p className="font-semibold">{displayName(item)}</p>
                     <p className="text-xs text-neutral-600">{item.desc}</p>
@@ -366,16 +366,16 @@ export default function CoffeeSection() {
                   <div className="text-right shrink-0">
                     <p className="text-xs text-neutral-500">Precio</p>
                     <p className="font-semibold">${COP(finalPrice(item))}</p>
-                    <AddButton
-                      className="mt-1"
-                      onClick={() => addToCart(item)}
-                      disabled={disabled}
-                    />
                     {disabled && (
                       <p className="mt-1 text-sm text-neutral-500">Agotado</p>
                     )}
                   </div>
                 </div>
+                <AddButton
+                  className="absolute bottom-4 right-4"
+                  onClick={() => addToCart(item)}
+                  disabled={disabled}
+                />
               </li>
             );
           })}

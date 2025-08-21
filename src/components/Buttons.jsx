@@ -34,11 +34,11 @@ export function AddButton({
       onClick={onClick}
       className={[
         "inline-flex items-center justify-center gap-2 rounded-full font-semibold shadow-sm transition select-none",
-        "bg-emerald-700 text-white hover:bg-emerald-800",
-        "border border-emerald-800/10",
-        "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-300",
-        "px-4 h-11 w-full sm:w-auto sm:h-10",
-        "active:translate-y-px",
+        "bg-[#2f4131] text-white hover:bg-[#243326]",
+        "border border-black/10",
+        "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[rgba(47,65,49,0.3)]",
+        "px-3 min-w-[112px] h-10 sm:h-9 w-auto",
+        "active:translate-y-[1px]",
         "disabled:bg-neutral-200 disabled:text-neutral-500 disabled:cursor-not-allowed",
         className,
       ].join(" ")}
