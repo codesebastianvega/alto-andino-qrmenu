@@ -28,6 +28,7 @@ export default function SwipeRevealItem({ children, onDelete, deleteWidth = 84 }
         onClick={onDelete}
         className="absolute inset-y-0 right-0 w-[84px] grid place-items-center bg-red-500 text-white"
         aria-label="Eliminar"
+        style={{ pointerEvents: tx < 0 ? "auto" : "none" }}
       >
         {/* Trash SVG para continuidad visual */}
         <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

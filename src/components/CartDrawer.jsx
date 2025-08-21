@@ -9,10 +9,12 @@ export default function CartDrawer({ open, onClose, onSendWhatsApp }) {
   const {
     items = [],
     total = 0,
-    clearCart,
-    incrementItem,
-    decrementItem,
+    clear: clearCart,
+    increment,
+    decrement,
     removeItem,
+    updateItem,
+
     note,
     setNote,
     setItemNote: setItemNoteCtx,
@@ -20,7 +22,16 @@ export default function CartDrawer({ open, onClose, onSendWhatsApp }) {
   } = cart;
 
   // setter flexible para nota por ítem (usa la disponible en el contexto)
-  const setItemNote = setItemNoteCtx || updateItemNoteCtx || (() => {});
+  const setItemNote =
+    setItemNoteCtx ||
+    updateItemNoteCtx ||
+    ((index, value) => updateItem?.(index, { note: value }));
+
+  const handleDecrement = (item, idx) => {
+    if (item.qty <= 1) removeItem?.(item);
+    else decrement?.(idx);
+  };
+
 
   useEffect(() => {
     if (!open) return;
@@ -59,8 +70,9 @@ export default function CartDrawer({ open, onClose, onSendWhatsApp }) {
 
         {/* Lista scrolleable */}
         <div className="px-4 space-y-3" style={{ maxHeight: "calc(100dvh - 280px)", overflowY: "auto" }}>
-          {items.length ? items.map((it) => (
-            <SwipeRevealItem key={it.id} onDelete={() => removeItem(it.id)}>
+          {items.length ? items.map((it, idx) => (
+            <SwipeRevealItem key={idx} onDelete={() => removeItem?.(it)}>
+
               <div className="p-3 bg-[#263229] ring-1 ring-white/10">
                 <div className="flex items-start gap-3">
                   {/* imagen opcional */}
@@ -79,9 +91,24 @@ export default function CartDrawer({ open, onClose, onSendWhatsApp }) {
 
                     {/* Controles de cantidad (compactos) */}
                     <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#1c241f] ring-1 ring-white/10 px-1 py-[2px]">
-                      <button type="button" onClick={() => decrementItem(it.id)} className="h-6 w-6 grid place-items-center rounded-full text-white hover:bg-white/10" aria-label="Restar">−</button>
+                      <button
+                        type="button"
+                        onClick={() => handleDecrement(it, idx)}
+                        className="h-6 w-6 grid place-items-center rounded-full text-white hover:bg-white/10"
+                        aria-label="Restar"
+                      >
+                        −
+                      </button>
                       <span className="text-white text-sm tabular-nums">{it.qty}</span>
-                      <button type="button" onClick={() => incrementItem(it.id)} className="h-6 w-6 grid place-items-center rounded-full text-white hover:bg-white/10" aria-label="Sumar">＋</button>
+                      <button
+                        type="button"
+                        onClick={() => increment?.(idx)}
+                        className="h-6 w-6 grid place-items-center rounded-full text-white hover:bg-white/10"
+                        aria-label="Sumar"
+                      >
+                        ＋
+                      </button>
+
                     </div>
 
                     {/* Nota por ítem */}
@@ -89,7 +116,8 @@ export default function CartDrawer({ open, onClose, onSendWhatsApp }) {
                       <input
                         type="text"
                         value={it.note || ""}
-                        onChange={(e) => setItemNote(it.id, e.target.value)}
+                        onChange={(e) => setItemNote(idx, e.target.value)}
+
                         placeholder="Nota para este ítem (opcional)"
                         className="w-full rounded-lg bg-[#1b221d] text-white placeholder-white/45 ring-1 ring-white/10 focus:ring-2 focus:ring-white/30 px-2 py-1 text-xs"
                       />
