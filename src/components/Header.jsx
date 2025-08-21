@@ -1,47 +1,15 @@
 // src/components/Header.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { getTableId } from "../utils/table";
 import CategoryBar from "./CategoryBar";
 import GuideModal from "./GuideModal";
 import DietaryGuide from "./DietaryGuide";
 
-const IG_URL =
-  import.meta.env.VITE_INSTAGRAM_URL ||
-  "https://instagram.com/altoandinozipaquira";
-const IG_HANDLE =
-  (IG_URL.split("/").filter(Boolean).pop() || "@altoandinozipaquira").replace(
-    "@",
-    "@"
-  );
-const RAW_WA = (import.meta.env.VITE_WHATSAPP || "573209009972").replace(
-  /\D/g,
-  ""
-);
-const WA_NUM = RAW_WA.startsWith("57") ? RAW_WA : `57${RAW_WA}`;
-const WA_DISPLAY = WA_NUM.replace(/^57/, "").replace(
-  /(\d{3})(\d{3})(\d{4})/,
-  "$1 $2 $3"
-); // 320 900 9972
-const WA_LINK = `https://wa.me/${WA_NUM}`;
 
 export default function Header() {
   const table = getTableId();
   const [openGuide, setOpenGuide] = useState(false);
 
-  // Calcula altura de la barra del carrito si existe y la expone en --aa-cartbar-h
-  useEffect(() => {
-    const el = document.querySelector("[data-aa-cartbar]");
-    const setVar = (h) =>
-      document.documentElement.style.setProperty("--aa-cartbar-h", `${h || 0}px`);
-    if (!el) {
-      setVar(0);
-      return;
-    }
-    const ro = new ResizeObserver(() => setVar(el.offsetHeight));
-    ro.observe(el);
-    setVar(el.offsetHeight);
-    return () => ro.disconnect();
-  }, []);
 
   return (
     <>
@@ -67,31 +35,13 @@ export default function Header() {
 
         {/* Línea sutil y datos */}
         <div className="mt-4 border-t border-neutral-200 pt-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs sm:text-sm text-neutral-700">
-            <p className="text-center sm:text-left">
-              Carrera 15 # 1 – 111, San Pablo
-            </p>
-            <div className="text-center text-sm text-neutral-700 sm:text-right">
-              Instagram: <a href={IG_URL} target="_blank" rel="noreferrer" className="font-medium text-[#2f4131] hover:underline">@{IG_HANDLE.replace("@", "")}</a>
-              {" · "}
-              WhatsApp: <a href={WA_LINK} target="_blank" rel="noreferrer" className="font-medium text-[#2f4131] hover:underline">{WA_DISPLAY}</a>
-            </div>
-          </div>
+          <p className="text-center sm:text-left text-xs sm:text-sm text-neutral-700">
+            Carrera 15 # 1 – 111, San Pablo
+          </p>
         </div>
       </header>
 
-      <CategoryBar />
-
-      <button
-        onClick={() => setOpenGuide(true)}
-        aria-label="Guía dietaria y alérgenos"
-        title="Guía dietaria y alérgenos"
-        id="aa-guide-fab"
-        className="fixed right-4 z-[60] px-4 h-10 rounded-full bg-[#2f4131] text-white shadow-lg ring-1 ring-black/5 hover:scale-105 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + var(--aa-cartbar-h, 0px) + 1rem)" }}
-      >
-        Alérgenos
-      </button>
+      <CategoryBar onOpenGuide={() => setOpenGuide(true)} />
 
       <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
         <DietaryGuide />
