@@ -8,7 +8,7 @@ const slugify = (s) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
-export default function CategoryBar() {
+export default function CategoryBar({ onOpenGuide }) {
   const [sections, setSections] = useState([]);
   const [active, setActive] = useState(null);
   const barRef = useRef(null);
@@ -60,27 +60,42 @@ export default function CategoryBar() {
   return (
     <div
       ref={barRef}
-      className="sticky top-0 z-50 bg-[rgba(250,247,242,0.92)] backdrop-blur border-b border-black/5"
+      className="sticky z-50 bg-[rgba(250,247,242,0.92)] backdrop-blur border-b border-black/5"
+      style={{ top: "env(safe-area-inset-top, 0px)" }}
       aria-label="Categorías del menú"
     >
-      <div className="max-w-3xl mx-auto px-4 py-2 overflow-x-auto min-h-[44px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="flex gap-2">
-          {sections.map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => scrollTo(id)}
-              aria-pressed={active === id}
-              className={[
-                "px-3 py-1 rounded-full text-sm border transition whitespace-nowrap",
-                active === id
-                  ? "bg-[#2f4131] text-white border-[#2f4131] shadow"
-                  : "bg-white text-neutral-800 border-neutral-300 hover:border-neutral-400"
-              ].join(" ")}
-            >
-              {label}
-            </button>
-          ))}
+      <div className="w-full px-3 sm:px-4 py-2 flex items-center gap-2">
+        {/* Carril scrolleable de categorías */}
+        <div className="flex-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex gap-2 w-max">
+            {sections.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => scrollTo(id)}
+                aria-pressed={active === id}
+                className={[
+                  "px-3 py-1 rounded-full text-sm border transition whitespace-nowrap",
+                  active === id
+                    ? "bg-[#2f4131] text-white border-[#2f4131] shadow"
+                    : "bg-white text-neutral-800 border-neutral-300 hover:border-neutral-400"
+                ].join(" ")}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Botón Alérgenos fijo a la derecha */}
+        <button
+          type="button"
+          onClick={onOpenGuide}
+          className="shrink-0 px-3 h-9 rounded-full bg-[#2f4131] text-white shadow-sm ring-1 ring-black/5 hover:scale-105 active:scale-95 transition
+                   focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+          aria-label="Guía dietaria y alérgenos"
+        >
+          Alérgenos
+        </button>
       </div>
     </div>
   );
