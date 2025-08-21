@@ -26,12 +26,14 @@ export function AddButton({
   disabled,
   onClick,
   type = "button",
+  hideText = false,
 }) {
   return (
     <button
       type={type}
       disabled={disabled}
       onClick={onClick}
+      aria-label={hideText ? "Añadir" : undefined}
       className={[
         "inline-flex items-center justify-center gap-2 rounded-full font-semibold shadow-sm transition select-none",
         "bg-[#2f4131] text-white hover:bg-[#243326]",
@@ -53,7 +55,7 @@ export function AddButton({
       >
         <path d="M12 5v14M5 12h14" />
       </svg>
-      <span>{children}</span>
+      {!hideText && <span>{children}</span>}
     </button>
   );
 }

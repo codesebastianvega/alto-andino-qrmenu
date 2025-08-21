@@ -263,6 +263,15 @@ function ProductRow({ item }) {
           />
         </div>
       </div>
+      <AddButton
+        hideText
+        className="absolute bottom-4 right-4"
+        onClick={() =>
+          addItem({ productId: item.id, name: item.name, price: item.price })
+        }
+        disabled={disabled}
+      />
+
     </li>
   );
 }
