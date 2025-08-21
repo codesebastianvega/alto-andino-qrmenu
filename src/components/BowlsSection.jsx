@@ -52,7 +52,7 @@ export default function BowlsSection() {
         onClick={openBuilder}
         role="button"
         aria-label="Armar bowl"
-        className="relative rounded-2xl overflow-hidden ring-1 ring-black/10 bg-gradient-to-r from-[#2f4131] to-[#355242]"
+        className="relative h-40 rounded-2xl overflow-hidden ring-1 ring-black/10 bg-gradient-to-r from-[#2f4131] to-[#355242]"
       >
         {/* Imagen decorativa */}
         <div className="absolute inset-y-0 right-0 w-40 opacity-70 pointer-events-none flex items-center justify-center">
