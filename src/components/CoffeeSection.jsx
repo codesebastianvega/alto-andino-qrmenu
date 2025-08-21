@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AddIconButton } from "./Buttons";
+import { AddIconButton, StatusChip } from "./Buttons";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import stock from "../data/stock.json";
@@ -279,49 +279,45 @@ export default function CoffeeSection() {
               (item.milkPolicy === "optional" && addMilk[item.id]);
 
             return (
-              <li key={item.id} className="card p-3 relative">
-                <div className="flex items-start justify-between gap-4 pb-6 pr-4">
-                  <div className="flex-1">
-                    <p className="font-semibold">{displayName(item)}</p>
-                    <p className="text-xs text-neutral-600">{item.desc}</p>
-
-                    {/* Controles contextuales */}
-                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      {item.milkPolicy === "optional" && (
-                        <button
-                          className="text-xs text-alto-primary underline text-left"
-                          onClick={() => toggleAddMilk(item.id)}
-                        >
-                          {addMilk[item.id]
-                            ? "Quitar leche"
-                            : "+ Agregar leche"}
-                        </button>
-                      )}
-                      {item.id === "cof-espresso" && addMilk[item.id] && (
-                        <EspressoStyleSelect id={item.id} />
-                      )}
-                      {showMilkSelect && (
-                        <MilkSelect id={item.id} disabled={disabled} />
-                      )}
-                      {st === "low" && (
-                        <span className="badge badge-warn self-start">
-                          Pocas unidades
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Precio */}
-                  <div className="text-right shrink-0">
-                    <p className="text-xs text-neutral-500">Precio</p>
-                    <p className="font-semibold">${COP(finalPrice(item))}</p>
-                    {disabled && (
-                      <span className="badge badge-out mt-2 inline-block">Agotado</span>
-                    )}
-                  </div>
+              <li
+                key={item.id}
+                className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12"
+              >
+                <p className="font-semibold">{displayName(item)}</p>
+                <p className="text-xs text-neutral-600">{item.desc}</p>
+                {/* Controles contextuales */}
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {item.milkPolicy === "optional" && (
+                    <button
+                      className="text-xs text-alto-primary underline text-left"
+                      onClick={() => toggleAddMilk(item.id)}
+                    >
+                      {addMilk[item.id]
+                        ? "Quitar leche"
+                        : "+ Agregar leche"}
+                    </button>
+                  )}
+                  {item.id === "cof-espresso" && addMilk[item.id] && (
+                    <EspressoStyleSelect id={item.id} />
+                  )}
+                  {showMilkSelect && (
+                    <MilkSelect id={item.id} disabled={disabled} />
+                  )}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {st === "low" && (
+                    <StatusChip variant="low">Pocas unidades</StatusChip>
+                  )}
+                  {disabled && (
+                    <StatusChip variant="soldout">Agotado</StatusChip>
+                  )}
+                </div>
+                <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
+                  ${COP(finalPrice(item))}
                 </div>
                 <AddIconButton
-                  className="absolute bottom-4 right-4"
+                  className="absolute bottom-4 right-4 z-20"
+                  aria-label={"Añadir " + displayName(item)}
                   onClick={() => addToCart(item)}
                   disabled={disabled}
                 />
@@ -344,35 +340,32 @@ export default function CoffeeSection() {
             const showChaiMilk = isChai && modeOf(item.id) === "latte";
 
             return (
-              <li key={item.id} className="card p-3 relative">
-                <div className="flex items-start justify-between gap-4 pb-6 pr-4">
-                  <div className="flex-1">
-                    <p className="font-semibold">{displayName(item)}</p>
-                    <p className="text-xs text-neutral-600">{item.desc}</p>
-
-                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      {isChai && <ChaiModeSelect id={item.id} />}
-                      {showChaiMilk && (
-                        <MilkSelect id={item.id} disabled={disabled} />
-                      )}
-                      {st === "low" && (
-                        <span className="badge badge-warn self-start">
-                          Pocas unidades
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="text-right shrink-0">
-                    <p className="text-xs text-neutral-500">Precio</p>
-                    <p className="font-semibold">${COP(finalPrice(item))}</p>
-                    {disabled && (
-                      <span className="badge badge-out mt-2 inline-block">Agotado</span>
-                    )}
-                  </div>
+              <li
+                key={item.id}
+                className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12"
+              >
+                <p className="font-semibold">{displayName(item)}</p>
+                <p className="text-xs text-neutral-600">{item.desc}</p>
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {isChai && <ChaiModeSelect id={item.id} />}
+                  {showChaiMilk && (
+                    <MilkSelect id={item.id} disabled={disabled} />
+                  )}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {st === "low" && (
+                    <StatusChip variant="low">Pocas unidades</StatusChip>
+                  )}
+                  {disabled && (
+                    <StatusChip variant="soldout">Agotado</StatusChip>
+                  )}
+                </div>
+                <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
+                  ${COP(finalPrice(item))}
                 </div>
                 <AddIconButton
-                  className="absolute bottom-4 right-4"
+                  className="absolute bottom-4 right-4 z-20"
+                  aria-label={"Añadir " + displayName(item)}
                   onClick={() => addToCart(item)}
                   disabled={disabled}
                 />
