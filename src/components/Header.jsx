@@ -11,8 +11,8 @@ export default function Header() {
 
   return (
     <>
-      <div className="max-w-3xl mx-auto px-5 sm:px-6 md:px-8 pt-3 pb-2 sm:pt-4 sm:pb-3">
-        <header>
+      <header className="bg-[#F3EDE4] overflow-visible">
+        <div className="max-w-3xl mx-auto px-5 sm:px-6 md:px-8 pt-3 pb-2 sm:pt-4 sm:pb-3">
           {/* Logo centrado y sin fondo */}
           <div className="pt-3 sm:pt-4">
             <img
@@ -21,7 +21,6 @@ export default function Header() {
               className="mx-auto h-28 sm:h-32 md:h-36 w-auto object-contain drop-shadow-sm"
             />
             <p className="mt-2 mb-2 text-sm sm:text-[15px] text-neutral-600">
-
               Ingredientes locales y de temporada · Pet Friendly
             </p>
 
@@ -35,13 +34,9 @@ export default function Header() {
             )}
             <div className="my-2 h-px bg-black/10 w-full" />
           </div>
-        </header>
-      </div>
-
-      <div className="mb-1">
+        </div>
         <CategoryBar onOpenGuide={() => setOpenGuide(true)} />
-      </div>
-
+      </header>
 
       <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
         <DietaryGuide />
