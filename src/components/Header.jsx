@@ -87,18 +87,8 @@ export default function Header() {
         aria-label="Guía dietaria y alérgenos"
         title="Guía dietaria y alérgenos"
         id="aa-guide-fab"
-        className={[
-          "fixed right-4 z-40",
-          "px-4 h-10 rounded-full",
-          "bg-[#2f4131] text-white shadow-lg ring-1 ring-black/5",
-          "hover:scale-105 active:scale-95 transition",
-          "focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]",
-        ].join(" ")}
-        // bottom dinámico via style; ver efecto más abajo
-        style={{
-          bottom:
-            "calc(env(safe-area-inset-bottom) + var(--aa-cartbar-h, 0px) + 1rem)",
-        }}
+        className="fixed right-4 z-[60] px-4 h-10 rounded-full bg-[#2f4131] text-white shadow-lg ring-1 ring-black/5 hover:scale-105 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + var(--aa-cartbar-h, 0px) + 1rem)" }}
       >
         Alérgenos
       </button>
