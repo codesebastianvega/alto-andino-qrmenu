@@ -151,7 +151,7 @@ export function Desserts() {
       {/* Cumbre Andino con precio por sabor */}
       <div className="card p-3">
         <p className="font-semibold">Cumbre Andino (sin azúcar)</p>
-        <p className="text-sm text-neutral-600">
+        <p className="text-xs text-neutral-600 mt-1">
           Yogur griego endulzado con alulosa, mermelada natural, galleta sin
           azúcar, chantilly con eritritol y fruta.
         </p>
@@ -236,7 +236,7 @@ function ProductRow({ item }) {
       <div className="flex items-start justify-between gap-4 pb-14 pr-4">
         <div className="flex-1">
           <p className="font-semibold">{item.name}</p>
-          <p className="text-sm text-neutral-600">{item.desc}</p>
+          <p className="text-xs text-neutral-600 mt-1">{item.desc}</p>
           {st === "low" && (
             <span className="badge badge-warn mt-2 inline-block">
               Pocas unidades
