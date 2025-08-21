@@ -6,7 +6,7 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import Section from "./components/Section";
 
-// Secciones de la carta
+// Secciones
 import { Breakfasts, Mains, Desserts } from "./components/ProductLists";
 import Sandwiches from "./components/Sandwiches";
 import SmoothiesSection from "./components/SmoothiesSection";
@@ -25,20 +25,18 @@ export default function App() {
   const [open, setOpen] = useState(false);
   const cart = useCart();
 
-  // ✅ Lee el parámetro ?qr=1 directamente del URL
+  // ✅ Modo póster QR (?qr=1) – se muestra SOLO el QR
   const isQr = (() => {
     if (typeof window === "undefined") return false;
     const params = new URLSearchParams(window.location.search);
     return params.get("qr") === "1";
   })();
-
-  // Si viene ?qr=1 mostramos SOLO el póster con el QR
   if (isQr) {
     const publicUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
     return <QrPoster url={publicUrl} />;
   }
 
-  // Menú normal
+  // ✅ Modo menú normal
   return (
     <div className="mx-auto max-w-3xl bg-alto-beige text-alto-text p-5 sm:p-6 md:p-8 leading-snug">
       <Header />
@@ -67,6 +65,7 @@ export default function App() {
 
       <Footer />
 
+      {/* Barra flotante y Drawer del carrito */}
       <FloatingCartBar
         count={cart.count}
         total={cart.total}
