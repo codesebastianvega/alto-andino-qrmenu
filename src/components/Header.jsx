@@ -5,25 +5,6 @@ import CategoryBar from "./CategoryBar";
 import GuideModal from "./GuideModal";
 import DietaryGuide from "./DietaryGuide";
 
-const IG_URL =
-  import.meta.env.VITE_INSTAGRAM_URL ||
-  "https://instagram.com/altoandinozipaquira";
-const IG_HANDLE =
-  (IG_URL.split("/").filter(Boolean).pop() || "@altoandinozipaquira").replace(
-    "@",
-    "@"
-  );
-const RAW_WA = (import.meta.env.VITE_WHATSAPP || "573209009972").replace(
-  /\D/g,
-  ""
-);
-const WA_NUM = RAW_WA.startsWith("57") ? RAW_WA : `57${RAW_WA}`;
-const WA_DISPLAY = WA_NUM.replace(/^57/, "").replace(
-  /(\d{3})(\d{3})(\d{4})/,
-  "$1 $2 $3"
-); // 320 900 9972
-const WA_LINK = `https://wa.me/${WA_NUM}`;
-
 export default function Header() {
   const table = getTableId();
   const [openGuide, setOpenGuide] = useState(false);
@@ -67,16 +48,9 @@ export default function Header() {
 
         {/* Línea sutil y datos */}
         <div className="mt-4 border-t border-neutral-200 pt-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs sm:text-sm text-neutral-700">
-            <p className="text-center sm:text-left">
-              Carrera 15 # 1 – 111, San Pablo
-            </p>
-            <div className="text-center text-sm text-neutral-700 sm:text-right">
-              Instagram: <a href={IG_URL} target="_blank" rel="noreferrer" className="font-medium text-[#2f4131] hover:underline">@{IG_HANDLE.replace("@", "")}</a>
-              {" · "}
-              WhatsApp: <a href={WA_LINK} target="_blank" rel="noreferrer" className="font-medium text-[#2f4131] hover:underline">{WA_DISPLAY}</a>
-            </div>
-          </div>
+          <p className="text-center text-xs sm:text-sm text-neutral-700">
+            Carrera 15 # 1 – 111, San Pablo
+          </p>
         </div>
       </header>
 
