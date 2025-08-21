@@ -37,7 +37,7 @@ export function AddButton({
         "bg-[#2f4131] text-white hover:bg-[#243326]",
         "border border-black/10",
         "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[rgba(47,65,49,0.3)]",
-        "px-3 min-w-[112px] h-10 sm:h-9 w-auto",
+        "px-3 min-w-[90px] h-9 sm:h-8 w-auto",
         "active:translate-y-[1px]",
         "disabled:bg-neutral-200 disabled:text-neutral-500 disabled:cursor-not-allowed",
         className,
@@ -45,7 +45,7 @@ export function AddButton({
     >
       <svg
         viewBox="0 0 24 24"
-        className="w-4 h-4"
+        className="w-3 h-3"
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
