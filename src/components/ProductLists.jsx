@@ -235,6 +235,7 @@ function ProductRow({ item }) {
     <li className="card p-3 relative">
       <div className="flex items-start justify-between gap-4 pb-6 pr-4">
         <div className="flex-1">
+
           <p className="font-semibold">{item.name}</p>
           <p className="text-xs text-neutral-600 mt-1">{item.desc}</p>
           {st === "low" && (
@@ -247,6 +248,7 @@ function ProductRow({ item }) {
           <p className="font-semibold">${COP(item.price)}</p>
           {disabled && (
             <span className="badge badge-out mt-2 inline-block">Agotado</span>
+
           )}
         </div>
       </div>

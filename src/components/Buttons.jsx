@@ -72,6 +72,7 @@ export function AddIconButton({ onClick, disabled, className = "", type = "butto
         "bg-[#2f4131] text-white hover:bg-[#243326] border-black/10",
         "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[rgba(47,65,49,0.3)]",
         "h-10 w-10 sm:h-9 sm:w-9",
+
         "active:translate-y-[1px]",
         "disabled:bg-neutral-200 disabled:text-neutral-500 disabled:border-neutral-200 disabled:cursor-not-allowed",
         className,
