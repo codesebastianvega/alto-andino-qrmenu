@@ -15,13 +15,16 @@ export default function Header() {
       <div className="max-w-3xl mx-auto p-5 sm:p-6 md:p-8">
         <header className="mb-6">
           {/* Logo centrado y sin fondo */}
-          <div className="flex flex-col items-center text-center">
+          <div className="pt-3 sm:pt-4">
             <img
               src="/logoalto.png"
               alt="Alto Andino Delicatessen"
-              className="h-20 sm:h-24 md:h-28 mx-auto object-contain drop-shadow-sm"
+              className="mx-auto h-28 sm:h-32 md:h-36 w-auto"
+              decoding="async"
+              loading="eager"
+              fetchpriority="high"
             />
-            <p className="text-[11px] sm:text-xs text-neutral-600">
+            <p className="mt-2 mb-3 text-center text-[11px] sm:text-xs text-neutral-600">
               Ingredientes locales y de temporada · Pet Friendly
             </p>
 
