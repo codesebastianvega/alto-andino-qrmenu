@@ -75,23 +75,29 @@ export default function BowlsSection() {
       </button>
 
       {/* Card del prearmado */}
-      <div className="card p-4 flex items-start justify-between gap-4">
-        <div className="flex-1">
-          <p className="font-semibold">{PREBOWL.name}</p>
-          <p className="text-sm text-neutral-600">{PREBOWL.desc}</p>
-          {st === "low" && (
-            <span className="badge badge-warn mt-2 inline-block">
-              Pocas unidades
-            </span>
-          )}
+      <div className="card p-4 relative">
+        <div className="flex items-start justify-between gap-4 pb-14 pr-4">
+          <div className="flex-1">
+            <p className="font-semibold">{PREBOWL.name}</p>
+            <p className="text-sm text-neutral-600">{PREBOWL.desc}</p>
+            {st === "low" && (
+              <span className="badge badge-warn mt-2 inline-block">
+                Pocas unidades
+              </span>
+            )}
+          </div>
+          <div className="text-right shrink-0">
+            <p className="font-bold">${COP(PREBOWL.price)}</p>
+            {disabled && (
+              <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+            )}
+          </div>
         </div>
-        <div className="text-right shrink-0">
-          <p className="font-bold">${COP(PREBOWL.price)}</p>
-          <AddButton className="mt-1" onClick={addPre} disabled={disabled} />
-          {disabled && (
-            <p className="mt-1 text-sm text-neutral-500">Agotado</p>
-          )}
-        </div>
+        <AddButton
+          className="absolute bottom-4 right-4"
+          onClick={addPre}
+          disabled={disabled}
+        />
       </div>
 
       {/* Modal de armado */}

@@ -169,21 +169,28 @@ export function Desserts() {
               <div
                 key={s.id}
                 className={
-                  "rounded-lg border px-3 py-2 " +
+                  "rounded-lg border px-3 py-2 relative " +
                   (disabled ? "opacity-60" : "")
                 }
               >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">{s.label}</span>
-                    {st === "low" && (
-                      <span className="badge badge-warn">Pocas unidades</span>
-                    )}
+                <div className="pb-14 pr-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{s.label}</span>
+                      {st === "low" && (
+                        <span className="badge badge-warn">Pocas unidades</span>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <span className="font-semibold">${COP(price)}</span>
+                      {disabled && (
+                        <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+                      )}
+                    </div>
                   </div>
-                  <span className="font-semibold">${COP(price)}</span>
                 </div>
                 <AddButton
-                  className="mt-2"
+                  className="absolute bottom-4 right-4"
                   onClick={() =>
                     addItem({
                       productId: "cumbre",
@@ -194,9 +201,6 @@ export function Desserts() {
                   }
                   disabled={disabled}
                 />
-                {disabled && (
-                  <p className="mt-1 text-sm text-neutral-500">Agotado</p>
-                )}
               </div>
             );
           })}
@@ -228,29 +232,31 @@ function ProductRow({ item }) {
   const st = stateFor(item.id);
   const disabled = st === "out";
   return (
-    <li className="card p-3 flex items-start justify-between gap-4">
-      <div className="flex-1">
-        <p className="font-semibold">{item.name}</p>
-        <p className="text-sm text-neutral-600">{item.desc}</p>
-        {st === "low" && (
-          <span className="badge badge-warn mt-2 inline-block">
-            Pocas unidades
-          </span>
-        )}
+    <li className="card p-3 relative">
+      <div className="flex items-start justify-between gap-4 pb-14 pr-4">
+        <div className="flex-1">
+          <p className="font-semibold">{item.name}</p>
+          <p className="text-sm text-neutral-600">{item.desc}</p>
+          {st === "low" && (
+            <span className="badge badge-warn mt-2 inline-block">
+              Pocas unidades
+            </span>
+          )}
+        </div>
+        <div className="text-right shrink-0">
+          <p className="font-semibold">${COP(item.price)}</p>
+          {disabled && (
+            <p className="mt-1 text-sm text-neutral-500">Agotado</p>
+          )}
+        </div>
       </div>
-      <div className="text-right shrink-0">
-        <p className="font-semibold">${COP(item.price)}</p>
-        <AddButton
-          className="mt-1"
-          onClick={() =>
-            addItem({ productId: item.id, name: item.name, price: item.price })
-          }
-          disabled={disabled}
-        />
-        {disabled && (
-          <p className="mt-1 text-sm text-neutral-500">Agotado</p>
-        )}
-      </div>
+      <AddButton
+        className="absolute bottom-4 right-4"
+        onClick={() =>
+          addItem({ productId: item.id, name: item.name, price: item.price })
+        }
+        disabled={disabled}
+      />
     </li>
   );
 }
