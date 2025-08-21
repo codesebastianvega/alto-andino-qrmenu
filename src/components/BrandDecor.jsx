@@ -10,24 +10,28 @@ export default function BrandDecor() {
       <img
         src="/decor-tl.png"
         alt=""
+        aria-hidden="true"
         className="decor-img decor-tl"
         onError={hideIfMissing}
       />
       <img
         src="/decor-tr.png"
         alt=""
+        aria-hidden="true"
         className="decor-img decor-tr"
         onError={hideIfMissing}
       />
       <img
         src="/decor-bl.png"
         alt=""
+        aria-hidden="true"
         className="decor-img decor-bl"
         onError={hideIfMissing}
       />
       <img
         src="/decor-br.png"
         alt=""
+        aria-hidden="true"
         className="decor-img decor-br"
         onError={hideIfMissing}
       />
