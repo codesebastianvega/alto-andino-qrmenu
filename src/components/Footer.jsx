@@ -92,7 +92,7 @@ export default function Footer() {
       </div>
 
       <p className="mt-5 text-[11px] text-neutral-500">
-        Diseñado por Sebas (UXIO) Y desarrolado con{" "}
+        Diseñado por Sebas (UXIO) y desarrollado con{" "}
         <span className="font-semibold">GPT-5 Thinking</span> ✨
       </p>
     </footer>
