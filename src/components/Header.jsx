@@ -1,4 +1,5 @@
 // src/components/Header.jsx
+import { getTableId } from "../utils/table";
 
 function MarkersLegend() {
   const markers = [
@@ -39,12 +40,14 @@ function MarkersLegend() {
 }
 
 export default function Header() {
+  const table = getTableId();
+
   return (
     <header className="mb-6">
-      {/* Logo GRANDE centrado */}
+      {/* Logo centrado y sin fondo */}
       <div className="flex flex-col items-center text-center">
         <img
-          src="/logoalto.png" // servido desde /public
+          src="/logoalto.png"
           alt="Alto Andino Delicatessen"
           className="h-28 w-28 sm:h-36 sm:w-36 object-contain drop-shadow-sm"
         />
@@ -54,6 +57,13 @@ export default function Header() {
         <p className="text-[11px] sm:text-xs text-neutral-600">
           Ingredientes locales y de temporada · Pet Friendly
         </p>
+
+        {/* ✅ Chip con la mesa (si existe en la URL o guardada) */}
+        {table && (
+          <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-xs font-semibold">
+            Mesa {table}
+          </span>
+        )}
       </div>
 
       {/* Línea sutil y datos + guía */}
