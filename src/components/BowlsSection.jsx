@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
-import { AddIconButton, StatusChip } from "./Buttons";
+import { AddIconButton, StatusChip, PILL_XS, PILL_SM } from "./Buttons";
 import BowlBuilderModal from "./BowlBuilderModal";
 import stock from "../data/stock.json";
 
@@ -56,14 +56,14 @@ export default function BowlsSection() {
     <div className="space-y-4">
       {/* CTA gigante (como otro “producto”) */}
       <div className="-mx-4 sm:-mx-6 px-4 sm:px-6">
-        <div className="relative overflow-hidden rounded-2xl ring-1 ring-black/10 bg-gradient-to-r from-[#2f4131] to-[#355242]">
+        <div className="relative overflow-hidden rounded-2xl ring-1 ring-black/10 bg-gradient-to-r from-[#2f4131] to-[#355242] h-36 sm:h-44 md:h-56">
           <img
             src="/poke1.png"
             alt=""
             aria-hidden
-            className="absolute bottom-2 right-24 w-40 sm:w-56 opacity-90 drop-shadow-xl pointer-events-none animate-[spin_40s_linear_infinite] z-10"
+            className="absolute bottom-[-6px] right-0 sm:right-2 w-44 sm:w-60 md:w-72 object-contain drop-shadow-xl pointer-events-none z-10"
           />
-          <div className="absolute inset-0 p-4 sm:p-5 pr-28 pb-16 flex flex-col justify-between">
+          <div className="absolute inset-0 p-4 sm:p-5 pr-40 sm:pr-48 flex flex-col justify-between">
             <div>
               <p className="text-white/85 text-xs font-medium">
                 Personaliza a tu gusto
@@ -76,17 +76,27 @@ export default function BowlsSection() {
               </p>
             </div>
           </div>
-          <div className="absolute top-4 right-4 z-10 h-9 px-3 rounded-full bg-white text-[#2f4131] font-semibold grid place-items-center shadow whitespace-nowrap">
+          <div
+            className={[
+              "absolute top-3 right-3 z-20 rounded-full bg-white text-[#2f4131] font-semibold",
+              "grid place-items-center shadow-sm whitespace-nowrap",
+              PILL_XS, "sm:" + PILL_SM,
+            ].join(" ")}
+          >
             Desde {formatCOP(BASE_PRICE)}
           </div>
           <button
             onClick={openBuilder}
             aria-label="Armar bowl personalizado"
-            className="absolute bottom-4 right-4 z-20 h-10 px-4 rounded-full bg-white text-[#2f4131] font-semibold shadow hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+            className={[
+              "absolute bottom-3 right-3 z-30 rounded-full bg-white text-[#2f4131] font-semibold",
+              "shadow-sm hover:bg-white/90 focus:outline-none",
+              "focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]",
+              PILL_XS, "sm:" + PILL_SM,
+            ].join(" ")}
           >
             Armar
           </button>
-          <div className="h-28 sm:h-36"></div>
         </div>
       </div>
 
