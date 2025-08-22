@@ -186,14 +186,14 @@ export default function BowlBuilderModal({ open, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[98]"
       onClick={closeOnBg}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" />
+      <div className="absolute inset-0 bg-black/60 z-[98]" />
 
       {/* Contenedor con scroll interno */}
-      <div className="relative w-full max-w-2xl max-h-[90vh] rounded-3xl overflow-hidden bg-[#FAF7F2] shadow-2xl flex flex-col">
+      <div className="absolute inset-x-0 bottom-0 z-[99] w-full max-w-2xl max-h-[90vh] mx-auto rounded-3xl overflow-hidden bg-[#FAF7F2] shadow-2xl flex flex-col">
         {/* Header */}
         <div className="rounded-t-2xl bg-[#2f4131] text-white p-4">
           <div className="flex items-start justify-between gap-3">
