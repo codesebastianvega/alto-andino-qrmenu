@@ -34,13 +34,18 @@ const funcionales = [
     desc: "Pepino, apio, manzana verde, limón y jengibre; espirulina + clorofila.",
   },
   {
+    id: "smoothie:Guardian de la Montaña",
+    name: "Guardián de la Montaña",
+    price: 17000,
+    desc: "Naranja, cúrcuma, zanahoria, un toque de pimienta negra, jengibre y miel de abejas local.",
+  },
+  {
     id: "smoothie:Aurora Proteica",
     name: "Aurora Proteica",
     price: 22000,
     desc: "Leche de almendras, proteína vegetal (vainilla/chocolate), banano y chía. 🥜",
   },
 ];
-
 
 function List({ items, onAdd }) {
   return (
@@ -82,7 +87,11 @@ function List({ items, onAdd }) {
 export default function SmoothiesSection() {
   const cart = useCart();
   const add = (p) =>
-    cart.addItem({ productId: p.id || slugify(p.name), name: p.name, price: p.price });
+    cart.addItem({
+      productId: p.id || slugify(p.name),
+      name: p.name,
+      price: p.price,
+    });
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
