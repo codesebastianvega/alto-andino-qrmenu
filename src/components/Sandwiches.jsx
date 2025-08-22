@@ -17,29 +17,29 @@ export default function Sandwiches() {
   // Precios por sándwich (unico = precio único)
   // ← editar nombres y precios aquí
   const priceByItem = {
-    cerdo: { clasico: 22000, grande: 35000 },
-    pollo: { clasico: 22000, grande: 35000 },
-    pavo: { clasico: 24000, grande: 39000 },
-    serrano: { unico: 29000 },
-    cosecha: { unico: 24000 },
+    cerdo: { clasico: 12000, grande: 32000 },
+    pollo: { clasico: 14000, grande: 35000 },
+    pavo: { clasico: 19000, grande: 39000 },
+    serrano: { unico: 12500 },
+    cosecha: { unico: 16000 },
   };
 
   // ← editar nombres y precios aquí
   const items = [
     {
       key: "cerdo",
-      name: "Cerdo al Horno",
-      desc: "Mayo-pesto, lechuga, tomate, pierna de cerdo horneada y suero costeño.",
+      name: "Sandwich de Cerdo",
+      desc: "Pierna de cerdo horneada con Mayo-Pesto, lechuga, tomate y suero costeño.",
     },
     {
       key: "pollo",
-      name: "Pechuga de Pollo al Horno",
-      desc: "Alioli de yogur, lechuga y tomate.",
+      name: "Sandwich de Pollo",
+      desc: "Pechuga en cocción lenta, alioli de yogurt (con ajo), lechuga y tomate.",
     },
     {
       key: "pavo",
-      name: "Pavo Horneado",
-      desc: "Alioli de yogur, tomate seco y hojas verdes.",
+      name: "Sandwich de Pavo",
+      desc: "Pavo horneado en cocción lenta, alioli de yogurt (con ajo), tomates secos y lechuga.",
     },
     {
       key: "serrano",
