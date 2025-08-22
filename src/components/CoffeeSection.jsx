@@ -354,7 +354,7 @@ export default function CoffeeSection() {
                   {st === "low" && (
                     <StatusChip variant="low">Pocas unidades</StatusChip>
                   )}
-                  {disabled && (
+                  {st === "out" && (
                     <StatusChip variant="soldout">Agotado</StatusChip>
                   )}
                 </div>
@@ -402,7 +402,7 @@ export default function CoffeeSection() {
                   {st === "low" && (
                     <StatusChip variant="low">Pocas unidades</StatusChip>
                   )}
-                  {disabled && (
+                  {st === "out" && (
                     <StatusChip variant="soldout">Agotado</StatusChip>
                   )}
                 </div>

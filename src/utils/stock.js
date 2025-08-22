@@ -1,30 +1,19 @@
-export function slugify(s = "") {
-  return s
+export const slugify = (s = "") =>
+  s
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
+
+import stockdata from "../data/stock.json";
+const PRODUCTS = (stockdata?.products ?? {}) || {};
+
+export function getStockState(idOrName = "") {
+  const key = idOrName || slugify(idOrName);
+  const v = PRODUCTS[key];
+  if (v === false) return "out";
+  if (v === "low") return "low";
+  return "ok";
 }
 
-import raw from "../data/stock.json";
-const data = raw?.default || raw || {};
-const map = { ...(data.products || {}) };
-if (data.cumbre) {
-  for (const [k, v] of Object.entries(data.cumbre)) {
-    map[`cumbre:${k}`] = v;
-  }
-}
-
-export function getStockState(productIdOrName) {
-  try {
-    const id = productIdOrName || "";
-    const key = map[id] !== undefined ? id : slugify(productIdOrName || "");
-    const v = map[key];
-    if (v === false) return "out";
-    if (v === "low") return "low";
-    return "ok";
-  } catch {
-    return "ok";
-  }
-}

@@ -111,7 +111,7 @@ export default function Sandwiches() {
                 {st === "low" && (
                   <StatusChip variant="low">Pocas unidades</StatusChip>
                 )}
-                {disabled && (
+                {st === "out" && (
                   <StatusChip variant="soldout">Agotado</StatusChip>
                 )}
                 {priceByItem[it.key].unico && (
