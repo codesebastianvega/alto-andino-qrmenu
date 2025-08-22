@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
 
@@ -73,6 +73,12 @@ function ico(label) {
 }
 
 export default function BowlBuilderModal({ open, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const cart = useCart();
   if (!open) return null;
 
@@ -180,17 +186,10 @@ export default function BowlBuilderModal({ open, onClose }) {
     onClose();
   };
 
-  const closeOnBg = (e) => {
-    if (e.target === e.currentTarget) onClose();
-  };
-
   return (
-    <div
-      className="fixed inset-0 z-[98]"
-      onClick={closeOnBg}
-    >
+    <div className="fixed inset-0 z-[98]">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 z-[98]" />
+      <div className="absolute inset-0 bg-black/60 z-[98]" onClick={onClose} />
 
       {/* Contenedor con scroll interno */}
       <div className="absolute inset-x-0 bottom-0 z-[99] w-full max-w-2xl max-h-[90vh] mx-auto rounded-3xl overflow-hidden bg-[#FAF7F2] shadow-2xl flex flex-col">

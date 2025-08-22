@@ -24,6 +24,9 @@ export default function FloatingCartBar({ items, total, onOpen, secondaryAction,
                   {secondaryLabel}
                 </button>
               )}
+              <span className="sr-only" aria-live="polite">
+                Total actualizado: {total?.toLocaleString?.("es-CO", { style: "currency", currency: "COP" })}
+              </span>
               <button
                 onClick={onOpen}
                 className="h-10 px-4 rounded-xl bg-[#2f4131] text-white hover:bg-[#243326] transition focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
