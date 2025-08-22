@@ -9,6 +9,7 @@ function getCartBarHeight() {
   }
 }
 
+
 export default function Toast() {
   const [msg, setMsg] = useState("");
   const [show, setShow] = useState(false);
@@ -42,6 +43,7 @@ export default function Toast() {
       clearTimeout(offsetId);
       document.removeEventListener("aa:toast", onToast);
     };
+
   }, []);
 
   return (
@@ -51,6 +53,7 @@ export default function Toast() {
         "fixed left-1/2 -translate-x-1/2 z-[120] pointer-events-none",
         "transition-opacity duration-200",
         show ? "opacity-100" : "opacity-0",
+
       ].join(" ")}
       style={{ bottom: `calc(${offset}px + env(safe-area-inset-bottom, 0px) + 10px)` }}
     >
@@ -66,4 +69,5 @@ export const toast = (message) => {
     document.dispatchEvent(new CustomEvent("aa:toast", { detail: { message } }));
   } catch {}
 };
+
 

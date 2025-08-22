@@ -78,6 +78,7 @@ export function CartProvider({ children }) {
   function addItem(payload) {
     setItems((prev) => normalize([...asArray(prev), { qty: 1, ...payload }]));
     setTimeout(() => toastEvent(`Añadido: ${payload?.name || "Producto"}`), 0);
+
   }
   function removeAt(index) {
     setItems((prev) => asArray(prev).filter((_, i) => i !== index));
