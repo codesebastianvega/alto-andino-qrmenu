@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { PILL_XS, PILL_SM } from "./Buttons";
+import { Chip } from "./Buttons";
 
 const slugify = (s) =>
   s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -55,51 +55,50 @@ export default function CategoryBar({ onOpenGuide }) {
     // STICKY en el WRAPPER EXTERNO (no meter overflow aquí)
     <div
       ref={barRef}
-      className="sticky z-[60] bg-[rgba(250,247,242,0.92)] backdrop-blur border-b border-black/5"
+      className="sticky z-[60]"
       style={{ top: "env(safe-area-inset-top, 0px)" }}
       aria-label="Categorías del menú"
     >
-      {/* full-bleed */}
-      <div className="w-full px-3 sm:px-4 py-2 flex items-center gap-2">
-        {/* carril scrolleable */}
-        <div className="flex-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex gap-2 w-max">
-            {sections.map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => scrollTo(id)}
-                aria-pressed={active === id}
-                aria-current={active === id ? "true" : undefined}
-                className={[
-                  "px-3 py-1 rounded-full text-sm border transition whitespace-nowrap",
-                  active === id
-                    ? "bg-[#2f4131] text-white border-[#2f4131] shadow"
-                    : "bg-white text-neutral-800 border-neutral-300 hover:border-neutral-400"
-                ].join(" ")}
+      {/* Card contenedor full-bleed */}
+      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 py-2">
+        <div className="relative rounded-xl bg-white/85 backdrop-blur supports-[backdrop-filter]:bg-white/70 ring-1 ring-black/10 border border-white/40">
+          {/* carril scrolleable */}
+          <div className="relative overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex items-center gap-2 w-max px-3 py-2">
+              {sections.map(({ id, label }) => (
+                <Chip
+                  key={id}
+                  onClick={() => scrollTo(id)}
+                  active={active === id}
+                  className={[
+                    "whitespace-nowrap",
+                    "h-8 px-3 text-sm", // tamaño consistente
+                    active === id
+                      ? "shadow-sm"
+                      : "border-[#2f4131]/30 text-[#2f4131] hover:border-[#2f4131]/50"
+                  ].join(" ")}
+                  aria-current={active === id ? "true" : undefined}
+                >
+                  {label}
+                </Chip>
+              ))}
+
+              {/* Botón Alérgenos más discreto */}
+              <Chip
+                onClick={onOpenGuide}
+                className="h-7 px-2.5 text-xs border-[#2f4131]/30 text-[#2f4131] bg-white/60 hover:bg-[#2f4131] hover:text-white"
               >
-                {label}
-              </button>
-            ))}
+                Alérgenos
+              </Chip>
+            </div>
+
+            {/* Fades laterales para insinuar scroll */}
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-white/80 to-transparent rounded-l-xl" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white/80 to-transparent rounded-r-xl" />
           </div>
         </div>
-
-        {/* botón Guía / Alérgenos (tamaño XS/SM) */}
-        <button
-          type="button"
-          onClick={onOpenGuide}
-          className={[
-            "shrink-0 rounded-full border border-[#2f4131]/30 text-[#2f4131] bg-white/50",
-            "hover:bg-[#2f4131] hover:text-white hover:border-[#2f4131]",
-            "shadow-sm ring-1 ring-black/5 transition focus:outline-none",
-            "focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]",
-            PILL_XS, "sm:" + PILL_SM
-          ].join(" ")}
-          aria-label="Guía dietaria y alérgenos"
-
-        >
-          Alérgenos
-        </button>
       </div>
     </div>
   );
 }
+
