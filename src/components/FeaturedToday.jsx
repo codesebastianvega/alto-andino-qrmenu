@@ -2,10 +2,10 @@ import React from "react";
 import { AddIconButton, StatusChip } from "./Buttons";
 import { useCart } from "../context/CartContext";
 
-const N = import.meta.env.VITE_FEATURED_NAME || "Especial de hoy";
+const N = import.meta.env.VITE_FEATURED_NAME || "Sandiwch de Cerdo al Horno";
 const D =
   import.meta.env.VITE_FEATURED_DESC ||
-  "Delicioso sandiwch de cerdo al horno casero y saludable. Con un proceso de marinado y horneado de mas de 24 h";
+  "Delicioso sandiwch de cerdo al horno casero y saludable.";
 const P = Number(import.meta.env.VITE_FEATURED_PRICE || 12000);
 const IMG = import.meta.env.VITE_FEATURED_IMAGE || "/especial1.png";
 const LOW = import.meta.env.VITE_FEATURED_LOW === "1";
