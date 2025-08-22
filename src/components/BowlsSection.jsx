@@ -1,9 +1,9 @@
 // src/components/BowlsSection.jsx
-import { useState } from "react";
+import React, { lazy, Suspense, useState } from "react";
 import { useCart } from "../context/CartContext";
 import { COP, formatCOP } from "../utils/money";
 import { AddIconButton, StatusChip, PILL_XS, PILL_SM } from "./Buttons";
-import BowlBuilderModal from "./BowlBuilderModal";
+const BowlBuilderModal = lazy(() => import("./BowlBuilderModal"));
 import { getStockState, slugify } from "../utils/stock";
 
 // ← editar nombres y precios aquí
@@ -53,6 +53,9 @@ export default function BowlsSection() {
             src="/poke1.png"
             alt=""
             aria-hidden
+            loading="lazy"
+            decoding="async"
+            fetchpriority="low"
             className="absolute bottom-[-6px] right-0 sm:right-2 w-44 sm:w-60 md:w-72 object-contain drop-shadow-xl pointer-events-none animate-[spin_40s_linear_infinite] z-10"
 
           />
@@ -115,7 +118,11 @@ export default function BowlsSection() {
       </div>
 
       {/* Modal de armado */}
-      <BowlBuilderModal open={open} onClose={() => setOpen(false)} />
+      {open && (
+        <Suspense fallback={null}>
+          <BowlBuilderModal open={open} onClose={() => setOpen(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }
