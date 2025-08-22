@@ -15,6 +15,7 @@ import { useCart } from "./context/CartContext";
 
 // Póster QR
 import QrPoster from "./components/QrPoster";
+import Toast from "./components/Toast";
 
 export default function App() {
   const [open, setOpen] = useState(false);
@@ -54,6 +55,7 @@ export default function App() {
       <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
         <DietaryGuide />
       </GuideModal>
+      <Toast />
     </div>
   );
 }
