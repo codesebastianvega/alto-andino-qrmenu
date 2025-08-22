@@ -2,17 +2,7 @@ import React from "react";
 import Section from "./Section";
 import { useCart } from "../context/CartContext";
 import { AddIconButton } from "./Buttons";
-import { COP as COPUtil } from "../utils/money";
-
-// Formateo COP con guardado (si COPUtil no existe o falla)
-const money = (v) => {
-  try {
-    if (typeof COPUtil === "function") return COPUtil(v);
-  } catch {}
-  const n = Number(String(v).replace(/[^\d.-]/g, ""));
-  if (!isFinite(n)) return String(v);
-  return n.toLocaleString("es-CO", { maximumFractionDigits: 0 });
-};
+import { COP } from "../utils/money";
 
 // DATA EXACTA DE LA CARTA
 const SODAS = [
@@ -52,7 +42,7 @@ function Card({ item, onAdd }) {
 
       {/* Precio fijo arriba-derecha con ancho mínimo para no chocar */}
       <div className="absolute top-2 right-2 min-w-[64px] text-right text-neutral-900 font-semibold text-sm">
-        {"$" + money(item.price)}
+        {"$" + COP(item.price)}
       </div>
 
       {/* FAB compacto y claro de la zona de texto */}
@@ -64,7 +54,7 @@ function Card({ item, onAdd }) {
             productId: item.id,
             name: item.name,
             price: item.price,
-            priceFmt: "$" + money(item.price),
+            priceFmt: "$" + COP(item.price),
             qty: 1,
           })
         }

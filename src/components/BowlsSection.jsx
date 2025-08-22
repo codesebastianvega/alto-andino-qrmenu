@@ -1,7 +1,7 @@
 // src/components/BowlsSection.jsx
 import { useState } from "react";
 import { useCart } from "../context/CartContext";
-import { COP } from "../utils/money";
+import { COP, formatCOP } from "../utils/money";
 import { AddIconButton, StatusChip, PILL_XS, PILL_SM } from "./Buttons";
 import BowlBuilderModal from "./BowlBuilderModal";
 import stock from "../data/stock.json";
@@ -13,12 +13,6 @@ function stateFor(productId) {
 
 const BASE_PRICE = Number(import.meta.env.VITE_BOWL_BASE_PRICE || 32000);
 
-const formatCOP = (n) =>
-  n.toLocaleString("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  });
 
 // Poke Hawaiano (único prearmado)
 const PREBOWL = {

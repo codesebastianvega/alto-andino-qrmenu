@@ -23,6 +23,7 @@ export default function CategoryBar({ onOpenGuide }) {
 
   useEffect(() => {
     if (!sections.length) return;
+    if (typeof window === "undefined") return;
     const barH = barRef.current?.offsetHeight || 44;
     const marginTop = -(barH + 8);
     const marginBottom = -Math.round(window.innerHeight * 0.45);
@@ -41,9 +42,12 @@ export default function CategoryBar({ onOpenGuide }) {
 
   const scrollTo = (id) => {
     const el = document.getElementById(id);
-    if (!el) return;
+    if (!el || typeof window === "undefined") return;
     const barH = barRef.current?.offsetHeight || 44;
-    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - barH - 8, behavior: "smooth" });
+    window.scrollTo({
+      top: el.getBoundingClientRect().top + window.scrollY - barH - 8,
+      behavior: "smooth",
+    });
     setActive(id);
   };
 
