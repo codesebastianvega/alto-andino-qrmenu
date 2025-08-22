@@ -1,6 +1,10 @@
 // src/context/CartContext.jsx
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
+const toastEvent = (message) => {
+  try { document.dispatchEvent(new CustomEvent("aa:toast", { detail: { message } })); } catch {}
+};
+
 const toNumberCOP = (v) => {
   if (typeof v === "number") return v;
   if (!v) return 0;
@@ -71,8 +75,9 @@ export function CartProvider({ children }) {
   }, [items, hasWindow]);
 
   // API segura (siempre parte de un array)
-  function addItem(newItem) {
-    setItems((prev) => normalize([...asArray(prev), { qty: 1, ...newItem }]));
+  function addItem(payload) {
+    setItems((prev) => normalize([...asArray(prev), { qty: 1, ...payload }]));
+    toastEvent(`Añadido: ${payload?.name || "Producto"}`);
   }
   function removeAt(index) {
     setItems((prev) => asArray(prev).filter((_, i) => i !== index));
