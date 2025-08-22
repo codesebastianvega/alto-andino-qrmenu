@@ -66,7 +66,11 @@ export function AddButton({
 }
 
 // FAB circular “+” (usado en cada card)
-export function AddIconButton({ className = "", disabled = false, ...props }) {
+export function AddIconButton({ className = "", disabled = false, variant = "solid", ...props }) {
+  const baseColor =
+    variant === "light"
+      ? "bg-white text-[#2f4131]"
+      : "bg-[#2f4131] text-white";
   return (
     <button
       type="button"
@@ -74,7 +78,7 @@ export function AddIconButton({ className = "", disabled = false, ...props }) {
       disabled={disabled}
       className={cx(
         // base shape & color
-        "grid place-items-center rounded-full bg-[#2f4131] text-white shadow-sm ring-1 ring-black/5",
+        "grid place-items-center rounded-full shadow-sm ring-1 ring-black/5",
         // sizes: 36px móvil / 32px >=sm
         "w-9 h-9 sm:w-8 sm:h-8",
         // motion & focus
@@ -82,6 +86,7 @@ export function AddIconButton({ className = "", disabled = false, ...props }) {
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(47,65,49,0.3)] focus-visible:ring-offset-2",
         // disabled
         disabled && "opacity-40 pointer-events-none",
+        baseColor,
         className
       )}
       aria-label={props["aria-label"] || "Añadir"}
