@@ -12,6 +12,7 @@ import Sandwiches from "./components/Sandwiches";
 import SmoothiesSection from "./components/SmoothiesSection";
 import CoffeeSection from "./components/CoffeeSection";
 import BowlsSection from "./components/BowlsSection";
+import ColdDrinksSection from "./components/ColdDrinksSection";
 
 // Carrito
 import FloatingCartBar from "./components/FloatingCartBar";
@@ -60,6 +61,7 @@ export default function App() {
         <Section title="Café de especialidad">
           <CoffeeSection />
         </Section>
+        <ColdDrinksSection />
         <Section title="Postres">
           <Desserts />
         </Section>
