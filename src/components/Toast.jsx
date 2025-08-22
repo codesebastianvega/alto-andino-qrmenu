@@ -50,15 +50,14 @@ export default function Toast() {
     <div
       aria-live="polite"
       className={[
-        "fixed left-1/2 -translate-x-1/2 z-[120] pointer-events-none",
+        "fixed left-1/2 -translate-x-1/2 z-[120] pointer-events-none w-max",
         "transition-opacity duration-200",
         show ? "opacity-100" : "opacity-0",
-
       ].join(" ")}
       style={{ bottom: `calc(${offset}px + env(safe-area-inset-bottom, 0px) + 10px)` }}
     >
-      <div className="rounded-full bg-[#2f4131] text-white px-4 h-9 grid place-items-center shadow-2xl ring-1 ring-black/10">
-        <span className="text-xs font-medium">{msg}</span>
+      <div className="rounded-full bg-[#2f4131] text-white px-4 h-9 grid place-items-center shadow-2xl ring-1 ring-black/10 w-max">
+        <span className="text-[11px] font-medium whitespace-nowrap">{msg}</span>
 
       </div>
     </div>
