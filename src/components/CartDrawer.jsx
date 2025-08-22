@@ -116,7 +116,13 @@ export default function CartDrawer({ open, onClose }) {
                 <div className="flex items-start gap-3">
                   {/* imagen opcional */}
                   {it.image ? (
-                    <img src={it.image} alt={it.name} className="h-12 w-12 rounded-lg object-cover ring-1 ring-white/10" />
+                    <img
+                      src={it.image}
+                      alt={it.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-12 w-12 rounded-lg object-cover ring-1 ring-white/10"
+                    />
                   ) : null}
 
                   <div className="flex-1 min-w-0">
