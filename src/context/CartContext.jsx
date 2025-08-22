@@ -1,6 +1,13 @@
 // src/context/CartContext.jsx
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
+const toNumberCOP = (v) => {
+  if (typeof v === "number") return v;
+  if (!v) return 0;
+  const n = Number(String(v).replace(/[^\d.-]/g, ""));
+  return isFinite(n) ? n : 0;
+};
+
 const CartCtx = createContext(null);
 const STORAGE_KEY = "aa_cart";
 
@@ -54,6 +61,8 @@ export function CartProvider({ children }) {
     }
     return parsed;
   });
+
+  const [note, setNote] = useState("");
 
   // Persiste siempre como array
   useEffect(() => {
@@ -130,7 +139,8 @@ export function CartProvider({ children }) {
     for (const it of list) {
       const q = it?.qty || 1;
       c += q;
-      t += (it?.price || 0) * q;
+      const unit = toNumberCOP(it?.price ?? it?.unitPrice ?? it?.priceEach);
+      t += unit * q;
     }
     return { count: c, total: t };
   }, [items]);
@@ -147,6 +157,8 @@ export function CartProvider({ children }) {
     setQty,
     updateItem,
     clear,
+    note,
+    setNote,
   };
 
   return <CartCtx.Provider value={value}>{children}</CartCtx.Provider>;

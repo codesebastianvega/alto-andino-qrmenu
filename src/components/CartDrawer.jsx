@@ -1,7 +1,34 @@
 import React, { useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import SwipeRevealItem from "./SwipeRevealItem";
-import { formatCOP } from "../utils/money";
+
+const toNumberCOP = (v) => {
+  if (typeof v === "number") return v;
+  if (!v) return 0;
+  const n = Number(String(v).replace(/[^\d.-]/g, ""));
+  return isFinite(n) ? n : 0;
+};
+const formatCOP = (n) =>
+  Number(n || 0).toLocaleString("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  });
+
+const renderOptions = (opts) => {
+  if (!opts) return null;
+  const parts = [];
+  if (Array.isArray(opts)) {
+    if (opts.length) parts.push(opts.join(", "));
+  } else if (typeof opts === "object") {
+    for (const [k, v] of Object.entries(opts)) {
+      if (Array.isArray(v) && v.length) parts.push(`${k}: ${v.join(", ")}`);
+      else if (v) parts.push(`${k}: ${v}`);
+    }
+  }
+  if (!parts.length) return null;
+  return <p className="text-neutral-600 text-xs mt-0.5">{parts.join(" · ")}</p>;
+};
 
 const safeNum = (raw) => {
   const n = String(raw || "").replace(/\D/g, "");
@@ -27,7 +54,7 @@ const buildWaText = ({ items = [], total = 0, note = "" }) => {
   if (mesa) lines.push(`Mesa: ${mesa}`);
   items.forEach(it => {
     const name = [it.name, it.variant].filter(Boolean).join(" · ");
-    const unit = Number(it.price ?? 0);
+    const unit = toNumberCOP(it.price ?? it.unitPrice ?? it.priceEach);
     lines.push(`• ${it.qty}× ${name} — ${formatCOP(unit * it.qty)}`);
     if (it.note) lines.push(`  ▸ Nota: ${it.note}`);
   });
@@ -112,7 +139,11 @@ export default function CartDrawer({ open, onClose }) {
 
         {/* Lista scrolleable */}
         <div className="px-4 space-y-3" style={{ maxHeight: "calc(100dvh - 280px)", overflowY: "auto" }}>
-          {items.length ? items.map((it, idx) => (
+          {items.length ? items.map((it, idx) => {
+            const unit = toNumberCOP(it.price ?? it.unitPrice ?? it.priceEach);
+            const qty = Number(it.qty || 1);
+            const lineTotal = unit * qty;
+            return (
             <SwipeRevealItem key={idx} onDelete={() => removeItem?.(it)}>
 
               <div className="p-3 bg-white rounded-xl ring-1 ring-neutral-200">
@@ -133,9 +164,10 @@ export default function CartDrawer({ open, onClose }) {
                       <div className="min-w-0">
                         <p className="text-neutral-900 font-medium truncate">{it.name}</p>
                         {it.variant && <p className="text-neutral-600 text-xs truncate">{it.variant}</p>}
+                        {renderOptions(it.options)}
                       </div>
                       <p className="text-neutral-900 font-semibold whitespace-nowrap">
-                        {formatCOP(it.priceFormatted ?? it.priceFmt ?? it.price)}
+                        {formatCOP(lineTotal)}
                       </p>
                     </div>
 
@@ -160,6 +192,7 @@ export default function CartDrawer({ open, onClose }) {
                       </button>
 
                     </div>
+                    <p className="text-[11px] text-neutral-500 mt-1">Unitario: {formatCOP(unit)}</p>
 
                     {/* Nota por ítem */}
                     <div className="mt-2">
@@ -176,7 +209,8 @@ export default function CartDrawer({ open, onClose }) {
                 </div>
               </div>
             </SwipeRevealItem>
-          )) : (
+            );
+          }) : (
             <div className="text-center text-neutral-700 py-10">Tu carrito está vacío.</div>
           )}
 
@@ -184,7 +218,7 @@ export default function CartDrawer({ open, onClose }) {
           <div className="bg-white rounded-xl ring-1 ring-neutral-200 p-3">
             <label className="text-neutral-700 text-xs">Notas al pedido</label>
             <textarea
-              value={note || ""}
+              value={note ?? ""}
               onChange={(e) => setNote?.(e.target.value)}
               placeholder="Ej: sin azúcar, sin queso…"
               className="mt-1 w-full rounded-lg bg-white text-neutral-900 placeholder-neutral-400 ring-1 ring-neutral-300 focus:ring-2 focus:ring-[#2f4131]/30 p-2 text-sm"
