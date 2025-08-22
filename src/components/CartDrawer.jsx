@@ -79,6 +79,12 @@ export default function CartDrawer({ open, onClose }) {
     return () => { document.body.style.overflow = prev; };
   }, [open]);
 
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   if (!open) return null;
 
   return (

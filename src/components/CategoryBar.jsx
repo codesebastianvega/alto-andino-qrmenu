@@ -69,6 +69,7 @@ export default function CategoryBar({ onOpenGuide }) {
                 key={id}
                 onClick={() => scrollTo(id)}
                 aria-pressed={active === id}
+                aria-current={active === id ? "true" : undefined}
                 className={[
                   "px-3 py-1 rounded-full text-sm border transition whitespace-nowrap",
                   active === id
