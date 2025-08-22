@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Chip } from "./Buttons";
+import { Icon } from "@iconify-icon/react";
+import { categoryIcons } from "../data/categoryIcons";
 
 const slugify = (s) =>
   s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -70,29 +72,34 @@ export default function CategoryBar({ onOpenGuide }) {
                   key={id}
                   onClick={() => scrollTo(id)}
                   active={active === id}
+                  aria-current={active === id ? "true" : undefined}
                   className={[
-                    "whitespace-nowrap",
-                    "h-8 px-3 text-sm", // tamaño consistente
+                    "whitespace-nowrap h-8 px-3 text-sm",
                     active === id
                       ? "shadow-sm"
-                      : "border-[#2f4131]/30 text-[#2f4131] hover:border-[#2f4131]/50"
+                      : "border-[#2f4131]/40 text-[#2f4131] hover:border-[#2f4131]/60 bg-white/80"
                   ].join(" ")}
-                  aria-current={active === id ? "true" : undefined}
                 >
-                  {label}
+                  <span className="inline-flex items-center gap-1.5">
+                    <Icon
+                      icon={categoryIcons[id] || "fluent-emoji:white-circle"}
+                      width="18"
+                      height="18"
+                      aria-hidden
+                    />
+                    <span>{label}</span>
+                  </span>
                 </Chip>
               ))}
 
-              {/* Botón Alérgenos más discreto */}
               <Chip
                 onClick={onOpenGuide}
-                className="h-7 px-2.5 text-xs border-[#2f4131]/30 text-[#2f4131] bg-white/60 hover:bg-[#2f4131] hover:text-white"
+                className="h-7 px-2.5 text-xs border-[#2f4131]/30 text-[#2f4131] bg-white/70 hover:bg-[#2f4131] hover:text-white"
               >
                 Alérgenos
               </Chip>
             </div>
 
-            {/* Fades laterales para insinuar scroll */}
             <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-white/80 to-transparent rounded-l-xl" />
             <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white/80 to-transparent rounded-r-xl" />
           </div>
