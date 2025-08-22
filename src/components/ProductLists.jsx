@@ -211,7 +211,7 @@ export function Desserts() {
                   {st === "low" && (
                     <StatusChip variant="low">Pocas unidades</StatusChip>
                   )}
-                  {disabled && (
+                  {st === "out" && (
                     <StatusChip variant="soldout">Agotado</StatusChip>
                   )}
                 </div>
@@ -269,7 +269,7 @@ function ProductRow({ item }) {
         {st === "low" && (
           <StatusChip variant="low">Pocas unidades</StatusChip>
         )}
-        {disabled && (
+        {st === "out" && (
           <StatusChip variant="soldout">Agotado</StatusChip>
         )}
       </div>

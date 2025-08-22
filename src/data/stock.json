@@ -33,6 +33,10 @@
     "post-amap": true,
     "post-vasca": false,
     "post-fresas": true,
+    "cumbre:rojos": "low",
+    "cumbre:amarillos": true,
+    "cumbre:blancos": false,
+    "cumbre:choco": "low",
 
     "cof-espresso": true,
     "cof-americano": true,
@@ -48,11 +52,5 @@
     "inf-verde": true,
     "inf-manzanilla": "low",
     "inf-chai": true
-  },
-  "cumbre": {
-    "rojos": "low",
-    "amarillos": true,
-    "blancos": false,
-    "choco": "low"
   }
 }
