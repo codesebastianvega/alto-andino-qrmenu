@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { getTableId } from "../utils/table";
 import CategoryBar from "./CategoryBar";
+import FeaturedToday from "./FeaturedToday";
 import GuideModal from "./GuideModal";
 import DietaryGuide from "./DietaryGuide";
 
@@ -36,6 +37,7 @@ export default function Header() {
           </div>
         </div>
         <CategoryBar onOpenGuide={() => setOpenGuide(true)} />
+        <FeaturedToday />
       </header>
 
       <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
