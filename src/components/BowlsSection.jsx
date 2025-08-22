@@ -58,7 +58,7 @@ export default function BowlsSection() {
             className="absolute bottom-[-6px] right-0 sm:right-2 w-44 sm:w-60 md:w-72 object-contain drop-shadow-xl pointer-events-none animate-[spin_40s_linear_infinite] z-10"
 
           />
-          <div className="absolute inset-0 p-4 sm:p-5 pr-40 sm:pr-48 flex flex-col justify-between">
+          <div className="absolute inset-0 pt-4 pb-16 pl-5 pr-40 sm:pt-5 sm:pl-6 sm:pr-48 grid grid-rows-[auto_1fr_auto]">
             <div>
               <p className="text-white/85 text-xs font-medium">
                 Personaliza a tu gusto
@@ -66,7 +66,7 @@ export default function BowlsSection() {
               <h3 className="text-white font-semibold text-xl sm:text-2xl">
                 Armar bowl personalizado
               </h3>
-              <p className="text-white/90 text-sm">
+              <p className="text-white/90 text-sm leading-snug">
                 1 base, 1 proteína, 4 toppings, 3 extras y 1 salsa
               </p>
             </div>
