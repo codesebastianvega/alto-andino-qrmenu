@@ -5,6 +5,7 @@ import { AddIconButton } from "./Buttons";
 import { COP } from "../utils/money";
 
 // DATA EXACTA DE LA CARTA
+// ← editar nombres y precios aquí
 const SODAS = [
   { id: "soda-zen", name: "Soda Zen", price: 3500, desc: "Frutos rojos, Durazno, Limonata rosada" },
   { id: "coca-250", name: "Coca-Cola 250 mL", price: 2500 },
@@ -18,6 +19,7 @@ const SODAS = [
   { id: "hatsu-yerbabuena-botella", name: "Hatsu Yerbabuena (botella)", price: 4000 },
 ];
 
+// ← editar nombres y precios aquí
 const OTHERS = [
   { id: "te-hatsu-400", name: "Té Hatsu 400 mL", price: 5000, desc: "Rojo, Negro, Aguamarina, Rosado, Fucsia, Blanco, Amarillo, Verde" },
   { id: "te-hatsu-caja-200", name: "Té Hatsu Caja 200 mL", price: 2000, desc: "Blanco, Amarillo, Aguamarina" },

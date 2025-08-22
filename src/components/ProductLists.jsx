@@ -10,6 +10,7 @@ function stateFor(productId) {
 }
 
 export function Breakfasts() {
+  // ← editar nombres y precios aquí
   const items = [
     {
       id: "des-sendero",
@@ -46,6 +47,7 @@ export function Breakfasts() {
 }
 
 export function Mains() {
+  // ← editar nombres y precios aquí
   const items = [
     {
       id: "main-salmon",
@@ -92,12 +94,14 @@ export function Desserts() {
 
   // Sabores + precios específicos (según tu instrucción):
   // rojos y amarillos: $10.000 · chococumbre: $11.000 · blancos: $12.000
+  // ← editar nombres y precios aquí
   const cumbreSabores = [
     { id: "rojos", label: "Frutos rojos" },
     { id: "amarillos", label: "Frutos amarillos" },
     { id: "blancos", label: "Frutos blancos" },
     { id: "choco", label: "Chococumbre" },
   ];
+  // ← editar nombres y precios aquí
   const cumbrePrices = {
     rojos: 10000,
     amarillos: 10000,
@@ -107,6 +111,7 @@ export function Desserts() {
   const cumbreStock = stock.cumbre || {};
 
   // Postres de vitrina (precios según carta)
+  // ← editar nombres y precios aquí
   const base = [
     {
       id: "post-red",

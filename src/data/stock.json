@@ -1,4 +1,5 @@
 {
+  "_comment": "Valores de disponibilidad: true, false y \"low\"",
   "products": {
     "des-sendero": true,
     "des-cumbre": "low",
