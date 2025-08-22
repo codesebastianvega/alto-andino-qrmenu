@@ -11,10 +11,12 @@ function stateFor(productId) {
   return s === "low" ? "low" : s === false ? "out" : "ok";
 }
 
+// ← editar nombres y precios aquí
 const BASE_PRICE = Number(import.meta.env.VITE_BOWL_BASE_PRICE || 32000);
 
 
 // Poke Hawaiano (único prearmado)
+// ← editar nombres y precios aquí
 const PREBOWL = {
   id: "bowl-poke-hawaiano",
   name: "Poke Hawaiano",
@@ -51,6 +53,7 @@ export default function BowlsSection() {
       {/* CTA gigante (como otro “producto”) */}
       <div className="-mx-4 sm:-mx-6 px-4 sm:px-6">
         <div className="relative overflow-hidden rounded-2xl ring-1 ring-black/10 bg-gradient-to-r from-[#2f4131] to-[#355242] h-36 sm:h-44 md:h-56">
+          {/* ← editar clases y ruta de la imagen aquí */}
           <img
             src="/poke1.png"
             alt=""

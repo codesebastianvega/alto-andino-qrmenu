@@ -3,6 +3,7 @@ import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
 import stock from "../data/stock.json";
 
+// ← editar nombres y precios aquí
 const smoothies = [
   {
     name: "Brisas Tropicales",
@@ -21,6 +22,7 @@ const smoothies = [
   },
 ];
 
+// ← editar nombres y precios aquí
 const funcionales = [
   {
     name: "Elixir del Cóndor (Detox)",

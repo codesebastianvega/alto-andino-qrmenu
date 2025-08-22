@@ -14,12 +14,14 @@ export default function Sandwiches() {
   const cart = useCart();
   const [size, setSize] = useState("clasico"); // 'clasico' | 'grande'
 
+  // ← editar nombres y precios aquí
   const sizes = [
     { id: "clasico", label: "Clásico (100 g de proteína)" },
     { id: "grande", label: "Grande (300 g de proteína)" },
   ];
 
   // Precios por sándwich (unico = precio único)
+  // ← editar nombres y precios aquí
   const priceByItem = {
     cerdo: { clasico: 22000, grande: 35000 },
     pollo: { clasico: 22000, grande: 35000 },
@@ -28,6 +30,7 @@ export default function Sandwiches() {
     cosecha: { unico: 24000 },
   };
 
+  // ← editar nombres y precios aquí
   const items = [
     {
       key: "cerdo",

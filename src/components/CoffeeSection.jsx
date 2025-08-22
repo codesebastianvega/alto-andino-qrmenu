@@ -7,6 +7,7 @@ import stock from "../data/stock.json";
 // ————————————————————————————————————————
 // Configuración de bebidas
 // milkPolicy: 'none' | 'optional' | 'required'
+// ← editar nombres y precios aquí
 const MILK_OPTIONS = [
   { id: "entera", label: "Entera", delta: 0 },
   { id: "deslactosada", label: "Deslactosada", delta: 0 },
@@ -14,6 +15,7 @@ const MILK_OPTIONS = [
 ];
 
 // Cafés (agrupados)
+// ← editar nombres y precios aquí
 const COFFEES = [
   // Sin leche por defecto
   {
@@ -85,6 +87,7 @@ const COFFEES = [
 ];
 
 // Infusiones y tés (incluye Chai)
+// ← editar nombres y precios aquí
 const INFUSIONS = [
   {
     id: "inf-aromatica",
