@@ -40,14 +40,24 @@ const OTHERS = [
 
 function Card({ item, onAdd }) {
   return (
-    <div className="relative rounded-xl bg-white ring-1 ring-neutral-200 p-3 pr-6 pb-10">
-      <p className="text-neutral-900 font-medium text-sm">{item.name}</p>
-      {item.desc && <p className="text-xs text-neutral-600">{item.desc}</p>}
-      <div className="absolute top-3 right-3 text-neutral-900 font-semibold text-sm">
+    <div className="relative rounded-xl bg-white ring-1 ring-neutral-200 p-3 pr-16 pb-12 min-h-[96px]">
+      <p className="text-neutral-900 font-medium text-sm leading-tight break-words">
+        {item.name}
+      </p>
+      {item.desc && (
+        <p className="mt-0.5 text-xs text-neutral-600 leading-snug break-words">
+          {item.desc}
+        </p>
+      )}
+
+      {/* Precio fijo arriba-derecha con ancho mínimo para no chocar */}
+      <div className="absolute top-2 right-2 min-w-[64px] text-right text-neutral-900 font-semibold text-sm">
         {"$" + money(item.price)}
       </div>
+
+      {/* FAB compacto y claro de la zona de texto */}
       <AddIconButton
-        className="absolute bottom-3 right-3"
+        className="absolute bottom-2 right-2 scale-90 sm:scale-100"
         aria-label={"Añadir " + item.name}
         onClick={() =>
           onAdd({
