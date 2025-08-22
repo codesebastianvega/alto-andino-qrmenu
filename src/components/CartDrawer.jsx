@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import SwipeRevealItem from "./SwipeRevealItem";
+import { formatCOP } from "../utils/money";
 
 const SHEET_BG = "#1f2621"; // fondo del sheet
 
@@ -8,20 +9,19 @@ const safeNum = (raw) => {
   const n = String(raw || "").replace(/\D/g, "");
   return n.startsWith("57") ? n : (n ? `57${n}` : "");
 };
-const formatCOP = (v) => {
-  const n = Number(String(v).replace(/[^\d.-]/g, ""));
-  if (!isFinite(n)) return String(v);
-  return n.toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
-};
+
 const getTable = () => {
   try {
-    for (const k of ["aa_table","aa_table_num","aa_t","mesa","table"]) {
-      const v = localStorage.getItem(k);
+    if (typeof window === "undefined") return "";
+    for (const k of ["aa_table", "aa_table_num", "aa_t", "mesa", "table"]) {
+      const v = window.localStorage?.getItem?.(k);
       if (v) return v;
     }
-    const sp = new URL(location.href).searchParams.get("t");
+    const sp = new URL(window.location.href).searchParams.get("t");
     return sp || "";
-  } catch { return ""; }
+  } catch {
+    return "";
+  }
 };
 const buildWaText = ({ items = [], total = 0, note = "" }) => {
   const mesa = getTable();
@@ -189,7 +189,7 @@ export default function CartDrawer({ open, onClose }) {
           <div className="flex items-center justify-between text-white">
             <span className="text-sm">Total</span>
             <span className="font-semibold text-lg">
-              {total?.toLocaleString?.("es-CO", { style: "currency", currency: "COP" }) || total}
+              {formatCOP(total)}
             </span>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">

@@ -11,13 +11,16 @@ export default function QrPoster({ url }) {
   // Si viene mesa, el QR apunta a url?t=XX; si no, a url “pelado”
   const qrTarget = table ? `${url}?t=${encodeURIComponent(table)}` : url;
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    if (typeof window !== "undefined") window.print();
+  };
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(qrTarget);
-      alert("URL copiada al portapapeles");
+      await navigator?.clipboard?.writeText(qrTarget);
+      if (typeof window !== "undefined") window.alert("URL copiada al portapapeles");
     } catch {
-      alert("No se pudo copiar. Copia manualmente: " + qrTarget);
+      if (typeof window !== "undefined")
+        window.alert("No se pudo copiar. Copia manualmente: " + qrTarget);
     }
   };
 
