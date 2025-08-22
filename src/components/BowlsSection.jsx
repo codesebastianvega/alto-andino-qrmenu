@@ -4,12 +4,7 @@ import { useCart } from "../context/CartContext";
 import { COP, formatCOP } from "../utils/money";
 import { AddIconButton, StatusChip, PILL_XS, PILL_SM } from "./Buttons";
 import BowlBuilderModal from "./BowlBuilderModal";
-import stock from "../data/stock.json";
-
-function stateFor(productId) {
-  const s = (stock.products || {})[productId];
-  return s === "low" ? "low" : s === false ? "out" : "ok";
-}
+import { getStockState, slugify } from "../utils/stock";
 
 // ← editar nombres y precios aquí
 const BASE_PRICE = Number(import.meta.env.VITE_BOWL_BASE_PRICE || 32000);
@@ -45,7 +40,7 @@ export default function BowlsSection() {
       options: PREBOWL.options,
     });
 
-  const st = stateFor(PREBOWL.id);
+  const st = getStockState(PREBOWL.id || slugify(PREBOWL.name));
   const disabled = st === "out";
 
   return (

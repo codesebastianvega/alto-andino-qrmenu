@@ -1,8 +1,9 @@
 import React from "react";
 import Section from "./Section";
 import { useCart } from "../context/CartContext";
-import { AddIconButton } from "./Buttons";
+import { AddIconButton, StatusChip } from "./Buttons";
 import { COP } from "../utils/money";
+import { getStockState, slugify } from "../utils/stock";
 
 // DATA EXACTA DE LA CARTA
 // ← editar nombres y precios aquí
@@ -31,6 +32,8 @@ const OTHERS = [
 ];
 
 function Card({ item, onAdd }) {
+  const st = getStockState(item.id || slugify(item.name));
+  const disabled = st === "out";
   return (
     <div className="relative rounded-xl bg-white ring-1 ring-neutral-200 p-3 pr-16 pb-12 min-h-[96px]">
       <p className="text-neutral-900 font-medium text-sm leading-tight break-words">
@@ -41,6 +44,14 @@ function Card({ item, onAdd }) {
           {item.desc}
         </p>
       )}
+      <div className="mt-2 flex flex-wrap gap-2">
+        {st === "low" && (
+          <StatusChip variant="low">Pocas unidades</StatusChip>
+        )}
+        {st === "out" && (
+          <StatusChip variant="soldout">Agotado</StatusChip>
+        )}
+      </div>
 
       {/* Precio fijo arriba-derecha con ancho mínimo para no chocar */}
       <div className="absolute top-2 right-2 min-w-[64px] text-right text-neutral-900 font-semibold text-sm">
@@ -60,6 +71,7 @@ function Card({ item, onAdd }) {
             qty: 1,
           })
         }
+        disabled={disabled}
       />
     </div>
   );

@@ -2,13 +2,7 @@ import { useState } from "react";
 import { Chip, AddIconButton, StatusChip } from "./Buttons";
 import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
-import stock from "../data/stock.json"; // ← sin assert
-
-// Devuelve 'ok' | 'low' | 'out' para un id de producto
-function stateFor(id) {
-  const s = (stock.products || {})[id];
-  return s === "low" ? "low" : s === false ? "out" : "ok";
-}
+import { getStockState, slugify } from "../utils/stock";
 
 export default function Sandwiches() {
   const cart = useCart();
@@ -104,7 +98,7 @@ export default function Sandwiches() {
       <ul className="space-y-3">
         {items.map((it) => {
           const productId = "sandwich:" + it.key;
-          const st = stateFor(productId); // 'ok' | 'low' | 'out'
+          const st = getStockState(productId || slugify(it.name));
           const disabled = st === "out";
           return (
             <li

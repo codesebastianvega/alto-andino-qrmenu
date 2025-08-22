@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { AddIconButton, StatusChip } from "./Buttons";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
-import stock from "../data/stock.json";
+import { getStockState, slugify } from "../utils/stock";
 
 // ————————————————————————————————————————
 // Configuración de bebidas
@@ -126,11 +126,6 @@ const INFUSIONS = [
 
 // ————————————————————————————————————————
 // Utilidades de stock y precio
-function stateFor(id) {
-  const s = (stock.products || {})[id];
-  return s === "low" ? "low" : s === false ? "out" : "ok";
-}
-
 function findMilkDelta(milkId) {
   const opt = MILK_OPTIONS.find((o) => o.id === milkId);
   return opt ? opt.delta : 0;
@@ -317,7 +312,7 @@ export default function CoffeeSection() {
         <h3 className="text-sm font-semibold text-alto-primary mb-3">Cafés</h3>
         <ul className="space-y-3">
           {COFFEES.map((item) => {
-            const st = stateFor(item.id);
+            const st = getStockState(item.id || slugify(item.name));
             const disabled = st === "out";
             const isAmericano = /americano/i.test(item.name);
             const showAddMilk = item.milkPolicy === "optional" && !isAmericano;
@@ -385,7 +380,7 @@ export default function CoffeeSection() {
         </h3>
         <ul className="space-y-3">
           {INFUSIONS.map((item) => {
-            const st = stateFor(item.id);
+            const st = getStockState(item.id || slugify(item.name));
             const disabled = st === "out";
             const isChai = !!item.chai;
             const showChaiMilk = isChai && modeOf(item.id) === "latte";
