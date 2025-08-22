@@ -10,6 +10,8 @@ export default function Footer(){
   const WA_NUM = RAW_WA.startsWith("57") ? RAW_WA : `57${RAW_WA}`;
   const WA_LINK = `https://wa.me/${WA_NUM}`;
   const REVIEWS_URL = import.meta.env.VITE_GOOGLE_REVIEWS_URL || "#";
+  const PUBLIC = import.meta.env.VITE_PUBLIC_URL || location.origin;
+  const QR_URL = `${PUBLIC}/?qr=1`;
 
   // Tokens de color con alto contraste sobre #243326
   const BG = "#243326";
@@ -44,6 +46,10 @@ export default function Footer(){
              aria-label="Abrir WhatsApp">
             <IconWhatsApp className="w-3.5 h-3.5" />
             <span>WhatsApp</span>
+          </a>
+
+          <a href={QR_URL} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] bg-transparent hover:bg-white/10 transition focus:outline-none focus:ring-2 focus:ring-white/40" style={{ color: TEXT, border: `1px solid ${BORDER}` }}>
+            <span>Ver póster QR</span>
           </a>
 
           <a href={REVIEWS_URL} target="_blank" rel="noreferrer"
