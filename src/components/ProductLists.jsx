@@ -2,6 +2,45 @@ import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import { getStockState, slugify } from "../utils/stock";
 import { AddIconButton, StatusChip } from "./Buttons";
+import Section from "./Section";
+import Sandwiches from "./Sandwiches";
+import SmoothiesSection from "./SmoothiesSection";
+import CoffeeSection from "./CoffeeSection";
+import BowlsSection from "./BowlsSection";
+import ColdDrinksSection from "./ColdDrinksSection";
+import CategoryBar from "./CategoryBar";
+import FeaturedToday from "./FeaturedToday";
+
+export default function ProductLists({ setOpenGuide }) {
+  return (
+    <>
+      <CategoryBar onOpenGuide={() => setOpenGuide?.(true)} />
+      <FeaturedToday />
+      <Section title="Desayunos">
+        <Breakfasts />
+      </Section>
+      <Section title="Bowls">
+        <BowlsSection />
+      </Section>
+      <Section title="Platos Fuertes">
+        <Mains />
+      </Section>
+      <Section title="Sándwiches">
+        <Sandwiches />
+      </Section>
+      <Section title="Smoothies & Funcionales">
+        <SmoothiesSection />
+      </Section>
+      <Section title="Café de especialidad">
+        <CoffeeSection />
+      </Section>
+      <ColdDrinksSection />
+      <Section title="Postres">
+        <Desserts />
+      </Section>
+    </>
+  );
+}
 
 export function Breakfasts() {
   // ← editar nombres y precios aquí

@@ -76,6 +76,7 @@ export default function FeaturedToday() {
             }
             className="absolute bottom-4 right-4 z-20"
             aria-label={"Añadir " + N}
+            variant="light"
           />
         </div>
       </div>

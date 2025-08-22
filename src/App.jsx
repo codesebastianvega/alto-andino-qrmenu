@@ -4,15 +4,9 @@ import { useState } from "react";
 // Layout / UI
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-import Section from "./components/Section";
-
-// Secciones
-import { Breakfasts, Mains, Desserts } from "./components/ProductLists";
-import Sandwiches from "./components/Sandwiches";
-import SmoothiesSection from "./components/SmoothiesSection";
-import CoffeeSection from "./components/CoffeeSection";
-import BowlsSection from "./components/BowlsSection";
-import ColdDrinksSection from "./components/ColdDrinksSection";
+import ProductLists from "./components/ProductLists";
+import GuideModal from "./components/GuideModal";
+import DietaryGuide from "./components/DietaryGuide";
 
 // Carrito
 import FloatingCartBar from "./components/FloatingCartBar";
@@ -24,6 +18,7 @@ import QrPoster from "./components/QrPoster";
 
 export default function App() {
   const [open, setOpen] = useState(false);
+  const [openGuide, setOpenGuide] = useState(false);
   const cart = useCart();
 
   // ✅ Modo póster QR (?qr=1) – se muestra SOLO el QR
@@ -43,28 +38,7 @@ export default function App() {
       <Header />
 
       <div className="mx-auto max-w-3xl p-5 sm:p-6 md:p-8">
-        <Section title="Desayunos">
-          <Breakfasts />
-        </Section>
-        <Section title="Bowls">
-          <BowlsSection />
-        </Section>
-        <Section title="Platos Fuertes">
-          <Mains />
-        </Section>
-        <Section title="Sándwiches">
-          <Sandwiches />
-        </Section>
-        <Section title="Smoothies & Funcionales">
-          <SmoothiesSection />
-        </Section>
-        <Section title="Café de especialidad">
-          <CoffeeSection />
-        </Section>
-        <ColdDrinksSection />
-        <Section title="Postres">
-          <Desserts />
-        </Section>
+        <ProductLists setOpenGuide={setOpenGuide} />
 
         <Footer />
 
@@ -76,6 +50,10 @@ export default function App() {
         />
         <CartDrawer open={open} onClose={() => setOpen(false)} />
       </div>
+
+      <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
+        <DietaryGuide />
+      </GuideModal>
     </div>
   );
 }
