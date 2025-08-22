@@ -1,13 +1,7 @@
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
-import stock from "../data/stock.json"; // ← sin assert
+import { getStockState, slugify } from "../utils/stock";
 import { AddIconButton, StatusChip } from "./Buttons";
-
-// estado global: 'ok' | 'low' | 'out'
-function stateFor(productId) {
-  const s = (stock.products || {})[productId];
-  return s === "low" ? "low" : s === false ? "out" : "ok";
-}
 
 export function Breakfasts() {
   // ← editar nombres y precios aquí
@@ -108,7 +102,6 @@ export function Desserts() {
     choco: 11000,
     blancos: 12000,
   };
-  const cumbreStock = stock.cumbre || {};
 
   // Postres de vitrina (precios según carta)
   // ← editar nombres y precios aquí
@@ -162,12 +155,8 @@ export function Desserts() {
         </p>
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
           {cumbreSabores.map((s) => {
-            const st =
-              cumbreStock[s.id] === "low"
-                ? "low"
-                : cumbreStock[s.id] === false
-                ? "out"
-                : "ok";
+            const id = "cumbre:" + s.id;
+            const st = getStockState(id);
             const disabled = st === "out";
             const price = cumbrePrices[s.id];
             return (
@@ -231,7 +220,7 @@ function List({ items }) {
 
 function ProductRow({ item }) {
   const { addItem } = useCart();
-  const st = stateFor(item.id);
+  const st = getStockState(item.id || slugify(item.name));
   const disabled = st === "out";
   return (
     <li className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12">
