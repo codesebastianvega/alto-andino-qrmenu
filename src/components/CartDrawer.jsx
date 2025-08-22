@@ -66,7 +66,7 @@ export default function CartDrawer({ open, onClose }) {
   const {
     items = [],
     total = 0,
-    clear: clearCart,
+    clearCart,
     increment,
     decrement,
     removeItem,
@@ -82,6 +82,27 @@ export default function CartDrawer({ open, onClose }) {
   const waHref = items?.length
     ? `https://wa.me/${waNum}?text=${buildWaText({ items, total, note })}`
     : undefined;
+
+  const onWhatsAppClick = (e) => {
+    if (!waHref) {
+      e.preventDefault();
+      return;
+    }
+    try {
+      const snapshot = { items, note, total };
+      sessionStorage.setItem("aa_last_order", JSON.stringify(snapshot));
+    } catch {}
+    setTimeout(() => {
+      try {
+        clearCart?.();
+        document.dispatchEvent(
+          new CustomEvent("aa:toast", {
+            detail: { message: "Pedido abierto en WhatsApp — Deshacer" },
+          })
+        );
+      } catch {}
+    }, 300);
+  };
 
   // setter flexible para nota por ítem (usa la disponible en el contexto)
   const setItemNote =
@@ -239,7 +260,7 @@ export default function CartDrawer({ open, onClose }) {
               href={waHref}
               target="_blank"
               rel="noreferrer"
-              onClick={(e) => { if (!waHref) e.preventDefault(); }}
+              onClick={onWhatsAppClick}
               aria-disabled={!waHref}
               className={[
                 "h-10 rounded-xl grid place-items-center",
