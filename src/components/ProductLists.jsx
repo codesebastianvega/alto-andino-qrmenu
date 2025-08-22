@@ -84,27 +84,27 @@ export function Mains() {
   const items = [
     {
       id: "main-salmon",
-      name: "Salmón Andino 200 g 🐟",
+      name: "Salmón Andino 200 gr",
       price: 47000,
-      desc: "En sartén de hierro, salsa miel-mostaza y orégano; chips de yuca y ensalada de granos calientes.",
+      desc: "En sartén de hierro, salsa miel-mostaza y orégano con guarnición de pure de ahuyama y ensalada de granos calientes.",
     },
     {
       id: "main-trucha",
-      name: "Trucha del Páramo 450 g 🐟",
+      name: "Trucha del Páramo 450 gr",
       price: 42000,
-      desc: "A la plancha con alioli griego; chips de papa artesanales y ensalada fría.",
+      desc: "A la plancha con alioli griego con guarnición pure de papa y ensalada fría.",
     },
     {
       id: "main-bolo",
       name: "Spaghetti a la Boloñesa",
       price: 28000,
-      desc: "Salsa de res con albahaca, tomate, pimientos y cebolla; queso parmesano. 🌾🥛",
+      desc: "Salsa pomodoro, carne de res; albahaca fresca y ralladura de parmesano. 🌾🥛",
     },
     {
       id: "main-champi",
       name: "Champiñones a la Madrileña",
       price: 18000,
-      desc: "125 g de champiñones en mantequilla y ajo, vino espumoso, jamón serrano, perejil y ralladura de parmesano. 🥛",
+      desc: "125 gr de champiñones en mantequilla y ajo, vino espumoso, jamón serrano, perejil y ralladura de parmesano. 🥛",
     },
     {
       id: "main-ceviche",
@@ -266,12 +266,8 @@ function ProductRow({ item }) {
       <p className="font-semibold">{item.name}</p>
       <p className="text-xs text-neutral-600 mt-1">{item.desc}</p>
       <div className="mt-2 flex flex-wrap gap-2">
-        {st === "low" && (
-          <StatusChip variant="low">Pocas unidades</StatusChip>
-        )}
-        {st === "out" && (
-          <StatusChip variant="soldout">Agotado</StatusChip>
-        )}
+        {st === "low" && <StatusChip variant="low">Pocas unidades</StatusChip>}
+        {st === "out" && <StatusChip variant="soldout">Agotado</StatusChip>}
       </div>
       <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
         ${COP(item.price)}
