@@ -9,14 +9,24 @@ const toNumberCOP = (v) => {
   return isFinite(n) ? n : 0;
 };
 const formatCOP = (n) =>
-  Number(n || 0).toLocaleString("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  });
+  Number(n || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
 
-const renderOptions = (opts) => {
-  if (!opts) return null;
+const safeNum = (raw) => {
+  const n = String(raw || "").replace(/\D/g, "");
+  return n.startsWith("57") ? n : (n ? `57${n}` : "");
+};
+const getTable = () => {
+  try {
+    for (const k of ["aa_table", "aa_table_num", "aa_t", "mesa", "table"]) {
+      const v = localStorage.getItem(k);
+      if (v) return v;
+    }
+    const sp = new URL(location.href).searchParams.get("t");
+    return sp || "";
+  } catch { return ""; }
+};
+const renderOptionsText = (opts) => {
+  if (!opts) return "";
   const parts = [];
   if (Array.isArray(opts)) {
     if (opts.length) parts.push(opts.join(", "));
@@ -26,41 +36,29 @@ const renderOptions = (opts) => {
       else if (v) parts.push(`${k}: ${v}`);
     }
   }
-  if (!parts.length) return null;
-  return <p className="text-neutral-600 text-xs mt-0.5">{parts.join(" · ")}</p>;
-};
-
-const safeNum = (raw) => {
-  const n = String(raw || "").replace(/\D/g, "");
-  return n.startsWith("57") ? n : (n ? `57${n}` : "");
-};
-
-const getTable = () => {
-  try {
-    if (typeof window === "undefined") return "";
-    for (const k of ["aa_table", "aa_table_num", "aa_t", "mesa", "table"]) {
-      const v = window.localStorage?.getItem?.(k);
-      if (v) return v;
-    }
-    const sp = new URL(window.location.href).searchParams.get("t");
-    return sp || "";
-  } catch {
-    return "";
-  }
+  return parts.join(" · ");
 };
 const buildWaText = ({ items = [], total = 0, note = "" }) => {
   const mesa = getTable();
   const lines = ["*Pedido Alto Andino*"];
   if (mesa) lines.push(`Mesa: ${mesa}`);
   items.forEach(it => {
-    const name = [it.name, it.variant].filter(Boolean).join(" · ");
     const unit = toNumberCOP(it.price ?? it.unitPrice ?? it.priceEach);
-    lines.push(`• ${it.qty}× ${name} — ${formatCOP(unit * it.qty)}`);
+    const qty = Number(it.qty || 1);
+    const name = [it.name, it.variant].filter(Boolean).join(" · ");
+    const opts = renderOptionsText(it.options);
+    lines.push(`• ${qty}× ${name} — ${formatCOP(unit * qty)}`);
+    if (opts) lines.push(`  ▸ ${opts}`);
     if (it.note) lines.push(`  ▸ Nota: ${it.note}`);
   });
   if (note) lines.push(`Nota general: ${note}`);
   lines.push(`Total: ${formatCOP(total)}`);
   return encodeURIComponent(lines.join("\n"));
+};
+
+const renderOptions = (opts) => {
+  const text = renderOptionsText(opts);
+  return text ? <p className="text-neutral-600 text-xs mt-0.5">{text}</p> : null;
 };
 
 export default function CartDrawer({ open, onClose }) {

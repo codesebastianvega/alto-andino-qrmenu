@@ -9,6 +9,7 @@ function getCartBarHeight() {
   }
 }
 
+
 export default function Toast() {
   const [msg, setMsg] = useState("");
   const [show, setShow] = useState(false);
@@ -42,6 +43,7 @@ export default function Toast() {
       clearTimeout(offsetId);
       document.removeEventListener("aa:toast", onToast);
     };
+
   }, []);
 
   return (
@@ -56,6 +58,7 @@ export default function Toast() {
     >
       <div className="rounded-full bg-[#2f4131] text-white px-4 h-9 grid place-items-center shadow-2xl ring-1 ring-black/10 w-max">
         <span className="text-[11px] font-medium whitespace-nowrap">{msg}</span>
+
       </div>
     </div>
   );
@@ -66,4 +69,5 @@ export const toast = (message) => {
     document.dispatchEvent(new CustomEvent("aa:toast", { detail: { message } }));
   } catch {}
 };
+
 

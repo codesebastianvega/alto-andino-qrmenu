@@ -104,7 +104,7 @@ export default function BowlsSection() {
           {st === "low" && (
             <StatusChip variant="low">Pocas unidades</StatusChip>
           )}
-          {disabled && <StatusChip variant="soldout">Agotado</StatusChip>}
+          {st === "out" && <StatusChip variant="soldout">Agotado</StatusChip>}
         </div>
         <div className="absolute top-5 right-5 z-10 text-neutral-800 font-bold">
           ${COP(PREBOWL.price)}
