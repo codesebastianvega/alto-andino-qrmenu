@@ -3,8 +3,6 @@ import { useCart } from "../context/CartContext";
 import SwipeRevealItem from "./SwipeRevealItem";
 import { formatCOP } from "../utils/money";
 
-const SHEET_BG = "#1f2621"; // fondo del sheet
-
 const safeNum = (raw) => {
   const n = String(raw || "").replace(/\D/g, "");
   return n.startsWith("57") ? n : (n ? `57${n}` : "");
@@ -88,28 +86,27 @@ export default function CartDrawer({ open, onClose }) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[95]">
+    <div className="fixed inset-0 z-[96]">
       {/* Overlay */}
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden />
 
       {/* Sheet */}
       <div
-        className="absolute inset-x-0 bottom-0 z-[96] mx-auto w-full max-w-md rounded-t-2xl shadow-2xl ring-1 ring-black/20"
-        style={{ backgroundColor: SHEET_BG }}
+        className="absolute inset-x-0 bottom-0 z-[96] mx-auto w-full max-w-md rounded-t-2xl shadow-2xl ring-1 ring-black/10 bg-[#FAF7F2]"
         role="dialog"
         aria-modal="true"
       >
         {/* Handle */}
         <div className="pt-3">
-          <div className="mx-auto h-1.5 w-10 rounded-full bg-white/25" />
+          <div className="mx-auto h-1.5 w-10 rounded-full bg-neutral-300/70" />
         </div>
 
         {/* Header */}
         <div className="px-4 pb-3 pt-2 flex items-center justify-between">
-          <h2 className="text-white font-semibold text-lg">Tu pedido</h2>
+          <h2 className="text-neutral-900 font-semibold text-lg">Tu pedido</h2>
           <div className="flex items-center gap-3">
-            <button type="button" onClick={clearCart} className="text-xs text-white/85 hover:text-white underline underline-offset-2">Vaciar</button>
-            <button type="button" onClick={onClose} className="text-xs text-white/85 hover:text-white rounded px-2 py-1 ring-1 ring-white/20" aria-label="Cerrar">Cerrar</button>
+            <button type="button" onClick={clearCart} className="text-xs text-neutral-700 hover:text-neutral-900 underline underline-offset-2">Vaciar</button>
+            <button type="button" onClick={onClose} className="text-xs text-neutral-700 hover:text-neutral-900 rounded px-2 py-1 ring-1 ring-neutral-300/70" aria-label="Cerrar">Cerrar</button>
           </div>
         </div>
 
@@ -118,7 +115,7 @@ export default function CartDrawer({ open, onClose }) {
           {items.length ? items.map((it, idx) => (
             <SwipeRevealItem key={idx} onDelete={() => removeItem?.(it)}>
 
-              <div className="p-3 bg-[#263229] ring-1 ring-white/10">
+              <div className="p-3 bg-white rounded-xl ring-1 ring-neutral-200">
                 <div className="flex items-start gap-3">
                   {/* imagen opcional */}
                   {it.image ? (
@@ -127,36 +124,36 @@ export default function CartDrawer({ open, onClose }) {
                       alt={it.name}
                       loading="lazy"
                       decoding="async"
-                      className="h-12 w-12 rounded-lg object-cover ring-1 ring-white/10"
+                      className="h-12 w-12 rounded-lg object-cover ring-1 ring-neutral-200"
                     />
                   ) : null}
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-white font-medium truncate">{it.name}</p>
-                        {it.variant && <p className="text-white/70 text-xs truncate">{it.variant}</p>}
+                        <p className="text-neutral-900 font-medium truncate">{it.name}</p>
+                        {it.variant && <p className="text-neutral-600 text-xs truncate">{it.variant}</p>}
                       </div>
-                      <p className="text-white font-semibold whitespace-nowrap">
+                      <p className="text-neutral-900 font-semibold whitespace-nowrap">
                         {formatCOP(it.priceFormatted ?? it.priceFmt ?? it.price)}
                       </p>
                     </div>
 
                     {/* Controles de cantidad (compactos) */}
-                    <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#1c241f] ring-1 ring-white/10 px-1 py-[2px]">
+                    <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-neutral-100 ring-1 ring-neutral-300 px-1 py-[2px]">
                       <button
                         type="button"
                         onClick={() => handleDecrement(it, idx)}
-                        className="h-6 w-6 grid place-items-center rounded-full text-white hover:bg-white/10"
+                        className="h-6 w-6 grid place-items-center rounded-full text-neutral-900 hover:bg-neutral-200"
                         aria-label="Restar"
                       >
                         −
                       </button>
-                      <span className="text-white text-sm tabular-nums">{it.qty}</span>
+                      <span className="text-neutral-900 text-sm tabular-nums">{it.qty}</span>
                       <button
                         type="button"
                         onClick={() => increment?.(idx)}
-                        className="h-6 w-6 grid place-items-center rounded-full text-white hover:bg-white/10"
+                        className="h-6 w-6 grid place-items-center rounded-full text-neutral-900 hover:bg-neutral-200"
                         aria-label="Sumar"
                       >
                         ＋
@@ -172,7 +169,7 @@ export default function CartDrawer({ open, onClose }) {
                         onChange={(e) => setItemNote(idx, e.target.value)}
 
                         placeholder="Nota para este ítem (opcional)"
-                        className="w-full rounded-lg bg-[#1b221d] text-white placeholder-white/45 ring-1 ring-white/10 focus:ring-2 focus:ring-white/30 px-2 py-1 text-xs"
+                        className="w-full rounded-lg bg-white text-neutral-900 placeholder-neutral-400 ring-1 ring-neutral-300 focus:ring-2 focus:ring-[#2f4131]/30 px-2 py-1 text-xs"
                       />
                     </div>
                   </div>
@@ -180,32 +177,32 @@ export default function CartDrawer({ open, onClose }) {
               </div>
             </SwipeRevealItem>
           )) : (
-            <div className="text-center text-white/80 py-10">Tu carrito está vacío.</div>
+            <div className="text-center text-neutral-700 py-10">Tu carrito está vacío.</div>
           )}
 
           {/* Nota general */}
-          <div className="bg-[#263229] ring-1 ring-white/10 p-3">
-            <label className="text-white/85 text-xs">Notas al pedido</label>
+          <div className="bg-white rounded-xl ring-1 ring-neutral-200 p-3">
+            <label className="text-neutral-700 text-xs">Notas al pedido</label>
             <textarea
               value={note || ""}
               onChange={(e) => setNote?.(e.target.value)}
               placeholder="Ej: sin azúcar, sin queso…"
-              className="mt-1 w-full rounded-lg bg-[#1b221d] text-white placeholder-white/45 ring-1 ring-white/10 focus:ring-2 focus:ring-white/30 p-2 text-sm"
+              className="mt-1 w-full rounded-lg bg-white text-neutral-900 placeholder-neutral-400 ring-1 ring-neutral-300 focus:ring-2 focus:ring-[#2f4131]/30 p-2 text-sm"
               rows={2}
             />
           </div>
         </div>
 
         {/* Footer fijo */}
-        <div className="px-4 pb-4 pt-3 mt-3 border-t border-white/10" style={{ paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 16px)" }}>
-          <div className="flex items-center justify-between text-white">
-            <span className="text-sm">Total</span>
-            <span className="font-semibold text-lg">
+        <div className="px-4 pb-4 pt-3 mt-3 border-t border-neutral-200" style={{ paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 16px)" }}>
+          <div className="flex items-center justify-between text-neutral-900">
+            <span className="text-sm text-neutral-700">Total</span>
+            <span className="font-semibold text-lg tabular-nums text-neutral-900">
               {formatCOP(total)}
             </span>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <button type="button" onClick={onClose} className="h-10 rounded-xl bg-white/10 text-white hover:bg-white/15 ring-1 ring-white/15">Seguir pidiendo</button>
+            <button type="button" onClick={onClose} className="h-10 rounded-xl bg-white text-neutral-900 ring-1 ring-neutral-300 hover:bg-neutral-50">Seguir pidiendo</button>
             <a
               href={waHref}
               target="_blank"
@@ -216,7 +213,7 @@ export default function CartDrawer({ open, onClose }) {
                 "h-10 rounded-xl grid place-items-center",
                 waHref
                   ? "bg-[#2f4131] text-white hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
-                  : "bg-white/10 text-white/60 ring-1 ring-white/15 cursor-not-allowed"
+                  : "bg-neutral-100 text-neutral-400 ring-1 ring-neutral-200 cursor-not-allowed"
               ].join(" ")}
             >
               Enviar por WhatsApp
