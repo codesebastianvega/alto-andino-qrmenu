@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from "react";
+
 function getCartBarHeight() {
   try {
     const el = document.querySelector("[data-aa-cartbar]");
     return el ? el.offsetHeight : 0;
-  } catch { return 0; }
+  } catch {
+    return 0;
+  }
 }
+
+
 export default function Toast() {
   const [msg, setMsg] = useState("");
   const [show, setShow] = useState(false);
@@ -13,32 +18,42 @@ export default function Toast() {
   useEffect(() => {
     const update = () => setOffset(getCartBarHeight());
     update();
-    const ro = new ResizeObserver(update);
-    const target = document.querySelector("[data-aa-cartbar]");
-    if (target) ro.observe(target);
     window.addEventListener("resize", update);
-    return () => { window.removeEventListener("resize", update); ro.disconnect(); };
+    return () => window.removeEventListener("resize", update);
   }, []);
 
   useEffect(() => {
+    let hideId;
+    let offsetId;
+
     const onToast = (e) => {
+      clearTimeout(hideId);
+      clearTimeout(offsetId);
       const text = e?.detail?.message || "Añadido al carrito";
       setMsg(text);
       setShow(true);
-      const id = setTimeout(() => setShow(false), 1600);
-      return () => clearTimeout(id);
+      const updateOffset = () => setOffset(getCartBarHeight());
+      updateOffset();
+      offsetId = setTimeout(updateOffset, 0);
+      hideId = setTimeout(() => setShow(false), 1600);
     };
     document.addEventListener("aa:toast", onToast);
-    return () => document.removeEventListener("aa:toast", onToast);
+    return () => {
+      clearTimeout(hideId);
+      clearTimeout(offsetId);
+      document.removeEventListener("aa:toast", onToast);
+    };
+
   }, []);
 
   return (
     <div
       aria-live="polite"
       className={[
-        "fixed left-1/2 -translate-x-1/2 z-[120]",
-        "transition-transform duration-200",
-        show ? "translate-y-0" : "translate-y-8",
+        "fixed left-1/2 -translate-x-1/2 z-[120] pointer-events-none",
+        "transition-opacity duration-200",
+        show ? "opacity-100" : "opacity-0",
+
       ].join(" ")}
       style={{ bottom: `calc(${offset}px + env(safe-area-inset-bottom, 0px) + 10px)` }}
     >
@@ -48,6 +63,11 @@ export default function Toast() {
     </div>
   );
 }
+
 export const toast = (message) => {
-  try { document.dispatchEvent(new CustomEvent("aa:toast", { detail: { message } })); } catch {}
+  try {
+    document.dispatchEvent(new CustomEvent("aa:toast", { detail: { message } }));
+  } catch {}
 };
+
+

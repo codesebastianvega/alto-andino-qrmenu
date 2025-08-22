@@ -77,7 +77,8 @@ export function CartProvider({ children }) {
   // API segura (siempre parte de un array)
   function addItem(payload) {
     setItems((prev) => normalize([...asArray(prev), { qty: 1, ...payload }]));
-    toastEvent(`Añadido: ${payload?.name || "Producto"}`);
+    setTimeout(() => toastEvent(`Añadido: ${payload?.name || "Producto"}`), 0);
+
   }
   function removeAt(index) {
     setItems((prev) => asArray(prev).filter((_, i) => i !== index));
