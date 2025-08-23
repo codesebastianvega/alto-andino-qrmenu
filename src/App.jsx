@@ -22,6 +22,7 @@ export default function App() {
   const [open, setOpen] = useState(false);
   const [openGuide, setOpenGuide] = useState(false);
   const [query, setQuery] = useState("");
+  const [activeCategoryId, setActiveCategoryId] = useState(null);
   const cart = useCart();
 
   // ✅ Modo póster QR (?qr=1) – se muestra SOLO el QR
@@ -42,9 +43,13 @@ export default function App() {
 
       <div className="mx-auto max-w-3xl p-5 sm:p-6 md:p-8">
         <div className="mb-6">
-          <SearchBar onQueryChange={setQuery} />
+          <SearchBar value={query} onQueryChange={setQuery} />
         </div>
-        <ProductLists setOpenGuide={setOpenGuide} query={query} />
+        <ProductLists
+          query={query}
+          activeCategoryId={activeCategoryId}
+          onCategorySelect={(cat) => setActiveCategoryId(cat.id)}
+        />
 
         <Footer />
 

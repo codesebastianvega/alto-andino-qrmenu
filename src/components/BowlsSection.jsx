@@ -2,6 +2,7 @@
 import React, { lazy, Suspense, useState } from "react";
 import { useCart } from "../context/CartContext";
 import { COP, formatCOP } from "../utils/money";
+import { matchesQuery } from "../utils/strings";
 import { AddIconButton, StatusChip, PILL_XS, PILL_SM } from "./Buttons";
 const BowlBuilderModal = lazy(() => import("./BowlBuilderModal"));
 import { getStockState, slugify } from "../utils/stock";
@@ -26,7 +27,7 @@ const PREBOWL = {
   },
 };
 
-export default function BowlsSection() {
+export default function BowlsSection({ query }) {
   const { addItem } = useCart();
   const [open, setOpen] = useState(false);
 
@@ -42,6 +43,9 @@ export default function BowlsSection() {
 
   const st = getStockState(PREBOWL.id || slugify(PREBOWL.name));
   const disabled = st === "out";
+
+  const show = matchesQuery({ title: PREBOWL.name, description: PREBOWL.desc }, query);
+  if (query && !show) return null;
 
   return (
     <div className="space-y-4">

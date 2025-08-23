@@ -10,7 +10,7 @@ function slugify(s) {
 }
 
 export default function Section({ title, children }) {
-  const id = slugify(title || "");
+  const id = "section-" + slugify(title || "");
   return (
     <section
       id={id}

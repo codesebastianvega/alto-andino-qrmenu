@@ -2,6 +2,7 @@ import { AddIconButton, StatusChip } from "./Buttons";
 import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
 import { getStockState, slugify } from "../utils/stock";
+import { matchesQuery } from "../utils/strings";
 
 // ← editar nombres y precios aquí
 const smoothies = [
@@ -84,7 +85,7 @@ function List({ items, onAdd }) {
   );
 }
 
-export default function SmoothiesSection() {
+export default function SmoothiesSection({ query }) {
   const cart = useCart();
   const add = (p) =>
     cart.addItem({
@@ -93,20 +94,33 @@ export default function SmoothiesSection() {
       price: p.price,
     });
 
+  const smoothiesFiltered = smoothies.filter((p) =>
+    matchesQuery({ title: p.name, description: p.desc }, query)
+  );
+  const funcionalesFiltered = funcionales.filter((p) =>
+    matchesQuery({ title: p.name, description: p.desc }, query)
+  );
+
+  if (!smoothiesFiltered.length && !funcionalesFiltered.length) return null;
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-      <div>
-        <h3 className="text-sm font-semibold text-alto-primary mb-2">
-          Smoothies
-        </h3>
-        <List items={smoothies} onAdd={add} />
-      </div>
-      <div>
-        <h3 className="text-sm font-semibold text-alto-primary mb-2">
-          Funcionales
-        </h3>
-        <List items={funcionales} onAdd={add} />
-      </div>
+      {smoothiesFiltered.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-alto-primary mb-2">
+            Smoothies
+          </h3>
+          <List items={smoothiesFiltered} onAdd={add} />
+        </div>
+      )}
+      {funcionalesFiltered.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-alto-primary mb-2">
+            Funcionales
+          </h3>
+          <List items={funcionalesFiltered} onAdd={add} />
+        </div>
+      )}
     </div>
   );
 }
