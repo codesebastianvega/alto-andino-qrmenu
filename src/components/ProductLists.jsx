@@ -15,13 +15,13 @@ import CategoryBar from "./CategoryBar";
 export default function ProductLists({ query, activeCategoryId, onCategorySelect }) {
 
   const categories = [
-    { id: "desayunos", label: "Desayunos" },
-    { id: "bowls", label: "Bowls" },
-    { id: "platos", label: "Platos" },
-    { id: "sandwiches", label: "Sándwiches" },
-    { id: "smoothies", label: "Smoothies" },
-    { id: "cafe", label: "Café" },
-    { id: "bebidas-frias", label: "Bebidas frías" },
+    { id: "desayunos", label: "Desayunos", tintClass: "bg-amber-50" },
+    { id: "bowls", label: "Bowls", tintClass: "bg-emerald-50" },
+    { id: "platos", label: "Platos", tintClass: "bg-violet-50" },
+    { id: "sandwiches", label: "Sándwiches", tintClass: "bg-rose-50" },
+    { id: "smoothies", label: "Smoothies", tintClass: "bg-pink-50" },
+    { id: "cafe", label: "Café", tintClass: "bg-stone-100" },
+    { id: "bebidas-frias", label: "Bebidas frías", tintClass: "bg-sky-50" },
     { id: "postres", label: "Postres" },
   ];
 

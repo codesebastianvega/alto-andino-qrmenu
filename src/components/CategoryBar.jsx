@@ -28,7 +28,7 @@ export default function CategoryBar({
 }) {
   const baseItemClasses =
     variant === "chip"
-      ? "flex-none basis-[96px] w-[96px] h-[104px]"
+      ? "flex-none w-[100px] basis-[100px] h-[110px] snap-start rounded-xl border bg-white/70 backdrop-blur-sm"
       : "flex-none shrink-0 basis-[112px] w-[112px] h-[128px]";
   const labelHeight = variant === "chip" ? "h-[34px]" : "h-[38px]";
 
@@ -42,6 +42,11 @@ export default function CategoryBar({
         <div className="flex overflow-x-auto snap-x snap-mandatory px-4 gap-3 [transform:translateZ(0)]">
           {categories.map((cat) => {
             const active = activeId === cat.id;
+            const tint = cat.tintClass || "bg-zinc-100";
+            const labelTextClasses =
+              variant === "chip"
+                ? `text-[13px] leading-tight ${active ? "text-[#2f4131]" : "text-zinc-800"}`
+                : "text-[12px] leading-tight";
             return (
               <button
                 key={cat.id}
@@ -53,29 +58,41 @@ export default function CategoryBar({
                   onSelect?.(cat);
                 }}
                 aria-current={active ? "true" : undefined}
-                className={`flex-none shrink-0 basis-[112px] w-[112px] h-[128px] rounded-xl border bg-white/70 backdrop-blur-sm snap-start transition-colors flex flex-col items-center justify-center text-[12px] leading-tight text-center ${
-
+                className={`${baseItemClasses} flex flex-col items-center justify-center text-center transition-colors ${
                   active
-                    ? "bg-[#2f4131]/5 text-[#2f4131] border-[#2f4131]"
+                    ? "bg-[#2f4131]/5 border-[#2f4131] text-[#2f4131]"
+                    : variant === "chip"
+                    ? "border-zinc-200 hover:border-zinc-300"
                     : "text-[#2f4131] border-[#2f4131]/35 hover:border-[#2f4131]/60 focus:border-[#2f4131]/60"
                 }`}
               >
                 {variant === "chip" ? (
-                  <span className="mb-2 flex items-center justify-center w-10 h-10 rounded-full bg-alto-greige/50">
-                    <IconWithFallback id={cat.id} className="shrink-0" />
+                  <span
+                    className={`grid place-items-center h-11 w-11 md:h-12 md:w-12 rounded-full ${tint}`}
+                  >
+                    <IconWithFallback
+                      id={cat.id}
+                      className="h-6 w-6 md:h-7 md:w-7 shrink-0"
+                    />
                   </span>
                 ) : (
                   <IconWithFallback id={cat.id} className="mb-2 shrink-0" />
                 )}
                 <span
-                  className={`w-full ${labelHeight} overflow-hidden`}
-                  style={{
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                  }}
+                  className={`w-full ${labelHeight} overflow-hidden ${
+                    variant === "chip" ? "mt-2" : ""
+                  }`}
                 >
-                  {cat.label}
+                  <span
+                    className={labelTextClasses}
+                    style={{
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                    }}
+                  >
+                    {cat.label}
+                  </span>
                 </span>
               </button>
             );
