@@ -1,10 +1,10 @@
 // src/App.jsx
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 // Layout / UI
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-import ProductLists, { BREAKFAST_ITEMS, MAINS_ITEMS, DESSERT_BASE_ITEMS } from "./components/ProductLists";
+import ProductLists from "./components/ProductLists";
 import SearchBar from "./components/SearchBar";
 import HeroHeadline from "./components/HeroHeadline";
 import PromoBannerCarousel from "./components/PromoBannerCarousel";
@@ -34,12 +34,8 @@ export default function App() {
   const cart = useCart();
   const banners = buildBanners(import.meta.env);
 
-  function resolveProductById(id) {
-    if (!id) return null;
+  const productMap = useMemo(() => {
     const collections = [
-      BREAKFAST_ITEMS,
-      MAINS_ITEMS,
-      DESSERT_BASE_ITEMS,
       [PREBOWL],
       smoothies,
       funcionales,
@@ -56,12 +52,13 @@ export default function App() {
       });
       collections.push(mapped);
     }
+    const map = {};
     for (const col of collections) {
       if (!Array.isArray(col)) continue;
-      const p = col.find((x) => x.id === id || x.productId === id);
-      if (p) {
+      for (const p of col) {
         const pid = p.id || p.productId;
-        return {
+        if (!pid) continue;
+        const prod = {
           ...p,
           id: pid,
           productId: pid,
@@ -71,9 +68,32 @@ export default function App() {
           price: p.price,
           image: p.image,
         };
+        const ids = [p.id, p.productId].filter(Boolean);
+        if (ids.length === 0) ids.push(pid);
+        for (const ident of ids) {
+          map[ident] = prod;
+        }
       }
     }
-    return null;
+    return map;
+  }, [
+    BREAKFAST_ITEMS,
+    MAINS_ITEMS,
+    DESSERT_BASE_ITEMS,
+    PREBOWL,
+    smoothies,
+    funcionales,
+    COFFEES,
+    INFUSIONS,
+    SODAS,
+    OTHERS,
+    sandwichItems,
+    sandwichPriceByItem,
+  ]);
+
+  function resolveProductById(id) {
+    if (!id) return null;
+    return productMap[id] || null;
   }
 
   // ✅ Modo póster QR (?qr=1) – se muestra SOLO el QR
