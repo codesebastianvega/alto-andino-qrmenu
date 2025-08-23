@@ -53,7 +53,7 @@ export default function ProductQuickView({ product, open, onClose }) {
           <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
           {subtitle && <p className="text-sm text-neutral-600 mt-1">{subtitle}</p>}
           {typeof price !== "undefined" && (
-            <p className="mt-2 font-semibold text-neutral-900">{cop(product.price)}</p>
+            <p className="mt-2 font-semibold text-neutral-900">{cop(priceNum)}</p>
           )}
           <button
             type="button"
