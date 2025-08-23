@@ -72,8 +72,9 @@ export default function CategoryBar({ onOpenGuide }) {
                 shape="card"
                 aria-current={active === id ? "true" : undefined}
                 className={[
-                  "flex flex-col items-center justify-center",
-                  "h-18 min-w-[96px] px-3 py-2",
+                  "flex-none flex flex-col items-center justify-center",
+                  "h-18 w-[96px] px-3 py-2",
+
                   "text-[12px] leading-tight text-center whitespace-normal break-words",
                   active === id
                     ? "shadow-sm"
@@ -87,7 +88,8 @@ export default function CategoryBar({ onOpenGuide }) {
                   className="mb-1 shrink-0"
                   aria-hidden
                 />
-                <span className="max-w-[8.5rem]">{label}</span>
+                <span className="w-full">{label}</span>
+
               </Chip>
             ))}
 
@@ -95,10 +97,11 @@ export default function CategoryBar({ onOpenGuide }) {
             <Chip
               onClick={onOpenGuide}
               shape="card"
-              className="flex flex-col items-center justify-center h-18 min-w-[96px] px-3 py-2 text-[12px] leading-tight text-center bg-white/90 border-[#2f4131]/35 text-[#2f4131] hover:bg-[#2f4131] hover:text-white"
+              className="flex-none flex flex-col items-center justify-center h-18 w-[96px] px-3 py-2 text-[12px] leading-tight text-center bg-white/90 border-[#2f4131]/35 text-[#2f4131] hover:bg-[#2f4131] hover:text-white"
             >
-              <Icon icon="fluent-emoji:microbe" width="26" height="26" className="mb-1" aria-hidden />
-              <span>Alérgenos</span>
+              <Icon icon="fluent-emoji:microbe" width="28" height="28" className="mb-1" aria-hidden />
+              <span className="w-full">Alérgenos</span>
+
             </Chip>
           </div>
 
