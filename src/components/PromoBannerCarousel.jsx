@@ -45,9 +45,18 @@ export default function PromoBannerCarousel({ banners = [] }) {
   };
 
   return (
-    <div className="mt-4" aria-roledescription="carousel">
+    <div
+      className="mt-4 -mx-5 sm:-mx-6 md:-mx-8 px-5 sm:px-6 md:px-8 bg-gradient-to-b from-alto-beige to-transparent"
+      aria-roledescription="carousel"
+    >
       <div
         className="relative overflow-hidden rounded-2xl"
+        style={{
+          maskImage:
+            "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
+          WebkitMaskImage:
+            "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
+        }}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onTouchStart={onTouchStart}
