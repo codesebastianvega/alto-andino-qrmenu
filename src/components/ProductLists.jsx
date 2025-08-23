@@ -1,8 +1,6 @@
-import { useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import { getStockState, slugify } from "../utils/stock";
-import { matchesQuery } from "../utils/strings";
 import { AddIconButton, StatusChip } from "./Buttons";
 import Section from "./Section";
 import Sandwiches from "./Sandwiches";
@@ -11,242 +9,120 @@ import CoffeeSection from "./CoffeeSection";
 import BowlsSection from "./BowlsSection";
 import ColdDrinksSection from "./ColdDrinksSection";
 import CategoryBar from "./CategoryBar";
-import CategoryHeader from "./CategoryHeader";
+import FeaturedToday from "./FeaturedToday";
 
-export default function ProductLists({ query, activeCategoryId, onCategorySelect }) {
-
-  const categories = [
-    { id: "desayunos", label: "Desayunos", tintClass: "bg-amber-50" },
-    { id: "bowls", label: "Bowls", tintClass: "bg-emerald-50" },
-    { id: "platos", label: "Platos", tintClass: "bg-violet-50" },
-    { id: "sandwiches", label: "Sándwiches", tintClass: "bg-rose-50" },
-    { id: "smoothies", label: "Smoothies", tintClass: "bg-pink-50" },
-    { id: "cafe", label: "Café", tintClass: "bg-stone-100" },
-    { id: "bebidas-frias", label: "Bebidas frías", tintClass: "bg-sky-50" },
-    { id: "postres", label: "Postres" },
-  ];
-
-  const breakfasts = <Breakfasts query={query} />;
-  const bowls = <BowlsSection query={query} />;
-  const mains = <Mains query={query} />;
-  const sandwiches = <Sandwiches query={query} />;
-  const smoothies = <SmoothiesSection query={query} />;
-  const cafe = <CoffeeSection query={query} />;
-  const cold = <ColdDrinksSection query={query} />;
-  const desserts = <Desserts query={query} />;
-
-  const sections = [
-    breakfasts && { id: "desayunos", node: <Section title="Desayunos">{breakfasts}</Section> },
-    bowls && { id: "bowls", node: <Section title="Bowls">{bowls}</Section> },
-    mains && { id: "platos", node: <Section title="Platos">{mains}</Section> },
-    sandwiches && { id: "sandwiches", node: <Section title="Sándwiches">{sandwiches}</Section> },
-    smoothies && { id: "smoothies", node: <Section title="Smoothies">{smoothies}</Section> },
-    cafe && { id: "cafe", node: <Section title="Café">{cafe}</Section> },
-    cold && { id: "bebidas-frias", node: cold },
-    desserts && { id: "postres", node: <Section title="Postres">{desserts}</Section> },
-  ].filter(Boolean);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !("IntersectionObserver" in window))
-      return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) {
-          const id = visible.target.id.replace("section-", "");
-          onCategorySelect?.({ id });
-        }
-      },
-      { rootMargin: "-50% 0px -50% 0px" }
-    );
-    sections.forEach((s) => {
-      const el = document.getElementById(`section-${s.id}`);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
-  }, [sections, onCategorySelect]);
-
-  const hasResults = sections.length > 0;
-
+export default function ProductLists({ setOpenGuide }) {
   return (
     <>
-      <CategoryHeader />
-      <CategoryBar
-        categories={categories}
-        activeId={activeCategoryId}
-        onSelect={(cat) => onCategorySelect?.(cat)}
-        variant="chip"
-      />
-      {sections.map((s) => (
-        <div key={s.id}>{s.node}</div>
-      ))}
-      {!hasResults && query && (
-        <div className="mt-10 text-center text-sm">
-          <p>No encontramos resultados para tu búsqueda.</p>
-          {import.meta.env.VITE_WHATSAPP && (
-            <a
-              href={`https://wa.me/${import.meta.env.VITE_WHATSAPP}`}
-              target="_blank"
-              rel="noopener"
-              className="inline-block mt-3 px-4 py-2 rounded-full bg-[#2f4131] text-white"
-            >
-              Escríbenos por WhatsApp
-            </a>
-          )}
-        </div>
-      )}
+      <CategoryBar onOpenGuide={() => setOpenGuide?.(true)} />
+      <FeaturedToday />
+      <Section title="Desayunos">
+        <Breakfasts />
+      </Section>
+      <Section title="Bowls">
+        <BowlsSection />
+      </Section>
+      <Section title="Platos Fuertes">
+        <Mains />
+      </Section>
+      <Section title="Sándwiches">
+        <Sandwiches />
+      </Section>
+      <Section title="Smoothies & Funcionales">
+        <SmoothiesSection />
+      </Section>
+      <Section title="Café de especialidad">
+        <CoffeeSection />
+      </Section>
+      <ColdDrinksSection />
+      <Section title="Postres">
+        <Desserts />
+      </Section>
     </>
   );
 }
 
-export const BREAKFAST_ITEMS = [
-  {
-    id: "des-sendero",
-    name: "Sendero Matinal",
-    price: 16000,
-    desc:
-      "Bebida caliente + omelette con champiñones, lechugas, tomate cherry y queso, con tostadas multigranos. 🥚🌾🥛",
-  },
-  {
-    id: "des-cumbre",
-    name: "Cumbre Energética",
-    price: 18000,
-    desc:
-      "Bebida caliente + arepa con queso mozzarella, aguacate y ajonjolí negro; yogur griego con arándanos y chía. 🥛🌾",
-  },
-  {
-    id: "des-huevos",
-    name: "Huevos al Gusto",
-    price: 17500,
-    desc:
-      "3 huevos en sartén de hierro; 2 tostadas con queso crema y vegetales. 🥚🌾🥛",
-  },
-  {
-    id: "des-caldo",
-    name: "Caldo de Costilla de Res",
-    price: 18500,
-    desc:
-      "Con papa y cilantro. Incluye bebida caliente + huevos al gusto, arepa y queso. 🥚🥛",
-  },
-  {
-    id: "des-amanecer",
-    name: "Bowl Amanecer Andino",
-    price: 19000,
-    desc:
-      "Yogur griego + açaí, avena, coco, banano, fresa y arándanos; topping de chía o amapola. 🥛🌾🥜",
-  },
-];
-
-export function Breakfasts({ query }) {
-  const items = BREAKFAST_ITEMS;
-  const filtered = items.filter((p) =>
-    matchesQuery({ title: p.name, description: p.desc }, query)
-  );
-  if (!filtered.length) return null;
-  return <List items={filtered} />;
+export function Breakfasts() {
+  // ← editar nombres y precios aquí
+  const items = [
+    {
+      id: "des-sendero",
+      name: "Sendero Matinal",
+      price: 16000,
+      desc: "Bebida caliente + omelette con champiñones, lechugas, tomate cherry y queso, con tostadas multigranos. 🥚🌾🥛",
+    },
+    {
+      id: "des-cumbre",
+      name: "Cumbre Energética",
+      price: 18000,
+      desc: "Bebida caliente + arepa con queso mozzarella, aguacate y ajonjolí negro; yogur griego con arándanos y chía. 🥛🌾",
+    },
+    {
+      id: "des-huevos",
+      name: "Huevos al Gusto",
+      price: 17500,
+      desc: "3 huevos en sartén de hierro; 2 tostadas con queso crema y vegetales. 🥚🌾🥛",
+    },
+    {
+      id: "des-caldo",
+      name: "Caldo de Costilla de Res",
+      price: 18500,
+      desc: "Con papa y cilantro. Incluye bebida caliente + huevos al gusto, arepa y queso. 🥚🥛",
+    },
+    {
+      id: "des-amanecer",
+      name: "Bowl Amanecer Andino",
+      price: 19000,
+      desc: "Yogur griego + açaí, avena, coco, banano, fresa y arándanos; topping de chía o amapola. 🥛🌾🥜",
+    },
+  ];
+  return <List items={items} />;
 }
 
-export const MAINS_ITEMS = [
-  {
-    id: "main-salmon",
-    name: "Salmón Andino 200 gr",
-    price: 47000,
-    desc:
-      "En sartén de hierro, salsa miel-mostaza y orégano con guarnición de pure de ahuyama y ensalada de granos calientes.",
-  },
-  {
-    id: "main-trucha",
-    name: "Trucha del Páramo 450 gr",
-    price: 42000,
-    desc:
-      "A la plancha con alioli griego con guarnición pure de papa y ensalada fría.",
-  },
-  {
-    id: "main-bolo",
-    name: "Spaghetti a la Boloñesa",
-    price: 28000,
-    desc:
-      "Salsa pomodoro, carne de res; albahaca fresca y ralladura de parmesano. 🌾🥛",
-  },
-  {
-    id: "main-champi",
-    name: "Champiñones a la Madrileña",
-    price: 18000,
-    desc:
-      "125 gr de champiñones en mantequilla y ajo, vino espumoso, jamón serrano, perejil y ralladura de parmesano. 🥛",
-  },
-  {
-    id: "main-ceviche",
-    name: "Ceviche de Camarón 🐟",
-    price: 22000,
-    desc:
-      "Camarón marinado en cítricos; pimentón, salsa de tomate casera, cilantro y cebolla morada; con aguacate.",
-  },
-  {
-    id: "main-burger",
-    name: "Burger Andina (Pavo 150 g)",
-    price: 26000,
-    desc:
-      "Pavo sazonado, salsa de yogur, tomate, lechuga, chucrut y queso Colby Jack en pan artesanal. 🥛🌾",
-  },
-];
-
-export function Mains({ query }) {
-  const items = MAINS_ITEMS;
-  const filtered = items.filter((p) =>
-    matchesQuery({ title: p.name, description: p.desc }, query)
-  );
-  if (!filtered.length) return null;
-  return <List items={filtered} />;
+export function Mains() {
+  // ← editar nombres y precios aquí
+  const items = [
+    {
+      id: "main-salmon",
+      name: "Salmón Andino 200 gr",
+      price: 47000,
+      desc: "En sartén de hierro, salsa miel-mostaza y orégano con guarnición de pure de ahuyama y ensalada de granos calientes.",
+    },
+    {
+      id: "main-trucha",
+      name: "Trucha del Páramo 450 gr",
+      price: 42000,
+      desc: "A la plancha con alioli griego con guarnición pure de papa y ensalada fría.",
+    },
+    {
+      id: "main-bolo",
+      name: "Spaghetti a la Boloñesa",
+      price: 28000,
+      desc: "Salsa pomodoro, carne de res; albahaca fresca y ralladura de parmesano. 🌾🥛",
+    },
+    {
+      id: "main-champi",
+      name: "Champiñones a la Madrileña",
+      price: 18000,
+      desc: "125 gr de champiñones en mantequilla y ajo, vino espumoso, jamón serrano, perejil y ralladura de parmesano. 🥛",
+    },
+    {
+      id: "main-ceviche",
+      name: "Ceviche de Camarón",
+      price: 22000,
+      desc: "Camarón marinado en cítricos; pimentón, salsa de tomate casera, cilantro y cebolla morada; con aguacate.",
+    },
+    {
+      id: "main-burger",
+      name: "Burger Andina (Pavo 150 gr)",
+      price: 26000,
+      desc: "Pavo sazonado, salsa de yogur, tomate, lechuga, chucrut y queso Colby Jack en pan artesanal. 🥛🌾",
+    },
+  ];
+  return <List items={items} />;
 }
 
-export const DESSERT_BASE_ITEMS = [
-  {
-    id: "post-red",
-    name: "Red Velvet",
-    price: 11000,
-    desc:
-      "Bizcocho rojo con crema batida de la casa, endulzado con eritritol y stevia. 🌾🥛",
-  },
-  {
-    id: "post-tres",
-    name: "Tres Leches (saludable)",
-    price: 12000,
-    desc:
-      "Harina de almendras y avena; dulce de tres leches con alulosa; chantilly con eritritol. 🥛🌾",
-  },
-  {
-    id: "post-tira",
-    name: "Tiramisú (saludable)",
-    price: 12000,
-    desc:
-      "Bizcocho de almendras y avena, café especial, chantilly con alulosa y cacao espolvoreado. 🥛🌾",
-  },
-  {
-    id: "post-amap",
-    name: "Torta de Amapola",
-    price: 10000,
-    desc:
-      "Harina de avena y semillas de amapola; crema chantilly endulzada con alulosa. 🥛🌾",
-  },
-  {
-    id: "post-vasca",
-    name: "Torta Vasca de Limón",
-    price: 10000,
-    desc:
-      "Crema de leche, queso crema y maicena; vainilla y sal marina. 🥛",
-  },
-  {
-    id: "post-fresas",
-    name: "Fresas con Crema",
-    price: 9000,
-    desc: "Fresas con crema chantilly endulzada con alulosa. 🥛",
-  },
-];
-
-export function Desserts({ query }) {
+export function Desserts() {
   const { addItem } = useCart();
 
   // Sabores + precios específicos (según tu instrucción):
@@ -268,75 +144,105 @@ export function Desserts({ query }) {
 
   // Postres de vitrina (precios según carta)
   // ← editar nombres y precios aquí
-  const base = DESSERT_BASE_ITEMS;
-  const cumbreMatches = matchesQuery({ title: "Cumbre Andino" }, query);
-  const baseFiltered = base.filter((p) =>
-    matchesQuery({ title: p.name, description: p.desc }, query)
-  );
-  if (!cumbreMatches && !baseFiltered.length) return null;
+  const base = [
+    {
+      id: "post-red",
+      name: "Red Velvet",
+      price: 11000,
+      desc: "Bizcocho rojo con crema batida de la casa, endulzado con eritritol y stevia. 🌾🥛",
+    },
+    {
+      id: "post-tres",
+      name: "Tres Leches (saludable)",
+      price: 6200,
+      desc: "Harina de almendras y avena; dulce de tres leches con alulosa; chantilly con eritritol. 🥛🌾",
+    },
+    {
+      id: "post-tira",
+      name: "Tiramisú (saludable)",
+      price: 6800,
+      desc: "Bizcocho de almendras y avena, café especial, chantilly con alulosa y cacao espolvoreado. 🥛🌾",
+    },
+    {
+      id: "post-amap",
+      name: "Torta de Amapola",
+      price: 10000,
+      desc: "Harina de avena y semillas de amapola; crema chantilly endulzada con alulosa. 🥛🌾",
+    },
+    {
+      id: "post-vasca",
+      name: "Torta Vasca de Limón",
+      price: 10000,
+      desc: "Crema de leche, queso crema y maicena; vainilla y sal marina. 🥛",
+    },
+    {
+      id: "post-fresas",
+      name: "Fresas con Crema",
+      price: 9000,
+      desc: "Fresas con crema chantilly endulzada con alulosa. 🥛",
+    },
+  ];
 
   return (
     <div className="space-y-4">
-      {cumbreMatches && (
-        <div className="rounded-2xl p-5 sm:p-6 shadow-sm bg-white">
-          <p className="font-semibold">Cumbre Andino (sin azúcar)</p>
-          <p className="text-xs text-neutral-600 mt-1">
-            Yogur griego endulzado con alulosa, mermelada natural, galleta sin
-            azúcar, chantilly con eritritol y fruta.
-          </p>
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {cumbreSabores.map((s) => {
-              const id = "cumbre:" + s.id;
-              const st = getStockState(id);
-              const disabled = st === "out";
-              const price = cumbrePrices[s.id];
-              return (
-                <div
-                  key={s.id}
-                  className={
-                    "relative rounded-xl border border-neutral-200/60 bg-white p-4 sm:p-5 pr-20 pb-12 " +
-                    (disabled ? "opacity-60" : "")
-                  }
-                >
-                  <p className="text-sm">{s.label}</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {st === "low" && (
-                      <StatusChip variant="low">Pocas unidades</StatusChip>
-                    )}
-                    {st === "out" && (
-                      <StatusChip variant="soldout">Agotado</StatusChip>
-                    )}
-                  </div>
-                  <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
-                    ${COP(price)}
-                  </div>
-                  <AddIconButton
-                    className="absolute bottom-4 right-4 z-20"
-                    aria-label={"Añadir Cumbre Andino " + s.label}
-                    onClick={() =>
-                      addItem({
-                        productId: "cumbre",
-                        name: "Cumbre Andino",
-                        price,
-                        options: { Sabor: s.label },
-                      })
-                    }
-                    disabled={disabled}
-                  />
+      {/* Cumbre Andino con precio por sabor */}
+      <div className="rounded-2xl p-5 sm:p-6 shadow-sm bg-white">
+        <p className="font-semibold">Cumbre Andino (sin azúcar)</p>
+        <p className="text-xs text-neutral-600 mt-1">
+          Yogur griego endulzado con alulosa, mermelada natural, galleta sin
+          azúcar, chantilly con eritritol y fruta.
+        </p>
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {cumbreSabores.map((s) => {
+            const id = "cumbre:" + s.id;
+            const st = getStockState(id);
+            const disabled = st === "out";
+            const price = cumbrePrices[s.id];
+            return (
+              <div
+                key={s.id}
+                className={
+                  "relative rounded-xl border border-neutral-200/60 bg-white p-4 sm:p-5 pr-20 pb-12 " +
+                  (disabled ? "opacity-60" : "")
+                }
+              >
+                <p className="text-sm">{s.label}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {st === "low" && (
+                    <StatusChip variant="low">Pocas unidades</StatusChip>
+                  )}
+                  {st === "out" && (
+                    <StatusChip variant="soldout">No Disponible</StatusChip>
+                  )}
                 </div>
-              );
-            })}
-          </div>
+                <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
+                  ${COP(price)}
+                </div>
+                <AddIconButton
+                  className="absolute bottom-4 right-4 z-20"
+                  aria-label={"Añadir Cumbre Andino " + s.label}
+                  onClick={() =>
+                    addItem({
+                      productId: "cumbre",
+                      name: "Cumbre Andino",
+                      price,
+                      options: { Sabor: s.label },
+                    })
+                  }
+                  disabled={disabled}
+                />
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
 
-      {baseFiltered.length > 0 && (
-        <ul className="space-y-3">
-          {baseFiltered.map((p) => (
-            <ProductRow key={p.id} item={p} />
-          ))}
-        </ul>
-      )}
+      {/* Resto de postres */}
+      <ul className="space-y-3">
+        {base.map((p) => (
+          <ProductRow key={p.id} item={p} />
+        ))}
+      </ul>
     </div>
   );
 }
@@ -361,7 +267,9 @@ function ProductRow({ item }) {
       <p className="text-xs text-neutral-600 mt-1">{item.desc}</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {st === "low" && <StatusChip variant="low">Pocas unidades</StatusChip>}
-        {st === "out" && <StatusChip variant="soldout">Agotado</StatusChip>}
+        {st === "out" && (
+          <StatusChip variant="soldout">No Disponible</StatusChip>
+        )}
       </div>
       <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
         ${COP(item.price)}
