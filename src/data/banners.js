@@ -2,14 +2,6 @@ export const banners = (env) => {
   const u = (k, fb) => env?.[k] || fb;
   const local = (envKey, path) => env?.[envKey] || path;
   return [
-    // { id:'featured', type:'product',
-    //   title:'Especial del día',
-    //   subtitle:u('VITE_FEATURED_DESC','Sándwich de cerdo al horno — casero y saludable.'),
-    //   productId: env?.VITE_FEATURED_ID || null,
-    //   image: local('VITE_FEATURED_IMAGE_URL','/especial1.png'),
-    //   ctas:{ primary:{label:'Agregar', action:'add'}, secondary:{label:'Ver', action:'quickview'} },
-    //   alt: 'Sándwich especial del día'
-    // },
     { id:'seasonal', type:'product',
       title:'Producto de temporada',
       subtitle: env?.VITE_SEASONAL_DESC || 'Sabores frescos de estación.',

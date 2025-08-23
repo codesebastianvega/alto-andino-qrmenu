@@ -11,7 +11,6 @@ import CoffeeSection from "./CoffeeSection";
 import BowlsSection from "./BowlsSection";
 import ColdDrinksSection from "./ColdDrinksSection";
 import CategoryBar from "./CategoryBar";
-import FeaturedToday from "./FeaturedToday";
 
 // Datos compartidos de los productos para búsqueda/identificación
 export const BREAKFAST_ITEMS = [
@@ -234,10 +233,9 @@ export default function ProductLists({
         onSelect={onCategorySelect}
 
       />
-      <FeaturedToday />
-      {sections.map((s) => (
-        <div key={s.id}>{s.element}</div>
-      ))}
+        {sections.map((s) => (
+          <div key={s.id}>{s.element}</div>
+        ))}
     </>
   );
 }
