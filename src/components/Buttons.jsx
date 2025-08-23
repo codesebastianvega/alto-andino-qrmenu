@@ -1,15 +1,17 @@
 // Helper local para combinar clases sin depender de "clsx"
 const cx = (...s) => s.filter(Boolean).join(" ");
 
-export function Chip({ active, onClick, children, className = "" }) {
+export function Chip({ active, onClick, children, className = "", shape = "pill" }) {
+  const rounded = shape === "card" ? "rounded-xl" : "rounded-full";
   return (
     <button
       onClick={onClick}
       className={cx(
-        "px-3 py-1 rounded-full text-sm border transition",
+        "px-3 py-1 text-sm border transition",
         active
           ? "bg-alto-primary text-white border-alto-primary shadow"
           : "bg-white text-neutral-800 border-neutral-300 hover:border-neutral-400",
+        rounded,
         className
       )}
     >
