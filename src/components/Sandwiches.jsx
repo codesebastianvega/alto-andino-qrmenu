@@ -103,38 +103,38 @@ export default function Sandwiches({ query }) {
       {filtered.length > 0 && (
         <ul className="space-y-3">
           {filtered.map((it) => {
-          const productId = "sandwich:" + it.key;
-          const st = getStockState(productId || slugify(it.name));
-          const disabled = st === "out";
-          return (
-            <li
-              key={it.key}
-              className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12"
-            >
-              <p className="font-semibold">{it.name}</p>
-              <p className="text-sm text-neutral-600">{it.desc}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {st === "low" && (
-                  <StatusChip variant="low">Pocas unidades</StatusChip>
-                )}
-                {st === "out" && (
-                  <StatusChip variant="soldout">Agotado</StatusChip>
-                )}
-                {priceByItem[it.key].unico && (
-                  <StatusChip variant="neutral">Precio único</StatusChip>
-                )}
-              </div>
-              <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
-                ${COP(priceFor(it.key))}
-              </div>
-              <AddIconButton
-                className="absolute bottom-4 right-4 z-20"
-                aria-label={"Añadir " + it.name}
-                onClick={() => add(it)}
-                disabled={disabled}
-              />
-            </li>
-          );
+            const productId = "sandwich:" + it.key;
+            const st = getStockState(productId || slugify(it.name));
+            const disabled = st === "out";
+            return (
+              <li
+                key={it.key}
+                className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12"
+              >
+                <p className="font-semibold">{it.name}</p>
+                <p className="text-sm text-neutral-600">{it.desc}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {st === "low" && (
+                    <StatusChip variant="low">Pocas unidades</StatusChip>
+                  )}
+                  {st === "out" && (
+                    <StatusChip variant="soldout">No Disponible</StatusChip>
+                  )}
+                  {priceByItem[it.key].unico && (
+                    <StatusChip variant="neutral">Precio único</StatusChip>
+                  )}
+                </div>
+                <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
+                  ${COP(priceFor(it.key))}
+                </div>
+                <AddIconButton
+                  className="absolute bottom-4 right-4 z-20"
+                  aria-label={"Añadir " + it.name}
+                  onClick={() => add(it)}
+                  disabled={disabled}
+                />
+              </li>
+            );
           })}
         </ul>
       )}
