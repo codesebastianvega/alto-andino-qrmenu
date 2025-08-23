@@ -8,15 +8,14 @@ const BowlBuilderModal = lazy(() => import("./BowlBuilderModal"));
 import { getStockState, slugify } from "../utils/stock";
 
 // ← editar nombres y precios aquí
-const BASE_PRICE = Number(import.meta.env.VITE_BOWL_BASE_PRICE || 32000);
-
+const BASE_PRICE = Number(import.meta.env.VITE_BOWL_BASE_PRICE || 28000);
 
 // Poke Hawaiano (único prearmado)
 // ← editar nombres y precios aquí
 export const PREBOWL = {
   id: "bowl-poke-hawaiano",
   name: "Poke Hawaiano",
-  price: 36000, // 32.000 base + 4.000 premium salmón
+  price: 32000, // 28.000 base + 4.000 premium salmón
   desc: "Arroz blanco, salmón, aguacate, mango y pepino; ajonjolí y salsa mango-yaki.",
   options: {
     Base: "Arroz blanco",
@@ -44,7 +43,10 @@ export default function BowlsSection({ query }) {
   const st = getStockState(PREBOWL.id || slugify(PREBOWL.name));
   const disabled = st === "out";
 
-  const show = matchesQuery({ title: PREBOWL.name, description: PREBOWL.desc }, query);
+  const show = matchesQuery(
+    { title: PREBOWL.name, description: PREBOWL.desc },
+    query
+  );
   if (query && !show) return null;
 
   return (
@@ -61,7 +63,6 @@ export default function BowlsSection({ query }) {
             decoding="async"
             fetchpriority="low"
             className="absolute bottom-[-6px] right-0 sm:right-2 w-44 sm:w-60 md:w-72 object-contain drop-shadow-xl pointer-events-none animate-[spin_40s_linear_infinite] z-10"
-
           />
           <div className="absolute inset-0 pt-4 pb-16 pl-5 pr-40 sm:pt-5 sm:pl-6 sm:pr-48 grid grid-rows-[auto_1fr_auto]">
             <div>
@@ -80,7 +81,8 @@ export default function BowlsSection({ query }) {
             className={[
               "absolute top-3 right-3 z-20 rounded-full bg-white text-[#2f4131] font-semibold",
               "grid place-items-center shadow-sm whitespace-nowrap",
-              PILL_XS, "sm:" + PILL_SM,
+              PILL_XS,
+              "sm:" + PILL_SM,
             ].join(" ")}
           >
             Desde {formatCOP(BASE_PRICE)}
@@ -92,7 +94,8 @@ export default function BowlsSection({ query }) {
               "absolute bottom-3 right-3 z-30 rounded-full bg-white text-[#2f4131] font-semibold",
               "shadow-sm hover:bg-white/90 focus:outline-none",
               "focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]",
-              PILL_XS, "sm:" + PILL_SM,
+              PILL_XS,
+              "sm:" + PILL_SM,
             ].join(" ")}
           >
             Armar
