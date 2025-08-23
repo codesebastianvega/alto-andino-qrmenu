@@ -4,7 +4,11 @@ import { useMemo, useState } from "react";
 // Layout / UI
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-import ProductLists from "./components/ProductLists";
+import ProductLists, {
+  BREAKFAST_ITEMS,
+  MAINS_ITEMS,
+  DESSERT_BASE_ITEMS,
+} from "./components/ProductLists";
 import SearchBar from "./components/SearchBar";
 import HeroHeadline from "./components/HeroHeadline";
 import PromoBannerCarousel from "./components/PromoBannerCarousel";
@@ -36,6 +40,9 @@ export default function App() {
 
   const productMap = useMemo(() => {
     const collections = [
+      BREAKFAST_ITEMS,
+      MAINS_ITEMS,
+      DESSERT_BASE_ITEMS,
       [PREBOWL],
       smoothies,
       funcionales,
