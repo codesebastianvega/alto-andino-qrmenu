@@ -27,23 +27,25 @@ export default function FeaturedToday() {
         </div>
       </div>
       <div className="-mx-4 sm:-mx-6 px-4 sm:px-6">
-        <div className="relative overflow-hidden rounded-2xl h-44 sm:h-56 ring-1 ring-black/10 bg-gradient-to-r from-[#2f4131] to-[#355242]">
+        <div className="relative aspect-[16/9] overflow-hidden rounded-2xl ring-1 ring-black/10 shadow-sm bg-gradient-to-r from-[#2f4131] to-[#355242]">
           <img
             src={IMG}
             alt=""
             loading="lazy"
             decoding="async"
-            className="absolute inset-0 w-full h-full object-cover opacity-80" // modifica la imagen
+            className="absolute inset-0 h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
-          <div className="absolute top-4 right-4 z-10 text-white font-semibold">
-            {fmt(P)}
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+          <div className="absolute top-3 right-3 z-10">
+            <span className="rounded-full px-3 py-1 text-sm bg-white/80 backdrop-blur text-[#2f4131] font-medium">
+              {fmt(P)}
+            </span>
           </div>
           <div className="absolute left-4 right-24 bottom-4 z-10">
-            <h3 className="text-white text-xl sm:text-2xl font-semibold">
+            <h3 className="text-xl font-semibold tracking-tight text-white line-clamp-2">
               {N}
             </h3>
-            <p className="text-white/90 text-sm line-clamp-2">{D}</p>
+            <p className="mt-1 text-sm text-white/90 line-clamp-2">{D}</p>
             <div className="mt-2 flex gap-2">
               {LOW && (
                 <StatusChip
@@ -75,7 +77,7 @@ export default function FeaturedToday() {
               })
             }
             className="absolute bottom-4 right-4 z-20"
-            aria-label={"Añadir " + N}
+            aria-label={"Añadir " + N + " al carrito"}
             variant="light"
           />
         </div>
