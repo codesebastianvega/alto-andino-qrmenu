@@ -1,35 +1,68 @@
 // src/components/Header.jsx
-import React from "react";
-import { getTableId } from "../utils/table";
+import { useEffect, useState } from "react";
+import { Icon } from "@iconify-icon/react";
+import GuideModal from "./GuideModal";
+import DietaryGuide from "./DietaryGuide";
 
-export default function Header() {
-  const table = getTableId();
+export default function Header({ onCartOpen, onGuideOpen }) {
+  const [greeting, setGreeting] = useState("Bienvenido 👋");
+  const [localGuideOpen, setLocalGuideOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const mesa = params.get("mesa");
+      if (mesa) {
+        setGreeting(`Mesa ${mesa}`);
+        return;
+      }
+      const name = window.localStorage?.getItem("aa_customerName");
+      if (name) setGreeting(`Hola, ${name} 👋`);
+    } catch {}
+  }, []);
+
+  const handleInfoClick = () => {
+    if (onGuideOpen) onGuideOpen();
+    else setLocalGuideOpen(true);
+  };
 
   return (
-    <header className="bg-[#F3EDE4] overflow-visible">
-      <div className="max-w-3xl mx-auto px-5 sm:px-6 md:px-8 pt-3 pb-2 sm:pt-4 sm:pb-3">
-        {/* Logo centrado y sin fondo */}
-        <div className="pt-3 sm:pt-4">
-          <img
-            src="/logoalto.png"
-            alt="Alto Andino Delicatessen"
-            className="mx-auto h-28 sm:h-32 md:h-36 w-auto object-contain drop-shadow-sm"
-          />
-          <p className="mt-2 mb-2 text-sm sm:text-[15px] text-neutral-600">
-            Ingredientes locales y de temporada · Pet Friendly
-          </p>
-
-          {/* ✅ Chip con la mesa (si existe en la URL o guardada) */}
-          {table && (
-            <div className="mt-2 flex justify-center">
-              <span className="inline-flex items-center gap-1 h-7 px-3 rounded-full text-xs border border-neutral-300 bg-white text-neutral-800">
-                Mesa {table}
-              </span>
-            </div>
-          )}
-          <div className="my-2 h-px bg-black/10 w-full" />
-        </div>
+    <header
+      role="banner"
+      className="h-16 bg-alto-beige shadow-sm border-b border-black/10 px-4 sm:px-5 flex items-center justify-between"
+    >
+      <img
+        src="/logoalto.png"
+        alt="Alto Andino"
+        className="h-7 w-auto"
+      />
+      <p className="flex-1 text-center text-sm font-medium text-alto-text">
+        {greeting}
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleInfoClick}
+          aria-label="Información"
+          className="h-9 w-9 grid place-items-center rounded-full border border-transparent hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+        >
+          <Icon icon="material-symbols:info-outline" className="text-[22px]" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onCartOpen?.()}
+          aria-label="Abrir carrito"
+          className="h-9 w-9 grid place-items-center rounded-full border border-transparent hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+        >
+          <Icon icon="mdi:cart-outline" className="text-[22px]" />
+        </button>
       </div>
+
+      {onGuideOpen ? null : (
+        <GuideModal open={localGuideOpen} onClose={() => setLocalGuideOpen(false)}>
+          <DietaryGuide />
+        </GuideModal>
+      )}
     </header>
   );
 }

@@ -36,7 +36,7 @@ export default function App() {
   // ✅ Modo menú normal
   return (
     <div className="bg-alto-beige text-alto-text leading-snug">
-      <Header />
+      <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} />
 
       <div className="mx-auto max-w-3xl p-5 sm:p-6 md:p-8">
         <ProductLists setOpenGuide={setOpenGuide} />
