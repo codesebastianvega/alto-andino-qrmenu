@@ -6,6 +6,7 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ProductLists from "./components/ProductLists";
 import SearchBar from "./components/SearchBar";
+import PromoBannerCarousel from "./components/PromoBannerCarousel";
 import GuideModal from "./components/GuideModal";
 import DietaryGuide from "./components/DietaryGuide";
 
@@ -13,6 +14,7 @@ import DietaryGuide from "./components/DietaryGuide";
 import FloatingCartBar from "./components/FloatingCartBar";
 import CartDrawer from "./components/CartDrawer";
 import { useCart } from "./context/CartContext";
+import { banners as buildBanners } from "./data/banners";
 
 // Póster QR
 import QrPoster from "./components/QrPoster";
@@ -24,6 +26,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [activeCategoryId, setActiveCategoryId] = useState(null);
   const cart = useCart();
+  const banners = buildBanners(import.meta.env);
 
   // ✅ Modo póster QR (?qr=1) – se muestra SOLO el QR
   const isQr = (() => {
@@ -45,6 +48,7 @@ export default function App() {
         <div className="mb-6">
           <SearchBar value={query} onQueryChange={setQuery} />
         </div>
+        <PromoBannerCarousel banners={banners} />
         <ProductLists
           query={query}
           activeCategoryId={activeCategoryId}

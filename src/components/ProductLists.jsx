@@ -10,11 +10,8 @@ import CoffeeSection from "./CoffeeSection";
 import BowlsSection from "./BowlsSection";
 import ColdDrinksSection from "./ColdDrinksSection";
 import CategoryBar from "./CategoryBar";
-import PromoBannerCarousel from "./PromoBannerCarousel";
-import { banners as buildBanners } from "../data/banners";
 
 export default function ProductLists({ query, activeCategoryId, onCategorySelect }) {
-  const banners = buildBanners(import.meta.env);
 
   const categories = [
     { id: "desayunos", label: "Desayunos" },
@@ -56,7 +53,6 @@ export default function ProductLists({ query, activeCategoryId, onCategorySelect
         activeId={activeCategoryId}
         onSelect={(cat) => onCategorySelect?.(cat)}
       />
-      <PromoBannerCarousel banners={banners} />
       {sections.map((s) => (
         <div key={s.id}>{s.node}</div>
       ))}
