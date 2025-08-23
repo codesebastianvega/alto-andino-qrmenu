@@ -10,62 +10,11 @@ import CoffeeSection from "./CoffeeSection";
 import BowlsSection from "./BowlsSection";
 import ColdDrinksSection from "./ColdDrinksSection";
 import CategoryBar from "./CategoryBar";
-import FeaturedToday from "./FeaturedToday";
 import PromoBannerCarousel from "./PromoBannerCarousel";
+import { banners as buildBanners } from "../data/banners";
 
 export default function ProductLists({ query, activeCategoryId, onCategorySelect }) {
-  const N = import.meta.env.VITE_FEATURED_NAME || "Sandiwch de Cerdo al Horno";
-  const D =
-    import.meta.env.VITE_FEATURED_DESC ||
-    "Delicioso sandiwch de cerdo al horno casero y saludable.";
-  const P = Number(import.meta.env.VITE_FEATURED_PRICE || 12000);
-  const IMG = import.meta.env.VITE_FEATURED_IMAGE || "/especial1.png";
-
-  const banners = [
-    {
-      id: "featured",
-      type: "product",
-      title: N,
-      subtitle: D,
-      image: IMG,
-      productId: "featured-of-day",
-      price: P,
-    },
-    {
-      id: "barista",
-      type: "product",
-      title: "Recomendado del barista",
-      subtitle: "Nuestro café favorito de hoy",
-      image: "/especial1.png",
-      productId: "cof-espresso",
-      price: 6000,
-    },
-    {
-      id: "season",
-      type: "product",
-      title: "Temporada",
-      subtitle: "Producto de temporada",
-      image: "/poke1.png",
-      productId: "smoothie:Brisas Tropicales",
-      price: 18000,
-    },
-    {
-      id: "pet-friendly",
-      type: "info",
-      title: "Somos Pet Friendly",
-      subtitle: "Tu mascota es bienvenida",
-      image: "/especial1.png",
-      ctas: { primary: { label: "Ver más" } },
-    },
-    {
-      id: "reviews",
-      type: "info",
-      title: "Reseñas",
-      subtitle: "Lee lo que opinan nuestros clientes",
-      image: "/poke1.png",
-      ctas: { primary: { label: "Ver reseñas" } },
-    },
-  ];
+  const banners = buildBanners(import.meta.env);
 
   const categories = [
     { id: "desayunos", label: "Desayunos" },
@@ -108,7 +57,6 @@ export default function ProductLists({ query, activeCategoryId, onCategorySelect
         onSelect={(cat) => onCategorySelect?.(cat)}
       />
       <PromoBannerCarousel banners={banners} />
-      <FeaturedToday />
       {sections.map((s) => (
         <div key={s.id}>{s.node}</div>
       ))}
