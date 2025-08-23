@@ -60,9 +60,13 @@ export default function App() {
       if (!Array.isArray(col)) continue;
       const p = col.find((x) => x.id === id || x.productId === id);
       if (p) {
+        const pid = p.id || p.productId;
         return {
-          productId: p.id || p.productId,
-          title: p.name || p.title,
+          ...p,
+          id: pid,
+          productId: pid,
+          name: p.name || p.title,
+          title: p.title || p.name,
           subtitle: p.desc || p.subtitle,
           price: p.price,
           image: p.image,
@@ -93,7 +97,7 @@ export default function App() {
           <HeroHeadline />
           <SearchBar value={query} onQueryChange={setQuery} />
         </div>
-        <PromoBannerCarousel banners={banners} resolveProductById={resolveProductById} />
+        <PromoBannerCarousel items={banners} resolveProductById={resolveProductById} />
         <ProductLists
           query={query}
           activeCategoryId={activeCategoryId}

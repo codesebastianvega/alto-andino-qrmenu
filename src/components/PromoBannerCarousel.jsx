@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { useCart } from "../context/CartContext";
 import ProductQuickView from "./ProductQuickView";
 import GuideModal from "./GuideModal";
-import { formatCOP } from "../utils/money";
+import { formatCOP as cop } from "../utils/money";
+import { toast } from "./Toast";
 
 
-export default function PromoBannerCarousel({ banners = [], resolveProductById }) {
+export default function PromoBannerCarousel({ items = [], resolveProductById }) {
   const { addItem } = useCart();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -13,7 +14,7 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
   const [showPet, setShowPet] = useState(false);
   const startX = useRef(0);
 
-  const count = banners.length;
+  const count = items.length;
 
   useEffect(() => {
     if (paused || count <= 1) return;
@@ -22,13 +23,13 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
   }, [paused, count]);
 
   const handleAdd = (product) => {
-    if (!product) return;
-    addItem?.({
-      productId: product.productId,
-      name: product.title,
-      price: product.price,
-      image: product.image,
-    });
+    const price = Number(product?.price);
+    const canAdd = !!product && Number.isFinite(price) && price > 0;
+    if (!canAdd) {
+      toast("Producto no disponible");
+      return;
+    }
+    addItem?.(product, 1);
   };
   const handleView = (product) => setQuickProduct(product);
   const handleInfo = (action) => {
@@ -36,6 +37,7 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
     else if (action === "link:reviews") {
       const url = import.meta.env.VITE_GOOGLE_REVIEWS_URL;
       if (url) window.open(url, "_blank", "noopener,noreferrer");
+      else console.warn("Falta VITE_GOOGLE_REVIEWS_URL");
     }
   };
 
@@ -67,77 +69,89 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
           className="flex transition-transform duration-500"
           style={{ transform: `translateX(-${index * 100}%)` }}
         >
-          {banners.map((b) => (
-            <div
-              key={b.id}
-              className="relative w-full flex-shrink-0 h-44 sm:h-56 rounded-2xl overflow-hidden"
-            >
-              <img
-                src={b.image}
-                alt={b.alt || b.title}
-                loading="lazy"
-                referrerPolicy="no-referrer"
-                decoding="async"
-                className="absolute inset-0 z-0 h-full w-full object-cover"
-              />
-              <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
-              <div className="relative z-20 flex h-full w-full flex-col justify-end p-4">
-                <h3 className="text-white text-lg font-semibold">{b.title}</h3>
-                {b.subtitle && <p className="text-white/90 text-sm">{b.subtitle}</p>}
-                {b.type === "product" ? (
-                  <div className="mt-2 flex gap-2">
-                    {b.ctas?.secondary && (
+          {items.map((item) => {
+            const product =
+              item.type === "product"
+                ? resolveProductById?.(item.productId) || null
+                : null;
+            const price = Number(product?.price);
+            const canAdd = !!product && Number.isFinite(price) && price > 0;
+            const addLabel = item.ctas?.primary?.label || "Agregar";
+            const viewLabel = item.ctas?.secondary?.label || "Ver";
+            return (
+              <div
+                key={item.id}
+                className="relative w-full flex-shrink-0 h-44 sm:h-56 rounded-2xl overflow-hidden"
+              >
+                <img
+                  src={item.image}
+                  alt={item.alt || item.title}
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  decoding="async"
+                  className="absolute inset-0 z-0 h-full w-full object-cover"
+                />
+                <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
+                <div className="relative z-20 flex h-full w-full flex-col justify-end p-4">
+                  <h3 className="text-white text-lg font-semibold">{item.title}</h3>
+                  {item.subtitle && (
+                    <p className="text-white/90 text-sm">{item.subtitle}</p>
+                  )}
+                  {item.type === "product" ? (
+                    <div className="mt-2 flex gap-2">
                       <button
                         type="button"
-                        onClick={() => handleView(b)}
-                        aria-label={b.ctas.secondary.label || "Ver"}
-                        className="z-20 px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                        onClick={() => handleAdd(product)}
+                        aria-label={addLabel}
+                        disabled={!canAdd}
+                        aria-disabled={!canAdd}
+                        className="z-20 px-3 h-8 rounded-lg bg-[#2f4131] text-white text-sm font-medium hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:bg-neutral-400 disabled:text-white/80"
                       >
-                        {b.ctas.secondary.label || "Ver"}
+                        {addLabel}
                       </button>
-                    )}
-                    {b.productId && b.ctas?.primary && (
                       <button
                         type="button"
-                        onClick={() => handleAdd(b)}
-                        aria-label={b.ctas.primary.label || "Agregar"}
-                        className="z-20 px-3 h-8 rounded-lg bg-[#2f4131] text-white text-sm font-medium hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                        onClick={() => handleView(product)}
+                        aria-label={viewLabel}
+                        disabled={!product}
+                        aria-disabled={!product}
+                        className="z-20 px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:bg-neutral-100 disabled:text-neutral-400"
                       >
-                        {b.ctas.primary.label || "Agregar"}
+                        {viewLabel}
                       </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="mt-2">
-                    {b.ctas?.primary && (
-                      <button
-                        type="button"
-                        onClick={() => handleInfo(b.ctas.primary.action)}
-                        aria-label={b.ctas.primary.label || "Ver"}
-                        className="z-20 px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
-                      >
-                        {b.ctas.primary.label || "Ver"}
-                      </button>
-                    )}
+                    </div>
+                  ) : (
+                    <div className="mt-2">
+                      {item.ctas?.primary && (
+                        <button
+                          type="button"
+                          onClick={() => handleInfo(item.ctas.primary.action)}
+                          aria-label={item.ctas.primary.label || "Ver"}
+                          className="z-20 px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                        >
+                          {item.ctas.primary.label || "Ver"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {item.type === "product" && canAdd && (
+                  <div
+                    aria-label="Precio"
+                    tabIndex={-1}
+                    className="absolute top-3 right-3 md:top-4 md:right-4 z-20 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur shadow-sm text-[#2f4131] font-medium"
+                  >
+                    {cop(price)}
                   </div>
                 )}
               </div>
-              {b.type === "product" && b.price != null && !Number.isNaN(Number(b.price)) && (
-                <div
-                  aria-label="Precio"
-                  tabIndex={-1}
-                  className="absolute top-3 right-3 md:top-4 md:right-4 z-20 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur text-[#2f4131] font-medium"
-                >
-                  {cop(b.price)}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
 
 
         </div>
         <div className="absolute bottom-2 left-0 right-0 z-20 flex justify-center gap-2">
-          {banners.map((_, i) => (
+          {items.map((_, i) => (
             <button
               key={i}
               onClick={() => setIndex(i)}

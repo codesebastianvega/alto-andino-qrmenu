@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useCart } from "../context/CartContext";
 import { formatCOP as cop } from "../utils/money";
+import { toast } from "./Toast";
 
 export default function ProductQuickView({ product, open, onClose }) {
   const { addItem } = useCart();
@@ -16,9 +17,15 @@ export default function ProductQuickView({ product, open, onClose }) {
   if (!open || !product) return null;
 
   const { productId, title, subtitle, price, image } = product;
+  const priceNum = Number(price);
+  const canAdd = !!productId && Number.isFinite(priceNum) && priceNum > 0;
 
   const handleAdd = () => {
-    addItem?.({ productId, name: title, price, image });
+    if (!canAdd) {
+      toast("Producto no disponible");
+      return;
+    }
+    addItem?.(product, 1);
     onClose?.();
   };
 
@@ -46,14 +53,16 @@ export default function ProductQuickView({ product, open, onClose }) {
           <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
           {subtitle && <p className="text-sm text-neutral-600 mt-1">{subtitle}</p>}
           {typeof price !== "undefined" && (
-            <p className="mt-2 font-semibold text-neutral-900">{cop(price)}</p>
+            <p className="mt-2 font-semibold text-neutral-900">{cop(product.price)}</p>
           )}
           <button
             type="button"
             onClick={handleAdd}
-            className="mt-4 w-full h-10 rounded-xl bg-[#2f4131] text-white hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+            disabled={!canAdd}
+            aria-disabled={!canAdd}
+            className="mt-4 w-full h-10 rounded-xl bg-[#2f4131] text-white hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:bg-neutral-400 disabled:text-white/80"
           >
-            Agregar
+            {canAdd ? "Agregar" : "Producto no disponible"}
           </button>
         </div>
       </div>
