@@ -52,6 +52,7 @@ export default function ProductLists({ query, activeCategoryId, onCategorySelect
         categories={categories}
         activeId={activeCategoryId}
         onSelect={(cat) => onCategorySelect?.(cat)}
+        variant="chip"
       />
       {sections.map((s) => (
         <div key={s.id}>{s.node}</div>
