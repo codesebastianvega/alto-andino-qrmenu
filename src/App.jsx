@@ -6,6 +6,7 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ProductLists from "./components/ProductLists";
 import SearchBar from "./components/SearchBar";
+import HeroHeadline from "./components/HeroHeadline";
 import PromoBannerCarousel from "./components/PromoBannerCarousel";
 import GuideModal from "./components/GuideModal";
 import DietaryGuide from "./components/DietaryGuide";
@@ -46,6 +47,7 @@ export default function App() {
 
       <div className="mx-auto max-w-3xl p-5 sm:p-6 md:p-8">
         <div className="mb-6">
+          <HeroHeadline />
           <SearchBar value={query} onQueryChange={setQuery} />
         </div>
         <PromoBannerCarousel banners={banners} />
