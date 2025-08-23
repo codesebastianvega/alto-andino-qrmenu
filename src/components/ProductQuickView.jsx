@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useCart } from "../context/CartContext";
-import { formatCOP } from "../utils/money";
+import { formatCOP as cop } from "../utils/money";
 
 export default function ProductQuickView({ product, open, onClose }) {
   const { addItem } = useCart();
@@ -46,7 +46,7 @@ export default function ProductQuickView({ product, open, onClose }) {
           <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
           {subtitle && <p className="text-sm text-neutral-600 mt-1">{subtitle}</p>}
           {typeof price !== "undefined" && (
-            <p className="mt-2 font-semibold text-neutral-900">{formatCOP(price)}</p>
+            <p className="mt-2 font-semibold text-neutral-900">{cop(price)}</p>
           )}
           <button
             type="button"

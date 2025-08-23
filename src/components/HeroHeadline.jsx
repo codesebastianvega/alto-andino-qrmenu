@@ -8,7 +8,7 @@ export default function HeroHeadline() {
         style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
       >
         <span className="sr-only">Alto Andino</span>
-        <span className="headline-strong bg-gradient-to-r from-[#2f4131] via-[#3b5b48] to-[#7aa28d] bg-clip-text text-transparent">
+        <span className="headline-strong bg-gradient-to-r from-[#2f4131] via-[#3e5f4b] to-[#7aa28d] bg-clip-text text-transparent">
           Comer sano
         </span>{" "}
         nunca fue tan fácil

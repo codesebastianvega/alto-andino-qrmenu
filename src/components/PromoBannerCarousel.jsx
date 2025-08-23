@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useCart } from "../context/CartContext";
 import ProductQuickView from "./ProductQuickView";
 import GuideModal from "./GuideModal";
-import { COP as cop } from "../utils/money";
+import { formatCOP } from "../utils/money";
 
-export default function PromoBannerCarousel({ banners = [] }) {
+
+export default function PromoBannerCarousel({ banners = [], resolveProductById }) {
   const { addItem } = useCart();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -20,11 +21,16 @@ export default function PromoBannerCarousel({ banners = [] }) {
     return () => clearInterval(id);
   }, [paused, count]);
 
-  const handleAdd = (b) => {
-    if (!b?.productId) return;
-    addItem?.({ productId: b.productId, name: b.title, price: b.price, image: b.image });
+  const handleAdd = (product) => {
+    if (!product) return;
+    addItem?.({
+      productId: product.productId,
+      name: product.title,
+      price: product.price,
+      image: product.image,
+    });
   };
-  const handleView = (b) => setQuickProduct(b);
+  const handleView = (product) => setQuickProduct(product);
   const handleInfo = (action) => {
     if (action === "modal:petfriendly") setShowPet(true);
     else if (action === "link:reviews") {
@@ -129,10 +135,12 @@ export default function PromoBannerCarousel({ banners = [] }) {
                   className="absolute top-3 right-3 md:top-4 md:right-4 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur text-[#2f4131] font-medium"
                 >
                   {cop(b.price)}
+
                 </div>
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
+
         </div>
         <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
           {banners.map((_, i) => (
@@ -149,15 +157,7 @@ export default function PromoBannerCarousel({ banners = [] }) {
       <ProductQuickView
         open={!!quickProduct}
         onClose={() => setQuickProduct(null)}
-        product={
-          quickProduct && {
-            productId: quickProduct.productId,
-            title: quickProduct.title,
-            subtitle: quickProduct.subtitle,
-            price: quickProduct.price,
-            image: quickProduct.image,
-          }
-        }
+        product={quickProduct}
       />
 
       <GuideModal open={showPet} onClose={() => setShowPet(false)}>

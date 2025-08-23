@@ -13,7 +13,7 @@ const BASE_PRICE = Number(import.meta.env.VITE_BOWL_BASE_PRICE || 32000);
 
 // Poke Hawaiano (único prearmado)
 // ← editar nombres y precios aquí
-const PREBOWL = {
+export const PREBOWL = {
   id: "bowl-poke-hawaiano",
   name: "Poke Hawaiano",
   price: 36000, // 32.000 base + 4.000 premium salmón

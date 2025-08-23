@@ -4,7 +4,7 @@ import { useState } from "react";
 // Layout / UI
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-import ProductLists from "./components/ProductLists";
+import ProductLists, { BREAKFAST_ITEMS, MAINS_ITEMS, DESSERT_BASE_ITEMS } from "./components/ProductLists";
 import SearchBar from "./components/SearchBar";
 import HeroHeadline from "./components/HeroHeadline";
 import PromoBannerCarousel from "./components/PromoBannerCarousel";
@@ -16,6 +16,11 @@ import FloatingCartBar from "./components/FloatingCartBar";
 import CartDrawer from "./components/CartDrawer";
 import { useCart } from "./context/CartContext";
 import { banners as buildBanners } from "./data/banners";
+import { PREBOWL } from "./components/BowlsSection";
+import { smoothies, funcionales } from "./components/SmoothiesSection";
+import { COFFEES, INFUSIONS } from "./components/CoffeeSection";
+import { SODAS, OTHERS } from "./components/ColdDrinksSection";
+import { sandwichItems, sandwichPriceByItem } from "./components/Sandwiches";
 
 // Póster QR
 import QrPoster from "./components/QrPoster";
@@ -28,6 +33,44 @@ export default function App() {
   const [activeCategoryId, setActiveCategoryId] = useState(null);
   const cart = useCart();
   const banners = buildBanners(import.meta.env);
+
+  function resolveProductById(id) {
+    if (!id) return null;
+    const collections = [
+      BREAKFAST_ITEMS,
+      MAINS_ITEMS,
+      DESSERT_BASE_ITEMS,
+      [PREBOWL],
+      smoothies,
+      funcionales,
+      COFFEES,
+      INFUSIONS,
+      SODAS,
+      OTHERS,
+    ];
+    if (sandwichItems && sandwichPriceByItem) {
+      const mapped = sandwichItems.map((it) => {
+        const mapping = sandwichPriceByItem[it.key];
+        const price = mapping?.unico ?? mapping?.clasico ?? mapping?.grande;
+        return { id: "sandwich:" + it.key, name: it.name, price, desc: it.desc };
+      });
+      collections.push(mapped);
+    }
+    for (const col of collections) {
+      if (!Array.isArray(col)) continue;
+      const p = col.find((x) => x.id === id || x.productId === id);
+      if (p) {
+        return {
+          productId: p.id || p.productId,
+          title: p.name || p.title,
+          subtitle: p.desc || p.subtitle,
+          price: p.price,
+          image: p.image,
+        };
+      }
+    }
+    return null;
+  }
 
   // ✅ Modo póster QR (?qr=1) – se muestra SOLO el QR
   const isQr = (() => {
@@ -50,7 +93,7 @@ export default function App() {
           <HeroHeadline />
           <SearchBar value={query} onQueryChange={setQuery} />
         </div>
-        <PromoBannerCarousel banners={banners} />
+        <PromoBannerCarousel banners={banners} resolveProductById={resolveProductById} />
         <ProductLists
           query={query}
           activeCategoryId={activeCategoryId}

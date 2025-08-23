@@ -5,7 +5,7 @@ import { getStockState, slugify } from "../utils/stock";
 import { matchesQuery } from "../utils/strings";
 
 // ← editar nombres y precios aquí
-const smoothies = [
+export const smoothies = [
   {
     id: "smoothie:Brisas Tropicales",
     name: "Brisas Tropicales",
@@ -27,7 +27,7 @@ const smoothies = [
 ];
 
 // ← editar nombres y precios aquí
-const funcionales = [
+export const funcionales = [
   {
     id: "smoothie:Elixir del Cóndor (Detox)",
     name: "Elixir del Cóndor (Detox)",
