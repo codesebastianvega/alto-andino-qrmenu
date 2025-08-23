@@ -47,16 +47,16 @@ export default function PromoBannerCarousel({ banners = [] }) {
 
   return (
     <div
-      className="mt-4 -mx-5 sm:-mx-6 md:-mx-8 px-5 sm:px-6 md:px-8 bg-gradient-to-b from-alto-beige to-transparent"
+      className="mt-4 -mx-5 sm:-mx-6 md:-mx-8 px-5 sm:px-6 md:px-8 relative rounded-2xl overflow-hidden bg-gradient-to-b from-[#efe7dc] to-transparent"
       aria-roledescription="carousel"
     >
       <div
-        className="relative overflow-hidden rounded-2xl"
+        className="relative"
         style={{
-          maskImage:
-            "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
           WebkitMaskImage:
-            "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
+            "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
+          maskImage:
+            "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
         }}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
@@ -68,16 +68,19 @@ export default function PromoBannerCarousel({ banners = [] }) {
           style={{ transform: `translateX(-${index * 100}%)` }}
         >
           {banners.map((b) => (
-            <div key={b.id} className="w-full flex-shrink-0 relative h-44 sm:h-56">
+            <div
+              key={b.id}
+              className="w-full flex-shrink-0 h-44 sm:h-56 relative rounded-2xl overflow-hidden"
+            >
               <img
                 src={b.image}
                 alt={b.alt}
                 loading="lazy"
                 referrerPolicy="no-referrer"
                 decoding="async"
-                className="absolute inset-0 w-full h-full object-cover rounded-2xl"
+                className="h-full w-full object-cover"
               />
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
               <div className="absolute inset-0 p-4 flex flex-col justify-end">
                 <h3 className="text-white text-lg font-semibold">{b.title}</h3>
                 {b.subtitle && <p className="text-white/90 text-sm">{b.subtitle}</p>}
@@ -123,7 +126,7 @@ export default function PromoBannerCarousel({ banners = [] }) {
                 <div
                   aria-label="Precio"
                   tabIndex={-1}
-                  className="absolute top-3 right-3 md:top-4 md:right-4 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur shadow-sm text-[#2f4131] font-medium"
+                  className="absolute top-3 right-3 md:top-4 md:right-4 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur text-[#2f4131] font-medium"
                 >
                   {cop(b.price)}
                 </div>
