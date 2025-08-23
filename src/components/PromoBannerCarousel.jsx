@@ -4,6 +4,7 @@ import ProductQuickView from "./ProductQuickView";
 import GuideModal from "./GuideModal";
 import { formatCOP } from "../utils/money";
 
+
 export default function PromoBannerCarousel({ banners = [], resolveProductById }) {
   const { addItem } = useCart();
   const [index, setIndex] = useState(0);
@@ -142,6 +143,7 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
               </div>
             );
           })}
+
         </div>
         <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
           {banners.map((_, i) => (
