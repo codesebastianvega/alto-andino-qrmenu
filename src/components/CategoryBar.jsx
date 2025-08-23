@@ -41,6 +41,7 @@ export default function CategoryBar({ categories = [], activeId, onSelect }) {
                   target?.scrollIntoView({ behavior: "smooth", block: "start" });
                   onSelect?.(cat);
                 }}
+                aria-current={active ? "true" : undefined}
                 className={`flex-none shrink-0 basis-[112px] w-[112px] h-[128px] rounded-xl border bg-white/70 backdrop-blur-sm snap-start transition-colors flex flex-col items-center justify-center text-[12px] leading-tight text-center ${
                   active
                     ? "bg-[#2f4131]/5 text-[#2f4131] border-[#2f4131]"

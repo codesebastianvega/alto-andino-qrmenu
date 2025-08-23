@@ -24,7 +24,7 @@ export default function SearchBar({ value = "", onQueryChange, showChips = false
   };
 
   return (
-    <div role="search">
+    <div role="search" aria-label="Buscar">
       <div className="relative">
         <Icon
           icon="mdi:magnify"
@@ -36,7 +36,6 @@ export default function SearchBar({ value = "", onQueryChange, showChips = false
           placeholder="Buscar bowls, café, sándwich…"
           value={internal}
           onChange={handleChange}
-          aria-label="Buscar"
           className="w-full py-2 pl-9 pr-3 rounded-full border border-black/10 bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
         />
       </div>
