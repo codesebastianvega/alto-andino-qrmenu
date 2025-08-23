@@ -140,6 +140,7 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
               </div>
             ))}
 
+
         </div>
         <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
           {banners.map((_, i) => (
