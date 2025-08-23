@@ -55,6 +55,7 @@ export default function ProductLists({ query, activeCategoryId, onCategorySelect
         categories={categories}
         activeId={activeCategoryId}
         onSelect={(cat) => onCategorySelect?.(cat)}
+        variant="chip"
       />
       <PromoBannerCarousel banners={banners} />
       {sections.map((s) => (
