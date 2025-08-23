@@ -22,7 +22,7 @@ export const COFFEES = [
   {
     id: "cof-espresso",
     name: "Espresso",
-    price: 6000,
+    price: 4000,
     desc: "Café concentrado, 30–40 ml. 100% espresso.",
     milkPolicy: "optional",
     kind: "espresso",
@@ -30,7 +30,7 @@ export const COFFEES = [
   {
     id: "cof-americano",
     name: "Americano",
-    price: 7000,
+    price: 4500,
     desc: "Espresso diluido con agua caliente (~30% espresso, 70% agua).",
     milkPolicy: "optional",
     kind: "americano",
@@ -48,7 +48,7 @@ export const COFFEES = [
   {
     id: "cof-capuchino",
     name: "Capuchino",
-    price: 12000,
+    price: 6000,
     desc: "Espresso con leche al vapor y espuma fina (~33% espresso, 33% leche, 33% espuma).",
     milkPolicy: "required",
     kind: "milk",
@@ -56,7 +56,7 @@ export const COFFEES = [
   {
     id: "cof-latte",
     name: "Latte",
-    price: 12000,
+    price: 6000,
     desc: "Espresso con más leche y poca espuma (~20% espresso, 80% leche).",
     milkPolicy: "required",
     kind: "milk",
@@ -64,7 +64,7 @@ export const COFFEES = [
   {
     id: "cof-flat",
     name: "Flat White",
-    price: 13000,
+    price: 7000,
     desc: "Doble espresso con leche microespumada (~40% espresso, 60% leche).",
     milkPolicy: "required",
     kind: "milk",
@@ -72,7 +72,7 @@ export const COFFEES = [
   {
     id: "cof-moca",
     name: "Mocaccino",
-    price: 13000,
+    price: 8000,
     desc: "Espresso con cacao, leche y crema (~25% espresso, 65% leche, 10% cacao/crema).",
     milkPolicy: "required",
     kind: "milk",
@@ -80,7 +80,7 @@ export const COFFEES = [
   {
     id: "cof-choco",
     name: "Chocolate Caliente",
-    price: 10000,
+    price: 7000,
     desc: "Bebida de cacao con leche.",
     milkPolicy: "required",
     kind: "milk",
@@ -91,28 +91,10 @@ export const COFFEES = [
 // ← editar nombres y precios aquí
 export const INFUSIONS = [
   {
-    id: "inf-aromatica",
-    name: "Aromática de frutas",
-    price: 9000,
-    desc: "Infusión de frutas y hierbas.",
-  },
-  {
-    id: "inf-ginger",
-    name: "Té jengibre y miel",
-    price: 9000,
-    desc: "Jengibre, limón y miel.",
-  },
-  {
-    id: "inf-verde",
-    name: "Té verde",
-    price: 8000,
-    desc: "Té verde caliente.",
-  },
-  {
-    id: "inf-manzanilla",
-    name: "Manzanilla",
-    price: 8000,
-    desc: "Infusión de flores de manzanilla.",
+    id: "aro-fresa",
+    name: "Aromatica de fresa",
+    price: 5000,
+    desc: "Té de frutos rojos con hierbabuena y fresas deshidratadas.",
   },
 
   // Chai especial: puede ser infusión o con leche (Chai Latte)
@@ -331,7 +313,8 @@ export default function CoffeeSection({ query }) {
               (item.milkPolicy === "required" ||
                 (item.milkPolicy === "optional" && addMilk[item.id])) &&
               !isAmericano;
-            const hasControls = showAddMilk || showEspressoStyle || showMilkSelect;
+            const hasControls =
+              showAddMilk || showEspressoStyle || showMilkSelect;
 
             return (
               <li
@@ -348,9 +331,7 @@ export default function CoffeeSection({ query }) {
                         className="text-xs text-alto-primary underline text-left"
                         onClick={() => toggleAddMilk(item.id)}
                       >
-                        {addMilk[item.id]
-                          ? "Quitar leche"
-                          : "+ Agregar leche"}
+                        {addMilk[item.id] ? "Quitar leche" : "+ Agregar leche"}
                       </button>
                     )}
                     {showEspressoStyle && <EspressoStyleSelect id={item.id} />}
