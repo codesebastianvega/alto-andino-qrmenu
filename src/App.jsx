@@ -5,6 +5,7 @@ import { useState } from "react";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ProductLists from "./components/ProductLists";
+import SearchBar from "./components/SearchBar";
 import GuideModal from "./components/GuideModal";
 import DietaryGuide from "./components/DietaryGuide";
 
@@ -20,6 +21,7 @@ import Toast from "./components/Toast";
 export default function App() {
   const [open, setOpen] = useState(false);
   const [openGuide, setOpenGuide] = useState(false);
+  const [query, setQuery] = useState("");
   const cart = useCart();
 
   // ✅ Modo póster QR (?qr=1) – se muestra SOLO el QR
@@ -39,7 +41,10 @@ export default function App() {
       <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} />
 
       <div className="mx-auto max-w-3xl p-5 sm:p-6 md:p-8">
-        <ProductLists setOpenGuide={setOpenGuide} />
+        <div className="mb-6">
+          <SearchBar onQueryChange={setQuery} />
+        </div>
+        <ProductLists setOpenGuide={setOpenGuide} query={query} />
 
         <Footer />
 
