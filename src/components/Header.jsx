@@ -19,13 +19,12 @@ export default function Header({ onCartOpen, onGuideOpen }) {
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <div className="mx-auto max-w-screen-md px-4 md:px-6 h-full flex items-center justify-between gap-3">
-        <div className="flex-1 flex items-center justify-center pointer-events-none">
-          <h1
-            className="text-[18px] md:text-lg font-semibold tracking-tight bg-gradient-to-r from-[#bfe0cf] via-[#8fbda9] to-[#6ea58e] bg-clip-text text-transparent select-none"
-          >
-            Alto Andino Zipaquirá
-          </h1>
-        </div>
+        <h1
+          className="flex-1 text-[18px] md:text-lg font-semibold tracking-tight text-white select-none"
+        >
+          Alto Andino Zipaquirá
+        </h1>
+
         <div className="flex items-center gap-2">
           <button
             type="button"
