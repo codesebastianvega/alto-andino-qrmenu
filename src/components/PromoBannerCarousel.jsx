@@ -135,11 +135,10 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
                   className="absolute top-3 right-3 md:top-4 md:right-4 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur text-[#2f4131] font-medium"
                 >
                   {cop(b.price)}
-
                 </div>
-              </div>
-            );
-          })}
+              )}
+            </div>
+          ))}
 
         </div>
         <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
