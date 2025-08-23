@@ -53,16 +53,16 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
 
   return (
     <div
-      className="mt-4 -mx-5 sm:-mx-6 md:-mx-8 px-5 sm:px-6 md:px-8 bg-gradient-to-b from-alto-beige to-transparent"
+      className="mt-4 -mx-5 sm:-mx-6 md:-mx-8 px-5 sm:px-6 md:px-8 relative rounded-2xl overflow-hidden bg-gradient-to-b from-[#efe7dc] to-transparent"
       aria-roledescription="carousel"
     >
       <div
-        className="relative overflow-hidden rounded-2xl"
+        className="relative"
         style={{
-          maskImage:
-            "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
           WebkitMaskImage:
-            "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
+            "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
+          maskImage:
+            "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
         }}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
@@ -73,72 +73,69 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
           className="flex transition-transform duration-500"
           style={{ transform: `translateX(-${index * 100}%)` }}
         >
-          {banners.map((b) => {
-            const product =
-              b.type === "product"
-                ? resolveProductById?.(b.productId) || null
-                : null;
-            const price = Number(product?.price);
-            return (
-              <div key={b.id} className="w-full flex-shrink-0 relative h-44 sm:h-56">
-                <img
-                  src={b.image}
-                  alt={b.alt}
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  decoding="async"
-                  className="absolute inset-0 w-full h-full object-cover rounded-2xl"
-                />
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                {b.type === "product" && product && !isNaN(price) && (
-                  <div className="absolute top-3 right-3 rounded-full bg-white/90 text-[#2f4131] text-xs font-semibold px-2 py-0.5">
-                    {formatCOP(price)}
+          {banners.map((b) => (
+            <div
+              key={b.id}
+              className="w-full flex-shrink-0 h-44 sm:h-56 relative rounded-2xl overflow-hidden"
+            >
+              <img
+                src={b.image}
+                alt={b.alt}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                decoding="async"
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+              <div className="absolute inset-0 p-4 flex flex-col justify-end">
+                <h3 className="text-white text-lg font-semibold">{b.title}</h3>
+                {b.subtitle && <p className="text-white/90 text-sm">{b.subtitle}</p>}
+                {b.type === "product" ? (
+                  <div className="mt-2 flex gap-2">
+                    {b.ctas?.secondary && (
+                      <button
+                        type="button"
+                        onClick={() => handleView(b)}
+                        aria-label={b.ctas.secondary.label || "Ver"}
+                        className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                      >
+                        {b.ctas.secondary.label || "Ver"}
+                      </button>
+                    )}
+                    {b.productId && b.ctas?.primary && (
+                      <button
+                        type="button"
+                        onClick={() => handleAdd(b)}
+                        aria-label={b.ctas.primary.label || "Agregar"}
+                        className="px-3 h-8 rounded-lg bg-[#2f4131] text-white text-sm font-medium hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                      >
+                        {b.ctas.primary.label || "Agregar"}
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    {b.ctas?.primary && (
+                      <button
+                        type="button"
+                        onClick={() => handleInfo(b.ctas.primary.action)}
+                        aria-label={b.ctas.primary.label || "Ver"}
+                        className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                      >
+                        {b.ctas.primary.label || "Ver"}
+                      </button>
+                    )}
                   </div>
                 )}
-                <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                  <h3 className="text-white text-lg font-semibold">{b.title}</h3>
-                  {b.subtitle && <p className="text-white/90 text-sm">{b.subtitle}</p>}
-                  {b.type === "product" ? (
-                    <div className="mt-2 flex gap-2">
-                      {b.ctas?.secondary && (
-                        <button
-                          type="button"
-                          onClick={() => handleView(product)}
-                          aria-label={b.ctas.secondary.label || "Ver"}
-                          title={!product ? "Producto no disponible" : undefined}
-                          disabled={!product}
-                          className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:opacity-50"
-                        >
-                          {b.ctas.secondary.label || "Ver"}
-                        </button>
-                      )}
-                      {b.ctas?.primary && (
-                        <button
-                          type="button"
-                          onClick={() => handleAdd(product)}
-                          aria-label={b.ctas.primary.label || "Agregar"}
-                          title={!product ? "Producto no disponible" : undefined}
-                          disabled={!product}
-                          className="px-3 h-8 rounded-lg bg-[#2f4131] text-white text-sm font-medium hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:opacity-50"
-                        >
-                          {b.ctas.primary.label || "Agregar"}
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="mt-2">
-                      {b.ctas?.primary && (
-                        <button
-                          type="button"
-                          onClick={() => handleInfo(b.ctas.primary.action)}
-                          aria-label={b.ctas.primary.label || "Ver"}
-                          className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
-                        >
-                          {b.ctas.primary.label || "Ver"}
-                        </button>
-                      )}
-                    </div>
-                  )}
+              </div>
+              {b.type === "product" && b.price != null && !Number.isNaN(Number(b.price)) && (
+                <div
+                  aria-label="Precio"
+                  tabIndex={-1}
+                  className="absolute top-3 right-3 md:top-4 md:right-4 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur text-[#2f4131] font-medium"
+                >
+                  {cop(b.price)}
+
                 </div>
               </div>
             );
