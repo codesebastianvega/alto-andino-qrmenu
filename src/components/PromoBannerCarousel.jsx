@@ -3,7 +3,6 @@ import { useCart } from "../context/CartContext";
 import ProductQuickView from "./ProductQuickView";
 import GuideModal from "./GuideModal";
 import { formatCOP as cop } from "../utils/money";
-import { toast } from "./Toast";
 
 
 export default function PromoBannerCarousel({ items = [], resolveProductById }) {
@@ -22,17 +21,8 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
     return () => clearInterval(id);
   }, [paused, count]);
 
-  const handleAdd = (product) => {
-    const price = Number(product?.price);
-    const canAdd = !!product && Number.isFinite(price) && price > 0;
-    if (!canAdd) {
-      toast("Producto no disponible");
-      return;
-    }
-    addItem?.(product, 1);
-  };
-  const handleView = (product) => setQuickProduct(product);
-  const handleInfo = (action) => {
+    const openQuickView = (product) => setQuickProduct(product);
+    const handleInfo = (action) => {
     if (action === "modal:petfriendly") setShowPet(true);
     else if (action === "link:reviews") {
       const url = import.meta.env.VITE_GOOGLE_REVIEWS_URL;
@@ -69,16 +59,20 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
           className="flex transition-transform duration-500"
           style={{ transform: `translateX(-${index * 100}%)` }}
         >
-          {items.map((item) => {
-            const product =
-              item.type === "product"
-                ? resolveProductById?.(item.productId) || null
-                : null;
-            const price = Number(product?.price);
-            const canAdd = !!product && Number.isFinite(price) && price > 0;
-            const addLabel = item.ctas?.primary?.label || "Agregar";
-            const viewLabel = item.ctas?.secondary?.label || "Ver";
-            return (
+            {items.map((item) => {
+              const product =
+                item.type === "product"
+                  ? resolveProductById?.(item.productId) || null
+                  : null;
+              const price = Number(product?.price);
+              const canAdd = !!product && Number.isFinite(price) && price > 0;
+              if (import.meta.env.DEV && item.type === "product") {
+                if (!product) console.warn("Banner sin producto", item);
+                if (!canAdd) console.warn("Producto sin precio válido", product);
+              }
+              const addLabel = item.ctas?.primary?.label || "Agregar";
+              const viewLabel = item.ctas?.secondary?.label || "Ver";
+              return (
               <div
                 key={item.id}
                 className="relative w-full flex-shrink-0 h-44 sm:h-56 rounded-2xl overflow-hidden"
@@ -91,8 +85,8 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
                   decoding="async"
                   className="absolute inset-0 z-0 h-full w-full object-cover"
                 />
-                <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
-                <div className="relative z-20 flex h-full w-full flex-col justify-end p-4">
+                  <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
+                  <div className="relative z-30 pointer-events-auto flex h-full w-full flex-col justify-end p-4">
                   <h3 className="text-white text-lg font-semibold">{item.title}</h3>
                   {item.subtitle && (
                     <p className="text-white/90 text-sm">{item.subtitle}</p>
@@ -101,21 +95,21 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
                     <div className="mt-2 flex gap-2">
                       <button
                         type="button"
-                        onClick={() => handleAdd(product)}
+                        onClick={() => canAdd && addItem?.(product, 1)}
                         aria-label={addLabel}
                         disabled={!canAdd}
                         aria-disabled={!canAdd}
-                        className="z-20 px-3 h-8 rounded-lg bg-[#2f4131] text-white text-sm font-medium hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:bg-neutral-400 disabled:text-white/80"
+                        className="px-3 h-8 rounded-lg bg-[#2f4131] text-white text-sm font-medium hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:bg-neutral-400 disabled:text-white/80"
                       >
                         {addLabel}
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleView(product)}
+                        onClick={() => product && openQuickView(product)}
                         aria-label={viewLabel}
                         disabled={!product}
                         aria-disabled={!product}
-                        className="z-20 px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:bg-neutral-100 disabled:text-neutral-400"
+                        className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:bg-neutral-100 disabled:text-neutral-400"
                       >
                         {viewLabel}
                       </button>
@@ -127,7 +121,7 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
                           type="button"
                           onClick={() => handleInfo(item.ctas.primary.action)}
                           aria-label={item.ctas.primary.label || "Ver"}
-                          className="z-20 px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                          className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
                         >
                           {item.ctas.primary.label || "Ver"}
                         </button>
@@ -136,21 +130,21 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
                   )}
                 </div>
                 {item.type === "product" && canAdd && (
-                  <div
-                    aria-label="Precio"
-                    tabIndex={-1}
-                    className="absolute top-3 right-3 md:top-4 md:right-4 z-20 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur shadow-sm text-[#2f4131] font-medium"
-                  >
-                    {cop(price)}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                    <div
+                      aria-label="Precio"
+                      tabIndex={-1}
+                      className="absolute top-3 right-3 md:top-4 md:right-4 z-30 pointer-events-auto rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur shadow-sm text-[#2f4131] font-medium"
+                    >
+                      {cop(price)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
 
         </div>
-        <div className="absolute bottom-2 left-0 right-0 z-20 flex justify-center gap-2">
+        <div className="absolute bottom-2 left-0 right-0 z-30 pointer-events-auto flex justify-center gap-2">
           {items.map((_, i) => (
             <button
               key={i}
