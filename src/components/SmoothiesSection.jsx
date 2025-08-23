@@ -66,7 +66,7 @@ function List({ items, onAdd }) {
                 <StatusChip variant="low">Pocas unidades</StatusChip>
               )}
               {st === "out" && (
-                <StatusChip variant="soldout">Agotado</StatusChip>
+                <StatusChip variant="soldout">No Disponible</StatusChip>
               )}
             </div>
             <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
