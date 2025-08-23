@@ -17,7 +17,7 @@ const MILK_OPTIONS = [
 
 // Cafés (agrupados)
 // ← editar nombres y precios aquí
-const COFFEES = [
+export const COFFEES = [
   // Sin leche por defecto
   {
     id: "cof-espresso",
@@ -89,7 +89,7 @@ const COFFEES = [
 
 // Infusiones y tés (incluye Chai)
 // ← editar nombres y precios aquí
-const INFUSIONS = [
+export const INFUSIONS = [
   {
     id: "inf-aromatica",
     name: "Aromática de frutas",
