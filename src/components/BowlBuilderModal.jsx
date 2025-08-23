@@ -74,7 +74,9 @@ function ico(label) {
 
 export default function BowlBuilderModal({ open, onClose }) {
   useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
@@ -83,7 +85,7 @@ export default function BowlBuilderModal({ open, onClose }) {
   if (!open) return null;
 
   // Catálogos
-  const BASE = 32000;
+  const BASE = 28000;
   const PREMIUM = 4000;
   const bases = ["Arroz blanco", "Quinoa", "Mix de lechugas"];
   const proteins = [
@@ -131,6 +133,7 @@ export default function BowlBuilderModal({ open, onClose }) {
     "Yogur",
     "Soja",
     "Mayo-pesto",
+    "Sin Salsa",
   ];
 
   // Estado
@@ -138,7 +141,7 @@ export default function BowlBuilderModal({ open, onClose }) {
   const [protein, setProtein] = useState("Pollo");
   const [tops, setTops] = useState([]);
   const [exts, setExts] = useState([]);
-  const [sauce, setSauce] = useState("HotSweet de la Casa");
+  const [sauce, setSauce] = useState("Sin Salsa");
   const [note, setNote] = useState("");
 
   const MAX_TOPS = 4;
@@ -164,7 +167,7 @@ export default function BowlBuilderModal({ open, onClose }) {
     setProtein("Pollo");
     setTops([]);
     setExts([]);
-    setSauce("HotSweet de la Casa");
+    setSauce("Sin Salsa");
     setNote("");
   };
 
@@ -209,7 +212,10 @@ export default function BowlBuilderModal({ open, onClose }) {
               >
                 Restablecer
               </button>
-              <button onClick={onClose} className="text-white/95 underline underline-offset-2 text-sm">
+              <button
+                onClick={onClose}
+                className="text-white/95 underline underline-offset-2 text-sm"
+              >
                 Cerrar
               </button>
             </div>
@@ -239,7 +245,9 @@ export default function BowlBuilderModal({ open, onClose }) {
 
           {/* Proteína */}
           <section>
-            <p className="text-[#2f4131] font-semibold text-sm mb-2">2) Proteína</p>
+            <p className="text-[#2f4131] font-semibold text-sm mb-2">
+              2) Proteína
+            </p>
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
               {proteins.map((p) => (
                 <Tile
@@ -257,7 +265,9 @@ export default function BowlBuilderModal({ open, onClose }) {
           {/* Toppings */}
           <section>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[#2f4131] font-semibold text-sm">3) Toppings</p>
+              <p className="text-[#2f4131] font-semibold text-sm">
+                3) Toppings
+              </p>
               <p className="text-xs text-neutral-600">
                 Seleccionados: {tops.length}/{MAX_TOPS}
               </p>
@@ -300,7 +310,9 @@ export default function BowlBuilderModal({ open, onClose }) {
 
           {/* Salsa */}
           <section>
-            <p className="text-[#2f4131] font-semibold text-sm mb-2">5) Salsa</p>
+            <p className="text-[#2f4131] font-semibold text-sm mb-2">
+              5) Salsa
+            </p>
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
               {sauces.map((s) => (
                 <Tile key={s} active={s === sauce} onClick={() => setSauce(s)}>
