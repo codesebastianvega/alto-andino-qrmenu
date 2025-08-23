@@ -11,10 +11,39 @@ import ColdDrinksSection from "./ColdDrinksSection";
 import CategoryBar from "./CategoryBar";
 import FeaturedToday from "./FeaturedToday";
 
+const categories = [
+  { id: "desayunos", label: "Desayunos", tintClass: "bg-amber-100" },
+  { id: "bowls", label: "Bowls", tintClass: "bg-green-100" },
+  {
+    id: "platos",
+    label: "Platos Fuertes",
+    tintClass: "bg-orange-100",
+    targetId: "section-platos-fuertes",
+  },
+  { id: "sandwiches", label: "Sándwiches", tintClass: "bg-yellow-100" },
+  {
+    id: "smoothies",
+    label: "Smoothies & Funcionales",
+    tintClass: "bg-pink-100",
+    targetId: "section-smoothies-funcionales",
+  },
+  {
+    id: "cafe",
+    label: "Café de especialidad",
+    tintClass: "bg-amber-200",
+    targetId: "section-cafe-de-especialidad",
+  },
+  { id: "bebidas-frias", label: "Bebidas frías", tintClass: "bg-sky-100" },
+  { id: "postres", label: "Postres", tintClass: "bg-purple-100" },
+];
+
 export default function ProductLists({ setOpenGuide }) {
   return (
     <>
-      <CategoryBar onOpenGuide={() => setOpenGuide?.(true)} />
+      <CategoryBar
+        categories={categories}
+        onOpenGuide={() => setOpenGuide?.(true)}
+      />
       <FeaturedToday />
       <Section title="Desayunos">
         <Breakfasts />
@@ -42,9 +71,8 @@ export default function ProductLists({ setOpenGuide }) {
   );
 }
 
-export function Breakfasts() {
-  // ← editar nombres y precios aquí
-  const items = [
+// ← editar nombres y precios aquí
+export const BREAKFAST_ITEMS = [
     {
       id: "des-sendero",
       name: "Sendero Matinal",
@@ -75,13 +103,14 @@ export function Breakfasts() {
       price: 19000,
       desc: "Yogur griego + açaí, avena, coco, banano, fresa y arándanos; topping de chía o amapola. 🥛🌾🥜",
     },
-  ];
-  return <List items={items} />;
+];
+
+export function Breakfasts() {
+  return <List items={BREAKFAST_ITEMS} />;
 }
 
-export function Mains() {
-  // ← editar nombres y precios aquí
-  const items = [
+// ← editar nombres y precios aquí
+export const MAINS_ITEMS = [
     {
       id: "main-salmon",
       name: "Salmón Andino 200 gr",
@@ -118,33 +147,15 @@ export function Mains() {
       price: 26000,
       desc: "Pavo sazonado, salsa de yogur, tomate, lechuga, chucrut y queso Colby Jack en pan artesanal. 🥛🌾",
     },
-  ];
-  return <List items={items} />;
+];
+
+export function Mains() {
+  return <List items={MAINS_ITEMS} />;
 }
 
-export function Desserts() {
-  const { addItem } = useCart();
-
-  // Sabores + precios específicos (según tu instrucción):
-  // rojos y amarillos: $10.000 · chococumbre: $11.000 · blancos: $12.000
-  // ← editar nombres y precios aquí
-  const cumbreSabores = [
-    { id: "rojos", label: "Frutos rojos" },
-    { id: "amarillos", label: "Frutos amarillos" },
-    { id: "blancos", label: "Frutos blancos" },
-    { id: "choco", label: "Chococumbre" },
-  ];
-  // ← editar nombres y precios aquí
-  const cumbrePrices = {
-    rojos: 10000,
-    amarillos: 10000,
-    choco: 11000,
-    blancos: 12000,
-  };
-
-  // Postres de vitrina (precios según carta)
-  // ← editar nombres y precios aquí
-  const base = [
+// Postres de vitrina (precios según carta)
+// ← editar nombres y precios aquí
+export const DESSERT_BASE_ITEMS = [
     {
       id: "post-red",
       name: "Red Velvet",
@@ -182,6 +193,24 @@ export function Desserts() {
       desc: "Fresas con crema chantilly endulzada con alulosa. 🥛",
     },
   ];
+
+export function Desserts() {
+  const { addItem } = useCart();
+
+  // Sabores + precios específicos (según tu instrucción):
+  // rojos y amarillos: $10.000 · chococumbre: $11.000 · blancos: $12.000
+  const cumbreSabores = [
+    { id: "rojos", label: "Frutos rojos" },
+    { id: "amarillos", label: "Frutos amarillos" },
+    { id: "blancos", label: "Frutos blancos" },
+    { id: "choco", label: "Chococumbre" },
+  ];
+  const cumbrePrices = {
+    rojos: 10000,
+    amarillos: 10000,
+    choco: 11000,
+    blancos: 12000,
+  };
 
   return (
     <div className="space-y-4">
@@ -239,7 +268,7 @@ export function Desserts() {
 
       {/* Resto de postres */}
       <ul className="space-y-3">
-        {base.map((p) => (
+        {DESSERT_BASE_ITEMS.map((p) => (
           <ProductRow key={p.id} item={p} />
         ))}
       </ul>
