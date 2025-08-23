@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Chip } from "./Buttons";
 import { Icon } from "@iconify-icon/react";
 import { categoryIcons } from "../data/categoryIcons";
+import { Chip } from "./Buttons";
 
 const slugify = (s) =>
   s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -61,47 +61,53 @@ export default function CategoryBar({ onOpenGuide }) {
       style={{ top: "env(safe-area-inset-top, 0px)" }}
       aria-label="Categorías del menú"
     >
-        <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 py-2">
-          <div className="relative overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex items-stretch gap-2 w-max">
-              {sections.map(({ id, label }) => (
-                <Chip
-                  key={id}
-                  onClick={() => scrollTo(id)}
-                  active={active === id}
-                  aria-current={active === id ? "true" : undefined}
-                  className={[
-                    "flex flex-col items-center justify-center gap-0.5",
-                    "h-12 min-w-[88px] px-3 text-[12px]",
-                    active === id
-                      ? "shadow-sm"
-                      : "border-[#2f4131]/40 text-[#2f4131] hover:border-[#2f4131]/60 bg-white/80"
-                  ].join(" ")}
-                >
-                  <Icon
-                    icon={categoryIcons[id] || "fluent-emoji:white-circle"}
-                    width="24"
-                    height="24"
-                    aria-hidden
-                  />
-                  <span className="leading-none">{label}</span>
-                </Chip>
-              ))}
-
+      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 py-2">
+        <div className="relative overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex items-stretch gap-3 w-max">
+            {sections.map(({ id, label }) => (
               <Chip
-                onClick={onOpenGuide}
-                className="flex flex-col items-center justify-center gap-0.5 h-12 min-w-[80px] px-3 text-[12px] border-[#2f4131]/30 text-[#2f4131] bg-white/70 hover:bg-[#2f4131] hover:text-white"
+                key={id}
+                onClick={() => scrollTo(id)}
+                active={active === id}
+                shape="card"
+                aria-current={active === id ? "true" : undefined}
+                className={[
+                  "flex-none flex flex-col items-center justify-center",
+                  "h-18 w-[96px] px-3 py-2",
+                  "text-[12px] leading-tight text-center whitespace-normal break-words",
+                  active === id
+                    ? "shadow-sm"
+                    : "bg-white/90 border-[#2f4131]/35 text-[#2f4131] hover:border-[#2f4131]/60"
+                ].join(" ")}
               >
-                <Icon icon="fluent-emoji:microbe" width="22" height="22" aria-hidden />
-                <span className="leading-none">Alérgenos</span>
+                <Icon
+                  icon={categoryIcons[id] || "fluent-emoji:white-circle"}
+                  width="28"
+                  height="28"
+                  className="mb-1 shrink-0"
+                  aria-hidden
+                />
+                <span className="w-full">{label}</span>
               </Chip>
-            </div>
-            {/* Fades sutiles que se “pierden” en el fondo */}
-            <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[#eee6db]/80 to-transparent" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[#eee6db]/80 to-transparent" />
+            ))}
+
+            {/* Botón Alérgenos en el mismo estilo */}
+            <Chip
+              onClick={onOpenGuide}
+              shape="card"
+              className="flex-none flex flex-col items-center justify-center h-18 w-[96px] px-3 py-2 text-[12px] leading-tight text-center bg-white/90 border-[#2f4131]/35 text-[#2f4131] hover:bg-[#2f4131] hover:text-white"
+            >
+              <Icon icon="fluent-emoji:microbe" width="28" height="28" className="mb-1" aria-hidden />
+              <span className="w-full">Alérgenos</span>
+            </Chip>
           </div>
+
+          {/* Fades sutiles para insinuar scroll, ajustados al fondo de la app */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[#efe8de]/85 to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[#efe8de]/85 to-transparent" />
         </div>
       </div>
+    </div>
   );
 }
 
