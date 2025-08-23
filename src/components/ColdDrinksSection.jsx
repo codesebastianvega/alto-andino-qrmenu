@@ -8,7 +8,7 @@ import { matchesQuery } from "../utils/strings";
 
 // DATA EXACTA DE LA CARTA
 // ← editar nombres y precios aquí
-const SODAS = [
+export const SODAS = [
   { id: "soda-zen", name: "Soda Zen", price: 3500, desc: "Frutos rojos, Durazno, Limonata rosada" },
   { id: "coca-250", name: "Coca-Cola 250 mL", price: 2500 },
   { id: "coca-400", name: "Coca-Cola 400 mL", price: 4500 },
@@ -22,7 +22,7 @@ const SODAS = [
 ];
 
 // ← editar nombres y precios aquí
-const OTHERS = [
+export const OTHERS = [
   { id: "te-hatsu-400", name: "Té Hatsu 400 mL", price: 5000, desc: "Rojo, Negro, Aguamarina, Rosado, Fucsia, Blanco, Amarillo, Verde" },
   { id: "te-hatsu-caja-200", name: "Té Hatsu Caja 200 mL", price: 2000, desc: "Blanco, Amarillo, Aguamarina" },
   { id: "saviloe-250", name: "SaviLoe 250 mL", price: 3500 },
