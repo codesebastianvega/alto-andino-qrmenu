@@ -10,6 +10,7 @@ import SmoothiesSection from "./SmoothiesSection";
 import CoffeeSection from "./CoffeeSection";
 import BowlsSection from "./BowlsSection";
 import ColdDrinksSection from "./ColdDrinksSection";
+import CategoryHeader from "./CategoryHeader";
 import CategoryBar from "./CategoryBar";
 import FeaturedToday from "./FeaturedToday";
 
@@ -228,6 +229,7 @@ export default function ProductLists({
 
   return (
     <>
+      <CategoryHeader />
       <CategoryBar
         categories={categories}
         activeId={activeCategoryId}
