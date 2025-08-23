@@ -1,6 +1,7 @@
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import { getStockState, slugify } from "../utils/stock";
+import { matchesQuery } from "../utils/strings";
 import { AddIconButton, StatusChip } from "./Buttons";
 import Section from "./Section";
 import Sandwiches from "./Sandwiches";
@@ -12,7 +13,7 @@ import CategoryBar from "./CategoryBar";
 import FeaturedToday from "./FeaturedToday";
 import PromoBannerCarousel from "./PromoBannerCarousel";
 
-export default function ProductLists({ setOpenGuide }) {
+export default function ProductLists({ query, activeCategoryId, onCategorySelect }) {
   const N = import.meta.env.VITE_FEATURED_NAME || "Sandiwch de Cerdo al Horno";
   const D =
     import.meta.env.VITE_FEATURED_DESC ||
@@ -66,38 +67,71 @@ export default function ProductLists({ setOpenGuide }) {
     },
   ];
 
+  const categories = [
+    { id: "desayunos", label: "Desayunos" },
+    { id: "bowls", label: "Bowls" },
+    { id: "platos", label: "Platos" },
+    { id: "sandwiches", label: "Sándwiches" },
+    { id: "smoothies", label: "Smoothies" },
+    { id: "cafe", label: "Café" },
+    { id: "bebidas-frias", label: "Bebidas frías" },
+    { id: "postres", label: "Postres" },
+  ];
+
+  const breakfasts = <Breakfasts query={query} />;
+  const bowls = <BowlsSection query={query} />;
+  const mains = <Mains query={query} />;
+  const sandwiches = <Sandwiches query={query} />;
+  const smoothies = <SmoothiesSection query={query} />;
+  const cafe = <CoffeeSection query={query} />;
+  const cold = <ColdDrinksSection query={query} />;
+  const desserts = <Desserts query={query} />;
+
+  const sections = [
+    breakfasts && { id: "desayunos", node: <Section title="Desayunos">{breakfasts}</Section> },
+    bowls && { id: "bowls", node: <Section title="Bowls">{bowls}</Section> },
+    mains && { id: "platos", node: <Section title="Platos">{mains}</Section> },
+    sandwiches && { id: "sandwiches", node: <Section title="Sándwiches">{sandwiches}</Section> },
+    smoothies && { id: "smoothies", node: <Section title="Smoothies">{smoothies}</Section> },
+    cafe && { id: "cafe", node: <Section title="Café">{cafe}</Section> },
+    cold && { id: "bebidas-frias", node: cold },
+    desserts && { id: "postres", node: <Section title="Postres">{desserts}</Section> },
+  ].filter(Boolean);
+
+  const hasResults = sections.length > 0;
+
   return (
     <>
-      <CategoryBar onOpenGuide={() => setOpenGuide?.(true)} />
+      <CategoryBar
+        categories={categories}
+        activeId={activeCategoryId}
+        onSelect={(cat) => onCategorySelect?.(cat)}
+      />
       <PromoBannerCarousel banners={banners} />
       <FeaturedToday />
-      <Section title="Desayunos">
-        <Breakfasts />
-      </Section>
-      <Section title="Bowls">
-        <BowlsSection />
-      </Section>
-      <Section title="Platos">
-        <Mains />
-      </Section>
-      <Section title="Sándwiches">
-        <Sandwiches />
-      </Section>
-      <Section title="Smoothies">
-        <SmoothiesSection />
-      </Section>
-      <Section title="Café">
-        <CoffeeSection />
-      </Section>
-      <ColdDrinksSection />
-      <Section title="Postres">
-        <Desserts />
-      </Section>
+      {sections.map((s) => (
+        <div key={s.id}>{s.node}</div>
+      ))}
+      {!hasResults && query && (
+        <div className="mt-10 text-center text-sm">
+          <p>No encontramos resultados para tu búsqueda.</p>
+          {import.meta.env.VITE_WHATSAPP && (
+            <a
+              href={`https://wa.me/${import.meta.env.VITE_WHATSAPP}`}
+              target="_blank"
+              rel="noopener"
+              className="inline-block mt-3 px-4 py-2 rounded-full bg-[#2f4131] text-white"
+            >
+              Escríbenos por WhatsApp
+            </a>
+          )}
+        </div>
+      )}
     </>
   );
 }
 
-export function Breakfasts() {
+export function Breakfasts({ query }) {
   // ← editar nombres y precios aquí
   const items = [
     {
@@ -131,10 +165,14 @@ export function Breakfasts() {
       desc: "Yogur griego + açaí, avena, coco, banano, fresa y arándanos; topping de chía o amapola. 🥛🌾🥜",
     },
   ];
-  return <List items={items} />;
+  const filtered = items.filter((p) =>
+    matchesQuery({ title: p.name, description: p.desc }, query)
+  );
+  if (!filtered.length) return null;
+  return <List items={filtered} />;
 }
 
-export function Mains() {
+export function Mains({ query }) {
   // ← editar nombres y precios aquí
   const items = [
     {
@@ -174,10 +212,14 @@ export function Mains() {
       desc: "Pavo sazonado, salsa de yogur, tomate, lechuga, chucrut y queso Colby Jack en pan artesanal. 🥛🌾",
     },
   ];
-  return <List items={items} />;
+  const filtered = items.filter((p) =>
+    matchesQuery({ title: p.name, description: p.desc }, query)
+  );
+  if (!filtered.length) return null;
+  return <List items={filtered} />;
 }
 
-export function Desserts() {
+export function Desserts({ query }) {
   const { addItem } = useCart();
 
   // Sabores + precios específicos (según tu instrucción):
@@ -237,67 +279,74 @@ export function Desserts() {
       desc: "Fresas con crema chantilly endulzada con alulosa. 🥛",
     },
   ];
+  const cumbreMatches = matchesQuery({ title: "Cumbre Andino" }, query);
+  const baseFiltered = base.filter((p) =>
+    matchesQuery({ title: p.name, description: p.desc }, query)
+  );
+  if (!cumbreMatches && !baseFiltered.length) return null;
 
   return (
     <div className="space-y-4">
-      {/* Cumbre Andino con precio por sabor */}
-      <div className="rounded-2xl p-5 sm:p-6 shadow-sm bg-white">
-        <p className="font-semibold">Cumbre Andino (sin azúcar)</p>
-        <p className="text-xs text-neutral-600 mt-1">
-          Yogur griego endulzado con alulosa, mermelada natural, galleta sin
-          azúcar, chantilly con eritritol y fruta.
-        </p>
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {cumbreSabores.map((s) => {
-            const id = "cumbre:" + s.id;
-            const st = getStockState(id);
-            const disabled = st === "out";
-            const price = cumbrePrices[s.id];
-            return (
-              <div
-                key={s.id}
-                className={
-                  "relative rounded-xl border border-neutral-200/60 bg-white p-4 sm:p-5 pr-20 pb-12 " +
-                  (disabled ? "opacity-60" : "")
-                }
-              >
-                <p className="text-sm">{s.label}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {st === "low" && (
-                    <StatusChip variant="low">Pocas unidades</StatusChip>
-                  )}
-                  {st === "out" && (
-                    <StatusChip variant="soldout">Agotado</StatusChip>
-                  )}
-                </div>
-                <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
-                  ${COP(price)}
-                </div>
-                <AddIconButton
-                  className="absolute bottom-4 right-4 z-20"
-                  aria-label={"Añadir Cumbre Andino " + s.label}
-                  onClick={() =>
-                    addItem({
-                      productId: "cumbre",
-                      name: "Cumbre Andino",
-                      price,
-                      options: { Sabor: s.label },
-                    })
+      {cumbreMatches && (
+        <div className="rounded-2xl p-5 sm:p-6 shadow-sm bg-white">
+          <p className="font-semibold">Cumbre Andino (sin azúcar)</p>
+          <p className="text-xs text-neutral-600 mt-1">
+            Yogur griego endulzado con alulosa, mermelada natural, galleta sin
+            azúcar, chantilly con eritritol y fruta.
+          </p>
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {cumbreSabores.map((s) => {
+              const id = "cumbre:" + s.id;
+              const st = getStockState(id);
+              const disabled = st === "out";
+              const price = cumbrePrices[s.id];
+              return (
+                <div
+                  key={s.id}
+                  className={
+                    "relative rounded-xl border border-neutral-200/60 bg-white p-4 sm:p-5 pr-20 pb-12 " +
+                    (disabled ? "opacity-60" : "")
                   }
-                  disabled={disabled}
-                />
-              </div>
-            );
-          })}
+                >
+                  <p className="text-sm">{s.label}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {st === "low" && (
+                      <StatusChip variant="low">Pocas unidades</StatusChip>
+                    )}
+                    {st === "out" && (
+                      <StatusChip variant="soldout">Agotado</StatusChip>
+                    )}
+                  </div>
+                  <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
+                    ${COP(price)}
+                  </div>
+                  <AddIconButton
+                    className="absolute bottom-4 right-4 z-20"
+                    aria-label={"Añadir Cumbre Andino " + s.label}
+                    onClick={() =>
+                      addItem({
+                        productId: "cumbre",
+                        name: "Cumbre Andino",
+                        price,
+                        options: { Sabor: s.label },
+                      })
+                    }
+                    disabled={disabled}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Resto de postres */}
-      <ul className="space-y-3">
-        {base.map((p) => (
-          <ProductRow key={p.id} item={p} />
-        ))}
-      </ul>
+      {baseFiltered.length > 0 && (
+        <ul className="space-y-3">
+          {baseFiltered.map((p) => (
+            <ProductRow key={p.id} item={p} />
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

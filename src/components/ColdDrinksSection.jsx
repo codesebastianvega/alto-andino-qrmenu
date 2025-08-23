@@ -4,6 +4,7 @@ import { useCart } from "../context/CartContext";
 import { AddIconButton, StatusChip } from "./Buttons";
 import { COP } from "../utils/money";
 import { getStockState, slugify } from "../utils/stock";
+import { matchesQuery } from "../utils/strings";
 
 // DATA EXACTA DE LA CARTA
 // ← editar nombres y precios aquí
@@ -77,26 +78,42 @@ function Card({ item, onAdd }) {
   );
 }
 
-export default function ColdDrinksSection() {
+export default function ColdDrinksSection({ query }) {
   const { addItem } = useCart();
+
+  const sodas = SODAS.filter((it) =>
+    matchesQuery({ title: it.name, description: it.desc }, query)
+  );
+  const others = OTHERS.filter((it) =>
+    matchesQuery({ title: it.name, description: it.desc }, query)
+  );
+  if (!sodas.length && !others.length) return null;
 
   return (
     <Section title="Bebidas frías">
-      {/* Subgrupo: Gaseosas y Sodas */}
-      <h3 className="text-sm font-semibold text-[#2f4131] mb-2">Gaseosas y Sodas</h3>
-      <div className="grid grid-cols-2 gap-3">
-        {SODAS.map((it) => (
-          <Card key={it.id} item={it} onAdd={addItem} />
-        ))}
-      </div>
+      {sodas.length > 0 && (
+        <>
+          {/* Subgrupo: Gaseosas y Sodas */}
+          <h3 className="text-sm font-semibold text-[#2f4131] mb-2">Gaseosas y Sodas</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {sodas.map((it) => (
+              <Card key={it.id} item={it} onAdd={addItem} />
+            ))}
+          </div>
+        </>
+      )}
 
-      {/* Subgrupo: Jugos y otras bebidas frías */}
-      <h3 className="mt-5 text-sm font-semibold text-[#2f4131] mb-2">Jugos y otras bebidas frías</h3>
-      <div className="grid grid-cols-2 gap-3">
-        {OTHERS.map((it) => (
-          <Card key={it.id} item={it} onAdd={addItem} />
-        ))}
-      </div>
+      {others.length > 0 && (
+        <>
+          {/* Subgrupo: Jugos y otras bebidas frías */}
+          <h3 className="mt-5 text-sm font-semibold text-[#2f4131] mb-2">Jugos y otras bebidas frías</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {others.map((it) => (
+              <Card key={it.id} item={it} onAdd={addItem} />
+            ))}
+          </div>
+        </>
+      )}
     </Section>
   );
 }

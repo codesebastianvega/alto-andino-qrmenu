@@ -34,7 +34,7 @@ export default function Header({ onCartOpen, onGuideOpen }) {
       <img
         src="/logoalto.png"
         alt="Alto Andino"
-        className="h-7 w-auto"
+        className="h-8 w-8 md:h-9 md:w-9 object-contain"
       />
       <p className="flex-1 text-center text-sm font-medium text-alto-text">
         {greeting}
@@ -51,7 +51,7 @@ export default function Header({ onCartOpen, onGuideOpen }) {
         <button
           type="button"
           onClick={() => onCartOpen?.()}
-          aria-label="Abrir carrito"
+          aria-label="Carrito"
           className="h-9 w-9 grid place-items-center rounded-full border border-transparent hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
         >
           <Icon icon="mdi:cart-outline" className="text-[22px]" />
@@ -66,3 +66,4 @@ export default function Header({ onCartOpen, onGuideOpen }) {
     </header>
   );
 }
+

@@ -3,6 +3,7 @@ import { AddIconButton, StatusChip } from "./Buttons";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import { getStockState, slugify } from "../utils/stock";
+import { matchesQuery } from "../utils/strings";
 
 // ————————————————————————————————————————
 // Configuración de bebidas
@@ -133,7 +134,7 @@ function findMilkDelta(milkId) {
 
 // ————————————————————————————————————————
 // Componente principal
-export default function CoffeeSection() {
+export default function CoffeeSection({ query }) {
   const cart = useCart();
 
   // Estados por ítem (diccionarios)
@@ -305,13 +306,21 @@ export default function CoffeeSection() {
   );
 
   // ————————————————————————————————————————
+  const coffeeItems = COFFEES.filter((item) =>
+    matchesQuery({ title: item.name, description: item.desc }, query)
+  );
+  const infusionItems = INFUSIONS.filter((item) =>
+    matchesQuery({ title: item.name, description: item.desc }, query)
+  );
+  if (!coffeeItems.length && !infusionItems.length) return null;
+
   return (
     <div className="space-y-8">
       {/* CAFÉS */}
       <div>
         <h3 className="text-sm font-semibold text-alto-primary mb-3">Cafés</h3>
         <ul className="space-y-3">
-          {COFFEES.map((item) => {
+          {coffeeItems.map((item) => {
             const st = getStockState(item.id || slugify(item.name));
             const disabled = st === "out";
             const isAmericano = /americano/i.test(item.name);
@@ -379,7 +388,7 @@ export default function CoffeeSection() {
           Infusiones & Tés
         </h3>
         <ul className="space-y-3">
-          {INFUSIONS.map((item) => {
+          {infusionItems.map((item) => {
             const st = getStockState(item.id || slugify(item.name));
             const disabled = st === "out";
             const isChai = !!item.chai;

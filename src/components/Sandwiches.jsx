@@ -3,8 +3,9 @@ import { Chip, AddIconButton, StatusChip } from "./Buttons";
 import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
 import { getStockState, slugify } from "../utils/stock";
+import { matchesQuery } from "../utils/strings";
 
-export default function Sandwiches() {
+export default function Sandwiches({ query }) {
   const cart = useCart();
   const [size, setSize] = useState("clasico"); // 'clasico' | 'grande'
 
@@ -52,6 +53,10 @@ export default function Sandwiches() {
       desc: "Hummus casero, pimientos asados, aguacate, champiñón a la plancha, pepino y lechugas; lámina de queso costeño frito. 🥛",
     },
   ];
+  const filtered = items.filter((it) =>
+    matchesQuery({ title: it.name, description: it.desc }, query)
+  );
+  if (!filtered.length) return null;
 
   const priceFor = (key) => {
     const p = priceByItem[key];
@@ -95,8 +100,9 @@ export default function Sandwiches() {
         </p>
       </div>
 
-      <ul className="space-y-3">
-        {items.map((it) => {
+      {filtered.length > 0 && (
+        <ul className="space-y-3">
+          {filtered.map((it) => {
           const productId = "sandwich:" + it.key;
           const st = getStockState(productId || slugify(it.name));
           const disabled = st === "out";
@@ -129,8 +135,9 @@ export default function Sandwiches() {
               />
             </li>
           );
-        })}
-      </ul>
+          })}
+        </ul>
+      )}
     </div>
   );
 }
