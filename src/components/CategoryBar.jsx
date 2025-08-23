@@ -74,6 +74,7 @@ export default function CategoryBar({ onOpenGuide }) {
                 className={[
                   "flex-none flex flex-col items-center justify-center",
                   "h-18 w-[96px] px-3 py-2",
+
                   "text-[12px] leading-tight text-center whitespace-normal break-words",
                   active === id
                     ? "shadow-sm"
@@ -88,6 +89,7 @@ export default function CategoryBar({ onOpenGuide }) {
                   aria-hidden
                 />
                 <span className="w-full">{label}</span>
+
               </Chip>
             ))}
 
@@ -99,6 +101,7 @@ export default function CategoryBar({ onOpenGuide }) {
             >
               <Icon icon="fluent-emoji:microbe" width="28" height="28" className="mb-1" aria-hidden />
               <span className="w-full">Alérgenos</span>
+
             </Chip>
           </div>
 
