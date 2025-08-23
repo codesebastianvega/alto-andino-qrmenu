@@ -53,17 +53,11 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
 
   return (
     <div
-      className="mt-4 -mx-5 sm:-mx-6 md:-mx-8 px-5 sm:px-6 md:px-8 relative rounded-2xl overflow-hidden bg-gradient-to-b from-[#efe7dc] to-transparent"
+      className="relative rounded-2xl overflow-hidden"
       aria-roledescription="carousel"
     >
       <div
-        className="relative"
-        style={{
-          WebkitMaskImage:
-            "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
-          maskImage:
-            "linear-gradient(to right, transparent, black 6%, black 94%, transparent)",
-        }}
+        className="relative overflow-hidden"
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onTouchStart={onTouchStart}
@@ -76,7 +70,7 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
           {banners.map((b) => (
             <div
               key={b.id}
-              className="w-full flex-shrink-0 h-44 sm:h-56 relative rounded-2xl overflow-hidden"
+              className="relative w-full flex-shrink-0 h-44 sm:h-56 rounded-2xl overflow-hidden"
             >
               <img
                 src={b.image}
@@ -84,10 +78,10 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
                 loading="lazy"
                 referrerPolicy="no-referrer"
                 decoding="async"
-                className="h-full w-full object-cover"
+                className="absolute inset-0 z-0 h-full w-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-              <div className="absolute inset-0 p-4 flex flex-col justify-end">
+              <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
+              <div className="relative z-20 flex h-full w-full flex-col justify-end p-4">
                 <h3 className="text-white text-lg font-semibold">{b.title}</h3>
                 {b.subtitle && <p className="text-white/90 text-sm">{b.subtitle}</p>}
                 {b.type === "product" ? (
@@ -97,7 +91,7 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
                         type="button"
                         onClick={() => handleView(b)}
                         aria-label={b.ctas.secondary.label || "Ver"}
-                        className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                        className="z-20 px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
                       >
                         {b.ctas.secondary.label || "Ver"}
                       </button>
@@ -107,7 +101,7 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
                         type="button"
                         onClick={() => handleAdd(b)}
                         aria-label={b.ctas.primary.label || "Agregar"}
-                        className="px-3 h-8 rounded-lg bg-[#2f4131] text-white text-sm font-medium hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                        className="z-20 px-3 h-8 rounded-lg bg-[#2f4131] text-white text-sm font-medium hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
                       >
                         {b.ctas.primary.label || "Agregar"}
                       </button>
@@ -120,7 +114,7 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
                         type="button"
                         onClick={() => handleInfo(b.ctas.primary.action)}
                         aria-label={b.ctas.primary.label || "Ver"}
-                        className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                        className="z-20 px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
                       >
                         {b.ctas.primary.label || "Ver"}
                       </button>
@@ -128,21 +122,21 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
                   </div>
                 )}
               </div>
-                {b.type === "product" && b.price != null && !Number.isNaN(Number(b.price)) && (
-                  <div
-                    aria-label="Precio"
-                    tabIndex={-1}
-                    className="absolute top-3 right-3 md:top-4 md:right-4 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur text-[#2f4131] font-medium"
-                  >
-                    {cop(b.price)}
-                  </div>
-                )}
-              </div>
-            ))}
+              {b.type === "product" && b.price != null && !Number.isNaN(Number(b.price)) && (
+                <div
+                  aria-label="Precio"
+                  tabIndex={-1}
+                  className="absolute top-3 right-3 md:top-4 md:right-4 z-20 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur text-[#2f4131] font-medium"
+                >
+                  {cop(b.price)}
+                </div>
+              )}
+            </div>
+          ))}
 
 
         </div>
-        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
+        <div className="absolute bottom-2 left-0 right-0 z-20 flex justify-center gap-2">
           {banners.map((_, i) => (
             <button
               key={i}
