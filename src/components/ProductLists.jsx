@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import { getStockState, slugify } from "../utils/stock";
@@ -43,6 +44,28 @@ export default function ProductLists({ query, activeCategoryId, onCategorySelect
     cold && { id: "bebidas-frias", node: cold },
     desserts && { id: "postres", node: <Section title="Postres">{desserts}</Section> },
   ].filter(Boolean);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("IntersectionObserver" in window))
+      return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible) {
+          const id = visible.target.id.replace("section-", "");
+          onCategorySelect?.({ id });
+        }
+      },
+      { rootMargin: "-50% 0px -50% 0px" }
+    );
+    sections.forEach((s) => {
+      const el = document.getElementById(`section-${s.id}`);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [sections, onCategorySelect]);
 
   const hasResults = sections.length > 0;
 

@@ -53,7 +53,8 @@ export default function CategoryBar({
                   onSelect?.(cat);
                 }}
                 aria-current={active ? "true" : undefined}
-                className={`${baseItemClasses} snap-start rounded-xl border bg-white/70 backdrop-blur-sm transition-colors flex flex-col items-center justify-center text-[12px] leading-tight text-center ${
+                className={`flex-none shrink-0 basis-[112px] w-[112px] h-[128px] rounded-xl border bg-white/70 backdrop-blur-sm snap-start transition-colors flex flex-col items-center justify-center text-[12px] leading-tight text-center ${
+
                   active
                     ? "bg-[#2f4131]/5 text-[#2f4131] border-[#2f4131]"
                     : "text-[#2f4131] border-[#2f4131]/35 hover:border-[#2f4131]/60 focus:border-[#2f4131]/60"
