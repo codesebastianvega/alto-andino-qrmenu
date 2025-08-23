@@ -1,25 +1,11 @@
 // src/components/Header.jsx
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Icon } from "@iconify-icon/react";
 import GuideModal from "./GuideModal";
 import DietaryGuide from "./DietaryGuide";
 
 export default function Header({ onCartOpen, onGuideOpen }) {
-  const [greeting, setGreeting] = useState("Bienvenido 👋");
   const [localGuideOpen, setLocalGuideOpen] = useState(false);
-
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const mesa = params.get("mesa");
-      if (mesa) {
-        setGreeting(`Mesa ${mesa}`);
-        return;
-      }
-      const name = window.localStorage?.getItem("aa_customerName");
-      if (name) setGreeting(`Hola, ${name} 👋`);
-    } catch {}
-  }, []);
 
   const handleInfoClick = () => {
     if (onGuideOpen) onGuideOpen();
@@ -29,33 +15,39 @@ export default function Header({ onCartOpen, onGuideOpen }) {
   return (
     <header
       role="banner"
-      className="h-16 bg-alto-beige shadow-sm border-b border-black/10 px-4 sm:px-5 flex items-center justify-between"
+      className="sticky top-0 z-50 h-[64px] w-full bg-[#243326] text-white border-b border-black/10 shadow-sm"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      <img
-        src="/logoalto.png"
-        alt="Alto Andino"
-        className="h-8 w-8 md:h-9 md:w-9 object-contain"
-      />
-      <p className="flex-1 text-center text-sm font-medium text-alto-text">
-        {greeting}
-      </p>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={handleInfoClick}
-          aria-label="Información"
-          className="h-9 w-9 grid place-items-center rounded-full border border-transparent hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+      <div className="mx-auto max-w-screen-md px-4 md:px-6 h-full flex items-center justify-between gap-3">
+        <h1
+          className="flex-1 text-[18px] md:text-lg font-semibold tracking-tight text-white select-none"
         >
-          <Icon icon="material-symbols:info-outline" className="text-[22px]" />
-        </button>
-        <button
-          type="button"
-          onClick={() => onCartOpen?.()}
-          aria-label="Carrito"
-          className="h-9 w-9 grid place-items-center rounded-full border border-transparent hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
-        >
-          <Icon icon="mdi:cart-outline" className="text-[22px]" />
-        </button>
+          Alto Andino Zipaquirá
+        </h1>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleInfoClick}
+            aria-label="Información"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,.3)] group"
+          >
+            <Icon
+              icon="material-symbols:info-outline"
+              className="text-white text-[22px] opacity-90 group-hover:opacity-100"
+            />
+          </button>
+          <button
+            type="button"
+            onClick={() => onCartOpen?.()}
+            aria-label="Abrir carrito"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,.3)] group"
+          >
+            <Icon
+              icon="mdi:cart-outline"
+              className="text-white text-[22px] opacity-90 group-hover:opacity-100"
+            />
+          </button>
+        </div>
       </div>
 
       {onGuideOpen ? null : (

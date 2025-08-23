@@ -89,7 +89,7 @@ export default function App() {
       <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} />
 
       <div className="mx-auto max-w-3xl p-5 sm:p-6 md:p-8">
-        <div className="mb-6">
+        <div className="mt-2 mb-6">
           <HeroHeadline />
           <SearchBar value={query} onQueryChange={setQuery} />
         </div>
