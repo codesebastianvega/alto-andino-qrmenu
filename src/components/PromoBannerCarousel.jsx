@@ -74,7 +74,7 @@ export default function PromoBannerCarousel({ banners = [], resolveProductById }
             >
               <img
                 src={b.image}
-                alt={b.alt}
+                alt={b.alt || b.title}
                 loading="lazy"
                 referrerPolicy="no-referrer"
                 decoding="async"
