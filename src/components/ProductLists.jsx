@@ -261,6 +261,8 @@ export function Mains({ query }) {
 export function Desserts({ query }) {
   const { addItem } = useCart();
 
+  // Sabores + precios específicos (según tu instrucción):
+  // rojos y amarillos: $10.000 · chococumbre: $11.000 · blancos: $12.000
   const cumbreSabores = [
     { id: "rojos", label: "Frutos rojos" },
     { id: "amarillos", label: "Frutos amarillos" },
@@ -280,26 +282,8 @@ export function Desserts({ query }) {
   const base = DESSERT_BASE_ITEMS.filter((p) =>
     matchesQuery({ title: p.name, description: p.desc }, query)
   );
+
   if (!filteredCumbre.length && !base.length) return null;
-
-
-export function Desserts() {
-  const { addItem } = useCart();
-
-  // Sabores + precios específicos (según tu instrucción):
-  // rojos y amarillos: $10.000 · chococumbre: $11.000 · blancos: $12.000
-  const cumbreSabores = [
-    { id: "rojos", label: "Frutos rojos" },
-    { id: "amarillos", label: "Frutos amarillos" },
-    { id: "blancos", label: "Frutos blancos" },
-    { id: "choco", label: "Chococumbre" },
-  ];
-  const cumbrePrices = {
-    rojos: 10000,
-    amarillos: 10000,
-    choco: 11000,
-    blancos: 12000,
-  };
 
   return (
     <div className="space-y-4">
