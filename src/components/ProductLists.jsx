@@ -11,6 +11,7 @@ import CoffeeSection from "./CoffeeSection";
 import BowlsSection from "./BowlsSection";
 import ColdDrinksSection from "./ColdDrinksSection";
 import CategoryBar from "./CategoryBar";
+import CategoryHeader from "./CategoryHeader";
 
 export default function ProductLists({ query, activeCategoryId, onCategorySelect }) {
 
@@ -71,6 +72,7 @@ export default function ProductLists({ query, activeCategoryId, onCategorySelect
 
   return (
     <>
+      <CategoryHeader />
       <CategoryBar
         categories={categories}
         activeId={activeCategoryId}
