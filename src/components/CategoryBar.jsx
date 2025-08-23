@@ -61,12 +61,9 @@ export default function CategoryBar({ onOpenGuide }) {
       style={{ top: "env(safe-area-inset-top, 0px)" }}
       aria-label="Categorías del menú"
     >
-      {/* Card contenedor full-bleed */}
-      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 py-2">
-        <div className="relative rounded-xl bg-white/85 backdrop-blur supports-[backdrop-filter]:bg-white/70 ring-1 ring-black/10 border border-white/40">
-          {/* carril scrolleable */}
+        <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 py-2">
           <div className="relative overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex items-center gap-2 w-max px-3 py-2">
+            <div className="flex items-stretch gap-2 w-max">
               {sections.map(({ id, label }) => (
                 <Chip
                   key={id}
@@ -74,38 +71,37 @@ export default function CategoryBar({ onOpenGuide }) {
                   active={active === id}
                   aria-current={active === id ? "true" : undefined}
                   className={[
-                    "whitespace-nowrap h-8 px-3 text-sm",
+                    "flex flex-col items-center justify-center gap-0.5",
+                    "h-12 min-w-[88px] px-3 text-[12px]",
                     active === id
                       ? "shadow-sm"
                       : "border-[#2f4131]/40 text-[#2f4131] hover:border-[#2f4131]/60 bg-white/80"
                   ].join(" ")}
                 >
-                  <span className="inline-flex items-center gap-1.5">
-                    <Icon
-                      icon={categoryIcons[id] || "fluent-emoji:white-circle"}
-                      width="18"
-                      height="18"
-                      aria-hidden
-                    />
-                    <span>{label}</span>
-                  </span>
+                  <Icon
+                    icon={categoryIcons[id] || "fluent-emoji:white-circle"}
+                    width="24"
+                    height="24"
+                    aria-hidden
+                  />
+                  <span className="leading-none">{label}</span>
                 </Chip>
               ))}
 
               <Chip
                 onClick={onOpenGuide}
-                className="h-7 px-2.5 text-xs border-[#2f4131]/30 text-[#2f4131] bg-white/70 hover:bg-[#2f4131] hover:text-white"
+                className="flex flex-col items-center justify-center gap-0.5 h-12 min-w-[80px] px-3 text-[12px] border-[#2f4131]/30 text-[#2f4131] bg-white/70 hover:bg-[#2f4131] hover:text-white"
               >
-                Alérgenos
+                <Icon icon="fluent-emoji:microbe" width="22" height="22" aria-hidden />
+                <span className="leading-none">Alérgenos</span>
               </Chip>
             </div>
-
-            <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-white/80 to-transparent rounded-l-xl" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white/80 to-transparent rounded-r-xl" />
+            {/* Fades sutiles que se “pierden” en el fondo */}
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[#eee6db]/80 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[#eee6db]/80 to-transparent" />
           </div>
         </div>
       </div>
-    </div>
   );
 }
 
