@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useCart } from "../context/CartContext";
 import ProductQuickView from "./ProductQuickView";
 import GuideModal from "./GuideModal";
+import { COP as cop } from "../utils/money";
 
 export default function PromoBannerCarousel({ banners = [] }) {
   const { addItem } = useCart();
@@ -118,6 +119,15 @@ export default function PromoBannerCarousel({ banners = [] }) {
                   </div>
                 )}
               </div>
+              {b.type === "product" && b.price != null && !Number.isNaN(Number(b.price)) && (
+                <div
+                  aria-label="Precio"
+                  tabIndex={-1}
+                  className="absolute top-3 right-3 md:top-4 md:right-4 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur shadow-sm text-[#2f4131] font-medium"
+                >
+                  {cop(b.price)}
+                </div>
+              )}
             </div>
           ))}
         </div>
