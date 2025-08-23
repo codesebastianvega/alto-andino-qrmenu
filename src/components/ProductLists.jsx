@@ -1,6 +1,8 @@
+import { useEffect, useMemo } from "react";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import { getStockState, slugify } from "../utils/stock";
+import { matchesQuery } from "../utils/strings";
 import { AddIconButton, StatusChip } from "./Buttons";
 import Section from "./Section";
 import Sandwiches from "./Sandwiches";
@@ -11,188 +13,275 @@ import ColdDrinksSection from "./ColdDrinksSection";
 import CategoryBar from "./CategoryBar";
 import FeaturedToday from "./FeaturedToday";
 
-const categories = [
-  { id: "desayunos", label: "Desayunos", tintClass: "bg-amber-100" },
-  { id: "bowls", label: "Bowls", tintClass: "bg-green-100" },
+// Datos compartidos de los productos para búsqueda/identificación
+export const BREAKFAST_ITEMS = [
   {
-    id: "platos",
-    label: "Platos Fuertes",
-    tintClass: "bg-orange-100",
-    targetId: "section-platos-fuertes",
-  },
-  { id: "sandwiches", label: "Sándwiches", tintClass: "bg-yellow-100" },
-  {
-    id: "smoothies",
-    label: "Smoothies & Funcionales",
-    tintClass: "bg-pink-100",
-    targetId: "section-smoothies-funcionales",
+    id: "des-sendero",
+    name: "Sendero Matinal",
+    price: 16000,
+    desc: "Bebida caliente + omelette con champiñones, lechugas, tomate cherry y queso, con tostadas multigranos. 🥚🌾🥛",
   },
   {
-    id: "cafe",
-    label: "Café de especialidad",
-    tintClass: "bg-amber-200",
-    targetId: "section-cafe-de-especialidad",
+    id: "des-cumbre",
+    name: "Cumbre Energética",
+    price: 18000,
+    desc: "Bebida caliente + arepa con queso mozzarella, aguacate y ajonjolí negro; yogur griego con arándanos y chía. 🥛🌾",
   },
-  { id: "bebidas-frias", label: "Bebidas frías", tintClass: "bg-sky-100" },
-  { id: "postres", label: "Postres", tintClass: "bg-purple-100" },
+  {
+    id: "des-huevos",
+    name: "Huevos al Gusto",
+    price: 17500,
+    desc: "3 huevos en sartén de hierro; 2 tostadas con queso crema y vegetales. 🥚🌾🥛",
+  },
+  {
+    id: "des-caldo",
+    name: "Caldo de Costilla de Res",
+    price: 18500,
+    desc: "Con papa y cilantro. Incluye bebida caliente + huevos al gusto, arepa y queso. 🥚🥛",
+  },
+  {
+    id: "des-amanecer",
+    name: "Bowl Amanecer Andino",
+    price: 19000,
+    desc: "Yogur griego + açaí, avena, coco, banano, fresa y arándanos; topping de chía o amapola. 🥛🌾🥜",
+  },
 ];
 
-export default function ProductLists({ setOpenGuide }) {
+export const MAINS_ITEMS = [
+  {
+    id: "main-salmon",
+    name: "Salmón Andino 200 gr",
+    price: 47000,
+    desc: "En sartén de hierro, salsa miel-mostaza y orégano con guarnición de pure de ahuyama y ensalada de granos calientes.",
+  },
+  {
+    id: "main-trucha",
+    name: "Trucha del Páramo 450 gr",
+    price: 42000,
+    desc: "A la plancha con alioli griego con guarnición pure de papa y ensalada fría.",
+  },
+  {
+    id: "main-bolo",
+    name: "Spaghetti a la Boloñesa",
+    price: 28000,
+    desc: "Salsa pomodoro, carne de res; albahaca fresca y ralladura de parmesano. 🌾🥛",
+  },
+  {
+    id: "main-champi",
+    name: "Champiñones a la Madrileña",
+    price: 18000,
+    desc: "125 gr de champiñones en mantequilla y ajo, vino espumoso, jamón serrano, perejil y ralladura de parmesano. 🥛",
+  },
+  {
+    id: "main-ceviche",
+    name: "Ceviche de Camarón",
+    price: 22000,
+    desc: "Camarón marinado en cítricos; pimentón, salsa de tomate casera, cilantro y cebolla morada; con aguacate.",
+  },
+  {
+    id: "main-burger",
+    name: "Burger Andina (Pavo 150 gr)",
+    price: 26000,
+    desc: "Pavo sazonado, salsa de yogur, tomate, lechuga, chucrut y queso Colby Jack en pan artesanal. 🥛🌾",
+  },
+];
+
+export const DESSERT_BASE_ITEMS = [
+  {
+    id: "post-red",
+    name: "Red Velvet",
+    price: 11000,
+    desc: "Bizcocho rojo con crema batida de la casa, endulzado con eritritol y stevia. 🌾🥛",
+  },
+  {
+    id: "post-tres",
+    name: "Tres Leches (saludable)",
+    price: 6200,
+    desc: "Harina de almendras y avena; dulce de tres leches con alulosa; chantilly con eritritol. 🥛🌾",
+  },
+  {
+    id: "post-tira",
+    name: "Tiramisú (saludable)",
+    price: 6800,
+    desc: "Bizcocho de almendras y avena, café especial, chantilly con alulosa y cacao espolvoreado. 🥛🌾",
+  },
+  {
+    id: "post-amap",
+    name: "Torta de Amapola",
+    price: 10000,
+    desc: "Harina de avena y semillas de amapola; crema chantilly endulzada con alulosa. 🥛🌾",
+  },
+  {
+    id: "post-vasca",
+    name: "Torta Vasca de Limón",
+    price: 10000,
+    desc: "Crema de leche, queso crema y maicena; vainilla y sal marina. 🥛",
+  },
+  {
+    id: "post-fresas",
+    name: "Fresas con Crema",
+    price: 9000,
+    desc: "Fresas con crema chantilly endulzada con alulosa. 🥛",
+  },
+];
+
+export default function ProductLists({
+  query,
+  activeCategoryId,
+  onCategorySelect,
+}) {
+  const categories = useMemo(
+    () => [
+      { id: "desayunos", label: "Desayunos" },
+      { id: "bowls", label: "Bowls" },
+      {
+        id: "platos",
+        label: "Platos Fuertes",
+        targetId: "section-platos-fuertes",
+      },
+      { id: "sandwiches", label: "Sándwiches" },
+      {
+        id: "smoothies",
+        label: "Smoothies & Funcionales",
+        targetId: "section-smoothies-funcionales",
+      },
+      {
+        id: "cafe",
+        label: "Café de especialidad",
+        targetId: "section-cafe-de-especialidad",
+      },
+      { id: "bebidas-frias", label: "Bebidas frías" },
+      { id: "postres", label: "Postres" },
+    ],
+    [query]
+  );
+
+  const sections = useMemo(
+    () => [
+      {
+        id: "desayunos",
+        element: (
+          <Section title="Desayunos">
+            <Breakfasts query={query} />
+          </Section>
+        ),
+      },
+      {
+        id: "bowls",
+        element: (
+          <Section title="Bowls">
+            <BowlsSection query={query} />
+          </Section>
+        ),
+      },
+      {
+        id: "platos",
+        element: (
+          <Section title="Platos Fuertes">
+            <Mains query={query} />
+          </Section>
+        ),
+      },
+      {
+        id: "sandwiches",
+        element: (
+          <Section title="Sándwiches">
+            <Sandwiches query={query} />
+          </Section>
+        ),
+      },
+      {
+        id: "smoothies",
+        element: (
+          <Section title="Smoothies & Funcionales">
+            <SmoothiesSection query={query} />
+          </Section>
+        ),
+      },
+      {
+        id: "cafe",
+        element: (
+          <Section title="Café de especialidad">
+            <CoffeeSection query={query} />
+          </Section>
+        ),
+      },
+      { id: "bebidas-frias", element: <ColdDrinksSection query={query} /> },
+      {
+        id: "postres",
+        element: (
+          <Section title="Postres">
+            <Desserts query={query} />
+          </Section>
+        ),
+      },
+    ],
+    [query]
+  );
+
+  useEffect(() => {
+    if (activeCategoryId && !categories.find((c) => c.id === activeCategoryId)) {
+      onCategorySelect?.(categories[0]);
+    }
+  }, [activeCategoryId, categories, onCategorySelect]);
+
+
   return (
     <>
       <CategoryBar
         categories={categories}
-        onOpenGuide={() => setOpenGuide?.(true)}
+        activeId={activeCategoryId}
+        onSelect={onCategorySelect}
+
       />
       <FeaturedToday />
-      <Section title="Desayunos">
-        <Breakfasts />
-      </Section>
-      <Section title="Bowls">
-        <BowlsSection />
-      </Section>
-      <Section title="Platos Fuertes">
-        <Mains />
-      </Section>
-      <Section title="Sándwiches">
-        <Sandwiches />
-      </Section>
-      <Section title="Smoothies & Funcionales">
-        <SmoothiesSection />
-      </Section>
-      <Section title="Café de especialidad">
-        <CoffeeSection />
-      </Section>
-      <ColdDrinksSection />
-      <Section title="Postres">
-        <Desserts />
-      </Section>
+      {sections.map((s) => (
+        <div key={s.id}>{s.element}</div>
+      ))}
     </>
   );
 }
 
-// ← editar nombres y precios aquí
-export const BREAKFAST_ITEMS = [
-    {
-      id: "des-sendero",
-      name: "Sendero Matinal",
-      price: 16000,
-      desc: "Bebida caliente + omelette con champiñones, lechugas, tomate cherry y queso, con tostadas multigranos. 🥚🌾🥛",
-    },
-    {
-      id: "des-cumbre",
-      name: "Cumbre Energética",
-      price: 18000,
-      desc: "Bebida caliente + arepa con queso mozzarella, aguacate y ajonjolí negro; yogur griego con arándanos y chía. 🥛🌾",
-    },
-    {
-      id: "des-huevos",
-      name: "Huevos al Gusto",
-      price: 17500,
-      desc: "3 huevos en sartén de hierro; 2 tostadas con queso crema y vegetales. 🥚🌾🥛",
-    },
-    {
-      id: "des-caldo",
-      name: "Caldo de Costilla de Res",
-      price: 18500,
-      desc: "Con papa y cilantro. Incluye bebida caliente + huevos al gusto, arepa y queso. 🥚🥛",
-    },
-    {
-      id: "des-amanecer",
-      name: "Bowl Amanecer Andino",
-      price: 19000,
-      desc: "Yogur griego + açaí, avena, coco, banano, fresa y arándanos; topping de chía o amapola. 🥛🌾🥜",
-    },
-];
-
-export function Breakfasts() {
-  return <List items={BREAKFAST_ITEMS} />;
+export function Breakfasts({ query }) {
+  const items = BREAKFAST_ITEMS.filter((it) =>
+    matchesQuery({ title: it.name, description: it.desc }, query)
+  );
+  if (!items.length) return null;
+  return <List items={items} />;
 }
 
-// ← editar nombres y precios aquí
-export const MAINS_ITEMS = [
-    {
-      id: "main-salmon",
-      name: "Salmón Andino 200 gr",
-      price: 47000,
-      desc: "En sartén de hierro, salsa miel-mostaza y orégano con guarnición de pure de ahuyama y ensalada de granos calientes.",
-    },
-    {
-      id: "main-trucha",
-      name: "Trucha del Páramo 450 gr",
-      price: 42000,
-      desc: "A la plancha con alioli griego con guarnición pure de papa y ensalada fría.",
-    },
-    {
-      id: "main-bolo",
-      name: "Spaghetti a la Boloñesa",
-      price: 28000,
-      desc: "Salsa pomodoro, carne de res; albahaca fresca y ralladura de parmesano. 🌾🥛",
-    },
-    {
-      id: "main-champi",
-      name: "Champiñones a la Madrileña",
-      price: 18000,
-      desc: "125 gr de champiñones en mantequilla y ajo, vino espumoso, jamón serrano, perejil y ralladura de parmesano. 🥛",
-    },
-    {
-      id: "main-ceviche",
-      name: "Ceviche de Camarón",
-      price: 22000,
-      desc: "Camarón marinado en cítricos; pimentón, salsa de tomate casera, cilantro y cebolla morada; con aguacate.",
-    },
-    {
-      id: "main-burger",
-      name: "Burger Andina (Pavo 150 gr)",
-      price: 26000,
-      desc: "Pavo sazonado, salsa de yogur, tomate, lechuga, chucrut y queso Colby Jack en pan artesanal. 🥛🌾",
-    },
-];
-
-export function Mains() {
-  return <List items={MAINS_ITEMS} />;
+export function Mains({ query }) {
+  const items = MAINS_ITEMS.filter((it) =>
+    matchesQuery({ title: it.name, description: it.desc }, query)
+  );
+  if (!items.length) return null;
+  return <List items={items} />;
 }
 
-// Postres de vitrina (precios según carta)
-// ← editar nombres y precios aquí
-export const DESSERT_BASE_ITEMS = [
-    {
-      id: "post-red",
-      name: "Red Velvet",
-      price: 11000,
-      desc: "Bizcocho rojo con crema batida de la casa, endulzado con eritritol y stevia. 🌾🥛",
-    },
-    {
-      id: "post-tres",
-      name: "Tres Leches (saludable)",
-      price: 6200,
-      desc: "Harina de almendras y avena; dulce de tres leches con alulosa; chantilly con eritritol. 🥛🌾",
-    },
-    {
-      id: "post-tira",
-      name: "Tiramisú (saludable)",
-      price: 6800,
-      desc: "Bizcocho de almendras y avena, café especial, chantilly con alulosa y cacao espolvoreado. 🥛🌾",
-    },
-    {
-      id: "post-amap",
-      name: "Torta de Amapola",
-      price: 10000,
-      desc: "Harina de avena y semillas de amapola; crema chantilly endulzada con alulosa. 🥛🌾",
-    },
-    {
-      id: "post-vasca",
-      name: "Torta Vasca de Limón",
-      price: 10000,
-      desc: "Crema de leche, queso crema y maicena; vainilla y sal marina. 🥛",
-    },
-    {
-      id: "post-fresas",
-      name: "Fresas con Crema",
-      price: 9000,
-      desc: "Fresas con crema chantilly endulzada con alulosa. 🥛",
-    },
+export function Desserts({ query }) {
+  const { addItem } = useCart();
+
+  const cumbreSabores = [
+    { id: "rojos", label: "Frutos rojos" },
+    { id: "amarillos", label: "Frutos amarillos" },
+    { id: "blancos", label: "Frutos blancos" },
+    { id: "choco", label: "Chococumbre" },
   ];
+  const cumbrePrices = {
+    rojos: 10000,
+    amarillos: 10000,
+    choco: 11000,
+    blancos: 12000,
+  };
+
+  const filteredCumbre = cumbreSabores.filter((s) =>
+    matchesQuery({ title: s.label }, query)
+  );
+  const base = DESSERT_BASE_ITEMS.filter((p) =>
+    matchesQuery({ title: p.name, description: p.desc }, query)
+  );
+  if (!filteredCumbre.length && !base.length) return null;
+
 
 export function Desserts() {
   const { addItem } = useCart();
@@ -214,64 +303,66 @@ export function Desserts() {
 
   return (
     <div className="space-y-4">
-      {/* Cumbre Andino con precio por sabor */}
-      <div className="rounded-2xl p-5 sm:p-6 shadow-sm bg-white">
-        <p className="font-semibold">Cumbre Andino (sin azúcar)</p>
-        <p className="text-xs text-neutral-600 mt-1">
-          Yogur griego endulzado con alulosa, mermelada natural, galleta sin
-          azúcar, chantilly con eritritol y fruta.
-        </p>
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {cumbreSabores.map((s) => {
-            const id = "cumbre:" + s.id;
-            const st = getStockState(id);
-            const disabled = st === "out";
-            const price = cumbrePrices[s.id];
-            return (
-              <div
-                key={s.id}
-                className={
-                  "relative rounded-xl border border-neutral-200/60 bg-white p-4 sm:p-5 pr-20 pb-12 " +
-                  (disabled ? "opacity-60" : "")
-                }
-              >
-                <p className="text-sm">{s.label}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {st === "low" && (
-                    <StatusChip variant="low">Pocas unidades</StatusChip>
-                  )}
-                  {st === "out" && (
-                    <StatusChip variant="soldout">No Disponible</StatusChip>
-                  )}
-                </div>
-                <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
-                  ${COP(price)}
-                </div>
-                <AddIconButton
-                  className="absolute bottom-4 right-4 z-20"
-                  aria-label={"Añadir Cumbre Andino " + s.label}
-                  onClick={() =>
-                    addItem({
-                      productId: "cumbre",
-                      name: "Cumbre Andino",
-                      price,
-                      options: { Sabor: s.label },
-                    })
+      {filteredCumbre.length > 0 && (
+        <div className="rounded-2xl p-5 sm:p-6 shadow-sm bg-white">
+          <p className="font-semibold">Cumbre Andino (sin azúcar)</p>
+          <p className="text-xs text-neutral-600 mt-1">
+            Yogur griego endulzado con alulosa, mermelada natural, galleta sin
+            azúcar, chantilly con eritritol y fruta.
+          </p>
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {filteredCumbre.map((s) => {
+              const id = "cumbre:" + s.id;
+              const st = getStockState(id);
+              const disabled = st === "out";
+              const price = cumbrePrices[s.id];
+              return (
+                <div
+                  key={s.id}
+                  className={
+                    "relative rounded-xl border border-neutral-200/60 bg-white p-4 sm:p-5 pr-20 pb-12 " +
+                    (disabled ? "opacity-60" : "")
                   }
-                  disabled={disabled}
-                />
-              </div>
-            );
-          })}
+                >
+                  <p className="text-sm">{s.label}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {st === "low" && (
+                      <StatusChip variant="low">Pocas unidades</StatusChip>
+                    )}
+                    {st === "out" && (
+                      <StatusChip variant="soldout">No Disponible</StatusChip>
+                    )}
+                  </div>
+                  <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
+                    ${COP(price)}
+                  </div>
+                  <AddIconButton
+                    className="absolute bottom-4 right-4 z-20"
+                    aria-label={"Añadir Cumbre Andino " + s.label}
+                    onClick={() =>
+                      addItem({
+                        productId: "cumbre",
+                        name: "Cumbre Andino",
+                        price,
+                        options: { Sabor: s.label },
+                      })
+                    }
+                    disabled={disabled}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+      {base.length > 0 && (
+        <ul className="space-y-3">
+          {base.map((p) => (
+            <ProductRow key={p.id} item={p} />
+          ))}
+        </ul>
+      )}
 
-      {/* Resto de postres */}
-      <ul className="space-y-3">
-        {DESSERT_BASE_ITEMS.map((p) => (
-          <ProductRow key={p.id} item={p} />
-        ))}
-      </ul>
     </div>
   );
 }
