@@ -22,16 +22,16 @@ export default function ProductLists({ setOpenGuide }) {
       <Section title="Bowls">
         <BowlsSection />
       </Section>
-      <Section title="Platos Fuertes">
+      <Section title="Platos">
         <Mains />
       </Section>
       <Section title="Sándwiches">
         <Sandwiches />
       </Section>
-      <Section title="Smoothies & Funcionales">
+      <Section title="Smoothies">
         <SmoothiesSection />
       </Section>
-      <Section title="Café de especialidad">
+      <Section title="Café">
         <CoffeeSection />
       </Section>
       <ColdDrinksSection />
