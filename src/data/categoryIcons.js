@@ -1,10 +1,16 @@
 export const categoryIcons = {
   desayunos: "fluent-emoji:croissant",
   bowls: "fluent-emoji:pot-of-food",
-  "platos-fuertes": "fluent-emoji:fork-and-knife-with-plate",
+  platos: "fluent-emoji:fork-and-knife-with-plate",
   sandwiches: "fluent-emoji:sandwich",
-  smoothies: "fluent-emoji:tropical-drink",
-  cafes: "fluent-emoji:hot-beverage",
+  smoothies: {
+    icon: "fluent-emoji:cup-with-straw",
+    fallback: "noto:bubble-tea",
+  },
+  cafe: {
+    icon: "fluent-emoji:hot-beverage",
+    fallback: "noto:hot-beverage",
+  },
   postres: "fluent-emoji:shortcake",
   "bebidas-frias": "fluent-emoji:ice",
 };
