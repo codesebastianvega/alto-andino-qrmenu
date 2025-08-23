@@ -24,9 +24,9 @@ export default function PromoBannerCarousel({ banners = [] }) {
     addItem?.({ productId: b.productId, name: b.title, price: b.price, image: b.image });
   };
   const handleView = (b) => setQuickProduct(b);
-  const handleInfo = (b) => {
-    if (b.id === "pet-friendly") setShowPet(true);
-    else if (b.id === "reviews") {
+  const handleInfo = (action) => {
+    if (action === "modal:petfriendly") setShowPet(true);
+    else if (action === "link:reviews") {
       const url = import.meta.env.VITE_GOOGLE_REVIEWS_URL;
       if (url) window.open(url, "_blank", "noopener,noreferrer");
     }
@@ -61,8 +61,9 @@ export default function PromoBannerCarousel({ banners = [] }) {
             <div key={b.id} className="w-full flex-shrink-0 relative h-44 sm:h-56">
               <img
                 src={b.image}
-                alt=""
+                alt={b.alt}
                 loading="lazy"
+                referrerPolicy="no-referrer"
                 decoding="async"
                 className="absolute inset-0 w-full h-full object-cover rounded-2xl"
               />
@@ -72,33 +73,39 @@ export default function PromoBannerCarousel({ banners = [] }) {
                 {b.subtitle && <p className="text-white/90 text-sm">{b.subtitle}</p>}
                 {b.type === "product" ? (
                   <div className="mt-2 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleView(b)}
-                      aria-label={"Ver " + b.title}
-                      className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
-                    >
-                      Ver
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAdd(b)}
-                      aria-label={"Agregar " + b.title}
-                      className="px-3 h-8 rounded-lg bg-[#2f4131] text-white text-sm font-medium hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
-                    >
-                      Agregar
-                    </button>
+                    {b.ctas?.secondary && (
+                      <button
+                        type="button"
+                        onClick={() => handleView(b)}
+                        aria-label={b.ctas.secondary.label || "Ver"}
+                        className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                      >
+                        {b.ctas.secondary.label || "Ver"}
+                      </button>
+                    )}
+                    {b.productId && b.ctas?.primary && (
+                      <button
+                        type="button"
+                        onClick={() => handleAdd(b)}
+                        aria-label={b.ctas.primary.label || "Agregar"}
+                        className="px-3 h-8 rounded-lg bg-[#2f4131] text-white text-sm font-medium hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                      >
+                        {b.ctas.primary.label || "Agregar"}
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="mt-2">
-                    <button
-                      type="button"
-                      onClick={() => handleInfo(b)}
-                      aria-label={b.ctas?.primary?.label || "Ver"}
-                      className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
-                    >
-                      {b.ctas?.primary?.label || "Ver"}
-                    </button>
+                    {b.ctas?.primary && (
+                      <button
+                        type="button"
+                        onClick={() => handleInfo(b.ctas.primary.action)}
+                        aria-label={b.ctas.primary.label || "Ver"}
+                        className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                      >
+                        {b.ctas.primary.label || "Ver"}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
