@@ -3,12 +3,12 @@ import React, { lazy, Suspense, useState, useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { formatCOP } from "../utils/money";
 import { matchesQuery } from "../utils/strings";
-import { StatusChip, PILL_XS, PILL_SM } from "./Buttons";
+import { PILL_XS, PILL_SM } from "./Buttons";
 import { toast } from "./Toast";
 const BowlBuilder = lazy(() => import("./BowlBuilder"));
 import { getStockState, slugify, isUnavailable } from "../utils/stock";
 import { preBowl } from "../data/menuItems";
-import { getProductImage } from "../utils/images";
+import ProductCard from "./ProductCard";
 
 // ← editar nombres y precios aquí
 const BASE_PRICE = Number(import.meta.env.VITE_BOWL_BASE_PRICE || 28000);
@@ -31,14 +31,6 @@ export default function BowlsSection({ query, onCount, onQuickView }) {
 
   const st = getStockState(preBowl.id || slugify(preBowl.name));
   const unavailable = st === "out" || isUnavailable(preBowl);
-
-  const handleAdd = () => {
-    if (unavailable) {
-      toast("Producto no disponible");
-      return;
-    }
-    addPre();
-  };
 
   const show = matchesQuery(
     { title: preBowl.name, description: preBowl.desc },
@@ -115,62 +107,17 @@ export default function BowlsSection({ query, onCount, onQuickView }) {
         </div>
       </div>
 
-      {/* Card del prearmado */}
-      <article
-        className="group grid grid-cols-[96px_1fr] md:grid-cols-[112px_1fr] gap-3 md:gap-4 p-3 md:p-4 rounded-2xl bg-white text-neutral-900 ring-1 ring-black/5 shadow-sm"
-      >
-        <button
-          type="button"
-          onClick={() => onQuickView?.(product)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              onQuickView?.(product);
-            }
+      {/* Card del prearmado (usa ProductCard) */}
+      <div className="mt-4">
+        <ProductCard
+          item={{ id: preBowl.id, name: preBowl.name, desc: preBowl.desc, price: preBowl.price }}
+          onAdd={() => {
+            if (unavailable) return toast("Producto no disponible");
+            addPre();
           }}
-          aria-label={`Ver ${product.title || product.name || "producto"}`}
-          className="block cursor-zoom-in rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
-        >
-          <img
-            src={getProductImage(product)}
-            alt={preBowl.name}
-            loading="lazy"
-            className="w-24 h-24 md:w-28 md:h-28 rounded-xl object-cover"
-          />
-        </button>
-        <div className="min-w-0 flex flex-col">
-          <h3 className="text-base md:text-[17px] font-semibold text-neutral-900 truncate">{preBowl.name}</h3>
-          <p className="mt-0.5 text-sm text-neutral-600 line-clamp-2">{preBowl.desc}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {st === "low" && (
-              <StatusChip variant="low">Pocas unidades</StatusChip>
-            )}
-            {unavailable && (
-              <StatusChip variant="soldout">No Disponible</StatusChip>
-            )}
-          </div>
-          <div className="mt-auto flex items-end justify-between gap-3 pt-2">
-            <div>
-              <div className="text-base md:text-[17px] font-semibold text-neutral-900">{formatCOP(preBowl.price)}</div>
-            </div>
-            <button
-              type="button"
-              aria-label={`Agregar ${preBowl.name}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (unavailable) {
-                  toast("Producto no disponible");
-                  return;
-                }
-                handleAdd();
-              }}
-              className="h-10 w-10 md:h-11 md:w-11 grid place-items-center rounded-full bg-[#2f4131] hover:bg-[#263729] text-white shadow-sm ring-1 ring-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
-            >
-              +
-            </button>
-          </div>
-        </div>
-      </article>
+          onQuickView={() => onQuickView?.(product)}
+        />
+      </div>
 
       {/* Modal de armado */}
       {open && (
