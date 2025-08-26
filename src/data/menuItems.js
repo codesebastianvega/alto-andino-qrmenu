@@ -6,6 +6,7 @@ export const cats = [
   "smoothies",
   "cafe",
   "bebidasfrias",
+  "postres",
 ];
 
 export const breakfastItems = [
