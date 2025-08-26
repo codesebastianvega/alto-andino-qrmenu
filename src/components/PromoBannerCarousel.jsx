@@ -11,8 +11,9 @@ export default function PromoBannerCarousel() {
   const { addItem } = useCart();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [quickProduct, setQuickProduct] = useState(null);
-  const [showPet, setShowPet] = useState(false);
+  const [petOpen, setPetOpen] = useState(false);
   const startX = useRef(0);
 
   const items = useMemo(() => {
@@ -42,21 +43,15 @@ export default function PromoBannerCarousel() {
     } else if (action === "quickview") {
       if (product) {
         setQuickProduct(product);
+        setQuickOpen(true);
       } else {
         toast("Producto no disponible");
       }
     } else if (action === "modal:petfriendly") {
-      setShowPet(true);
-    } else if (action.startsWith("link:")) {
-      const target = action.slice(5);
-      if (target === "reviews") {
-        const url = import.meta.env.VITE_GOOGLE_REVIEWS_URL;
-        if (url) window.open(url, "_blank", "noopener,noreferrer");
-      } else {
-        const key = `VITE_${target.toUpperCase()}_URL`;
-        const url = import.meta.env[key];
-        if (url) window.open(url, "_blank", "noopener,noreferrer");
-      }
+      setPetOpen(true);
+    } else if (action === "link:reviews") {
+      const url = import.meta.env.VITE_GOOGLE_REVIEWS_URL;
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -150,14 +145,26 @@ export default function PromoBannerCarousel() {
                     </div>
                   )}
                 </div>
-                {item.type === "product" && canAdd && (
-                  <div
-                    aria-label="Precio"
-                    tabIndex={-1}
-                    className="absolute top-3 right-3 md:top-4 md:right-4 z-30 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur shadow-sm text-[#2f4131] font-medium"
-                  >
-                    {cop(price)}
-                  </div>
+                {item.type === "product" && (
+                  canAdd ? (
+                    <div
+                      aria-label="Precio"
+                      tabIndex={-1}
+                      className="absolute top-3 right-3 md:top-4 md:right-4 z-30 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur shadow-sm text-[#2f4131] font-medium"
+                    >
+                      {cop(price)}
+                    </div>
+                  ) : (
+                    !product && (
+                      <div
+                        aria-label="No disponible"
+                        tabIndex={-1}
+                        className="absolute top-3 right-3 md:top-4 md:right-4 z-30 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur shadow-sm text-[#2f4131] font-medium"
+                      >
+                        No disponible
+                      </div>
+                    )
+                  )
                 )}
               </div>
             );
@@ -177,19 +184,19 @@ export default function PromoBannerCarousel() {
       </div>
 
       <ProductQuickView
-        open={!!quickProduct}
-        onClose={() => setQuickProduct(null)}
+        open={quickOpen}
         product={quickProduct}
+        onClose={() => setQuickOpen(false)}
       />
 
       <Portal>
-        {showPet && (
+        {petOpen && (
           <div className="fixed inset-0 z-[80] flex items-center justify-center" role="dialog" aria-modal="true">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setShowPet(false)} />
+            <div className="absolute inset-0 bg-black/40" onClick={() => setPetOpen(false)} />
             <div className="relative max-w-md w-[92%] rounded-2xl bg-[#FAF7F2] p-5 shadow-lg">
               <button
                 type="button"
-                onClick={() => setShowPet(false)}
+                onClick={() => setPetOpen(false)}
                 aria-label="Cerrar"
                 className="absolute top-3 right-3 h-8 w-8 grid place-items-center rounded-full bg-black/5 hover:bg-black/10 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
               >
