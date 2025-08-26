@@ -52,6 +52,7 @@ export default function ProductQuickView({ open, product, onClose, onAdd }) {
   const isCoffee =
     product?.category === "coffee" ||
     /capu|latte|espres|café|cafe/i.test(title);
+
   const [milk, setMilk] = useState("entera");
   const milkDelta = isCoffee
     ? MILK_OPTIONS.find((m) => m.id === milk)?.delta || 0
@@ -60,14 +61,16 @@ export default function ProductQuickView({ open, product, onClose, onAdd }) {
   const finalPrice = basePrice + milkDelta;
   const canAdd = !!id && Number.isFinite(basePrice) && basePrice > 0;
 
+
   const handleAdd = () => {
     if (!canAdd) {
-      toast('Producto no disponible');
+      toast("Producto no disponible");
       return;
     }
     const payload = isCoffee ? { ...product, milk } : product;
     addItem({ ...payload, price: finalPrice }, 1);
     onAdd?.();
+
     onClose?.();
   };
 
@@ -104,6 +107,7 @@ export default function ProductQuickView({ open, product, onClose, onAdd }) {
               {subtitle && (
                 <p className="text-sm text-neutral-600 mt-1">{subtitle}</p>
               )}
+
               {isCoffee && (
                 <div className="mt-3">
                   <p className="text-sm font-medium">Leche</p>
@@ -118,6 +122,7 @@ export default function ProductQuickView({ open, product, onClose, onAdd }) {
                           milk === opt.id
                             ? "bg-[#2f4131] text-white border-[#2f4131]"
                             : "bg-white border-black/10 dark:bg-neutral-800 dark:border-white/10"
+
                         }`}
                       >
                         {opt.label}
@@ -133,6 +138,7 @@ export default function ProductQuickView({ open, product, onClose, onAdd }) {
                 <p className="mt-2 font-semibold text-neutral-900">
                   {cop(finalPrice)}
                 </p>
+
               )}
               <button
                 type="button"

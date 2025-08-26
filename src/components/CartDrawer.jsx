@@ -238,6 +238,13 @@ export default function CartDrawer({ open, onClose }) {
                           </div>
                         )}
                         {renderOptions(it.options)}
+                        {it.milk && (
+                          <div className="text-xs text-neutral-500 mt-0.5">
+                            Leche: {
+                              MILK_OPTIONS.find((m) => m.id === it.milk)?.label || it.milk
+                            }
+                          </div>
+                        )}
                       </div>
                       <p className="text-neutral-900 font-semibold whitespace-nowrap">
                         {formatCOP(lineTotal)}
