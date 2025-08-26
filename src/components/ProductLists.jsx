@@ -147,25 +147,6 @@ export default function ProductLists({
     [query, counts]
   );
 
-  const renderPanel = (s, inTodos = false) => (
-    <div
-      key={s.id}
-      id={`panel-${s.id}${inTodos ? "-todos" : ""}`}
-      role="tabpanel"
-      tabIndex={-1}
-      aria-labelledby={`tab-${s.id}${inTodos ? "-todos" : ""}`}
-    >
-      {inTodos && (
-        <span id={`tab-${s.id}-todos`} className="sr-only">
-          {categories.find((c) => c.id === s.id)?.label || s.id}
-        </span>
-      )}
-      {inTodos
-        ? cloneElement(s.element, { id: `section-${s.id}-todos` })
-        : s.element}
-    </div>
-  );
-
   const orderedTabs = ["todos", ...cats];
   const activeIndex = Math.max(orderedTabs.indexOf(selectedCategory), 0);
 
@@ -211,13 +192,18 @@ export default function ProductLists({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [selectedCategory]);
 
+  const sectionStackClass =
+    featureTabs && selectedCategory !== "todos" ? "" : "space-y-6";
+
   return (
     <>
       <div className="mx-auto max-w-screen-md px-4 md:px-6">
-        <CategoryHeader
-          selectedCategory={selectedCategory}
-          visibleCount={visibleCount}
-        />
+        {!featureTabs && (
+          <CategoryHeader
+            selectedCategory={selectedCategory}
+            visibleCount={visibleCount}
+          />
+        )}
         <div className="-mx-4 md:-mx-6 px-4 md:px-6">
           {featureTabs ? (
             <CategoryTabs
@@ -266,11 +252,24 @@ export default function ProductLists({
                 if (el) panelRefs.current[id] = el;
               }}
             >
-              {id === "todos"
-                ? sections.map((s) => renderPanel(s, true))
-                : sections
-                    .filter((s) => s.id === id)
-                    .map((s) => renderPanel(s))}
+              <div
+                id={`panel-${id}`}
+                role="tabpanel"
+                tabIndex={-1}
+                aria-labelledby={`tab-${id}`}
+                className={sectionStackClass}
+              >
+                {id === "todos"
+                  ? sections.map((s) =>
+                      cloneElement(s.element, {
+                        id: `section-${s.id}-todos`,
+                        key: s.id,
+                      })
+                    )
+                  : sections
+                      .filter((s) => s.id === id)
+                      .map((s) => cloneElement(s.element, { key: s.id }))}
+              </div>
             </div>
           ))}
         </div>
