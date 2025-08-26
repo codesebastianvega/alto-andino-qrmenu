@@ -1,7 +1,9 @@
 import { useMemo, useEffect, useCallback, cloneElement } from "react";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
-import { getStockState, slugify } from "../utils/stock";
+import { getStockState, slugify, isUnavailable } from "../utils/stock";
+import { toast } from "./Toast";
+import clsx from "clsx";
 import { matchesQuery } from "../utils/strings";
 import { AddIconButton, StatusChip } from "./Buttons";
 import Section from "./Section";
@@ -370,14 +372,21 @@ function List({ items }) {
 function ProductRow({ item }) {
   const { addItem } = useCart();
   const st = getStockState(item.id || slugify(item.name));
-  const disabled = st === "out";
+  const unavailable = st === "out" || isUnavailable(item);
+  const handleAdd = () => {
+    if (unavailable) {
+      toast("Producto no disponible");
+      return;
+    }
+    addItem({ productId: item.id, name: item.name, price: item.price });
+  };
   return (
     <li className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12">
       <p className="font-semibold">{item.name}</p>
       <p className="text-xs text-neutral-600 mt-1">{item.desc}</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {st === "low" && <StatusChip variant="low">Pocas unidades</StatusChip>}
-        {st === "out" && (
+        {unavailable && (
           <StatusChip variant="soldout">No Disponible</StatusChip>
         )}
       </div>
@@ -385,12 +394,13 @@ function ProductRow({ item }) {
         ${COP(item.price)}
       </div>
       <AddIconButton
-        className="absolute bottom-4 right-4 z-20"
+        className={clsx(
+          "absolute bottom-4 right-4 z-20",
+          unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
+        )}
         aria-label={"Añadir " + item.name}
-        onClick={() =>
-          addItem({ productId: item.id, name: item.name, price: item.price })
-        }
-        disabled={disabled}
+        onClick={handleAdd}
+        aria-disabled={unavailable}
       />
     </li>
   );
