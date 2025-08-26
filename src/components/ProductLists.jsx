@@ -146,14 +146,19 @@ export default function ProductLists({
     [query, counts]
   );
 
-  const renderPanel = (s) => (
+  const renderPanel = (s, inTodos = false) => (
     <div
       key={s.id}
-      id={`panel-${s.id}`}
+      id={`panel-${s.id}${inTodos ? "-todos" : ""}`}
       role="tabpanel"
       tabIndex={-1}
-      aria-labelledby={`tab-${s.id}`}
+      aria-labelledby={`tab-${s.id}${inTodos ? "-todos" : ""}`}
     >
+      {inTodos && (
+        <span id={`tab-${s.id}-todos`} className="sr-only">
+          {categories.find((c) => c.id === s.id)?.label || s.id}
+        </span>
+      )}
       {s.element}
     </div>
   );
@@ -259,10 +264,10 @@ export default function ProductLists({
               }}
             >
               {id === "todos"
-                ? sections.map(renderPanel)
+                ? sections.map((s) => renderPanel(s, true))
                 : sections
                     .filter((s) => s.id === id)
-                    .map(renderPanel)}
+                    .map((s) => renderPanel(s))}
             </div>
           ))}
         </div>

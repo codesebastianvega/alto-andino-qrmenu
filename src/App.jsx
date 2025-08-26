@@ -65,9 +65,8 @@ export default function App() {
     url.searchParams.set("cat", selectedCategory);
     window.history.replaceState(null, "", url);
     if (selectedCategory !== "todos") {
-      const panelId = `panel-${selectedCategory}`;
       requestAnimationFrame(() => {
-        document.getElementById(panelId)?.focus();
+        document.getElementById(`panel-${selectedCategory}`)?.focus();
       });
     }
   }, [selectedCategory]);
