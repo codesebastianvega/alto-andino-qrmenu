@@ -1,7 +1,8 @@
 export const banners = (env) => {
   const u = (k, fb) => env?.[k] || fb;
   const local = (envKey, path) => env?.[envKey] || path;
-  return [
+
+  const items = [
     {
       id: "featured",
       type: "product",
@@ -60,4 +61,15 @@ export const banners = (env) => {
       alt: "Reseñas de clientes",
     },
   ];
+
+  return items.map((banner) => {
+    if (banner.type === "product" && !banner.productId) {
+      banner.type = "info";
+      if (banner.ctas) {
+        delete banner.ctas.primary;
+        delete banner.ctas.secondary;
+      }
+    }
+    return banner;
+  });
 };
