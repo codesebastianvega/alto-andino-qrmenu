@@ -191,17 +191,26 @@ export default function App() {
     return <QrPoster url={publicUrl} />;
   }
 
+  const hasFloatingCartBar = cart.items && cart.items.length > 0;
+
   // ✅ Modo menú normal
   return (
     <div className="bg-alto-beige text-alto-text leading-snug">
       <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} />
 
-      <div className="mx-auto max-w-3xl p-5 sm:p-6 md:p-8">
+      <main
+        className={`mx-auto max-w-3xl px-5 sm:px-6 md:px-8 pt-5 sm:pt-6 md:pt-8 ${
+          hasFloatingCartBar ? "pb-24" : "pb-8"
+        }`}
+      >
         <div className="mt-2 mb-6">
           <HeroHeadline />
           <SearchBar value={query} onQueryChange={setQuery} />
         </div>
-        <PromoBannerCarousel items={banners} resolveProductById={resolveProductById} />
+        <PromoBannerCarousel
+          items={banners}
+          resolveProductById={resolveProductById}
+        />
         <ProductLists
           query={query}
           selectedCategory={selectedCategory}
@@ -211,15 +220,15 @@ export default function App() {
         />
 
         <Footer />
+      </main>
 
-        {/* Barra flotante y Drawer del carrito */}
-        <FloatingCartBar
-          items={cart.items}
-          total={cart.total}
-          onOpen={() => setOpen(true)}
-        />
-        <CartDrawer open={open} onClose={() => setOpen(false)} />
-      </div>
+      {/* Barra flotante y Drawer del carrito */}
+      <FloatingCartBar
+        items={cart.items}
+        total={cart.total}
+        onOpen={() => setOpen(true)}
+      />
+      <CartDrawer open={open} onClose={() => setOpen(false)} />
 
       <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
         <DietaryGuide />
