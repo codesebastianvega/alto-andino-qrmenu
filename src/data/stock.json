@@ -2,7 +2,7 @@
   "_comment": "Valores de disponibilidad: true, false y \"low\"",
   "products": {
     "des-sendero": true,
-    "des-cumbre": "low",
+    "des-cumbre": true,
     "des-huevos": true,
     "des-caldo": false,
     "des-amanecer": true,
@@ -18,25 +18,25 @@
     "main-burger": false,
 
     "sandwich:cerdo": true,
-    "sandwich:pollo": "low",
+    "sandwich:pollo": false,
     "sandwich:pavo": true,
-    "sandwich:serrano": false,
-    "sandwich:cosecha": "low",
+    "sandwich:serrano": true,
+    "sandwich:cosecha": false,
 
     "smoothie:Brisas Tropicales": true,
-    "smoothie:El Néctar Andino": false,
+    "smoothie:El Néctar Andino": true,
     "smoothie:Verde Amanecer de la Sabana": "low",
 
-    "post-red": true,
+    "post-red": false,
     "post-tres": "low",
-    "post-tira": true,
-    "post-amap": true,
+    "post-tira": false,
+    "post-amap": false,
     "post-vasca": false,
-    "post-fresas": true,
-    "cumbre:rojos": "low",
+    "post-fresas": false,
+    "cumbre:rojos": true,
     "cumbre:amarillos": true,
     "cumbre:blancos": false,
-    "cumbre:choco": "low",
+    "cumbre:choco": false,
 
     "cof-espresso": true,
     "cof-americano": true,
@@ -50,7 +50,7 @@
     "inf-aromatica": true,
     "inf-ginger": true,
     "inf-verde": true,
-    "inf-manzanilla": "low",
+    "inf-manzanilla": true,
     "inf-chai": true
   }
 }
