@@ -91,7 +91,7 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
                       <div className="mt-2 flex gap-2">
                         <button
                           type="button"
-                          onClick={() => canAdd && addItem(product, 1)}
+                          onClick={() => canAdd && addItem(product)}
                           aria-label={addLabel}
                           disabled={!canAdd}
                           aria-disabled={!canAdd}
