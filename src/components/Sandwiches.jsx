@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Chip, AddIconButton, StatusChip } from "./Buttons";
 import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
-import { getStockState, slugify } from "../utils/stock";
+import { getStockState, isUnavailable } from "../utils/stock";
+import { toast } from "./Toast";
+import clsx from "clsx";
 import { matchesQuery } from "../utils/strings";
 import {
   sandwichItems,
@@ -72,8 +74,15 @@ export default function Sandwiches({ query }) {
         <ul className="space-y-3">
           {filtered.map((it) => {
             const productId = "sandwich:" + it.key;
-            const st = getStockState(productId || slugify(it.name));
-            const disabled = st === "out";
+            const st = getStockState(productId);
+            const unavailable = st === "out" || isUnavailable(it);
+            const handleAdd = () => {
+              if (unavailable) {
+                toast("Producto no disponible");
+                return;
+              }
+              add(it);
+            };
             return (
               <li
                 key={it.key}
@@ -85,7 +94,7 @@ export default function Sandwiches({ query }) {
                   {st === "low" && (
                     <StatusChip variant="low">Pocas unidades</StatusChip>
                   )}
-                  {st === "out" && (
+                  {unavailable && (
                     <StatusChip variant="soldout">No Disponible</StatusChip>
                   )}
                   {priceByItem[it.key].unico && (
@@ -96,10 +105,14 @@ export default function Sandwiches({ query }) {
                   ${COP(priceFor(it.key))}
                 </div>
                 <AddIconButton
-                  className="absolute bottom-4 right-4 z-20"
+                  className={clsx(
+                    "absolute bottom-4 right-4 z-20",
+                    unavailable &&
+                      "opacity-60 cursor-not-allowed pointer-events-auto"
+                  )}
                   aria-label={"Añadir " + it.name}
-                  onClick={() => add(it)}
-                  disabled={disabled}
+                  onClick={handleAdd}
+                  aria-disabled={unavailable}
                 />
               </li>
             );
