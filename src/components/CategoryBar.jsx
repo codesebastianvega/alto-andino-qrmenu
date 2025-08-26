@@ -49,10 +49,14 @@ export default function CategoryBar({
             <li key={cat.id} className="first:ml-1 last:mr-1">
               <button
                 onClick={() => {
-                  const target = document.getElementById(
-                    cat?.targetId || `section-${cat.id}`
-                  );
-                  target?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  if (cat.id === "todos") {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  } else {
+                    const target = document.getElementById(
+                      cat?.targetId || `section-${cat.id}`
+                    );
+                    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }
                   onSelect?.(cat);
                 }}
                 type="button"
