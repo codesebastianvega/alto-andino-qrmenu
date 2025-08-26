@@ -75,6 +75,7 @@ export default function BowlsSection({ query }) {
             Desde {formatCOP(BASE_PRICE)}
           </div>
           <button
+            type="button"
             onClick={openBuilder}
             aria-label="Armar bowl personalizado"
             className={[

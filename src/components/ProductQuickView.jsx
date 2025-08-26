@@ -36,6 +36,7 @@ export default function ProductQuickView({ product, open, onClose }) {
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative max-w-sm w-[92%] rounded-2xl bg-white ring-1 ring-neutral-200 shadow-lg">
         <button
+          type="button"
           onClick={onClose}
           aria-label="Cerrar"
           className="absolute top-3 right-3 h-8 w-8 grid place-items-center rounded-full bg-black/5 hover:bg-black/10 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
