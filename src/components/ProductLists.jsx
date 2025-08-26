@@ -1,4 +1,11 @@
-import { useMemo, useEffect, useCallback } from "react";
+import {
+  useMemo,
+  useEffect,
+  useCallback,
+  useRef,
+  useState,
+  useLayoutEffect,
+} from "react";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import { getStockState, slugify } from "../utils/stock";
@@ -154,6 +161,16 @@ export default function ProductLists({
   const orderedTabs = ["todos", ...cats];
   const activeIndex = Math.max(orderedTabs.indexOf(selectedCategory), 0);
 
+  const panelRefs = useRef({});
+  const [activeHeight, setActiveHeight] = useState();
+
+  useLayoutEffect(() => {
+    const el = panelRefs.current[selectedCategory];
+    if (el) {
+      setActiveHeight(el.offsetHeight);
+    }
+  }, [selectedCategory, counts, query]);
+
   const onPrev = useCallback(() => {
     const idx = orderedTabs.indexOf(selectedCategory);
     if (idx > 0) {
@@ -224,13 +241,23 @@ export default function ProductLists({
           )}
         </div>
       </div>
-      <div {...swipeHandlers} className="overflow-hidden">
+      <div
+        {...swipeHandlers}
+        className="overflow-hidden"
+        style={{ height: activeHeight }}
+      >
         <div
           className="flex transition-transform duration-300 ease-in-out"
           style={{ transform: `translateX(-${activeIndex * 100}%)` }}
         >
           {orderedTabs.map((id) => (
-            <div key={id} className="w-full flex-shrink-0">
+            <div
+              key={id}
+              className="w-full flex-shrink-0"
+              ref={(el) => {
+                if (el) panelRefs.current[id] = el;
+              }}
+            >
               {id === "todos"
                 ? sections.map(renderPanel)
                 : sections
