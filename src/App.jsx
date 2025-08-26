@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 // Layout / UI
 import Header from "./components/Header";
@@ -8,6 +8,7 @@ import ProductLists, {
   BREAKFAST_ITEMS,
   MAINS_ITEMS,
   DESSERT_BASE_ITEMS,
+  CATS,
 } from "./components/ProductLists";
 import SearchBar from "./components/SearchBar";
 import HeroHeadline from "./components/HeroHeadline";
@@ -37,6 +38,29 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState("todos");
   const cart = useCart();
   const banners = buildBanners(import.meta.env);
+
+  function handleCategorySelect(cat) {
+    const slug = typeof cat === "string" ? cat : cat.id;
+    const url = new URL(window.location.href);
+    url.searchParams.set("cat", slug);
+    window.history.replaceState(null, "", url);
+    setSelectedCategory(slug);
+    if (slug !== "todos") {
+      const panelId = `panel-${slug}`;
+      requestAnimationFrame(() => {
+        document.getElementById(panelId)?.focus();
+      });
+    }
+  }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get("cat");
+    const valid = ["todos", ...CATS];
+    if (slug && valid.includes(slug)) {
+      handleCategorySelect(slug);
+    }
+  }, []);
 
   const productMap = useMemo(() => {
     const collections = [
@@ -128,7 +152,7 @@ export default function App() {
         <ProductLists
           query={query}
           selectedCategory={selectedCategory}
-          onCategorySelect={(cat) => setSelectedCategory(cat.id)}
+          onCategorySelect={handleCategorySelect}
         />
 
         <Footer />
