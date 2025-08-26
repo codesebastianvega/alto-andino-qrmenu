@@ -237,6 +237,7 @@ export default function CoffeeSection({ query }) {
                   <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {showAddMilk && (
                       <button
+                        type="button"
                         className="text-xs text-alto-primary underline text-left"
                         onClick={() => toggleAddMilk(item.id)}
                       >

@@ -43,12 +43,9 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
   };
 
   return (
-    <div
-      className="relative rounded-2xl overflow-hidden"
-      aria-roledescription="carousel"
-    >
+    <div className="relative" aria-roledescription="carousel">
       <div
-        className="relative overflow-hidden"
+        className="relative"
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onTouchStart={onTouchStart}
@@ -79,7 +76,7 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
                     loading="lazy"
                     referrerPolicy="no-referrer"
                     decoding="async"
-                    className="absolute inset-0 h-full w-full object-cover z-0"
+                    className="absolute inset-0 w-full h-full object-cover z-0"
                   />
                   <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
                   <div className="relative z-30 pointer-events-auto flex h-full w-full flex-col justify-end p-4">
@@ -129,7 +126,7 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
                     <div
                       aria-label="Precio"
                       tabIndex={-1}
-                      className="absolute top-3 right-3 md:top-4 md:right-4 z-30 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur shadow-sm text-[#2f4131] font-medium"
+                      className="absolute top-3 right-3 md:top-4 md:right-4 z-30 rounded-full px-3 py-1 text-sm bg-white/85 shadow-sm text-[#2f4131] font-medium pointer-events-auto"
                     >
                       {cop(price)}
                     </div>
@@ -144,6 +141,7 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
           {items.map((_, i) => (
             <button
               key={i}
+              type="button"
               onClick={() => setIndex(i)}
               aria-label={`Ir al banner ${i + 1}`}
               className={`h-2 w-2 rounded-full ${i === index ? "bg-white" : "bg-white/50"} focus:outline-none focus:ring-2 focus:ring-white`}

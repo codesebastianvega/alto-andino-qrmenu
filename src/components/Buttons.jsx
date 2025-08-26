@@ -5,6 +5,7 @@ export function Chip({ active, onClick, children, className = "", shape = "pill"
   const rounded = shape === "card" ? "rounded-xl" : "rounded-full";
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cx(
         "px-3 py-1 text-sm border transition",
@@ -20,9 +21,9 @@ export function Chip({ active, onClick, children, className = "", shape = "pill"
   );
 }
 
-export function Button({ variant = "primary", className = "", ...props }) {
+export function Button({ variant = "primary", className = "", type = "button", ...props }) {
   const base = "btn " + (variant === "primary" ? "btn-primary" : "btn-outline");
-  return <button {...props} className={base + " " + className} />;
+  return <button type={type} {...props} className={base + " " + className} />;
 }
 
 // Botón de texto “Añadir” (no-FAB)

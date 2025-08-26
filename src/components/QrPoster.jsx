@@ -47,12 +47,14 @@ export default function QrPoster({ url }) {
 
         <div className="mt-5 flex gap-2 justify-center no-print">
           <button
+            type="button"
             className="px-3 py-2 rounded-lg border bg-neutral-50 hover:bg-neutral-100 text-sm"
             onClick={handleCopy}
           >
             Copiar URL
           </button>
           <button
+            type="button"
             className="px-3 py-2 rounded-lg bg-alto-primary text-white hover:opacity-90 text-sm"
             onClick={handlePrint}
           >

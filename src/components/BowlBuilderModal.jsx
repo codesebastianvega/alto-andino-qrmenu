@@ -207,12 +207,14 @@ export default function BowlBuilderModal({ open, onClose }) {
             </div>
             <div className="flex gap-2">
               <button
+                type="button"
                 className="h-8 px-3 rounded-full bg-white text-[#2f4131] hover:bg-white/90 text-sm"
                 onClick={resetAll}
               >
                 Restablecer
               </button>
               <button
+                type="button"
                 onClick={onClose}
                 className="text-white/95 underline underline-offset-2 text-sm"
               >
@@ -337,12 +339,14 @@ export default function BowlBuilderModal({ open, onClose }) {
           </div>
           <div className="flex gap-2 pt-2">
             <button
+              type="button"
               onClick={onClose}
               className="flex-1 h-9 rounded-lg bg-white/10 text-white hover:bg-white/15 ring-1 ring-white/15 text-sm"
             >
               Seguir pidiendo
             </button>
             <button
+              type="button"
               onClick={addToCart}
               className="flex-1 h-9 rounded-lg bg-[#2f4131] text-white hover:bg-[#243326] text-sm"
             >

@@ -1,12 +1,4 @@
-import {
-  useMemo,
-  useEffect,
-  useCallback,
-  useRef,
-  useState,
-  useLayoutEffect,
-  cloneElement,
-} from "react";
+import { useMemo, useEffect, useCallback, cloneElement } from "react";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import { getStockState, slugify } from "../utils/stock";
@@ -146,19 +138,28 @@ export default function ProductLists({
     ],
     [query, counts]
   );
+  const renderPanel = (s, inTodos = false) => (
+    <div
+      key={s.id}
+      id={`panel-${s.id}${inTodos ? "-todos" : ""}`}
+      role="tabpanel"
+      tabIndex={-1}
+      aria-labelledby={`tab-${s.id}${inTodos ? "-todos" : ""}`}
+      className="will-change-transform [transform:translateZ(0)] contain-content overscroll-y-contain"
+    >
+      {inTodos && (
+        <span id={`tab-${s.id}-todos`} className="sr-only">
+          {categories.find((c) => c.id === s.id)?.label || s.id}
+        </span>
+      )}
+      {inTodos
+        ? cloneElement(s.element, { id: `section-${s.id}-todos` })
+        : s.element}
+    </div>
+  );
+
 
   const orderedTabs = ["todos", ...cats];
-  const activeIndex = Math.max(orderedTabs.indexOf(selectedCategory), 0);
-
-  const panelRefs = useRef({});
-  const [activeHeight, setActiveHeight] = useState();
-
-  useLayoutEffect(() => {
-    const el = panelRefs.current[selectedCategory];
-    if (el) {
-      setActiveHeight(el.offsetHeight);
-    }
-  }, [selectedCategory, counts, query]);
 
   const onPrev = useCallback(() => {
     const idx = orderedTabs.indexOf(selectedCategory);
@@ -192,7 +193,8 @@ export default function ProductLists({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [selectedCategory]);
 
-  const sectionStackClass =
+  const stackClass =
+
     featureTabs && selectedCategory !== "todos" ? "" : "space-y-6";
 
   return (
@@ -237,42 +239,15 @@ export default function ProductLists({
       </div>
       <div
         {...swipeHandlers}
-        className="overflow-hidden"
-        style={{ height: activeHeight }}
+        className={stackClass}
       >
-        <div
-          className="flex transition-transform duration-300 ease-in-out"
-          style={{ transform: `translateX(-${activeIndex * 100}%)` }}
-        >
-          {orderedTabs.map((id) => (
-            <div
-              key={id}
-              className="w-full flex-shrink-0"
-              ref={(el) => {
-                if (el) panelRefs.current[id] = el;
-              }}
-            >
-              <div
-                id={`panel-${id}`}
-                role="tabpanel"
-                tabIndex={-1}
-                aria-labelledby={`tab-${id}`}
-                className={sectionStackClass}
-              >
-                {id === "todos"
-                  ? sections.map((s) =>
-                      cloneElement(s.element, {
-                        id: `section-${s.id}-todos`,
-                        key: s.id,
-                      })
-                    )
-                  : sections
-                      .filter((s) => s.id === id)
-                      .map((s) => cloneElement(s.element, { key: s.id }))}
-              </div>
-            </div>
-          ))}
-        </div>
+        {sections.map((s) => {
+          if (featureTabs && selectedCategory !== "todos" && s.id !== selectedCategory) {
+            return null;
+          }
+          return renderPanel(s, selectedCategory === "todos");
+        })}
+
       </div>
     </>
   );

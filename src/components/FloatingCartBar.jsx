@@ -18,6 +18,7 @@ export default function FloatingCartBar({ items, total, onOpen, secondaryAction,
             <div className="flex items-center gap-2">
               {secondaryAction && secondaryLabel && (
                 <button
+                  type="button"
                   onClick={secondaryAction}
                   className="h-10 px-3 rounded-xl bg-white/10 text-white hover:bg-white/15 ring-1 ring-white/15"
                 >
@@ -28,6 +29,7 @@ export default function FloatingCartBar({ items, total, onOpen, secondaryAction,
                 Total actualizado: {total?.toLocaleString?.("es-CO", { style: "currency", currency: "COP" })}
               </span>
               <button
+                type="button"
                 onClick={onOpen}
                 className="h-10 px-4 rounded-xl bg-[#2f4131] text-white hover:bg-[#243326] transition focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
               >
