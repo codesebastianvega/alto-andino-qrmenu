@@ -19,132 +19,10 @@ import {
   breakfastItems,
   mainDishes,
   dessertBaseItems,
+  cumbreFlavors,
+  cumbrePrices,
 } from "../data/menuItems";
 import useSwipeTabs from "../utils/useSwipeTabs";
-
-export const CATS = [
-  "desayunos",
-  "bowls",
-  "platos",
-  "sandwiches",
-  "smoothies",
-  "cafe",
-  "bebidasfrias",
-];
-
-// Datos compartidos de los productos para búsqueda/identificación
-export const BREAKFAST_ITEMS = [
-  {
-    id: "des-sendero",
-    name: "Sendero Matinal",
-    price: 16000,
-    desc: "Bebida caliente + omelette con champiñones, lechugas, tomate cherry y queso, con tostadas multigranos. 🥚🌾🥛",
-  },
-  {
-    id: "des-cumbre",
-    name: "Cumbre Energética",
-    price: 18000,
-    desc: "Bebida caliente + arepa con queso mozzarella, aguacate y ajonjolí negro; yogur griego con arándanos y chía. 🥛🌾",
-  },
-  {
-    id: "des-huevos",
-    name: "Huevos al Gusto",
-    price: 17500,
-    desc: "3 huevos en sartén de hierro; 2 tostadas con queso crema y vegetales. 🥚🌾🥛",
-  },
-  {
-    id: "des-caldo",
-    name: "Caldo de Costilla de Res",
-    price: 18500,
-    desc: "Con papa y cilantro. Incluye bebida caliente + huevos al gusto, arepa y queso. 🥚🥛",
-  },
-  {
-    id: "des-amanecer",
-    name: "Bowl Amanecer Andino",
-    price: 19000,
-    desc: "Yogur griego + açaí, avena, coco, banano, fresa y arándanos; topping de chía o amapola. 🥛🌾🥜",
-  },
-];
-
-export const MAINS_ITEMS = [
-  {
-    id: "main-salmon",
-    name: "Salmón Andino 200 gr",
-    price: 47000,
-    desc: "En sartén de hierro, salsa miel-mostaza y orégano con guarnición de pure de ahuyama y ensalada de granos calientes.",
-  },
-  {
-    id: "main-trucha",
-    name: "Trucha del Páramo 450 gr",
-    price: 42000,
-    desc: "A la plancha con alioli griego con guarnición pure de papa y ensalada fría.",
-  },
-  {
-    id: "main-bolo",
-    name: "Spaghetti a la Boloñesa",
-    price: 28000,
-    desc: "Salsa pomodoro, carne de res; albahaca fresca y ralladura de parmesano. 🌾🥛",
-  },
-  {
-    id: "main-champi",
-    name: "Champiñones a la Madrileña",
-    price: 18000,
-    desc: "125 gr de champiñones en mantequilla y ajo, vino espumoso, jamón serrano, perejil y ralladura de parmesano. 🥛",
-  },
-  {
-    id: "main-ceviche",
-    name: "Ceviche de Camarón",
-    price: 22000,
-    desc: "Camarón marinado en cítricos; pimentón, salsa de tomate casera, cilantro y cebolla morada; con aguacate.",
-  },
-  {
-    id: "main-burger",
-    name: "Burger Andina (Pavo 150 gr)",
-    price: 26000,
-    desc: "Pavo sazonado, salsa de yogur, tomate, lechuga, chucrut y queso Colby Jack en pan artesanal. 🥛🌾",
-  },
-];
-
-export const DESSERT_BASE_ITEMS = [
-  {
-    id: "post-red",
-    name: "Red Velvet",
-    price: 11000,
-    desc: "Bizcocho rojo con crema batida de la casa, endulzado con eritritol y stevia. 🌾🥛",
-  },
-  {
-    id: "post-tres",
-    name: "Tres Leches (saludable)",
-    price: 6200,
-    desc: "Harina de almendras y avena; dulce de tres leches con alulosa; chantilly con eritritol. 🥛🌾",
-  },
-  {
-    id: "post-tira",
-    name: "Tiramisú (saludable)",
-    price: 6800,
-    desc: "Bizcocho de almendras y avena, café especial, chantilly con alulosa y cacao espolvoreado. 🥛🌾",
-  },
-  {
-    id: "post-amap",
-    name: "Torta de Amapola",
-    price: 10000,
-    desc: "Harina de avena y semillas de amapola; crema chantilly endulzada con alulosa. 🥛🌾",
-  },
-  {
-    id: "post-vasca",
-    name: "Torta Vasca de Limón",
-    price: 10000,
-    desc: "Crema de leche, queso crema y maicena; vainilla y sal marina. 🥛",
-  },
-  {
-    id: "post-fresas",
-    name: "Fresas con Crema",
-    price: 9000,
-    desc: "Fresas con crema chantilly endulzada con alulosa. 🥛",
-  },
-];
-
-
 export default function ProductLists({
   query,
   selectedCategory,
@@ -268,7 +146,7 @@ export default function ProductLists({
     </div>
   );
 
-  const orderedTabs = ["todos", ...CATS];
+  const orderedTabs = ["todos", ...cats];
 
   const swipeHandlers = useSwipeTabs({
     onPrev: () => {
@@ -343,7 +221,7 @@ export default function ProductLists({
   );
 }
 
-export function Breakfasts({ query }) {
+function Breakfasts({ query }) {
   const items = (breakfastItems || []).filter((it) =>
     matchesQuery({ title: it.name, description: it.desc }, query)
   );
@@ -351,7 +229,7 @@ export function Breakfasts({ query }) {
   return <List items={items} />;
 }
 
-export function Mains({ query }) {
+function Mains({ query }) {
   const items = (mainDishes || []).filter((it) =>
     matchesQuery({ title: it.name, description: it.desc }, query)
   );
@@ -359,25 +237,11 @@ export function Mains({ query }) {
   return <List items={items} />;
 }
 
-export function Desserts({ query }) {
+function Desserts({ query }) {
   const { addItem } = useCart();
 
-  // Sabores + precios específicos (según tu instrucción):
-  // rojos y amarillos: $10.000 · chococumbre: $11.000 · blancos: $12.000
-  const cumbreSabores = [
-    { id: "rojos", label: "Frutos rojos" },
-    { id: "amarillos", label: "Frutos amarillos" },
-    { id: "blancos", label: "Frutos blancos" },
-    { id: "choco", label: "Chococumbre" },
-  ];
-  const cumbrePrices = {
-    rojos: 10000,
-    amarillos: 10000,
-    choco: 11000,
-    blancos: 12000,
-  };
-
-  const filteredCumbre = cumbreSabores.filter((s) =>
+  // Sabores + precios específicos (según tu instrucción)
+  const filteredCumbre = cumbreFlavors.filter((s) =>
     matchesQuery({ title: s.label }, query)
   );
   const base = (dessertBaseItems || []).filter((p) =>
