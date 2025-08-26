@@ -216,7 +216,7 @@ export default function CoffeeSection({ query, onCount }) {
     <div className="space-y-8">
       {/* CAFÉS */}
       <div>
-        <h3 className="text-sm font-semibold text-alto-primary mb-3">Cafés</h3>
+        <h3 className="text-sm font-semibold text-[#2f4131] mb-3">Cafés</h3>
         <ul className="space-y-3">
           {coffeeItems.map((item) => {
             const st = getStockState(item.id || slugify(item.name));
@@ -253,7 +253,7 @@ export default function CoffeeSection({ query, onCount }) {
                     {showAddMilk && (
                       <button
                         type="button"
-                        className="text-xs text-alto-primary underline text-left"
+                        className="text-xs text-[#2f4131] underline text-left"
                         onClick={() => toggleAddMilk(item.id)}
                       >
                         {addMilk[item.id] ? "Quitar leche" : "+ Agregar leche"}
@@ -282,10 +282,11 @@ export default function CoffeeSection({ query, onCount }) {
                 <AddIconButton
                   className={clsx(
                     "absolute bottom-4 right-4 z-20",
-                    unavailable && "opacity-40 pointer-events-none"
+                    unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
                   )}
-                  aria-label={"Añadir " + displayName(item)}
+                  aria-label={"Agregar " + displayName(item)}
                   aria-disabled={unavailable}
+                  title={unavailable ? "No disponible" : undefined}
                   onClick={handleAdd}
                 />
               </li>
@@ -296,7 +297,7 @@ export default function CoffeeSection({ query, onCount }) {
 
       {/* INFUSIONES & TÉS (incluye Chai) */}
       <div>
-        <h3 className="text-sm font-semibold text-alto-primary mb-3">
+        <h3 className="text-sm font-semibold text-[#2f4131] mb-3">
           Infusiones & Tés
         </h3>
         <ul className="space-y-3">
@@ -344,10 +345,11 @@ export default function CoffeeSection({ query, onCount }) {
                 <AddIconButton
                   className={clsx(
                     "absolute bottom-4 right-4 z-20",
-                    unavailable && "opacity-40 pointer-events-none"
+                    unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
                   )}
-                  aria-label={"Añadir " + displayName(item)}
+                  aria-label={"Agregar " + displayName(item)}
                   aria-disabled={unavailable}
+                  title={unavailable ? "No disponible" : undefined}
                   onClick={handleAdd}
                 />
               </li>

@@ -66,14 +66,14 @@ export default function ProductQuickView({ open, product, onClose, onAdd }) {
         <div
           ref={modalRef}
           tabIndex={-1}
-          className="pointer-events-auto relative z-[110] mx-auto my-6 max-w-screen-sm w-[calc(100%-1.5rem)] focus:outline-none"
+          className="pointer-events-auto relative z-[110] mx-auto my-6 max-w-screen-sm w-[calc(100%-1.5rem)] focus-visible:outline-none"
         >
           <div className="relative rounded-2xl bg-white shadow-xl">
             <button
               type="button"
               onClick={() => onClose?.()}
               aria-label="Cerrar"
-              className="absolute top-3 right-3 h-8 w-8 grid place-items-center rounded-full bg-black/5 hover:bg-black/10 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+              className="absolute top-3 right-3 h-8 w-8 grid place-items-center rounded-full bg-black/5 hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
             >
               ×
             </button>
@@ -97,7 +97,7 @@ export default function ProductQuickView({ open, product, onClose, onAdd }) {
                 onClick={handleAdd}
                 disabled={!canAdd}
                 aria-disabled={!canAdd}
-                className="mt-4 w-full h-10 rounded-xl bg-[#2f4131] text-white hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:bg-neutral-400 disabled:text-white/80"
+                className="mt-4 w-full h-10 rounded-xl bg-[#2f4131] text-white hover:bg-[#243326] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131] disabled:bg-neutral-400 disabled:text-white/80"
               >
                 {canAdd ? 'Agregar' : 'Producto no disponible'}
               </button>

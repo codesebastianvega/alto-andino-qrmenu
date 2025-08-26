@@ -115,9 +115,10 @@ export default function Sandwiches({ query, onCount }) {
                     unavailable &&
                       "opacity-60 cursor-not-allowed pointer-events-auto"
                   )}
-                  aria-label={"Añadir " + it.name}
+                  aria-label={"Agregar " + it.name}
                   onClick={handleAdd}
                   aria-disabled={unavailable}
+                  title={unavailable ? "No disponible" : undefined}
                 />
               </li>
             );

@@ -4,7 +4,7 @@ export default function HeroHeadline() {
       <h1
         id="home-headline"
         tabIndex="-1"
-        className="text-[22px] md:text-3xl font-semibold tracking-tight leading-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(47,65,49,.3)] rounded"
+        className="text-[22px] md:text-3xl font-semibold tracking-tight leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131] rounded"
         style={{
           display: "-webkit-box",
           WebkitLineClamp: 2,

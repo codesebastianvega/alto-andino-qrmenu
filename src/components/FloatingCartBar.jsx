@@ -31,7 +31,7 @@ export default function FloatingCartBar({ items, total, onOpen, secondaryAction,
               <button
                 type="button"
                 onClick={onOpen}
-                className="h-10 px-4 rounded-xl bg-[#2f4131] text-white hover:bg-[#243326] transition focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                className="h-10 px-4 rounded-xl bg-[#2f4131] text-white hover:bg-[#243326] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
               >
                 Ver pedido
               </button>

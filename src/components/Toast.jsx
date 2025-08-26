@@ -54,6 +54,7 @@ export default function Toast() {
   return (
     <div
       aria-live="polite"
+      role="status"
       className={[
         "fixed left-1/2 -translate-x-1/2 z-[120] pointer-events-none w-max",
         "transition-opacity duration-200",
@@ -66,7 +67,7 @@ export default function Toast() {
         {action && (
           <button
             type="button"
-            className="text-[11px] font-medium underline"
+            className="text-[11px] font-medium underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131] rounded"
             onClick={() => {
               action.onAction?.();
               setShow(false);

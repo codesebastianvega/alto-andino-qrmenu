@@ -36,7 +36,7 @@ export default function SearchBar({ value = "", onQueryChange, showChips = false
           placeholder="Buscar bowls, café, sándwich…"
           value={internal}
           onChange={handleChange}
-          className="w-full py-2 pl-9 pr-3 rounded-full border border-black/10 bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+          className="w-full py-2 pl-9 pr-3 rounded-full border border-black/10 bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
         />
       </div>
       {showChips && (

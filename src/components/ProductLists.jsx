@@ -421,6 +421,18 @@ function Desserts({ cumbre = [], base = [] }) {
               const st = getStockState(id);
               const disabled = st === "out";
               const price = cumbrePrices[s.id];
+              const handleAdd = () => {
+                if (disabled) {
+                  toast("Producto no disponible");
+                  return;
+                }
+                addItem({
+                  productId: "cumbre",
+                  name: "Cumbre Andino",
+                  price,
+                  options: { Sabor: s.label },
+                });
+              };
               return (
                 <div
                   key={s.id}
@@ -443,16 +455,10 @@ function Desserts({ cumbre = [], base = [] }) {
                   </div>
                   <AddIconButton
                     className="absolute bottom-4 right-4 z-20"
-                    aria-label={"Añadir Cumbre Andino " + s.label}
-                    onClick={() =>
-                      addItem({
-                        productId: "cumbre",
-                        name: "Cumbre Andino",
-                        price,
-                        options: { Sabor: s.label },
-                      })
-                    }
-                    disabled={disabled}
+                    aria-label={"Agregar Cumbre Andino " + s.label}
+                    onClick={handleAdd}
+                    aria-disabled={disabled}
+                    title={disabled ? "No disponible" : undefined}
                   />
                 </div>
               );
@@ -511,9 +517,10 @@ function ProductRow({ item }) {
           "absolute bottom-4 right-4 z-20",
           unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
         )}
-        aria-label={"Añadir " + item.name}
+        aria-label={"Agregar " + item.name}
         onClick={handleAdd}
         aria-disabled={unavailable}
+        title={unavailable ? "No disponible" : undefined}
       />
     </li>
   );

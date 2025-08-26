@@ -42,9 +42,10 @@ function Card({ item, onAdd }) {
           "absolute bottom-2 right-2 scale-90 sm:scale-100",
           unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
         )}
-        aria-label={"Añadir " + item.name}
+        aria-label={"Agregar " + item.name}
         onClick={handleAdd}
         aria-disabled={unavailable}
+        title={unavailable ? "No disponible" : undefined}
       />
     </div>
   );

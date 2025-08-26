@@ -44,9 +44,10 @@ function List({ items, onAdd }) {
                 "absolute bottom-4 right-4 z-20",
                 unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
               )}
-              aria-label={"Añadir " + p.name}
+              aria-label={"Agregar " + p.name}
               onClick={handleAdd}
               aria-disabled={unavailable}
+              title={unavailable ? "No disponible" : undefined}
             />
           </li>
         );
@@ -81,7 +82,7 @@ export default function SmoothiesSection({ query, onCount }) {
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
       {smoothiesFiltered.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-alto-primary mb-2">
+          <h3 className="text-sm font-semibold text-[#2f4131] mb-2">
             Smoothies
           </h3>
           <List items={smoothiesFiltered} onAdd={add} />
@@ -89,7 +90,7 @@ export default function SmoothiesSection({ query, onCount }) {
       )}
       {funcionalesFiltered.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-alto-primary mb-2">
+          <h3 className="text-sm font-semibold text-[#2f4131] mb-2">
             Funcionales
           </h3>
           <List items={funcionalesFiltered} onAdd={add} />
