@@ -112,18 +112,49 @@ export function AddIconButton({ className = "", disabled = false, variant = "sol
   );
 }
 
-// Chip de estado de inventario
-export function StatusChip({ variant = "neutral", className = "", children }) {
-  const map = {
-    low: "bg-amber-50 text-amber-800 border-amber-300",
-    soldout: "bg-neutral-100 text-neutral-700 border-neutral-200",
+/**
+ * Inventory status chip.
+ *
+ * @param {string} [intent]
+ *   Visual style: "warn", "error" or "neutral". Overrides `variant`.
+ * @param {string} [variant="neutral"]
+ *   Legacy prop kept for backward compatibility: "low", "soldout" or "neutral".
+ * @param {string} [size="xs"]
+ *   Chip size: "xs" (default) or "sm".
+ */
+export function StatusChip({
+  intent,
+  variant = "neutral",
+  size = "xs",
+  className = "",
+  children,
+}) {
+  const intentMap = {
+    warn: "bg-amber-50 text-amber-800 border-amber-300",
+    error: "bg-red-50 text-red-800 border-red-300",
     neutral: "bg-neutral-100 text-neutral-700 border-neutral-200",
   };
+
+  const variantMap = {
+    low: "warn",
+    soldout: "neutral",
+    neutral: "neutral",
+  };
+
+  const sizeMap = {
+    xs: "px-2 py-[3px] text-[11px]",
+    sm: "px-3 py-1 text-sm",
+  };
+
+  const color = intentMap[intent || variantMap[variant] || "neutral"];
+  const dimension = sizeMap[size] || sizeMap.xs;
+
   return (
     <span
       className={cx(
-        "inline-flex items-center rounded-full border px-2 py-[3px] text-[11px] leading-none font-medium",
-        map[variant],
+        "inline-flex items-center rounded-full border leading-none font-medium",
+        dimension,
+        color,
         className
       )}
     >

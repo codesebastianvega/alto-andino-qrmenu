@@ -59,8 +59,8 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
           <p className="mt-0.5 text-sm text-neutral-600 line-clamp-2">{item.desc}</p>
         )}
         <div className="mt-2 flex flex-wrap gap-2">
-          {st === 'low' && <StatusChip variant="low">Pocas unidades</StatusChip>}
-          {unavailable && <StatusChip variant="soldout">No Disponible</StatusChip>}
+          {st === 'low' && <StatusChip intent="warn">Pocas unidades</StatusChip>}
+          {unavailable && <StatusChip intent="neutral">No Disponible</StatusChip>}
         </div>
         <div className="mt-auto flex items-end justify-between gap-3 pt-2">
           <div>
