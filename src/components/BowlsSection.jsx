@@ -9,11 +9,12 @@ import { toast } from "./Toast";
 const BowlBuilder = lazy(() => import("./BowlBuilder"));
 import { getStockState, slugify, isUnavailable } from "../utils/stock";
 import { preBowl } from "../data/menuItems";
+import { getProductImage } from "../utils/images";
 
 // ← editar nombres y precios aquí
 const BASE_PRICE = Number(import.meta.env.VITE_BOWL_BASE_PRICE || 28000);
 
-export default function BowlsSection({ query, onCount }) {
+export default function BowlsSection({ query, onCount, onQuickView }) {
   const { addItem } = useCart();
   const [open, setOpen] = useState(false);
 
@@ -49,6 +50,16 @@ export default function BowlsSection({ query, onCount }) {
     onCount?.(count);
   }, [count, onCount]);
   if (!count) return null;
+
+  const product = {
+    productId: preBowl.id,
+    id: unavailable ? undefined : preBowl.id,
+    title: preBowl.name,
+    name: preBowl.name,
+    subtitle: preBowl.desc,
+    price: preBowl.price,
+    options: preBowl.options,
+  };
 
   return (
     <div className="space-y-4">
@@ -106,7 +117,24 @@ export default function BowlsSection({ query, onCount }) {
       </div>
 
       {/* Card del prearmado */}
-      <div className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onQuickView?.(product)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onQuickView?.(product);
+          }
+        }}
+        className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+      >
+        <img
+          src={getProductImage(product)}
+          alt={preBowl.name}
+          className="w-full h-40 object-cover rounded-xl mb-3"
+          loading="lazy"
+        />
         <p className="font-semibold">{preBowl.name}</p>
         <p className="text-sm text-neutral-600">{preBowl.desc}</p>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -126,7 +154,10 @@ export default function BowlsSection({ query, onCount }) {
             unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
           )}
           aria-label={"Agregar " + preBowl.name}
-          onClick={handleAdd}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleAdd();
+          }}
           aria-disabled={unavailable}
           title={unavailable ? "No disponible" : undefined}
         />

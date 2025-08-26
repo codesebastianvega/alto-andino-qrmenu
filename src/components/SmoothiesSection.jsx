@@ -7,8 +7,9 @@ import { toast } from "./Toast";
 import clsx from "clsx";
 import { matchesQuery } from "../utils/strings";
 import { smoothies, funcionales } from "../data/menuItems";
+import { getProductImage } from "../utils/images";
 
-function List({ items, onAdd }) {
+function List({ items, onAdd, onQuickView }) {
   return (
     <ul className="space-y-3">
       {items.map((p) => {
@@ -21,11 +22,38 @@ function List({ items, onAdd }) {
           }
           onAdd(p);
         };
+        const handleAddClick = (e) => {
+          e.stopPropagation();
+          handleAdd();
+        };
+        const product = {
+          productId: p.id || slugify(p.name),
+          id: unavailable ? undefined : p.id || slugify(p.name),
+          title: p.name,
+          name: p.name,
+          subtitle: p.desc,
+          price: p.price,
+        };
         return (
           <li
             key={p.name}
-            className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12"
+            role="button"
+            tabIndex={0}
+            onClick={() => onQuickView?.(product)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onQuickView?.(product);
+              }
+            }}
+            className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
           >
+            <img
+              src={getProductImage(product)}
+              alt={p.name}
+              className="w-full h-40 object-cover rounded-xl mb-3"
+              loading="lazy"
+            />
             <p className="font-semibold">{p.name}</p>
             <p className="text-sm text-neutral-600">{p.desc}</p>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -45,7 +73,7 @@ function List({ items, onAdd }) {
                 unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
               )}
               aria-label={"Agregar " + p.name}
-              onClick={handleAdd}
+              onClick={handleAddClick}
               aria-disabled={unavailable}
               title={unavailable ? "No disponible" : undefined}
             />
@@ -56,7 +84,7 @@ function List({ items, onAdd }) {
   );
 }
 
-export default function SmoothiesSection({ query, onCount }) {
+export default function SmoothiesSection({ query, onCount, onQuickView }) {
   const cart = useCart();
   const add = (p) =>
     cart.addItem({
@@ -85,7 +113,7 @@ export default function SmoothiesSection({ query, onCount }) {
           <h3 className="text-sm font-semibold text-[#2f4131] mb-2">
             Smoothies
           </h3>
-          <List items={smoothiesFiltered} onAdd={add} />
+          <List items={smoothiesFiltered} onAdd={add} onQuickView={onQuickView} />
         </div>
       )}
       {funcionalesFiltered.length > 0 && (
@@ -93,7 +121,7 @@ export default function SmoothiesSection({ query, onCount }) {
           <h3 className="text-sm font-semibold text-[#2f4131] mb-2">
             Funcionales
           </h3>
-          <List items={funcionalesFiltered} onAdd={add} />
+          <List items={funcionalesFiltered} onAdd={add} onQuickView={onQuickView} />
         </div>
       )}
     </div>

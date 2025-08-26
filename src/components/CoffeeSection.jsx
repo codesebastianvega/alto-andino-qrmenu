@@ -7,6 +7,7 @@ import { COP } from "../utils/money";
 import { getStockState, slugify, isUnavailable } from "../utils/stock";
 import { matchesQuery } from "../utils/strings";
 import { coffees, infusions } from "../data/menuItems";
+import { getProductImage } from "../utils/images";
 
 // ————————————————————————————————————————
 // Configuración de bebidas
@@ -27,7 +28,7 @@ function findMilkDelta(milkId) {
 
 // ————————————————————————————————————————
 // Componente principal
-export default function CoffeeSection({ query, onCount }) {
+export default function CoffeeSection({ query, onCount, onQuickView }) {
   const cart = useCart();
 
   // Estados por ítem (diccionarios)
@@ -231,6 +232,29 @@ export default function CoffeeSection({ query, onCount }) {
               !isAmericano;
             const hasControls =
               showAddMilk || showEspressoStyle || showMilkSelect;
+            const options = {};
+            const usesMilk =
+              item.milkPolicy === "required" ||
+              (item.milkPolicy === "optional" && addMilk[item.id]);
+            if (usesMilk) options["Leche"] = milkOf(item.id);
+            if (item.id === "cof-espresso" && addMilk[item.id]) {
+              const style = styleOf(item.id);
+              options["Estilo"] =
+                style === "mancha"
+                  ? "Macchiato"
+                  : style === "mitad"
+                  ? "Cortado"
+                  : "Con leche";
+            }
+            const product = {
+              productId: item.id,
+              id: unavailable ? undefined : item.id,
+              title: displayName(item),
+              name: displayName(item),
+              subtitle: item.desc,
+              price: finalPrice(item),
+              options,
+            };
 
             const handleAdd = () => {
               if (unavailable) {
@@ -239,12 +263,31 @@ export default function CoffeeSection({ query, onCount }) {
               }
               addToCart(item);
             };
+            const handleAddClick = (e) => {
+              e.stopPropagation();
+              handleAdd();
+            };
 
             return (
               <li
                 key={item.id}
-                className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12"
+                role="button"
+                tabIndex={0}
+                onClick={() => onQuickView?.(product)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onQuickView?.(product);
+                  }
+                }}
+                className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
               >
+                <img
+                  src={getProductImage(product)}
+                  alt={displayName(item)}
+                  className="w-full h-40 object-cover rounded-xl mb-3"
+                  loading="lazy"
+                />
                 <p className="font-semibold">{displayName(item)}</p>
                 <p className="text-xs text-neutral-600">{item.desc}</p>
                 {/* Controles contextuales */}
@@ -287,7 +330,7 @@ export default function CoffeeSection({ query, onCount }) {
                   aria-label={"Agregar " + displayName(item)}
                   aria-disabled={unavailable}
                   title={unavailable ? "No disponible" : undefined}
-                  onClick={handleAdd}
+                  onClick={handleAddClick}
                 />
               </li>
             );
@@ -306,6 +349,21 @@ export default function CoffeeSection({ query, onCount }) {
             const unavailable = st === "out" || isUnavailable(item);
             const isChai = !!item.chai;
             const showChaiMilk = isChai && modeOf(item.id) === "latte";
+            const options = {};
+            if (isChai) {
+              const mode = modeOf(item.id);
+              options["Preparación"] = mode === "latte" ? "Con leche" : "Infusión";
+              if (showChaiMilk) options["Leche"] = milkOf(item.id);
+            }
+            const product = {
+              productId: item.id,
+              id: unavailable ? undefined : item.id,
+              title: displayName(item),
+              name: displayName(item),
+              subtitle: item.desc,
+              price: finalPrice(item),
+              options,
+            };
 
             const handleAdd = () => {
               if (unavailable) {
@@ -314,12 +372,31 @@ export default function CoffeeSection({ query, onCount }) {
               }
               addToCart(item);
             };
+            const handleAddClick = (e) => {
+              e.stopPropagation();
+              handleAdd();
+            };
 
             return (
               <li
                 key={item.id}
-                className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12"
+                role="button"
+                tabIndex={0}
+                onClick={() => onQuickView?.(product)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onQuickView?.(product);
+                  }
+                }}
+                className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
               >
+                <img
+                  src={getProductImage(product)}
+                  alt={displayName(item)}
+                  className="w-full h-40 object-cover rounded-xl mb-3"
+                  loading="lazy"
+                />
                 <p className="font-semibold">{displayName(item)}</p>
                 <p className="text-xs text-neutral-600">{item.desc}</p>
                 <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -350,7 +427,7 @@ export default function CoffeeSection({ query, onCount }) {
                   aria-label={"Agregar " + displayName(item)}
                   aria-disabled={unavailable}
                   title={unavailable ? "No disponible" : undefined}
-                  onClick={handleAdd}
+                  onClick={handleAddClick}
                 />
               </li>
             );
