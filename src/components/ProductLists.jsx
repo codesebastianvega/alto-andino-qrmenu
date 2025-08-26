@@ -17,6 +17,16 @@ import { categoryIcons } from "../data/categoryIcons";
 
 const FEATURE_TABS = import.meta.env.VITE_FEATURE_TABS === "1";
 
+const CATS = [
+  "desayunos",
+  "bowls",
+  "platos",
+  "sandwiches",
+  "smoothies",
+  "cafe",
+  "bebidasfrias",
+];
+
 // Datos compartidos de los productos para búsqueda/identificación
 export const BREAKFAST_ITEMS = [
   {
@@ -131,7 +141,7 @@ export const DESSERT_BASE_ITEMS = [
 
 export default function ProductLists({
   query,
-  activeCategoryId,
+  selectedCategory,
   onCategorySelect,
 }) {
   const categories = useMemo(
@@ -154,19 +164,23 @@ export default function ProductLists({
         label: "Café de especialidad",
         targetId: "section-cafe-de-especialidad",
       },
-      { id: "bebidas-frias", label: "Bebidas frías" },
+      { id: "bebidasfrias", label: "Bebidas frías", targetId: "section-bebidas-frias" },
       { id: "postres", label: "Postres" },
     ],
     [query]
   );
 
   const tabItems = useMemo(
-    () =>
-      categories.map((c) => ({
-        id: c.id,
-        label: c.label,
-        icon: categoryIcons[c.id],
-      })),
+    () => [
+      { id: "todos", label: "Todos", icon: "fluent-emoji:bookmark-tabs" },
+      ...categories
+        .filter((c) => c.id !== "postres")
+        .map((c) => ({
+          id: c.id,
+          label: c.label,
+          icon: categoryIcons[c.id],
+        })),
+    ],
     [categories]
   );
 
@@ -220,7 +234,7 @@ export default function ProductLists({
           </Section>
         ),
       },
-      { id: "bebidas-frias", element: <ColdDrinksSection query={query} /> },
+      { id: "bebidasfrias", element: <ColdDrinksSection query={query} /> },
       {
         id: "postres",
         element: (
@@ -234,14 +248,12 @@ export default function ProductLists({
   );
 
   useEffect(() => {
-    if (!activeCategoryId && FEATURE_TABS) {
-      onCategorySelect?.(categories[0]);
-    } else if (
-      activeCategoryId && !categories.find((c) => c.id === activeCategoryId)
-    ) {
-      onCategorySelect?.(categories[0]);
+    if (!FEATURE_TABS) return;
+    const valid = ["todos", ...CATS];
+    if (!selectedCategory || !valid.includes(selectedCategory)) {
+      onCategorySelect?.({ id: "todos" });
     }
-  }, [activeCategoryId, categories, onCategorySelect]);
+  }, [selectedCategory, onCategorySelect]);
 
 
   return (
@@ -251,32 +263,31 @@ export default function ProductLists({
         {FEATURE_TABS ? (
           <CategoryTabs
             items={tabItems}
-            value={activeCategoryId}
+            value={selectedCategory}
             onChange={(slug) => {
-              const cat = categories.find((c) => c.id === slug);
-              if (cat) onCategorySelect?.(cat);
+              if (slug === "todos") {
+                onCategorySelect?.({ id: "todos" });
+              } else {
+                const cat = categories.find((c) => c.id === slug);
+                onCategorySelect?.(cat ?? { id: "todos" });
+              }
             }}
           />
         ) : (
           <CategoryBar
             categories={categories}
-            activeId={activeCategoryId}
+            activeId={selectedCategory}
             onSelect={onCategorySelect}
             variant="chip"
           />
         )}
       </div>
       {FEATURE_TABS
-        ? sections.map((s) => (
-            <div
-              key={s.id}
-              id={`panel-${s.id}`}
-              role="tabpanel"
-              hidden={s.id !== activeCategoryId}
-            >
-              {s.element}
-            </div>
-          ))
+        ? selectedCategory === "todos"
+          ? sections.map((s) => <div key={s.id}>{s.element}</div>)
+          : sections
+              .filter((s) => s.id === selectedCategory)
+              .map((s) => <div key={s.id}>{s.element}</div>)
         : sections.map((s) => <div key={s.id}>{s.element}</div>)}
     </>
   );
