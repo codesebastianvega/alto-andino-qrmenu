@@ -14,6 +14,7 @@ export default function Toast() {
   const [msg, setMsg] = useState("");
   const [show, setShow] = useState(false);
   const [offset, setOffset] = useState(0);
+  const [action, setAction] = useState(null);
 
   useEffect(() => {
     const update = () => setOffset(getCartBarHeight());
@@ -29,13 +30,17 @@ export default function Toast() {
     const onToast = (e) => {
       clearTimeout(hideId);
       clearTimeout(offsetId);
-      const text = e?.detail?.message || "Añadido al carrito";
-      setMsg(text);
+      const { message, actionLabel, onAction, duration } = e?.detail || {};
+      setMsg(message || "Añadido al carrito");
+      setAction(actionLabel ? { label: actionLabel, onAction } : null);
       setShow(true);
       const updateOffset = () => setOffset(getCartBarHeight());
       updateOffset();
       offsetId = setTimeout(updateOffset, 0);
-      hideId = setTimeout(() => setShow(false), 1600);
+      hideId = setTimeout(() => {
+        setShow(false);
+        setAction(null);
+      }, duration || 1600);
     };
     document.addEventListener("aa:toast", onToast);
     return () => {
@@ -56,17 +61,31 @@ export default function Toast() {
       ].join(" ")}
       style={{ bottom: `calc(${offset}px + env(safe-area-inset-bottom, 0px) + 10px)` }}
     >
-      <div className="rounded-full bg-[#2f4131] text-white px-4 h-9 grid place-items-center shadow-2xl ring-1 ring-black/10 w-max">
+      <div className="rounded-full bg-[#2f4131] text-white px-4 h-9 flex items-center gap-3 shadow-2xl ring-1 ring-black/10 w-max pointer-events-auto">
         <span className="text-[11px] font-medium whitespace-nowrap">{msg}</span>
-
+        {action && (
+          <button
+            type="button"
+            className="text-[11px] font-medium underline"
+            onClick={() => {
+              action.onAction?.();
+              setShow(false);
+              setAction(null);
+            }}
+          >
+            {action.label}
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-export const toast = (message) => {
+export const toast = (message, opts = {}) => {
   try {
-    document.dispatchEvent(new CustomEvent("aa:toast", { detail: { message } }));
+    document.dispatchEvent(
+      new CustomEvent("aa:toast", { detail: { message, ...opts } })
+    );
   } catch {}
 };
 
