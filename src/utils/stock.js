@@ -17,6 +17,7 @@ export function getStockState(idOrName = "") {
   return "ok";
 }
 
+
 export function isUnavailable(p) {
   if (!p) return true;
   if (p.available === false) return true;
