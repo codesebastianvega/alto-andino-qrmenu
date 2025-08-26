@@ -37,6 +37,7 @@ function optionsKey(opts) {
 function sameItem(a, b) {
   return (
     a?.productId === b?.productId &&
+    a?.milk === b?.milk &&
     optionsKey(a?.options) === optionsKey(b?.options) &&
     String(a?.note || "") === String(b?.note || "")
   );

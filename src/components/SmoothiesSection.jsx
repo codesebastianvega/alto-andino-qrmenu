@@ -25,24 +25,27 @@ function List({ items, onAdd, onQuickView }) {
         return (
           <article
             key={p.name}
-            role="button"
-            tabIndex={0}
-            onClick={() => onQuickView?.(product)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onQuickView?.(product);
-              }
-            }}
-            aria-disabled={unavailable}
-            className="group grid grid-cols-[96px_1fr] md:grid-cols-[112px_1fr] gap-3 md:gap-4 p-3 md:p-4 rounded-3xl bg-white border border-black/5 dark:bg-neutral-900 dark:border-white/10 shadow-[0_1px_0_rgba(0,0,0,0.02),0_12px_24px_-10px_rgba(0,0,0,0.18)] hover:shadow-[0_1px_0_rgba(0,0,0,0.03),0_16px_30px_-10px_rgba(0,0,0,0.22)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+            className="group grid grid-cols-[96px_1fr] md:grid-cols-[112px_1fr] gap-3 md:gap-4 p-3 md:p-4 rounded-3xl bg-white border border-black/5 dark:bg-neutral-900 dark:border-white/10 shadow-[0_1px_0_rgba(0,0,0,0.02),0_12px_24px_-10px_rgba(0,0,0,0.18)] hover:shadow-[0_1px_0_rgba(0,0,0,0.03),0_16px_30px_-10px_rgba(0,0,0,0.22)] transition"
           >
-            <img
-              src={getProductImage(product)}
-              alt={p.name}
-              loading="lazy"
-              className="w-24 h-24 md:w-28 md:h-28 rounded-xl object-cover"
-            />
+            <button
+              type="button"
+              onClick={() => onQuickView?.(product)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onQuickView?.(product);
+                }
+              }}
+              aria-label={`Ver ${product.title || product.name || "producto"}`}
+              className="block cursor-zoom-in rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+            >
+              <img
+                src={getProductImage(product)}
+                alt={p.name}
+                loading="lazy"
+                className="w-24 h-24 md:w-28 md:h-28 rounded-xl object-cover"
+              />
+            </button>
             <div className="min-w-0 flex flex-col">
               <h3 className="text-base md:text-[17px] font-semibold text-neutral-900 dark:text-neutral-100 truncate">{p.name}</h3>
               {p.desc && (
