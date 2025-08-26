@@ -4,6 +4,7 @@ import SwipeRevealItem from "./SwipeRevealItem";
 import Portal from "./Portal";
 import { toast } from "./Toast";
 import { getProductImage } from "../utils/images";
+import { MILK_OPTIONS } from "../data/options";
 
 const toNumberCOP = (v) => {
   if (typeof v === "number") return v;
@@ -228,6 +229,13 @@ export default function CartDrawer({ open, onClose }) {
                         <p className="text-neutral-900 font-medium truncate">{it.name}</p>
                         {it.variant && <p className="text-neutral-600 text-xs truncate">{it.variant}</p>}
                         {renderOptions(it.options)}
+                        {it.milk && (
+                          <div className="text-xs text-neutral-500 mt-0.5">
+                            Leche: {
+                              MILK_OPTIONS.find((m) => m.id === it.milk)?.label || it.milk
+                            }
+                          </div>
+                        )}
                       </div>
                       <p className="text-neutral-900 font-semibold whitespace-nowrap">
                         {formatCOP(lineTotal)}
