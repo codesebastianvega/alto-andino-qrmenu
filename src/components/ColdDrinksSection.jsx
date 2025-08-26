@@ -41,7 +41,7 @@ function Card({ item, onAdd }) {
   );
 }
 
-export default function ColdDrinksSection({ query, count }) {
+export default function ColdDrinksSection({ query, count, id }) {
   const { addItem } = useCart();
 
   const sodasFiltered = (sodas || []).filter((it) =>
@@ -53,7 +53,7 @@ export default function ColdDrinksSection({ query, count }) {
   if (!sodasFiltered.length && !othersFiltered.length) return null;
 
   return (
-    <Section title="Bebidas frías" count={count}>
+    <Section title="Bebidas frías" count={count} id={id}>
       {sodasFiltered.length > 0 && (
         <>
           {/* Subgrupo: Gaseosas y Sodas */}
