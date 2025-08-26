@@ -1,5 +1,6 @@
 // src/App.jsx
 import { useEffect, useMemo, useState } from "react";
+import { CATS, isValidCat } from "./constants/categories";
 
 // Layout / UI
 import Header from "./components/Header";
@@ -17,7 +18,6 @@ import CartDrawer from "./components/CartDrawer";
 import { useCart } from "./context/CartContext";
 import { banners as buildBanners } from "./data/banners";
 import {
-  cats as CATS,
   breakfastItems,
   mainDishes,
   dessertBaseItems,
@@ -38,7 +38,6 @@ import QrPoster from "./components/QrPoster";
 import Toast from "./components/Toast";
 
 const FEATURE_TABS = import.meta.env.VITE_FEATURE_TABS === "1";
-const VALID_CATEGORIES = ["todos", ...CATS];
 
 
 export default function App() {
@@ -55,27 +54,20 @@ export default function App() {
   }
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const cat = params.get("cat");
-    if (cat && VALID_CATEGORIES.includes(cat)) setSelectedCategory(cat);
+    const p = new URLSearchParams(window.location.search).get("cat");
+    if (p && isValidCat(p)) setSelectedCategory(p);
   }, []);
 
   useEffect(() => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("cat", selectedCategory);
-    window.history.replaceState(null, "", url);
-    if (selectedCategory !== "todos") {
-      requestAnimationFrame(() => {
-        document.getElementById(`panel-${selectedCategory}`)?.focus();
-      });
-    }
+    if (!isValidCat(selectedCategory)) setSelectedCategory("todos");
   }, [selectedCategory]);
 
   useEffect(() => {
-    if (!VALID_CATEGORIES.includes(selectedCategory)) {
-      setSelectedCategory("todos");
-    }
-  }, [selectedCategory]);
+    if (!FEATURE_TABS) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("cat", selectedCategory);
+    window.history.replaceState(null, "", url);
+  }, [FEATURE_TABS, selectedCategory]);
 
   const productMap = useMemo(() => {
     const collections = [
@@ -159,7 +151,10 @@ export default function App() {
       bebidasfrias: count([...(sodas || []), ...(otherDrinks || [])]),
       postres: count(dessertBaseItems),
     };
-    result.todos = Object.values(result).reduce((sum, n) => sum + n, 0);
+    result.todos = CATS.filter((c) => c !== "todos").reduce(
+      (sum, cat) => sum + (result[cat] || 0),
+      0
+    );
     return result;
   }, [
     breakfastItems,

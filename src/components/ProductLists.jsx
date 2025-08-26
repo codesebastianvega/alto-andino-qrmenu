@@ -15,13 +15,13 @@ import CategoryBar from "./CategoryBar";
 import CategoryTabs from "./CategoryTabs";
 import { categoryIcons } from "../data/categoryIcons";
 import {
-  cats,
   breakfastItems,
   mainDishes,
   dessertBaseItems,
   cumbreFlavors,
   cumbrePrices,
 } from "../data/menuItems";
+import { CATS } from "../constants/categories";
 import useSwipeTabs from "../utils/useSwipeTabs";
 export default function ProductLists({
   query,
@@ -58,16 +58,17 @@ export default function ProductLists({
   );
 
   const tabItems = useMemo(
-    () => [
-      { id: "todos", label: "Todos", icon: "fluent-emoji:bookmark-tabs" },
-      ...categories
-        .filter((c) => c.id !== "postres")
-        .map((c) => ({
-          id: c.id,
-          label: c.label,
-          icon: categoryIcons[c.id],
-        })),
-    ],
+    () =>
+      CATS.map((slug) => {
+        if (slug === "todos")
+          return { id: "todos", label: "Todos", icon: "fluent-emoji:bookmark-tabs" };
+        const cat = categories.find((c) => c.id === slug);
+        return {
+          id: slug,
+          label: cat?.label || slug,
+          icon: categoryIcons[slug],
+        };
+      }),
     [categories]
   );
 
@@ -159,7 +160,7 @@ export default function ProductLists({
   );
 
 
-  const orderedTabs = ["todos", ...cats];
+  const orderedTabs = CATS;
 
   const onPrev = useCallback(() => {
     const idx = orderedTabs.indexOf(selectedCategory);
@@ -190,8 +191,9 @@ export default function ProductLists({
   const swipeHandlers = useSwipeTabs({ onPrev, onNext });
 
   useEffect(() => {
+    if (featureTabs) return;
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [selectedCategory]);
+  }, [featureTabs, selectedCategory]);
 
   const stackClass =
 

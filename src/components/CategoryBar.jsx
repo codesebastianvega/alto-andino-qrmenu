@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Icon } from "@iconify-icon/react";
 import { categoryIcons } from "../data/categoryIcons";
 
+const FEATURE_TABS = import.meta.env.VITE_FEATURE_TABS === "1";
+
 function IconWithFallback({ id, size = 32, className }) {
   const entry = categoryIcons[id];
   const initial = typeof entry === "string" ? entry : entry?.icon;
@@ -49,13 +51,18 @@ export default function CategoryBar({
             <li key={cat.id} className="first:ml-1 last:mr-1">
               <button
                 onClick={() => {
-                  if (cat.id === "todos") {
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  } else {
-                    const target = document.getElementById(
-                      cat?.targetId || `section-${cat.id}`
-                    );
-                    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  if (!FEATURE_TABS) {
+                    if (cat.id === "todos") {
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    } else {
+                      const target = document.getElementById(
+                        cat?.targetId || `section-${cat.id}`
+                      );
+                      target?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                    }
                   }
                   onSelect?.(cat);
                 }}
