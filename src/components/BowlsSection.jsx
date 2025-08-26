@@ -1,10 +1,9 @@
 // src/components/BowlsSection.jsx
 import React, { lazy, Suspense, useState, useEffect } from "react";
-import clsx from "clsx";
 import { useCart } from "../context/CartContext";
-import { COP, formatCOP } from "../utils/money";
+import { formatCOP } from "../utils/money";
 import { matchesQuery } from "../utils/strings";
-import { AddIconButton, StatusChip, PILL_XS, PILL_SM } from "./Buttons";
+import { StatusChip, PILL_XS, PILL_SM } from "./Buttons";
 import { toast } from "./Toast";
 const BowlBuilder = lazy(() => import("./BowlBuilder"));
 import { getStockState, slugify, isUnavailable } from "../utils/stock";
@@ -117,7 +116,7 @@ export default function BowlsSection({ query, onCount, onQuickView }) {
       </div>
 
       {/* Card del prearmado */}
-      <div
+      <article
         role="button"
         tabIndex={0}
         onClick={() => onQuickView?.(product)}
@@ -127,41 +126,48 @@ export default function BowlsSection({ query, onCount, onQuickView }) {
             onQuickView?.(product);
           }
         }}
-        className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+        aria-disabled={unavailable}
+        className="group grid grid-cols-[96px_1fr] gap-3 p-3 sm:p-4 rounded-2xl bg-white/70 dark:bg-neutral-900/70 border border-black/5 dark:border-white/10 shadow-sm hover:shadow-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
       >
         <img
           src={getProductImage(product)}
           alt={preBowl.name}
-          className="w-full h-40 object-cover rounded-xl mb-3"
           loading="lazy"
+          className="w-24 h-24 rounded-xl object-cover"
         />
-        <p className="font-semibold">{preBowl.name}</p>
-        <p className="text-sm text-neutral-600">{preBowl.desc}</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {st === "low" && (
-            <StatusChip variant="low">Pocas unidades</StatusChip>
-          )}
-          {unavailable && (
-            <StatusChip variant="soldout">No Disponible</StatusChip>
-          )}
+        <div className="min-w-0 flex flex-col">
+          <h3 className="text-base font-semibold truncate">{preBowl.name}</h3>
+          <p className="text-sm text-neutral-600 dark:text-neutral-300 line-clamp-2 mt-0.5">{preBowl.desc}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {st === "low" && (
+              <StatusChip variant="low">Pocas unidades</StatusChip>
+            )}
+            {unavailable && (
+              <StatusChip variant="soldout">No Disponible</StatusChip>
+            )}
+          </div>
+          <div className="mt-auto flex items-end justify-between gap-3 pt-2">
+            <div>
+              <div className="text-base font-semibold">{formatCOP(preBowl.price)}</div>
+            </div>
+            <button
+              type="button"
+              aria-label={`Agregar ${preBowl.name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (unavailable) {
+                  toast("Producto no disponible");
+                  return;
+                }
+                handleAdd();
+              }}
+              className="h-10 w-10 grid place-items-center rounded-full bg-[#2f4131] text-white shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+            >
+              +
+            </button>
+          </div>
         </div>
-        <div className="absolute top-5 right-5 z-10 text-neutral-800 font-bold">
-          ${COP(preBowl.price)}
-        </div>
-        <AddIconButton
-          className={clsx(
-            "absolute bottom-4 right-4 z-20",
-            unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
-          )}
-          aria-label={"Agregar " + preBowl.name}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleAdd();
-          }}
-          aria-disabled={unavailable}
-          title={unavailable ? "No disponible" : undefined}
-        />
-      </div>
+      </article>
 
       {/* Modal de armado */}
       {open && (

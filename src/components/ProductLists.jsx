@@ -1,11 +1,10 @@
 import { useMemo, useEffect, useCallback, useState, cloneElement, useRef } from "react";
 import { useCart } from "../context/CartContext";
-import { COP } from "../utils/money";
+import { formatCOP } from "../utils/money";
 import { getStockState, slugify, isUnavailable } from "../utils/stock";
 import { toast } from "./Toast";
-import clsx from "clsx";
 import { matchesQuery } from "../utils/strings";
-import { AddIconButton, StatusChip } from "./Buttons";
+import { StatusChip } from "./Buttons";
 import Section from "./Section";
 import Sandwiches from "./Sandwiches";
 import SmoothiesSection from "./SmoothiesSection";
@@ -445,46 +444,73 @@ function Desserts({ cumbre = [], base = [], onQuickView }) {
               const st = getStockState(id);
               const disabled = st === "out";
               const price = cumbrePrices[s.id];
-              const handleAdd = () => {
-                if (disabled) {
-                  toast("Producto no disponible");
-                  return;
-                }
-                addItem({
-                  productId: "cumbre",
-                  name: "Cumbre Andino",
-                  price,
-                  options: { Sabor: s.label },
-                });
+              const product = {
+                productId: "cumbre",
+                id: disabled ? undefined : id,
+                title: "Cumbre Andino",
+                name: "Cumbre Andino",
+                subtitle: s.label,
+                price,
+                options: { Sabor: s.label },
               };
               return (
-                <div
+                <article
                   key={s.id}
-                  className={
-                    "relative rounded-xl border border-neutral-200/60 bg-white p-4 sm:p-5 pr-20 pb-12 " +
-                    (disabled ? "opacity-60" : "")
-                  }
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onQuickView?.(product)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onQuickView?.(product);
+                    }
+                  }}
+                  aria-disabled={disabled}
+                  className="group grid grid-cols-[96px_1fr] gap-3 p-3 rounded-2xl border border-neutral-200/60 bg-white shadow-sm hover:shadow-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
                 >
-                  <p className="text-sm">{s.label}</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {st === "low" && (
-                      <StatusChip variant="low">Pocas unidades</StatusChip>
-                    )}
-                    {st === "out" && (
-                      <StatusChip variant="soldout">No Disponible</StatusChip>
-                    )}
-                  </div>
-                  <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
-                    ${COP(price)}
-                  </div>
-                  <AddIconButton
-                    className="absolute bottom-4 right-4 z-20"
-                    aria-label={"Agregar Cumbre Andino " + s.label}
-                    onClick={handleAdd}
-                    aria-disabled={disabled}
-                    title={disabled ? "No disponible" : undefined}
+                  <img
+                    src={getProductImage(product)}
+                    alt={"Cumbre Andino"}
+                    loading="lazy"
+                    className="w-24 h-24 rounded-xl object-cover"
                   />
-                </div>
+                  <div className="min-w-0 flex flex-col">
+                    <h3 className="text-base font-semibold truncate">{s.label}</h3>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {st === "low" && (
+                        <StatusChip variant="low">Pocas unidades</StatusChip>
+                      )}
+                      {st === "out" && (
+                        <StatusChip variant="soldout">No Disponible</StatusChip>
+                      )}
+                    </div>
+                    <div className="mt-auto flex items-end justify-between gap-3 pt-2">
+                      <div>
+                        <div className="text-base font-semibold">{formatCOP(price)}</div>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={`Agregar Cumbre Andino ${s.label}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (disabled) {
+                            toast("Producto no disponible");
+                            return;
+                          }
+                          addItem({
+                            productId: "cumbre",
+                            name: "Cumbre Andino",
+                            price,
+                            options: { Sabor: s.label },
+                          });
+                        }}
+                        className="h-10 w-10 grid place-items-center rounded-full bg-[#2f4131] text-white shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </article>
               );
             })}
           </div>
@@ -512,21 +538,11 @@ function List({ items, onQuickView }) {
   );
 }
 
+
 function ProductRow({ item, onQuickView }) {
   const { addItem } = useCart();
   const st = getStockState(item.id || slugify(item.name));
   const unavailable = st === "out" || isUnavailable(item);
-  const handleAdd = () => {
-    if (unavailable) {
-      toast("Producto no disponible");
-      return;
-    }
-    addItem({ productId: item.id, name: item.name, price: item.price });
-  };
-  const handleAddClick = (e) => {
-    e.stopPropagation();
-    handleAdd();
-  };
   const product = {
     productId: item.id,
     id: unavailable ? undefined : item.id,
@@ -536,7 +552,7 @@ function ProductRow({ item, onQuickView }) {
     price: item.price,
   };
   return (
-    <li
+    <article
       role="button"
       tabIndex={0}
       onClick={() => onQuickView?.(product)}
@@ -546,35 +562,49 @@ function ProductRow({ item, onQuickView }) {
           onQuickView?.(product);
         }
       }}
-      className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+      aria-disabled={unavailable}
+      className="group grid grid-cols-[96px_1fr] gap-3 p-3 rounded-2xl bg-white/70 dark:bg-neutral-900/70 border border-black/5 dark:border-white/10 shadow-sm hover:shadow-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
     >
       <img
         src={getProductImage(product)}
         alt={item.name || "Producto"}
-        className="w-full h-40 object-cover rounded-xl mb-3"
         loading="lazy"
+        className="w-24 h-24 rounded-xl object-cover"
       />
-      <p className="font-semibold">{item.name}</p>
-      <p className="text-xs text-neutral-600 mt-1">{item.desc}</p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {st === "low" && <StatusChip variant="low">Pocas unidades</StatusChip>}
-        {unavailable && (
-          <StatusChip variant="soldout">No Disponible</StatusChip>
+      <div className="min-w-0 flex flex-col">
+        <h3 className="text-base font-semibold truncate">{item.name}</h3>
+        {item.desc && (
+          <p className="text-sm text-neutral-600 dark:text-neutral-300 line-clamp-2 mt-0.5">
+            {item.desc}
+          </p>
         )}
+        <div className="mt-2 flex flex-wrap gap-2">
+          {st === "low" && <StatusChip variant="low">Pocas unidades</StatusChip>}
+          {unavailable && <StatusChip variant="soldout">No Disponible</StatusChip>}
+        </div>
+        <div className="mt-auto flex items-end justify-between gap-3 pt-2">
+          <div>
+            <div className="text-base font-semibold">
+              {typeof item.price === "number" ? formatCOP(item.price) : item.price}
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label={`Agregar ${item.name || "producto"}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (unavailable) {
+                toast("Producto no disponible");
+                return;
+              }
+              addItem({ productId: item.id, name: item.name, price: item.price });
+            }}
+            className="h-10 w-10 grid place-items-center rounded-full bg-[#2f4131] text-white shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+          >
+            +
+          </button>
+        </div>
       </div>
-      <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
-        ${COP(item.price)}
-      </div>
-      <AddIconButton
-        className={clsx(
-          "absolute bottom-4 right-4 z-20",
-          unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
-        )}
-        aria-label={"Agregar " + item.name}
-        onClick={handleAddClick}
-        aria-disabled={unavailable}
-        title={unavailable ? "No disponible" : undefined}
-      />
-    </li>
+    </article>
   );
 }

@@ -3,6 +3,7 @@ import { useCart } from "../context/CartContext";
 import SwipeRevealItem from "./SwipeRevealItem";
 import Portal from "./Portal";
 import { toast } from "./Toast";
+import { getProductImage } from "../utils/images";
 
 const toNumberCOP = (v) => {
   if (typeof v === "number") return v;
@@ -212,16 +213,14 @@ export default function CartDrawer({ open, onClose }) {
 
               <div className="p-3 bg-white rounded-xl ring-1 ring-neutral-200">
                 <div className="flex items-start gap-3">
-                  {/* imagen opcional */}
-                  {it.image ? (
-                    <img
-                      src={it.image}
-                      alt={it.name}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-12 w-12 rounded-lg object-cover ring-1 ring-neutral-200"
-                    />
-                  ) : null}
+                  <img
+                    src={getProductImage(it)}
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                    decoding="async"
+                    className="w-12 h-12 rounded-md object-cover"
+                  />
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">

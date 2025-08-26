@@ -1,10 +1,9 @@
 import React, { useEffect } from "react";
 import { useCart } from "../context/CartContext";
-import { AddIconButton, StatusChip } from "./Buttons";
-import { COP } from "../utils/money";
+import { StatusChip } from "./Buttons";
+import { formatCOP } from "../utils/money";
 import { getStockState, slugify, isUnavailable } from "../utils/stock";
 import { toast } from "./Toast";
-import clsx from "clsx";
 import { matchesQuery } from "../utils/strings";
 import { sodas, otherDrinks } from "../data/menuItems";
 import { getProductImage } from "../utils/images";
@@ -21,12 +20,16 @@ function Card({ item, onAdd, onQuickView }) {
       productId: item.id,
       name: item.name,
       price: item.price,
-      priceFmt: "$" + COP(item.price),
+      priceFmt: formatCOP(item.price),
       qty: 1,
     });
   };
   const handleAddClick = (e) => {
     e.stopPropagation();
+    if (unavailable) {
+      toast("Producto no disponible");
+      return;
+    }
     handleAdd();
   };
   const product = {
@@ -38,7 +41,7 @@ function Card({ item, onAdd, onQuickView }) {
     price: item.price,
   };
   return (
-    <div
+    <article
       role="button"
       tabIndex={0}
       onClick={() => onQuickView?.(product)}
@@ -48,36 +51,39 @@ function Card({ item, onAdd, onQuickView }) {
           onQuickView?.(product);
         }
       }}
-      className="relative rounded-xl bg-white ring-1 ring-neutral-200 p-3 pr-16 pb-12 min-h-[96px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+      aria-disabled={unavailable}
+      className="group grid grid-cols-[96px_1fr] gap-3 p-3 rounded-2xl bg-white/70 dark:bg-neutral-900/70 border border-black/5 dark:border-white/10 shadow-sm hover:shadow-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
     >
       <img
         src={getProductImage(product)}
         alt={item.name}
-        className="w-full h-40 object-cover rounded-xl mb-3"
         loading="lazy"
+        className="w-24 h-24 rounded-xl object-cover"
       />
-      <p className="text-neutral-900 font-medium text-sm leading-tight break-words">{item.name}</p>
-      {item.desc && (
-        <p className="mt-0.5 text-xs text-neutral-600 leading-snug break-words">{item.desc}</p>
-      )}
-      <div className="mt-2 flex flex-wrap gap-2">
-        {st === "low" && <StatusChip variant="low">Pocas unidades</StatusChip>}
-        {unavailable && <StatusChip variant="soldout">No Disponible</StatusChip>}
-      </div>
-      <div className="absolute top-2 right-2 min-w-[64px] text-right text-neutral-900 font-semibold text-sm">
-        {"$" + COP(item.price)}
-      </div>
-      <AddIconButton
-        className={clsx(
-          "absolute bottom-2 right-2 scale-90 sm:scale-100",
-          unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
+      <div className="min-w-0 flex flex-col">
+        <h3 className="text-sm font-semibold truncate">{item.name}</h3>
+        {item.desc && (
+          <p className="mt-0.5 text-xs text-neutral-600 dark:text-neutral-300 line-clamp-2">{item.desc}</p>
         )}
-        aria-label={"Agregar " + item.name}
-        onClick={handleAddClick}
-        aria-disabled={unavailable}
-        title={unavailable ? "No disponible" : undefined}
-      />
-    </div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {st === "low" && <StatusChip variant="low">Pocas unidades</StatusChip>}
+          {unavailable && <StatusChip variant="soldout">No Disponible</StatusChip>}
+        </div>
+        <div className="mt-auto flex items-end justify-between gap-3 pt-2">
+          <div>
+            <div className="text-sm font-semibold">{formatCOP(item.price)}</div>
+          </div>
+          <button
+            type="button"
+            aria-label={`Agregar ${item.name}`}
+            onClick={handleAddClick}
+            className="h-10 w-10 grid place-items-center rounded-full bg-[#2f4131] text-white shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+          >
+            +
+          </button>
+        </div>
+      </div>
+    </article>
   );
 }
 
