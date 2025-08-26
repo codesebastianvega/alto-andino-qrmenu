@@ -33,11 +33,11 @@ export default function CategoryBar({
   const labelHeight = variant === "chip" ? "h-[34px]" : "h-[38px]";
   return (
     <nav
-      className="sticky z-[60] px-0"
+      className="sticky z-[60] px-0 w-full"
       style={{ top: "env(safe-area-inset-top, 0px)" }}
       aria-label="Categorías del menú"
     >
-      <ul className="flex overflow-x-auto snap-x snap-mandatory gap-3 py-2 [transform:translateZ(0)]">
+      <ul className="flex overflow-x-auto snap-x snap-mandatory gap-3 py-2 [transform:translateZ(0)] w-full">
         {categories.map((cat) => {
           const active = activeId === cat.id;
           const tint = cat.tintClass || "bg-zinc-100";
