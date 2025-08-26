@@ -14,6 +14,7 @@ import CategoryHeader from "./CategoryHeader";
 import CategoryBar from "./CategoryBar";
 import CategoryTabs from "./CategoryTabs";
 import { categoryIcons } from "../data/categoryIcons";
+import useSwipeTabs from "../utils/useSwipeTabs";
 
 const FEATURE_TABS = import.meta.env.VITE_FEATURE_TABS === "1";
 
@@ -268,6 +269,33 @@ export default function ProductLists({
     }
   }, [selectedCategory, onCategorySelect]);
 
+  const orderedTabs = ["todos", ...CATS];
+  const swipeHandlers = useSwipeTabs({
+    onPrev: () => {
+      const idx = orderedTabs.indexOf(selectedCategory);
+      if (idx > 0) {
+        const prev = orderedTabs[idx - 1];
+        if (prev === "todos") {
+          onCategorySelect?.({ id: "todos" });
+        } else {
+          const cat = categories.find((c) => c.id === prev);
+          onCategorySelect?.(cat ?? { id: prev });
+        }
+      }
+    },
+    onNext: () => {
+      const idx = orderedTabs.indexOf(selectedCategory);
+      if (idx >= 0 && idx < orderedTabs.length - 1) {
+        const nxt = orderedTabs[idx + 1];
+        if (nxt === "todos") {
+          onCategorySelect?.({ id: "todos" });
+        } else {
+          const cat = categories.find((c) => c.id === nxt);
+          onCategorySelect?.(cat ?? { id: nxt });
+        }
+      }
+    },
+  });
 
   return (
     <>
@@ -297,13 +325,15 @@ export default function ProductLists({
           />
         )}
       </div>
-      {FEATURE_TABS
-        ? selectedCategory === "todos"
-          ? sections.map(renderPanel)
-          : sections
-              .filter((s) => s.id === selectedCategory)
-              .map(renderPanel)
-        : sections.map(renderPanel)}
+      <div {...swipeHandlers}>
+        {FEATURE_TABS
+          ? selectedCategory === "todos"
+            ? sections.map(renderPanel)
+            : sections
+                .filter((s) => s.id === selectedCategory)
+                .map(renderPanel)
+          : sections.map(renderPanel)}
+      </div>
     </>
   );
 }
