@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   useLayoutEffect,
+  cloneElement,
 } from "react";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
@@ -159,7 +160,9 @@ export default function ProductLists({
           {categories.find((c) => c.id === s.id)?.label || s.id}
         </span>
       )}
-      {s.element}
+      {inTodos
+        ? cloneElement(s.element, { id: `section-${s.id}-todos` })
+        : s.element}
     </div>
   );
 

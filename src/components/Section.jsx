@@ -9,8 +9,8 @@ function slugify(s) {
     .replace(/(^-|-$)/g, "");
 }
 
-export default function Section({ title, children, count }) {
-  const id = "section-" + slugify(title || "");
+export default function Section({ title, children, count, id: customId }) {
+  const id = customId ?? "section-" + slugify(title || "");
   return (
     <section
       id={id}

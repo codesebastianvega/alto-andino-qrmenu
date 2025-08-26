@@ -71,7 +71,9 @@ export default function CategoryTabs({ value, onChange, items = [] }) {
               id={`tab-${item.id}`}
               role="tab"
               aria-selected={selected}
-              aria-controls={`panel-${item.id}`}
+              aria-controls={
+                item.id === "todos" ? undefined : `panel-${item.id}`
+              }
               tabIndex={selected ? 0 : -1}
               onKeyDown={(e) => handleKeyDown(e, idx)}
               onClick={() => onChange?.(item.id)}
