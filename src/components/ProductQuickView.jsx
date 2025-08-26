@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Portal from './Portal';
 import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import { useCart } from '../context/CartContext';
 import { formatCOP as cop } from '../utils/money';
 import { toast } from './Toast';
 import { getProductImage } from "../utils/images";
+import { MILK_OPTIONS } from "../data/options";
 
 export default function ProductQuickView({ open, product, onClose, onAdd }) {
   useLockBodyScroll(open);
@@ -43,18 +44,30 @@ export default function ProductQuickView({ open, product, onClose, onAdd }) {
 
   if (!open || !product) return null;
 
-  const { id, title, subtitle, price } = product;
+  const title = product?.title || product?.name || "";
+  const subtitle = product?.subtitle;
+  const { id } = product;
   const image = getProductImage(product);
-  const priceNum = Number(price);
-  const canAdd = !!id && Number.isFinite(priceNum) && priceNum > 0;
+
+  const isCoffee =
+    product?.category === "coffee" ||
+    /capu|latte|espres|café|cafe/i.test(title);
+  const [milk, setMilk] = useState("entera");
+  const milkDelta = isCoffee
+    ? MILK_OPTIONS.find((m) => m.id === milk)?.delta || 0
+    : 0;
+  const basePrice = Number(product?.price || 0);
+  const finalPrice = basePrice + milkDelta;
+  const canAdd = !!id && Number.isFinite(basePrice) && basePrice > 0;
 
   const handleAdd = () => {
     if (!canAdd) {
       toast('Producto no disponible');
       return;
     }
-    addItem(product, 1);
-    onAdd?.(product);
+    const payload = isCoffee ? { ...product, milk } : product;
+    addItem({ ...payload, price: finalPrice }, 1);
+    onAdd?.();
     onClose?.();
   };
 
@@ -88,9 +101,38 @@ export default function ProductQuickView({ open, product, onClose, onAdd }) {
                 className="w-full h-48 object-cover rounded-xl mb-3"
               />
               <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
-              {subtitle && <p className="text-sm text-neutral-600 mt-1">{subtitle}</p>}
-              {Number.isFinite(priceNum) && (
-                <p className="mt-2 font-semibold text-neutral-900">{cop(priceNum)}</p>
+              {subtitle && (
+                <p className="text-sm text-neutral-600 mt-1">{subtitle}</p>
+              )}
+              {isCoffee && (
+                <div className="mt-3">
+                  <p className="text-sm font-medium">Leche</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {MILK_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setMilk(opt.id)}
+                        aria-pressed={milk === opt.id}
+                        className={`px-3 h-9 rounded-full border text-sm ${
+                          milk === opt.id
+                            ? "bg-[#2f4131] text-white border-[#2f4131]"
+                            : "bg-white border-black/10 dark:bg-neutral-800 dark:border-white/10"
+                        }`}
+                      >
+                        {opt.label}
+                        {opt.delta
+                          ? ` (+$${opt.delta.toLocaleString("es-CO")})`
+                          : ""}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {Number.isFinite(finalPrice) && (
+                <p className="mt-2 font-semibold text-neutral-900">
+                  {cop(finalPrice)}
+                </p>
               )}
               <button
                 type="button"

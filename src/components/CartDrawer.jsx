@@ -4,6 +4,7 @@ import SwipeRevealItem from "./SwipeRevealItem";
 import Portal from "./Portal";
 import { toast } from "./Toast";
 import { getProductImage } from "../utils/images";
+import { MILK_OPTIONS } from "../data/options";
 
 const toNumberCOP = (v) => {
   if (typeof v === "number") return v;
@@ -226,7 +227,16 @@ export default function CartDrawer({ open, onClose }) {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-neutral-900 font-medium truncate">{it.name}</p>
-                        {it.variant && <p className="text-neutral-600 text-xs truncate">{it.variant}</p>}
+                        {it.variant && (
+                          <p className="text-neutral-600 text-xs truncate">{it.variant}</p>
+                        )}
+                        {it.milk && (
+                          <div className="text-xs text-neutral-500 mt-0.5">
+                            Leche: {
+                              MILK_OPTIONS.find((m) => m.id === it.milk)?.label || it.milk
+                            }
+                          </div>
+                        )}
                         {renderOptions(it.options)}
                       </div>
                       <p className="text-neutral-900 font-semibold whitespace-nowrap">
