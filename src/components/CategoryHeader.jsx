@@ -16,7 +16,6 @@ function labelDe(slug) {
 export default function CategoryHeader({
   selectedCategory = "todos",
   visibleCount = 0,
-  featureTabs = false,
 }) {
   const label = labelDe(selectedCategory);
   const showHint = selectedCategory === "todos";
@@ -30,7 +29,7 @@ export default function CategoryHeader({
         className="text-lg md:text-xl font-semibold tracking-tight text-[#2f4131]"
       >
         {label}
-        {featureTabs && selectedCategory !== "todos" && (
+        {selectedCategory !== "todos" && (
           <span className="ml-2 text-sm text-zinc-500 font-medium align-middle">
             ({visibleCount})
           </span>

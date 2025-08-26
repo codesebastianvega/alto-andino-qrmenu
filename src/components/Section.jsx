@@ -9,7 +9,7 @@ function slugify(s) {
     .replace(/(^-|-$)/g, "");
 }
 
-export default function Section({ title, children }) {
+export default function Section({ title, children, count }) {
   const id = "section-" + slugify(title || "");
   return (
     <section
@@ -19,6 +19,11 @@ export default function Section({ title, children }) {
     >
       <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900">
         {title}
+        {count != null && (
+          <span className="ml-2 text-sm text-zinc-500 font-medium align-middle">
+            ({count})
+          </span>
+        )}
       </h2>
       <div className="mt-1 mb-4 sm:mb-5 h-[2px] w-12 rounded bg-[#2f4131]/25" />
       <div className="mt-2 sm:mt-3">{children}</div>

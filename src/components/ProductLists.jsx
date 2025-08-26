@@ -76,7 +76,7 @@ export default function ProductLists({
       {
         id: "desayunos",
         element: (
-          <Section title="Desayunos">
+          <Section title="Desayunos" count={counts.desayunos}>
             <Breakfasts query={query} />
           </Section>
         ),
@@ -84,7 +84,7 @@ export default function ProductLists({
       {
         id: "bowls",
         element: (
-          <Section title="Bowls">
+          <Section title="Bowls" count={counts.bowls}>
             <BowlsSection query={query} />
           </Section>
         ),
@@ -92,7 +92,7 @@ export default function ProductLists({
       {
         id: "platos",
         element: (
-          <Section title="Platos Fuertes">
+          <Section title="Platos Fuertes" count={counts.platos}>
             <Mains query={query} />
           </Section>
         ),
@@ -100,7 +100,7 @@ export default function ProductLists({
       {
         id: "sandwiches",
         element: (
-          <Section title="Sándwiches">
+          <Section title="Sándwiches" count={counts.sandwiches}>
             <Sandwiches query={query} />
           </Section>
         ),
@@ -108,7 +108,7 @@ export default function ProductLists({
       {
         id: "smoothies",
         element: (
-          <Section title="Smoothies & Funcionales">
+          <Section title="Smoothies & Funcionales" count={counts.smoothies}>
             <SmoothiesSection query={query} />
           </Section>
         ),
@@ -116,22 +116,27 @@ export default function ProductLists({
       {
         id: "cafe",
         element: (
-          <Section title="Café de especialidad">
+          <Section title="Café de especialidad" count={counts.cafe}>
             <CoffeeSection query={query} />
           </Section>
         ),
       },
-      { id: "bebidasfrias", element: <ColdDrinksSection query={query} /> },
+      {
+        id: "bebidasfrias",
+        element: (
+          <ColdDrinksSection query={query} count={counts.bebidasfrias} />
+        ),
+      },
       {
         id: "postres",
         element: (
-          <Section title="Postres">
+          <Section title="Postres" count={counts.postres}>
             <Desserts query={query} />
           </Section>
         ),
       },
     ],
-    [query]
+    [query, counts]
   );
 
   const renderPanel = (s) => (
@@ -188,7 +193,6 @@ export default function ProductLists({
         <CategoryHeader
           selectedCategory={selectedCategory}
           visibleCount={visibleCount}
-          featureTabs={featureTabs}
         />
         <div className="-mx-4 md:-mx-6 px-4 md:px-6">
           {featureTabs ? (
@@ -210,7 +214,6 @@ export default function ProductLists({
               activeId={selectedCategory}
               onSelect={onCategorySelect}
               variant="chip"
-              counts={counts}
             />
           )}
         </div>
