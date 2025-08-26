@@ -27,19 +27,20 @@ export default function CategoryBar({
   activeId,
   onSelect,
   variant = "chip",
+  fullBleed = true,
 }) {
   const baseItemClasses =
     variant === "chip"
       ? "flex-none w-[100px] basis-[100px] h-[110px] snap-start rounded-xl bg-white/60 backdrop-blur-sm transition-colors transition-shadow duration-150 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,.3)] focus:ring-offset-2"
       : "flex-none shrink-0 basis-[112px] w-[112px] h-[128px]";
   const labelHeight = variant === "chip" ? "h-[34px]" : "h-[38px]";
-  return (
+  const nav = (
     <nav
       className="sticky z-[60] px-0 w-full"
       style={{ top: "env(safe-area-inset-top, 0px)" }}
       aria-label="Categorías del menú"
     >
-      <ul className="flex overflow-x-auto snap-x snap-mandatory gap-3 py-2 [transform:translateZ(0)] w-full">
+      <ul className="flex overflow-x-auto scrollbar-none snap-x snap-mandatory gap-3 scroll-px-4 py-2 [transform:translateZ(0)]">
         {categories.map((cat) => {
           const active = activeId === cat.id;
           const tint = cat.tintClass || "bg-zinc-100";
@@ -119,5 +120,10 @@ export default function CategoryBar({
       </ul>
     </nav>
   );
+
+  if (fullBleed) {
+    return <div className="-mx-4 md:-mx-6 px-4 md:px-6">{nav}</div>;
+  }
+  return nav;
 }
 
