@@ -26,6 +26,7 @@ import { smoothies, funcionales } from "./components/SmoothiesSection";
 import { COFFEES, INFUSIONS } from "./components/CoffeeSection";
 import { SODAS, OTHERS } from "./components/ColdDrinksSection";
 import { sandwichItems, sandwichPriceByItem } from "./components/Sandwiches";
+import { getStockState, slugify } from "./utils/stock";
 
 // Póster QR
 import QrPoster from "./components/QrPoster";
@@ -122,6 +123,44 @@ export default function App() {
     sandwichPriceByItem,
   ]);
 
+  const counts = useMemo(() => {
+    const count = (items = []) =>
+      items.filter((p) => {
+        const pid =
+          p.id ||
+          p.productId ||
+          (p.key ? "sandwich:" + p.key : slugify(p.name));
+        const st = getStockState(pid);
+        return st === "ok" || st === "low";
+      }).length;
+    const result = {
+      desayunos: count(BREAKFAST_ITEMS),
+      bowls: count([PREBOWL]),
+      platos: count(MAINS_ITEMS),
+      sandwiches: count(
+        sandwichItems?.map((it) => ({ id: "sandwich:" + it.key, name: it.name })) || []
+      ),
+      smoothies: count([...(smoothies || []), ...(funcionales || [])]),
+      cafe: count([...(COFFEES || []), ...(INFUSIONS || [])]),
+      bebidasfrias: count([...(SODAS || []), ...(OTHERS || [])]),
+      postres: count(DESSERT_BASE_ITEMS),
+    };
+    result.todos = Object.values(result).reduce((sum, n) => sum + n, 0);
+    return result;
+  }, [
+    BREAKFAST_ITEMS,
+    PREBOWL,
+    MAINS_ITEMS,
+    sandwichItems,
+    smoothies,
+    funcionales,
+    COFFEES,
+    INFUSIONS,
+    SODAS,
+    OTHERS,
+    DESSERT_BASE_ITEMS,
+  ]);
+
   function resolveProductById(id) {
     if (!id) return null;
     return productMap[id] || null;
@@ -153,6 +192,7 @@ export default function App() {
           query={query}
           selectedCategory={selectedCategory}
           onCategorySelect={handleCategorySelect}
+          counts={counts}
         />
 
         <Footer />

@@ -143,6 +143,7 @@ export default function ProductLists({
   query,
   selectedCategory,
   onCategorySelect,
+  counts = {},
 }) {
   const categories = useMemo(
     () => [
@@ -276,6 +277,7 @@ export default function ProductLists({
           <CategoryTabs
             items={tabItems}
             value={selectedCategory}
+            counts={counts}
             onChange={(slug) => {
               if (slug === "todos") {
                 onCategorySelect?.({ id: "todos" });
@@ -291,6 +293,7 @@ export default function ProductLists({
             activeId={selectedCategory}
             onSelect={onCategorySelect}
             variant="chip"
+            counts={counts}
           />
         )}
       </div>
