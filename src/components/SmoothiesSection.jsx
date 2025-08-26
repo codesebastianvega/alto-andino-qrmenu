@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { AddIconButton, StatusChip } from "./Buttons";
 import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
@@ -54,7 +55,7 @@ function List({ items, onAdd }) {
   );
 }
 
-export default function SmoothiesSection({ query }) {
+export default function SmoothiesSection({ query, onCount }) {
   const cart = useCart();
   const add = (p) =>
     cart.addItem({
@@ -69,8 +70,12 @@ export default function SmoothiesSection({ query }) {
   const funcionalesFiltered = (funcionales || []).filter((p) =>
     matchesQuery({ title: p.name, description: p.desc }, query)
   );
+  const count = smoothiesFiltered.length + funcionalesFiltered.length;
+  useEffect(() => {
+    onCount?.(count);
+  }, [count, onCount]);
 
-  if (!smoothiesFiltered.length && !funcionalesFiltered.length) return null;
+  if (!count) return null;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

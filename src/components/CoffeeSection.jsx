@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import clsx from "clsx";
 import { AddIconButton, StatusChip } from "./Buttons";
 import { toast } from "./Toast";
@@ -27,7 +27,7 @@ function findMilkDelta(milkId) {
 
 // ————————————————————————————————————————
 // Componente principal
-export default function CoffeeSection({ query }) {
+export default function CoffeeSection({ query, onCount }) {
   const cart = useCart();
 
   // Estados por ítem (diccionarios)
@@ -205,7 +205,12 @@ export default function CoffeeSection({ query }) {
   const infusionItems = (infusions || []).filter((item) =>
     matchesQuery({ title: item.name, description: item.desc }, query)
   );
-  if (!coffeeItems.length && !infusionItems.length) return null;
+  const count = coffeeItems.length + infusionItems.length;
+  useEffect(() => {
+    onCount?.(count);
+  }, [count, onCount]);
+
+  if (!count) return null;
 
   return (
     <div className="space-y-8">

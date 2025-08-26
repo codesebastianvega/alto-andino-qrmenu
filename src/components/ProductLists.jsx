@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useCallback, cloneElement } from "react";
+import { useMemo, useEffect, useCallback, useState, cloneElement } from "react";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import { getStockState, slugify, isUnavailable } from "../utils/stock";
@@ -29,10 +29,13 @@ export default function ProductLists({
   query,
   selectedCategory,
   onCategorySelect,
-  counts = {},
   featureTabs = false,
 }) {
-  const visibleCount = counts[selectedCategory] ?? 0;
+  const [counts, setCounts] = useState({});
+  const setCount = useCallback((id, n) => {
+    setCounts((prev) => (prev[id] === n ? prev : { ...prev, [id]: n }));
+  }, []);
+  const visibleCount = counts[selectedCategory] || 0;
   const categories = useMemo(
     () => [
       { id: "desayunos", label: "Desayunos", tintClass: "bg-amber-50" },
@@ -87,74 +90,162 @@ export default function ProductLists({
       }),
     [categories]
   );
+  const breakfasts = useMemo(
+    () =>
+      (breakfastItems || []).filter((it) =>
+        matchesQuery({ title: it.name, description: it.desc }, query)
+      ),
+    [query]
+  );
+  useEffect(() => {
+    setCount("desayunos", breakfasts.length);
+  }, [breakfasts.length, setCount]);
 
-  const sections = useMemo(
-    () => [
-      {
+  const mains = useMemo(
+    () =>
+      (mainDishes || []).filter((it) =>
+        matchesQuery({ title: it.name, description: it.desc }, query)
+      ),
+    [query]
+  );
+  useEffect(() => {
+    setCount("platos", mains.length);
+  }, [mains.length, setCount]);
+
+  const dessertsCumbre = useMemo(
+    () => cumbreFlavors.filter((s) => matchesQuery({ title: s.label }, query)),
+    [query]
+  );
+  const dessertsBase = useMemo(
+    () =>
+      (dessertBaseItems || []).filter((p) =>
+        matchesQuery({ title: p.name, description: p.desc }, query)
+      ),
+    [query]
+  );
+  const dessertsCount = dessertsCumbre.length + dessertsBase.length;
+  useEffect(() => {
+    setCount("postres", dessertsCount);
+  }, [dessertsCount, setCount]);
+
+  const bowlsEl = (
+    <BowlsSection query={query} onCount={(n) => setCount("bowls", n)} />
+  );
+  const sandwichesEl = (
+    <Sandwiches query={query} onCount={(n) => setCount("sandwiches", n)} />
+  );
+  const smoothiesEl = (
+    <SmoothiesSection query={query} onCount={(n) => setCount("smoothies", n)} />
+  );
+  const coffeeEl = (
+    <CoffeeSection query={query} onCount={(n) => setCount("cafe", n)} />
+  );
+  const coldEl = (
+    <ColdDrinksSection
+      query={query}
+      onCount={(n) => setCount("bebidasfrias", n)}
+    />
+  );
+
+  const sections = useMemo(() => {
+    const arr = [];
+    if (breakfasts.length) {
+      arr.push({
         id: "desayunos",
         element: (
-          <Section title="Desayunos" count={counts.desayunos}>
-            <Breakfasts query={query} />
+          <Section title="Desayunos" count={breakfasts.length}>
+            <List items={breakfasts} />
           </Section>
         ),
-      },
-      {
-        id: "bowls",
-        element: (
-          <Section title="Bowls" count={counts.bowls}>
-            <BowlsSection query={query} />
-          </Section>
+      });
+    }
+    arr.push({
+      id: "bowls",
+      element:
+        counts.bowls > 0 ? (
+          <Section title="Bowls" count={counts.bowls}>{bowlsEl}</Section>
+        ) : (
+          bowlsEl
         ),
-      },
-      {
+    });
+    if (mains.length) {
+      arr.push({
         id: "platos",
         element: (
-          <Section title="Platos Fuertes" count={counts.platos}>
-            <Mains query={query} />
+          <Section title="Platos Fuertes" count={mains.length}>
+            <List items={mains} />
           </Section>
         ),
-      },
-      {
-        id: "sandwiches",
-        element: (
+      });
+    }
+    arr.push({
+      id: "sandwiches",
+      element:
+        counts.sandwiches > 0 ? (
           <Section title="Sándwiches" count={counts.sandwiches}>
-            <Sandwiches query={query} />
+            {sandwichesEl}
           </Section>
+        ) : (
+          sandwichesEl
         ),
-      },
-      {
-        id: "smoothies",
-        element: (
+    });
+    arr.push({
+      id: "smoothies",
+      element:
+        counts.smoothies > 0 ? (
           <Section title="Smoothies & Funcionales" count={counts.smoothies}>
-            <SmoothiesSection query={query} />
+            {smoothiesEl}
           </Section>
+        ) : (
+          smoothiesEl
         ),
-      },
-      {
-        id: "cafe",
-        element: (
+    });
+    arr.push({
+      id: "cafe",
+      element:
+        counts.cafe > 0 ? (
           <Section title="Café de especialidad" count={counts.cafe}>
-            <CoffeeSection query={query} />
+            {coffeeEl}
           </Section>
+        ) : (
+          coffeeEl
         ),
-      },
-      {
-        id: "bebidasfrias",
-        element: (
-          <ColdDrinksSection query={query} count={counts.bebidasfrias} />
+    });
+    arr.push({
+      id: "bebidasfrias",
+      element:
+        counts.bebidasfrias > 0 ? (
+          <Section title="Bebidas frías" count={counts.bebidasfrias}>
+            {coldEl}
+          </Section>
+        ) : (
+          coldEl
         ),
-      },
-      {
+    });
+    if (dessertsCount) {
+      arr.push({
         id: "postres",
         element: (
-          <Section title="Postres" count={counts.postres}>
-            <Desserts query={query} />
+          <Section title="Postres" count={dessertsCount}>
+            <Desserts cumbre={dessertsCumbre} base={dessertsBase} />
           </Section>
         ),
-      },
-    ],
-    [query, counts]
-  );
+      });
+    }
+    return arr;
+  }, [
+    breakfasts,
+    mains,
+    dessertsCumbre,
+    dessertsBase,
+    dessertsCount,
+    counts,
+    bowlsEl,
+    sandwichesEl,
+    smoothiesEl,
+    coffeeEl,
+    coldEl,
+  ]);
   const renderPanel = (s, inTodos = false) => (
     <div
       key={s.id}
@@ -248,6 +339,11 @@ export default function ProductLists({
           />
         )}
       </div>
+      {query && !Object.values(counts).some((n) => n > 0) && (
+        <p className="text-sm text-neutral-600 px-4">
+          No hay resultados para “{query}”.
+        </p>
+      )}
       <div
         {...swipeHandlers}
         className={stackClass}
@@ -264,38 +360,13 @@ export default function ProductLists({
   );
 }
 
-function Breakfasts({ query }) {
-  const items = (breakfastItems || []).filter((it) =>
-    matchesQuery({ title: it.name, description: it.desc }, query)
-  );
-  if (!items.length) return null;
-  return <List items={items} />;
-}
-
-function Mains({ query }) {
-  const items = (mainDishes || []).filter((it) =>
-    matchesQuery({ title: it.name, description: it.desc }, query)
-  );
-  if (!items.length) return null;
-  return <List items={items} />;
-}
-
-function Desserts({ query }) {
+function Desserts({ cumbre = [], base = [] }) {
   const { addItem } = useCart();
-
-  // Sabores + precios específicos (según tu instrucción)
-  const filteredCumbre = cumbreFlavors.filter((s) =>
-    matchesQuery({ title: s.label }, query)
-  );
-  const base = (dessertBaseItems || []).filter((p) =>
-    matchesQuery({ title: p.name, description: p.desc }, query)
-  );
-
-  if (!filteredCumbre.length && !base.length) return null;
+  if (!cumbre.length && !base.length) return null;
 
   return (
     <div className="space-y-4">
-      {filteredCumbre.length > 0 && (
+      {cumbre.length > 0 && (
         <div className="rounded-2xl p-5 sm:p-6 shadow-sm bg-white">
           <p className="font-semibold">Cumbre Andino (sin azúcar)</p>
           <p className="text-xs text-neutral-600 mt-1">
@@ -303,7 +374,7 @@ function Desserts({ query }) {
             azúcar, chantilly con eritritol y fruta.
           </p>
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {filteredCumbre.map((s) => {
+            {cumbre.map((s) => {
               const id = "cumbre:" + s.id;
               const st = getStockState(id);
               const disabled = st === "out";
