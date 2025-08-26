@@ -152,6 +152,7 @@ export default function ProductLists({
   counts = {},
   featureTabs = false,
 }) {
+  const visibleCount = counts[selectedCategory] ?? 0;
   const categories = useMemo(
     () => [
       { id: "desayunos", label: "Desayunos" },
@@ -299,13 +300,16 @@ export default function ProductLists({
   return (
     <>
       <div className="mx-auto max-w-screen-md px-4 md:px-6">
-        <CategoryHeader />
+        <CategoryHeader
+          selectedCategory={selectedCategory}
+          visibleCount={visibleCount}
+          featureTabs={featureTabs}
+        />
         <div className="-mx-4 md:-mx-6 px-4 md:px-6">
           {featureTabs ? (
             <CategoryTabs
               items={tabItems}
               value={selectedCategory}
-              counts={counts}
               onChange={(slug) => {
                 if (slug === "todos") {
                   onCategorySelect?.({ id: "todos" });
