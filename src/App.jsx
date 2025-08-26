@@ -4,12 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 // Layout / UI
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-import ProductLists, {
-  BREAKFAST_ITEMS,
-  MAINS_ITEMS,
-  DESSERT_BASE_ITEMS,
-  CATS,
-} from "./components/ProductLists";
+import ProductLists from "./components/ProductLists";
 import SearchBar from "./components/SearchBar";
 import HeroHeadline from "./components/HeroHeadline";
 import PromoBannerCarousel from "./components/PromoBannerCarousel";
@@ -21,11 +16,21 @@ import FloatingCartBar from "./components/FloatingCartBar";
 import CartDrawer from "./components/CartDrawer";
 import { useCart } from "./context/CartContext";
 import { banners as buildBanners } from "./data/banners";
-import { PREBOWL } from "./components/BowlsSection";
-import { smoothies, funcionales } from "./components/SmoothiesSection";
-import { COFFEES, INFUSIONS } from "./components/CoffeeSection";
-import { SODAS, OTHERS } from "./components/ColdDrinksSection";
-import { sandwichItems, sandwichPriceByItem } from "./components/Sandwiches";
+import {
+  cats,
+  breakfastItems,
+  mainDishes,
+  dessertBaseItems,
+  preBowl,
+  smoothies,
+  funcionales,
+  coffees,
+  infusions,
+  sodas,
+  otherDrinks,
+  sandwichItems,
+  sandwichPriceByItem,
+} from "./data/menuItems";
 import { getStockState, slugify } from "./utils/stock";
 
 // Póster QR
@@ -61,6 +66,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const slug = params.get("cat");
     if (slug && VALID_CATEGORIES.includes(slug)) {
+
       handleCategorySelect(slug);
     }
   }, []);
@@ -73,16 +79,16 @@ export default function App() {
 
   const productMap = useMemo(() => {
     const collections = [
-      BREAKFAST_ITEMS,
-      MAINS_ITEMS,
-      DESSERT_BASE_ITEMS,
-      [PREBOWL],
+      breakfastItems,
+      mainDishes,
+      dessertBaseItems,
+      [preBowl],
       smoothies,
       funcionales,
-      COFFEES,
-      INFUSIONS,
-      SODAS,
-      OTHERS,
+      coffees,
+      infusions,
+      sodas,
+      otherDrinks,
     ];
     if (sandwichItems && sandwichPriceByItem) {
       const mapped = sandwichItems.map((it) => {
@@ -117,16 +123,16 @@ export default function App() {
     }
     return map;
   }, [
-    BREAKFAST_ITEMS,
-    MAINS_ITEMS,
-    DESSERT_BASE_ITEMS,
-    PREBOWL,
+    breakfastItems,
+    mainDishes,
+    dessertBaseItems,
+    preBowl,
     smoothies,
     funcionales,
-    COFFEES,
-    INFUSIONS,
-    SODAS,
-    OTHERS,
+    coffees,
+    infusions,
+    sodas,
+    otherDrinks,
     sandwichItems,
     sandwichPriceByItem,
   ]);
@@ -142,31 +148,31 @@ export default function App() {
         return st === "ok" || st === "low";
       }).length;
     const result = {
-      desayunos: count(BREAKFAST_ITEMS),
-      bowls: count([PREBOWL]),
-      platos: count(MAINS_ITEMS),
+      desayunos: count(breakfastItems),
+      bowls: count([preBowl]),
+      platos: count(mainDishes),
       sandwiches: count(
         sandwichItems?.map((it) => ({ id: "sandwich:" + it.key, name: it.name })) || []
       ),
       smoothies: count([...(smoothies || []), ...(funcionales || [])]),
-      cafe: count([...(COFFEES || []), ...(INFUSIONS || [])]),
-      bebidasfrias: count([...(SODAS || []), ...(OTHERS || [])]),
-      postres: count(DESSERT_BASE_ITEMS),
+      cafe: count([...(coffees || []), ...(infusions || [])]),
+      bebidasfrias: count([...(sodas || []), ...(otherDrinks || [])]),
+      postres: count(dessertBaseItems),
     };
     result.todos = Object.values(result).reduce((sum, n) => sum + n, 0);
     return result;
   }, [
-    BREAKFAST_ITEMS,
-    PREBOWL,
-    MAINS_ITEMS,
+    breakfastItems,
+    preBowl,
+    mainDishes,
     sandwichItems,
     smoothies,
     funcionales,
-    COFFEES,
-    INFUSIONS,
-    SODAS,
-    OTHERS,
-    DESSERT_BASE_ITEMS,
+    coffees,
+    infusions,
+    sodas,
+    otherDrinks,
+    dessertBaseItems,
   ]);
 
   function resolveProductById(id) {

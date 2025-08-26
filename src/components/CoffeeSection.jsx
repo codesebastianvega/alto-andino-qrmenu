@@ -4,6 +4,7 @@ import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import { getStockState, slugify } from "../utils/stock";
 import { matchesQuery } from "../utils/strings";
+import { coffees, infusions } from "../data/menuItems";
 
 // ————————————————————————————————————————
 // Configuración de bebidas
@@ -13,98 +14,6 @@ const MILK_OPTIONS = [
   { id: "entera", label: "Entera", delta: 0 },
   { id: "deslactosada", label: "Deslactosada", delta: 0 },
   { id: "almendras", label: "Almendras (+$3.800)", delta: 3800 },
-];
-
-// Cafés (agrupados)
-// ← editar nombres y precios aquí
-export const COFFEES = [
-  // Sin leche por defecto
-  {
-    id: "cof-espresso",
-    name: "Espresso",
-    price: 4000,
-    desc: "Café concentrado, 30–40 ml. 100% espresso.",
-    milkPolicy: "optional",
-    kind: "espresso",
-  },
-  {
-    id: "cof-americano",
-    name: "Americano",
-    price: 4500,
-    desc: "Espresso diluido con agua caliente (~30% espresso, 70% agua).",
-    milkPolicy: "optional",
-    kind: "americano",
-  },
-  {
-    id: "cof-tinto",
-    name: "Tinto Campesino",
-    price: 4500,
-    desc: "Café filtrado tradicional.",
-    milkPolicy: "none",
-    kind: "tinto",
-  },
-
-  // Con leche por defecto
-  {
-    id: "cof-capuchino",
-    name: "Capuchino",
-    price: 6000,
-    desc: "Espresso con leche al vapor y espuma fina (~33% espresso, 33% leche, 33% espuma).",
-    milkPolicy: "required",
-    kind: "milk",
-  },
-  {
-    id: "cof-latte",
-    name: "Latte",
-    price: 6000,
-    desc: "Espresso con más leche y poca espuma (~20% espresso, 80% leche).",
-    milkPolicy: "required",
-    kind: "milk",
-  },
-  {
-    id: "cof-flat",
-    name: "Flat White",
-    price: 7000,
-    desc: "Doble espresso con leche microespumada (~40% espresso, 60% leche).",
-    milkPolicy: "required",
-    kind: "milk",
-  },
-  {
-    id: "cof-moca",
-    name: "Mocaccino",
-    price: 8000,
-    desc: "Espresso con cacao, leche y crema (~25% espresso, 65% leche, 10% cacao/crema).",
-    milkPolicy: "required",
-    kind: "milk",
-  },
-  {
-    id: "cof-choco",
-    name: "Chocolate Caliente",
-    price: 7000,
-    desc: "Bebida de cacao con leche.",
-    milkPolicy: "required",
-    kind: "milk",
-  },
-];
-
-// Infusiones y tés (incluye Chai)
-// ← editar nombres y precios aquí
-export const INFUSIONS = [
-  {
-    id: "aro-fresa",
-    name: "Aromatica de fresa",
-    price: 5000,
-    desc: "Té de frutos rojos con hierbabuena y fresas deshidratadas.",
-  },
-
-  // Chai especial: puede ser infusión o con leche (Chai Latte)
-  {
-    id: "inf-chai",
-    name: "Té Chai",
-    price: 9000,
-    desc: "Blend especiado. Puede ser infusión o con leche (Chai Latte).",
-    chai: true,
-  },
 ];
 
 // ————————————————————————————————————————
@@ -288,10 +197,10 @@ export default function CoffeeSection({ query }) {
   );
 
   // ————————————————————————————————————————
-  const coffeeItems = COFFEES.filter((item) =>
+  const coffeeItems = (coffees || []).filter((item) =>
     matchesQuery({ title: item.name, description: item.desc }, query)
   );
-  const infusionItems = INFUSIONS.filter((item) =>
+  const infusionItems = (infusions || []).filter((item) =>
     matchesQuery({ title: item.name, description: item.desc }, query)
   );
   if (!coffeeItems.length && !infusionItems.length) return null;

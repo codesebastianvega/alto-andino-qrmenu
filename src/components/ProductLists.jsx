@@ -14,6 +14,12 @@ import CategoryHeader from "./CategoryHeader";
 import CategoryBar from "./CategoryBar";
 import CategoryTabs from "./CategoryTabs";
 import { categoryIcons } from "../data/categoryIcons";
+import {
+  cats,
+  breakfastItems,
+  mainDishes,
+  dessertBaseItems,
+} from "../data/menuItems";
 import useSwipeTabs from "../utils/useSwipeTabs";
 
 export const CATS = [
@@ -138,6 +144,7 @@ export const DESSERT_BASE_ITEMS = [
   },
 ];
 
+
 export default function ProductLists({
   query,
   selectedCategory,
@@ -261,6 +268,7 @@ export default function ProductLists({
   );
 
   const orderedTabs = ["todos", ...CATS];
+
   const swipeHandlers = useSwipeTabs({
     onPrev: () => {
       const idx = orderedTabs.indexOf(selectedCategory);
@@ -332,7 +340,7 @@ export default function ProductLists({
 }
 
 export function Breakfasts({ query }) {
-  const items = BREAKFAST_ITEMS.filter((it) =>
+  const items = (breakfastItems || []).filter((it) =>
     matchesQuery({ title: it.name, description: it.desc }, query)
   );
   if (!items.length) return null;
@@ -340,7 +348,7 @@ export function Breakfasts({ query }) {
 }
 
 export function Mains({ query }) {
-  const items = MAINS_ITEMS.filter((it) =>
+  const items = (mainDishes || []).filter((it) =>
     matchesQuery({ title: it.name, description: it.desc }, query)
   );
   if (!items.length) return null;
@@ -368,7 +376,7 @@ export function Desserts({ query }) {
   const filteredCumbre = cumbreSabores.filter((s) =>
     matchesQuery({ title: s.label }, query)
   );
-  const base = DESSERT_BASE_ITEMS.filter((p) =>
+  const base = (dessertBaseItems || []).filter((p) =>
     matchesQuery({ title: p.name, description: p.desc }, query)
   );
 

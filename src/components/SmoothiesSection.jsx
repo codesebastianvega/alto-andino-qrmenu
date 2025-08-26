@@ -3,50 +3,7 @@ import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
 import { getStockState, slugify } from "../utils/stock";
 import { matchesQuery } from "../utils/strings";
-
-// ← editar nombres y precios aquí
-export const smoothies = [
-  {
-    id: "smoothie:Brisas Tropicales",
-    name: "Brisas Tropicales",
-    price: 18000,
-    desc: "Hierbabuena, mango, maracuyá y piña; leche de almendras, yogur griego y chía. 🥛🥜",
-  },
-  {
-    id: "smoothie:El Néctar Andino",
-    name: "El Néctar Andino",
-    price: 17000,
-    desc: "Fresas y arándanos, marañones y avena; leche a elección y vainilla. 🥛🌾🥜",
-  },
-  {
-    id: "smoothie:Verde Amanecer de la Sabana",
-    name: "Verde Amanecer de la Sabana",
-    price: 16000,
-    desc: "Espinaca, kiwi, banano, manzana verde, jengibre y yerbabuena.",
-  },
-];
-
-// ← editar nombres y precios aquí
-export const funcionales = [
-  {
-    id: "smoothie:Elixir del Cóndor (Detox)",
-    name: "Elixir del Cóndor (Detox)",
-    price: 18000,
-    desc: "Pepino, apio, manzana verde, limón y jengibre; espirulina + clorofila.",
-  },
-  {
-    id: "smoothie:Guardian de la Montaña",
-    name: "Guardián de la Montaña",
-    price: 17000,
-    desc: "Naranja, cúrcuma, zanahoria, un toque de pimienta negra, jengibre y miel de abejas local.",
-  },
-  {
-    id: "smoothie:Aurora Proteica",
-    name: "Aurora Proteica",
-    price: 22000,
-    desc: "Leche de almendras, proteína vegetal (vainilla/chocolate), banano y chía. 🥜",
-  },
-];
+import { smoothies, funcionales } from "../data/menuItems";
 
 function List({ items, onAdd }) {
   return (
@@ -94,10 +51,10 @@ export default function SmoothiesSection({ query }) {
       price: p.price,
     });
 
-  const smoothiesFiltered = smoothies.filter((p) =>
+  const smoothiesFiltered = (smoothies || []).filter((p) =>
     matchesQuery({ title: p.name, description: p.desc }, query)
   );
-  const funcionalesFiltered = funcionales.filter((p) =>
+  const funcionalesFiltered = (funcionales || []).filter((p) =>
     matchesQuery({ title: p.name, description: p.desc }, query)
   );
 

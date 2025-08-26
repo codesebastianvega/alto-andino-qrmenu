@@ -6,25 +6,10 @@ import { matchesQuery } from "../utils/strings";
 import { AddIconButton, StatusChip, PILL_XS, PILL_SM } from "./Buttons";
 const BowlBuilderModal = lazy(() => import("./BowlBuilderModal"));
 import { getStockState, slugify } from "../utils/stock";
+import { preBowl } from "../data/menuItems";
 
 // ← editar nombres y precios aquí
 const BASE_PRICE = Number(import.meta.env.VITE_BOWL_BASE_PRICE || 28000);
-
-// Poke Hawaiano (único prearmado)
-// ← editar nombres y precios aquí
-export const PREBOWL = {
-  id: "bowl-poke-hawaiano",
-  name: "Poke Hawaiano",
-  price: 32000, // 28.000 base + 4.000 premium salmón
-  desc: "Arroz blanco, salmón, aguacate, mango y pepino; ajonjolí y salsa mango-yaki.",
-  options: {
-    Base: "Arroz blanco",
-    Proteína: "Salmón",
-    Toppings: ["Aguacate", "Mango", "Pepino"],
-    Extras: ["Ajonjolí"],
-    Salsa: "Mango-yaki",
-  },
-};
 
 export default function BowlsSection({ query }) {
   const { addItem } = useCart();
@@ -32,19 +17,21 @@ export default function BowlsSection({ query }) {
 
   const openBuilder = () => setOpen(true);
 
+  if (!preBowl) return null;
+
   const addPre = () =>
     addItem({
-      productId: PREBOWL.id,
-      name: PREBOWL.name,
-      price: PREBOWL.price,
-      options: PREBOWL.options,
+      productId: preBowl.id,
+      name: preBowl.name,
+      price: preBowl.price,
+      options: preBowl.options,
     });
 
-  const st = getStockState(PREBOWL.id || slugify(PREBOWL.name));
+  const st = getStockState(preBowl.id || slugify(preBowl.name));
   const disabled = st === "out";
 
   const show = matchesQuery(
-    { title: PREBOWL.name, description: PREBOWL.desc },
+    { title: preBowl.name, description: preBowl.desc },
     query
   );
   if (query && !show) return null;
@@ -105,8 +92,8 @@ export default function BowlsSection({ query }) {
 
       {/* Card del prearmado */}
       <div className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12">
-        <p className="font-semibold">{PREBOWL.name}</p>
-        <p className="text-sm text-neutral-600">{PREBOWL.desc}</p>
+        <p className="font-semibold">{preBowl.name}</p>
+        <p className="text-sm text-neutral-600">{preBowl.desc}</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {st === "low" && (
             <StatusChip variant="low">Pocas unidades</StatusChip>
@@ -114,11 +101,11 @@ export default function BowlsSection({ query }) {
           {st === "out" && <StatusChip variant="soldout">Agotado</StatusChip>}
         </div>
         <div className="absolute top-5 right-5 z-10 text-neutral-800 font-bold">
-          ${COP(PREBOWL.price)}
+          ${COP(preBowl.price)}
         </div>
         <AddIconButton
           className="absolute bottom-4 right-4 z-20"
-          aria-label={"Añadir " + PREBOWL.name}
+          aria-label={"Añadir " + preBowl.name}
           onClick={addPre}
           disabled={disabled}
         />
