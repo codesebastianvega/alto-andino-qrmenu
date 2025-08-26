@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-import { Chip, AddIconButton, StatusChip } from "./Buttons";
-import { COP } from "../utils/money";
+import { Chip, StatusChip } from "./Buttons";
+import { formatCOP } from "../utils/money";
 import { useCart } from "../context/CartContext";
 import { getStockState, isUnavailable } from "../utils/stock";
 import { toast } from "./Toast";
-import clsx from "clsx";
 import { matchesQuery } from "../utils/strings";
 import {
   sandwichItems,
@@ -133,12 +132,8 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
               }
               add(it);
             };
-            const handleAddClick = (e) => {
-              e.stopPropagation();
-              handleAdd();
-            };
             return (
-              <li
+              <article
                 key={it.key}
                 role="button"
                 tabIndex={0}
@@ -149,52 +144,56 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
                     onQuickView?.(product);
                   }
                 }}
-                className={clsx(
-                  "relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
-                )}
+                aria-disabled={unavailable}
+                className="group grid grid-cols-[96px_1fr] gap-3 p-3 sm:p-4 rounded-2xl bg-white/70 dark:bg-neutral-900/70 border border-black/5 dark:border-white/10 shadow-sm hover:shadow-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
               >
                 <img
                   src={getProductImage(product)}
                   alt={it.name}
-                  className="w-full h-40 object-cover rounded-xl mb-3"
                   loading="lazy"
+                  className="w-24 h-24 rounded-xl object-cover"
                 />
-                <p className="font-semibold">{renderWithEmoji(it.name)}</p>
-                <p className="text-sm text-neutral-600">
-                  {renderWithEmoji(it.desc)}
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {st === "low" && (
-                    <StatusChip variant="low">Pocas unidades</StatusChip>
-                  )}
-                  {unavailable && (
-                    <StatusChip variant="soldout">No Disponible</StatusChip>
-                  )}
-                  {priceByItem[it.key].unico && (
-                    <StatusChip variant="neutral">Precio único</StatusChip>
-                  )}
+                <div className="min-w-0 flex flex-col">
+                  <h3 className="text-base font-semibold truncate">{renderWithEmoji(it.name)}</h3>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-300 line-clamp-2 mt-0.5">
+                    {renderWithEmoji(it.desc)}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {st === "low" && (
+                      <StatusChip variant="low">Pocas unidades</StatusChip>
+                    )}
+                    {unavailable && (
+                      <StatusChip variant="soldout">No Disponible</StatusChip>
+                    )}
+                    {priceByItem[it.key].unico && (
+                      <StatusChip variant="neutral">Precio único</StatusChip>
+                    )}
+                  </div>
+                  <div className="mt-auto flex items-end justify-between gap-3 pt-2">
+                    <div>
+                      <div className="text-base font-semibold">
+                        {formatCOP(price)}
+                      </div>
+                      {!priceByItem[it.key].unico && (
+                        <div className="text-xs text-neutral-500">
+                          Mostrando precio de {size === "clasico" ? "Clásico" : "Grande"}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={`Agregar ${it.name}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAdd();
+                      }}
+                      className="h-10 w-10 grid place-items-center rounded-full bg-[#2f4131] text-white shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-                <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold text-right">
-                  ${COP(price)}
-                  {!priceByItem[it.key].unico && (
-                    <span className="block text-xs text-neutral-500">
-                      Mostrando precio de {size === "clasico" ? "Clásico" : "Grande"}
-                    </span>
-                  )}
-                </div>
-                <AddIconButton
-                  className={clsx(
-                    "absolute bottom-4 right-4 z-20",
-                    unavailable &&
-                      "opacity-60 cursor-not-allowed pointer-events-auto"
-                  )}
-                  aria-label={"Agregar " + it.name}
-                  onClick={handleAddClick}
-                  aria-disabled={unavailable}
-                  title={unavailable ? "No disponible" : undefined}
-                />
-              </li>
+              </article>
             );
           })}
         </ul>

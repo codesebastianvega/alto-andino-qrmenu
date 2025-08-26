@@ -1,10 +1,9 @@
 import { useEffect } from "react";
-import { AddIconButton, StatusChip } from "./Buttons";
-import { COP } from "../utils/money";
+import { StatusChip } from "./Buttons";
+import { formatCOP } from "../utils/money";
 import { useCart } from "../context/CartContext";
 import { getStockState, slugify, isUnavailable } from "../utils/stock";
 import { toast } from "./Toast";
-import clsx from "clsx";
 import { matchesQuery } from "../utils/strings";
 import { smoothies, funcionales } from "../data/menuItems";
 import { getProductImage } from "../utils/images";
@@ -15,17 +14,6 @@ function List({ items, onAdd, onQuickView }) {
       {items.map((p) => {
         const st = getStockState(p.id || slugify(p.name));
         const unavailable = st === "out" || isUnavailable(p);
-        const handleAdd = () => {
-          if (unavailable) {
-            toast("Producto no disponible");
-            return;
-          }
-          onAdd(p);
-        };
-        const handleAddClick = (e) => {
-          e.stopPropagation();
-          handleAdd();
-        };
         const product = {
           productId: p.id || slugify(p.name),
           id: unavailable ? undefined : p.id || slugify(p.name),
@@ -35,7 +23,7 @@ function List({ items, onAdd, onQuickView }) {
           price: p.price,
         };
         return (
-          <li
+          <article
             key={p.name}
             role="button"
             tabIndex={0}
@@ -46,38 +34,46 @@ function List({ items, onAdd, onQuickView }) {
                 onQuickView?.(product);
               }
             }}
-            className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+            aria-disabled={unavailable}
+            className="group grid grid-cols-[96px_1fr] gap-3 p-3 rounded-2xl bg-white/70 dark:bg-neutral-900/70 border border-black/5 dark:border-white/10 shadow-sm hover:shadow-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
           >
             <img
               src={getProductImage(product)}
               alt={p.name}
-              className="w-full h-40 object-cover rounded-xl mb-3"
               loading="lazy"
+              className="w-24 h-24 rounded-xl object-cover"
             />
-            <p className="font-semibold">{p.name}</p>
-            <p className="text-sm text-neutral-600">{p.desc}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {st === "low" && (
-                <StatusChip variant="low">Pocas unidades</StatusChip>
+            <div className="min-w-0 flex flex-col">
+              <h3 className="text-base font-semibold truncate">{p.name}</h3>
+              {p.desc && (
+                <p className="text-sm text-neutral-600 dark:text-neutral-300 line-clamp-2 mt-0.5">{p.desc}</p>
               )}
-              {unavailable && (
-                <StatusChip variant="soldout">No Disponible</StatusChip>
-              )}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {st === "low" && <StatusChip variant="low">Pocas unidades</StatusChip>}
+                {unavailable && <StatusChip variant="soldout">No Disponible</StatusChip>}
+              </div>
+              <div className="mt-auto flex items-end justify-between gap-3 pt-2">
+                <div>
+                  <div className="text-base font-semibold">{formatCOP(p.price)}</div>
+                </div>
+                <button
+                  type="button"
+                  aria-label={`Agregar ${p.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (unavailable) {
+                      toast("Producto no disponible");
+                      return;
+                    }
+                    onAdd(p);
+                  }}
+                  className="h-10 w-10 grid place-items-center rounded-full bg-[#2f4131] text-white shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+                >
+                  +
+                </button>
+              </div>
             </div>
-            <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
-              ${COP(p.price)}
-            </div>
-            <AddIconButton
-              className={clsx(
-                "absolute bottom-4 right-4 z-20",
-                unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
-              )}
-              aria-label={"Agregar " + p.name}
-              onClick={handleAddClick}
-              aria-disabled={unavailable}
-              title={unavailable ? "No disponible" : undefined}
-            />
-          </li>
+          </article>
         );
       })}
     </ul>

@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import clsx from "clsx";
-import { AddIconButton, StatusChip } from "./Buttons";
+import { StatusChip } from "./Buttons";
 import { toast } from "./Toast";
 import { useCart } from "../context/CartContext";
-import { COP } from "../utils/money";
+import { formatCOP } from "../utils/money";
 import { getStockState, slugify, isUnavailable } from "../utils/stock";
 import { matchesQuery } from "../utils/strings";
 import { coffees, infusions } from "../data/menuItems";
@@ -269,7 +269,7 @@ export default function CoffeeSection({ query, onCount, onQuickView }) {
             };
 
             return (
-              <li
+              <article
                 key={item.id}
                 role="button"
                 tabIndex={0}
@@ -280,59 +280,68 @@ export default function CoffeeSection({ query, onCount, onQuickView }) {
                     onQuickView?.(product);
                   }
                 }}
-                className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+                aria-disabled={unavailable}
+                className="group grid grid-cols-[96px_1fr] gap-3 p-3 rounded-2xl bg-white/70 dark:bg-neutral-900/70 border border-black/5 dark:border-white/10 shadow-sm hover:shadow-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
               >
                 <img
                   src={getProductImage(product)}
                   alt={displayName(item)}
-                  className="w-full h-40 object-cover rounded-xl mb-3"
                   loading="lazy"
+                  className="w-24 h-24 rounded-xl object-cover"
                 />
-                <p className="font-semibold">{displayName(item)}</p>
-                <p className="text-xs text-neutral-600">{item.desc}</p>
-                {/* Controles contextuales */}
-                {hasControls && (
-                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {showAddMilk && (
-                      <button
-                        type="button"
-                        className="text-xs text-[#2f4131] underline text-left"
-                        onClick={() => toggleAddMilk(item.id)}
-                      >
-                        {addMilk[item.id] ? "Quitar leche" : "+ Agregar leche"}
-                      </button>
+                <div className="min-w-0 flex flex-col">
+                  <h3 className="text-base font-semibold truncate">{displayName(item)}</h3>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-300 line-clamp-2 mt-0.5">{item.desc}</p>
+                  {hasControls && (
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {showAddMilk && (
+                        <button
+                          type="button"
+                          className="text-xs text-[#2f4131] underline text-left"
+                          onClick={() => toggleAddMilk(item.id)}
+                        >
+                          {addMilk[item.id] ? "Quitar leche" : "+ Agregar leche"}
+                        </button>
+                      )}
+                      {showEspressoStyle && <EspressoStyleSelect id={item.id} />}
+                      {showMilkSelect && (
+                        <MilkSelect id={item.id} disabled={unavailable} />
+                      )}
+                    </div>
+                  )}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {st === "low" && (
+                      <StatusChip variant="low">Pocas unidades</StatusChip>
                     )}
-                    {showEspressoStyle && <EspressoStyleSelect id={item.id} />}
-                    {showMilkSelect && (
-                      <MilkSelect id={item.id} disabled={unavailable} />
+                    {st === "out" && (
+                      <StatusChip variant="soldout">Agotado</StatusChip>
+                    )}
+                    {st !== "out" && isUnavailable(item) && (
+                      <StatusChip variant="soldout">No Disponible</StatusChip>
                     )}
                   </div>
-                )}
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {st === "low" && (
-                    <StatusChip variant="low">Pocas unidades</StatusChip>
-                  )}
-                  {st === "out" && (
-                    <StatusChip variant="soldout">Agotado</StatusChip>
-                  )}
-                  {st !== "out" && isUnavailable(item) && (
-                    <StatusChip variant="soldout">No Disponible</StatusChip>
-                  )}
+                  <div className="mt-auto flex items-end justify-between gap-3 pt-2">
+                    <div>
+                      <div className="text-base font-semibold">{formatCOP(finalPrice(item))}</div>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={`Agregar ${displayName(item)}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (unavailable) {
+                          toast("Producto no disponible");
+                          return;
+                        }
+                        addToCart(item);
+                      }}
+                      className="h-10 w-10 grid place-items-center rounded-full bg-[#2f4131] text-white shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-                <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
-                  ${COP(finalPrice(item))}
-                </div>
-                <AddIconButton
-                  className={clsx(
-                    "absolute bottom-4 right-4 z-20",
-                    unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
-                  )}
-                  aria-label={"Agregar " + displayName(item)}
-                  aria-disabled={unavailable}
-                  title={unavailable ? "No disponible" : undefined}
-                  onClick={handleAddClick}
-                />
-              </li>
+              </article>
             );
           })}
         </ul>
@@ -378,7 +387,7 @@ export default function CoffeeSection({ query, onCount, onQuickView }) {
             };
 
             return (
-              <li
+              <article
                 key={item.id}
                 role="button"
                 tabIndex={0}
@@ -389,47 +398,57 @@ export default function CoffeeSection({ query, onCount, onQuickView }) {
                     onQuickView?.(product);
                   }
                 }}
-                className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+                aria-disabled={unavailable}
+                className="group grid grid-cols-[96px_1fr] gap-3 p-3 rounded-2xl bg-white/70 dark:bg-neutral-900/70 border border-black/5 dark:border-white/10 shadow-sm hover:shadow-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
               >
                 <img
                   src={getProductImage(product)}
                   alt={displayName(item)}
-                  className="w-full h-40 object-cover rounded-xl mb-3"
                   loading="lazy"
+                  className="w-24 h-24 rounded-xl object-cover"
                 />
-                <p className="font-semibold">{displayName(item)}</p>
-                <p className="text-xs text-neutral-600">{item.desc}</p>
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {isChai && <ChaiModeSelect id={item.id} />}
-                  {showChaiMilk && (
-                    <MilkSelect id={item.id} disabled={unavailable} />
-                  )}
+                <div className="min-w-0 flex flex-col">
+                  <h3 className="text-base font-semibold truncate">{displayName(item)}</h3>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-300 line-clamp-2 mt-0.5">{item.desc}</p>
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {isChai && <ChaiModeSelect id={item.id} />}
+                    {showChaiMilk && (
+                      <MilkSelect id={item.id} disabled={unavailable} />
+                    )}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {st === "low" && (
+                      <StatusChip variant="low">Pocas unidades</StatusChip>
+                    )}
+                    {st === "out" && (
+                      <StatusChip variant="soldout">Agotado</StatusChip>
+                    )}
+                    {st !== "out" && isUnavailable(item) && (
+                      <StatusChip variant="soldout">No Disponible</StatusChip>
+                    )}
+                  </div>
+                  <div className="mt-auto flex items-end justify-between gap-3 pt-2">
+                    <div>
+                      <div className="text-base font-semibold">{formatCOP(finalPrice(item))}</div>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={`Agregar ${displayName(item)}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (unavailable) {
+                          toast("Producto no disponible");
+                          return;
+                        }
+                        addToCart(item);
+                      }}
+                      className="h-10 w-10 grid place-items-center rounded-full bg-[#2f4131] text-white shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {st === "low" && (
-                    <StatusChip variant="low">Pocas unidades</StatusChip>
-                  )}
-                  {st === "out" && (
-                    <StatusChip variant="soldout">Agotado</StatusChip>
-                  )}
-                  {st !== "out" && isUnavailable(item) && (
-                    <StatusChip variant="soldout">No Disponible</StatusChip>
-                  )}
-                </div>
-                <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
-                  ${COP(finalPrice(item))}
-                </div>
-                <AddIconButton
-                  className={clsx(
-                    "absolute bottom-4 right-4 z-20",
-                    unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
-                  )}
-                  aria-label={"Agregar " + displayName(item)}
-                  aria-disabled={unavailable}
-                  title={unavailable ? "No disponible" : undefined}
-                  onClick={handleAddClick}
-                />
-              </li>
+              </article>
             );
           })}
         </ul>
