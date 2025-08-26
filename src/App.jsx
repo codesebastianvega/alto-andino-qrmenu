@@ -17,7 +17,6 @@ import CartDrawer from "./components/CartDrawer";
 import { useCart } from "./context/CartContext";
 import { banners as buildBanners } from "./data/banners";
 import {
-  cats,
   breakfastItems,
   mainDishes,
   dessertBaseItems,
@@ -38,7 +37,16 @@ import QrPoster from "./components/QrPoster";
 import Toast from "./components/Toast";
 
 const FEATURE_TABS = import.meta.env.VITE_FEATURE_TABS === "1";
-const VALID_CATEGORIES = ["todos", ...CATS];
+const CATS = [
+  "todos",
+  "desayunos",
+  "bowls",
+  "platos",
+  "sandwiches",
+  "smoothies",
+  "cafe",
+  "bebidasfrias",
+];
 
 export default function App() {
   const [open, setOpen] = useState(false);
@@ -56,7 +64,7 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const cat = params.get("cat");
-    if (cat && VALID_CATEGORIES.includes(cat)) setSelectedCategory(cat);
+    if (cat && CATS.includes(cat)) setSelectedCategory(cat);
   }, []);
 
   useEffect(() => {
@@ -72,7 +80,7 @@ export default function App() {
   }, [selectedCategory]);
 
   useEffect(() => {
-    if (!VALID_CATEGORIES.includes(selectedCategory)) {
+    if (!CATS.includes(selectedCategory)) {
       setSelectedCategory("todos");
     }
   }, [selectedCategory]);
