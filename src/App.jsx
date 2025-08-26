@@ -37,6 +37,9 @@ import { getStockState, slugify } from "./utils/stock";
 import QrPoster from "./components/QrPoster";
 import Toast from "./components/Toast";
 
+const FEATURE_TABS = import.meta.env.VITE_FEATURE_TABS === "1";
+const VALID_CATEGORIES = ["todos", ...CATS];
+
 export default function App() {
   const [open, setOpen] = useState(false);
   const [openGuide, setOpenGuide] = useState(false);
@@ -62,11 +65,17 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const slug = params.get("cat");
-    const valid = ["todos", ...cats];
-    if (slug && valid.includes(slug)) {
+    if (slug && VALID_CATEGORIES.includes(slug)) {
+
       handleCategorySelect(slug);
     }
   }, []);
+
+  useEffect(() => {
+    if (!VALID_CATEGORIES.includes(selectedCategory)) {
+      setSelectedCategory("todos");
+    }
+  }, [selectedCategory]);
 
   const productMap = useMemo(() => {
     const collections = [
@@ -198,6 +207,7 @@ export default function App() {
           selectedCategory={selectedCategory}
           onCategorySelect={handleCategorySelect}
           counts={counts}
+          featureTabs={FEATURE_TABS}
         />
 
         <Footer />
