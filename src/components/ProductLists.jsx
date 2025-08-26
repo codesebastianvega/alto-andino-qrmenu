@@ -152,6 +152,7 @@ export default function ProductLists({
   );
 
   const orderedTabs = ["todos", ...cats];
+  const activeIndex = Math.max(orderedTabs.indexOf(selectedCategory), 0);
 
   const swipeHandlers = useSwipeTabs({
     onPrev: () => {
@@ -181,10 +182,7 @@ export default function ProductLists({
   });
 
   useEffect(() => {
-    if (selectedCategory !== "todos") {
-      const panel = document.getElementById(`panel-${selectedCategory}`);
-      panel?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, [selectedCategory]);
 
   return (
@@ -225,12 +223,21 @@ export default function ProductLists({
           )}
         </div>
       </div>
-      <div {...swipeHandlers}>
-        {selectedCategory === "todos"
-          ? sections.map(renderPanel)
-          : sections
-              .filter((s) => s.id === selectedCategory)
-              .map(renderPanel)}
+      <div {...swipeHandlers} className="overflow-hidden">
+        <div
+          className="flex transition-transform duration-300 ease-in-out"
+          style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+        >
+          {orderedTabs.map((id) => (
+            <div key={id} className="w-full flex-shrink-0">
+              {id === "todos"
+                ? sections.map(renderPanel)
+                : sections
+                    .filter((s) => s.id === id)
+                    .map(renderPanel)}
+            </div>
+          ))}
+        </div>
       </div>
     </>
   );
