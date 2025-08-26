@@ -17,7 +17,7 @@ import { categoryIcons } from "../data/categoryIcons";
 
 const FEATURE_TABS = import.meta.env.VITE_FEATURE_TABS === "1";
 
-const CATS = [
+export const CATS = [
   "desayunos",
   "bowls",
   "platos",
@@ -247,6 +247,18 @@ export default function ProductLists({
     [query]
   );
 
+  const renderPanel = (s) => (
+    <div
+      key={s.id}
+      id={`panel-${s.id}`}
+      role="tabpanel"
+      tabIndex={-1}
+      aria-labelledby={`tab-${s.id}`}
+    >
+      {s.element}
+    </div>
+  );
+
   useEffect(() => {
     if (!FEATURE_TABS) return;
     const valid = ["todos", ...CATS];
@@ -284,11 +296,11 @@ export default function ProductLists({
       </div>
       {FEATURE_TABS
         ? selectedCategory === "todos"
-          ? sections.map((s) => <div key={s.id}>{s.element}</div>)
+          ? sections.map(renderPanel)
           : sections
               .filter((s) => s.id === selectedCategory)
-              .map((s) => <div key={s.id}>{s.element}</div>)
-        : sections.map((s) => <div key={s.id}>{s.element}</div>)}
+              .map(renderPanel)
+        : sections.map(renderPanel)}
     </>
   );
 }
