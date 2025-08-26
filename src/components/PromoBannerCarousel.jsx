@@ -14,7 +14,7 @@ export default function PromoBannerCarousel() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickProduct, setQuickProduct] = useState(null);
   const [petOpen, setPetOpen] = useState(false);
-  const startX = useRef(0);
+  const trackRef = useRef(null);
 
   const items = useMemo(() => {
     return (buildBanners(import.meta.env) || []).map((item) => {
@@ -27,9 +27,14 @@ export default function PromoBannerCarousel() {
 
   useEffect(() => {
     if (paused || count <= 1) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % count), 6000);
+    const el = trackRef.current;
+    if (!el) return;
+    const id = setInterval(() => {
+      const next = (index + 1) % count;
+      el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
+    }, 6000);
     return () => clearInterval(id);
-  }, [paused, count]);
+  }, [paused, count, index]);
 
   const handleAction = (action, product) => {
     if (!action) return;
@@ -55,16 +60,11 @@ export default function PromoBannerCarousel() {
     }
   };
 
-  const onTouchStart = (e) => {
+  const onTouchStart = () => {
     setPaused(true);
-    startX.current = e.touches[0].clientX;
   };
 
-  const onTouchEnd = (e) => {
-    const diff = e.changedTouches[0].clientX - startX.current;
-    if (Math.abs(diff) > 40) {
-      setIndex((i) => (diff > 0 ? (i - 1 + count) % count : (i + 1) % count));
-    }
+  const onTouchEnd = () => {
     setPaused(false);
   };
 
@@ -79,8 +79,14 @@ export default function PromoBannerCarousel() {
         onTouchEnd={onTouchEnd}
       >
         <div
-          className="flex transition-transform duration-500"
-          style={{ transform: `translateX(-${index * 100}%)` }}
+          ref={trackRef}
+          className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth scrollbar-none"
+          onScroll={() => {
+            const el = trackRef.current;
+            if (!el) return;
+            const newIndex = Math.round(el.scrollLeft / el.clientWidth);
+            setIndex(newIndex);
+          }}
         >
           {items.map((item) => {
             const { product } = item;
@@ -91,7 +97,7 @@ export default function PromoBannerCarousel() {
             return (
               <div
                 key={item.id}
-                className="relative w-full flex-shrink-0 h-44 sm:h-56"
+                className="relative w-full flex-shrink-0 h-44 sm:h-56 snap-center"
               >
                 <img
                   src={item.image}
@@ -175,10 +181,21 @@ export default function PromoBannerCarousel() {
             <button
               key={i}
               type="button"
-              onClick={() => setIndex(i)}
-              aria-label={`Ir al banner ${i + 1}`}
-              className={`pointer-events-auto h-2 w-2 rounded-full ${i === index ? "bg-white/80" : "bg-white/40"} focus:outline-none focus:ring-2 focus:ring-white`}
-            />
+              onClick={() => {
+                const el = trackRef.current;
+                if (el) {
+                  el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+                }
+              }}
+              aria-label={`Ir al slide ${i + 1}`}
+              className="pointer-events-auto h-8 w-8 rounded-full grid place-items-center focus:outline-none focus:ring-2 focus:ring-white"
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  i === index ? "bg-white/80" : "bg-white/40"
+                }`}
+              />
+            </button>
           ))}
         </div>
       </div>
