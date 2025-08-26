@@ -1,11 +1,13 @@
 // src/components/BowlsSection.jsx
 import React, { lazy, Suspense, useState } from "react";
+import clsx from "clsx";
 import { useCart } from "../context/CartContext";
 import { COP, formatCOP } from "../utils/money";
 import { matchesQuery } from "../utils/strings";
 import { AddIconButton, StatusChip, PILL_XS, PILL_SM } from "./Buttons";
+import { toast } from "./Toast";
 const BowlBuilder = lazy(() => import("./BowlBuilder"));
-import { getStockState, slugify } from "../utils/stock";
+import { getStockState, slugify, isUnavailable } from "../utils/stock";
 import { preBowl } from "../data/menuItems";
 
 // ← editar nombres y precios aquí
@@ -28,7 +30,15 @@ export default function BowlsSection({ query }) {
     });
 
   const st = getStockState(preBowl.id || slugify(preBowl.name));
-  const disabled = st === "out";
+  const unavailable = st === "out" || isUnavailable(preBowl);
+
+  const handleAdd = () => {
+    if (unavailable) {
+      toast("Producto no disponible");
+      return;
+    }
+    addPre();
+  };
 
   const show = matchesQuery(
     { title: preBowl.name, description: preBowl.desc },
@@ -99,16 +109,21 @@ export default function BowlsSection({ query }) {
           {st === "low" && (
             <StatusChip variant="low">Pocas unidades</StatusChip>
           )}
-          {st === "out" && <StatusChip variant="soldout">Agotado</StatusChip>}
+          {unavailable && (
+            <StatusChip variant="soldout">No Disponible</StatusChip>
+          )}
         </div>
         <div className="absolute top-5 right-5 z-10 text-neutral-800 font-bold">
           ${COP(preBowl.price)}
         </div>
         <AddIconButton
-          className="absolute bottom-4 right-4 z-20"
+          className={clsx(
+            "absolute bottom-4 right-4 z-20",
+            unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
+          )}
           aria-label={"Añadir " + preBowl.name}
-          onClick={addPre}
-          disabled={disabled}
+          onClick={handleAdd}
+          aria-disabled={unavailable}
         />
       </div>
 
