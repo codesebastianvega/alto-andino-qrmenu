@@ -1,66 +1,32 @@
-import {
-  breakfastItems,
-  mainDishes,
-  dessertBaseItems,
-  preBowl,
-  smoothies,
-  funcionales,
-  coffees,
-  infusions,
-  sodas,
-  otherDrinks,
-  sandwichItems,
-  sandwichPriceByItem,
-} from "../data/menuItems";
+import * as data from "../data/menuItems";
 
-const productMap = (() => {
-  const collections = [
-    breakfastItems,
-    mainDishes,
-    dessertBaseItems,
-    [preBowl],
-    smoothies,
-    funcionales,
-    coffees,
-    infusions,
-    sodas,
-    otherDrinks,
-  ];
-  if (sandwichItems && sandwichPriceByItem) {
-    const mapped = sandwichItems.map((it) => {
-      const mapping = sandwichPriceByItem[it.key];
-      const price = mapping?.unico ?? mapping?.clasico ?? mapping?.grande;
-      return { id: "sandwich:" + it.key, name: it.name, price, desc: it.desc };
-    });
-    collections.push(mapped);
-  }
-  const map = {};
-  for (const col of collections) {
-    if (!Array.isArray(col)) continue;
-    for (const p of col) {
-      const pid = p.id || p.productId;
-      if (!pid) continue;
-      const prod = {
-        ...p,
-        id: pid,
-        productId: pid,
-        name: p.name || p.title,
-        title: p.title || p.name,
-        subtitle: p.desc || p.subtitle,
-        price: p.price,
-        image: p.image,
-      };
-      const ids = [p.id, p.productId].filter(Boolean);
-      if (ids.length === 0) ids.push(pid);
-      for (const ident of ids) {
-        map[ident] = prod;
+/**
+ * Find a product by its id within all menu sections.
+ * Each section can be an array or an object containing an `items` array.
+ *
+ * @param {string} id - Product identifier to search for.
+ * @returns {object|null} The matching product, or null if not found.
+ */
+export function resolveProductById(id) {
+  if (!id) return null;
+
+  for (const section of Object.values(data)) {
+    let items;
+    if (Array.isArray(section)) {
+      items = section;
+    } else if (section && typeof section === "object" && Array.isArray(section.items)) {
+      items = section.items;
+    } else {
+      continue;
+    }
+
+    for (const product of items) {
+      if (product && product.id === id) {
+        return product;
       }
     }
   }
-  return map;
-})();
 
-export function resolveProductById(id) {
-  if (!id) return null;
-  return productMap[id] || null;
+  return null;
 }
+
