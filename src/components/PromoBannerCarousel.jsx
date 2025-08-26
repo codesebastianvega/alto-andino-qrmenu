@@ -21,13 +21,12 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
     return () => clearInterval(id);
   }, [paused, count]);
 
-    const openQuickView = (product) => setQuickProduct(product);
-    const handleInfo = (action) => {
+  const openQuickView = (product) => setQuickProduct(product);
+  const handleInfo = (action) => {
     if (action === "modal:petfriendly") setShowPet(true);
     else if (action === "link:reviews") {
       const url = import.meta.env.VITE_GOOGLE_REVIEWS_URL;
       if (url) window.open(url, "_blank", "noopener,noreferrer");
-      else console.warn("Falta VITE_GOOGLE_REVIEWS_URL");
     }
   };
 
@@ -60,10 +59,7 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
           style={{ transform: `translateX(-${index * 100}%)` }}
         >
             {items.map((item) => {
-              const product =
-                item.type === "product"
-                  ? resolveProductById?.(item.productId) || null
-                  : null;
+              const product = resolveProductById?.(item.productId) || null;
               const price = Number(product?.price);
               const canAdd = !!product && Number.isFinite(price) && price > 0;
               if (import.meta.env.DEV && item.type === "product") {
@@ -73,67 +69,67 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
               const addLabel = item.ctas?.primary?.label || "Agregar";
               const viewLabel = item.ctas?.secondary?.label || "Ver";
               return (
-              <div
-                key={item.id}
-                className="relative w-full flex-shrink-0 h-44 sm:h-56 rounded-2xl overflow-hidden"
-              >
-                <img
-                  src={item.image}
-                  alt={item.alt || item.title}
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  decoding="async"
-                  className="absolute inset-0 z-0 h-full w-full object-cover"
-                />
-                  <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
+                <div
+                  key={item.id}
+                  className="relative w-full flex-shrink-0 h-44 sm:h-56 rounded-2xl overflow-hidden"
+                >
+                  <img
+                    src={item.image}
+                    alt={item.alt || item.title}
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    decoding="async"
+                    className="absolute inset-0 h-full w-full object-cover z-0"
+                  />
+                  <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
                   <div className="relative z-30 pointer-events-auto flex h-full w-full flex-col justify-end p-4">
-                  <h3 className="text-white text-lg font-semibold">{item.title}</h3>
-                  {item.subtitle && (
-                    <p className="text-white/90 text-sm">{item.subtitle}</p>
-                  )}
-                  {item.type === "product" ? (
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => canAdd && addItem?.(product, 1)}
-                        aria-label={addLabel}
-                        disabled={!canAdd}
-                        aria-disabled={!canAdd}
-                        className="px-3 h-8 rounded-lg bg-[#2f4131] text-white text-sm font-medium hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:bg-neutral-400 disabled:text-white/80"
-                      >
-                        {addLabel}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => product && openQuickView(product)}
-                        aria-label={viewLabel}
-                        disabled={!product}
-                        aria-disabled={!product}
-                        className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:bg-neutral-100 disabled:text-neutral-400"
-                      >
-                        {viewLabel}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="mt-2">
-                      {item.ctas?.primary && (
+                    <h3 className="text-white text-lg font-semibold">{item.title}</h3>
+                    {item.subtitle && (
+                      <p className="text-white/90 text-sm">{item.subtitle}</p>
+                    )}
+                    {item.type === "product" ? (
+                      <div className="mt-2 flex gap-2">
                         <button
                           type="button"
-                          onClick={() => handleInfo(item.ctas.primary.action)}
-                          aria-label={item.ctas.primary.label || "Ver"}
-                          className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                          onClick={() => canAdd && addItem(product, 1)}
+                          aria-label={addLabel}
+                          disabled={!canAdd}
+                          aria-disabled={!canAdd}
+                          className="px-3 h-8 rounded-lg bg-[#2f4131] text-white text-sm font-medium hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:bg-neutral-400 disabled:text-white/80"
                         >
-                          {item.ctas.primary.label || "Ver"}
+                          {addLabel}
                         </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-                {item.type === "product" && canAdd && (
+                        <button
+                          type="button"
+                          onClick={() => product && openQuickView(product)}
+                          aria-label={viewLabel}
+                          disabled={!product}
+                          aria-disabled={!product}
+                          className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:bg-neutral-100 disabled:text-neutral-400"
+                        >
+                          {viewLabel}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-2">
+                        {item.ctas?.primary && (
+                          <button
+                            type="button"
+                            onClick={() => handleInfo(item.ctas.primary.action)}
+                            aria-label={item.ctas.primary.label || "Ver"}
+                            className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                          >
+                            {item.ctas.primary.label || "Ver"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {item.type === "product" && canAdd && (
                     <div
                       aria-label="Precio"
                       tabIndex={-1}
-                      className="absolute top-3 right-3 md:top-4 md:right-4 z-30 pointer-events-auto rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur shadow-sm text-[#2f4131] font-medium"
+                      className="absolute top-3 right-3 md:top-4 md:right-4 z-30 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur shadow-sm text-[#2f4131] font-medium"
                     >
                       {cop(price)}
                     </div>

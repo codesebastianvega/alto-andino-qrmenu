@@ -3,6 +3,19 @@ export const banners = (env) => {
   const local = (envKey, path) => env?.[envKey] || path;
   return [
     {
+      id: "featured",
+      type: "product",
+      title: "Producto del día",
+      subtitle: env?.VITE_FEATURED_DESC || "Sabor destacado de hoy.",
+      productId: env?.VITE_FEATURED_ID || null,
+      image: env?.VITE_FEATURED_IMAGE_URL || "/especial1.png",
+      ctas: {
+        primary: { label: "Agregar", action: "add" },
+        secondary: { label: "Ver", action: "quickview" },
+      },
+      alt: "Producto del día",
+    },
+    {
       id: "seasonal",
       type: "product",
       title: "Producto de temporada",
