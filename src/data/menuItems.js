@@ -119,6 +119,20 @@ export const dessertBaseItems = [
   },
 ];
 
+export const cumbreFlavors = [
+  { id: "rojos", label: "Frutos rojos" },
+  { id: "amarillos", label: "Frutos amarillos" },
+  { id: "blancos", label: "Frutos blancos" },
+  { id: "choco", label: "Chococumbre" },
+];
+
+export const cumbrePrices = {
+  rojos: 10000,
+  amarillos: 10000,
+  choco: 11000,
+  blancos: 12000,
+};
+
 export const preBowl = {
   id: "bowl-poke-hawaiano",
   name: "Poke Hawaiano",

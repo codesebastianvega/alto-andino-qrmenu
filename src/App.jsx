@@ -38,7 +38,7 @@ import QrPoster from "./components/QrPoster";
 import Toast from "./components/Toast";
 
 const FEATURE_TABS = import.meta.env.VITE_FEATURE_TABS === "1";
-const VALID_CATEGORIES = ["todos", ...CATS];
+const VALID_CATEGORIES = ["todos", ...cats];
 
 export default function App() {
   const [open, setOpen] = useState(false);
