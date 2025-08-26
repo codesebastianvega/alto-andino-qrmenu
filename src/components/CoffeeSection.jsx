@@ -268,11 +268,11 @@ export default function CoffeeSection({ query, onCount, onQuickView }) {
               handleAdd();
             };
 
-            return (
-              <article
-                key={item.id}
-                role="button"
-                tabIndex={0}
+              return (
+                <article
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
                 onClick={() => onQuickView?.(product)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
@@ -281,19 +281,21 @@ export default function CoffeeSection({ query, onCount, onQuickView }) {
                   }
                 }}
                 aria-disabled={unavailable}
-                className="group grid grid-cols-[96px_1fr] gap-3 p-3 rounded-2xl bg-white/70 dark:bg-neutral-900/70 border border-black/5 dark:border-white/10 shadow-sm hover:shadow-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
-              >
-                <img
-                  src={getProductImage(product)}
-                  alt={displayName(item)}
-                  loading="lazy"
-                  className="w-24 h-24 rounded-xl object-cover"
-                />
-                <div className="min-w-0 flex flex-col">
-                  <h3 className="text-base font-semibold truncate">{displayName(item)}</h3>
-                  <p className="text-xs text-neutral-600 dark:text-neutral-300 line-clamp-2 mt-0.5">{item.desc}</p>
-                  {hasControls && (
-                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  className="group grid grid-cols-[96px_1fr] md:grid-cols-[112px_1fr] gap-3 md:gap-4 p-3 md:p-4 rounded-3xl bg-white border border-black/5 dark:bg-neutral-900 dark:border-white/10 shadow-[0_1px_0_rgba(0,0,0,0.02),0_12px_24px_-10px_rgba(0,0,0,0.18)] hover:shadow-[0_1px_0_rgba(0,0,0,0.03),0_16px_30px_-10px_rgba(0,0,0,0.22)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+                >
+                  <img
+                    src={getProductImage(product)}
+                    alt={displayName(item)}
+                    loading="lazy"
+                    className="w-24 h-24 md:w-28 md:h-28 rounded-xl object-cover"
+                  />
+                  <div className="min-w-0 flex flex-col">
+                    <h3 className="text-base md:text-[17px] font-semibold text-neutral-900 dark:text-neutral-100 truncate">
+                      {displayName(item)}
+                    </h3>
+                    <p className="mt-0.5 text-sm text-neutral-600 dark:text-neutral-300 line-clamp-2">{item.desc}</p>
+                    {hasControls && (
+                      <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {showAddMilk && (
                         <button
                           type="button"
@@ -320,30 +322,32 @@ export default function CoffeeSection({ query, onCount, onQuickView }) {
                       <StatusChip variant="soldout">No Disponible</StatusChip>
                     )}
                   </div>
-                  <div className="mt-auto flex items-end justify-between gap-3 pt-2">
-                    <div>
-                      <div className="text-base font-semibold">{formatCOP(finalPrice(item))}</div>
+                    <div className="mt-auto flex items-end justify-between gap-3 pt-2">
+                      <div>
+                        <div className="text-base md:text-[17px] font-semibold text-neutral-900 dark:text-neutral-100">
+                          {formatCOP(finalPrice(item))}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={`Agregar ${displayName(item)}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (unavailable) {
+                            toast("Producto no disponible");
+                            return;
+                          }
+                          addToCart(item);
+                        }}
+                        className="h-10 w-10 md:h-11 md:w-11 grid place-items-center rounded-full bg-[#2f4131] hover:bg-[#253525] text-white shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+                      >
+                        +
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      aria-label={`Agregar ${displayName(item)}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (unavailable) {
-                          toast("Producto no disponible");
-                          return;
-                        }
-                        addToCart(item);
-                      }}
-                      className="h-10 w-10 grid place-items-center rounded-full bg-[#2f4131] text-white shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
-                    >
-                      +
-                    </button>
                   </div>
-                </div>
-              </article>
-            );
-          })}
+                </article>
+              );
+            })}
         </ul>
       </div>
 
@@ -399,17 +403,17 @@ export default function CoffeeSection({ query, onCount, onQuickView }) {
                   }
                 }}
                 aria-disabled={unavailable}
-                className="group grid grid-cols-[96px_1fr] gap-3 p-3 rounded-2xl bg-white/70 dark:bg-neutral-900/70 border border-black/5 dark:border-white/10 shadow-sm hover:shadow-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+                className="group grid grid-cols-[96px_1fr] md:grid-cols-[112px_1fr] gap-3 md:gap-4 p-3 md:p-4 rounded-3xl bg-white border border-black/5 dark:bg-neutral-900 dark:border-white/10 shadow-[0_1px_0_rgba(0,0,0,0.02),0_12px_24px_-10px_rgba(0,0,0,0.18)] hover:shadow-[0_1px_0_rgba(0,0,0,0.03),0_16px_30px_-10px_rgba(0,0,0,0.22)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
               >
                 <img
                   src={getProductImage(product)}
                   alt={displayName(item)}
                   loading="lazy"
-                  className="w-24 h-24 rounded-xl object-cover"
+                  className="w-24 h-24 md:w-28 md:h-28 rounded-xl object-cover"
                 />
                 <div className="min-w-0 flex flex-col">
-                  <h3 className="text-base font-semibold truncate">{displayName(item)}</h3>
-                  <p className="text-xs text-neutral-600 dark:text-neutral-300 line-clamp-2 mt-0.5">{item.desc}</p>
+                  <h3 className="text-base md:text-[17px] font-semibold text-neutral-900 dark:text-neutral-100 truncate">{displayName(item)}</h3>
+                  <p className="mt-0.5 text-sm text-neutral-600 dark:text-neutral-300 line-clamp-2">{item.desc}</p>
                   <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {isChai && <ChaiModeSelect id={item.id} />}
                     {showChaiMilk && (
@@ -429,7 +433,7 @@ export default function CoffeeSection({ query, onCount, onQuickView }) {
                   </div>
                   <div className="mt-auto flex items-end justify-between gap-3 pt-2">
                     <div>
-                      <div className="text-base font-semibold">{formatCOP(finalPrice(item))}</div>
+                      <div className="text-base md:text-[17px] font-semibold text-neutral-900 dark:text-neutral-100">{formatCOP(finalPrice(item))}</div>
                     </div>
                     <button
                       type="button"
@@ -442,7 +446,7 @@ export default function CoffeeSection({ query, onCount, onQuickView }) {
                         }
                         addToCart(item);
                       }}
-                      className="h-10 w-10 grid place-items-center rounded-full bg-[#2f4131] text-white shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+                      className="h-10 w-10 md:h-11 md:w-11 grid place-items-center rounded-full bg-[#2f4131] hover:bg-[#253525] text-white shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
                     >
                       +
                     </button>

@@ -132,25 +132,24 @@ export default function CategoryBar({
               onKeyDown={handleKey}
               onClick={() => handleSelect(cat.id, idx)}
               className={clsx(
-                "inline-flex flex-col items-center justify-center text-center snap-start rounded-2xl w-24 md:w-28 h-20 px-2",
-                "bg-white/12 backdrop-blur-md border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.08)]",
-                "text-neutral-800 dark:text-neutral-100",
+                "inline-flex flex-col items-center justify-center text-center snap-start rounded-2xl w-24 md:w-28 h-24 px-2",
+                "bg-white/30 backdrop-blur-md border border-black/10 dark:border-white/15",
+                "text-neutral-900 dark:text-neutral-50",
+                "shadow-[0_1px_0_rgba(0,0,0,0.02),0_8px_16px_-6px_rgba(0,0,0,0.12)]",
+                "hover:bg-white/40",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]",
-                "hover:bg-white/20 hover:border-white/30",
-                "aria-selected:bg-white/28 aria-selected:border-white/40"
+                active && "ring-2 ring-[#2f4131]/60 bg-white/50 border-black/10 dark:border-white/25"
               )}
             >
-              <span className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-white/20 border border-white/30">
-                <IconWithFallback id={cat.id} className="w-6 h-6 object-contain" />
+              <span className="w-12 h-12 rounded-full grid place-items-center shrink-0 bg-white/60 border border-white/70">
+                <IconWithFallback id={cat.id} className="w-7 h-7 object-contain" />
               </span>
-              <span className="mt-1 text-xs font-medium leading-tight whitespace-normal break-words line-clamp-2">
+              <span className="mt-1 text-sm font-semibold leading-tight text-neutral-900 dark:text-neutral-50 whitespace-normal break-words line-clamp-2">
                 {cat.label}
               </span>
             </button>
           );
         })}
-        <div className="pointer-events-none absolute left-0 top-0 h-full w-6 bg-gradient-to-r from-[#efe7dd] to-transparent dark:from-neutral-900" />
-        <div className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-[#efe7dd] to-transparent dark:from-neutral-900" />
       </div>
     </div>
   );
