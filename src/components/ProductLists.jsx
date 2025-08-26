@@ -12,6 +12,8 @@ import SmoothiesSection from "./SmoothiesSection";
 import CoffeeSection from "./CoffeeSection";
 import BowlsSection from "./BowlsSection";
 import ColdDrinksSection from "./ColdDrinksSection";
+import ProductQuickView from "./ProductQuickView";
+import { getProductImage } from "../utils/images";
 import CategoryHeader from "./CategoryHeader";
 import CategoryBar from "./CategoryBar";
 import CategoryTabs from "./CategoryTabs";
@@ -33,6 +35,13 @@ export default function ProductLists({
 }) {
   const [counts, setCounts] = useState({});
   const manualRef = useRef(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [quickProduct, setQuickProduct] = useState(null);
+  const onQuickView = useCallback((p) => {
+    if (!p) return;
+    setQuickProduct(p);
+    setQuickOpen(true);
+  }, []);
   const setCount = useCallback((id, n) => {
     setCounts((prev) => (prev[id] === n ? prev : { ...prev, [id]: n }));
   }, []);
@@ -130,21 +139,38 @@ export default function ProductLists({
   }, [dessertsCount, setCount]);
 
   const bowlsEl = (
-    <BowlsSection query={query} onCount={(n) => setCount("bowls", n)} />
+    <BowlsSection
+      query={query}
+      onCount={(n) => setCount("bowls", n)}
+      onQuickView={onQuickView}
+    />
   );
   const sandwichesEl = (
-    <Sandwiches query={query} onCount={(n) => setCount("sandwiches", n)} />
+    <Sandwiches
+      query={query}
+      onCount={(n) => setCount("sandwiches", n)}
+      onQuickView={onQuickView}
+    />
   );
   const smoothiesEl = (
-    <SmoothiesSection query={query} onCount={(n) => setCount("smoothies", n)} />
+    <SmoothiesSection
+      query={query}
+      onCount={(n) => setCount("smoothies", n)}
+      onQuickView={onQuickView}
+    />
   );
   const coffeeEl = (
-    <CoffeeSection query={query} onCount={(n) => setCount("cafe", n)} />
+    <CoffeeSection
+      query={query}
+      onCount={(n) => setCount("cafe", n)}
+      onQuickView={onQuickView}
+    />
   );
   const coldEl = (
     <ColdDrinksSection
       query={query}
       onCount={(n) => setCount("bebidasfrias", n)}
+      onQuickView={onQuickView}
     />
   );
 
@@ -155,7 +181,7 @@ export default function ProductLists({
         id: "desayunos",
         element: (
           <Section title="Desayunos" count={breakfasts.length}>
-            <List items={breakfasts} />
+            <List items={breakfasts} onQuickView={onQuickView} />
           </Section>
         ),
       });
@@ -174,7 +200,7 @@ export default function ProductLists({
         id: "platos",
         element: (
           <Section title="Platos Fuertes" count={mains.length}>
-            <List items={mains} />
+            <List items={mains} onQuickView={onQuickView} />
           </Section>
         ),
       });
@@ -228,7 +254,7 @@ export default function ProductLists({
         id: "postres",
         element: (
           <Section title="Postres" count={dessertsCount}>
-            <Desserts cumbre={dessertsCumbre} base={dessertsBase} />
+            <Desserts cumbre={dessertsCumbre} base={dessertsBase} onQuickView={onQuickView} />
           </Section>
         ),
       });
@@ -398,11 +424,17 @@ export default function ProductLists({
         })}
 
       </div>
+      <ProductQuickView
+        open={quickOpen}
+        product={quickProduct}
+        onClose={() => setQuickOpen(false)}
+        onAdd={() => setQuickOpen(false)}
+      />
     </>
   );
 }
 
-function Desserts({ cumbre = [], base = [] }) {
+function Desserts({ cumbre = [], base = [], onQuickView }) {
   const { addItem } = useCart();
   if (!cumbre.length && !base.length) return null;
 
@@ -469,7 +501,7 @@ function Desserts({ cumbre = [], base = [] }) {
       {base.length > 0 && (
         <ul className="space-y-3">
           {base.map((p) => (
-            <ProductRow key={p.id} item={p} />
+            <ProductRow key={p.id} item={p} onQuickView={onQuickView} />
           ))}
         </ul>
       )}
@@ -478,17 +510,17 @@ function Desserts({ cumbre = [], base = [] }) {
   );
 }
 
-function List({ items }) {
+function List({ items, onQuickView }) {
   return (
     <ul className="space-y-3">
       {items.map((p) => (
-        <ProductRow key={p.id} item={p} />
+        <ProductRow key={p.id} item={p} onQuickView={onQuickView} />
       ))}
     </ul>
   );
 }
 
-function ProductRow({ item }) {
+function ProductRow({ item, onQuickView }) {
   const { addItem } = useCart();
   const st = getStockState(item.id || slugify(item.name));
   const unavailable = st === "out" || isUnavailable(item);
@@ -499,8 +531,37 @@ function ProductRow({ item }) {
     }
     addItem({ productId: item.id, name: item.name, price: item.price });
   };
+  const handleAddClick = (e) => {
+    e.stopPropagation();
+    handleAdd();
+  };
+  const product = {
+    productId: item.id,
+    id: unavailable ? undefined : item.id,
+    title: item.name,
+    name: item.name,
+    subtitle: item.desc,
+    price: item.price,
+  };
   return (
-    <li className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12">
+    <li
+      role="button"
+      tabIndex={0}
+      onClick={() => onQuickView?.(product)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onQuickView?.(product);
+        }
+      }}
+      className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+    >
+      <img
+        src={getProductImage(product)}
+        alt={item.name || "Producto"}
+        className="w-full h-40 object-cover rounded-xl mb-3"
+        loading="lazy"
+      />
       <p className="font-semibold">{item.name}</p>
       <p className="text-xs text-neutral-600 mt-1">{item.desc}</p>
       <div className="mt-2 flex flex-wrap gap-2">
@@ -518,7 +579,7 @@ function ProductRow({ item }) {
           unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
         )}
         aria-label={"Agregar " + item.name}
-        onClick={handleAdd}
+        onClick={handleAddClick}
         aria-disabled={unavailable}
         title={unavailable ? "No disponible" : undefined}
       />

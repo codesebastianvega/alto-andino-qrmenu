@@ -10,8 +10,9 @@ import {
   sandwichItems,
   sandwichPriceByItem,
 } from "../data/menuItems";
+import { getProductImage } from "../utils/images";
 
-export default function Sandwiches({ query, onCount }) {
+export default function Sandwiches({ query, onCount, onQuickView }) {
   const cart = useCart();
   const [size, setSize] = useState("clasico"); // 'clasico' | 'grande'
 
@@ -109,6 +110,22 @@ export default function Sandwiches({ query, onCount }) {
             const productId = "sandwich:" + it.key;
             const st = getStockState(productId);
             const unavailable = st === "out" || isUnavailable(it);
+            const price = priceFor(it.key);
+            const mapping = priceByItem[it.key];
+            const sizeLabel = mapping.unico
+              ? "Precio único"
+              : size === "clasico"
+              ? "Clásico"
+              : "Grande";
+            const product = {
+              productId,
+              id: unavailable ? undefined : productId,
+              title: it.name,
+              name: `${it.name} (${sizeLabel})`,
+              subtitle: it.desc,
+              price,
+              options: { Tamaño: sizeLabel },
+            };
             const handleAdd = () => {
               if (unavailable) {
                 toast("Producto no disponible");
@@ -116,11 +133,33 @@ export default function Sandwiches({ query, onCount }) {
               }
               add(it);
             };
+            const handleAddClick = (e) => {
+              e.stopPropagation();
+              handleAdd();
+            };
             return (
               <li
                 key={it.key}
-                className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12"
+                role="button"
+                tabIndex={0}
+                onClick={() => onQuickView?.(product)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onQuickView?.(product);
+                  }
+                }}
+                className={clsx(
+                  "relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+                )}
               >
+                <img
+                  src={getProductImage(product)}
+                  alt={it.name}
+                  className="w-full h-40 object-cover rounded-xl mb-3"
+                  loading="lazy"
+                />
                 <p className="font-semibold">{renderWithEmoji(it.name)}</p>
                 <p className="text-sm text-neutral-600">
                   {renderWithEmoji(it.desc)}
@@ -137,7 +176,7 @@ export default function Sandwiches({ query, onCount }) {
                   )}
                 </div>
                 <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold text-right">
-                  ${COP(priceFor(it.key))}
+                  ${COP(price)}
                   {!priceByItem[it.key].unico && (
                     <span className="block text-xs text-neutral-500">
                       Mostrando precio de {size === "clasico" ? "Clásico" : "Grande"}
@@ -151,7 +190,7 @@ export default function Sandwiches({ query, onCount }) {
                       "opacity-60 cursor-not-allowed pointer-events-auto"
                   )}
                   aria-label={"Agregar " + it.name}
-                  onClick={handleAdd}
+                  onClick={handleAddClick}
                   aria-disabled={unavailable}
                   title={unavailable ? "No disponible" : undefined}
                 />

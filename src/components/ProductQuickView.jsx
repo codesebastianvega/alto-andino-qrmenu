@@ -4,6 +4,7 @@ import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import { useCart } from '../context/CartContext';
 import { formatCOP as cop } from '../utils/money';
 import { toast } from './Toast';
+import { getProductImage } from "../utils/images";
 
 export default function ProductQuickView({ open, product, onClose, onAdd }) {
   useLockBodyScroll(open);
@@ -42,7 +43,8 @@ export default function ProductQuickView({ open, product, onClose, onAdd }) {
 
   if (!open || !product) return null;
 
-  const { id, title, subtitle, price, image } = product;
+  const { id, title, subtitle, price } = product;
+  const image = getProductImage(product);
   const priceNum = Number(price);
   const canAdd = !!id && Number.isFinite(priceNum) && priceNum > 0;
 
@@ -77,16 +79,14 @@ export default function ProductQuickView({ open, product, onClose, onAdd }) {
             >
               ×
             </button>
-            {image && (
+            <div className="p-5">
               <img
                 src={image}
-                alt={title}
+                alt={title || product?.name || "Producto"}
                 loading="lazy"
                 decoding="async"
-                className="w-full h-48 object-cover rounded-t-2xl"
+                className="w-full h-48 object-cover rounded-xl mb-3"
               />
-            )}
-            <div className="p-5">
               <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
               {subtitle && <p className="text-sm text-neutral-600 mt-1">{subtitle}</p>}
               {Number.isFinite(priceNum) && (

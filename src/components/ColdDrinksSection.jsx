@@ -7,8 +7,9 @@ import { toast } from "./Toast";
 import clsx from "clsx";
 import { matchesQuery } from "../utils/strings";
 import { sodas, otherDrinks } from "../data/menuItems";
+import { getProductImage } from "../utils/images";
 
-function Card({ item, onAdd }) {
+function Card({ item, onAdd, onQuickView }) {
   const st = getStockState(item.id || slugify(item.name));
   const unavailable = st === "out" || isUnavailable(item);
   const handleAdd = () => {
@@ -24,8 +25,37 @@ function Card({ item, onAdd }) {
       qty: 1,
     });
   };
+  const handleAddClick = (e) => {
+    e.stopPropagation();
+    handleAdd();
+  };
+  const product = {
+    productId: item.id,
+    id: unavailable ? undefined : item.id,
+    title: item.name,
+    name: item.name,
+    subtitle: item.desc,
+    price: item.price,
+  };
   return (
-    <div className="relative rounded-xl bg-white ring-1 ring-neutral-200 p-3 pr-16 pb-12 min-h-[96px]">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onQuickView?.(product)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onQuickView?.(product);
+        }
+      }}
+      className="relative rounded-xl bg-white ring-1 ring-neutral-200 p-3 pr-16 pb-12 min-h-[96px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+    >
+      <img
+        src={getProductImage(product)}
+        alt={item.name}
+        className="w-full h-40 object-cover rounded-xl mb-3"
+        loading="lazy"
+      />
       <p className="text-neutral-900 font-medium text-sm leading-tight break-words">{item.name}</p>
       {item.desc && (
         <p className="mt-0.5 text-xs text-neutral-600 leading-snug break-words">{item.desc}</p>
@@ -43,7 +73,7 @@ function Card({ item, onAdd }) {
           unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
         )}
         aria-label={"Agregar " + item.name}
-        onClick={handleAdd}
+        onClick={handleAddClick}
         aria-disabled={unavailable}
         title={unavailable ? "No disponible" : undefined}
       />
@@ -51,7 +81,7 @@ function Card({ item, onAdd }) {
   );
 }
 
-export default function ColdDrinksSection({ query, onCount }) {
+export default function ColdDrinksSection({ query, onCount, onQuickView }) {
   const { addItem } = useCart();
 
   const sodasFiltered = (sodas || []).filter((it) =>
@@ -75,7 +105,7 @@ export default function ColdDrinksSection({ query, onCount }) {
           <h3 className="text-sm font-semibold text-[#2f4131] mb-2">Gaseosas y Sodas</h3>
           <div className="grid grid-cols-2 gap-3">
             {sodasFiltered.map((it) => (
-              <Card key={it.id} item={it} onAdd={addItem} />
+              <Card key={it.id} item={it} onAdd={addItem} onQuickView={onQuickView} />
             ))}
           </div>
         </>
@@ -87,7 +117,7 @@ export default function ColdDrinksSection({ query, onCount }) {
           <h3 className="mt-5 text-sm font-semibold text-[#2f4131] mb-2">Jugos y otras bebidas frías</h3>
           <div className="grid grid-cols-2 gap-3">
             {othersFiltered.map((it) => (
-              <Card key={it.id} item={it} onAdd={addItem} />
+              <Card key={it.id} item={it} onAdd={addItem} onQuickView={onQuickView} />
             ))}
           </div>
         </>
