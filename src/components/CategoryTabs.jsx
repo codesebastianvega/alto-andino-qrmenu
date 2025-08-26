@@ -1,11 +1,15 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import clsx from "clsx";
 import { Icon } from "@iconify-icon/react";
 
-function IconWithFallback({ icon, size = 32, className }) {
+function IconWithFallback({ icon, size = 24, className }) {
   const initial = typeof icon === "string" ? icon : icon?.icon;
   const fallback = typeof icon === "object" ? icon?.fallback : undefined;
   const [current, setCurrent] = useState(initial);
   if (!current) return null;
+  if (typeof current === "string" && !current.includes(":")) {
+    return <span className="text-2xl leading-none align-middle">{current}</span>;
+  }
   return (
     <Icon
       icon={current}
@@ -22,114 +26,123 @@ export default function CategoryTabs({
   value,
   onChange,
   items = [],
-  fullBleed = true,
-  featureTabs = true,
 }) {
-  const tabRefs = useRef([]);
-  const baseItemClasses =
-    "flex-none w-[100px] basis-[100px] h-[110px] snap-start rounded-xl bg-white/60 backdrop-blur-sm transition-colors transition-shadow duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]";
+  const railRef = useRef(null);
+  const [selected, setSelected] = useState(value ?? items[0]?.id);
+  const [manualSelectAt, setManualSelectAt] = useState(0);
 
-  function focusTab(index) {
-    const ref = tabRefs.current[index];
-    ref?.focus();
+  useEffect(() => {
+    if (value !== undefined) setSelected(value);
+  }, [value]);
+
+  function handleSelect(id, idx) {
+    setSelected(id);
+    setManualSelectAt(Date.now());
+    onChange?.(id);
+    document
+      .getElementById(`panel-${id}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    requestAnimationFrame(() =>
+      railRef.current?.children[idx]?.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      })
+    );
   }
 
-  function handleKeyDown(e, index) {
-    const lastIndex = items.length - 1;
-    if (e.key === "ArrowRight" || e.key === "Right") {
+  function handleKey(e) {
+    const idx = items.findIndex((c) => c.id === selected);
+    const last = items.length - 1;
+    if (e.key === "ArrowRight") {
       e.preventDefault();
-      const next = index === lastIndex ? 0 : index + 1;
-      onChange?.(items[next].id);
-      focusTab(next);
-    } else if (e.key === "ArrowLeft" || e.key === "Left") {
+      const next = Math.min(idx + 1, last);
+      handleSelect(items[next].id, next);
+    } else if (e.key === "ArrowLeft") {
       e.preventDefault();
-      const prev = index === 0 ? lastIndex : index - 1;
-      onChange?.(items[prev].id);
-      focusTab(prev);
+      const prev = Math.max(idx - 1, 0);
+      handleSelect(items[prev].id, prev);
     } else if (e.key === "Home") {
       e.preventDefault();
-      onChange?.(items[0].id);
-      focusTab(0);
+      handleSelect(items[0].id, 0);
     } else if (e.key === "End") {
       e.preventDefault();
-      onChange?.(items[lastIndex].id);
-      focusTab(lastIndex);
+      handleSelect(items[last].id, last);
     }
   }
 
-  const nav = (
-    <nav
-      className="sticky z-[60] px-0"
-      style={{ top: "env(safe-area-inset-top, 0px)" }}
-      aria-label="Categorías del menú"
-    >
-      <div
-        role="tablist"
-        className="flex overflow-x-auto scrollbar-none snap-x snap-mandatory gap-3 scroll-px-4 py-2 [transform:translateZ(0)]"
-      >
-        {items.map((item, idx) => {
-          const selected = value === item.id;
-          const tint = item.tintClass || "bg-zinc-100";
-          return (
+  useEffect(() => {
+    const secs = items
+      .map((c) => document.getElementById(`panel-${c.id}`))
+      .filter(Boolean);
+    if (!secs.length) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (Date.now() - manualSelectAt < 800) return;
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) {
+          const id = visible.target.id.replace(/^panel-/, "");
+          if (id && id !== selected) {
+            setSelected(id);
+            onChange?.(id);
+          }
+        }
+      },
+      { threshold: [0.5] }
+    );
+    secs.forEach((s) => io.observe(s));
+    return () => io.disconnect();
+  }, [items, manualSelectAt, selected, onChange]);
+
+  return (
+    <div className="sticky top-0 z-40 bg-transparent backdrop-blur-[2px] border-b border-black/5 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+      <div className="relative">
+        <div
+          role="tablist"
+          className="-mx-4 px-4 py-2 flex gap-3 md:gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-none"
+          onWheel={(e) => {
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+              e.currentTarget.scrollLeft += e.deltaY;
+            }
+          }}
+          ref={railRef}
+        >
+          {items.map((item, idx) => {
+            const active = selected === item.id;
+            return (
               <button
                 key={item.id}
-                ref={(el) => (tabRefs.current[idx] = el)}
-                type="button"
-                id={`tab-${item.id}`}
                 role="tab"
-                aria-selected={selected}
-                aria-label={item.label}
-                aria-current={selected ? "true" : undefined}
-                aria-controls={
-                  item.id === "todos" ? undefined : `panel-${item.id}`
-                }
-                tabIndex={selected ? 0 : -1}
-                onKeyDown={(e) => handleKeyDown(e, idx)}
-                onClick={() => onChange?.(item.id)}
-                className={`${baseItemClasses} first:ml-1 last:mr-1 flex flex-col items-center justify-center text-center ${
-                  selected
-                    ? "border border-transparent bg-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,.65),_0_8px_22px_rgba(36,51,38,.16)] text-[#2f4131]"
-                    : "border border-zinc-200 hover:border-zinc-300"
-                }`}
+                aria-selected={active}
+                aria-controls={`panel-${item.id}`}
+                tabIndex={active ? 0 : -1}
+                onKeyDown={handleKey}
+                onClick={() => handleSelect(item.id, idx)}
+                className={clsx(
+                  "inline-flex items-center gap-2 snap-start rounded-2xl px-3 min-w-[96px] h-14",
+                  "bg-white/12 backdrop-blur-md border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.08)]",
+                  "text-neutral-800 dark:text-neutral-100",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]",
+                  active && "bg-white/28 border-white/40 ring-2 ring-[#2f4131]/50",
+                  "hover:bg-white/20 hover:border-white/30"
+                )}
               >
-              <span
-                className={`grid place-items-center h-11 w-11 md:h-12 md:w-12 rounded-full ${tint} ${
-                  selected ? "shadow-[inset_0_1px_0_rgba(255,255,255,.75)]" : ""
-                }`}
-              >
-                <IconWithFallback
-                  icon={item.icon}
-                  className={`h-6 w-6 md:h-7 md:w-7 shrink-0 ${
-                    selected ? "text-[#2f4131]" : ""
-                  }`}
-                />
-              </span>
-              <span className="w-full h-[34px] overflow-hidden mt-2">
-                <span
-                  className={`text-[13px] leading-tight flex items-center justify-center ${
-                    selected ? "text-[#2f4131]" : "text-zinc-800"
-                  }`}
-                >
-                  <span
-                    style={{
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                    }}
-                  >
-                    {item.label}
-                  </span>
+                <span className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-white/20 border border-white/30">
+                  <IconWithFallback icon={item.icon} className="w-6 h-6 object-contain" />
                 </span>
-              </span>
-            </button>
-          );
-        })}
+                <span className="text-sm font-medium line-clamp-2 text-left">
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="pointer-events-none absolute left-0 top-0 h-full w-6 bg-gradient-to-r from-[var(--app-bg,#efe7dd)] to-transparent dark:from-neutral-900" />
+        <div className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-[var(--app-bg,#efe7dd)] to-transparent dark:from-neutral-900" />
       </div>
-    </nav>
+    </div>
   );
-
-  if (fullBleed) {
-    return <div className="-mx-4 md:-mx-6 px-4 md:px-6">{nav}</div>;
-  }
-  return nav;
 }
+
