@@ -1,6 +1,8 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
+import Portal from "./Portal";
+import { useLockBodyScroll } from "../hooks/useLockBodyScroll";
 
 // Tile ancho completo con estados
 function Tile({ active, disabled, onClick, children }) {
@@ -72,16 +74,42 @@ function ico(label) {
   return "•";
 }
 
-export default function BowlBuilderModal({ open, onClose }) {
+export default function BowlBuilder({ open, onClose }) {
+  useLockBodyScroll(open);
+  const cart = useCart();
+  const modalRef = useRef(null);
+  const lastFocused = useRef(null);
+
   useEffect(() => {
+    if (!open) return;
+    lastFocused.current = document.activeElement;
+    const el = modalRef.current;
+    el?.focus();
     const onKey = (e) => {
       if (e.key === "Escape") onClose?.();
+      if (e.key === "Tab") {
+        const focusables = el.querySelectorAll(
+          'a,button,input,select,textarea,[tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      lastFocused.current?.focus?.();
+    };
+  }, [open, onClose]);
 
-  const cart = useCart();
   if (!open) return null;
 
   // Catálogos
@@ -189,15 +217,21 @@ export default function BowlBuilderModal({ open, onClose }) {
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-[98]">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 z-[98]" onClick={onClose} />
+    return (
+      <Portal>
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-[100]">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => onClose?.()}
+          />
 
-      {/* Contenedor con scroll interno */}
-      <div className="absolute inset-x-0 bottom-0 z-[99] w-full max-w-2xl max-h-[90vh] mx-auto rounded-3xl overflow-hidden bg-[#FAF7F2] shadow-2xl flex flex-col">
-        {/* Header */}
-        <div className="rounded-t-2xl bg-[#2f4131] text-white p-4">
+          <div
+            ref={modalRef}
+            tabIndex={-1}
+            className="pointer-events-auto absolute inset-x-0 bottom-0 z-[110] w-full max-w-2xl max-h-[90vh] mx-auto rounded-3xl overflow-hidden bg-[#FAF7F2] shadow-2xl flex flex-col focus:outline-none"
+          >
+            {/* Header */}
+            <div className="rounded-t-2xl bg-[#2f4131] text-white p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="text-base font-semibold">Arma tu bowl</h3>
@@ -337,24 +371,25 @@ export default function BowlBuilderModal({ open, onClose }) {
               className="mt-1 w-full rounded-lg border px-2 py-2 text-sm"
             />
           </div>
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 h-9 rounded-lg bg-white/10 text-white hover:bg-white/15 ring-1 ring-white/15 text-sm"
-            >
-              Seguir pidiendo
-            </button>
-            <button
-              type="button"
-              onClick={addToCart}
-              className="flex-1 h-9 rounded-lg bg-[#2f4131] text-white hover:bg-[#243326] text-sm"
-            >
-              Añadir al carrito
-            </button>
+            <div className="flex gap-2 pt-2 pb-[env(safe-area-inset-bottom)]">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 h-9 rounded-lg bg-white/10 text-white hover:bg-white/15 ring-1 ring-white/15 text-sm"
+              >
+                Seguir pidiendo
+              </button>
+              <button
+                type="button"
+                onClick={addToCart}
+                className="flex-1 h-9 rounded-lg bg-[#2f4131] text-white hover:bg-[#243326] text-sm"
+              >
+                Añadir al carrito
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </Portal>
   );
 }
