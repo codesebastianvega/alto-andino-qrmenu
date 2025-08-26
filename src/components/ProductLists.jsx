@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import { getStockState, slugify } from "../utils/stock";
@@ -15,8 +15,6 @@ import CategoryBar from "./CategoryBar";
 import CategoryTabs from "./CategoryTabs";
 import { categoryIcons } from "../data/categoryIcons";
 import useSwipeTabs from "../utils/useSwipeTabs";
-
-const FEATURE_TABS = import.meta.env.VITE_FEATURE_TABS === "1";
 
 export const CATS = [
   "desayunos",
@@ -145,6 +143,7 @@ export default function ProductLists({
   selectedCategory,
   onCategorySelect,
   counts = {},
+  featureTabs = false,
 }) {
   const categories = useMemo(
     () => [
@@ -261,14 +260,6 @@ export default function ProductLists({
     </div>
   );
 
-  useEffect(() => {
-    if (!FEATURE_TABS) return;
-    const valid = ["todos", ...CATS];
-    if (!selectedCategory || !valid.includes(selectedCategory)) {
-      onCategorySelect?.({ id: "todos" });
-    }
-  }, [selectedCategory, onCategorySelect]);
-
   const orderedTabs = ["todos", ...CATS];
   const swipeHandlers = useSwipeTabs({
     onPrev: () => {
@@ -302,7 +293,7 @@ export default function ProductLists({
       <div className="mx-auto max-w-screen-md px-4 md:px-6">
         <CategoryHeader />
         <div className="-mx-4 md:-mx-6 px-4 md:px-6">
-          {FEATURE_TABS ? (
+          {featureTabs ? (
             <CategoryTabs
               items={tabItems}
               value={selectedCategory}
@@ -328,7 +319,7 @@ export default function ProductLists({
         </div>
       </div>
       <div {...swipeHandlers}>
-        {FEATURE_TABS
+        {featureTabs
           ? selectedCategory === "todos"
             ? sections.map(renderPanel)
             : sections
