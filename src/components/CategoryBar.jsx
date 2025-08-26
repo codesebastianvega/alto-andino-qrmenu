@@ -31,25 +31,23 @@ export default function CategoryBar({
       ? "flex-none w-[100px] basis-[100px] h-[110px] snap-start rounded-xl bg-white/60 backdrop-blur-sm transition-colors transition-shadow duration-150 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,.3)] focus:ring-offset-2"
       : "flex-none shrink-0 basis-[112px] w-[112px] h-[128px]";
   const labelHeight = variant === "chip" ? "h-[34px]" : "h-[38px]";
-
   return (
-    <div
-      className="sticky z-[60]"
+    <nav
+      className="sticky z-[60] px-0"
       style={{ top: "env(safe-area-inset-top, 0px)" }}
       aria-label="Categorías del menú"
     >
-      <div className="-mx-4 sm:-mx-6 py-2">
-        <div className="flex overflow-x-auto snap-x snap-mandatory px-4 gap-3 [transform:translateZ(0)]">
-          {categories.map((cat) => {
-            const active = activeId === cat.id;
-            const tint = cat.tintClass || "bg-zinc-100";
-            const labelTextClasses =
-              variant === "chip"
-                ? `text-[13px] leading-tight ${active ? "text-[#2f4131]" : "text-zinc-800"}`
-                : "text-[12px] leading-tight";
-            return (
+      <ul className="flex overflow-x-auto snap-x snap-mandatory gap-3 scroll-px-4 py-2 [transform:translateZ(0)]">
+        {categories.map((cat) => {
+          const active = activeId === cat.id;
+          const tint = cat.tintClass || "bg-zinc-100";
+          const labelTextClasses =
+            variant === "chip"
+              ? `text-[13px] leading-tight ${active ? "text-[#2f4131]" : "text-zinc-800"}`
+              : "text-[12px] leading-tight";
+          return (
+            <li key={cat.id} className="first:ml-1 last:mr-1">
               <button
-                key={cat.id}
                 onClick={() => {
                   const target = document.getElementById(
                     cat?.targetId || `section-${cat.id}`
@@ -101,11 +99,11 @@ export default function CategoryBar({
                   </span>
                 </span>
               </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }
 

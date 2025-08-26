@@ -228,16 +228,18 @@ export default function ProductLists({
 
   return (
     <>
-      <CategoryHeader />
-      <CategoryBar
-        categories={categories}
-        activeId={activeCategoryId}
-        onSelect={onCategorySelect}
-
-      />
-        {sections.map((s) => (
-          <div key={s.id}>{s.element}</div>
-        ))}
+      <div className="mx-auto max-w-screen-md px-4 md:px-6">
+        <CategoryHeader />
+        <CategoryBar
+          categories={categories}
+          activeId={activeCategoryId}
+          onSelect={onCategorySelect}
+          variant="chip"
+        />
+      </div>
+      {sections.map((s) => (
+        <div key={s.id}>{s.element}</div>
+      ))}
     </>
   );
 }
