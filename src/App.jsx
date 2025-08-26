@@ -50,26 +50,26 @@ export default function App() {
 
   function handleCategorySelect(cat) {
     const slug = typeof cat === "string" ? cat : cat.id;
-    const url = new URL(window.location.href);
-    url.searchParams.set("cat", slug);
-    window.history.replaceState(null, "", url);
     setSelectedCategory(slug);
-    if (slug !== "todos") {
-      const panelId = `panel-${slug}`;
-      requestAnimationFrame(() => {
-        document.getElementById(panelId)?.focus();
-      });
-    }
   }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const slug = params.get("cat");
-    if (slug && VALID_CATEGORIES.includes(slug)) {
-
-      handleCategorySelect(slug);
-    }
+    const cat = params.get("cat");
+    if (cat && VALID_CATEGORIES.includes(cat)) setSelectedCategory(cat);
   }, []);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("cat", selectedCategory);
+    window.history.replaceState(null, "", url);
+    if (selectedCategory !== "todos") {
+      const panelId = `panel-${selectedCategory}`;
+      requestAnimationFrame(() => {
+        document.getElementById(panelId)?.focus();
+      });
+    }
+  }, [selectedCategory]);
 
   useEffect(() => {
     if (!VALID_CATEGORIES.includes(selectedCategory)) {
