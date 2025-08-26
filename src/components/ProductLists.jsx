@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useCallback } from "react";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import { getStockState, slugify } from "../utils/stock";
@@ -154,32 +154,33 @@ export default function ProductLists({
   const orderedTabs = ["todos", ...cats];
   const activeIndex = Math.max(orderedTabs.indexOf(selectedCategory), 0);
 
-  const swipeHandlers = useSwipeTabs({
-    onPrev: () => {
-      const idx = orderedTabs.indexOf(selectedCategory);
-      if (idx > 0) {
-        const prev = orderedTabs[idx - 1];
-        if (prev === "todos") {
-          onCategorySelect?.({ id: "todos" });
-        } else {
-          const cat = categories.find((c) => c.id === prev);
-          onCategorySelect?.(cat ?? { id: prev });
-        }
+  const onPrev = useCallback(() => {
+    const idx = orderedTabs.indexOf(selectedCategory);
+    if (idx > 0) {
+      const prev = orderedTabs[idx - 1];
+      if (prev === "todos") {
+        onCategorySelect?.({ id: "todos" });
+      } else {
+        const cat = categories.find((c) => c.id === prev);
+        onCategorySelect?.(cat ?? { id: prev });
       }
-    },
-    onNext: () => {
-      const idx = orderedTabs.indexOf(selectedCategory);
-      if (idx >= 0 && idx < orderedTabs.length - 1) {
-        const nxt = orderedTabs[idx + 1];
-        if (nxt === "todos") {
-          onCategorySelect?.({ id: "todos" });
-        } else {
-          const cat = categories.find((c) => c.id === nxt);
-          onCategorySelect?.(cat ?? { id: nxt });
-        }
+    }
+  }, [selectedCategory, categories, onCategorySelect]);
+
+  const onNext = useCallback(() => {
+    const idx = orderedTabs.indexOf(selectedCategory);
+    if (idx >= 0 && idx < orderedTabs.length - 1) {
+      const nxt = orderedTabs[idx + 1];
+      if (nxt === "todos") {
+        onCategorySelect?.({ id: "todos" });
+      } else {
+        const cat = categories.find((c) => c.id === nxt);
+        onCategorySelect?.(cat ?? { id: nxt });
       }
-    },
-  });
+    }
+  }, [selectedCategory, categories, onCategorySelect]);
+
+  const swipeHandlers = useSwipeTabs({ onPrev, onNext });
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
