@@ -12,5 +12,5 @@ export const categoryIcons = {
     fallback: "noto:hot-beverage",
   },
   postres: "fluent-emoji:shortcake",
-  "bebidas-frias": "fluent-emoji:ice",
+  bebidasfrias: "fluent-emoji:ice",
 };
