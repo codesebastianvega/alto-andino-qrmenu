@@ -30,11 +30,15 @@ import { sandwichItems, sandwichPriceByItem } from "./components/Sandwiches";
 import QrPoster from "./components/QrPoster";
 import Toast from "./components/Toast";
 
+const FEATURE_TABS = import.meta.env.VITE_FEATURE_TABS === "1";
+
 export default function App() {
   const [open, setOpen] = useState(false);
   const [openGuide, setOpenGuide] = useState(false);
   const [query, setQuery] = useState("");
-  const [activeCategoryId, setActiveCategoryId] = useState(null);
+  const [activeCategoryId, setActiveCategoryId] = useState(
+    FEATURE_TABS ? "desayunos" : null
+  );
   const cart = useCart();
   const banners = buildBanners(import.meta.env);
 

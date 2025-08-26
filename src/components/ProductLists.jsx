@@ -12,6 +12,10 @@ import BowlsSection from "./BowlsSection";
 import ColdDrinksSection from "./ColdDrinksSection";
 import CategoryHeader from "./CategoryHeader";
 import CategoryBar from "./CategoryBar";
+import CategoryTabs from "./CategoryTabs";
+import { categoryIcons } from "../data/categoryIcons";
+
+const FEATURE_TABS = import.meta.env.VITE_FEATURE_TABS === "1";
 
 // Datos compartidos de los productos para búsqueda/identificación
 export const BREAKFAST_ITEMS = [
@@ -156,6 +160,16 @@ export default function ProductLists({
     [query]
   );
 
+  const tabItems = useMemo(
+    () =>
+      categories.map((c) => ({
+        id: c.id,
+        label: c.label,
+        icon: categoryIcons[c.id],
+      })),
+    [categories]
+  );
+
   const sections = useMemo(
     () => [
       {
@@ -220,7 +234,11 @@ export default function ProductLists({
   );
 
   useEffect(() => {
-    if (activeCategoryId && !categories.find((c) => c.id === activeCategoryId)) {
+    if (!activeCategoryId && FEATURE_TABS) {
+      onCategorySelect?.(categories[0]);
+    } else if (
+      activeCategoryId && !categories.find((c) => c.id === activeCategoryId)
+    ) {
       onCategorySelect?.(categories[0]);
     }
   }, [activeCategoryId, categories, onCategorySelect]);
@@ -230,16 +248,36 @@ export default function ProductLists({
     <>
       <div className="mx-auto max-w-screen-md px-4 md:px-6">
         <CategoryHeader />
-        <CategoryBar
-          categories={categories}
-          activeId={activeCategoryId}
-          onSelect={onCategorySelect}
-          variant="chip"
-        />
+        {FEATURE_TABS ? (
+          <CategoryTabs
+            items={tabItems}
+            value={activeCategoryId}
+            onChange={(slug) => {
+              const cat = categories.find((c) => c.id === slug);
+              if (cat) onCategorySelect?.(cat);
+            }}
+          />
+        ) : (
+          <CategoryBar
+            categories={categories}
+            activeId={activeCategoryId}
+            onSelect={onCategorySelect}
+            variant="chip"
+          />
+        )}
       </div>
-      {sections.map((s) => (
-        <div key={s.id}>{s.element}</div>
-      ))}
+      {FEATURE_TABS
+        ? sections.map((s) => (
+            <div
+              key={s.id}
+              id={`panel-${s.id}`}
+              role="tabpanel"
+              hidden={s.id !== activeCategoryId}
+            >
+              {s.element}
+            </div>
+          ))
+        : sections.map((s) => <div key={s.id}>{s.element}</div>)}
     </>
   );
 }
