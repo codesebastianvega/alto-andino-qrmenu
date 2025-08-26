@@ -3,13 +3,28 @@ import Section from "./Section";
 import { useCart } from "../context/CartContext";
 import { AddIconButton, StatusChip } from "./Buttons";
 import { COP } from "../utils/money";
-import { getStockState, slugify } from "../utils/stock";
+import { getStockState, slugify, isUnavailable } from "../utils/stock";
+import { toast } from "./Toast";
+import clsx from "clsx";
 import { matchesQuery } from "../utils/strings";
 import { sodas, otherDrinks } from "../data/menuItems";
 
 function Card({ item, onAdd }) {
   const st = getStockState(item.id || slugify(item.name));
-  const disabled = st === "out";
+  const unavailable = st === "out" || isUnavailable(item);
+  const handleAdd = () => {
+    if (unavailable) {
+      toast("Producto no disponible");
+      return;
+    }
+    onAdd({
+      productId: item.id,
+      name: item.name,
+      price: item.price,
+      priceFmt: "$" + COP(item.price),
+      qty: 1,
+    });
+  };
   return (
     <div className="relative rounded-xl bg-white ring-1 ring-neutral-200 p-3 pr-16 pb-12 min-h-[96px]">
       <p className="text-neutral-900 font-medium text-sm leading-tight break-words">{item.name}</p>
@@ -18,24 +33,19 @@ function Card({ item, onAdd }) {
       )}
       <div className="mt-2 flex flex-wrap gap-2">
         {st === "low" && <StatusChip variant="low">Pocas unidades</StatusChip>}
-        {st === "out" && <StatusChip variant="soldout">Agotado</StatusChip>}
+        {unavailable && <StatusChip variant="soldout">No Disponible</StatusChip>}
       </div>
       <div className="absolute top-2 right-2 min-w-[64px] text-right text-neutral-900 font-semibold text-sm">
         {"$" + COP(item.price)}
       </div>
       <AddIconButton
-        className="absolute bottom-2 right-2 scale-90 sm:scale-100"
+        className={clsx(
+          "absolute bottom-2 right-2 scale-90 sm:scale-100",
+          unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
+        )}
         aria-label={"Añadir " + item.name}
-        onClick={() =>
-          onAdd({
-            productId: item.id,
-            name: item.name,
-            price: item.price,
-            priceFmt: "$" + COP(item.price),
-            qty: 1,
-          })
-        }
-        disabled={disabled}
+        onClick={handleAdd}
+        aria-disabled={unavailable}
       />
     </div>
   );
