@@ -6,24 +6,36 @@ import Section from "./Section";
 import ProductCard from "./ProductCard";
 
 export default function ProductSection({
+  id,
   title,
   query,
-  groups = [],
-
+  items = [],
+  groups = null,
   onCount,
   onQuickView,
+  renderHeader,
+  mapItem,
 }) {
   const { addItem } = useCart();
 
-  const filteredGroups = groups.map((g) => ({
-    title: g.title,
-    items: (g.items || []).filter((it) =>
+  const filterItems = (arr = []) =>
+    arr.filter((it) =>
       matchesQuery({ title: it.name, description: it.desc }, query)
-    ),
-  }));
+    );
 
-  const count = filteredGroups.reduce((sum, g) => sum + g.items.length, 0);
+  const grouped =
+    groups && Array.isArray(groups)
+      ? groups.map((g) => ({
+          title: g.title,
+          items: filterItems(g.items || []),
+        }))
+      : null;
 
+  const filtered = grouped ? [] : filterItems(items);
+
+  const count = grouped
+    ? grouped.reduce((sum, g) => sum + g.items.length, 0)
+    : filtered.length;
 
   useEffect(() => {
     onCount?.(count);
@@ -32,36 +44,50 @@ export default function ProductSection({
   if (!count) return null;
 
   return (
-    <Section title={title} count={count}>
-      <div>
-        {filteredGroups.map((g, idx) =>
+    <Section id={`section-${id}`} title={title}>
+      {typeof renderHeader === "function" && (
+        <div className="mb-2">{renderHeader()}</div>
+      )}
+      {grouped ? (
+        grouped.map((g, idx) =>
           g.items.length ? (
-            <div key={g.title || idx}>
+            <div key={g.title || idx} className={idx === 0 ? "" : "mt-6"}>
               {g.title && (
-                <h3
-                  className={`${
-                    idx === 0 ? "" : "mt-5 "
-                  }text-sm font-semibold text-[#2f4131] mb-2`}
-                >
+                <h3 className="text-sm font-semibold text-[#2f4131] mb-2">
                   {g.title}
                 </h3>
               )}
-              <div className="grid grid-cols-2 gap-3">
-                {g.items.map((it) => (
-                  <ProductCard
-                    key={it.id || it.name}
-                    item={it}
-
-                    onAdd={addItem}
-                    onQuickView={onQuickView}
-                  />
-                ))}
+              <div className="space-y-3">
+                {g.items.map((orig) => {
+                  const it = mapItem ? mapItem(orig) : orig;
+                  return (
+                    <ProductCard
+                      key={(it.id || it.name) + "-card"}
+                      item={it}
+                      onAdd={addItem}
+                      onQuickView={onQuickView}
+                    />
+                  );
+                })}
               </div>
             </div>
           ) : null
-        )}
-      </div>
-
+        )
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((orig) => {
+            const it = mapItem ? mapItem(orig) : orig;
+            return (
+              <ProductCard
+                key={(it.id || it.name) + "-card"}
+                item={it}
+                onAdd={addItem}
+                onQuickView={onQuickView}
+              />
+            );
+          })}
+        </div>
+      )}
     </Section>
   );
 }
