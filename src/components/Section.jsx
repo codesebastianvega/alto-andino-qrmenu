@@ -15,7 +15,7 @@ export default function Section({ title, children, count, id: customId }) {
     <section
       id={id}
       data-aa-section={title}
-      className="scroll-mt-24 mb-6 last:mb-0"
+      className="scroll-mt-28 md:scroll-mt-32 mb-6 last:mb-0"
     >
       <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900">
         {title}
