@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+
 import { useCart } from "../context/CartContext";
 import { matchesQuery } from "../utils/strings";
 import Section from "./Section";
@@ -8,6 +9,7 @@ export default function ProductSection({
   title,
   query,
   groups = [],
+
   onCount,
   onQuickView,
 }) {
@@ -21,6 +23,7 @@ export default function ProductSection({
   }));
 
   const count = filteredGroups.reduce((sum, g) => sum + g.items.length, 0);
+
 
   useEffect(() => {
     onCount?.(count);
@@ -48,6 +51,7 @@ export default function ProductSection({
                   <ProductCard
                     key={it.id || it.name}
                     item={it}
+
                     onAdd={addItem}
                     onQuickView={onQuickView}
                   />
@@ -57,6 +61,7 @@ export default function ProductSection({
           ) : null
         )}
       </div>
+
     </Section>
   );
 }
