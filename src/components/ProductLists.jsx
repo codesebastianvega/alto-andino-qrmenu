@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import { getStockState, slugify } from "../utils/stock";
@@ -175,6 +175,13 @@ export default function ProductLists({
     },
   });
 
+  useEffect(() => {
+    if (selectedCategory !== "todos") {
+      const panel = document.getElementById(`panel-${selectedCategory}`);
+      panel?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [selectedCategory]);
+
   return (
     <>
       <div className="mx-auto max-w-screen-md px-4 md:px-6">
@@ -209,13 +216,11 @@ export default function ProductLists({
         </div>
       </div>
       <div {...swipeHandlers}>
-        {featureTabs
-          ? selectedCategory === "todos"
-            ? sections.map(renderPanel)
-            : sections
-                .filter((s) => s.id === selectedCategory)
-                .map(renderPanel)
-          : sections.map(renderPanel)}
+        {selectedCategory === "todos"
+          ? sections.map(renderPanel)
+          : sections
+              .filter((s) => s.id === selectedCategory)
+              .map(renderPanel)}
       </div>
     </>
   );
