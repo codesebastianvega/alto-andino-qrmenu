@@ -1,8 +1,10 @@
 import { useState, useRef } from "react";
+import clsx from "clsx";
 import { AddIconButton, StatusChip } from "./Buttons";
+import { toast } from "./Toast";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
-import { getStockState, slugify } from "../utils/stock";
+import { getStockState, slugify, isUnavailable } from "../utils/stock";
 import { matchesQuery } from "../utils/strings";
 import { coffees, infusions } from "../data/menuItems";
 
@@ -213,7 +215,7 @@ export default function CoffeeSection({ query }) {
         <ul className="space-y-3">
           {coffeeItems.map((item) => {
             const st = getStockState(item.id || slugify(item.name));
-            const disabled = st === "out";
+            const unavailable = st === "out" || isUnavailable(item);
             const isAmericano = /americano/i.test(item.name);
             const showAddMilk = item.milkPolicy === "optional" && !isAmericano;
             const showEspressoStyle =
@@ -224,6 +226,14 @@ export default function CoffeeSection({ query }) {
               !isAmericano;
             const hasControls =
               showAddMilk || showEspressoStyle || showMilkSelect;
+
+            const handleAdd = () => {
+              if (unavailable) {
+                toast("Producto no disponible");
+                return;
+              }
+              addToCart(item);
+            };
 
             return (
               <li
@@ -246,7 +256,7 @@ export default function CoffeeSection({ query }) {
                     )}
                     {showEspressoStyle && <EspressoStyleSelect id={item.id} />}
                     {showMilkSelect && (
-                      <MilkSelect id={item.id} disabled={disabled} />
+                      <MilkSelect id={item.id} disabled={unavailable} />
                     )}
                   </div>
                 )}
@@ -257,15 +267,21 @@ export default function CoffeeSection({ query }) {
                   {st === "out" && (
                     <StatusChip variant="soldout">Agotado</StatusChip>
                   )}
+                  {st !== "out" && isUnavailable(item) && (
+                    <StatusChip variant="soldout">No Disponible</StatusChip>
+                  )}
                 </div>
                 <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
                   ${COP(finalPrice(item))}
                 </div>
                 <AddIconButton
-                  className="absolute bottom-4 right-4 z-20"
+                  className={clsx(
+                    "absolute bottom-4 right-4 z-20",
+                    unavailable && "opacity-40 pointer-events-none"
+                  )}
                   aria-label={"Añadir " + displayName(item)}
-                  onClick={() => addToCart(item)}
-                  disabled={disabled}
+                  aria-disabled={unavailable}
+                  onClick={handleAdd}
                 />
               </li>
             );
@@ -281,9 +297,17 @@ export default function CoffeeSection({ query }) {
         <ul className="space-y-3">
           {infusionItems.map((item) => {
             const st = getStockState(item.id || slugify(item.name));
-            const disabled = st === "out";
+            const unavailable = st === "out" || isUnavailable(item);
             const isChai = !!item.chai;
             const showChaiMilk = isChai && modeOf(item.id) === "latte";
+
+            const handleAdd = () => {
+              if (unavailable) {
+                toast("Producto no disponible");
+                return;
+              }
+              addToCart(item);
+            };
 
             return (
               <li
@@ -295,7 +319,7 @@ export default function CoffeeSection({ query }) {
                 <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {isChai && <ChaiModeSelect id={item.id} />}
                   {showChaiMilk && (
-                    <MilkSelect id={item.id} disabled={disabled} />
+                    <MilkSelect id={item.id} disabled={unavailable} />
                   )}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -305,15 +329,21 @@ export default function CoffeeSection({ query }) {
                   {st === "out" && (
                     <StatusChip variant="soldout">Agotado</StatusChip>
                   )}
+                  {st !== "out" && isUnavailable(item) && (
+                    <StatusChip variant="soldout">No Disponible</StatusChip>
+                  )}
                 </div>
                 <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
                   ${COP(finalPrice(item))}
                 </div>
                 <AddIconButton
-                  className="absolute bottom-4 right-4 z-20"
+                  className={clsx(
+                    "absolute bottom-4 right-4 z-20",
+                    unavailable && "opacity-40 pointer-events-none"
+                  )}
                   aria-label={"Añadir " + displayName(item)}
-                  onClick={() => addToCart(item)}
-                  disabled={disabled}
+                  aria-disabled={unavailable}
+                  onClick={handleAdd}
                 />
               </li>
             );
