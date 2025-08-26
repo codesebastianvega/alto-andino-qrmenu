@@ -55,6 +55,30 @@ export default function Sandwiches({ query, onCount }) {
     });
   };
 
+  const renderWithEmoji = (text = "") => {
+    const map = {
+      "🥛": "Lácteos",
+      "🌿": "Vegetariano",
+      "🥚": "Huevo",
+      "🌾": "Gluten",
+      "🥜": "Frutos secos",
+    };
+    return text.split(/(🥛|🌿|🥚|🌾|🥜)/g).map((part, idx) => {
+      const label = map[part];
+      if (label) {
+        return (
+          <span key={idx}>
+            <span aria-hidden="true" role="img">
+              {part}
+            </span>
+            <span className="sr-only">{label}</span>
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
   return (
     <div>
       <div className="mb-3">
@@ -70,6 +94,10 @@ export default function Sandwiches({ query, onCount }) {
             </Chip>
           ))}
         </div>
+        <p className="text-xs text-neutral-600 mt-1">
+          Clásico: 100 g de proteína · Grande: 300 g de proteína. El precio se
+          actualiza según el tamaño.
+        </p>
         <p className="mt-2 text-[11px] text-neutral-500">
           * Algunos sándwiches tienen precio único.
         </p>
@@ -93,8 +121,10 @@ export default function Sandwiches({ query, onCount }) {
                 key={it.key}
                 className="relative rounded-2xl p-5 sm:p-6 shadow-sm bg-white pr-20 pb-12"
               >
-                <p className="font-semibold">{it.name}</p>
-                <p className="text-sm text-neutral-600">{it.desc}</p>
+                <p className="font-semibold">{renderWithEmoji(it.name)}</p>
+                <p className="text-sm text-neutral-600">
+                  {renderWithEmoji(it.desc)}
+                </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {st === "low" && (
                     <StatusChip variant="low">Pocas unidades</StatusChip>
@@ -106,8 +136,13 @@ export default function Sandwiches({ query, onCount }) {
                     <StatusChip variant="neutral">Precio único</StatusChip>
                   )}
                 </div>
-                <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold">
+                <div className="absolute top-5 right-5 z-10 text-neutral-800 font-semibold text-right">
                   ${COP(priceFor(it.key))}
+                  {!priceByItem[it.key].unico && (
+                    <span className="block text-xs text-neutral-500">
+                      Mostrando precio de {size === "clasico" ? "Clásico" : "Grande"}
+                    </span>
+                  )}
                 </div>
                 <AddIconButton
                   className={clsx(
