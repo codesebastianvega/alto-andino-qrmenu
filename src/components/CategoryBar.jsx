@@ -38,7 +38,7 @@ export default function CategoryBar({
       style={{ top: "env(safe-area-inset-top, 0px)" }}
       aria-label="Categorías del menú"
     >
-      <ul className="flex overflow-x-auto snap-x snap-mandatory gap-3 scroll-px-4 py-2 [transform:translateZ(0)]">
+      <ul className="flex overflow-x-auto snap-x snap-mandatory gap-3 py-2 [transform:translateZ(0)]">
         {categories.map((cat) => {
           const active = activeId === cat.id;
           const tint = cat.tintClass || "bg-zinc-100";
