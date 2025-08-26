@@ -210,9 +210,16 @@ export default function ProductLists({
             />
           ) : (
             <CategoryBar
-              categories={categories}
+              categories={[{ id: "todos", label: "Todos" }, ...categories]}
               activeId={selectedCategory}
-              onSelect={onCategorySelect}
+              onSelect={(cat) => {
+                if (cat.id === "todos") {
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  onCategorySelect?.({ id: "todos" });
+                } else {
+                  onCategorySelect?.(cat);
+                }
+              }}
               variant="chip"
             />
           )}
