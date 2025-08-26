@@ -4,42 +4,10 @@ import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
 import { getStockState, slugify } from "../utils/stock";
 import { matchesQuery } from "../utils/strings";
-
-export const sandwichPriceByItem = {
-  cerdo: { clasico: 12000, grande: 32000 },
-  pollo: { clasico: 14000, grande: 35000 },
-  pavo: { clasico: 19000, grande: 39000 },
-  serrano: { unico: 12500 },
-  cosecha: { unico: 16000 },
-};
-
-export const sandwichItems = [
-  {
-    key: "cerdo",
-    name: "Sandwich de Cerdo",
-    desc: "Pierna de cerdo horneada con Mayo-Pesto, lechuga, tomate y suero costeño.",
-  },
-  {
-    key: "pollo",
-    name: "Sandwich de Pollo",
-    desc: "Pechuga en cocción lenta, alioli de yogurt (con ajo), lechuga y tomate.",
-  },
-  {
-    key: "pavo",
-    name: "Sandwich de Pavo",
-    desc: "Pavo horneado en cocción lenta, alioli de yogurt (con ajo), tomates secos y lechuga.",
-  },
-  {
-    key: "serrano",
-    name: "Serrano Di Búfala",
-    desc: "Queso crema, espinaca, jamón serrano, queso de búfala, tomate cherry salteado y balsámico. 🥛",
-  },
-  {
-    key: "cosecha",
-    name: "Cosecha del Páramo 🌿",
-    desc: "Hummus casero, pimientos asados, aguacate, champiñón a la plancha, pepino y lechugas; lámina de queso costeño frito. 🥛",
-  },
-];
+import {
+  sandwichItems,
+  sandwichPriceByItem,
+} from "../data/menuItems";
 
 export default function Sandwiches({ query }) {
   const cart = useCart();
@@ -51,8 +19,8 @@ export default function Sandwiches({ query }) {
     { id: "grande", label: "Grande (300 g de proteína)" },
   ];
 
-  const priceByItem = sandwichPriceByItem;
-  const items = sandwichItems;
+  const priceByItem = sandwichPriceByItem || {};
+  const items = sandwichItems || [];
   const filtered = items.filter((it) =>
     matchesQuery({ title: it.name, description: it.desc }, query)
   );
