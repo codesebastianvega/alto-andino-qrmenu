@@ -1,4 +1,25 @@
-export default function CategoryHeader() {
+function labelDe(slug) {
+  const labels = {
+    todos: "Todos",
+    desayunos: "Desayunos",
+    bowls: "Bowls",
+    platos: "Platos Fuertes",
+    sandwiches: "Sándwiches",
+    smoothies: "Smoothies & Funcionales",
+    cafe: "Café de especialidad",
+    bebidasfrias: "Bebidas frías",
+    postres: "Postres",
+  };
+  return labels[slug] || "";
+}
+
+export default function CategoryHeader({
+  selectedCategory = "todos",
+  visibleCount = 0,
+  featureTabs = false,
+}) {
+  const label = labelDe(selectedCategory);
+  const showHint = selectedCategory === "todos";
   return (
     <section
       aria-labelledby="cat-title"
@@ -8,11 +29,18 @@ export default function CategoryHeader() {
         id="cat-title"
         className="text-lg md:text-xl font-semibold tracking-tight text-[#2f4131]"
       >
-        Explora por categoría
+        {label}
+        {featureTabs && selectedCategory !== "todos" && (
+          <span className="ml-2 text-sm text-zinc-500 font-medium align-middle">
+            ({visibleCount})
+          </span>
+        )}
       </h2>
-      <p className="text-sm md:text-[15px] text-zinc-600">
-        Elige una categoría o desliza para ver más →
-      </p>
+      {showHint && (
+        <p className="text-sm md:text-[15px] text-zinc-600">
+          Elige una categoría o desliza para ver más →
+        </p>
+      )}
     </section>
   );
 }

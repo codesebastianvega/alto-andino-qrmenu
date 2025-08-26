@@ -18,7 +18,7 @@ function IconWithFallback({ icon, size = 32, className }) {
   );
 }
 
-export default function CategoryTabs({ value, onChange, items = [], counts = {} }) {
+export default function CategoryTabs({ value, onChange, items = [] }) {
   const tabRefs = useRef([]);
   const baseItemClasses =
     "flex-none w-[100px] basis-[100px] h-[110px] snap-start rounded-xl bg-white/60 backdrop-blur-sm transition-colors transition-shadow duration-150 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,.3)] focus:ring-offset-2";
@@ -108,11 +108,6 @@ export default function CategoryTabs({ value, onChange, items = [], counts = {} 
                   >
                     {item.label}
                   </span>
-                  {counts[item.id] != null && (
-                    <span className="min-w-[22px] h-[22px] text-[12px] rounded-full bg-[#2f4131] text-white grid place-items-center ml-1">
-                      {counts[item.id]}
-                    </span>
-                  )}
                 </span>
               </span>
             </button>
