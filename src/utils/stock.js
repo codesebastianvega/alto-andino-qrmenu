@@ -17,3 +17,12 @@ export function getStockState(idOrName = "") {
   return "ok";
 }
 
+export function isUnavailable(p) {
+  if (!p) return true;
+  if (p.available === false) return true;
+  if (typeof p.stock === "number" && p.stock <= 0) return true;
+  if (p.status && /unavailable|soldout/i.test(p.status)) return true;
+  if (Array.isArray(p.badges) && p.badges.some(b => /no disponible/i.test(b))) return true;
+  return false;
+}
+
