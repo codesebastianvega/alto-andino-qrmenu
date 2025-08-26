@@ -158,6 +158,7 @@ export default function ProductLists({
     </div>
   );
 
+
   const orderedTabs = ["todos", ...cats];
 
   const onPrev = useCallback(() => {
@@ -193,15 +194,18 @@ export default function ProductLists({
   }, [selectedCategory]);
 
   const stackClass =
+
     featureTabs && selectedCategory !== "todos" ? "" : "space-y-6";
 
   return (
     <>
       <div className="mx-auto max-w-screen-md px-4 md:px-6">
-        <CategoryHeader
-          selectedCategory={selectedCategory}
-          visibleCount={visibleCount}
-        />
+        {!featureTabs && (
+          <CategoryHeader
+            selectedCategory={selectedCategory}
+            visibleCount={visibleCount}
+          />
+        )}
         <div className="-mx-4 md:-mx-6 px-4 md:px-6">
           {featureTabs ? (
             <CategoryTabs
@@ -243,6 +247,7 @@ export default function ProductLists({
           }
           return renderPanel(s, selectedCategory === "todos");
         })}
+
       </div>
     </>
   );
