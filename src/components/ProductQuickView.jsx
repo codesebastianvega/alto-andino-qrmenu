@@ -9,23 +9,25 @@ export default function ProductQuickView({ product, open, onClose }) {
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
   if (!open || !product) return null;
 
-  const { productId, title, subtitle, price, image } = product;
+  const { id, title, subtitle, price, image } = product;
   const priceNum = Number(price);
-  const canAdd = !!productId && Number.isFinite(priceNum) && priceNum > 0;
+  const canAdd = !!id && Number.isFinite(priceNum) && priceNum > 0;
 
   const handleAdd = () => {
     if (!canAdd) {
       toast("Producto no disponible");
       return;
     }
-    addItem?.(product, 1);
+    addItem(product, 1);
     onClose?.();
   };
 
@@ -52,7 +54,7 @@ export default function ProductQuickView({ product, open, onClose }) {
         <div className="p-5">
           <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
           {subtitle && <p className="text-sm text-neutral-600 mt-1">{subtitle}</p>}
-          {typeof price !== "undefined" && (
+          {Number.isFinite(priceNum) && (
             <p className="mt-2 font-semibold text-neutral-900">{cop(priceNum)}</p>
           )}
           <button
