@@ -13,3 +13,5 @@ export const formatCOP = (v) => {
     maximumFractionDigits: 0,
   });
 };
+
+export const cop = formatCOP;

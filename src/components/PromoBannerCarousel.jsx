@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useCart } from "../context/CartContext";
 import ProductQuickView from "./ProductQuickView";
 import GuideModal from "./GuideModal";
-import { formatCOP as cop } from "../utils/money";
+import { cop } from "../utils/money";
 
 
 export default function PromoBannerCarousel({ items = [], resolveProductById }) {
@@ -43,9 +43,10 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
   };
 
   return (
-    <div className="relative" aria-roledescription="carousel">
+    <div className="my-4 md:my-6">
       <div
-        className="relative"
+        className="relative rounded-2xl overflow-hidden"
+        aria-roledescription="carousel"
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onTouchStart={onTouchStart}
@@ -68,7 +69,7 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
               return (
                 <div
                   key={item.id}
-                  className="relative w-full flex-shrink-0 h-44 sm:h-56 rounded-2xl overflow-hidden"
+                  className="relative w-full flex-shrink-0 h-44 sm:h-56"
                 >
                   <img
                     src={item.image}
@@ -78,17 +79,17 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
                     decoding="async"
                     className="absolute inset-0 w-full h-full object-cover z-0"
                   />
-                  <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
+                  <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-t from-black/55 via-black/25 to-transparent" />
                   <div className="relative z-30 pointer-events-auto flex h-full w-full flex-col justify-end p-4">
                     <h3 className="text-white text-lg font-semibold">{item.title}</h3>
                     {item.subtitle && (
                       <p className="text-white/90 text-sm">{item.subtitle}</p>
                     )}
                     {item.type === "product" ? (
-                      <div className="mt-2 flex gap-2">
+                      <div className="mt-3 flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => canAdd && addItem(product)}
+                          onClick={() => canAdd && addItem(product, 1)}
                           aria-label={addLabel}
                           disabled={!canAdd}
                           aria-disabled={!canAdd}
@@ -108,7 +109,7 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
                         </button>
                       </div>
                     ) : (
-                      <div className="mt-2">
+                      <div className="mt-3">
                         {item.ctas?.primary && (
                           <button
                             type="button"
@@ -126,7 +127,7 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
                     <div
                       aria-label="Precio"
                       tabIndex={-1}
-                      className="absolute top-3 right-3 md:top-4 md:right-4 z-30 rounded-full px-3 py-1 text-sm bg-white/85 shadow-sm text-[#2f4131] font-medium pointer-events-auto"
+                      className="absolute top-3 right-3 md:top-4 md:right-4 z-30 rounded-full px-3 py-1 text-sm bg-white/85 backdrop-blur shadow-sm text-[#2f4131] font-medium"
                     >
                       {cop(price)}
                     </div>
@@ -137,14 +138,14 @@ export default function PromoBannerCarousel({ items = [], resolveProductById }) 
 
 
         </div>
-        <div className="absolute bottom-2 left-0 right-0 z-30 pointer-events-auto flex justify-center gap-2">
+        <div className="absolute bottom-2 md:bottom-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex gap-2">
           {items.map((_, i) => (
             <button
               key={i}
               type="button"
               onClick={() => setIndex(i)}
               aria-label={`Ir al banner ${i + 1}`}
-              className={`h-2 w-2 rounded-full ${i === index ? "bg-white" : "bg-white/50"} focus:outline-none focus:ring-2 focus:ring-white`}
+              className={`pointer-events-auto h-2 w-2 rounded-full ${i === index ? "bg-white/80" : "bg-white/40"} focus:outline-none focus:ring-2 focus:ring-white`}
             />
           ))}
         </div>
