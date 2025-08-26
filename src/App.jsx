@@ -16,7 +16,6 @@ import DietaryGuide from "./components/DietaryGuide";
 import FloatingCartBar from "./components/FloatingCartBar";
 import CartDrawer from "./components/CartDrawer";
 import { useCart } from "./context/CartContext";
-import { banners as buildBanners } from "./data/banners";
 import {
   breakfastItems,
   mainDishes,
@@ -46,7 +45,6 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("todos");
   const cart = useCart();
-  const banners = buildBanners(import.meta.env);
 
   function handleCategorySelect(cat) {
     const slug = typeof cat === "string" ? cat : cat.id;
@@ -68,66 +66,6 @@ export default function App() {
     url.searchParams.set("cat", selectedCategory);
     window.history.replaceState(null, "", url);
   }, [FEATURE_TABS, selectedCategory]);
-
-  const productMap = useMemo(() => {
-    const collections = [
-      breakfastItems,
-      mainDishes,
-      dessertBaseItems,
-      [preBowl],
-      smoothies,
-      funcionales,
-      coffees,
-      infusions,
-      sodas,
-      otherDrinks,
-    ];
-    if (sandwichItems && sandwichPriceByItem) {
-      const mapped = sandwichItems.map((it) => {
-        const mapping = sandwichPriceByItem[it.key];
-        const price = mapping?.unico ?? mapping?.clasico ?? mapping?.grande;
-        return { id: "sandwich:" + it.key, name: it.name, price, desc: it.desc };
-      });
-      collections.push(mapped);
-    }
-    const map = {};
-    for (const col of collections) {
-      if (!Array.isArray(col)) continue;
-      for (const p of col) {
-        const pid = p.id || p.productId;
-        if (!pid) continue;
-        const prod = {
-          ...p,
-          id: pid,
-          productId: pid,
-          name: p.name || p.title,
-          title: p.title || p.name,
-          subtitle: p.desc || p.subtitle,
-          price: p.price,
-          image: p.image,
-        };
-        const ids = [p.id, p.productId].filter(Boolean);
-        if (ids.length === 0) ids.push(pid);
-        for (const ident of ids) {
-          map[ident] = prod;
-        }
-      }
-    }
-    return map;
-  }, [
-    breakfastItems,
-    mainDishes,
-    dessertBaseItems,
-    preBowl,
-    smoothies,
-    funcionales,
-    coffees,
-    infusions,
-    sodas,
-    otherDrinks,
-    sandwichItems,
-    sandwichPriceByItem,
-  ]);
 
   const counts = useMemo(() => {
     const count = (items = []) =>
@@ -168,12 +106,7 @@ export default function App() {
     sodas,
     otherDrinks,
     dessertBaseItems,
-  ]);
-
-  function resolveProductById(id) {
-    if (!id) return null;
-    return productMap[id] || null;
-  }
+    ]);
 
   // ✅ Modo póster QR (?qr=1) – se muestra SOLO el QR
   const isQr = (() => {
@@ -202,10 +135,7 @@ export default function App() {
           <HeroHeadline />
           <SearchBar value={query} onQueryChange={setQuery} />
         </div>
-        <PromoBannerCarousel
-          items={banners}
-          resolveProductById={resolveProductById}
-        />
+        <PromoBannerCarousel />
         <ProductLists
           query={query}
           selectedCategory={selectedCategory}
