@@ -3,9 +3,11 @@ import { banners as buildBanners } from "../data/banners";
 import { resolveProductById } from "../utils/resolver";
 import { useCart } from "../context/CartContext";
 import ProductQuickView from "./ProductQuickView";
-import Portal from "./Portal";
+import PetFriendlyModal from "./PetFriendlyModal";
+import StoryModal from "./StoryModal";
 import { toast } from "./Toast";
 import { cop } from "../utils/money";
+import { productStories } from "../data/stories";
 
 export default function PromoBannerCarousel() {
   const { addItem } = useCart();
@@ -14,6 +16,8 @@ export default function PromoBannerCarousel() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickProduct, setQuickProduct] = useState(null);
   const [petOpen, setPetOpen] = useState(false);
+  const [storyOpen, setStoryOpen] = useState(false);
+  const [story, setStory] = useState(null);
   const trackRef = useRef(null);
 
   const items = useMemo(() => {
@@ -36,7 +40,7 @@ export default function PromoBannerCarousel() {
     return () => clearInterval(id);
   }, [paused, count, index]);
 
-  const handleAction = (action, product) => {
+  const handleAction = (action, product, productId) => {
     if (!action) return;
     if (action === "add") {
       if (product) {
@@ -54,6 +58,14 @@ export default function PromoBannerCarousel() {
       }
     } else if (action === "modal:petfriendly") {
       setPetOpen(true);
+    } else if (action === "story" || action === "recipe") {
+      const st = productStories[productId];
+      if (!st) {
+        toast("Aún no tenemos historia para este producto");
+        return;
+      }
+      setStory(st);
+      setStoryOpen(true);
     } else if (action === "link:reviews") {
       const url = import.meta.env.VITE_GOOGLE_REVIEWS_URL;
       if (url) window.open(url, "_blank", "noopener,noreferrer");
@@ -114,10 +126,10 @@ export default function PromoBannerCarousel() {
                     <p className="text-white/90 text-sm">{item.subtitle}</p>
                   )}
                   {item.type === "product" ? (
-                    <div className="mt-3 flex items-center gap-2">
+                    <div className="mt-3 flex items-center gap-2 flex-wrap">
                       <button
                         type="button"
-                        onClick={() => handleAction(item.ctas?.primary?.action, product)}
+                        onClick={() => handleAction(item.ctas?.primary?.action, product, item.productId)}
                         aria-label={addLabel}
                         disabled={!canAdd}
                         aria-disabled={!canAdd}
@@ -127,7 +139,7 @@ export default function PromoBannerCarousel() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleAction(item.ctas?.secondary?.action, product)}
+                        onClick={() => handleAction(item.ctas?.secondary?.action, product, item.productId)}
                         aria-label={viewLabel}
                         disabled={!product}
                         aria-disabled={!product}
@@ -135,13 +147,23 @@ export default function PromoBannerCarousel() {
                       >
                         {viewLabel}
                       </button>
+                      {productStories[item.productId] && (
+                        <button
+                          type="button"
+                          onClick={() => handleAction("story", product, item.productId)}
+                          aria-label={productStories[item.productId].ctaLabel || "Historia"}
+                          className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+                        >
+                          {productStories[item.productId].ctaLabel || "Historia"}
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <div className="mt-3">
                       {item.ctas?.primary && (
                         <button
                           type="button"
-                          onClick={() => handleAction(item.ctas.primary.action, product)}
+                          onClick={() => handleAction(item.ctas.primary.action, product, item.productId)}
                           aria-label={item.ctas.primary.label || "Ver"}
                           className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
                         >
@@ -206,28 +228,8 @@ export default function PromoBannerCarousel() {
         product={quickProduct}
         onClose={() => setQuickOpen(false)}
       />
-
-      <Portal>
-        {petOpen && (
-          <div className="fixed inset-0 z-[80] flex items-center justify-center" role="dialog" aria-modal="true">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setPetOpen(false)} />
-            <div className="relative max-w-md w-[92%] rounded-2xl bg-[#FAF7F2] p-5 shadow-lg">
-              <button
-                type="button"
-                onClick={() => setPetOpen(false)}
-                aria-label="Cerrar"
-                className="absolute top-3 right-3 h-8 w-8 grid place-items-center rounded-full bg-black/5 hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
-              >
-                ×
-              </button>
-              <div className="p-4 text-center">
-                <h2 className="text-base font-semibold text-[#2f4131] mb-2">Pet Friendly</h2>
-                <p className="text-sm text-neutral-700">Tus mascotas son bienvenidas en Alto Andino.</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </Portal>
+      <PetFriendlyModal open={petOpen} onClose={() => setPetOpen(false)} />
+      <StoryModal open={storyOpen} story={story} onClose={() => setStoryOpen(false)} />
     </div>
   );
 }
