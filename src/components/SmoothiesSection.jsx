@@ -1,7 +1,9 @@
 import { AddIconButton, StatusChip } from "./Buttons";
 import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
-import { getStockState, slugify } from "../utils/stock";
+import { getStockState, slugify, isUnavailable } from "../utils/stock";
+import { toast } from "./Toast";
+import clsx from "clsx";
 import { matchesQuery } from "../utils/strings";
 import { smoothies, funcionales } from "../data/menuItems";
 
@@ -10,7 +12,14 @@ function List({ items, onAdd }) {
     <ul className="space-y-3">
       {items.map((p) => {
         const st = getStockState(p.id || slugify(p.name));
-        const disabled = st === "out";
+        const unavailable = st === "out" || isUnavailable(p);
+        const handleAdd = () => {
+          if (unavailable) {
+            toast("Producto no disponible");
+            return;
+          }
+          onAdd(p);
+        };
         return (
           <li
             key={p.name}
@@ -22,7 +31,7 @@ function List({ items, onAdd }) {
               {st === "low" && (
                 <StatusChip variant="low">Pocas unidades</StatusChip>
               )}
-              {st === "out" && (
+              {unavailable && (
                 <StatusChip variant="soldout">No Disponible</StatusChip>
               )}
             </div>
@@ -30,10 +39,13 @@ function List({ items, onAdd }) {
               ${COP(p.price)}
             </div>
             <AddIconButton
-              className="absolute bottom-4 right-4 z-20"
+              className={clsx(
+                "absolute bottom-4 right-4 z-20",
+                unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
+              )}
               aria-label={"Añadir " + p.name}
-              onClick={() => onAdd(p)}
-              disabled={disabled}
+              onClick={handleAdd}
+              aria-disabled={unavailable}
             />
           </li>
         );
