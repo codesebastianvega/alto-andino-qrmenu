@@ -1,3 +1,4 @@
+// TODO: remove this component in Fase 4 after QA
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@iconify-icon/react";
 

@@ -14,8 +14,7 @@ import ColdDrinksSection from "./ColdDrinksSection";
 import ProductQuickView from "./ProductQuickView";
 import { getProductImage } from "../utils/images";
 import CategoryHeader from "./CategoryHeader";
-import CategoryBar from "./CategoryBar";
-import CategoryTabs from "./CategoryTabs";
+import CategoryNav from "./CategoryNav";
 import { categoryIcons } from "../data/categoryIcons";
 import {
   breakfastItems,
@@ -375,29 +374,16 @@ export default function ProductLists({
   return (
     <>
       {!featureTabs && <CategoryHeader />}
-      {featureTabs ? (
-        <CategoryTabs
-          items={tabItems}
-          value={selectedCategory}
-          onChange={(slug) => {
-            if (slug === "todos") {
-              handleManualSelect({ id: "todos" });
-            } else {
-              const cat = categories.find((c) => c.id === slug);
-              handleManualSelect(cat ?? { id: "todos" });
-            }
-          }}
-          featureTabs={featureTabs}
-        />
-      ) : (
-        <CategoryBar
-          categories={[{ id: "todos", label: "Todos", tintClass: "bg-stone-100" }, ...categories]}
-          activeId={selectedCategory}
-          onSelect={(cat) => handleManualSelect(cat)}
-          variant="chip"
-          featureTabs={featureTabs}
-        />
-      )}
+      <CategoryNav
+        categories={
+          featureTabs
+            ? tabItems
+            : [{ id: "todos", label: "Todos", tintClass: "bg-stone-100" }, ...categories]
+        }
+        activeId={selectedCategory}
+        onSelect={(cat) => handleManualSelect(cat)}
+        variant={featureTabs ? "tabs" : "bar"}
+      />
       {query && !Object.values(counts).some((n) => n > 0) && (
         <p className="text-sm text-neutral-600 px-4">
           No hay resultados para “{query}”.
