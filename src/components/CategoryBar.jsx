@@ -2,8 +2,6 @@ import { useState } from "react";
 import { Icon } from "@iconify-icon/react";
 import { categoryIcons } from "../data/categoryIcons";
 
-const FEATURE_TABS = import.meta.env.VITE_FEATURE_TABS === "1";
-
 function IconWithFallback({ id, size = 32, className }) {
   const entry = categoryIcons[id];
   const initial = typeof entry === "string" ? entry : entry?.icon;
@@ -28,6 +26,7 @@ export default function CategoryBar({
   onSelect,
   variant = "chip",
   fullBleed = true,
+  featureTabs = false,
 }) {
   const baseItemClasses =
     variant === "chip"
@@ -48,25 +47,34 @@ export default function CategoryBar({
             variant === "chip"
               ? `text-[13px] leading-tight ${active ? "text-[#2f4131]" : "text-zinc-800"}`
               : "text-[12px] leading-tight";
+          const onClickItem = (e) => {
+            e?.preventDefault?.();
+            e?.stopPropagation?.();
+
+            if (featureTabs) {
+              onSelect?.(cat);
+              return;
+            }
+
+            if (cat.id === "todos") {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            } else {
+              const target = document.getElementById(
+                cat?.targetId || `section-${cat.id}`
+              );
+              target?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }
+
+            onSelect?.(cat);
+          };
+
           return (
             <li key={cat.id} className="first:ml-1 last:mr-1">
               <button
-                onClick={() => {
-                  if (!FEATURE_TABS) {
-                    if (cat.id === "todos") {
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    } else {
-                      const target = document.getElementById(
-                        cat?.targetId || `section-${cat.id}`
-                      );
-                      target?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "start",
-                      });
-                    }
-                  }
-                  onSelect?.(cat);
-                }}
+                onClick={(e) => onClickItem(e)}
                 type="button"
                 aria-label={cat.label}
                 aria-current={active ? "true" : undefined}

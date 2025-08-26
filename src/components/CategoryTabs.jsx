@@ -18,7 +18,13 @@ function IconWithFallback({ icon, size = 32, className }) {
   );
 }
 
-export default function CategoryTabs({ value, onChange, items = [], fullBleed = true }) {
+export default function CategoryTabs({
+  value,
+  onChange,
+  items = [],
+  fullBleed = true,
+  featureTabs = true,
+}) {
   const tabRefs = useRef([]);
   const baseItemClasses =
     "flex-none w-[100px] basis-[100px] h-[110px] snap-start rounded-xl bg-white/60 backdrop-blur-sm transition-colors transition-shadow duration-150 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,.3)] focus:ring-offset-2";
