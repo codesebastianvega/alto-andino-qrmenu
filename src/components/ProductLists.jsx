@@ -33,25 +33,33 @@ export default function ProductLists({
   const visibleCount = counts[selectedCategory] ?? 0;
   const categories = useMemo(
     () => [
-      { id: "desayunos", label: "Desayunos" },
-      { id: "bowls", label: "Bowls" },
+      { id: "desayunos", label: "Desayunos", tintClass: "bg-amber-50" },
+      { id: "bowls", label: "Bowls", tintClass: "bg-emerald-50" },
       {
         id: "platos",
         label: "Platos Fuertes",
         targetId: "section-platos-fuertes",
+        tintClass: "bg-violet-50",
       },
-      { id: "sandwiches", label: "Sándwiches" },
+      { id: "sandwiches", label: "Sándwiches", tintClass: "bg-rose-50" },
       {
         id: "smoothies",
         label: "Smoothies & Funcionales",
         targetId: "section-smoothies-funcionales",
+        tintClass: "bg-pink-50",
       },
       {
         id: "cafe",
         label: "Café de especialidad",
         targetId: "section-cafe-de-especialidad",
+        tintClass: "bg-stone-200",
       },
-      { id: "bebidasfrias", label: "Bebidas frías", targetId: "section-bebidas-frias" },
+      {
+        id: "bebidasfrias",
+        label: "Bebidas frías",
+        targetId: "section-bebidas-frias",
+        tintClass: "bg-sky-50",
+      },
       { id: "postres", label: "Postres" },
     ],
     [query]
@@ -61,12 +69,18 @@ export default function ProductLists({
     () =>
       CATS.map((slug) => {
         if (slug === "todos")
-          return { id: "todos", label: "Todos", icon: "fluent-emoji:bookmark-tabs" };
+          return {
+            id: "todos",
+            label: "Todos",
+            icon: "ph:squares-four",
+            tintClass: "bg-stone-100",
+          };
         const cat = categories.find((c) => c.id === slug);
         return {
           id: slug,
           label: cat?.label || slug,
           icon: categoryIcons[slug],
+          tintClass: cat?.tintClass,
         };
       }),
     [categories]
@@ -201,43 +215,41 @@ export default function ProductLists({
 
   return (
     <>
-      <div className="mx-auto max-w-screen-md px-4 md:px-6">
+      <div className="mx-auto max-w-screen-md">
         {!featureTabs && (
           <CategoryHeader
             selectedCategory={selectedCategory}
             visibleCount={visibleCount}
           />
         )}
-        <div className="-mx-4 md:-mx-6 px-4 md:px-6">
-          {featureTabs ? (
-            <CategoryTabs
-              items={tabItems}
-              value={selectedCategory}
-              onChange={(slug) => {
-                if (slug === "todos") {
-                  onCategorySelect?.({ id: "todos" });
-                } else {
-                  const cat = categories.find((c) => c.id === slug);
-                  onCategorySelect?.(cat ?? { id: "todos" });
-                }
-              }}
-            />
-          ) : (
-            <CategoryBar
-              categories={[{ id: "todos", label: "Todos" }, ...categories]}
-              activeId={selectedCategory}
-              onSelect={(cat) => {
-                if (cat.id === "todos") {
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                  onCategorySelect?.({ id: "todos" });
-                } else {
-                  onCategorySelect?.(cat);
-                }
-              }}
-              variant="chip"
-            />
-          )}
-        </div>
+        {featureTabs ? (
+          <CategoryTabs
+            items={tabItems}
+            value={selectedCategory}
+            onChange={(slug) => {
+              if (slug === "todos") {
+                onCategorySelect?.({ id: "todos" });
+              } else {
+                const cat = categories.find((c) => c.id === slug);
+                onCategorySelect?.(cat ?? { id: "todos" });
+              }
+            }}
+          />
+        ) : (
+          <CategoryBar
+            categories={[{ id: "todos", label: "Todos", tintClass: "bg-stone-100" }, ...categories]}
+            activeId={selectedCategory}
+            onSelect={(cat) => {
+              if (cat.id === "todos") {
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                onCategorySelect?.({ id: "todos" });
+              } else {
+                onCategorySelect?.(cat);
+              }
+            }}
+            variant="chip"
+          />
+        )}
       </div>
       <div
         {...swipeHandlers}

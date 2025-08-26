@@ -1,4 +1,5 @@
 export const categoryIcons = {
+  todos: "ph:squares-four",
   desayunos: "fluent-emoji:croissant",
   bowls: "fluent-emoji:pot-of-food",
   platos: "fluent-emoji:fork-and-knife-with-plate",

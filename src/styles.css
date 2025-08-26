@@ -7,6 +7,15 @@
   color-scheme: light;
 }
 
+/* Oculta scrollbar en contenedores horizontales de categorías */
+.scrollbar-none {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
 .card {
   @apply rounded-2xl border border-alto-greige bg-alto-warmwhite shadow-card;
 }
