@@ -25,6 +25,7 @@ export default function CategoryBar({
   activeId,
   onSelect,
   variant = "chip",
+  counts = {},
 }) {
   const baseItemClasses =
     variant === "chip"
@@ -88,14 +89,22 @@ export default function CategoryBar({
                   }`}
                 >
                   <span
-                    className={labelTextClasses}
-                    style={{
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                    }}
+                    className={`${labelTextClasses} flex items-center justify-center`}
                   >
-                    {cat.label}
+                    <span
+                      style={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                      }}
+                    >
+                      {cat.label}
+                    </span>
+                    {counts[cat.id] != null && (
+                      <span className="min-w-[22px] h-[22px] text-[12px] rounded-full bg-[#2f4131] text-white grid place-items-center ml-1">
+                        {counts[cat.id]}
+                      </span>
+                    )}
                   </span>
                 </span>
               </button>
