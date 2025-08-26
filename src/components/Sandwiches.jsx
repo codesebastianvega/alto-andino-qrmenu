@@ -135,7 +135,7 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
             return (
               <article
                 key={it.key}
-                className="group grid grid-cols-[96px_1fr] md:grid-cols-[112px_1fr] gap-3 md:gap-4 p-3 md:p-4 rounded-3xl bg-white border border-black/5 dark:bg-neutral-900 dark:border-white/10 shadow-[0_1px_0_rgba(0,0,0,0.02),0_12px_24px_-10px_rgba(0,0,0,0.18)] hover:shadow-[0_1px_0_rgba(0,0,0,0.03),0_16px_30px_-10px_rgba(0,0,0,0.22)] transition"
+                className="group grid grid-cols-[96px_1fr] md:grid-cols-[112px_1fr] gap-3 md:gap-4 p-3 md:p-4 rounded-2xl bg-white text-neutral-900 ring-1 ring-black/5 shadow-sm"
               >
                 <button
                   type="button"
@@ -157,10 +157,10 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
                   />
                 </button>
                 <div className="min-w-0 flex flex-col">
-                  <h3 className="text-base md:text-[17px] font-semibold text-neutral-900 dark:text-neutral-100 truncate">
+                  <h3 className="text-base md:text-[17px] font-semibold text-neutral-900 truncate">
                     {renderWithEmoji(it.name)}
                   </h3>
-                  <p className="mt-0.5 text-sm text-neutral-600 dark:text-neutral-300 line-clamp-2">
+                  <p className="mt-0.5 text-sm text-neutral-600 line-clamp-2">
                     {renderWithEmoji(it.desc)}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -176,7 +176,7 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
                   </div>
                   <div className="mt-auto flex items-end justify-between gap-3 pt-2">
                     <div>
-                      <div className="text-base md:text-[17px] font-semibold text-neutral-900 dark:text-neutral-100">
+                      <div className="text-base md:text-[17px] font-semibold text-neutral-900">
                         {formatCOP(price)}
                       </div>
                       {!priceByItem[it.key].unico && (
@@ -192,7 +192,7 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
                         e.stopPropagation();
                         handleAdd();
                       }}
-                      className="h-10 w-10 md:h-11 md:w-11 grid place-items-center rounded-full bg-[#2f4131] hover:bg-[#253525] text-white shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+                      className="h-10 w-10 md:h-11 md:w-11 grid place-items-center rounded-full bg-[#2f4131] hover:bg-[#263729] text-white shadow-sm ring-1 ring-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
                     >
                       +
                     </button>

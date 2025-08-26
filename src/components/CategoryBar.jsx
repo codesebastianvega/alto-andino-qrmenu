@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import clsx from "clsx";
 import { Icon } from "@iconify-icon/react";
 import { categoryIcons } from "../data/categoryIcons";
+
+const CHIP = {
+  base: "w-[116px] sm:w-[128px] h-[72px] rounded-xl bg-white ring-1 ring-neutral-200 grid grid-rows-[auto_1fr] place-items-center px-3 py-2 text-center select-none snap-center",
+  text: "text-[13px] leading-tight whitespace-normal break-words line-clamp-2",
+  icon: "w-6 h-6",
+  inactive: "text-neutral-700",
+  active: "bg-emerald-100 ring-emerald-300 text-emerald-800",
+};
 
 function IconWithFallback({ id, icon: iconProp, size = 24, className }) {
   const entry = iconProp ?? categoryIcons[id];
@@ -112,7 +119,7 @@ export default function CategoryBar({
     <div className="sticky top-0 z-40 bg-transparent backdrop-blur-[2px] border-b border-black/5 dark:border-white/10">
       <div
         role="tablist"
-        className="-mx-4 px-4 py-2 flex gap-3 md:gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-none relative"
+        className="-mx-4 px-4 py-2 flex gap-3 overflow-x-auto pb-1 no-scrollbar snap-x snap-mandatory scroll-smooth"
         onWheel={(e) => {
           if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
             e.currentTarget.scrollLeft += e.deltaY;
@@ -131,20 +138,15 @@ export default function CategoryBar({
               tabIndex={active ? 0 : -1}
               onKeyDown={handleKey}
               onClick={() => handleSelect(cat.id, idx)}
-              className={clsx(
-                "inline-flex flex-col items-center justify-center text-center snap-start rounded-2xl w-24 md:w-28 h-24 px-2",
-                "bg-white/30 backdrop-blur-md border border-black/10 dark:border-white/15",
-                "text-neutral-900 dark:text-neutral-50",
-                "shadow-[0_1px_0_rgba(0,0,0,0.02),0_8px_16px_-6px_rgba(0,0,0,0.12)]",
-                "hover:bg-white/40",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]",
-                active && "ring-2 ring-[#2f4131]/60 bg-white/50 border-black/10 dark:border-white/25"
-              )}
+              className={[CHIP.base, active ? CHIP.active : ""].join(" ")}
             >
-              <span className="w-12 h-12 rounded-full grid place-items-center shrink-0 bg-white/60 border border-white/70">
-                <IconWithFallback id={cat.id} className="w-7 h-7 object-contain" />
-              </span>
-              <span className="mt-1 text-sm font-semibold leading-tight text-neutral-900 dark:text-neutral-50 whitespace-normal break-words line-clamp-2">
+              <IconWithFallback
+                id={cat.id}
+                className={[CHIP.icon, active ? "text-emerald-800" : CHIP.inactive].join(" ")}
+              />
+              <span
+                className={[CHIP.text, active ? "text-emerald-800" : CHIP.inactive].join(" ")}
+              >
                 {cat.label}
               </span>
             </button>
