@@ -1,19 +1,43 @@
-import { useEffect } from "react";
-import { createPortal } from "react-dom";
-import { useCart } from "../context/CartContext";
-import { formatCOP as cop } from "../utils/money";
-import { toast } from "./Toast";
+import { useEffect, useRef } from 'react';
+import Portal from './Portal';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
+import { useCart } from '../context/CartContext';
+import { formatCOP as cop } from '../utils/money';
+import { toast } from './Toast';
 
-export default function ProductQuickView({ product, open, onClose }) {
+export default function ProductQuickView({ open, product, onClose, onAdd }) {
+  useLockBodyScroll(open);
   const { addItem } = useCart();
+  const modalRef = useRef(null);
+  const lastFocused = useRef(null);
 
   useEffect(() => {
     if (!open) return;
+    lastFocused.current = document.activeElement;
+    const el = modalRef.current;
+    el?.focus();
     const onKey = (e) => {
-      if (e.key === "Escape") onClose?.();
+      if (e.key === 'Escape') onClose?.();
+      if (e.key === 'Tab') {
+        const focusables = el.querySelectorAll(
+          'a,button,input,select,textarea,[tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusables.length) return;
+        const first = focusables[0], last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      lastFocused.current?.focus?.();
+    };
   }, [open, onClose]);
 
   if (!open || !product) return null;
@@ -24,53 +48,63 @@ export default function ProductQuickView({ product, open, onClose }) {
 
   const handleAdd = () => {
     if (!canAdd) {
-      toast("Producto no disponible");
+      toast('Producto no disponible');
       return;
     }
     addItem(product, 1);
+    onAdd?.(product);
     onClose?.();
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-[90] flex items-center justify-center" aria-modal="true" role="dialog">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative max-w-sm w-[92%] rounded-2xl bg-white ring-1 ring-neutral-200 shadow-lg">
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Cerrar"
-          className="absolute top-3 right-3 h-8 w-8 grid place-items-center rounded-full bg-black/5 hover:bg-black/10 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+  return (
+    <Portal>
+      <div role="dialog" aria-modal="true" className="fixed inset-0 z-[100]">
+        <div
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          onClick={() => onClose?.()}
+        />
+        <div
+          ref={modalRef}
+          tabIndex={-1}
+          className="pointer-events-auto relative z-[110] mx-auto my-6 max-w-screen-sm w-[calc(100%-1.5rem)] focus:outline-none"
         >
-          ×
-        </button>
-        {image && (
-          <img
-            src={image}
-            alt={title}
-            loading="lazy"
-            decoding="async"
-            className="w-full h-48 object-cover rounded-t-2xl"
-          />
-        )}
-        <div className="p-5">
-          <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
-          {subtitle && <p className="text-sm text-neutral-600 mt-1">{subtitle}</p>}
-          {Number.isFinite(priceNum) && (
-            <p className="mt-2 font-semibold text-neutral-900">{cop(priceNum)}</p>
-          )}
-          <button
-            type="button"
-            onClick={handleAdd}
-            disabled={!canAdd}
-            aria-disabled={!canAdd}
-            className="mt-4 w-full h-10 rounded-xl bg-[#2f4131] text-white hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:bg-neutral-400 disabled:text-white/80"
-          >
-            {canAdd ? "Agregar" : "Producto no disponible"}
-          </button>
+          <div className="relative rounded-2xl bg-white shadow-xl">
+            <button
+              type="button"
+              onClick={() => onClose?.()}
+              aria-label="Cerrar"
+              className="absolute top-3 right-3 h-8 w-8 grid place-items-center rounded-full bg-black/5 hover:bg-black/10 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+            >
+              ×
+            </button>
+            {image && (
+              <img
+                src={image}
+                alt={title}
+                loading="lazy"
+                decoding="async"
+                className="w-full h-48 object-cover rounded-t-2xl"
+              />
+            )}
+            <div className="p-5">
+              <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
+              {subtitle && <p className="text-sm text-neutral-600 mt-1">{subtitle}</p>}
+              {Number.isFinite(priceNum) && (
+                <p className="mt-2 font-semibold text-neutral-900">{cop(priceNum)}</p>
+              )}
+              <button
+                type="button"
+                onClick={handleAdd}
+                disabled={!canAdd}
+                aria-disabled={!canAdd}
+                className="mt-4 w-full h-10 rounded-xl bg-[#2f4131] text-white hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:bg-neutral-400 disabled:text-white/80"
+              >
+                {canAdd ? 'Agregar' : 'Producto no disponible'}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>,
-    document.body
+    </Portal>
   );
 }
-

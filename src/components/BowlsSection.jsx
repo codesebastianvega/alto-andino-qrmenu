@@ -4,7 +4,7 @@ import { useCart } from "../context/CartContext";
 import { COP, formatCOP } from "../utils/money";
 import { matchesQuery } from "../utils/strings";
 import { AddIconButton, StatusChip, PILL_XS, PILL_SM } from "./Buttons";
-const BowlBuilderModal = lazy(() => import("./BowlBuilderModal"));
+const BowlBuilder = lazy(() => import("./BowlBuilder"));
 import { getStockState, slugify } from "../utils/stock";
 import { preBowl } from "../data/menuItems";
 
@@ -115,7 +115,7 @@ export default function BowlsSection({ query }) {
       {/* Modal de armado */}
       {open && (
         <Suspense fallback={null}>
-          <BowlBuilderModal open={open} onClose={() => setOpen(false)} />
+          <BowlBuilder open={open} onClose={() => setOpen(false)} />
         </Suspense>
       )}
     </div>
