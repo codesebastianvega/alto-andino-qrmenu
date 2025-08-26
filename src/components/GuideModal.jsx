@@ -21,7 +21,7 @@ export default function GuideModal({ open, onClose, children }) {
           type="button"
           onClick={onClose}
           aria-label="Cerrar"
-          className="absolute top-3 right-3 h-8 w-8 grid place-items-center rounded-full bg-black/5 hover:bg-black/10 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+          className="absolute top-3 right-3 h-8 w-8 grid place-items-center rounded-full bg-black/5 hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
         >×</button>
         {children}
       </div>

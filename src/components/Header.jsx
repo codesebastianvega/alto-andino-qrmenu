@@ -30,7 +30,7 @@ export default function Header({ onCartOpen, onGuideOpen }) {
             type="button"
             onClick={handleInfoClick}
             aria-label="Información"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,.3)] group"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131] group"
           >
             <Icon
               icon="material-symbols:info-outline"
@@ -41,7 +41,7 @@ export default function Header({ onCartOpen, onGuideOpen }) {
             type="button"
             onClick={() => onCartOpen?.()}
             aria-label="Abrir carrito"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,.3)] group"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131] group"
           >
             <Icon
               icon="mdi:cart-outline"

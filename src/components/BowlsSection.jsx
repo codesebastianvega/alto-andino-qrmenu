@@ -94,8 +94,8 @@ export default function BowlsSection({ query, onCount }) {
             aria-label="Armar bowl personalizado"
             className={[
               "absolute bottom-3 right-3 z-30 rounded-full bg-white text-[#2f4131] font-semibold",
-              "shadow-sm hover:bg-white/90 focus:outline-none",
-              "focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]",
+              "shadow-sm hover:bg-white/90 focus-visible:outline-none",
+              "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]",
               PILL_XS,
               "sm:" + PILL_SM,
             ].join(" ")}
@@ -125,9 +125,10 @@ export default function BowlsSection({ query, onCount }) {
             "absolute bottom-4 right-4 z-20",
             unavailable && "opacity-60 cursor-not-allowed pointer-events-auto"
           )}
-          aria-label={"Añadir " + preBowl.name}
+          aria-label={"Agregar " + preBowl.name}
           onClick={handleAdd}
           aria-disabled={unavailable}
+          title={unavailable ? "No disponible" : undefined}
         />
       </div>
 

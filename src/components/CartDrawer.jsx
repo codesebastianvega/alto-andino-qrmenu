@@ -300,7 +300,13 @@ export default function CartDrawer({ open, onClose }) {
             </span>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <button type="button" onClick={onClose} className="h-10 rounded-xl bg-white text-neutral-900 ring-1 ring-neutral-300 hover:bg-neutral-50">Seguir pidiendo</button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-10 rounded-xl bg-white text-neutral-900 ring-1 ring-neutral-300 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+            >
+              Seguir pidiendo
+            </button>
             <a
               href={waHref}
               target="_blank"
@@ -310,7 +316,7 @@ export default function CartDrawer({ open, onClose }) {
               className={[
                 "h-10 rounded-xl grid place-items-center",
                 waHref
-                  ? "bg-[#2f4131] text-white hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                  ? "bg-[#2f4131] text-white hover:bg-[#243326] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
                   : "bg-neutral-100 text-neutral-400 ring-1 ring-neutral-200 cursor-not-allowed"
               ].join(" ")}
             >

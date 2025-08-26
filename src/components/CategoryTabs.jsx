@@ -27,7 +27,7 @@ export default function CategoryTabs({
 }) {
   const tabRefs = useRef([]);
   const baseItemClasses =
-    "flex-none w-[100px] basis-[100px] h-[110px] snap-start rounded-xl bg-white/60 backdrop-blur-sm transition-colors transition-shadow duration-150 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,.3)] focus:ring-offset-2";
+    "flex-none w-[100px] basis-[100px] h-[110px] snap-start rounded-xl bg-white/60 backdrop-blur-sm transition-colors transition-shadow duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]";
 
   function focusTab(index) {
     const ref = tabRefs.current[index];

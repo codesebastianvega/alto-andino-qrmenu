@@ -13,6 +13,7 @@ export function Chip({ active, onClick, children, className = "", shape = "pill"
           ? "bg-alto-primary text-white border-alto-primary shadow"
           : "bg-white text-neutral-800 border-neutral-300 hover:border-neutral-400",
         rounded,
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]",
         className
       )}
     >
@@ -23,7 +24,17 @@ export function Chip({ active, onClick, children, className = "", shape = "pill"
 
 export function Button({ variant = "primary", className = "", type = "button", ...props }) {
   const base = "btn " + (variant === "primary" ? "btn-primary" : "btn-outline");
-  return <button type={type} {...props} className={base + " " + className} />;
+  return (
+    <button
+      type={type}
+      {...props}
+      className={
+        base +
+        " focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131] " +
+        className
+      }
+    />
+  );
 }
 
 // Botón de texto “Añadir” (no-FAB)
@@ -40,12 +51,12 @@ export function AddButton({
       type={type}
       disabled={disabled}
       onClick={onClick}
-      aria-label={hideText ? "Añadir" : undefined}
+      aria-label={hideText ? "Agregar" : undefined}
       className={cx(
         "inline-flex items-center justify-center gap-2 rounded-full font-semibold shadow-sm transition select-none",
         "bg-[#2f4131] text-white hover:bg-[#243326]",
         "border border-black/10",
-        "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[rgba(47,65,49,0.3)]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]",
         "px-3 min-w-[90px] h-9 sm:h-8 w-auto",
         "active:translate-y-[1px]",
         "disabled:bg-neutral-200 disabled:text-neutral-500 disabled:cursor-not-allowed",
@@ -86,13 +97,13 @@ export function AddIconButton({ className = "", disabled = false, variant = "sol
         "w-9 h-9 sm:w-8 sm:h-8",
         // motion & focus
         "transition will-change-transform hover:scale-105 active:scale-95",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(47,65,49,0.3)] focus-visible:ring-offset-2",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]",
         // disabled
-        disabled && "opacity-40 pointer-events-none",
+        disabled && "opacity-40 cursor-not-allowed",
         baseColor,
         className
       )}
-      aria-label={props["aria-label"] || "Añadir"}
+      aria-label={props["aria-label"] || "Agregar"}
     >
       <span aria-hidden className="-mt-[1px] text-xl leading-none">
         +

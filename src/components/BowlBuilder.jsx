@@ -228,7 +228,7 @@ export default function BowlBuilder({ open, onClose }) {
           <div
             ref={modalRef}
             tabIndex={-1}
-            className="pointer-events-auto absolute inset-x-0 bottom-0 z-[110] w-full max-w-2xl max-h-[90vh] mx-auto rounded-3xl overflow-hidden bg-[#FAF7F2] shadow-2xl flex flex-col focus:outline-none"
+            className="pointer-events-auto absolute inset-x-0 bottom-0 z-[110] w-full max-w-2xl max-h-[90vh] mx-auto rounded-3xl overflow-hidden bg-[#FAF7F2] shadow-2xl flex flex-col focus-visible:outline-none"
           >
             {/* Header */}
             <div className="rounded-t-2xl bg-[#2f4131] text-white p-4">

@@ -115,7 +115,7 @@ export default function PromoBannerCarousel() {
                         aria-label={addLabel}
                         disabled={!canAdd}
                         aria-disabled={!canAdd}
-                        className="px-3 h-8 rounded-lg bg-[#2f4131] text-white text-sm font-medium hover:bg-[#243326] focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:bg-neutral-400 disabled:text-white/80"
+                        className="px-3 h-8 rounded-lg bg-[#2f4131] text-white text-sm font-medium hover:bg-[#243326] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131] disabled:bg-neutral-400 disabled:text-white/80"
                       >
                         {addLabel}
                       </button>
@@ -125,7 +125,7 @@ export default function PromoBannerCarousel() {
                         aria-label={viewLabel}
                         disabled={!product}
                         aria-disabled={!product}
-                        className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)] disabled:bg-neutral-100 disabled:text-neutral-400"
+                        className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131] disabled:bg-neutral-100 disabled:text-neutral-400"
                       >
                         {viewLabel}
                       </button>
@@ -137,7 +137,7 @@ export default function PromoBannerCarousel() {
                           type="button"
                           onClick={() => handleAction(item.ctas.primary.action, product)}
                           aria-label={item.ctas.primary.label || "Ver"}
-                          className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                          className="px-3 h-8 rounded-lg bg-white/90 text-neutral-900 text-sm font-medium hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
                         >
                           {item.ctas.primary.label || "Ver"}
                         </button>
@@ -177,7 +177,7 @@ export default function PromoBannerCarousel() {
               type="button"
               onClick={() => setIndex(i)}
               aria-label={`Ir al banner ${i + 1}`}
-              className={`pointer-events-auto h-2 w-2 rounded-full ${i === index ? "bg-white/80" : "bg-white/40"} focus:outline-none focus:ring-2 focus:ring-white`}
+              className={`pointer-events-auto h-2 w-2 rounded-full ${i === index ? "bg-white/80" : "bg-white/40"} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white`}
             />
           ))}
         </div>
@@ -198,7 +198,7 @@ export default function PromoBannerCarousel() {
                 type="button"
                 onClick={() => setPetOpen(false)}
                 aria-label="Cerrar"
-                className="absolute top-3 right-3 h-8 w-8 grid place-items-center rounded-full bg-black/5 hover:bg-black/10 focus:outline-none focus:ring-2 focus:ring-[rgba(47,65,49,0.3)]"
+                className="absolute top-3 right-3 h-8 w-8 grid place-items-center rounded-full bg-black/5 hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
               >
                 ×
               </button>

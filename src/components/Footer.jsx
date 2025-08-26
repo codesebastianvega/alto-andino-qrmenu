@@ -32,7 +32,7 @@ export default function Footer(){
         <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
           <a href={IG_URL} target="_blank" rel="noreferrer"
              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] bg-transparent hover:bg-white/10 transition
-                        focus:outline-none focus:ring-2 focus:ring-white/40"
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
              style={{ color: TEXT, border: `1px solid ${BORDER}` }}
              aria-label="Abrir Instagram">
             <IconInstagram className="w-3.5 h-3.5" />
@@ -41,20 +41,20 @@ export default function Footer(){
 
           <a href={WA_LINK} target="_blank" rel="noreferrer"
              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] bg-transparent hover:bg-white/10 transition
-                        focus:outline-none focus:ring-2 focus:ring-white/40"
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
              style={{ color: TEXT, border: `1px solid ${BORDER}` }}
              aria-label="Abrir WhatsApp">
             <IconWhatsApp className="w-3.5 h-3.5" />
             <span>WhatsApp</span>
           </a>
 
-          <a href={QR_URL} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] bg-transparent hover:bg-white/10 transition focus:outline-none focus:ring-2 focus:ring-white/40" style={{ color: TEXT, border: `1px solid ${BORDER}` }}>
+          <a href={QR_URL} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] bg-transparent hover:bg-white/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]" style={{ color: TEXT, border: `1px solid ${BORDER}` }}>
             <span>Ver póster QR</span>
           </a>
 
           <a href={REVIEWS_URL} target="_blank" rel="noreferrer"
              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] bg-transparent hover:bg-white/10 transition
-                        focus:outline-none focus:ring-2 focus:ring-white/40"
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
              style={{ color: TEXT, border: `1px solid ${BORDER}` }}
              aria-label="Abrir reseñas">
             <IconStar className="w-3.5 h-3.5" />
