@@ -45,7 +45,6 @@ export default function ProductLists({
   const setCount = useCallback((id, n) => {
     setCounts((prev) => (prev[id] === n ? prev : { ...prev, [id]: n }));
   }, []);
-  const visibleCount = counts[selectedCategory] || 0;
   const categories = useMemo(
     () => [
       { id: "desayunos", label: "Desayunos", tintClass: "bg-amber-50" },
@@ -376,37 +375,30 @@ export default function ProductLists({
 
   return (
     <>
-      <div className="mx-auto max-w-screen-md sticky top-0 z-40 bg-white border-b">
-        {!featureTabs && (
-          <CategoryHeader
-            selectedCategory={selectedCategory}
-            visibleCount={visibleCount}
-          />
-        )}
-        {featureTabs ? (
-          <CategoryTabs
-            items={tabItems}
-            value={selectedCategory}
-            onChange={(slug) => {
-              if (slug === "todos") {
-                handleManualSelect({ id: "todos" });
-              } else {
-                const cat = categories.find((c) => c.id === slug);
-                handleManualSelect(cat ?? { id: "todos" });
-              }
-            }}
-            featureTabs={featureTabs}
-          />
-        ) : (
-          <CategoryBar
-            categories={[{ id: "todos", label: "Todos", tintClass: "bg-stone-100" }, ...categories]}
-            activeId={selectedCategory}
-            onSelect={(cat) => handleManualSelect(cat)}
-            variant="chip"
-            featureTabs={featureTabs}
-          />
-        )}
-      </div>
+      {!featureTabs && <CategoryHeader />}
+      {featureTabs ? (
+        <CategoryTabs
+          items={tabItems}
+          value={selectedCategory}
+          onChange={(slug) => {
+            if (slug === "todos") {
+              handleManualSelect({ id: "todos" });
+            } else {
+              const cat = categories.find((c) => c.id === slug);
+              handleManualSelect(cat ?? { id: "todos" });
+            }
+          }}
+          featureTabs={featureTabs}
+        />
+      ) : (
+        <CategoryBar
+          categories={[{ id: "todos", label: "Todos", tintClass: "bg-stone-100" }, ...categories]}
+          activeId={selectedCategory}
+          onSelect={(cat) => handleManualSelect(cat)}
+          variant="chip"
+          featureTabs={featureTabs}
+        />
+      )}
       {query && !Object.values(counts).some((n) => n > 0) && (
         <p className="text-sm text-neutral-600 px-4">
           No hay resultados para “{query}”.

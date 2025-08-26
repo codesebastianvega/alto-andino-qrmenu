@@ -97,7 +97,7 @@ export default function CategoryTabs({
   }, [items, manualSelectAt, selected, onChange]);
 
   return (
-    <div className="sticky top-0 z-40 bg-transparent backdrop-blur-[2px] border-b border-black/5 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+    <div className="sticky top-0 z-40 bg-transparent backdrop-blur-[2px] border-b border-black/5 dark:border-white/10">
       <div className="relative">
         <div
           role="tablist"
@@ -121,18 +121,18 @@ export default function CategoryTabs({
                 onKeyDown={handleKey}
                 onClick={() => handleSelect(item.id, idx)}
                 className={clsx(
-                  "inline-flex items-center gap-2 snap-start rounded-2xl px-3 min-w-[96px] h-14",
+                  "inline-flex flex-col items-center justify-center text-center snap-start rounded-2xl w-20 h-20 px-2",
                   "bg-white/12 backdrop-blur-md border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.08)]",
                   "text-neutral-800 dark:text-neutral-100",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]",
-                  active && "bg-white/28 border-white/40 ring-2 ring-[#2f4131]/50",
+                  active && "ring-2 ring-[#2f4131]/50 bg-white/28 border-white/40",
                   "hover:bg-white/20 hover:border-white/30"
                 )}
               >
                 <span className="w-10 h-10 rounded-full grid place-items-center shrink-0 bg-white/20 border border-white/30">
                   <IconWithFallback icon={item.icon} className="w-6 h-6 object-contain" />
                 </span>
-                <span className="text-sm font-medium line-clamp-2 text-left">
+                <span className="mt-1 text-xs font-medium leading-tight whitespace-normal break-words line-clamp-2">
                   {item.label}
                 </span>
               </button>
