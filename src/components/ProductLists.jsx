@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useCallback, useState, cloneElement } from "react";
+import { useMemo, useEffect, useCallback, useState, cloneElement, useRef } from "react";
 import { useCart } from "../context/CartContext";
 import { COP } from "../utils/money";
 import { getStockState, slugify, isUnavailable } from "../utils/stock";
@@ -32,6 +32,7 @@ export default function ProductLists({
   featureTabs = false,
 }) {
   const [counts, setCounts] = useState({});
+  const manualRef = useRef(false);
   const setCount = useCallback((id, n) => {
     setCounts((prev) => (prev[id] === n ? prev : { ...prev, [id]: n }));
   }, []);
@@ -269,38 +270,79 @@ export default function ProductLists({
 
   const orderedTabs = CATS;
 
+  const handleManualSelect = useCallback(
+    (cat) => {
+      manualRef.current = true;
+      onCategorySelect?.(cat);
+    },
+    [onCategorySelect]
+  );
+
   const onPrev = useCallback(() => {
     const idx = orderedTabs.indexOf(selectedCategory);
     if (idx > 0) {
       const prev = orderedTabs[idx - 1];
       if (prev === "todos") {
-        onCategorySelect?.({ id: "todos" });
+        handleManualSelect({ id: "todos" });
       } else {
         const cat = categories.find((c) => c.id === prev);
-        onCategorySelect?.(cat ?? { id: prev });
+        handleManualSelect(cat ?? { id: prev });
       }
     }
-  }, [selectedCategory, categories, onCategorySelect]);
+  }, [selectedCategory, categories, orderedTabs, handleManualSelect]);
 
   const onNext = useCallback(() => {
     const idx = orderedTabs.indexOf(selectedCategory);
     if (idx >= 0 && idx < orderedTabs.length - 1) {
       const nxt = orderedTabs[idx + 1];
       if (nxt === "todos") {
-        onCategorySelect?.({ id: "todos" });
+        handleManualSelect({ id: "todos" });
       } else {
         const cat = categories.find((c) => c.id === nxt);
-        onCategorySelect?.(cat ?? { id: nxt });
+        handleManualSelect(cat ?? { id: nxt });
       }
     }
-  }, [selectedCategory, categories, onCategorySelect]);
+  }, [selectedCategory, categories, orderedTabs, handleManualSelect]);
 
   const swipeHandlers = useSwipeTabs({ onPrev, onNext });
 
   useEffect(() => {
-    if (featureTabs) return;
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [featureTabs, selectedCategory]);
+    if (!manualRef.current) return;
+    const reset = () => {
+      manualRef.current = false;
+      window.removeEventListener("scroll", reset);
+    };
+    window.addEventListener("scroll", reset, { passive: true });
+    return () => window.removeEventListener("scroll", reset);
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    if (featureTabs && selectedCategory !== "todos") return;
+    const map = {};
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !manualRef.current) {
+            const id = map[entry.target.id];
+            if (id && id !== selectedCategory) {
+              onCategorySelect?.({ id });
+            }
+          }
+        });
+      },
+      { rootMargin: "0px 0px -50% 0px" }
+    );
+
+    categories.forEach((cat) => {
+      const el = document.getElementById(cat.targetId || `section-${cat.id}`);
+      if (el) {
+        map[el.id] = cat.id;
+        observer.observe(el);
+      }
+    });
+
+    return () => observer.disconnect();
+  }, [categories, featureTabs, selectedCategory, onCategorySelect, sections]);
 
   const stackClass =
 
@@ -308,7 +350,7 @@ export default function ProductLists({
 
   return (
     <>
-      <div className="mx-auto max-w-screen-md">
+      <div className="mx-auto max-w-screen-md sticky top-0 z-40 bg-white border-b">
         {!featureTabs && (
           <CategoryHeader
             selectedCategory={selectedCategory}
@@ -321,10 +363,10 @@ export default function ProductLists({
             value={selectedCategory}
             onChange={(slug) => {
               if (slug === "todos") {
-                onCategorySelect?.({ id: "todos" });
+                handleManualSelect({ id: "todos" });
               } else {
                 const cat = categories.find((c) => c.id === slug);
-                onCategorySelect?.(cat ?? { id: "todos" });
+                handleManualSelect(cat ?? { id: "todos" });
               }
             }}
             featureTabs={featureTabs}
@@ -333,7 +375,7 @@ export default function ProductLists({
           <CategoryBar
             categories={[{ id: "todos", label: "Todos", tintClass: "bg-stone-100" }, ...categories]}
             activeId={selectedCategory}
-            onSelect={(cat) => onCategorySelect?.(cat)}
+            onSelect={(cat) => handleManualSelect(cat)}
             variant="chip"
             featureTabs={featureTabs}
           />
