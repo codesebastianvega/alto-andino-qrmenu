@@ -59,7 +59,7 @@ export default function CategoryTabs({ value, onChange, items = [], counts = {} 
     >
       <div
         role="tablist"
-        className="flex overflow-x-auto snap-x snap-mandatory gap-3 scroll-px-4 py-2 [transform:translateZ(0)]"
+        className="flex overflow-x-auto snap-x snap-mandatory gap-3 py-2 [transform:translateZ(0)]"
       >
         {items.map((item, idx) => {
           const selected = value === item.id;
@@ -75,7 +75,7 @@ export default function CategoryTabs({ value, onChange, items = [], counts = {} 
               tabIndex={selected ? 0 : -1}
               onKeyDown={(e) => handleKeyDown(e, idx)}
               onClick={() => onChange?.(item.id)}
-              className={`${baseItemClasses} flex flex-col items-center justify-center text-center ${
+              className={`${baseItemClasses} first:ml-1 last:mr-1 flex flex-col items-center justify-center text-center ${
                 selected
                   ? "border border-transparent bg-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,.65),_0_8px_22px_rgba(36,51,38,.16)] text-[#2f4131]"
                   : "border border-zinc-200 hover:border-zinc-300"

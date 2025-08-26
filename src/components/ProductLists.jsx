@@ -301,29 +301,31 @@ export default function ProductLists({
     <>
       <div className="mx-auto max-w-screen-md px-4 md:px-6">
         <CategoryHeader />
-        {FEATURE_TABS ? (
-          <CategoryTabs
-            items={tabItems}
-            value={selectedCategory}
-            counts={counts}
-            onChange={(slug) => {
-              if (slug === "todos") {
-                onCategorySelect?.({ id: "todos" });
-              } else {
-                const cat = categories.find((c) => c.id === slug);
-                onCategorySelect?.(cat ?? { id: "todos" });
-              }
-            }}
-          />
-        ) : (
-          <CategoryBar
-            categories={categories}
-            activeId={selectedCategory}
-            onSelect={onCategorySelect}
-            variant="chip"
-            counts={counts}
-          />
-        )}
+        <div className="-mx-4 md:-mx-6 px-4 md:px-6">
+          {FEATURE_TABS ? (
+            <CategoryTabs
+              items={tabItems}
+              value={selectedCategory}
+              counts={counts}
+              onChange={(slug) => {
+                if (slug === "todos") {
+                  onCategorySelect?.({ id: "todos" });
+                } else {
+                  const cat = categories.find((c) => c.id === slug);
+                  onCategorySelect?.(cat ?? { id: "todos" });
+                }
+              }}
+            />
+          ) : (
+            <CategoryBar
+              categories={categories}
+              activeId={selectedCategory}
+              onSelect={onCategorySelect}
+              variant="chip"
+              counts={counts}
+            />
+          )}
+        </div>
       </div>
       <div {...swipeHandlers}>
         {FEATURE_TABS
