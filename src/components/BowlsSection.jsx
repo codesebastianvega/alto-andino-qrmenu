@@ -1,5 +1,5 @@
 // src/components/BowlsSection.jsx
-import React, { lazy, Suspense, useState } from "react";
+import React, { lazy, Suspense, useState, useEffect } from "react";
 import clsx from "clsx";
 import { useCart } from "../context/CartContext";
 import { COP, formatCOP } from "../utils/money";
@@ -13,7 +13,7 @@ import { preBowl } from "../data/menuItems";
 // ← editar nombres y precios aquí
 const BASE_PRICE = Number(import.meta.env.VITE_BOWL_BASE_PRICE || 28000);
 
-export default function BowlsSection({ query }) {
+export default function BowlsSection({ query, onCount }) {
   const { addItem } = useCart();
   const [open, setOpen] = useState(false);
 
@@ -44,7 +44,11 @@ export default function BowlsSection({ query }) {
     { title: preBowl.name, description: preBowl.desc },
     query
   );
-  if (query && !show) return null;
+  const count = show ? 1 : 0;
+  useEffect(() => {
+    onCount?.(count);
+  }, [count, onCount]);
+  if (!count) return null;
 
   return (
     <div className="space-y-4">

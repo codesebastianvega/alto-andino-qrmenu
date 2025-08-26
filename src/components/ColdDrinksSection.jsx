@@ -1,5 +1,4 @@
-import React from "react";
-import Section from "./Section";
+import React, { useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { AddIconButton, StatusChip } from "./Buttons";
 import { COP } from "../utils/money";
@@ -51,7 +50,7 @@ function Card({ item, onAdd }) {
   );
 }
 
-export default function ColdDrinksSection({ query, count, id }) {
+export default function ColdDrinksSection({ query, onCount }) {
   const { addItem } = useCart();
 
   const sodasFiltered = (sodas || []).filter((it) =>
@@ -60,10 +59,15 @@ export default function ColdDrinksSection({ query, count, id }) {
   const othersFiltered = (otherDrinks || []).filter((it) =>
     matchesQuery({ title: it.name, description: it.desc }, query)
   );
-  if (!sodasFiltered.length && !othersFiltered.length) return null;
+  const count = sodasFiltered.length + othersFiltered.length;
+  useEffect(() => {
+    onCount?.(count);
+  }, [count, onCount]);
+
+  if (!count) return null;
 
   return (
-    <Section title="Bebidas frías" count={count} id={id}>
+    <div>
       {sodasFiltered.length > 0 && (
         <>
           {/* Subgrupo: Gaseosas y Sodas */}
@@ -87,7 +91,7 @@ export default function ColdDrinksSection({ query, count, id }) {
           </div>
         </>
       )}
-    </Section>
+    </div>
   );
 }
 

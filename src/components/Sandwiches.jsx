@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Chip, AddIconButton, StatusChip } from "./Buttons";
 import { COP } from "../utils/money";
 import { useCart } from "../context/CartContext";
@@ -11,7 +11,7 @@ import {
   sandwichPriceByItem,
 } from "../data/menuItems";
 
-export default function Sandwiches({ query }) {
+export default function Sandwiches({ query, onCount }) {
   const cart = useCart();
   const [size, setSize] = useState("clasico"); // 'clasico' | 'grande'
 
@@ -26,6 +26,11 @@ export default function Sandwiches({ query }) {
   const filtered = items.filter((it) =>
     matchesQuery({ title: it.name, description: it.desc }, query)
   );
+
+  useEffect(() => {
+    onCount?.(filtered.length);
+  }, [filtered.length, onCount]);
+
   if (!filtered.length) return null;
 
   const priceFor = (key) => {
