@@ -1,6 +1,8 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useCart } from "../context/CartContext";
 import SwipeRevealItem from "./SwipeRevealItem";
+import Portal from "./Portal";
+import { toast } from "./Toast";
 
 const toNumberCOP = (v) => {
   if (typeof v === "number") return v;
@@ -71,12 +73,17 @@ export default function CartDrawer({ open, onClose }) {
     decrement,
     removeItem,
     updateItem,
+    addItem,
 
     note,
     setNote,
     setItemNote: setItemNoteCtx,
     updateItemNote: updateItemNoteCtx,
   } = cart;
+
+  const [confirmingClear, setConfirmingClear] = useState(false);
+  const [lastSnapshot, setLastSnapshot] = useState(null);
+  const confirmBtnRef = useRef(null);
 
   const waNum = safeNum(import.meta.env.VITE_WHATSAPP || "573209009972");
   const waHref = items?.length
@@ -115,6 +122,34 @@ export default function CartDrawer({ open, onClose }) {
     else decrement?.(idx);
   };
 
+  const handleClearRequest = () => {
+    try {
+      setLastSnapshot(JSON.parse(JSON.stringify(items)));
+    } catch {
+      setLastSnapshot(items);
+    }
+    setConfirmingClear(true);
+  };
+
+  const clearCartNow = () => {
+    clearCart?.();
+    setConfirmingClear(false);
+    toast("Carrito vaciado", {
+      actionLabel: "Deshacer",
+      duration: 5000,
+      onAction: () => {
+        if (lastSnapshot) {
+          if (typeof cart.replaceWith === "function") {
+            cart.replaceWith(lastSnapshot);
+          } else {
+            cart.clear?.();
+            lastSnapshot.forEach((it) => addItem?.(it));
+          }
+        }
+      },
+    });
+  };
+
 
   useEffect(() => {
     if (!open) return;
@@ -124,24 +159,34 @@ export default function CartDrawer({ open, onClose }) {
   }, [open]);
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    if (confirmingClear) confirmBtnRef.current?.focus();
+  }, [confirmingClear]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        if (confirmingClear) setConfirmingClear(false);
+        else onClose?.();
+      }
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, confirmingClear]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[96]">
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden />
+    <>
+      <div className="fixed inset-0 z-[96]">
+        {/* Overlay */}
+        <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden />
 
-      {/* Sheet */}
-      <div
-        className="absolute inset-x-0 bottom-0 z-[96] mx-auto w-full max-w-md rounded-t-2xl shadow-2xl ring-1 ring-black/10 bg-[#FAF7F2]"
-        role="dialog"
-        aria-modal="true"
-      >
+        {/* Sheet */}
+        <div
+          className="absolute inset-x-0 bottom-0 z-[96] mx-auto w-full max-w-md rounded-t-2xl shadow-2xl ring-1 ring-black/10 bg-[#FAF7F2]"
+          role="dialog"
+          aria-modal="true"
+        >
         {/* Handle */}
         <div className="pt-3">
           <div className="mx-auto h-1.5 w-10 rounded-full bg-neutral-300/70" />
@@ -151,7 +196,7 @@ export default function CartDrawer({ open, onClose }) {
         <div className="px-4 pb-3 pt-2 flex items-center justify-between">
           <h2 className="text-neutral-900 font-semibold text-lg">Tu pedido</h2>
           <div className="flex items-center gap-3">
-            <button type="button" onClick={clearCart} className="text-xs text-neutral-700 hover:text-neutral-900 underline underline-offset-2">Vaciar</button>
+            <button type="button" onClick={handleClearRequest} className="text-xs text-neutral-700 hover:text-neutral-900 underline underline-offset-2">Vaciar</button>
             <button type="button" onClick={onClose} className="text-xs text-neutral-700 hover:text-neutral-900 rounded px-2 py-1 ring-1 ring-neutral-300/70" aria-label="Cerrar">Cerrar</button>
           </div>
         </div>
@@ -273,7 +318,39 @@ export default function CartDrawer({ open, onClose }) {
             </a>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+      {confirmingClear && (
+        <Portal>
+          <div className="fixed inset-0 z-[120] flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setConfirmingClear(false)} />
+            <div
+              role="dialog"
+              aria-modal="true"
+              className="relative z-10 max-w-md w-[calc(100%-1.5rem)] rounded-2xl bg-white p-5 shadow-xl"
+            >
+              <p className="text-center text-neutral-800">¿Vaciar todo el carrito?</p>
+              <div className="mt-4 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmingClear(false)}
+                  className="px-3 py-1 rounded text-sm text-neutral-700 hover:text-neutral-900"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  ref={confirmBtnRef}
+                  onClick={clearCartNow}
+                  className="px-3 py-1 rounded bg-[#2f4131] text-white text-sm hover:bg-[#243326]"
+                >
+                  Vaciar ahora
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+    </>
   );
 }
