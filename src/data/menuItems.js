@@ -26,7 +26,7 @@ export const breakfastItems = [
     id: "des-huevos",
     name: "Huevos al Gusto",
     price: 17500,
-    desc: "3 huevos en sartén de hierro; 2 tostadas con queso crema y vegetales. 🥚🌾🥛",
+    desc: "3 huevos en sartén de hierro; 2 tostadas con queso crema y vegetales + Bebida caliente. 🥚🌾🥛",
   },
   {
     id: "des-caldo",
@@ -312,25 +312,74 @@ export const infusions = [
 ];
 
 export const sodas = [
-  { id: "soda-zen", name: "Soda Zen", price: 3500, desc: "Frutos rojos, Durazno, Limonata rosada" },
+  {
+    id: "soda-zen",
+    name: "Soda Zen",
+    price: 3500,
+    desc: "Frutos rojos, Durazno, Limonata rosada",
+  },
   { id: "coca-250", name: "Coca-Cola 250 mL", price: 2500 },
   { id: "coca-400", name: "Coca-Cola 400 mL", price: 4500 },
   { id: "soda-manantial-400", name: "Soda Manantial 400 mL", price: 5000 },
   { id: "agua-manantial-500", name: "Agua Manantial 500 mL", price: 6000 },
-  { id: "hatsu-rosas-frambuesa-lata", name: "Hatsu Rosas y Frambuesa (lata)", price: 4500 },
-  { id: "hatsu-uva-romero-lata", name: "Hatsu Uva y Romero (lata)", price: 4500 },
-  { id: "hatsu-uva-romero-botella", name: "Hatsu Uva y Romero (botella)", price: 4000 },
-  { id: "hatsu-albahaca-botella", name: "Hatsu Albahaca (botella)", price: 4000 },
-  { id: "hatsu-yerbabuena-botella", name: "Hatsu Yerbabuena (botella)", price: 4000 },
+  {
+    id: "hatsu-rosas-frambuesa-lata",
+    name: "Hatsu Rosas y Frambuesa (lata)",
+    price: 4500,
+  },
+  {
+    id: "hatsu-uva-romero-lata",
+    name: "Hatsu Uva y Romero (lata)",
+    price: 4500,
+  },
+  {
+    id: "hatsu-uva-romero-botella",
+    name: "Hatsu Uva y Romero (botella)",
+    price: 4000,
+  },
+  {
+    id: "hatsu-albahaca-botella",
+    name: "Hatsu Albahaca (botella)",
+    price: 4000,
+  },
+  {
+    id: "hatsu-yerbabuena-botella",
+    name: "Hatsu Yerbabuena (botella)",
+    price: 4000,
+  },
 ];
 
 export const otherDrinks = [
-  { id: "te-hatsu-400", name: "Té Hatsu 400 mL", price: 5000, desc: "Rojo, Negro, Aguamarina, Rosado, Fucsia, Blanco, Amarillo, Verde" },
-  { id: "te-hatsu-caja-200", name: "Té Hatsu Caja 200 mL", price: 2000, desc: "Blanco, Amarillo, Aguamarina" },
+  {
+    id: "te-hatsu-400",
+    name: "Té Hatsu 400 mL",
+    price: 5000,
+    desc: "Rojo, Negro, Aguamarina, Rosado, Fucsia, Blanco, Amarillo, Verde",
+  },
+  {
+    id: "te-hatsu-caja-200",
+    name: "Té Hatsu Caja 200 mL",
+    price: 2000,
+    desc: "Blanco, Amarillo, Aguamarina",
+  },
   { id: "saviloe-250", name: "SaviLoe 250 mL", price: 3500 },
   { id: "savifruit", name: "SaviFruit", price: 2500 },
-  { id: "electrolit", name: "Electrolit", price: 9000, desc: "Coco, Durazno, Fresa, Fresa-Kiwi, Lima-Limón, Naranja-Mandarina, Piña, Uva, Maracuyá, Mora azul" },
-  { id: "go-aloe-sparkling", name: "Go Aloe Sparkling", price: 6500, desc: "Watermelon, Natural, Ginger" },
-  { id: "cool-drink", name: "Cool Drink", price: 4000, desc: "Kiwi, Granada, Maracuyá, Manzana verde, Mangostino" },
+  {
+    id: "electrolit",
+    name: "Electrolit",
+    price: 9000,
+    desc: "Coco, Durazno, Fresa, Fresa-Kiwi, Lima-Limón, Naranja-Mandarina, Piña, Uva, Maracuyá, Mora azul",
+  },
+  {
+    id: "go-aloe-sparkling",
+    name: "Go Aloe Sparkling",
+    price: 6500,
+    desc: "Watermelon, Natural, Ginger",
+  },
+  {
+    id: "cool-drink",
+    name: "Cool Drink",
+    price: 4000,
+    desc: "Kiwi, Granada, Maracuyá, Manzana verde, Mangostino",
+  },
 ];
-
