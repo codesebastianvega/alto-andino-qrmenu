@@ -4,7 +4,7 @@ export default function HeroHeadline() {
       <h1
         id="home-headline"
         tabIndex="-1"
-        className="text-[22px] md:text-3xl font-semibold tracking-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(47,65,49,.3)] rounded"
+        className="text-[22px] md:text-3xl font-semibold tracking-tight leading-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(47,65,49,.3)] rounded"
         style={{
           display: "-webkit-box",
           WebkitLineClamp: 2,
@@ -13,7 +13,10 @@ export default function HeroHeadline() {
         }}
       >
         <span className="sr-only">Alto Andino</span>
-        <span className="headline-strong bg-gradient-to-r from-[#2f4131] via-[#3e5f4b] to-[#7aa28d] bg-clip-text text-transparent">
+        <span
+          className="bg-gradient-to-r from-[#203628] to-[#5f8a74] bg-clip-text text-transparent"
+          style={{ textShadow: "0 1px 0 rgba(0,0,0,.18)" }}
+        >
           Comer sano
         </span>{" "}
         nunca fue tan fácil
