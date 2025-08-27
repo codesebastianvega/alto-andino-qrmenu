@@ -1,8 +1,8 @@
 
- import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { formatCOP } from "@/utils/money";
 import { useCart } from "@/context/CartContext";
- import Portal from "./Portal";
+import Portal from "./Portal";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
  
  // Tile ancho completo con estados
