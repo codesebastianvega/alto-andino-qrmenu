@@ -145,42 +145,79 @@ import useSwipeTabs from "@/utils/useSwipeTabs";
          ),
        });
      }
-     arr.push({
-       id: "sandwiches",
-       element:
-         counts.sandwiches > 0 ? (
-           <Section title="Sándwiches" count={counts.sandwiches}>
-             {sandwichesEl}
-           </Section>
-         ) : (
-           sandwichesEl
-         ),
-     });
- export default function ProductLists({
-  breakfasts,
-  mains,
-  dessertsCumbre,
-  dessertsBase,
-  dessertsCount,
-  counts,
-  bowlsEl,
-  sandwichesEl,
-  smoothiesEl,
-  coffeeEl,
-  coldEl
-}) {
-  return (
-    <Section>
-      {/* Aquí renderizas cada categoría */}
-      {breakfasts && breakfasts.map((item) => (
-        <ProductCard key={item.id} {...item} />
-      ))}
-
-      {/* Repite para mains, desserts, etc. */}
-    </Section>
-  );
-}
-   const renderPanel = (s, inTodos = false) => (
+    arr.push({
+      id: "sandwiches",
+      element:
+        counts.sandwiches > 0 ? (
+          <Section title="Sándwiches" count={counts.sandwiches}>
+            {sandwichesEl}
+          </Section>
+        ) : (
+          sandwichesEl
+        ),
+    });
+    arr.push({
+      id: "smoothies",
+      element:
+        counts.smoothies > 0 ? (
+          <Section title="Smoothies" count={counts.smoothies}>
+            {smoothiesEl}
+          </Section>
+        ) : (
+          smoothiesEl
+        ),
+    });
+    arr.push({
+      id: "cafe",
+      element:
+        counts.cafe > 0 ? (
+          <Section title="Café" count={counts.cafe}>
+            {coffeeEl}
+          </Section>
+        ) : (
+          coffeeEl
+        ),
+    });
+    arr.push({
+      id: "bebidasfrias",
+      element:
+        counts.bebidasfrias > 0 ? (
+          <Section title="Bebidas Frías" count={counts.bebidasfrias}>
+            {coldEl}
+          </Section>
+        ) : (
+          coldEl
+        ),
+    });
+    if (dessertsCount) {
+      arr.push({
+        id: "postres",
+        element: (
+          <Section title="Postres" count={dessertsCount}>
+            <Desserts
+              cumbre={dessertsCumbre}
+              base={dessertsBase}
+              onQuickView={onQuickView}
+            />
+          </Section>
+        ),
+      });
+    }
+    return arr;
+  }, [
+    breakfasts,
+    counts.bowls,
+    mains,
+    counts.sandwiches,
+    counts.smoothies,
+    counts.cafe,
+    counts.bebidasfrias,
+    dessertsCumbre,
+    dessertsBase,
+    dessertsCount,
+    onQuickView,
+  ]);
+  const renderPanel = (s, inTodos = false) => (
      <div
        key={s.id}
        id={`panel-${s.id}${inTodos ? "-todos" : ""}`}
@@ -231,8 +268,9 @@ import useSwipeTabs from "@/utils/useSwipeTabs";
          const cat = categories.find((c) => c.id === nxt);
          handleManualSelect(cat ?? { id: nxt });
        }
- export default function ProductLists() {
- 
+     }
+   }, [selectedCategory, categories, orderedTabs, handleManualSelect]);
+
    useEffect(() => {
      if (!manualRef.current) return;
      const reset = () => {
@@ -409,8 +447,7 @@ import useSwipeTabs from "@/utils/useSwipeTabs";
            ))}
          </ul>
        )}
--
-     </div>
+      </div>
    );
  }
  
@@ -424,8 +461,7 @@ import useSwipeTabs from "@/utils/useSwipeTabs";
    );
  }
  
--
- function ProductRow({ item, onQuickView }) {
+  function ProductRow({ item, onQuickView }) {
    const { addItem } = useCart();
    const st = getStockState(item.id || slugify(item.name));
    const unavailable = st === "out" || isUnavailable(item);
