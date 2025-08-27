@@ -91,22 +91,22 @@ import { formatCOP } from "@/utils/money";
        e.preventDefault();
        return;
      }
-     try {
-       const snapshot = { items, note, total };
-       sessionStorage.setItem("aa_last_order", JSON.stringify(snapshot));
-     } catch {}
-     setTimeout(() => {
-       try {
-         clearCart?.();
-         document.dispatchEvent(
-           new CustomEvent("aa:toast", {
-             detail: { message: "Pedido abierto en WhatsApp — Deshacer" },
+    try {
+      const snapshot = { items, note, total };
+      sessionStorage.setItem("aa_last_order", JSON.stringify(snapshot));
+    } catch {}
+
+    setTimeout(() => {
+      try {
+        clearCart?.();
+        document.dispatchEvent(
+          new CustomEvent("aa:toast", {
+            detail: { message: "Pedido abierto en WhatsApp — Deshacer" },
           })
-          }),
-         );
-       } catch {}
-     }, 300);
-   };
+        );
+      } catch {}
+    }, 300);
+  };
  
    // setter flexible para nota por ítem (usa la disponible en el contexto)
    const setItemNote =
