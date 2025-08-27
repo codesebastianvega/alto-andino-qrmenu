@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
-import Chip from "./Chip"; // si tu Chip es un componente propio
+import { Chip } from "./Buttons";
 
 const SUGGESTIONS = ["Veggie", "Sin gluten", "Café", "Bowl del día"];
 
@@ -43,13 +43,13 @@ export default function SearchBar({ value = "", onQueryChange, showChips = false
       {showChips && (
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
           {SUGGESTIONS.map((s) => (
-            <button
+            <Chip
               key={s}
               onClick={() => handleChip(s)}
-              className="glass-btn whitespace-nowrap rounded-full px-3 py-1 text-xs text-white transition-all duration-200 hover:scale-105"
+              className="glass-btn whitespace-nowrap px-3 py-1 text-xs text-white transition-all duration-200 hover:scale-105"
             >
               {s}
-            </button>
+            </Chip>
           ))}
         </div>
       )}
