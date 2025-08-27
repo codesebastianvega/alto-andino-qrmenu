@@ -6,6 +6,7 @@ import { formatCOP } from "@/utils/money";
 import { toast } from "./Toast";
 import { getProductImage } from "@/utils/images";
 import { MILK_OPTIONS, isMilkEligible } from "@/config/milkOptions";
+import AAImage from "@/components/ui/AAImage";
 
 export default function ProductQuickView({ open, product, onClose, onAdd }) {
   useLockBodyScroll(open);
@@ -112,11 +113,9 @@ export default function ProductQuickView({ open, product, onClose, onAdd }) {
             </button>
 
             {/* Elementos animados en secuencia */}
-            <img
+            <AAImage
               src={image}
               alt={title || product?.name || "Producto"}
-              loading="lazy"
-              decoding="async"
               className="mb-3 h-48 w-full rounded-xl object-cover"
               style={stagger(0)}
             />

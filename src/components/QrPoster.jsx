@@ -1,5 +1,6 @@
 // src/components/QrPoster.jsx
 import QRCode from "react-qr-code";
+import AAImage from "@/components/ui/AAImage";
 
 export default function QrPoster({ url }) {
   // Lee ?t= de la URL para “Mesa”
@@ -38,10 +39,11 @@ export default function QrPoster({ url }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-alto-beige p-6 text-alto-text print:bg-white">
       <div className="w-full max-w-md rounded-3xl border bg-white p-6 text-center shadow-xl print:border-0 print:shadow-none">
-        <img
+        <AAImage
           src="/logoalto.png"
           alt="Alto Andino"
           className="mx-auto mb-3 h-20 w-20 object-contain"
+          priority
         />
         <h1 className="text-lg font-extrabold">
           Menú QR {table ? `· Mesa ${table}` : ""}
