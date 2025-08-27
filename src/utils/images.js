@@ -4,8 +4,8 @@
 // 1) Pon tus imágenes en: /public/img/products/
 //    Ej.: /public/img/products/coffee-capuccino.jpg
 // 2) Mapea aquí debajo en IMAGE_MAP usando un id o un slug manual.
-// 3) Si no hay match, se intentará /img/products/<slug>.jpg; si tampoco existe,
-//    usa PLACEHOLDER (crea /public/img/products/placeholder.jpg).
+// 3) Si no hay match, se intentará /img/products/<slug> con las extensiones
+//    .png y .jpg. Si tampoco existe, retornará null.
 
 function slugify(s = "") {
   return String(s)
@@ -22,6 +22,7 @@ export const IMAGE_MAP = {
 
   // === SANDWICHES ===
   "sandwich:pollo": "/img/products/sandwich-pollo.jpg",
+  "sandwich:cerdo": "/img/products/sancerdo1.png",
 
   // === BOWLS ===
   "bowl:prearmado": "/img/products/bowl-prearmado.jpg",
@@ -30,18 +31,26 @@ export const IMAGE_MAP = {
   // "<productId-o-slug>": "/img/products/mi-foto.jpg",
 };
 
-export const PLACEHOLDER = "/img/products/placeholder.jpg";
-
 /**
  * Dado un producto { id?, name? }, devuelve una ruta de imagen.
  * 1) Busca en IMAGE_MAP por id o slug(name)
- * 2) Si no, intenta /img/products/<slug>.jpg
- * 3) Si no, PLACEHOLDER
+ * 2) Si no, intenta /img/products/<slug>.png o .jpg
+ * 3) Si no, retorna null
  */
 export function getProductImage(product) {
-  if (!product) return PLACEHOLDER;
+  if (!product) return null;
   const key = product.id || (product.name ? slugify(product.name) : "");
   if (key && IMAGE_MAP[key]) return IMAGE_MAP[key];
-  if (key) return `/img/products/${key}.jpg`;
-  return PLACEHOLDER;
+
+  for (const ext of ["png", "jpg"]) {
+    const url = `/img/products/${key}.${ext}`;
+    const req = new XMLHttpRequest();
+    try {
+      req.open("HEAD", url, false);
+      req.send();
+      if (req.status >= 200 && req.status < 400) return url;
+    } catch {}
+  }
+
+  return null;
 }

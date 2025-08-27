@@ -4,7 +4,6 @@ import { getProductImage } from "@/utils/images";
 import { StatusChip } from "./Buttons";
 import { toast } from "./Toast";
 import AAImage from "@/components/ui/AAImage";
-import { getProductImage } from "@/utils/images";
 
 // Comentario guía encima de donde uses <img> o <AAImage>:
 {/* Las imágenes de producto se configuran en src/utils/images.js.
@@ -27,6 +26,8 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
     price: item.price,
   };
 
+  const imageSrc = getProductImage(product);
+
   const handleQuickView = () => onQuickView?.(product);
 
   const handleKeyDown = (e) => {
@@ -47,26 +48,30 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
 
   return (
     <article
-      className={`group grid grid-cols-[96px_1fr] gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 transition-all duration-200 md:grid-cols-[112px_1fr] md:gap-4 md:p-4 hover:shadow-md hover:ring-black/10 hover:-translate-y-0.5 ${
+      className={`group grid ${
+        imageSrc ? "grid-cols-[96px_1fr] md:grid-cols-[112px_1fr]" : "grid-cols-1"
+      } gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 transition-all duration-200 md:gap-4 md:p-4 hover:shadow-md hover:ring-black/10 hover:-translate-y-0.5 ${
         unavailable ? "opacity-70 grayscale" : ""
       }`}
     >
-      <button
-        type="button"
-        onClick={handleQuickView}
-        onKeyDown={handleKeyDown}
-        aria-label={`Ver ${product.title || product.name || "producto"}`}
-        className="block overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
-      >
-        // Las imágenes de producto se configuran en src/utils/images.js.
-        // Pon tus archivos en /public/img/products y mapea la clave en IMAGE_MAP
+      {imageSrc && (
+        <button
+          type="button"
+          onClick={handleQuickView}
+          onKeyDown={handleKeyDown}
+          aria-label={`Ver ${product.title || product.name || "producto"}`}
+          className="block overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
+        >
+          // Las imágenes de producto se configuran en src/utils/images.js.
+          // Pon tus archivos en /public/img/products y mapea la clave en IMAGE_MAP
 
-        <AAImage
-          src={getProductImage(product)}
-          alt={item.name || "Producto"}
-          className="h-24 w-24 rounded-xl object-cover transition-transform duration-200 group-hover:scale-105 md:h-28 md:w-28"
-        />
-      </button>
+          <AAImage
+            src={imageSrc}
+            alt={item.name || "Producto"}
+            className="h-24 w-24 rounded-xl object-cover transition-transform duration-200 group-hover:scale-105 md:h-28 md:w-28"
+          />
+        </button>
+      )}
 
       <div className="flex min-w-0 flex-col">
         <h3 className="truncate text-base font-semibold text-neutral-900 md:text-[17px]">
