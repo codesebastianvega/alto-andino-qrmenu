@@ -11,6 +11,8 @@ export const getItemUnit = (it) =>
   Number(String(it?.price ?? it?.unitPrice ?? it?.priceEach).replace(/[^\d.-]/g, "")) || 0;
 
 const CartCtx = createContext(null);
+
+export const useCart = () => useContext(CartCtx);
 const STORAGE_KEY = "aa_cart";
 
 function safeParse(json, fallback) {
