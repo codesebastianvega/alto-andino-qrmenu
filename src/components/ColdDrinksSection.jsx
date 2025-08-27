@@ -1,5 +1,5 @@
 // src/components/ColdDrinksSection.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import ProductSection from "./ProductSection";
 import * as menu from "@/data/menuItems";
 
@@ -13,8 +13,6 @@ function pickArray(...candidates) {
 }
 
 export default function ColdDrinksSection({ query, onCount, onQuickView }) {
-  const [visible, setVisible] = useState(false);
-  const ref = useRef(null);
 
   const groupsRaw = [
     { title: "Gaseosas y Sodas",            items: pickArray("sodas", "gaseosas") },
@@ -45,25 +43,8 @@ export default function ColdDrinksSection({ query, onCount, onQuickView }) {
     }
   }, [groups, onCount]);
 
-  // Animación al entrar a viewport
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setVisible(true);
-        io.unobserve(el);
-      }
-    }, { threshold: 0.15 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
   return (
-    <div
-      ref={ref}
-      className={`transition-all duration-500 ease-out ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-    >
+    <div className="transition-all duration-500 ease-out opacity-100 translate-y-0">
       <ProductSection
         id="bebidasfrias"
         title="Bebidas frías"

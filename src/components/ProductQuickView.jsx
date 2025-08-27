@@ -8,7 +8,6 @@ import { toast } from "./Toast";
 import { getProductImage } from "@/utils/images";
 import { MILK_OPTIONS, isMilkEligible } from "@/config/milkOptions";
 import AAImage from "@/components/ui/AAImage";
-import { getProductImage } from "@/utils/images";
 
 // Comentario guía encima de donde uses <img> o <AAImage>:
 {/* Las imágenes de producto se configuran en src/utils/images.js.
