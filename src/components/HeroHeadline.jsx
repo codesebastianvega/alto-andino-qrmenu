@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "react-scroll";
-import { menuCategories } from "../data/menuData"; // tu fuente real de categorías
+import { CATEGORIES_LIST as menuCategories } from "../config/categories";
 
 // Plantillas de frases para cada momento del día
 const templates = {
@@ -66,7 +66,7 @@ function getTimeContext() {
     templateList[Math.floor(Math.random() * templateList.length)];
 
   // Sustituimos {nombre} en la plantilla
-  const tip = randomTemplate.replace("{nombre}", randomCat.nombre);
+  const tip = randomTemplate.replace("{nombre}", randomCat.label);
 
   return {
     emoji: emojiMap[currentTime],
