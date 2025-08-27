@@ -8,16 +8,27 @@ export default function QrPoster({ url }) {
       ? new URLSearchParams(window.location.search)
       : null;
   const table = params?.get("t") || "";
+
   // Si viene mesa, el QR apunta a url?t=XX; si no, a url “pelado”
   const qrTarget = table ? `${url}?t=${encodeURIComponent(table)}` : url;
 
   const handlePrint = () => {
     if (typeof window !== "undefined") window.print();
   };
+
   const handleCopy = async () => {
     try {
       await navigator?.clipboard?.writeText(qrTarget);
-      if (typeof window !== "undefined") window.alert("URL copiada al portapapeles");
+
+      // Pequeña animación visual en el borde del QR/URL
+      const el = document.querySelector(".qr-border");
+      if (el) {
+        el.classList.add("copied");
+        setTimeout(() => el.classList.remove("copied"), 400);
+      }
+
+      if (typeof window !== "undefined")
+        window.alert("URL copiada al portapapeles");
     } catch {
       if (typeof window !== "undefined")
         window.alert("No se pudo copiar. Copia manualmente: " + qrTarget);
@@ -25,44 +36,49 @@ export default function QrPoster({ url }) {
   };
 
   return (
-    <div className="min-h-screen bg-alto-beige text-alto-text flex items-center justify-center p-6 print:bg-white">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border p-6 text-center print:shadow-none print:border-0">
+    <div className="flex min-h-screen items-center justify-center bg-alto-beige p-6 text-alto-text print:bg-white">
+      <div className="w-full max-w-md rounded-3xl border bg-white p-6 text-center shadow-xl print:border-0 print:shadow-none">
         <img
           src="/logoalto.png"
           alt="Alto Andino"
-          className="h-20 w-20 mx-auto mb-3 object-contain"
+          className="mx-auto mb-3 h-20 w-20 object-contain"
         />
         <h1 className="text-lg font-extrabold">
           Menú QR {table ? `· Mesa ${table}` : ""}
         </h1>
-        <p className="text-xs text-neutral-600 mb-4">
+        <p className="mb-4 text-xs text-neutral-600">
           {table ? "Escanéame para esta mesa" : "Escanéame para ver el menú"}
         </p>
 
-        <div className="bg-white p-4 rounded-2xl border inline-block">
+        <div className="inline-block rounded-2xl border bg-white p-4 qr-fade qr-border">
           <QRCode value={qrTarget} size={220} />
         </div>
 
-        <p className="mt-4 text-[12px] break-all">{qrTarget}</p>
+        <p
+          className="mt-4 break-all text-[12px] qr-fade"
+          style={{ animationDelay: "120ms" }}
+        >
+          {qrTarget}
+        </p>
 
-        <div className="mt-5 flex gap-2 justify-center no-print">
+        <div className="no-print mt-5 flex justify-center gap-2">
           <button
             type="button"
-            className="px-3 py-2 rounded-lg border bg-neutral-50 hover:bg-neutral-100 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+            className="rounded-lg border bg-neutral-50 px-3 py-2 text-sm hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
             onClick={handleCopy}
           >
             Copiar URL
           </button>
           <button
             type="button"
-            className="px-3 py-2 rounded-lg bg-alto-primary text-white hover:opacity-90 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+            className="rounded-lg bg-alto-primary px-3 py-2 text-sm text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
             onClick={handlePrint}
           >
             Imprimir
           </button>
         </div>
 
-        <p className="mt-3 text-[10px] text-neutral-500 no-print">
+        <p className="no-print mt-3 text-[10px] text-neutral-500">
           Hecho por Sebastian con GPT-5 Thinking ✨
         </p>
       </div>

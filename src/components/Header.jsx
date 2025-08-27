@@ -1,10 +1,10 @@
-// src/components/Header.jsx
 import { useState } from "react";
 import { Icon } from "@iconify-icon/react";
+import { motion } from "framer-motion";
 import GuideModal from "./GuideModal";
 import DietaryGuide from "./DietaryGuide";
 
-export default function Header({ onCartOpen, onGuideOpen }) {
+export default function Header({ onCartOpen, onGuideOpen, cartCount = 0 }) {
   const [localGuideOpen, setLocalGuideOpen] = useState(false);
 
   const handleInfoClick = () => {
@@ -13,40 +13,47 @@ export default function Header({ onCartOpen, onGuideOpen }) {
   };
 
   return (
-    <header
+    <motion.header
       role="banner"
-      className="sticky top-0 z-50 h-[64px] w-full bg-[#243326] text-white border-b border-black/10 shadow-sm"
+      initial={{ y: -40, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="sticky top-0 z-50 h-[64px] w-full border-b border-black/10 bg-[#243326] text-white shadow-sm"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="mx-auto max-w-screen-md px-4 md:px-6 h-full flex items-center justify-between gap-3">
-        <h1
-          className="flex-1 text-[18px] md:text-lg font-semibold tracking-tight text-white select-none"
-        >
+      <div className="mx-auto flex h-full max-w-screen-md items-center justify-between gap-3 px-4 md:px-6">
+        <h1 className="flex-1 select-none text-[18px] font-semibold tracking-tight text-white md:text-lg">
           Alto Andino Zipaquirá
         </h1>
 
-        <div className="flex items-center gap-2">
+        <div className="relative flex items-center gap-2">
           <button
             type="button"
             onClick={handleInfoClick}
             aria-label="Información"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131] group"
+            className="group inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
           >
             <Icon
               icon="material-symbols:info-outline"
-              className="text-white text-[22px] opacity-90 group-hover:opacity-100"
+              className="text-[22px] text-white opacity-90 group-hover:opacity-100"
             />
           </button>
+
           <button
             type="button"
             onClick={() => onCartOpen?.()}
             aria-label="Abrir carrito"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131] group"
+            className="group relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
           >
             <Icon
               icon="mdi:cart-outline"
-              className="text-white text-[22px] opacity-90 group-hover:opacity-100"
+              className="text-[22px] text-white opacity-90 group-hover:opacity-100"
             />
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white leading-tight text-center">
+                {cartCount}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -56,7 +63,6 @@ export default function Header({ onCartOpen, onGuideOpen }) {
           <DietaryGuide />
         </GuideModal>
       )}
-    </header>
+    </motion.header>
   );
 }
-

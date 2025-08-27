@@ -14,5 +14,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <App />
       </CartProvider>
     </ErrorBoundary>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

@@ -1,3 +1,4 @@
+// TODO(F6): eliminar si no se usa
 // src/components/BrandDecor.jsx
 // Muestra 4 imágenes fijas en las esquinas. Si falta una, se oculta sola.
 export default function BrandDecor() {

@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import ProductSection from "./ProductSection";
-import { matchesQuery } from "../utils/strings";
-import { sandwichItems, sandwichPriceByItem } from "../data/menuItems";
+import { matchesQuery } from "@/utils/strings";
+import { sandwichItems } from "@/data/menuItems";
+import { SANDWICH_PRICE_BY_ITEM } from "@/config/prices";
 
 export default function Sandwiches({ query, onCount, onQuickView }) {
   const [size, setSize] = useState("clasico");
@@ -9,15 +10,12 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
     { id: "clasico", label: "Clásico (100 g de proteína)" },
     { id: "grande", label: "Grande (300 g de proteína)" },
   ];
-  const priceByItem = sandwichPriceByItem || {};
+  const priceByItem = SANDWICH_PRICE_BY_ITEM || {};
   const items = sandwichItems || [];
 
   const filtered = useMemo(
-    () =>
-      items.filter((it) =>
-        matchesQuery({ title: it.name, description: it.desc }, query)
-      ),
-    [items, query]
+    () => items.filter((it) => matchesQuery({ title: it.name, description: it.desc }, query)),
+    [items, query],
   );
 
   useEffect(() => {
@@ -34,11 +32,7 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
 
   const sizeLabel = (key) => {
     const mapping = priceByItem[key];
-    return mapping?.unico
-      ? "Precio único"
-      : size === "clasico"
-      ? "Clásico"
-      : "Grande";
+    return mapping?.unico ? "Precio único" : size === "clasico" ? "Clásico" : "Grande";
   };
 
   return (
@@ -50,7 +44,7 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
       onCount={onCount}
       onQuickView={onQuickView}
       renderHeader={() => (
-        <div className="rounded-xl bg-white ring-1 ring-black/5 p-3 space-y-2">
+        <div className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-black/5">
           <div className="text-sm font-medium">Elige tamaño</div>
           <div className="flex gap-2">
             {sizes.map((s) => (
@@ -58,10 +52,10 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
                 key={s.id}
                 onClick={() => setSize(s.id)}
                 className={[
-                  "px-3 py-1.5 rounded-full ring-1 ring-neutral-200 text-sm",
+                  "glass-btn rounded-full px-3 py-1.5 text-sm ring-1 ring-white/30 transition-all duration-200 backdrop-blur-md",
                   size === s.id
-                    ? "bg-emerald-100 text-emerald-800 ring-emerald-300"
-                    : "bg-white text-neutral-700",
+                    ? "bg-white/30 text-emerald-900 shadow-lg"
+                    : "bg-white/10 text-white hover:bg-white/20",
                 ].join(" ")}
               >
                 {s.label}
@@ -69,7 +63,8 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
             ))}
           </div>
           <p className="text-xs text-neutral-600">
-            Clásico: 100 g de proteína · Grande: 300 g de proteína. *Algunos sándwiches tienen precio único.
+            Clásico: 100 g de proteína · Grande: 300 g de proteína. *Algunos sándwiches tienen
+            precio único.
           </p>
         </div>
       )}
@@ -86,4 +81,3 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
     />
   );
 }
-

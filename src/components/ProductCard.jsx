@@ -1,15 +1,15 @@
-import { formatCOP } from '../utils/money';
-import { getStockState, slugify, isUnavailable } from '../utils/stock';
-import { getProductImage } from '../utils/images';
-import { StatusChip } from './Buttons';
-import { toast } from './Toast';
+import { formatCOP } from "@/utils/money";
+import { getStockState, slugify, isUnavailable } from "@/utils/stock";
+import { getProductImage } from "@/utils/images";
+import { StatusChip } from "./Buttons";
+import { toast } from "./Toast";
 
 export default function ProductCard({ item, onAdd, onQuickView }) {
   if (!item) return null;
 
   const productId = item.id || slugify(item.name);
   const st = getStockState(productId);
-  const unavailable = st === 'out' || isUnavailable(item);
+  const unavailable = st === "out" || isUnavailable(item);
 
   const product = {
     productId,
@@ -21,8 +21,9 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
   };
 
   const handleQuickView = () => onQuickView?.(product);
+
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
+    if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       handleQuickView();
     }
@@ -31,48 +32,63 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
   const handleAdd = (e) => {
     e.stopPropagation();
     if (unavailable) {
-      toast('Producto no disponible');
+      toast("Producto no disponible");
       return;
     }
     onAdd?.({ productId, name: item.name, price: item.price, qty: 1 });
   };
 
   return (
-    <article className="group grid grid-cols-[96px_1fr] md:grid-cols-[112px_1fr] gap-3 md:gap-4 p-3 md:p-4 rounded-2xl bg-white text-neutral-900 ring-1 ring-black/5 shadow-sm">
+    <article
+      className={`group grid grid-cols-[96px_1fr] gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 transition-all duration-200 md:grid-cols-[112px_1fr] md:gap-4 md:p-4 hover:shadow-md hover:ring-black/10 hover:-translate-y-0.5 ${
+        unavailable ? "opacity-70 grayscale" : ""
+      }`}
+    >
       <button
         type="button"
         onClick={handleQuickView}
         onKeyDown={handleKeyDown}
-        aria-label={`Ver ${product.title || product.name || 'producto'}`}
-        className="block cursor-zoom-in rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+        aria-label={`Ver ${product.title || product.name || "producto"}`}
+        className="block overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
       >
         <img
           src={getProductImage(product)}
-          alt={item.name || 'Producto'}
+          alt={item.name || "Producto"}
           loading="lazy"
-          className="w-24 h-24 md:w-28 md:h-28 rounded-xl object-cover"
+          className="h-24 w-24 rounded-xl object-cover transition-transform duration-200 group-hover:scale-105 md:h-28 md:w-28"
         />
       </button>
-      <div className="min-w-0 flex flex-col">
-        <h3 className="text-base md:text-[17px] font-semibold text-neutral-900 truncate">{item.name}</h3>
+
+      <div className="flex min-w-0 flex-col">
+        <h3 className="truncate text-base font-semibold text-neutral-900 md:text-[17px]">
+          {item.name}
+        </h3>
         {item.desc && (
-          <p className="mt-0.5 text-sm text-neutral-600 line-clamp-2">{item.desc}</p>
+          <p className="mt-0.5 line-clamp-2 text-sm text-neutral-600">
+            {item.desc}
+          </p>
         )}
+
         <div className="mt-2 flex flex-wrap gap-2">
-          {st === 'low' && <StatusChip intent="warn">Pocas unidades</StatusChip>}
-          {unavailable && <StatusChip intent="neutral">No Disponible</StatusChip>}
+          {st === "low" && <StatusChip intent="warn">Pocas unidades</StatusChip>}
+          {unavailable && (
+            <StatusChip intent="neutral">No Disponible</StatusChip>
+          )}
         </div>
+
         <div className="mt-auto flex items-end justify-between gap-3 pt-2">
           <div>
-            <div className="text-base md:text-[17px] font-semibold text-neutral-900">
-              {typeof item.price === 'number' ? formatCOP(item.price) : item.price}
+            <div className="text-base font-semibold text-neutral-900 md:text-[17px]">
+              {typeof item.price === "number"
+                ? formatCOP(item.price)
+                : item.price}
             </div>
           </div>
           <button
             type="button"
-            aria-label={`Agregar ${item.name || 'producto'}`}
+            aria-label={`Agregar ${item.name || "producto"}`}
             onClick={handleAdd}
-            className="h-10 w-10 md:h-11 md:w-11 grid place-items-center rounded-full bg-[#2f4131] hover:bg-[#263729] text-white shadow-sm ring-1 ring-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+            className="grid h-10 w-10 place-items-center rounded-full bg-[#2f4131] text-white shadow-sm ring-1 ring-black/5 transition-transform duration-150 hover:scale-110 hover:bg-[#263729] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 md:h-11 md:w-11"
           >
             +
           </button>
@@ -81,4 +97,3 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
     </article>
   );
 }
-

@@ -2,15 +2,13 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const toastEvent = (message) => {
-  try { document.dispatchEvent(new CustomEvent("aa:toast", { detail: { message } })); } catch {}
+  try {
+    document.dispatchEvent(new CustomEvent("aa:toast", { detail: { message } }));
+  } catch {}
 };
 
-const toNumberCOP = (v) => {
-  if (typeof v === "number") return v;
-  if (!v) return 0;
-  const n = Number(String(v).replace(/[^\d.-]/g, ""));
-  return isFinite(n) ? n : 0;
-};
+export const getItemUnit = (it) =>
+  Number(String(it?.price ?? it?.unitPrice ?? it?.priceEach).replace(/[^\d.-]/g, "")) || 0;
 
 const CartCtx = createContext(null);
 const STORAGE_KEY = "aa_cart";
@@ -22,18 +20,17 @@ function safeParse(json, fallback) {
     return fallback;
   }
 }
+
 const asArray = (v) => (Array.isArray(v) ? v : []);
 
 // normaliza opciones para comparar items iguales
 function optionsKey(opts) {
   if (!opts) return "";
-  const entries = Object.entries(opts).map(([k, v]) => [
-    k,
-    Array.isArray(v) ? [...v].sort() : v,
-  ]);
+  const entries = Object.entries(opts).map(([k, v]) => [k, Array.isArray(v) ? [...v].sort() : v]);
   entries.sort(([a], [b]) => a.localeCompare(b));
   return JSON.stringify(entries);
 }
+
 function sameItem(a, b) {
   return (
     a?.productId === b?.productId &&
@@ -42,6 +39,7 @@ function sameItem(a, b) {
     String(a?.note || "") === String(b?.note || "")
   );
 }
+
 function normalize(items) {
   const list = asArray(items);
   const out = [];
@@ -79,16 +77,14 @@ export function CartProvider({ children }) {
   function addItem(payload) {
     setItems((prev) => normalize([...asArray(prev), { qty: 1, ...payload }]));
     setTimeout(() => toastEvent(`Añadido: ${payload?.name || "Producto"}`), 0);
-
   }
+
   function removeAt(index) {
     setItems((prev) => asArray(prev).filter((_, i) => i !== index));
   }
+
   function removeItem(itemOrId, options, note) {
-    const ref =
-      typeof itemOrId === "object"
-        ? itemOrId
-        : { productId: itemOrId, options, note };
+    const ref = typeof itemOrId === "object" ? itemOrId : { productId: itemOrId, options, note };
     setItems((prev) => {
       const base = asArray(prev);
       const idx = base.findIndex((x) => sameItem(x, ref));
@@ -98,14 +94,15 @@ export function CartProvider({ children }) {
       return next;
     });
   }
+
   function increment(index) {
     setItems((prev) => {
       const next = [...asArray(prev)];
-      if (next[index])
-        next[index] = { ...next[index], qty: (next[index].qty || 1) + 1 };
+      if (next[index]) next[index] = { ...next[index], qty: (next[index].qty || 1) + 1 };
       return next;
     });
   }
+
   function decrement(index) {
     setItems((prev) => {
       const next = [...asArray(prev)];
@@ -119,6 +116,7 @@ export function CartProvider({ children }) {
       return next;
     });
   }
+
   function setQty(index, qty) {
     const q = Math.max(1, Number(qty) || 1);
     setItems((prev) => {
@@ -127,6 +125,7 @@ export function CartProvider({ children }) {
       return next;
     });
   }
+
   function updateItem(index, patch) {
     setItems((prev) => {
       const next = [...asArray(prev)];
@@ -135,6 +134,7 @@ export function CartProvider({ children }) {
       return normalize(next);
     });
   }
+
   function clearCart() {
     setItems([]);
     setNote("");
@@ -152,7 +152,7 @@ export function CartProvider({ children }) {
         document.dispatchEvent(
           new CustomEvent("aa:toast", {
             detail: { message: "Carrito restaurado" },
-          })
+          }),
         );
       } catch {}
     };
@@ -167,7 +167,7 @@ export function CartProvider({ children }) {
     for (const it of list) {
       const q = it?.qty || 1;
       c += q;
-      const unit = toNumberCOP(it?.price ?? it?.unitPrice ?? it?.priceEach);
+      const unit = getItemUnit(it);
       t += unit * q;
     }
     return { count: c, total: t };
@@ -191,10 +191,4 @@ export function CartProvider({ children }) {
   };
 
   return <CartCtx.Provider value={value}>{children}</CartCtx.Provider>;
-}
-
-export function useCart() {
-  const ctx = useContext(CartCtx);
-  if (!ctx) throw new Error("useCart debe usarse dentro de <CartProvider>");
-  return ctx;
 }

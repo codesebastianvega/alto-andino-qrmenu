@@ -9,7 +9,6 @@ function getCartBarHeight() {
   }
 }
 
-
 export default function Toast() {
   const [msg, setMsg] = useState("");
   const [show, setShow] = useState(false);
@@ -42,13 +41,13 @@ export default function Toast() {
         setAction(null);
       }, duration || 1600);
     };
+
     document.addEventListener("aa:toast", onToast);
     return () => {
       clearTimeout(hideId);
       clearTimeout(offsetId);
       document.removeEventListener("aa:toast", onToast);
     };
-
   }, []);
 
   return (
@@ -56,18 +55,20 @@ export default function Toast() {
       aria-live="polite"
       role="status"
       className={[
-        "fixed left-1/2 -translate-x-1/2 z-[120] pointer-events-none w-max",
+        "pointer-events-none fixed left-1/2 z-[120] w-max -translate-x-1/2",
         "transition-opacity duration-200",
         show ? "opacity-100" : "opacity-0",
       ].join(" ")}
-      style={{ bottom: `calc(${offset}px + env(safe-area-inset-bottom, 0px) + 10px)` }}
+      style={{
+        bottom: `calc(${offset}px + env(safe-area-inset-bottom, 0px) + 10px)`,
+      }}
     >
-      <div className="rounded-full bg-[#2f4131] text-white px-4 h-9 flex items-center gap-3 shadow-2xl ring-1 ring-black/10 w-max pointer-events-auto">
-        <span className="text-[11px] font-medium whitespace-nowrap">{msg}</span>
+      <div className="pointer-events-auto flex h-9 w-max items-center gap-3 rounded-full bg-[#2f4131] px-4 text-white shadow-2xl ring-1 ring-black/10">
+        <span className="whitespace-nowrap text-[11px] font-medium">{msg}</span>
         {action && (
           <button
             type="button"
-            className="text-[11px] font-medium underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131] rounded"
+            className="rounded text-[11px] font-medium underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
             onClick={() => {
               action.onAction?.();
               setShow(false);
@@ -84,10 +85,6 @@ export default function Toast() {
 
 export const toast = (message, opts = {}) => {
   try {
-    document.dispatchEvent(
-      new CustomEvent("aa:toast", { detail: { message, ...opts } })
-    );
+    document.dispatchEvent(new CustomEvent("aa:toast", { detail: { message, ...opts } }));
   } catch {}
 };
-
-

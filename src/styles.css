@@ -36,8 +36,7 @@
   @apply mb-10;
 }
 .section-title {
-  @apply text-2xl sm:text-3xl font-extrabold tracking-tight text-alto-text;
-  position: relative;
+@apply text-2xl font-extrabold tracking-tight text-alto-text sm:text-3xl;  position: relative;
   padding-bottom: 0.5rem;
   margin-bottom: 0.75rem;
 }
@@ -48,14 +47,11 @@
 
 /* Badges de estado */
 .badge {
-  @apply text-[11px] px-2 py-0.5 rounded-full border;
-}
+  @apply rounded-full border px-2 py-0.5 text-[11px];}
 .badge-warn {
-  @apply border-amber-500 text-amber-700 bg-amber-50;
-}
+  @apply border-amber-500 bg-amber-50 text-amber-700;}
 .badge-out {
-  @apply border-neutral-300 text-neutral-500 bg-neutral-100;
-}
+ @apply border-neutral-300 bg-neutral-100 text-neutral-500;}
 
 /* Header tweaks */
 summary {
@@ -67,11 +63,9 @@ summary::-webkit-details-marker {
 
 /* Chip cuadrado destacado (CTA “Desde”) */
 .chip-square {
-  @apply inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-[13px] font-semibold border shadow-md;
-}
+  @apply inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-[13px] font-semibold shadow-md;}
 .chip-solid {
-  @apply bg-white text-emerald-900 border-emerald-100;
-}
+  @apply border-emerald-100 bg-white text-emerald-900;}
 
 /* 🍣 flotando SOBRE la placa (z-15) pero debajo del chip (z-30) */
 .poke-decor-over {
@@ -167,4 +161,76 @@ summary::-webkit-details-marker {
   .no-print {
     display: none;
   }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeUp {
+  animation: fadeUp 0.35s ease-out forwards;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.qr-fade {
+  animation: fadeUp 0.4s ease-out forwards;
+}
+
+/* Evitar animación en impresión */
+@media print {
+  .qr-fade {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+.glass-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+}
+.glass-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.glass-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+.glass-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
 }

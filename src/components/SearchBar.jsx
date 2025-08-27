@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Icon } from "@iconify-icon/react";
-import { Chip } from "./Buttons";
+import { Icon } from "@iconify/react";
+import Chip from "./Chip"; // si tu Chip es un componente propio
 
 const SUGGESTIONS = ["Veggie", "Sin gluten", "Café", "Bowl del día"];
 
@@ -28,7 +28,7 @@ export default function SearchBar({ value = "", onQueryChange, showChips = false
       <div className="relative">
         <Icon
           icon="mdi:magnify"
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-lg"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-lg text-neutral-500"
         />
         <input
           id="search-input"
@@ -36,19 +36,23 @@ export default function SearchBar({ value = "", onQueryChange, showChips = false
           placeholder="Buscar bowls, café, sándwich…"
           value={internal}
           onChange={handleChange}
-          className="w-full py-2 pl-9 pr-3 rounded-full border border-black/10 bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+          className="w-full rounded-full border border-black/10 bg-white py-2 pl-9 pr-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
         />
       </div>
+
       {showChips && (
-        <div className="mt-3 flex gap-2 overflow-x-auto">
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
           {SUGGESTIONS.map((s) => (
-            <Chip key={s} onClick={() => handleChip(s)}>
+            <button
+              key={s}
+              onClick={() => handleChip(s)}
+              className="glass-btn whitespace-nowrap rounded-full px-3 py-1 text-xs text-white transition-all duration-200 hover:scale-105"
+            >
               {s}
-            </Chip>
+            </button>
           ))}
         </div>
       )}
     </div>
   );
 }
-

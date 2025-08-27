@@ -8,8 +8,8 @@ export function resolveProductById(id) {
       const list = Array.isArray(section)
         ? section
         : Array.isArray(section?.items)
-        ? section.items
-        : null;
+          ? section.items
+          : null;
       if (!Array.isArray(list)) continue;
       const p = list.find((x) => x?.id === id);
       if (p) return p;
@@ -17,4 +17,3 @@ export function resolveProductById(id) {
   } catch {}
   return null;
 }
-

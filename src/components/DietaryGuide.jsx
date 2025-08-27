@@ -5,7 +5,7 @@ export default function DietaryGuide() {
     { icon: "🌿", label: "Veggie/Vegano" },
     { icon: "🌶️", label: "Picante" },
     { icon: "🐝", label: "Con miel" },
-    { icon: "🚫🍬", label: "Sin azúcar añadida" },
+    { icon: "🚫", label: "Sin azúcar añadida" },
     { icon: "🌾", label: "Gluten" },
     { icon: "🥛", label: "Lácteos" },
     { icon: "🥚", label: "Huevo" },
@@ -13,12 +13,13 @@ export default function DietaryGuide() {
     { icon: "🫘", label: "Soya" },
     { icon: "🐟", label: "Pescado/Mariscos" },
   ];
+
   return (
-    <div className="max-w-3xl mx-auto px-4 py-3 sm:py-4">
-      <h2 className="text-base font-semibold text-[#2f4131] mb-2">
+    <div className="mx-auto max-w-3xl px-4 py-3 sm:py-4">
+      <h2 className="mb-2 text-base font-semibold text-[#2f4131]">
         Guía dietaria y alérgenos
       </h2>
-      <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
         {markers.map((m) => (
           <div
             key={m.label}
@@ -30,8 +31,7 @@ export default function DietaryGuide() {
         ))}
       </div>
       <p className="mt-2 text-[11px] text-neutral-600">
-        Si tienes alergias, avísanos. Algunas preparaciones comparten área;
-        podría haber trazas.
+        Si tienes alergias, avísanos. Algunas preparaciones comparten área; podría haber trazas.
       </p>
     </div>
   );

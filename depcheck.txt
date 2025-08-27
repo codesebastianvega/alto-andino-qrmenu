@@ -1,0 +1,8 @@
+> alto-andino-qr-menu@1.0.0 depcheck
+> depcheck --ignore-dirs=dist,build,coverage --skip-missing=true
+
+Unused devDependencies
+* autoprefixer
+* postcss
+* prettier-plugin-tailwindcss
+* tailwindcss

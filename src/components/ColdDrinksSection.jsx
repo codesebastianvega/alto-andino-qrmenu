@@ -1,5 +1,5 @@
 import ProductSection from "./ProductSection";
-import { sodas, otherDrinks } from "../data/menuItems";
+import { sodas, otherDrinks } from "@/data/menuItems";
 
 export default function ColdDrinksSection({ query, onCount, onQuickView }) {
   const groups = [
@@ -18,4 +18,3 @@ export default function ColdDrinksSection({ query, onCount, onQuickView }) {
     />
   );
 }
-

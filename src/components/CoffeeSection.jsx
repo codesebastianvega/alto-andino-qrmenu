@@ -1,6 +1,6 @@
 import React from "react";
 import ProductSection from "./ProductSection";
-import { coffees, infusions } from "../data/menuItems";
+import { coffees, infusions } from "@/data/menuItems";
 
 export default function CoffeeSection({ query, onCount, onQuickView }) {
   const groups = [];
@@ -10,8 +10,7 @@ export default function CoffeeSection({ query, onCount, onQuickView }) {
   if (Array.isArray(infusions) && infusions.length) {
     groups.push({ title: "Infusiones & Tés", items: infusions });
   }
-  const finalGroups =
-    groups.length > 1 ? groups : groups.map(({ items }) => ({ items }));
+  const finalGroups = groups.length > 1 ? groups : groups.map(({ items }) => ({ items }));
 
   return (
     <ProductSection
@@ -24,4 +23,3 @@ export default function CoffeeSection({ query, onCount, onQuickView }) {
     />
   );
 }
-

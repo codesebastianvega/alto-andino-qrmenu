@@ -1,29 +1,54 @@
-export const slugify = (s = "") =>
-  s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+// TODO(F6): eliminar si no se usa
+import { useRef, useEffect, useCallback, useMemo } from "react";
 
-import stockdata from "../data/stock.json";
-const PRODUCTS = (stockdata?.products ?? {}) || {};
+export default function useSwipeTabs({ onPrev, onNext, threshold = 40 } = {}) {
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const triggered = useRef(false);
+  const onPrevRef = useRef(onPrev);
+  const onNextRef = useRef(onNext);
 
-export function getStockState(idOrName = "") {
-  const key = idOrName || slugify(idOrName);
-  const v = PRODUCTS[key];
-  if (v === false) return "out";
-  if (v === "low") return "low";
-  return "ok";
+  useEffect(() => {
+    onPrevRef.current = onPrev;
+  }, [onPrev]);
+
+  useEffect(() => {
+    onNextRef.current = onNext;
+  }, [onNext]);
+
+  const onTouchStart = useCallback((e) => {
+    if (triggered.current) return;
+    const t = e.touches && e.touches[0];
+    if (!t) return;
+    startX.current = t.clientX;
+    startY.current = t.clientY;
+  }, []);
+
+  const onTouchMove = useCallback(
+    (e) => {
+      if (triggered.current) return;
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      const dx = t.clientX - startX.current;
+      const dy = t.clientY - startY.current;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > threshold) {
+        triggered.current = true;
+        if (dx > 0) {
+          onPrevRef.current?.();
+        } else {
+          onNextRef.current?.();
+        }
+      }
+    },
+    [threshold],
+  );
+
+  const onTouchEnd = useCallback(() => {
+    triggered.current = false;
+  }, []);
+
+  return useMemo(
+    () => ({ onTouchStart, onTouchMove, onTouchEnd }),
+    [onTouchStart, onTouchMove, onTouchEnd],
+  );
 }
-
-
-export function isUnavailable(p) {
-  if (!p) return true;
-  if (p.available === false) return true;
-  if (typeof p.stock === "number" && p.stock <= 0) return true;
-  if (p.status && /unavailable|soldout/i.test(p.status)) return true;
-  if (Array.isArray(p.badges) && p.badges.some(b => /no disponible/i.test(b))) return true;
-  return false;
-}
-

@@ -8,12 +8,12 @@ export function Chip({ active, onClick, children, className = "", shape = "pill"
       type="button"
       onClick={onClick}
       className={cx(
-        "px-3 py-1 text-sm border transition",
+        "border px-3 py-1 text-sm transition",
         active
-          ? "bg-alto-primary text-white border-alto-primary shadow"
-          : "bg-white text-neutral-800 border-neutral-300 hover:border-neutral-400",
+          ? "border-alto-primary bg-alto-primary text-white shadow"
+          : "border-neutral-300 bg-white text-neutral-800 hover:border-neutral-400",
         rounded,
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2",
         className
       )}
     >
@@ -30,7 +30,7 @@ export function Button({ variant = "primary", className = "", type = "button", .
       {...props}
       className={
         base +
-        " focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131] " +
+        " focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 " +
         className
       }
     />
@@ -53,19 +53,19 @@ export function AddButton({
       onClick={onClick}
       aria-label={hideText ? "Agregar" : undefined}
       className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-full font-semibold shadow-sm transition select-none",
+        "inline-flex select-none items-center justify-center gap-2 rounded-full font-semibold shadow-sm transition",
         "bg-[#2f4131] text-white hover:bg-[#243326]",
         "border border-black/10",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]",
-        "px-3 min-w-[90px] h-9 sm:h-8 w-auto",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2",
+        "h-9 w-auto min-w-[90px] px-3 sm:h-8",
         "active:translate-y-[1px]",
-        "disabled:bg-neutral-200 disabled:text-neutral-500 disabled:cursor-not-allowed",
+        "disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-500",
         className
       )}
     >
       <svg
         viewBox="0 0 24 24"
-        className="w-3 h-3"
+        className="h-3 w-3"
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
@@ -81,33 +81,24 @@ export function AddButton({
 
 // FAB circular “+” (usado en cada card)
 export function AddIconButton({ className = "", disabled = false, variant = "solid", ...props }) {
-  const baseColor =
-    variant === "light"
-      ? "bg-white text-[#2f4131]"
-      : "bg-[#2f4131] text-white";
+  const baseColor = variant === "light" ? "bg-white text-[#2f4131]" : "bg-[#2f4131] text-white";
   return (
     <button
       type="button"
       {...props}
       disabled={disabled}
       className={cx(
-        // base shape & color
         "grid place-items-center rounded-full shadow-sm ring-1 ring-black/5",
-        // sizes: 36px móvil / 32px >=sm
-        "w-9 h-9 sm:w-8 sm:h-8",
-        // motion & focus
+        "h-9 w-9 sm:h-8 sm:w-8",
         "transition will-change-transform hover:scale-105 active:scale-95",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]",
-        // disabled
-        disabled && "opacity-40 cursor-not-allowed",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2",
+        disabled && "cursor-not-allowed opacity-40",
         baseColor,
         className
       )}
       aria-label={props["aria-label"] || "Agregar"}
     >
-      <span aria-hidden className="-mt-[1px] text-xl leading-none">
-        +
-      </span>
+      <span aria-hidden className="-mt-[1px] text-xl leading-none">+</span>
     </button>
   );
 }
@@ -122,13 +113,7 @@ export function AddIconButton({ className = "", disabled = false, variant = "sol
  * @param {string} [size="xs"]
  *   Chip size: "xs" (default) or "sm".
  */
-export function StatusChip({
-  intent,
-  variant = "neutral",
-  size = "xs",
-  className = "",
-  children,
-}) {
+export function StatusChip({ intent, variant = "neutral", size = "xs", className = "", children }) {
   const intentMap = {
     warn: "bg-amber-50 text-amber-800 border-amber-300",
     error: "bg-red-50 text-red-800 border-red-300",
@@ -152,7 +137,7 @@ export function StatusChip({
   return (
     <span
       className={cx(
-        "inline-flex items-center rounded-full border leading-none font-medium",
+        "inline-flex items-center rounded-full border font-medium leading-none",
         dimension,
         color,
         className

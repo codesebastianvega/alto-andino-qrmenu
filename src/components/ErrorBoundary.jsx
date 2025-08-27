@@ -30,7 +30,7 @@ class ErrorBoundary extends React.Component {
           <button
             type="button"
             onClick={this.handleRetry}
-            className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2f4131]"
+            className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
           >
             Try again
           </button>
