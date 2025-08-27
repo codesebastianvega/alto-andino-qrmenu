@@ -25,11 +25,12 @@ const templates = {
 const preferredTime = {
   desayunos: "mañana",
   bowls: "mañana",
-  "platos-fuertes": "tarde",
+  platos: "tarde",
   sandwiches: "noche",
+  smoothies: "tarde",
+  cafe: "mañana",
+  bebidasfrias: "tarde",
   postres: "tarde",
-  infusiones: "noche",
-  cafe: "mañana"
 };
 
 function getTimeContext() {
