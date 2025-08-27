@@ -26,35 +26,54 @@ import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
    );
  }
  
- // Emojis por ingrediente (prefijo)
- function ico(label) {
-   const s = label.toLowerCase();
-   if (s.includes("arroz")) return "🍚";
-   if (s.includes("quinoa")) return "🌾";
-   if (s.includes("lechuga") || s.includes("mix")) return "🥬";
- 
-   if (s.includes("pollo")) return "🍗";
-   if (s.includes("res")) return "🥩";
-   if (s.includes("tofu")) return "🌿";
-   if (s.includes("atún")) return "🐟";
-   if (s.includes("salmón")) return "🐟";
-   if (s.includes("camarón")) return "🍤";
- 
-   if (s.includes("aguacate")) return "🥑";
-   if (s.includes("mango")) return "🥭";
-   if (s.includes("pepino")) return "🥒";
-   if (s.includes("maíz")) return "🌽";
-
+// Emojis por ingrediente (prefijo)
 function ico(label) {
- 
-   if (s.includes("hotsweet")) return "🌶️";
-   if (s.includes("mango-yaki")) return "🥭";
-   if (s.includes("balsámico")) return "🧴";
-   if (s.includes("yogur")) return "🥛";
-   if (s.includes("soja") || s.includes("soya")) return "🍶";
-   if (s.includes("mayo-pesto")) return "🌿";
-   return "•";
- }
+  const s = label.toLowerCase();
+  if (s.includes("arroz")) return "🍚";
+  if (s.includes("quinoa")) return "🌾";
+  if (s.includes("lechuga") || s.includes("mix")) return "🥬";
+
+  if (s.includes("pollo")) return "🍗";
+  if (s.includes("res")) return "🥩";
+  if (s.includes("tofu")) return "🌿";
+  if (s.includes("atún")) return "🐟";
+  if (s.includes("salmón")) return "🐟";
+  if (s.includes("camarón")) return "🍤";
+
+  if (s.includes("aguacate")) return "🥑";
+  if (s.includes("mango")) return "🥭";
+  if (s.includes("pepino")) return "🥒";
+  if (s.includes("maíz")) return "🌽";
+  if (s.includes("tomate")) return "🍅";
+  if (s.includes("brócoli")) return "🥦";
+  if (s.includes("champi")) return "🍄";
+  if (s.includes("hummus")) return "🌿";
+  if (s.includes("rábano")) return "🥗";
+  if (s.includes("zanahoria")) return "🥕";
+  if (s.includes("pimentón")) return "🫑";
+  if (s.includes("arándano")) return "🫐";
+  if (s.includes("kiwi")) return "🥝";
+
+  if (s.includes("chía")) return "🌱";
+  if (s.includes("linaza")) return "🌾";
+  if (s.includes("almendra")) return "🥜";
+  if (s.includes("jengibre")) return "🫚";
+  if (s.includes("pepinillo")) return "🥒";
+  if (s.includes("aceituna")) return "🫒";
+  if (s.includes("aceite")) return "🫗";
+  if (s.includes("ajonjolí")) return "🌾";
+  if (s.includes("jalape")) return "🌶️";
+  if (s.includes("alga")) return "🌿";
+  if (s.includes("guacamole")) return "🥑";
+
+  if (s.includes("hotsweet")) return "🌶️";
+  if (s.includes("mango-yaki")) return "🥭";
+  if (s.includes("balsámico")) return "🧴";
+  if (s.includes("yogur")) return "🥛";
+  if (s.includes("soja") || s.includes("soya")) return "🍶";
+  if (s.includes("mayo-pesto")) return "🌿";
+  return "•";
+}
  
  export default function BowlBuilder({ open, onClose }) {
    useLockBodyScroll(open);
@@ -97,11 +116,44 @@ function ico(label) {
    // Catálogos
    const BASE = 28000;
    const PREMIUM = 4000;
-
- export default function BowlBuilder({ open, onClose }) {
+   const bases = ["Arroz blanco", "Quinoa", "Mix de lechugas"];
+   const proteins = [
+     { name: "Pollo" },
+     { name: "Res" },
+     { name: "Tofu" },
+     { name: "Atún" },
+     { name: "Salmón", premium: true },
+     { name: "Camarón", premium: true },
+   ];
+   const toppings = [
+     "Aguacate",
+     "Mango",
+     "Pepino",
+     "Maíz",
+     "Tomate cherry",
+     "Brócoli",
+     "Champiñones",
+     "Hummus",
+     "Rábano",
+     "Zanahoria",
+     "Pimentón",
+     "Arándano",
+     "Kiwi",
+   ];
+   const extras = [
+     "Chía",
+     "Linaza",
+     "Láminas de almendra",
+     "Jengibre encurtido",
+     "Pepinillos",
+     "Aceitunas",
+     "Aceite de oliva",
+     "Ajonjolí",
+     "Jalapeños",
+     "Alga nori",
      "Guacamole",
    ];
- 
+
    // 🔁 Salsas unificadas (¡ojo! “HotSweet de la Casa” en una sola opción)
    const sauces = [
      "HotSweet de la Casa",
