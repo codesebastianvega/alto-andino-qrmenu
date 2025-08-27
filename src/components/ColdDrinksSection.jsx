@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import ProductSection from "./ProductSection";
 import * as menu from "@/data/menuItems";
 
-// Devuelve el primer array no vacío de los candidatos (string = clave de menu).
+// Devuelve el primer array no vacío de los candidatos (string = clave en menu)
 function pickArray(...candidates) {
   for (const c of candidates) {
     const arr = typeof c === "string" ? menu[c] : c;
@@ -16,7 +16,6 @@ export default function ColdDrinksSection({ query, onCount, onQuickView }) {
   const [visible, setVisible] = useState(false);
   const ref = useRef(null);
 
-  // Ajusta o añade claves según tu data real en src/data/menuItems.js
   const groupsRaw = [
     { title: "Gaseosas y Sodas",            items: pickArray("sodas", "gaseosas") },
     { title: "Jugos y otras bebidas frías", items: pickArray("otherDrinks", "jugos", "bebidasFrias", "bebidasfrias") },
@@ -25,26 +24,28 @@ export default function ColdDrinksSection({ query, onCount, onQuickView }) {
     { title: "Frappés",                      items: pickArray("frappes", "frappesCold") },
   ];
 
-  // Filtra grupos vacíos
   const groups = useMemo(
     () => groupsRaw.filter(g => Array.isArray(g.items) && g.items.length > 0),
     [groupsRaw]
   );
 
-  // Si hay un solo grupo, ProductSection acepta [{ items }] sin título.
+  // Si hay un único grupo, ProductSection acepta [{ items }] sin subtítulo
   const finalGroups = useMemo(() => {
     if (groups.length > 1) return groups;
     if (groups.length === 1) return [{ items: groups[0].items }];
-    return []; // sin datos no rompe
+    return [];
   }, [groups]);
 
-  // Reporta total de ítems al padre (para contadores o tabs)
+  // Reportar conteo bruto
   useEffect(() => {
     const total = groups.reduce((acc, g) => acc + g.items.length, 0);
     onCount?.(total);
+    if (import.meta.env.DEV) {
+      console.debug("[bebidasfrias] groups:", groups.map(g => ({ title: g.title, n: g.items.length })));
+    }
   }, [groups, onCount]);
 
-  // Fade-in al aparecer en viewport
+  // Animación al entrar a viewport
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -61,17 +62,17 @@ export default function ColdDrinksSection({ query, onCount, onQuickView }) {
   return (
     <div
       ref={ref}
-      className={`transition-all duration-500 ease-out ${
-        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-      }`}
+      className={`transition-all duration-500 ease-out ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
     >
       <ProductSection
-        id="bebidasfrias"            // 👈 importante: usamos este id
+        id="bebidasfrias"
         title="Bebidas frías"
         query={query}
         groups={finalGroups}
         onCount={onCount}
         onQuickView={onQuickView}
+        alwaysShow={true}          // 👈 fuerza render aunque count sea 0
+        includeUnavailable={true}  // 👈 muestra incluso si available === false
       />
     </div>
   );
