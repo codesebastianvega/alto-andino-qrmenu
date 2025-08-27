@@ -52,6 +52,9 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
         aria-label={`Ver ${product.title || product.name || "producto"}`}
         className="block overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
       >
+        // Las imágenes de producto se configuran en src/utils/images.js.
+        // Pon tus archivos en /public/img/products y mapea la clave en IMAGE_MAP
+
         <AAImage
           src={getProductImage(product)}
           alt={item.name || "Producto"}
