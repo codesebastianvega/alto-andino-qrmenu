@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Icon } from "@iconify/react";
+import { Icon } from "@iconify-icon/react";
 import { Chip } from "./Buttons";
 
 const SUGGESTIONS = ["Veggie", "Sin gluten", "Café", "Bowl del día"];
