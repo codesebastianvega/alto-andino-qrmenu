@@ -1,8 +1,10 @@
 
-import { useState, useMemo, useEffect, useRef } from "react";
-import { formatCOP } from "@/utils/money";
-import { useCart } from "@/context/CartContext";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Portal from "./Portal";
+import AAImage from "@/components/ui/AAImage";
+import { formatCOP } from "@/utils/money";
+import { toast } from "./Toast";
+import { useCart } from "@/context/CartContext";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
  
  // Tile ancho completo con estados
@@ -127,43 +129,42 @@ const sauces = [
 const MAX_TOPS = 4;
 const MAX_EXTS = 3;
  
- export default function BowlBuilder({ open, onClose }) {
-   useLockBodyScroll(open);
-   const cart = useCart();
-   const modalRef = useRef(null);
-   const lastFocused = useRef(null);
- 
-   useEffect(() => {
-     if (!open) return;
-     lastFocused.current = document.activeElement;
-     const el = modalRef.current;
-     el?.focus();
-     const onKey = (e) => {
-       if (e.key === "Escape") onClose?.();
-       if (e.key === "Tab") {
-         const focusables = el.querySelectorAll(
+export default function BowlBuilder({ open, onClose }) {
+  if (!open) return null;
+
+  useLockBodyScroll(open);
+  const cart = useCart();
+  const modalRef = useRef(null);
+  const lastFocused = useRef(null);
+
+  useEffect(() => {
+    lastFocused.current = document.activeElement;
+    const el = modalRef.current;
+    el?.focus();
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+      if (e.key === "Tab") {
+        const focusables = el.querySelectorAll(
           'a,button,input,select,textarea,[tabindex]:not([tabindex="-1"])',
-         );
-         if (!focusables.length) return;
-         const first = focusables[0];
-         const last = focusables[focusables.length - 1];
-         if (e.shiftKey && document.activeElement === first) {
-           e.preventDefault();
-           last.focus();
-         } else if (!e.shiftKey && document.activeElement === last) {
-           e.preventDefault();
-           first.focus();
-         }
-       }
-     };
-     document.addEventListener("keydown", onKey);
-     return () => {
-       document.removeEventListener("keydown", onKey);
-       lastFocused.current?.focus?.();
-     };
-   }, [open, onClose]);
- 
-   if (!open) return null;
+        );
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      lastFocused.current?.focus?.();
+    };
+  }, [onClose]);
  
   // Estado
   const [base, setBase] = useState(bases[0]);
