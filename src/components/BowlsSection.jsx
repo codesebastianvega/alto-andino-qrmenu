@@ -5,6 +5,7 @@ import { formatCOP } from "@/utils/money";
 import { matchesQuery } from "@/utils/strings";
 import { PILL_XS, PILL_SM } from "./Buttons";
 import { toast } from "./Toast";
+import AAImage from "@/components/ui/AAImage";
 const BowlBuilder = lazy(() => import("./BowlBuilder"));
 import { getStockState, slugify, isUnavailable } from "@/utils/stock";
 import { preBowl } from "@/data/menuItems";
@@ -58,13 +59,10 @@ export default function BowlsSection({ query, onCount, onQuickView }) {
       <div className="-mx-4 px-4 sm:-mx-6 sm:px-6">
         <div className="relative h-36 overflow-hidden rounded-2xl bg-gradient-to-r from-[#2f4131] to-[#355242] ring-1 ring-black/10 sm:h-44 md:h-56">
           {/* ← editar clases y ruta de la imagen aquí */}
-          <img
+          <AAImage
             src="/poke1.png"
             alt=""
             aria-hidden
-            loading="lazy"
-            decoding="async"
-            fetchPriority="low"
             className="pointer-events-none absolute bottom-[-6px] right-0 z-10 w-44 animate-[spin_40s_linear_infinite] object-contain drop-shadow-xl sm:right-2 sm:w-60 md:w-72"
           />
           <div className="absolute inset-0 grid grid-rows-[auto_1fr_auto] pb-16 pl-5 pr-40 pt-4 sm:pl-6 sm:pr-48 sm:pt-5">

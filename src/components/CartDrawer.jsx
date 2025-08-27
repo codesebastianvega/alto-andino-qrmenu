@@ -6,6 +6,7 @@ import { useCart, getItemUnit } from "@/context/CartContext";
 import { getProductImage } from "@/utils/images";
 import { MILK_OPTIONS } from "@/config/milkOptions";
 import { formatCOP } from "@/utils/money";
+import AAImage from "@/components/ui/AAImage";
  
  const safeNum = (raw) => {
    const n = String(raw || "").replace(/\D/g, "");
@@ -224,12 +225,10 @@ import { formatCOP } from "@/utils/money";
                   <SwipeRevealItem key={idx} onDelete={() => removeItem?.(it)}>
                     <div className="rounded-xl bg-white p-3 ring-1 ring-neutral-200">
                       <div className="flex items-start gap-3">
-                        <img
+                        <AAImage
                           src={getProductImage(it)}
                           alt=""
                           aria-hidden="true"
-                          loading="lazy"
-                          decoding="async"
                           className="h-12 w-12 rounded-md object-cover"
                         />
  

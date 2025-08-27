@@ -3,6 +3,7 @@ import { getStockState, slugify, isUnavailable } from "@/utils/stock";
 import { getProductImage } from "@/utils/images";
 import { StatusChip } from "./Buttons";
 import { toast } from "./Toast";
+import AAImage from "@/components/ui/AAImage";
 
 export default function ProductCard({ item, onAdd, onQuickView }) {
   if (!item) return null;
@@ -51,10 +52,9 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
         aria-label={`Ver ${product.title || product.name || "producto"}`}
         className="block overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
       >
-        <img
+        <AAImage
           src={getProductImage(product)}
           alt={item.name || "Producto"}
-          loading="lazy"
           className="h-24 w-24 rounded-xl object-cover transition-transform duration-200 group-hover:scale-105 md:h-28 md:w-28"
         />
       </button>

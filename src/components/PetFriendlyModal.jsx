@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Portal from "./Portal";
 import { cocoa } from "../data/petFriendly";
+import AAImage from "@/components/ui/AAImage";
 
 export default function PetFriendlyModal({ open, onClose }) {
   const [tab, setTab] = useState("cocoa");
@@ -93,10 +94,9 @@ export default function PetFriendlyModal({ open, onClose }) {
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.25 }}
                   >
-                    <img
+                    <AAImage
                       src={cocoa.hero}
                       alt={cocoa.name}
-                      loading="lazy"
                       className="h-auto w-full rounded-lg"
                     />
                     <p className="mt-3 text-center text-sm">
@@ -135,11 +135,10 @@ export default function PetFriendlyModal({ open, onClose }) {
                     transition={{ duration: 0.25 }}
                   >
                     {cocoa.gallery.map((img, i) => (
-                      <img
+                      <AAImage
                         key={i}
                         src={img.src}
                         alt={img.alt}
-                        loading="lazy"
                         className="h-auto w-full rounded-lg object-cover"
                       />
                     ))}

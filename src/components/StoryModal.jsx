@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Portal from "./Portal";
+import AAImage from "@/components/ui/AAImage";
 
 export default function StoryModal({ open, onClose, story }) {
   const [visible, setVisible] = useState(false);
@@ -57,10 +58,9 @@ export default function StoryModal({ open, onClose, story }) {
           {story.sections?.map((sec, i) => (
             <div key={i} className="mb-4 last:mb-0">
               {sec.image && (
-                <img
+                <AAImage
                   src={sec.image}
                   alt={sec.heading}
-                  loading="lazy"
                   className="mb-2 h-auto w-full rounded-md"
                 />
               )}

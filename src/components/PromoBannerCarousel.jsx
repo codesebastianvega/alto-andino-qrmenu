@@ -9,6 +9,7 @@ import { useCart } from "@/context/CartContext";
  import { toast } from "./Toast";
 import { formatCOP } from "@/utils/money";
 import { productStories } from "@/data/stories";
+import AAImage from "@/components/ui/AAImage";
  
  export default function PromoBannerCarousel() {
    const { addItem } = useCart();
@@ -101,7 +102,7 @@ import { productStories } from "@/data/stories";
              setIndex(newIndex);
            }}
          >
-           {items.map((item) => {
+           {items.map((item, i) => {
              const { product } = item;
              const price = Number(product?.price);
              const canAdd = !!product && Number.isFinite(price) && price > 0;
@@ -109,14 +110,13 @@ import { productStories } from "@/data/stories";
              const viewLabel = item.ctas?.secondary?.label || "Ver";
              return (
               <div key={item.id} className="relative h-44 w-full flex-shrink-0 snap-center sm:h-56">
-                 <img
-                   src={item.image}
-                   alt={item.alt || item.title}
-                   loading="lazy"
-                   referrerPolicy="no-referrer"
-                   decoding="async"
+                <AAImage
+                  src={item.image}
+                  alt={item.alt || item.title}
+                  referrerPolicy="no-referrer"
                   className="absolute inset-0 z-0 h-full w-full object-cover"
-                 />
+                  priority={i === 0}
+                />
                 <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/55 via-black/25 to-transparent" />
                 <div className="pointer-events-auto relative z-30 flex h-full w-full flex-col justify-end p-4">
                   <h3 className="text-lg font-semibold text-white">{item.title}</h3>

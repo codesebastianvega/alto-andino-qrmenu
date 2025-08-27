@@ -27,6 +27,7 @@ module.exports = {
     "jsx-a11y/click-events-have-key-events": "off",
     "react-hooks/rules-of-hooks": "off",
     "jsx-a11y/label-has-associated-control": "off",
+    "react/no-unknown-property": ["error", { ignore: ["fetchpriority"] }],
   },
   ignorePatterns: ["dist", "build", "coverage", "node_modules"],
 };

@@ -17,6 +17,7 @@ import { matchesQuery } from "@/utils/strings";
 import { getProductImage } from "@/utils/images";
  import CategoryHeader from "./CategoryHeader";
  import CategoryNav from "./CategoryNav";
+import AAImage from "@/components/ui/AAImage";
  import {
    breakfastItems,
    mainDishes,
@@ -436,11 +437,10 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "@/config/categories";
                      aria-label={`Ver ${product.title || product.name || "producto"}`}
                     className="block cursor-zoom-in rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
                    >
-                     <img
+                     <AAImage
                        src={getProductImage(product)}
                        alt={"Cumbre Andino"}
-                       loading="lazy"
-                      className="h-24 w-24 rounded-xl object-cover md:h-28 md:w-28"
+                       className="h-24 w-24 rounded-xl object-cover md:h-28 md:w-28"
                      />
                    </button>
                   <div className="flex min-w-0 flex-col">
@@ -533,11 +533,10 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "@/config/categories";
          aria-label={`Ver ${product.title || product.name || "producto"}`}
         className="block cursor-zoom-in rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
        >
-         <img
+         <AAImage
            src={getProductImage(product)}
            alt={item.name || "Producto"}
-           loading="lazy"
-          className="h-24 w-24 rounded-xl object-cover md:h-28 md:w-28"
+           className="h-24 w-24 rounded-xl object-cover md:h-28 md:w-28"
          />
        </button>
       <div className="flex min-w-0 flex-col">
