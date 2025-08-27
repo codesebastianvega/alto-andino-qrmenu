@@ -2,25 +2,13 @@
 // ⬇⬇⬇ INSTRUCCIONES PARA IMÁGENES ⬇⬇⬇
 //
 // 1) Coloca tus archivos en: /public/img/products/
-//    (Ejemplos sugeridos)
-//      /public/img/products/coffee-capuccino.jpg
-//      /public/img/products/sandwich-pollo.jpg
-//      /public/img/products/bowl-prearmado.jpg
-//
-// 2) Edita el mapa IMAGE_MAP de abajo. La clave puede ser:
-//    - el product.id (si existe), o
-//    - un "slug" del nombre (por ejemplo: "coffee:capuccino", "sandwich:pollo").
-//
-// 3) Si no hay coincidencia en IMAGE_MAP, se intentará automáticamente
-//    cargar /img/products/<slug>.jpg como fallback. Si tampoco existe,
-//    se usa /img/products/placeholder.jpg (créalo en /public si no lo tienes).
-//
-// Nota: en Vite, todo lo que esté en /public se sirve desde la raíz.
-//       Por eso los src empiezan con /img/...
+// 2) Edita el mapa IMAGE_MAP de abajo o usa la convención /img/products/<slug>.jpg
+// 3) Si no hay match, se devuelve el path predicho; crea un placeholder si quieres.
 
-import { slugify } from "@/utils/stock"; // o tu utilidad de slug, si no existe, usa una propia
+/* eslint-disable import/no-unresolved */
+import { slugify } from "@/utils/stock";
 
-const IMAGE_MAP = {
+export const IMAGE_MAP = {
   // === COFFEE ===
   "coffee:capuccino": "/img/products/coffee-capuccino.jpg",
   "coffee:latte": "/img/products/coffee-latte.jpg",
@@ -35,16 +23,22 @@ const IMAGE_MAP = {
   // "<productId-o-slug>": "/img/products/mi-foto.jpg",
 };
 
-const PLACEHOLDER = "/img/products/placeholder.jpg";
+export const PLACEHOLDER = "/img/products/placeholder.jpg";
+
+/**
+ * Devuelve la ruta de imagen para un producto.
+ * Busca por id; si no, por slug del nombre. Si no hay match en IMAGE_MAP,
+ * retorna /img/products/<slug>.jpg como convención.
+ */
+export function getProductImage(product) {
   if (!product) return PLACEHOLDER;
-  // intenta por id, si no, por slug del nombre
+
+  // intenta usar id; si no, un slug del nombre (ej: "coffee:capuccino")
   const key = product.id || (product.name ? slugify(product.name) : "");
   if (!key) return PLACEHOLDER;
 
-  // Mapa explícito
   if (IMAGE_MAP[key]) return IMAGE_MAP[key];
 
-  // Fallback predictivo: /img/products/<slug>.jpg
-  const predicted = `/img/products/${key}.jpg`;
-  return predicted;
-
+  // Fallback predictivo: coloca el archivo en /public/img/products/<key>.jpg
+  return `/img/products/${key}.jpg`;
+}
