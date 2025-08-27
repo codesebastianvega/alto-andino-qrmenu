@@ -1,17 +1,36 @@
+// src/hooks/useLockBodyScroll.js
 import { useLayoutEffect } from "react";
 
-export function useLockBodyScroll(active) {
+/**
+ * Bloquea el scroll del <body> mientras `enabled` sea true.
+ * Restaura exactamente los estilos previos al desactivar o desmontar.
+ */
+export function useLockBodyScroll(enabled = true, { reserveScrollbarGap = true } = {}) {
   useLayoutEffect(() => {
-    if (!active) return;
-    const { overflow, paddingRight } = document.documentElement.style;
-    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
-    document.documentElement.style.overflow = "hidden";
-    if (scrollBarWidth > 0) {
-      document.documentElement.style.paddingRight = `${scrollBarWidth}px`;
+    if (!enabled) return;
+
+    const body = document.body;
+    const html = document.documentElement;
+
+    // Guardar estado previo
+    const prevOverflow = body.style.overflow;
+    const prevPaddingRight = body.style.paddingRight;
+
+    // Calcular ancho del scrollbar para evitar “salto” de layout
+    const scrollBarWidth = window.innerWidth - html.clientWidth;
+    if (reserveScrollbarGap && scrollBarWidth > 0) {
+      body.style.paddingRight = `${scrollBarWidth}px`;
     }
+
+    // Bloquear scroll
+    body.style.overflow = "hidden";
+
+    // Cleanup al desactivar/desmontar
     return () => {
-      document.documentElement.style.overflow = overflow || "";
-      document.documentElement.style.paddingRight = paddingRight || "";
+      body.style.overflow = prevOverflow;
+      body.style.paddingRight = prevPaddingRight;
     };
-  }, [active]);
+  }, [enabled, reserveScrollbarGap]);
 }
+
+export default useLockBodyScroll;
