@@ -1,5 +1,6 @@
 
  import { useMemo, useEffect, useCallback, useState, cloneElement, useRef } from "react";
+import { useSwipeable } from "react-swipeable";
 import { useCart } from "@/context/CartContext";
 import { formatCOP } from "@/utils/money";
 import { getStockState, slugify, isUnavailable } from "@/utils/stock";
@@ -24,15 +25,15 @@ import { getProductImage } from "@/utils/images";
    cumbrePrices,
 } from "@/data/menuItems";
 import { CATEGORIES_LIST, TABS_ITEMS } from "@/config/categories";
-import useSwipeTabs from "@/utils/useSwipeTabs";
  export default function ProductLists({
    query,
    selectedCategory,
    onCategorySelect,
    featureTabs = false,
  }) {
-   const [counts, setCounts] = useState({});
-   const manualRef = useRef(false);
+  const [counts, setCounts] = useState({});
+  const manualRef = useRef(false);
+  const scrollerRef = useRef(null);
    const [quickOpen, setQuickOpen] = useState(false);
    const [quickProduct, setQuickProduct] = useState(null);
    const onQuickView = useCallback((p) => {
@@ -310,8 +311,53 @@ import useSwipeTabs from "@/utils/useSwipeTabs";
    }, [categories, featureTabs, selectedCategory, onCategorySelect, sections]);
  
   const stackClass = featureTabs && selectedCategory !== "todos" ? "" : "space-y-6";
- 
-   return (
+
+  const hasIndexState =
+    typeof setActiveCategoryIndex === "function" ||
+    typeof setActiveListIndex === "function";
+
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => {
+      if (hasIndexState) {
+        if (typeof setActiveCategoryIndex === "function")
+          setActiveCategoryIndex((prev) => prev + 1);
+        if (typeof setActiveListIndex === "function")
+          setActiveListIndex((prev) => prev + 1);
+      } else if (typeof onNext === "function") {
+        onNext();
+      } else {
+        const el = scrollerRef.current;
+        if (el)
+          el.scrollBy({
+            left: Math.round(el.clientWidth * 0.8),
+            behavior: "smooth",
+          });
+      }
+    },
+    onSwipedRight: () => {
+      if (hasIndexState) {
+        if (typeof setActiveCategoryIndex === "function")
+          setActiveCategoryIndex((prev) => Math.max(0, prev - 1));
+        if (typeof setActiveListIndex === "function")
+          setActiveListIndex((prev) => Math.max(0, prev - 1));
+      } else if (typeof onPrev === "function") {
+        onPrev();
+      } else {
+        const el = scrollerRef.current;
+        if (el)
+          el.scrollBy({
+            left: -Math.round(el.clientWidth * 0.8),
+            behavior: "smooth",
+          });
+      }
+    },
+    trackMouse: true,
+    preventDefaultTouchmoveEvent: true,
+  });
+
+  const _safeSwipeHandlers = swipeHandlers || {};
+
+  return (
      <>
        {!featureTabs && <CategoryHeader />}
        <CategoryNav
@@ -327,7 +373,7 @@ import useSwipeTabs from "@/utils/useSwipeTabs";
        {query && !Object.values(counts).some((n) => n > 0) && (
         <p className="px-4 text-sm text-neutral-600">No hay resultados para “{query}”.</p>
        )}
-      <div {...swipeHandlers} className={stackClass}>
+      <div ref={scrollerRef} {..._safeSwipeHandlers} className={stackClass}>
          {sections.map((s) => {
            if (featureTabs && selectedCategory !== "todos" && s.id !== selectedCategory) {
              return null;
