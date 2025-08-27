@@ -74,6 +74,58 @@ function ico(label) {
   if (s.includes("mayo-pesto")) return "🌿";
   return "•";
 }
+
+const BASE = 28000;
+const PREMIUM = 4000;
+const bases = ["Arroz blanco", "Quinoa", "Mix de lechugas"];
+const proteins = [
+  { name: "Pollo" },
+  { name: "Res" },
+  { name: "Tofu" },
+  { name: "Atún" },
+  { name: "Salmón", premium: true },
+  { name: "Camarón", premium: true },
+];
+const toppings = [
+  "Aguacate",
+  "Mango",
+  "Pepino",
+  "Maíz",
+  "Tomate cherry",
+  "Brócoli",
+  "Champiñones",
+  "Hummus",
+  "Rábano",
+  "Zanahoria",
+  "Pimentón",
+  "Arándano",
+  "Kiwi",
+];
+const extras = [
+  "Chía",
+  "Linaza",
+  "Láminas de almendra",
+  "Jengibre encurtido",
+  "Pepinillos",
+  "Aceitunas",
+  "Aceite de oliva",
+  "Ajonjolí",
+  "Jalapeños",
+  "Alga nori",
+];
+// 🔁 Salsas unificadas (¡ojo! “HotSweet de la Casa” en una sola opción)
+const sauces = [
+  "HotSweet de la Casa",
+  "Mango-yaki",
+  "Balsámico",
+  "Yogur",
+  "Soja",
+  "Mayo-pesto",
+  "Sin Salsa",
+];
+
+const MAX_TOPS = 4;
+const MAX_EXTS = 3;
  
  export default function BowlBuilder({ open, onClose }) {
    useLockBodyScroll(open);
@@ -113,68 +165,13 @@ function ico(label) {
  
    if (!open) return null;
  
-   // Catálogos
-   const BASE = 28000;
-   const PREMIUM = 4000;
-   const bases = ["Arroz blanco", "Quinoa", "Mix de lechugas"];
-   const proteins = [
-     { name: "Pollo" },
-     { name: "Res" },
-     { name: "Tofu" },
-     { name: "Atún" },
-     { name: "Salmón", premium: true },
-     { name: "Camarón", premium: true },
-   ];
-   const toppings = [
-     "Aguacate",
-     "Mango",
-     "Pepino",
-     "Maíz",
-     "Tomate cherry",
-     "Brócoli",
-     "Champiñones",
-     "Hummus",
-     "Rábano",
-     "Zanahoria",
-     "Pimentón",
-     "Arándano",
-     "Kiwi",
-   ];
-   const extras = [
-     "Chía",
-     "Linaza",
-     "Láminas de almendra",
-     "Jengibre encurtido",
-     "Pepinillos",
-     "Aceitunas",
-     "Aceite de oliva",
-     "Ajonjolí",
-     "Jalapeños",
-     "Alga nori",
-     "Guacamole",
-   ];
-
-   // 🔁 Salsas unificadas (¡ojo! “HotSweet de la Casa” en una sola opción)
-   const sauces = [
-     "HotSweet de la Casa",
-     "Mango-yaki",
-     "Balsámico",
-     "Yogur",
-     "Soja",
-     "Mayo-pesto",
-     "Sin Salsa",
-   ];
- 
-   // Estado
-   const [base, setBase] = useState(bases[0]);
-   const [protein, setProtein] = useState("Pollo");
-   const [tops, setTops] = useState([]);
-   const [exts, setExts] = useState([]);
-   const [sauce, setSauce] = useState("Sin Salsa");
-   const [note, setNote] = useState("");
- 
-   const MAX_TOPS = 4;
-   const MAX_EXTS = 3;
+  // Estado
+  const [base, setBase] = useState(bases[0]);
+  const [protein, setProtein] = useState("Pollo");
+  const [tops, setTops] = useState([]);
+  const [exts, setExts] = useState([]);
+  const [sauce, setSauce] = useState("Sin Salsa");
+  const [note, setNote] = useState("");
  
   const isPremium = useMemo(() => ["Salmón", "Camarón"].includes(protein), [protein]);
    const price = useMemo(() => BASE + (isPremium ? PREMIUM : 0), [isPremium]);
