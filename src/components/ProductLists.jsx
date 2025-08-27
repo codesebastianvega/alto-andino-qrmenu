@@ -157,24 +157,29 @@ import useSwipeTabs from "@/utils/useSwipeTabs";
          ),
      });
  export default function ProductLists({
-           </Section>
-         ),
-       });
-     }
-     return arr;
-   }, [
-     breakfasts,
-     mains,
-     dessertsCumbre,
-     dessertsBase,
-     dessertsCount,
-     counts,
-     bowlsEl,
-     sandwichesEl,
-     smoothiesEl,
-     coffeeEl,
-     coldEl,
-   ]);
+  breakfasts,
+  mains,
+  dessertsCumbre,
+  dessertsBase,
+  dessertsCount,
+  counts,
+  bowlsEl,
+  sandwichesEl,
+  smoothiesEl,
+  coffeeEl,
+  coldEl
+}) {
+  return (
+    <Section>
+      {/* Aquí renderizas cada categoría */}
+      {breakfasts && breakfasts.map((item) => (
+        <ProductCard key={item.id} {...item} />
+      ))}
+
+      {/* Repite para mains, desserts, etc. */}
+    </Section>
+  );
+}
    const renderPanel = (s, inTodos = false) => (
      <div
        key={s.id}
@@ -226,7 +231,7 @@ import useSwipeTabs from "@/utils/useSwipeTabs";
          const cat = categories.find((c) => c.id === nxt);
          handleManualSelect(cat ?? { id: nxt });
        }
- export default function ProductLists({
+ export default function ProductLists() {
  
    useEffect(() => {
      if (!manualRef.current) return;
