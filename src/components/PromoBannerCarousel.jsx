@@ -34,7 +34,31 @@ import { productStories } from "@/data/stories";
      if (paused || count <= 1) return;
      const el = trackRef.current;
      if (!el) return;
- export default function PromoBannerCarousel() {
+     const id = setInterval(() => {
+       const next = (index + 1) % count;
+       el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
+     }, 6000);
+     return () => clearInterval(id);
+   }, [paused, count, index]);
+
+   const handleAction = (action, product, productId) => {
+     if (!action) return;
+     if (action === "add") {
+       if (product) {
+         addItem(product, 1);
+         toast();
+       } else {
+         toast("Producto no disponible");
+       }
+     } else if (action === "quickview") {
+       if (product) {
+         setQuickProduct(product);
+         setQuickOpen(true);
+       } else {
+         toast("Producto no disponible");
+       }
+     } else if (action === "modal:petfriendly") {
+       setPetOpen(true);
      } else if (action === "story" || action === "recipe") {
        const st = productStories[productId];
        if (!st) {
