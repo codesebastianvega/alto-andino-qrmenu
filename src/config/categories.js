@@ -25,7 +25,7 @@ export const CATEGORIES_LIST = [
   {
     id: "bebidasfrias",
     label: "Bebidas frías",
-    targetId: "section-bebidas-frias",
+    targetId: "section-bebidasfrias",
     tintClass: "bg-sky-50",
   },
   { id: "postres", label: "Postres" },
