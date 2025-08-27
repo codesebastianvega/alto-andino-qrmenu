@@ -1,179 +1,224 @@
- import { useState, useMemo, useEffect, useRef } from "react";
+// src/components/BowlBuilder.jsx
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import Portal from "./Portal";
 import { formatCOP } from "@/utils/money";
 import { useCart } from "@/context/CartContext";
- import Portal from "./Portal";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
- 
- // Tile ancho completo con estados
- function Tile({ active, disabled, onClick, children }) {
-   return (
-     <button
-       type="button"
-       onClick={onClick}
-       disabled={disabled && !active}
-       aria-pressed={active}
-       className={
+
+// -----------------------
+// Catálogos y constantes
+// -----------------------
+const BASE = 28000;
+const PREMIUM = 4000;
+
+const bases = ["Arroz", "Quinoa", "Mix de lechugas"];
+
+const proteins = [
+  { name: "Pollo", premium: false },
+  { name: "Res", premium: false },
+  { name: "Tofu", premium: false },
+  { name: "Atún", premium: false },
+  { name: "Salmón", premium: true },
+  { name: "Camarón", premium: true },
+];
+
+const toppings = [
+  "Aguacate",
+  "Mango",
+  "Pepino",
+  "Maíz",
+  "Cebolla morada",
+  "Tomate cherry",
+];
+
+const extras = [
+  "Guacamole",
+  "Queso crema",
+  "Nachos",
+  "Ajonjolí",
+  "Cebollín",
+];
+
+const sauces = [
+  "HotSweet de la Casa",
+  "Mango-yaki",
+  "Balsámico",
+  "Yogur",
+  "Soja",
+  "Mayo-pesto",
+  "Sin Salsa",
+];
+
+const MAX_TOPS = 4;
+const MAX_EXTS = 3;
+
+// -----------------------
+// UI helpers
+// -----------------------
+function Tile({ active, disabled, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled && !active}
+      aria-pressed={active}
+      className={
         "w-full rounded-xl px-3 py-2 text-left text-sm ring-1 transition " +
-         (active
+        (active
           ? "bg-[#2f4131] text-white shadow-sm ring-[#2f4131]"
-           : "bg-white text-neutral-900 ring-neutral-200 hover:ring-neutral-300") +
+          : "bg-white text-neutral-900 ring-neutral-200 hover:ring-neutral-300") +
         (disabled && !active ? " cursor-not-allowed opacity-50" : "")
-       }
-     >
-       {children}
-     </button>
-   );
- }
- 
- // Emojis por ingrediente (prefijo)
- function ico(label) {
-   const s = label.toLowerCase();
-   if (s.includes("arroz")) return "🍚";
-   if (s.includes("quinoa")) return "🌾";
-   if (s.includes("lechuga") || s.includes("mix")) return "🥬";
- 
-   if (s.includes("pollo")) return "🍗";
-   if (s.includes("res")) return "🥩";
-   if (s.includes("tofu")) return "🌿";
-   if (s.includes("atún")) return "🐟";
-   if (s.includes("salmón")) return "🐟";
-   if (s.includes("camarón")) return "🍤";
- 
-   if (s.includes("aguacate")) return "🥑";
-   if (s.includes("mango")) return "🥭";
-   if (s.includes("pepino")) return "🥒";
-   if (s.includes("maíz")) return "🌽";
+      }
+    >
+      {children}
+    </button>
+  );
+}
 
 function ico(label) {
- 
-   if (s.includes("hotsweet")) return "🌶️";
-   if (s.includes("mango-yaki")) return "🥭";
-   if (s.includes("balsámico")) return "🧴";
-   if (s.includes("yogur")) return "🥛";
-   if (s.includes("soja") || s.includes("soya")) return "🍶";
-   if (s.includes("mayo-pesto")) return "🌿";
-   return "•";
- }
- 
- export default function BowlBuilder({ open, onClose }) {
-   useLockBodyScroll(open);
-   const cart = useCart();
-   const modalRef = useRef(null);
-   const lastFocused = useRef(null);
- 
-   useEffect(() => {
-     if (!open) return;
-     lastFocused.current = document.activeElement;
-     const el = modalRef.current;
-     el?.focus();
-     const onKey = (e) => {
-       if (e.key === "Escape") onClose?.();
-       if (e.key === "Tab") {
-         const focusables = el.querySelectorAll(
-          'a,button,input,select,textarea,[tabindex]:not([tabindex="-1"])',
-         );
-         if (!focusables.length) return;
-         const first = focusables[0];
-         const last = focusables[focusables.length - 1];
-         if (e.shiftKey && document.activeElement === first) {
-           e.preventDefault();
-           last.focus();
-         } else if (!e.shiftKey && document.activeElement === last) {
-           e.preventDefault();
-           first.focus();
-         }
-       }
-     };
-     document.addEventListener("keydown", onKey);
-     return () => {
-       document.removeEventListener("keydown", onKey);
-       lastFocused.current?.focus?.();
-     };
-   }, [open, onClose]);
- 
-   if (!open) return null;
- 
-   // Catálogos
-   const BASE = 28000;
-   const PREMIUM = 4000;
+  const s = String(label || "").toLowerCase();
 
- export default function BowlBuilder({ open, onClose }) {
-     "Guacamole",
-   ];
- 
-   // 🔁 Salsas unificadas (¡ojo! “HotSweet de la Casa” en una sola opción)
-   const sauces = [
-     "HotSweet de la Casa",
-     "Mango-yaki",
-     "Balsámico",
-     "Yogur",
-     "Soja",
-     "Mayo-pesto",
-     "Sin Salsa",
-   ];
- 
-   // Estado
-   const [base, setBase] = useState(bases[0]);
-   const [protein, setProtein] = useState("Pollo");
-   const [tops, setTops] = useState([]);
-   const [exts, setExts] = useState([]);
-   const [sauce, setSauce] = useState("Sin Salsa");
-   const [note, setNote] = useState("");
- 
-   const MAX_TOPS = 4;
-   const MAX_EXTS = 3;
- 
-  const isPremium = useMemo(() => ["Salmón", "Camarón"].includes(protein), [protein]);
-   const price = useMemo(() => BASE + (isPremium ? PREMIUM : 0), [isPremium]);
- 
-   const toggleLimited = (list, setList, max, item) => {
-     setList((prev) => {
-       const has = prev.includes(item);
-       if (has) return prev.filter((x) => x !== item);
-       if (prev.length >= max) return prev;
-       return [...prev, item];
-     });
-   };
- 
-   const resetAll = () => {
-     setBase(bases[0]);
-     setProtein("Pollo");
-     setTops([]);
-     setExts([]);
-     setSauce("Sin Salsa");
-     setNote("");
-   };
- 
-   const addToCart = () => {
-     cart.addItem({
-       productId: "bowl-personalizado",
-       name: "Bowl personalizado",
-       price,
-       options: {
-         Base: base,
-         Proteína: protein,
-         Toppings: tops,
-         Extras: exts,
-         Salsa: sauce,
-       },
-       note,
-     });
-     setNote("");
-     onClose();
-   };
- 
+  // Bases
+  if (s.includes("arroz")) return "🍚";
+  if (s.includes("quinoa")) return "🌾";
+  if (s.includes("lechuga") || s.includes("mix")) return "🥬";
+
+  // Proteínas
+  if (s.includes("pollo")) return "🍗";
+  if (s.includes("res")) return "🥩";
+  if (s.includes("tofu")) return "🌿";
+  if (s.includes("atún")) return "🐟";
+  if (s.includes("salmón")) return "🐟";
+  if (s.includes("camarón")) return "🍤";
+
+  // Toppings/extras
+  if (s.includes("aguacate")) return "🥑";
+  if (s.includes("mango")) return "🥭";
+  if (s.includes("pepino")) return "🥒";
+  if (s.includes("maíz")) return "🌽";
+
+  // Salsas
+  if (s.includes("hotsweet")) return "🌶️";
+  if (s.includes("mango-yaki")) return "🥭";
+  if (s.includes("balsámico")) return "🧴";
+  if (s.includes("yogur")) return "🥛";
+  if (s.includes("soja") || s.includes("soya")) return "🍶";
+  if (s.includes("mayo-pesto")) return "🌿";
+
+  return "•";
+}
+
+// -----------------------
+// Componente principal
+// -----------------------
+export default function BowlBuilder({ open, onClose }) {
+  // Guard clause ANTES de hooks (no condicionar hooks)
+  if (!open) return null;
+
+  useLockBodyScroll(open);
+  const cart = useCart();
+  const modalRef = useRef(null);
+  const lastFocused = useRef(null);
+
+  useEffect(() => {
+    lastFocused.current = document.activeElement;
+    modalRef.current?.focus?.();
+
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+      if (e.key === "Tab") {
+        const el = modalRef.current;
+        if (!el) return;
+        const focusables = el.querySelectorAll(
+          'a,button,input,select,textarea,[tabindex]:not([tabindex="-1"])',
+        );
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      lastFocused.current?.focus?.();
+    };
+  }, [onClose]);
+
+  // Estado
+  const [base, setBase] = useState(bases[0]);
+  const [protein, setProtein] = useState("Pollo");
+  const [tops, setTops] = useState([]);
+  const [exts, setExts] = useState([]);
+  const [sauce, setSauce] = useState("Sin Salsa");
+  const [note, setNote] = useState("");
+
+  const isPremium = useMemo(
+    () => ["Salmón", "Camarón"].includes(protein),
+    [protein],
+  );
+  const price = useMemo(
+    () => BASE + (isPremium ? PREMIUM : 0),
+    [isPremium],
+  );
+
+  const toggleLimited = (list, setList, max, item) => {
+    setList((prev) => {
+      const has = prev.includes(item);
+      if (has) return prev.filter((x) => x !== item);
+      if (prev.length >= max) return prev;
+      return [...prev, item];
+    });
+  };
+
+  const resetAll = () => {
+    setBase(bases[0]);
+    setProtein("Pollo");
+    setTops([]);
+    setExts([]);
+    setSauce("Sin Salsa");
+    setNote("");
+  };
+
+  const addToCart = () => {
+    cart.addItem({
+      productId: "bowl-personalizado",
+      name: "Bowl personalizado",
+      price,
+      options: {
+        Base: base,
+        Proteína: protein,
+        Toppings: tops,
+        Extras: exts,
+        Salsa: sauce,
+      },
+      note,
+    });
+    setNote("");
+    onClose?.();
+  };
+
   return (
     <Portal>
       <div role="dialog" aria-modal="true" className="fixed inset-0 z-[100]">
+        {/* Fondo */}
         <div
           className="absolute inset-0 bg-black/50 backdrop-blur-sm"
           onClick={() => onClose?.()}
         />
- 
+
+        {/* Contenedor */}
         <div
           ref={modalRef}
           tabIndex={-1}
-          className="pointer-events-auto absolute inset-x-0 bottom-0 z-[110] mx-auto flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-[#FAF7F2] shadow-2xl focus-visible:outline-none"
+          className="pointer-events-auto absolute inset-x-0 bottom-0 z-[110] mx-auto flex max-h[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-[#FAF7F2] shadow-2xl focus-visible:outline-none"
         >
           {/* Header */}
           <div className="rounded-t-2xl bg-[#2f4131] p-4 text-white">
@@ -200,17 +245,17 @@ function ico(label) {
                   Cerrar
                 </button>
               </div>
-             </div>
-           </div>
+            </div>
+          </div>
 
-          {/* Body scrollable */}
+          {/* Body */}
           <div className="space-y-3 overflow-y-auto px-4 pb-4 sm:space-y-4">
             {/* Resumen */}
             <div className="rounded-lg bg-white px-3 py-2 text-sm text-neutral-800 ring-1 ring-neutral-200">
               Base: {base} · Prot: {protein} {isPremium && "(+ $4.000)"} · Top: {tops.length}/
               {MAX_TOPS} · Extras: {exts.length}/{MAX_EXTS} · Salsa: {sauce} · Total:{" "}
               {formatCOP(price)}
-             </div>
+            </div>
 
             {/* Base */}
             <section>
@@ -223,7 +268,6 @@ function ico(label) {
                 ))}
               </div>
             </section>
- 
 
             {/* Proteína */}
             <section>
@@ -237,7 +281,7 @@ function ico(label) {
                 ))}
               </div>
             </section>
- 
+
             {/* Toppings */}
             <section>
               <div className="mb-2 flex items-center justify-between">
@@ -251,15 +295,15 @@ function ico(label) {
                   <Tile
                     key={t}
                     active={tops.includes(t)}
-                    disabled={tops.length >= MAX_TOPS}
+                    disabled={!tops.includes(t) && tops.length >= MAX_TOPS}
                     onClick={() => toggleLimited(tops, setTops, MAX_TOPS, t)}
                   >
                     {ico(t)}&nbsp;{t}
                   </Tile>
-               ))}
+                ))}
               </div>
             </section>
- 
+
             {/* Extras */}
             <section>
               <div className="mb-2 flex items-center justify-between">
@@ -273,7 +317,7 @@ function ico(label) {
                   <Tile
                     key={e}
                     active={exts.includes(e)}
-                    disabled={exts.length >= MAX_EXTS}
+                    disabled={!exts.includes(e) && exts.length >= MAX_EXTS}
                     onClick={() => toggleLimited(exts, setExts, MAX_EXTS, e)}
                   >
                     {ico(e)}&nbsp;{e}
@@ -281,7 +325,7 @@ function ico(label) {
                 ))}
               </div>
             </section>
- 
+
             {/* Salsa */}
             <section>
               <p className="mb-2 text-sm font-semibold text-[#2f4131]">5) Salsa</p>
@@ -289,12 +333,12 @@ function ico(label) {
                 {sauces.map((s) => (
                   <Tile key={s} active={s === sauce} onClick={() => setSauce(s)}>
                     {ico(s)}&nbsp;{s}
-                 </Tile>
+                  </Tile>
                 ))}
               </div>
             </section>
 
-            {/* Nota y acciones */}
+            {/* Nota + acciones */}
             <div>
               <label className="block text-xs text-neutral-600">Nota para cocina (opcional)</label>
               <input
@@ -305,25 +349,26 @@ function ico(label) {
                 className="mt-1 w-full rounded-lg border px-2 py-2 text-sm"
               />
             </div>
+
             <div className="flex gap-2 pb-[env(safe-area-inset-bottom)] pt-2">
-               <button
-                 type="button"
-                 onClick={onClose}
+              <button
+                type="button"
+                onClick={onClose}
                 className="h-9 flex-1 rounded-lg bg-white/10 text-sm text-white ring-1 ring-white/15 hover:bg-white/15"
-               >
-                 Seguir pidiendo
-               </button>
-               <button
-                 type="button"
-                 onClick={addToCart}
+              >
+                Seguir pidiendo
+              </button>
+              <button
+                type="button"
+                onClick={addToCart}
                 className="h-9 flex-1 rounded-lg bg-[#2f4131] text-sm text-white hover:bg-[#243326]"
-               >
-                 Añadir al carrito
-               </button>
-             </div>
-           </div>
-         </div>
-       </div>
-     </Portal>
-   );
-  }
+              >
+                Añadir al carrito
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Portal>
+  );
+}
