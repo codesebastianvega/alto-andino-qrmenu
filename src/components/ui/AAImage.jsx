@@ -9,6 +9,8 @@ export default function AAImage({
   height,
   ...rest
 }) {
+  if (!src) return null;
+
   const common = {
     alt,
     className,
