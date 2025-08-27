@@ -1,12 +1,19 @@
 // src/utils/images.js
 // ⬇⬇⬇ INSTRUCCIONES PARA IMÁGENES ⬇⬇⬇
 //
-// 1) Coloca tus archivos en: /public/img/products/
-// 2) Edita el mapa IMAGE_MAP de abajo o usa la convención /img/products/<slug>.jpg
-// 3) Si no hay match, se devuelve el path predicho; crea un placeholder si quieres.
+// 1) Pon tus imágenes en: /public/img/products/
+//    Ej.: /public/img/products/coffee-capuccino.jpg
+// 2) Mapea aquí debajo en IMAGE_MAP usando un id o un slug manual.
+// 3) Si no hay match, se intentará /img/products/<slug>.jpg; si tampoco existe,
+//    usa PLACEHOLDER (crea /public/img/products/placeholder.jpg).
 
-/* eslint-disable import/no-unresolved */
-import { slugify } from "@/utils/stock";
+function slugify(s = "") {
+  return String(s)
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
 
 export const IMAGE_MAP = {
   // === COFFEE ===
@@ -19,26 +26,22 @@ export const IMAGE_MAP = {
   // === BOWLS ===
   "bowl:prearmado": "/img/products/bowl-prearmado.jpg",
 
-  // Agrega tus claves aquí ↴
+  // Agrega tus claves aquí:
   // "<productId-o-slug>": "/img/products/mi-foto.jpg",
 };
 
 export const PLACEHOLDER = "/img/products/placeholder.jpg";
 
 /**
- * Devuelve la ruta de imagen para un producto.
- * Busca por id; si no, por slug del nombre. Si no hay match en IMAGE_MAP,
- * retorna /img/products/<slug>.jpg como convención.
+ * Dado un producto { id?, name? }, devuelve una ruta de imagen.
+ * 1) Busca en IMAGE_MAP por id o slug(name)
+ * 2) Si no, intenta /img/products/<slug>.jpg
+ * 3) Si no, PLACEHOLDER
  */
 export function getProductImage(product) {
   if (!product) return PLACEHOLDER;
-
-  // intenta usar id; si no, un slug del nombre (ej: "coffee:capuccino")
   const key = product.id || (product.name ? slugify(product.name) : "");
-  if (!key) return PLACEHOLDER;
-
-  if (IMAGE_MAP[key]) return IMAGE_MAP[key];
-
-  // Fallback predictivo: coloca el archivo en /public/img/products/<key>.jpg
-  return `/img/products/${key}.jpg`;
+  if (key && IMAGE_MAP[key]) return IMAGE_MAP[key];
+  if (key) return `/img/products/${key}.jpg`;
+  return PLACEHOLDER;
 }
