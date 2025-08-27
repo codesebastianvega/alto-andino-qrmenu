@@ -8,13 +8,21 @@ import { getProductImage } from "@/utils/images";
 import { MILK_OPTIONS, isMilkEligible } from "@/config/milkOptions";
 
 export default function ProductQuickView({ open, product, onClose, onAdd }) {
+  if (!open || !product) return null;
+
   useLockBodyScroll(open);
   const { addItem } = useCart();
   const modalRef = useRef(null);
   const lastFocused = useRef(null);
 
+  const productId = product?.id ?? null;
+  const [milk, setMilk] = useState("entera");
+
   useEffect(() => {
-    if (!open) return;
+    setMilk("entera");
+  }, [productId]);
+
+  useEffect(() => {
     lastFocused.current = document.activeElement;
     const el = modalRef.current;
     el?.focus();
@@ -43,9 +51,7 @@ export default function ProductQuickView({ open, product, onClose, onAdd }) {
       document.removeEventListener("keydown", onKey);
       lastFocused.current?.focus?.();
     };
-  }, [open, onClose]);
-
-  if (!open || !product) return null;
+  }, [onClose]);
 
   const title = product?.title || product?.name || "";
   const subtitle = product?.subtitle;
@@ -53,8 +59,6 @@ export default function ProductQuickView({ open, product, onClose, onAdd }) {
   const image = getProductImage(product);
 
   const isCoffee = isMilkEligible(product);
-
-  const [milk, setMilk] = useState("entera");
   const milkDelta = isCoffee
     ? MILK_OPTIONS.find((m) => m.id === milk)?.priceDelta || 0
     : 0;
