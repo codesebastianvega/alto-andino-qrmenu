@@ -23,10 +23,12 @@ import AAImage from "./ui/AAImage";
    breakfastItems,
    mainDishes,
    dessertBaseItems,
+   preBowl,
    cumbreFlavors,
    cumbrePrices,
 } from "../data/menuItems";
-import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories";
+import { veggieBreakfast, veggieMains } from "../data/menuItems";
+import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
  export default function ProductLists({
    query,
    selectedCategory,
@@ -36,13 +38,25 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories";
   const [counts, setCounts] = useState({});
   const manualRef = useRef(false);
   const scrollerRef = useRef(null);
-   const [quickOpen, setQuickOpen] = useState(false);
-   const [quickProduct, setQuickProduct] = useState(null);
-   const onQuickView = useCallback((p) => {
-     if (!p) return;
-     setQuickProduct(p);
-     setQuickOpen(true);
-   }, []);
+ const [quickOpen, setQuickOpen] = useState(false);
+ const [quickProduct, setQuickProduct] = useState(null);
+  const onQuickView = useCallback((p) => {
+    if (!p) return;
+    setQuickProduct(p);
+    setQuickOpen(true);
+  }, []);
+
+  // Permite abrir QuickView desde otros componentes (p. ej., HeroHeadline)
+  useEffect(() => {
+    const onGlobalQV = (e) => {
+      const p = e?.detail;
+      if (!p) return;
+      setQuickProduct(p);
+      setQuickOpen(true);
+    };
+    window.addEventListener("aa:quickview", onGlobalQV);
+    return () => window.removeEventListener("aa:quickview", onGlobalQV);
+  }, []);
    const setCount = useCallback((id, n) => {
      setCounts((prev) => (prev[id] === n ? prev : { ...prev, [id]: n }));
    }, []);
@@ -104,18 +118,22 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories";
         ),
       });
     }
-    arr.push({
-      id: "bowls",
-      element: (
-        <Section id="section-bowls" title="Bowls" count={counts["bowls"]}>
-          <BowlsSection
-            query={query}
-            onCount={(n) => setCount("bowls", n)}
-            onQuickView={onQuickView}
-          />
-        </Section>
-      ),
-    });
+    // Mostrar Bowls solo si coincide con la búsqueda (o si no hay query)
+    const showBowls = !query || matchesQuery({ title: preBowl?.name, description: preBowl?.desc }, query);
+    if (showBowls) {
+      arr.push({
+        id: "bowls",
+        element: (
+          <Section id="section-bowls" title="Poke Bowls" count={counts["bowls"]}>
+            <BowlsSection
+              query={query}
+              onCount={(n) => setCount("bowls", n)}
+              onQuickView={onQuickView}
+            />
+          </Section>
+        ),
+      });
+    }
     if (mains.length) {
       arr.push({
         id: "platos",
@@ -126,6 +144,35 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories";
             query={query}
             items={mains}
             onCount={(n) => setCount("platos", n)}
+            onQuickView={onQuickView}
+          />
+        ),
+      });
+    }
+    // Veggie (agrupado)
+    if ((veggieBreakfast?.length || 0) + (veggieMains?.length || 0)) {
+      arr.push({
+        id: "veggie",
+        element: (
+          <ProductSection
+            id="veggie"
+            title="Veggie"
+            query={query}
+            groups={[
+              {
+                title: "Desayunos",
+                items: (veggieBreakfast || []).filter((it) =>
+                  matchesQuery({ title: it.name, description: it.desc }, query),
+                ),
+              },
+              {
+                title: "Platos fuertes",
+                items: (veggieMains || []).filter((it) =>
+                  matchesQuery({ title: it.name, description: it.desc }, query),
+                ),
+              },
+            ]}
+            onCount={(n) => setCount("veggie", n)}
             onQuickView={onQuickView}
           />
         ),
