@@ -19,7 +19,7 @@
     "main-burger": false,
 
     "sandwich:cerdo": true,
-    "sandwich:pollo": false,
+    "sandwich:pollo": true,
     "sandwich:pavo": true,
     "sandwich:serrano": true,
     "sandwich:cosecha": false,
@@ -39,6 +39,12 @@
     "cumbre:blancos": false,
     "cumbre:choco": true,
 
+    "veg-tostada-primavera": true,
+    "veg-cosecha-huerto": true,
+    "veg-alfredo-bosque": true,
+    "veg-ensalada-jardin-altura": true,
+    "veg-pasta-bolonesa": true,
+
     "cof-espresso": true,
     "cof-americano": true,
     "cof-tinto": true,
@@ -47,11 +53,18 @@
     "cof-flat": true,
     "cof-moca": true,
     "cof-choco": true,
+    "cof-ristretto": true,
 
     "inf-aromatica": true,
     "inf-ginger": true,
     "inf-verde": true,
     "inf-manzanilla": true,
-    "inf-chai": true
+    "inf-chai": true,
+    "inf-yerbabuena-manzanilla": true,
+    "inf-super-blend-azul": true,
+    "inf-super-blend-amarillo": true,
+    "te-negro": true,
+    "te-verde": true,
+    "matcha-lulo": true
   }
 }
