@@ -27,7 +27,7 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
   return (
     <div
       ref={railRef}
-      className="scrollbar-none -mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto py-5 px-1 pb-7"
+      className="scrollbar-none -mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto py-4 px-1 pb-6"
       role="tablist"
       aria-label="Categorías"
     >
@@ -42,7 +42,7 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
             onClick={() => handleSelect(cat, idx)}
             className={clsx(
               // Base size and layout (mÃ¡s grandes)
-              "flex h-36 w-28 flex-shrink-0 flex-col items-center justify-center gap-1.5 rounded-2xl p-2 text-center transition-all duration-300 ease-in-out",
+              "flex h-28 w-24 flex-shrink-0 flex-col items-center justify-center gap-1 rounded-xl p-2 text-center transition-all duration-300 ease-in-out",
               "snap-center",
               // Glassmorphism base style (blur removed for performance)
               "bg-white/60 ring-1 ring-inset ring-white/30",
@@ -60,11 +60,11 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
                 "transition-colors",
                 active ? "text-[#2f4131]" : "text-neutral-700"
               )}
-              style={{ fontSize: 50, width: 70, height: 70 }}
+              style={{ fontSize: 40, width: 56, height: 56 }}
             />
             <span
               className={clsx(
-                "block text-sm font-semibold leading-tight line-clamp-2",
+                "block text-[13px] font-semibold leading-tight line-clamp-2",
                 active && "text-[#2f4131]"
               )}
             >
