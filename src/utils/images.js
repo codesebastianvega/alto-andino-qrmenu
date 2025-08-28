@@ -124,16 +124,7 @@ export function getProductImage(product) {
   if (!product) return null;
   const key = product.id || (product.name ? slugify(product.name) : "");
   if (key && IMAGE_MAP[key]) return IMAGE_MAP[key];
-
-  for (const ext of ["png", "jpg"]) {
-    const url = `/img/products/${key}.${ext}`;
-    const req = new XMLHttpRequest();
-    try {
-      req.open("HEAD", url, false);
-      req.send();
-      if (req.status >= 200 && req.status < 400) return url;
-    } catch {}
-  }
-
+  // No realizamos comprobaciones síncronas ni adivinamos rutas por defecto
+  // para evitar bloqueos y placeholders. Solo mostramos imágenes mapeadas.
   return null;
 }
