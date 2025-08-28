@@ -13,7 +13,6 @@ import PromoBannerCarousel from "./components/PromoBannerCarousel";
 // Componentes con carga diferida
 const GuideModal = lazy(() => import("./components/GuideModal"));
 const DietaryGuide = lazy(() => import("./components/DietaryGuide"));
-const GlobalDecorations = lazy(() => import("./components/GlobalDecorations"));
 const FloatingCartBar = lazy(() => import("./components/FloatingCartBar"));
 const CartDrawer = lazy(() => import("./components/CartDrawer"));
 const QrPoster = lazy(() => import("./components/QrPoster"));
@@ -150,9 +149,6 @@ export default function App() {
   // ✅ Modo menú normal
   return (
     <>
-      <Suspense fallback={<div />}>
-        <GlobalDecorations />
-      </Suspense>
       <div className="bg-alto-beige leading-snug text-alto-text overflow-x-hidden">
         <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} />
 
