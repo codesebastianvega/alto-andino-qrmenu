@@ -28,10 +28,10 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
   };
 
   const imageSrc = getProductImage(product);
-  const [imgReady, setImgReady] = React.useState(false);
+  const [imgLoaded, setImgLoaded] = React.useState(false);
   React.useEffect(() => {
     // Reinicia el estado cuando cambia la imagen objetivo
-    setImgReady(false);
+    setImgLoaded(false);
   }, [imageSrc]);
 
   const handleQuickView = () => onQuickView?.(product);
@@ -55,38 +55,34 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
   return (
     <article
       className={`group grid ${
-        imgReady ? "grid-cols-[96px_1fr] md:grid-cols-[112px_1fr]" : "grid-cols-1"
+        imageSrc ? "grid-cols-[96px_1fr] md:grid-cols-[112px_1fr]" : "grid-cols-1"
       } gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 transition-all duration-200 md:gap-4 md:p-4 hover:shadow-md hover:ring-black/10 hover:-translate-y-0.5 ${
         unavailable ? "opacity-70 grayscale" : ""
       }`}
     >
-      {/* Pre-carga de imagen fuera del flujo para no reservar espacio */}
-      {imageSrc && !imgReady && (
-        <AAImage
-          src={imageSrc}
-          alt=""
-          className="pointer-events-none absolute"
-          style={{ width: 0, height: 0, opacity: 0, overflow: "hidden" }}
-          onLoad={() => setImgReady(true)}
-          onError={() => setImgReady(false)}
-        />
-      )}
-
-      {imageSrc && imgReady && (
+      {imageSrc && (
         <button
           type="button"
           onClick={handleQuickView}
           onKeyDown={handleKeyDown}
           aria-label={`Ver ${product.title || product.name || "producto"}`}
-          className="block overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
+          className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
         >
-          <AAImage
-            src={imageSrc}
-            alt={item.name || "Producto"}
-            onLoad={() => setImgReady(true)}
-            onError={() => setImgReady(false)}
-            className="h-24 w-24 rounded-xl object-cover transition-transform duration-200 group-hover:scale-105 md:h-28 md:w-28"
-          />
+          <div
+            className={`h-24 w-24 overflow-hidden rounded-xl md:h-28 md:w-28 ${
+              imgLoaded ? "" : "bg-neutral-200 animate-pulse"
+            }`}
+          >
+            <AAImage
+              src={imageSrc}
+              alt={item.name || "Producto"}
+              onLoad={() => setImgLoaded(true)}
+              onError={() => setImgLoaded(false)}
+              className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+              width={112}
+              height={112}
+            />
+          </div>
         </button>
       )}
 
