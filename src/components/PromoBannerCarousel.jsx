@@ -99,50 +99,57 @@ export default function PromoBannerCarousel() {
             return (
               <div
                 key={item.id}
-                className="relative h-44 w-full flex-shrink-0 snap-center sm:h-56"
+                className="relative h-32 w-full flex-shrink-0 snap-center sm:h-40"
                 style={{ backgroundColor: item.bgColor || "#2f4131" }}
               >
-                <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/50 via-black/20 to-transparent" />
-                <div className="pointer-events-auto relative z-20 flex h-full w-full flex-col justify-end p-4">
-                  <h3 className="text-lg font-semibold text-white">{item.title}</h3>
-                  {item.subtitle && <p className="text-sm text-white/90">{item.subtitle}</p>}
-                  {item.type === "product" ? (
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleAction(item.ctas?.primary?.action, product, item.productId)}
-                        aria-label={addLabel}
-                        disabled={!canAdd}
-                        aria-disabled={!canAdd}
-                        className="h-8 rounded-lg bg-white/90 px-3 text-sm font-medium text-neutral-900 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:bg-neutral-400 disabled:text-white/80"
-                      >
-                        {addLabel}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleAction(item.ctas?.secondary?.action, product, item.productId)}
-                        aria-label={viewLabel}
-                        disabled={!product}
-                        aria-disabled={!product}
-                        className="h-8 rounded-lg bg-transparent px-3 text-sm font-medium text-white ring-1 ring-inset ring-white/70 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-50"
-                      >
-                        {viewLabel}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="mt-3">
-                      {item.ctas?.primary && (
-                        <button
-                          type="button"
-                          onClick={() => handleAction(item.ctas.primary.action, product, item.productId)}
-                          aria-label={item.ctas.primary.label || "Ver"}
-                          className="h-8 rounded-lg bg-white/90 px-3 text-sm font-medium text-neutral-900 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                        >
-                          {item.ctas.primary.label || "Ver"}
-                        </button>
+                {/* Gradiente superior para legibilidad del título */}
+                <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-black/45 via-black/20 to-transparent" />
+                <div className="pointer-events-auto relative z-20 flex h-full w-full flex-col justify-start p-3 sm:p-4">
+                  <div className={`flex items-center justify-between gap-3 ${item.type === "product" && canAdd ? "pr-24" : ""}`}>
+                    <div className="min-w-0">
+                      <h3 className="truncate text-base sm:text-lg font-semibold leading-tight text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">{item.title}</h3>
+                      {item.subtitle && (
+                        <p className="mt-0.5 line-clamp-2 text-xs sm:text-sm leading-snug text-white/90 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]">{item.subtitle}</p>
                       )}
                     </div>
-                  )}
+                    <div className="flex shrink-0 items-center gap-2">
+                      {item.type === "product" ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleAction(item.ctas?.primary?.action, product, item.productId)}
+                            aria-label={addLabel}
+                            disabled={!canAdd}
+                            aria-disabled={!canAdd}
+                            className="h-8 rounded-lg bg-white/90 px-3 text-sm font-medium text-neutral-900 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:bg-neutral-400 disabled:text-white/80"
+                          >
+                            {addLabel}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAction(item.ctas?.secondary?.action, product, item.productId)}
+                            aria-label={viewLabel}
+                            disabled={!product}
+                            aria-disabled={!product}
+                            className="h-8 rounded-lg bg-transparent px-3 text-sm font-medium text-white ring-1 ring-inset ring-white/70 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-50"
+                          >
+                            {viewLabel}
+                          </button>
+                        </>
+                      ) : (
+                        item.ctas?.primary && (
+                          <button
+                            type="button"
+                            onClick={() => handleAction(item.ctas.primary.action, product, item.productId)}
+                            aria-label={item.ctas.primary.label || "Ver"}
+                            className="h-8 rounded-lg bg-white/90 px-3 text-sm font-medium text-neutral-900 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                          >
+                            {item.ctas.primary.label || "Ver"}
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </div>
                 </div>
                 {item.type === "product" && canAdd && (
                   <div
@@ -158,22 +165,7 @@ export default function PromoBannerCarousel() {
           })}
         </div>
 
-        <div className="pointer-events-none absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 gap-2 md:bottom-3">
-          {items.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => {
-                const el = trackRef.current;
-                if (el) el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
-              }}
-              aria-label={`Ir al slide ${i + 1}`}
-              className="pointer-events-auto grid h-8 w-8 place-items-center rounded-full focus:outline-none focus:ring-2 focus:ring-white"
-            >
-              <span className={`h-2 w-2 rounded-full ${i === index ? "bg-white/80" : "bg-white/40"}`} />
-            </button>
-          ))}
-        </div>
+        {/* Dots desactivados para no interferir con CTAs */}
       </div>
 
       <ProductQuickView open={quickOpen} product={quickProduct} onClose={() => setQuickOpen(false)} />
