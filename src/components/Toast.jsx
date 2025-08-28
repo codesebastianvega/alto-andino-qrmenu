@@ -30,7 +30,10 @@ export default function Toast() {
       clearTimeout(hideId);
       clearTimeout(offsetId);
       const { message, actionLabel, onAction, duration } = e?.detail || {};
-      setMsg(message || "Añadido al carrito");
+      const normalize = (s = "") =>
+        String(s)
+          .replace("A��adido", "Añadido");
+      setMsg(normalize(message || "Añadido al carrito"));
       setAction(actionLabel ? { label: actionLabel, onAction } : null);
       setShow(true);
       const updateOffset = () => setOffset(getCartBarHeight());
@@ -88,3 +91,4 @@ export const toast = (message, opts = {}) => {
     document.dispatchEvent(new CustomEvent("aa:toast", { detail: { message, ...opts } }));
   } catch {}
 };
+

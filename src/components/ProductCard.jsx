@@ -1,3 +1,4 @@
+import React from "react";
 import { formatCOP } from "@/utils/money";
 import { getStockState, slugify, isUnavailable } from "@/utils/stock";
 import { getProductImage } from "@/utils/images";
@@ -27,6 +28,11 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
   };
 
   const imageSrc = getProductImage(product);
+  const [imgReady, setImgReady] = React.useState(false);
+  React.useEffect(() => {
+    // Reinicia el estado cuando cambia la imagen objetivo
+    setImgReady(false);
+  }, [imageSrc]);
 
   const handleQuickView = () => onQuickView?.(product);
 
@@ -49,12 +55,24 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
   return (
     <article
       className={`group grid ${
-        imageSrc ? "grid-cols-[96px_1fr] md:grid-cols-[112px_1fr]" : "grid-cols-1"
+        imgReady ? "grid-cols-[96px_1fr] md:grid-cols-[112px_1fr]" : "grid-cols-1"
       } gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 transition-all duration-200 md:gap-4 md:p-4 hover:shadow-md hover:ring-black/10 hover:-translate-y-0.5 ${
         unavailable ? "opacity-70 grayscale" : ""
       }`}
     >
-      {imageSrc && (
+      {/* Pre-carga de imagen fuera del flujo para no reservar espacio */}
+      {imageSrc && !imgReady && (
+        <AAImage
+          src={imageSrc}
+          alt=""
+          className="pointer-events-none absolute"
+          style={{ width: 0, height: 0, opacity: 0, overflow: "hidden" }}
+          onLoad={() => setImgReady(true)}
+          onError={() => setImgReady(false)}
+        />
+      )}
+
+      {imageSrc && imgReady && (
         <button
           type="button"
           onClick={handleQuickView}
@@ -62,12 +80,11 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
           aria-label={`Ver ${product.title || product.name || "producto"}`}
           className="block overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
         >
-          // Las imágenes de producto se configuran en src/utils/images.js.
-          // Pon tus archivos en /public/img/products y mapea la clave en IMAGE_MAP
-
           <AAImage
             src={imageSrc}
             alt={item.name || "Producto"}
+            onLoad={() => setImgReady(true)}
+            onError={() => setImgReady(false)}
             className="h-24 w-24 rounded-xl object-cover transition-transform duration-200 group-hover:scale-105 md:h-28 md:w-28"
           />
         </button>

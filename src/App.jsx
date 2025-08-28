@@ -1,21 +1,23 @@
 // src/App.jsx
 import { useEffect, useMemo, useState } from "react";
-import { CATEGORIES_LIST } from "@/config/categories";
+import { CATEGORIES_LIST } from "./config/categories";
+import { FEATURE_TABS, PUBLIC_URL } from "./config/featureFlags";
 
 // Layout / UI
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import ProductLists from "@/components/ProductLists";
-import SearchBar from "@/components/SearchBar";
-import HeroHeadline from "@/components/HeroHeadline";
-import PromoBannerCarousel from "@/components/PromoBannerCarousel";
-import GuideModal from "@/components/GuideModal";
-import DietaryGuide from "@/components/DietaryGuide";
+import Header from "./components/Header";
+import Footer from "./components/Footer";
+import ProductLists from "./components/ProductLists";
+import SearchBar from "./components/SearchBar";
+import HeroHeadline from "./components/HeroHeadline";
+import PromoBannerCarousel from "./components/PromoBannerCarousel";
+import GuideModal from "./components/GuideModal";
+import DietaryGuide from "./components/DietaryGuide";
+import GlobalDecorations from "./components/GlobalDecorations";
 
 // Carrito
-import FloatingCartBar from "@/components/FloatingCartBar";
-import CartDrawer from "@/components/CartDrawer";
-import { useCart } from "@/context/CartContext";
+import FloatingCartBar from "./components/FloatingCartBar";
+import CartDrawer from "./components/CartDrawer";
+import { useCart } from "./context/CartContext";
 import {
   breakfastItems,
   mainDishes,
@@ -28,14 +30,14 @@ import {
   sodas,
   otherDrinks,
   sandwichItems,
-} from "@/data/menuItems";
-import { getStockState, slugify } from "@/utils/stock";
+} from "./data/menuItems";
+import { getStockState, slugify } from "./utils/stock";
 
 // Póster QR
-import QrPoster from "@/components/QrPoster";
-import Toast from "@/components/Toast";
+import QrPoster from "./components/QrPoster";
+import Toast from "./components/Toast";
+import StockAdmin from "./components/StockAdmin";
 
-const FEATURE_TABS = import.meta.env.VITE_FEATURE_TABS === "1";
 const CATS = ["todos", ...CATEGORIES_LIST.map((c) => c.id)];
 const isValidCat = (cat) => CATS.includes(cat);
 
@@ -116,46 +118,65 @@ export default function App() {
   })();
 
   if (isQr) {
-    const publicUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
+    const publicUrl = PUBLIC_URL || window.location.origin;
     return <QrPoster url={publicUrl} />;
+  }
+
+  const isAdmin = (() => {
+    if (typeof window === "undefined") return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("admin") === "1";
+  })();
+
+  if (isAdmin) {
+    return (
+      <div className="bg-alto-beige leading-snug text-alto-text">
+        <main className="mx-auto max-w-3xl px-5 pt-5 sm:px-6 md:px-8">
+          <StockAdmin />
+        </main>
+      </div>
+    );
   }
 
   const hasFloatingCartBar = cart.items && cart.items.length > 0;
 
   // ✅ Modo menú normal
   return (
-    <div className="bg-alto-beige leading-snug text-alto-text">
-      <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} />
+    <>
+      <GlobalDecorations />
+      <div className="bg-alto-beige leading-snug text-alto-text overflow-x-hidden">
+        <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} />
 
-      <main
-        className={`mx-auto max-w-3xl px-5 pt-5 sm:px-6 sm:pt-6 md:px-8 md:pt-8 ${
-          hasFloatingCartBar ? "pb-24" : "pb-8"
-        }`}
-      >
-        <div className="mb-6 mt-2">
-          <HeroHeadline />
-          <SearchBar value={query} onQueryChange={setQuery} />
-        </div>
-        <PromoBannerCarousel />
-        <ProductLists
-          query={query}
-          selectedCategory={selectedCategory}
-          onCategorySelect={handleCategorySelect}
-          counts={counts}
-          featureTabs={FEATURE_TABS}
-        />
+        <main
+          className={`mx-auto max-w-3xl px-5 pt-5 sm:px-6 sm:pt-6 md:px-8 md:pt-8 ${
+            hasFloatingCartBar ? "pb-24" : "pb-8"
+          }`}
+        >
+          <div className="mb-6 mt-2">
+            <HeroHeadline />
+            <SearchBar value={query} onQueryChange={setQuery} />
+          </div>
+          <PromoBannerCarousel />
+          <ProductLists
+            query={query}
+            selectedCategory={selectedCategory}
+            onCategorySelect={handleCategorySelect}
+            counts={counts}
+            featureTabs={FEATURE_TABS}
+          />
 
-        <Footer />
-      </main>
+          <Footer />
+        </main>
 
-      {/* Barra flotante y Drawer del carrito */}
-      <FloatingCartBar items={cart.items} total={cart.total} onOpen={() => setOpen(true)} />
-      <CartDrawer open={open} onClose={() => setOpen(false)} />
+        {/* Barra flotante y Drawer del carrito */}
+        <FloatingCartBar items={cart.items} total={cart.total} onOpen={() => setOpen(true)} />
+        <CartDrawer open={open} onClose={() => setOpen(false)} />
 
-      <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
-        <DietaryGuide />
-      </GuideModal>
-      <Toast />
-    </div>
+        <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
+          <DietaryGuide />
+        </GuideModal>
+        <Toast />
+      </div>
+    </>
   );
 }

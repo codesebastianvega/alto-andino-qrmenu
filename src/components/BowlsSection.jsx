@@ -15,7 +15,7 @@ import ProductCard from "./ProductCard";
 // ← editar nombres y precios aquí
 const BASE_PRICE = BOWL_BASE_PRICE;
 
-export default function BowlsSection({ query, onCount, onQuickView }) {
+export default function BowlsSection({ query, onCount, onQuickView, id }) {
   const { addItem } = useCart();
   const [open, setOpen] = useState(false);
 
@@ -54,7 +54,7 @@ export default function BowlsSection({ query, onCount, onQuickView }) {
   };
 
   return (
-    <div className="space-y-4">
+    <div id={id} className="space-y-4">
       {/* CTA gigante (como otro “producto”) */}
       <div className="-mx-4 px-4 sm:-mx-6 sm:px-6">
         <div className="relative h-36 overflow-hidden rounded-2xl bg-gradient-to-r from-[#2f4131] to-[#355242] ring-1 ring-black/10 sm:h-44 md:h-56">

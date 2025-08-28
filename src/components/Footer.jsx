@@ -47,7 +47,7 @@ export default function Footer() {
   const RAW_WA = (import.meta.env.VITE_WHATSAPP || "573209009972").replace(/\D/g, "");
   const WA_NUM = RAW_WA.startsWith("57") ? RAW_WA : `57${RAW_WA}`;
   const WA_LINK = `https://wa.me/${WA_NUM}`;
-  const REVIEWS_URL = import.meta.env.VITE_GOOGLE_REVIEWS_URL || "#";
+  const REVIEWS_URL = "https://g.page/r/CUlqcqk_KCXBEBM/review";
   const PUBLIC = import.meta.env.VITE_PUBLIC_URL || location.origin;
   const QR_URL = `${PUBLIC}/?qr=1`;
 

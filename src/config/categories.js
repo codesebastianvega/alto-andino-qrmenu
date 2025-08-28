@@ -38,3 +38,4 @@ export const TABS_ITEMS = (cats = CATEGORIES_LIST) =>
     icon: categoryIcons[c.id],
     tintClass: c.tintClass,
   }));
+

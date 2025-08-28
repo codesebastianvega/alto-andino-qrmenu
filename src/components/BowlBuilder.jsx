@@ -5,11 +5,9 @@ import { formatCOP } from "@/utils/money";
 import { useCart } from "@/context/CartContext";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 
-// -----------------------
-// Catálogos y constantes
-// -----------------------
-const BASE = 28000;
-const PREMIUM = 4000;
+// Catálogos y constantes (simple y sin caracteres raros)
+const BASE_PRICE = 28000;
+const PREMIUM_SURCHARGE = 4000;
 
 const bases = ["Arroz", "Quinoa", "Mix de lechugas"];
 
@@ -17,32 +15,26 @@ const proteins = [
   { name: "Pollo", premium: false },
   { name: "Res", premium: false },
   { name: "Tofu", premium: false },
-  { name: "Atún", premium: false },
-  { name: "Salmón", premium: true },
-  { name: "Camarón", premium: true },
+  { name: "Atun", premium: false },
+  { name: "Salmon", premium: true },
+  { name: "Camaron", premium: true },
 ];
 
 const toppings = [
   "Aguacate",
   "Mango",
   "Pepino",
-  "Maíz",
+  "Maiz",
   "Cebolla morada",
   "Tomate cherry",
 ];
 
-const extras = [
-  "Guacamole",
-  "Queso crema",
-  "Nachos",
-  "Ajonjolí",
-  "Cebollín",
-];
+const extras = ["Guacamole", "Queso crema", "Nachos", "Ajonjoli", "Cebollin"];
 
 const sauces = [
   "HotSweet de la Casa",
   "Mango-yaki",
-  "Balsámico",
+  "Balsamico",
   "Yogur",
   "Soja",
   "Mayo-pesto",
@@ -52,9 +44,41 @@ const sauces = [
 const MAX_TOPS = 4;
 const MAX_EXTS = 3;
 
-// -----------------------
-// UI helpers
-// -----------------------
+// Emojis simples para acompañar
+function ico(label) {
+  const s = String(label || "").toLowerCase();
+  if (s.includes("arroz")) return "🍚";
+  if (s.includes("quinoa")) return "🌾";
+  if (s.includes("lechuga") || s.includes("mix")) return "🥗";
+
+  if (s.includes("pollo")) return "🍗";
+  if (s.includes("res") || s.includes("carne")) return "🥩";
+  if (s.includes("tofu")) return "🧈";
+  if (s.includes("atun") || s.includes("salmon")) return "🐟";
+  if (s.includes("camaron")) return "🦐";
+
+  if (s.includes("aguacate") || s.includes("palta")) return "🥑";
+  if (s.includes("mango")) return "🥭";
+  if (s.includes("pepino")) return "🥒";
+  if (s.includes("maiz")) return "🌽";
+  if (s.includes("cebolla")) return "🧅";
+  if (s.includes("tomate")) return "🍅";
+
+  if (s.includes("guacamole")) return "🥑";
+  if (s.includes("queso")) return "🧀";
+  if (s.includes("nachos")) return "🥨";
+  if (s.includes("ajonjoli") || s.includes("sesamo")) return "🌾";
+  if (s.includes("cebollin")) return "🧅";
+
+  if (s.includes("hotsweet") || s.includes("picante")) return "🌶️";
+  if (s.includes("bals")) return "🧴";
+  if (s.includes("yogur")) return "🥛";
+  if (s.includes("soja") || s.includes("soya")) return "🍶";
+  if (s.includes("mayo") || s.includes("pesto")) return "🧂";
+  if (s.includes("sin salsa")) return "✅";
+  return "";
+}
+
 function Tile({ active, disabled, onClick, children }) {
   return (
     <button
@@ -63,10 +87,10 @@ function Tile({ active, disabled, onClick, children }) {
       disabled={disabled && !active}
       aria-pressed={active}
       className={
-        "w-full rounded-xl px-3 py-2 text-left text-sm ring-1 transition " +
+        "w-full rounded-xl px-3 py-2 text-left text-sm ring-1 transition-colors transition-shadow duration-150 " +
         (active
-          ? "bg-[#2f4131] text-white shadow-sm ring-[#2f4131]"
-          : "bg-white text-neutral-900 ring-neutral-200 hover:ring-neutral-300") +
+          ? "bg-[#2f4131]/90 text-white shadow-lg ring-white/10 backdrop-blur-sm"
+          : "bg-white/50 backdrop-blur-md text-neutral-900 ring-white/40 shadow-sm hover:bg-white/60 hover:ring-white/50") +
         (disabled && !active ? " cursor-not-allowed opacity-50" : "")
       }
     >
@@ -75,44 +99,7 @@ function Tile({ active, disabled, onClick, children }) {
   );
 }
 
-function ico(label) {
-  const s = String(label || "").toLowerCase();
-
-  // Bases
-  if (s.includes("arroz")) return "🍚";
-  if (s.includes("quinoa")) return "🌾";
-  if (s.includes("lechuga") || s.includes("mix")) return "🥬";
-
-  // Proteínas
-  if (s.includes("pollo")) return "🍗";
-  if (s.includes("res")) return "🥩";
-  if (s.includes("tofu")) return "🌿";
-  if (s.includes("atún")) return "🐟";
-  if (s.includes("salmón")) return "🐟";
-  if (s.includes("camarón")) return "🍤";
-
-  // Toppings/extras
-  if (s.includes("aguacate")) return "🥑";
-  if (s.includes("mango")) return "🥭";
-  if (s.includes("pepino")) return "🥒";
-  if (s.includes("maíz")) return "🌽";
-
-  // Salsas
-  if (s.includes("hotsweet")) return "🌶️";
-  if (s.includes("mango-yaki")) return "🥭";
-  if (s.includes("balsámico")) return "🧴";
-  if (s.includes("yogur")) return "🥛";
-  if (s.includes("soja") || s.includes("soya")) return "🍶";
-  if (s.includes("mayo-pesto")) return "🌿";
-
-  return "•";
-}
-
-// -----------------------
-// Componente principal
-// -----------------------
 export default function BowlBuilder({ open, onClose }) {
-  // Guard clause ANTES de hooks (no condicionar hooks)
   if (!open) return null;
 
   useLockBodyScroll(open);
@@ -160,14 +147,8 @@ export default function BowlBuilder({ open, onClose }) {
   const [sauce, setSauce] = useState("Sin Salsa");
   const [note, setNote] = useState("");
 
-  const isPremium = useMemo(
-    () => ["Salmón", "Camarón"].includes(protein),
-    [protein],
-  );
-  const price = useMemo(
-    () => BASE + (isPremium ? PREMIUM : 0),
-    [isPremium],
-  );
+  const isPremium = useMemo(() => proteins.find((p) => p.name === protein)?.premium === true, [protein]);
+  const price = useMemo(() => BASE_PRICE + (isPremium ? PREMIUM_SURCHARGE : 0), [isPremium]);
 
   const toggleLimited = (list, setList, max, item) => {
     setList((prev) => {
@@ -194,7 +175,7 @@ export default function BowlBuilder({ open, onClose }) {
       price,
       options: {
         Base: base,
-        Proteína: protein,
+        Proteina: protein,
         Toppings: tops,
         Extras: exts,
         Salsa: sauce,
@@ -209,25 +190,20 @@ export default function BowlBuilder({ open, onClose }) {
     <Portal>
       <div role="dialog" aria-modal="true" className="fixed inset-0 z-[100]">
         {/* Fondo */}
-        <div
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-          onClick={() => onClose?.()}
-        />
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => onClose?.()} />
 
         {/* Contenedor */}
         <div
           ref={modalRef}
           tabIndex={-1}
-          className="pointer-events-auto absolute inset-x-0 bottom-0 z-[110] mx-auto flex max-h[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-[#FAF7F2] shadow-2xl focus-visible:outline-none"
+          className="pointer-events-auto absolute inset-0 z-[110] mx-auto flex h-[100dvh] max-h-[100svh] w-full max-w-2xl flex-col overflow-hidden rounded-none bg-[#FAF7F2] shadow-2xl focus-visible:outline-none sm:rounded-3xl"
         >
           {/* Header */}
-          <div className="rounded-t-2xl bg-[#2f4131] p-4 text-white">
+          <div className="sticky top-0 z-10 bg-[#2f4131] p-4 text-white sm:rounded-t-2xl">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-base font-semibold">Arma tu bowl</h3>
-                <p className="text-xs text-white/90">
-                  1 base, 1 proteína, 4 toppings, 3 extras y 1 salsa.
-                </p>
+                <p className="text-xs text-white/90">1 base, 1 proteína, 4 toppings, 3 extras y 1 salsa</p>
               </div>
               <div className="flex gap-2">
                 <button
@@ -240,7 +216,7 @@ export default function BowlBuilder({ open, onClose }) {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="text-sm text-white/95 underline underline-offset-2"
+                  className="h-8 rounded-full bg-white/20 px-3 text-sm text-white hover:bg-white/30"
                 >
                   Cerrar
                 </button>
@@ -249,12 +225,11 @@ export default function BowlBuilder({ open, onClose }) {
           </div>
 
           {/* Body */}
-          <div className="space-y-3 overflow-y-auto px-4 pb-4 sm:space-y-4">
+          <div className="flex-1 min-h-0 space-y-3 overflow-y-auto overscroll-contain px-4 pt-3 sm:space-y-4 sm:pt-4">
             {/* Resumen */}
-            <div className="rounded-lg bg-white px-3 py-2 text-sm text-neutral-800 ring-1 ring-neutral-200">
-              Base: {base} · Prot: {protein} {isPremium && "(+ $4.000)"} · Top: {tops.length}/
-              {MAX_TOPS} · Extras: {exts.length}/{MAX_EXTS} · Salsa: {sauce} · Total:{" "}
-              {formatCOP(price)}
+            <div className="rounded-lg bg-white/60 px-3 py-2 text-sm text-neutral-800 ring-1 ring-white/40 shadow-sm backdrop-blur-md">
+              Base: {base} • Prot: {protein} {isPremium && "(+ $4.000)"} • Top: {tops.length}/{MAX_TOPS} • Extras: {exts.length}
+              /{MAX_EXTS} • Salsa: {sauce} • Total: {formatCOP(price)}
             </div>
 
             {/* Base */}
@@ -276,7 +251,7 @@ export default function BowlBuilder({ open, onClose }) {
                 {proteins.map((p) => (
                   <Tile key={p.name} active={p.name === protein} onClick={() => setProtein(p.name)}>
                     {ico(p.name)}&nbsp;{p.name}
-                    {p.premium ? " · (+$4.000)" : ""}
+                    {p.premium ? " • (+$4.000)" : ""}
                   </Tile>
                 ))}
               </div>
@@ -286,9 +261,7 @@ export default function BowlBuilder({ open, onClose }) {
             <section>
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-sm font-semibold text-[#2f4131]">3) Toppings</p>
-                <p className="text-xs text-neutral-600">
-                  Seleccionados: {tops.length}/{MAX_TOPS}
-                </p>
+                <p className="text-xs text-neutral-600">Seleccionados: {tops.length}/{MAX_TOPS}</p>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 {toppings.map((t) => (
@@ -308,9 +281,7 @@ export default function BowlBuilder({ open, onClose }) {
             <section>
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-sm font-semibold text-[#2f4131]">4) Extras</p>
-                <p className="text-xs text-neutral-600">
-                  Seleccionados: {exts.length}/{MAX_EXTS}
-                </p>
+                <p className="text-xs text-neutral-600">Seleccionados: {exts.length}/{MAX_EXTS}</p>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 {extras.map((e) => (
@@ -338,7 +309,7 @@ export default function BowlBuilder({ open, onClose }) {
               </div>
             </section>
 
-            {/* Nota + acciones */}
+            {/* Nota */}
             <div>
               <label className="block text-xs text-neutral-600">Nota para cocina (opcional)</label>
               <input
@@ -346,22 +317,27 @@ export default function BowlBuilder({ open, onClose }) {
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Ej.: sin sal, extra salsa, poco picante..."
                 maxLength={120}
-                className="mt-1 w-full rounded-lg border px-2 py-2 text-sm"
+                className="mt-1 w-full rounded-lg bg-white/60 px-2 py-2 text-sm ring-1 ring-white/40 backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-[#2f4131]"
               />
             </div>
 
-            <div className="flex gap-2 pb-[env(safe-area-inset-bottom)] pt-2">
+            <div className="h-24 sm:h-0" />
+          </div>
+
+          {/* Footer acciones sticky */}
+          <div className="sticky bottom-0 z-10 bg-white/80 px-4 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-3 backdrop-blur-md ring-1 ring-white/40">
+            <div className="flex gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="h-9 flex-1 rounded-lg bg-white/10 text-sm text-white ring-1 ring-white/15 hover:bg-white/15"
+                className="h-12 flex-1 rounded-xl bg-white/30 text-sm font-semibold text-[#2f4131] ring-1 ring-white/40 hover:bg-white/40"
               >
                 Seguir pidiendo
               </button>
               <button
                 type="button"
                 onClick={addToCart}
-                className="h-9 flex-1 rounded-lg bg-[#2f4131] text-sm text-white hover:bg-[#243326]"
+                className="h-12 flex-1 rounded-xl bg-[#2f4131] text-sm font-semibold text-white shadow-sm hover:bg-[#243326]"
               >
                 Añadir al carrito
               </button>
@@ -372,3 +348,4 @@ export default function BowlBuilder({ open, onClose }) {
     </Portal>
   );
 }
+

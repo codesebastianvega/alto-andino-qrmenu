@@ -1,11 +1,10 @@
-
- import { useMemo, useEffect, useCallback, useState, cloneElement, useRef } from "react";
+import { useMemo, useEffect, useCallback, useState, useRef } from "react";
 import { useSwipeable } from "react-swipeable";
-import { useCart } from "@/context/CartContext";
-import { formatCOP } from "@/utils/money";
-import { getStockState, slugify, isUnavailable } from "@/utils/stock";
+import { useCart } from "../context/CartContext";
+import { formatCOP } from "../utils/money";
+import { getStockState, slugify, isUnavailable } from "../utils/stock";
  import { toast } from "./Toast";
-import { matchesQuery } from "@/utils/strings";
+import { matchesQuery } from "../utils/strings";
  import { StatusChip } from "./Buttons";
  import Section from "./Section";
  import Sandwiches from "./Sandwiches";
@@ -14,18 +13,18 @@ import { matchesQuery } from "@/utils/strings";
  import BowlsSection from "./BowlsSection";
  import ColdDrinksSection from "./ColdDrinksSection";
  import ProductQuickView from "./ProductQuickView";
-import { getProductImage } from "@/utils/images";
+import { getProductImage } from "../utils/images";
  import CategoryHeader from "./CategoryHeader";
  import CategoryNav from "./CategoryNav";
-import AAImage from "@/components/ui/AAImage";
+import AAImage from "./ui/AAImage";
  import {
    breakfastItems,
    mainDishes,
    dessertBaseItems,
    cumbreFlavors,
    cumbrePrices,
-} from "@/data/menuItems";
-import { CATEGORIES_LIST, TABS_ITEMS } from "@/config/categories";
+} from "../data/menuItems";
+import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories";
  export default function ProductLists({
    query,
    selectedCategory,
@@ -86,39 +85,11 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "@/config/categories";
      setCount("postres", dessertsCount);
    }, [dessertsCount, setCount]);
  
-   const bowlsEl = (
-    <BowlsSection query={query} onCount={(n) => setCount("bowls", n)} onQuickView={onQuickView} />
-   );
-   const sandwichesEl = (
-     <Sandwiches
-       query={query}
-       onCount={(n) => setCount("sandwiches", n)}
-       onQuickView={onQuickView}
-     />
-   );
-   const smoothiesEl = (
-     <SmoothiesSection
-       query={query}
-       onCount={(n) => setCount("smoothies", n)}
-       onQuickView={onQuickView}
-     />
-   );
-   const coffeeEl = (
-    <CoffeeSection query={query} onCount={(n) => setCount("cafe", n)} onQuickView={onQuickView} />
-   );
-   const coldEl = (
-     <ColdDrinksSection
-       query={query}
-       onCount={(n) => setCount("bebidasfrias", n)}
-       onQuickView={onQuickView}
-     />
-   );
- 
-   const sections = useMemo(() => {
-     const arr = [];
-     if (breakfasts.length) {
-       arr.push({
-         id: "desayunos",
+  const sections = useMemo(() => {
+    const arr = [];
+    if (breakfasts.length) {
+      arr.push({
+        id: "desayunos",
          element: (
            <Section title="Desayunos" count={breakfasts.length}>
              <List items={breakfasts} onQuickView={onQuickView} />
@@ -126,17 +97,18 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "@/config/categories";
          ),
        });
      }
-     arr.push({
-       id: "bowls",
-       element:
-         counts.bowls > 0 ? (
-          <Section title="Bowls" count={counts.bowls}>
-            {bowlsEl}
-          </Section>
-         ) : (
-           bowlsEl
-         ),
-     });
+    arr.push({
+      id: "bowls",
+      element: (
+        <Section id="section-bowls" title="Bowls" count={counts["bowls"]}>
+          <BowlsSection
+            query={query}
+            onCount={(n) => setCount("bowls", n)}
+            onQuickView={onQuickView}
+          />
+        </Section>
+      ),
+    });
      if (mains.length) {
        arr.push({
          id: "platos",
@@ -149,47 +121,43 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "@/config/categories";
      }
     arr.push({
       id: "sandwiches",
-      element:
-        counts.sandwiches > 0 ? (
-          <Section title="Sándwiches" count={counts.sandwiches}>
-            {sandwichesEl}
-          </Section>
-        ) : (
-          sandwichesEl
-        ),
+      element: (
+        <Sandwiches
+          query={query}
+          onCount={(n) => setCount("sandwiches", n)}
+          onQuickView={onQuickView}
+        />
+      ),
     });
     arr.push({
       id: "smoothies",
-      element:
-        counts.smoothies > 0 ? (
-          <Section title="Smoothies" count={counts.smoothies}>
-            {smoothiesEl}
-          </Section>
-        ) : (
-          smoothiesEl
-        ),
+      element: (
+        <SmoothiesSection
+          query={query}
+          onCount={(n) => setCount("smoothies", n)}
+          onQuickView={onQuickView}
+        />
+      ),
     });
     arr.push({
       id: "cafe",
-      element:
-        counts.cafe > 0 ? (
-          <Section title="Café" count={counts.cafe}>
-            {coffeeEl}
-          </Section>
-        ) : (
-          coffeeEl
-        ),
+      element: (
+        <CoffeeSection
+          query={query}
+          onCount={(n) => setCount("cafe", n)}
+          onQuickView={onQuickView}
+        />
+      ),
     });
     arr.push({
       id: "bebidasfrias",
-      element:
-        counts.bebidasfrias > 0 ? (
-          <Section title="Bebidas Frías" count={counts.bebidasfrias}>
-            {coldEl}
-          </Section>
-        ) : (
-          coldEl
-        ),
+      element: (
+        <ColdDrinksSection
+          query={query}
+          onCount={(n) => setCount("bebidasfrias", n)}
+          onQuickView={onQuickView}
+        />
+      ),
     });
     if (dessertsCount) {
       arr.push({
@@ -208,16 +176,13 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "@/config/categories";
     return arr;
   }, [
     breakfasts,
-    counts.bowls,
     mains,
-    counts.sandwiches,
-    counts.smoothies,
-    counts.cafe,
-    counts.bebidasfrias,
     dessertsCumbre,
     dessertsBase,
     dessertsCount,
     onQuickView,
+    query,
+    counts,
   ]);
   const renderPanel = (s, inTodos = false) => (
      <div
@@ -233,9 +198,9 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "@/config/categories";
            {categories.find((c) => c.id === s.id)?.label || s.id}
          </span>
        )}
-      {inTodos ? cloneElement(s.element, { id: `section-${s.id}-todos` }) : s.element}
-     </div>
-   );
+      {s.element}
+    </div>
+  );
  
   const orderedTabs = useMemo(() => ["todos", ...categories.map((c) => c.id)], [categories]);
  
@@ -283,10 +248,11 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "@/config/categories";
      return () => window.removeEventListener("scroll", reset);
    }, [selectedCategory]);
  
-   useEffect(() => {
-     if (featureTabs && selectedCategory !== "todos") return;
-     const map = {};
-     const observer = new IntersectionObserver(
+  useEffect(() => {
+    // Solo observar secciones en modo barra y cuando no está activo 'todos'
+    if (featureTabs || selectedCategory === "todos") return;
+    const map = {};
+    const observer = new IntersectionObserver(
        (entries) => {
          entries.forEach((entry) => {
            if (entry.isIntersecting && !manualRef.current) {
@@ -360,17 +326,13 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "@/config/categories";
 
   return (
      <>
-       {!featureTabs && <CategoryHeader />}
-       <CategoryNav
-         categories={
-           featureTabs
-             ? tabItems
-             : [{ id: "todos", label: "Todos", tintClass: "bg-stone-100" }, ...categories]
-         }
-         activeId={selectedCategory}
-         onSelect={(cat) => handleManualSelect(cat)}
-         variant={featureTabs ? "tabs" : "bar"}
-       />
+      {!featureTabs && <CategoryHeader />}
+      <CategoryNav
+        categories={[{ id: "todos", label: "Todos" }, ...categories]}
+        activeId={selectedCategory}
+        onSelect={(cat) => handleManualSelect(cat)}
+        variant="bar"
+      />
        {query && !Object.values(counts).some((n) => n > 0) && (
         <p className="px-4 text-sm text-neutral-600">No hay resultados para “{query}”.</p>
        )}
@@ -399,7 +361,7 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "@/config/categories";
    return (
      <div className="space-y-4">
        {cumbre.length > 0 && (
-        <div className="rounded-2xl bg-white p-5 shadow-sm sm:p-6">
+        <div className="rounded-2xl bg-white p-5 shadow-sm sm:p-6 overflow-hidden">
            <p className="font-semibold">Cumbre Andino (sin azúcar)</p>
           <p className="mt-1 text-xs text-neutral-600">
             Yogur griego endulzado con alulosa, mermelada natural, galleta sin azúcar, chantilly con
@@ -421,9 +383,9 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "@/config/categories";
                  options: { Sabor: s.label },
                };
                return (
-                 <article
-                   key={s.id}
-                  className="group grid grid-cols-[96px_1fr] gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 md:grid-cols-[112px_1fr] md:gap-4 md:p-4"
+                <article
+                  key={s.id}
+                  className={`group grid grid-cols-[96px_1fr] gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 md:grid-cols-[112px_1fr] md:gap-4 md:p-4 ${disabled ? "opacity-70 grayscale" : ""}`}
                  >
                    <button
                      type="button"
@@ -507,38 +469,55 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "@/config/categories";
    );
  }
  
-  function ProductRow({ item, onQuickView }) {
-   const { addItem } = useCart();
-   const st = getStockState(item.id || slugify(item.name));
-   const unavailable = st === "out" || isUnavailable(item);
-   const product = {
-     productId: item.id,
-     id: unavailable ? undefined : item.id,
-     title: item.name,
-     name: item.name,
-     subtitle: item.desc,
-     price: item.price,
-   };
-   return (
-    <article className="group grid grid-cols-[96px_1fr] gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 md:grid-cols-[112px_1fr] md:gap-4 md:p-4">
-       <button
-         type="button"
-         onClick={() => onQuickView?.(product)}
-         onKeyDown={(e) => {
-           if (e.key === "Enter" || e.key === " ") {
-             e.preventDefault();
-             onQuickView?.(product);
-           }
-         }}
-         aria-label={`Ver ${product.title || product.name || "producto"}`}
-        className="block cursor-zoom-in rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
-       >
-         <AAImage
-           src={getProductImage(product)}
-           alt={item.name || "Producto"}
-           className="h-24 w-24 rounded-xl object-cover md:h-28 md:w-28"
-         />
-       </button>
+ function ProductRow({ item, onQuickView }) {
+  const { addItem } = useCart();
+  const st = getStockState(item.id || slugify(item.name));
+  const unavailable = st === "out" || isUnavailable(item);
+  const product = {
+    productId: item.id,
+    id: unavailable ? undefined : item.id,
+    title: item.name,
+    name: item.name,
+    subtitle: item.desc,
+    price: item.price,
+  };
+  const [imgReady, setImgReady] = useState(false);
+  const imgSrc = getProductImage(product);
+  return (
+    <article className={`group grid ${imgSrc && imgReady ? "grid-cols-[96px_1fr] md:grid-cols-[112px_1fr]" : "grid-cols-1"} gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 md:gap-4 md:p-4 ${unavailable ? "opacity-70 grayscale" : ""}`}>
+      {/* Pre-carga oculta para no reservar espacio */}
+      {imgSrc && !imgReady && (
+        <AAImage
+          src={imgSrc}
+          alt=""
+          className="pointer-events-none absolute"
+          style={{ width: 0, height: 0, opacity: 0, overflow: "hidden" }}
+          onLoad={() => setImgReady(true)}
+          onError={() => setImgReady(false)}
+        />
+      )}
+      {imgSrc && imgReady && (
+        <button
+          type="button"
+          onClick={() => onQuickView?.(product)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onQuickView?.(product);
+            }
+          }}
+          aria-label={`Ver ${product.title || product.name || "producto"}`}
+          className="block cursor-zoom-in rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
+        >
+          <AAImage
+            src={imgSrc}
+            alt={item.name || "Producto"}
+            onLoad={() => setImgReady(true)}
+            onError={() => setImgReady(false)}
+            className="h-24 w-24 rounded-xl object-cover md:h-28 md:w-28"
+          />
+        </button>
+      )}
       <div className="flex min-w-0 flex-col">
         <h3 className="truncate text-base font-semibold text-neutral-900 md:text-[17px]">
           {item.name}

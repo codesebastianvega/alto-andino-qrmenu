@@ -1,25 +1,17 @@
 // src/components/ProductSection.jsx
 import React, { useMemo } from "react";
+import { useCart } from "@/context/CartContext";
 import Section from "./Section";
 import ProductCard from "./ProductCard";
+import { matchesQuery } from "@/utils/strings";
 
 // Normaliza strings para comparar (ignora acentos y mayúsculas)
 function norm(s = "") {
   return String(s)
+    .trim()
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
-}
-
-// Búsqueda básica por nombre/desc
-function matchesQuery(item, query) {
-  if (!query) return true;
-  const q = query.toLowerCase();
-  return (
-    item?.name?.toLowerCase().includes(q) ||
-    item?.description?.toLowerCase().includes(q) ||
-    item?.desc?.toLowerCase().includes(q)
-  );
 }
 
 export default function ProductSection({
@@ -35,9 +27,17 @@ export default function ProductSection({
   alwaysShow = false,         // 👈 NUEVO: forzar render aunque count sea 0
   includeUnavailable = true,  // 👈 NUEVO: mostrar aunque available === false
 }) {
+  const { addItem } = useCart();
   const filterItems = (arr = []) =>
     arr.filter((item) => {
-      const okQuery = matchesQuery(item, query);
+      const okQuery = matchesQuery(
+        {
+          ...item,
+          title: item.title ?? item.name,
+          description: item.description ?? item.desc,
+        },
+        query,
+      );
       if (!okQuery) return false;
       if (includeUnavailable) return true;
       return item?.available !== false;
@@ -74,7 +74,7 @@ export default function ProductSection({
   // Empty state si se fuerza render sin resultados
   if (!count && alwaysShow) {
     return (
-      <Section id={`section-${id}`} title={title}>
+      <Section id={`section-${id}`} title={title} count={count}>
         {typeof renderHeader === "function" && (
           <div className="mb-2">{renderHeader()}</div>
         )}
@@ -86,13 +86,14 @@ export default function ProductSection({
   }
 
   const renderProducts = (arr, keySeed = 0) => (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 sm:gap-4">
       {arr.map((item, i) => {
         const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
         return (
           <ProductCard
             key={safeItem?.id || `${keySeed}-${i}`}
             item={safeItem}
+            onAdd={(payload) => addItem(payload)}
             onQuickView={onQuickView}
           />
         );
@@ -101,7 +102,7 @@ export default function ProductSection({
   );
 
   return (
-    <Section id={`section-${id}`} title={title}>
+    <Section id={`section-${id}`} title={title} count={count}>
       {typeof renderHeader === "function" && (
         <div className="mb-2">{renderHeader()}</div>
       )}
