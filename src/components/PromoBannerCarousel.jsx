@@ -20,6 +20,7 @@ export default function PromoBannerCarousel() {
   const [storyOpen, setStoryOpen] = useState(false);
   const [story, setStory] = useState(null);
   const trackRef = useRef(null);
+  const autoPausedRef = useRef(false);
 
   const items = useMemo(() => {
     return (buildBanners(import.meta.env) || []).map((item) => {
@@ -34,12 +35,44 @@ export default function PromoBannerCarousel() {
     if (paused || count <= 1) return;
     const el = trackRef.current;
     if (!el) return;
-    const id = setInterval(() => {
+    const id = setTimeout(() => {
       const next = (index + 1) % count;
       el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
     }, 6000);
-    return () => clearInterval(id);
+    return () => clearTimeout(id);
   }, [paused, count, index]);
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) {
+          autoPausedRef.current = true;
+          setPaused(true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState !== "visible") {
+        autoPausedRef.current = true;
+        setPaused(true);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
+  const resume = () => {
+    autoPausedRef.current = false;
+    setPaused(false);
+  };
 
   const handleAction = (action, product, productId) => {
     if (!action) return;
@@ -78,7 +111,7 @@ export default function PromoBannerCarousel() {
   };
 
   const onTouchEnd = () => {
-    setPaused(false);
+    resume();
   };
 
   return (
@@ -87,7 +120,7 @@ export default function PromoBannerCarousel() {
         className="relative overflow-hidden rounded-2xl"
         aria-roledescription="carousel"
         onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
+        onMouseLeave={resume}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
