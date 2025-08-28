@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { CATEGORIES_LIST } from "./config/categories";
 import { FEATURE_TABS, PUBLIC_URL } from "./config/featureFlags";
 
@@ -10,13 +10,16 @@ import ProductLists from "./components/ProductLists";
 import SearchBar from "./components/SearchBar";
 import HeroHeadline from "./components/HeroHeadline";
 import PromoBannerCarousel from "./components/PromoBannerCarousel";
-import GuideModal from "./components/GuideModal";
-import DietaryGuide from "./components/DietaryGuide";
-import GlobalDecorations from "./components/GlobalDecorations";
+// Componentes con carga diferida
+const GuideModal = lazy(() => import("./components/GuideModal"));
+const DietaryGuide = lazy(() => import("./components/DietaryGuide"));
+const GlobalDecorations = lazy(() => import("./components/GlobalDecorations"));
+const FloatingCartBar = lazy(() => import("./components/FloatingCartBar"));
+const CartDrawer = lazy(() => import("./components/CartDrawer"));
+const QrPoster = lazy(() => import("./components/QrPoster"));
+const StockAdmin = lazy(() => import("./components/StockAdmin"));
 
 // Carrito
-import FloatingCartBar from "./components/FloatingCartBar";
-import CartDrawer from "./components/CartDrawer";
 import { useCart } from "./context/CartContext";
 import {
   breakfastItems,
@@ -34,9 +37,7 @@ import {
 import { getStockState, slugify } from "./utils/stock";
 
 // Póster QR
-import QrPoster from "./components/QrPoster";
 import Toast from "./components/Toast";
-import StockAdmin from "./components/StockAdmin";
 
 const CATS = ["todos", ...CATEGORIES_LIST.map((c) => c.id)];
 const isValidCat = (cat) => CATS.includes(cat);
@@ -119,7 +120,11 @@ export default function App() {
 
   if (isQr) {
     const publicUrl = PUBLIC_URL || window.location.origin;
-    return <QrPoster url={publicUrl} />;
+    return (
+      <Suspense fallback={<div />}>
+        <QrPoster url={publicUrl} />
+      </Suspense>
+    );
   }
 
   const isAdmin = (() => {
@@ -132,7 +137,9 @@ export default function App() {
     return (
       <div className="bg-alto-beige leading-snug text-alto-text">
         <main className="mx-auto max-w-3xl px-5 pt-5 sm:px-6 md:px-8">
-          <StockAdmin />
+          <Suspense fallback={<div />}>
+            <StockAdmin />
+          </Suspense>
         </main>
       </div>
     );
@@ -143,7 +150,9 @@ export default function App() {
   // ✅ Modo menú normal
   return (
     <>
-      <GlobalDecorations />
+      <Suspense fallback={<div />}>
+        <GlobalDecorations />
+      </Suspense>
       <div className="bg-alto-beige leading-snug text-alto-text overflow-x-hidden">
         <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} />
 
@@ -169,12 +178,20 @@ export default function App() {
         </main>
 
         {/* Barra flotante y Drawer del carrito */}
-        <FloatingCartBar items={cart.items} total={cart.total} onOpen={() => setOpen(true)} />
-        <CartDrawer open={open} onClose={() => setOpen(false)} />
+        <Suspense fallback={<div />}>
+          <FloatingCartBar items={cart.items} total={cart.total} onOpen={() => setOpen(true)} />
+        </Suspense>
+        <Suspense fallback={<div />}>
+          <CartDrawer open={open} onClose={() => setOpen(false)} />
+        </Suspense>
 
-        <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
-          <DietaryGuide />
-        </GuideModal>
+        <Suspense fallback={<div />}>
+          <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
+            <Suspense fallback={<div />}>
+              <DietaryGuide />
+            </Suspense>
+          </GuideModal>
+        </Suspense>
         <Toast />
       </div>
     </>
