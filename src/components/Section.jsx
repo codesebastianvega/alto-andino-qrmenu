@@ -10,6 +10,13 @@ export default function Section({ title, children, count, id: customId }) {
     const el = sectionRef.current;
     if (!el) return;
 
+    // Si ya está en viewport al montar, muéstralo de una vez
+    const rect = el.getBoundingClientRect();
+    if (rect.top < window.innerHeight && rect.bottom > 0) {
+      setVisible(true);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -17,7 +24,7 @@ export default function Section({ title, children, count, id: customId }) {
           observer.unobserve(el);
         }
       },
-      { threshold: 0.15 }
+      { threshold: 0.01 }
     );
 
     observer.observe(el);
