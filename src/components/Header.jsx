@@ -1,17 +1,7 @@
-import { useState } from "react";
 import { Icon } from "@iconify-icon/react";
 import { motion } from "framer-motion";
-import GuideModal from "./GuideModal";
-import DietaryGuide from "./DietaryGuide";
 
 export default function Header({ onCartOpen, onGuideOpen, cartCount = 0 }) {
-  const [localGuideOpen, setLocalGuideOpen] = useState(false);
-
-  const handleInfoClick = () => {
-    if (onGuideOpen) onGuideOpen();
-    else setLocalGuideOpen(true);
-  };
-
   return (
     <motion.header
       role="banner"
@@ -29,7 +19,7 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0 }) {
         <div className="relative flex items-center gap-2">
           <button
             type="button"
-            onClick={handleInfoClick}
+            onClick={onGuideOpen}
             aria-label="Información"
             className="group inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
           >
@@ -41,7 +31,7 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0 }) {
 
           <button
             type="button"
-            onClick={() => onCartOpen?.()}
+            onClick={onCartOpen}
             aria-label="Abrir carrito"
             className="group relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
           >
@@ -57,12 +47,6 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0 }) {
           </button>
         </div>
       </div>
-
-      {onGuideOpen ? null : (
-        <GuideModal open={localGuideOpen} onClose={() => setLocalGuideOpen(false)}>
-          <DietaryGuide />
-        </GuideModal>
-      )}
     </motion.header>
   );
 }
