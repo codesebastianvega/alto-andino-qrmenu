@@ -35,40 +35,42 @@ import AAImage from "@/components/ui/AAImage";
        else if (v) parts.push(`${k}: ${v}`);
      }
    }
-   return parts.join(" ? ");
- };
+  return parts.join(" · ");
+};
  const buildWaText = ({ items = [], total = 0, note = "" }) => {
    const mesa = getTable();
    const lines = ["*Pedido Alto Andino*"];
    if (mesa) lines.push(`Mesa: ${mesa}`);
-   items.forEach((it, idx) => {
-     const unit = getItemUnit(it);
-     const qty = Number(it.qty || 1);
-     const name = [it.name, it.variant].filter(Boolean).join(" ? ");
-     const itemTotal = unit * qty;
-     lines.push(`- ${qty} x ${name} ? ${formatCOP(itemTotal)}`);
-     // Opciones por l?neas
-     const opts = it.options || {};
-     if (Array.isArray(opts)) {
-       if (opts.length) lines.push("  *Opciones:* " + opts.join(", "));
-     } else {
-       const order = ["Base", "Proteina", "Prote?na", "Toppings", "Extras", "Salsa", "Leche"];
-       const keys = Object.keys(opts);
-       const sorted = order.filter((k)=>keys.includes(k)).concat(keys.filter((k)=>!order.includes(k)));
-       sorted.forEach((k)=>{
-         const v = opts[k];
-         if (!v || (Array.isArray(v) && v.length===0)) return;
-         const val = Array.isArray(v) ? v.join(", ") : v;
-         lines.push(`  *${k}:* ${val}`);
-       });
-     }
-     if (it.milk) lines.push("  *Leche:* " + (MILK_OPTIONS.find((m)=>m.id===it.milk)?.label || it.milk));
-     if (it.note) lines.push("  _Nota:_ " + it.note);
-     if (idx !== items.length - 1) lines.push("");
-   });
-   if (note) lines.push("_Nota general:_ " + note);
-   lines.push("*Total:* " + formatCOP(total));
-   return encodeURIComponent(lines.join("\n"));
+    items.forEach((it, idx) => {
+      const unit = getItemUnit(it);
+      const qty = Number(it.qty || 1);
+      const name = [it.name, it.variant].filter(Boolean).join(" · ");
+      const itemTotal = unit * qty;
+      lines.push(`• ${qty}× ${name} — ${formatCOP(itemTotal)}`);
+      // Opciones por líneas
+      const opts = it.options || {};
+      if (Array.isArray(opts)) {
+        if (opts.length) lines.push("  *Opciones:* " + opts.join(", "));
+      } else {
+        const order = ["Base", "Proteina", "Proteína", "Toppings", "Extras", "Salsa", "Leche"];
+        const keys = Object.keys(opts);
+        const sorted = order
+          .filter((k) => keys.includes(k))
+          .concat(keys.filter((k) => !order.includes(k)));
+        sorted.forEach((k) => {
+          const v = opts[k];
+          if (!v || (Array.isArray(v) && v.length === 0)) return;
+          const val = Array.isArray(v) ? v.join(", ") : v;
+          lines.push(`  *${k}:* ${val}`);
+        });
+      }
+      if (it.milk) lines.push("  *Leche:* " + (MILK_OPTIONS.find((m) => m.id === it.milk)?.label || it.milk));
+      if (it.note) lines.push("  _Nota:_ " + it.note);
+      if (idx !== items.length - 1) lines.push("");
+    });
+    if (note) lines.push("_Nota general:_ " + note);
+    lines.push("*Total:* " + formatCOP(total));
+    return encodeURIComponent(lines.join("\n"));
   };
 
  
@@ -119,14 +121,14 @@ import AAImage from "@/components/ui/AAImage";
         clearCart?.();
         document.dispatchEvent(
           new CustomEvent("aa:toast", {
-            detail: { message: "Pedido abierto en WhatsApp ??? Deshacer" },
+            detail: { message: "Pedido abierto en WhatsApp — Deshacer" },
           })
         );
       } catch {}
     }, 300);
   };
  
-   // setter flexible para nota por �tem (usa la disponible en el contexto)
+   // setter flexible para nota por ítem (usa la disponible en el contexto)
    const setItemNote =
     setItemNoteCtx || updateItemNoteCtx || ((index, value) => updateItem?.(index, { note: value }));
  
@@ -283,7 +285,7 @@ import AAImage from "@/components/ui/AAImage";
                               className="grid h-6 w-6 place-items-center rounded-full text-neutral-900 hover:bg-neutral-200"
                               aria-label="Restar"
                             >
-                              ???
+                              -
                             </button>
                             <span className="text-sm tabular-nums text-neutral-900">{it.qty}</span>
                             <button
@@ -292,7 +294,7 @@ import AAImage from "@/components/ui/AAImage";
                               className="grid h-6 w-6 place-items-center rounded-full text-neutral-900 hover:bg-neutral-200"
                               aria-label="Sumar"
                             >
-                              ??
+                              +
                             </button>
                            </div>
 
@@ -300,13 +302,13 @@ import AAImage from "@/components/ui/AAImage";
                             Unitario: {formatCOP(unit)}
                           </p>
 
-                          {/* Nota por �tem */}
+                          {/* Nota por ítem */}
                           <div className="mt-2">
                             <input
                               type="text"
                               value={it.note || ""}
                               onChange={(e) => setItemNote(idx, e.target.value)}
-                              placeholder="Nota para este �tem (opcional)"
+                              placeholder="Nota para este ítem (opcional)"
                               className="w-full rounded-lg bg-white px-2 py-1 text-xs text-neutral-900 placeholder-neutral-400 ring-1 ring-neutral-300 focus:ring-2 focus:ring-[#2f4131]/30"
                             />
                            </div>
@@ -318,7 +320,7 @@ import AAImage from "@/components/ui/AAImage";
                 );
               })
             ) : (
-              <div className="py-10 text-center text-neutral-700">Tu carrito est� vac�o.</div>
+              <div className="py-10 text-center text-neutral-700">Tu carrito está vacío.</div>
             )}
  
             {/* Nota general */}
@@ -327,7 +329,7 @@ import AAImage from "@/components/ui/AAImage";
               <textarea
                 value={note ?? ""}
                 onChange={(e) => setNote?.(e.target.value)}
-                placeholder="Ej: sin az�car, sin queso???"
+                placeholder="Ej: sin azúcar, sin queso…"
                 className="mt-1 w-full rounded-lg bg-white p-2 text-sm text-neutral-900 placeholder-neutral-400 ring-1 ring-neutral-300 focus:ring-2 focus:ring-[#2f4131]/30"
                 rows={2}
               />
@@ -384,7 +386,7 @@ import AAImage from "@/components/ui/AAImage";
                aria-modal="true"
               className="relative z-10 w-[calc(100%-1.5rem)] max-w-md rounded-2xl bg-white p-5 shadow-xl"
              >
-               <p className="text-center text-neutral-800">�Vaciar todo el carrito?</p>
+               <p className="text-center text-neutral-800">¿Vaciar todo el carrito?</p>
                <div className="mt-4 flex justify-end gap-3">
                  <button
                    type="button"
