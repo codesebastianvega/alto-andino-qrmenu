@@ -494,23 +494,15 @@ function ProductRow({ item, onQuickView, style, index }) {
     subtitle: item.desc,
     price: item.price,
   };
-  const [imgReady, setImgReady] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
   const imgSrc = getProductImage(product);
+  useEffect(() => {
+    setImgLoaded(false);
+  }, [imgSrc]);
   return (
-    <div style={style} className="pb-3">
-      <article className={`group grid ${imgSrc && imgReady ? "grid-cols-[96px_1fr] md:grid-cols-[112px_1fr]" : "grid-cols-1"} gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 md:gap-4 md:p-4 ${unavailable ? "opacity-70 grayscale" : ""}`}>
-      {/* Pre-carga oculta para no reservar espacio */}
-      {imgSrc && !imgReady && (
-        <AAImage
-          src={imgSrc}
-          alt=""
-          className="pointer-events-none absolute"
-          style={{ width: 0, height: 0, opacity: 0, overflow: "hidden" }}
-          onLoad={() => setImgReady(true)}
-          onError={() => setImgReady(false)}
-        />
-      )}
-      {imgSrc && imgReady && (
+    <article className={`group grid ${imgSrc ? "grid-cols-[96px_1fr] md:grid-cols-[112px_1fr]" : "grid-cols-1"} gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 md:gap-4 md:p-4 ${unavailable ? "opacity-70 grayscale" : ""}`}>
+      {imgSrc && (
+
         <button
           type="button"
           onClick={() => onQuickView?.(product)}
@@ -523,13 +515,21 @@ function ProductRow({ item, onQuickView, style, index }) {
           aria-label={`Ver ${product.title || product.name || "producto"}`}
           className="block cursor-zoom-in rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
         >
-          <AAImage
-            src={imgSrc}
-            alt={item.name || "Producto"}
-            onLoad={() => setImgReady(true)}
-            onError={() => setImgReady(false)}
-            className="h-24 w-24 rounded-xl object-cover md:h-28 md:w-28"
-          />
+          <div
+            className={`h-24 w-24 overflow-hidden rounded-xl md:h-28 md:w-28 ${
+              imgLoaded ? "" : "bg-neutral-200 animate-pulse"
+            }`}
+          >
+            <AAImage
+              src={imgSrc}
+              alt={item.name || "Producto"}
+              onLoad={() => setImgLoaded(true)}
+              onError={() => setImgLoaded(false)}
+              className="h-full w-full object-cover"
+              width={112}
+              height={112}
+            />
+          </div>
         </button>
       )}
       <div className="flex min-w-0 flex-col">
