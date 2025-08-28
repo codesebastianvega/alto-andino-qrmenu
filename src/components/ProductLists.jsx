@@ -565,6 +565,5 @@ function ProductRow({ item, onQuickView, style, index }) {
          </div>
        </div>
       </article>
-    </div>
   );
 }
