@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import clsx from "clsx";
 import { Icon } from "@iconify-icon/react";
 import { categoryIcons } from "../data/categoryIcons";
@@ -29,7 +29,7 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
       ref={railRef}
       className="scrollbar-none -mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto py-5 px-1 pb-7"
       role="tablist"
-      aria-label="CategorÃ­as"
+      aria-label="Categorías"
     >
       {categories.map((cat, idx) => {
         const active = activeId === cat.id;
@@ -60,7 +60,7 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
                 "transition-colors",
                 active ? "text-[#2f4131]" : "text-neutral-700"
               )}
-              style={{ fontSize: 70, width: 70, height: 70 }}
+              style={{ fontSize: 50, width: 70, height: 70 }}
             />
             <span
               className={clsx(
@@ -76,5 +76,3 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
     </div>
   );
 }
-
-
