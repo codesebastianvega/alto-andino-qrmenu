@@ -68,17 +68,13 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
           aria-label={`Ver ${product.title || product.name || "producto"}`}
           className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
         >
-          <div
-            className={`h-24 w-24 overflow-hidden rounded-xl md:h-28 md:w-28 ${
-              imgLoaded ? "" : "bg-neutral-200 animate-pulse"
-            }`}
-          >
+          <div className="h-24 w-24 overflow-hidden rounded-xl md:h-28 md:w-28">
             <AAImage
               src={imageSrc}
               alt={item.name || "Producto"}
               onLoad={() => setImgLoaded(true)}
               onError={() => setImgLoaded(false)}
-              className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+              className={`h-full w-full object-cover transition-opacity duration-300 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
               width={112}
               height={112}
             />
