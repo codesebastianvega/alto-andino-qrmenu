@@ -40,6 +40,12 @@ export const breakfastItems = [
     price: 19000,
     desc: "Yogur griego + açaí, avena, coco, banano, fresa y arándanos; topping de chía o amapola. 🥛🌾🥜",
   },
+  {
+    id: "des-changua",
+    name: "Changua",
+    price: 15000,
+    desc: "Leche caliente con huevo, cebolla larga y cilantro, acompañado de pan tostado. 🥚🥛🌾",
+  },
 ];
 
 export const mainDishes = [
