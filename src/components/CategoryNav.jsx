@@ -44,8 +44,8 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
               // Base size and layout
               "flex h-36 w-28 flex-shrink-0 flex-col items-center justify-center gap-1.5 rounded-2xl p-2 text-center transition-all duration-300 ease-in-out",
               "snap-center",
-              // Glassmorphism base style
-              "bg-white/60 backdrop-blur-md ring-1 ring-inset ring-white/30",
+              // Glassmorphism base style (blur removed for performance)
+              "bg-white/60 ring-1 ring-inset ring-white/30",
               // Text style
               "text-neutral-800",
               // Active state
@@ -57,7 +57,7 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
             <Icon
               icon={iconName}
               className={clsx(
-                "h-8 w-8 md:h-9 md:w-9 transition-colors",
+                "h-[64px] w-[64px] transition-colors",
                 active ? "text-[#2f4131]" : "text-neutral-700"
               )}
             />
