@@ -381,3 +381,11 @@ export const otherDrinks = [
     desc: "Kiwi, Granada, Maracuyá, Manzana verde, Mangostino",
   },
 ];
+
+// Categorías pendientes de catalogar
+export const lemonades = [];
+export const waters = [];
+export const frappes = [];
+
+// Alias para mantener compatibilidad con componentes existentes
+export const functionalSmoothies = funcionales;
