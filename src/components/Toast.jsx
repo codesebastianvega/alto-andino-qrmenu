@@ -30,9 +30,7 @@ export default function Toast() {
       clearTimeout(hideId);
       clearTimeout(offsetId);
       const { message, actionLabel, onAction, duration } = e?.detail || {};
-      const normalize = (s = "") =>
-        String(s)
-          .replace("A��adido", "Añadido");
+      const normalize = (s = "") => String(s);
       setMsg(normalize(message || "Añadido al carrito"));
       setAction(actionLabel ? { label: actionLabel, onAction } : null);
       setShow(true);
