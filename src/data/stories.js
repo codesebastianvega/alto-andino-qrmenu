@@ -68,7 +68,7 @@ export const productStories = {
       {
         heading: "Eventos",
         image: null,
-        body: "Próximo concierto acústico el viernes a las 7 p.m. Reservas por DM.",
+        body: "Quieres caminar y desconectarte? pregunta al mesero y Reserva por DM.",
       },
     ],
   },
