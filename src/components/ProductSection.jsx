@@ -1,5 +1,5 @@
 // src/components/ProductSection.jsx
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import Section from "./Section";
 import ProductCard from "./ProductCard";
@@ -19,15 +19,16 @@ export default function ProductSection({
   title,
   query,
   items = [],
-  groups = null,              // [{ title?, items: [...] }, ...]
+  groups = null, // [{ title?, items: [...] }, ...]
   onCount,
   onQuickView,
   renderHeader,
-  mapItem,                    // opcional: transformar item antes de render
-  alwaysShow = false,         // 👈 NUEVO: forzar render aunque count sea 0
-  includeUnavailable = true,  // 👈 NUEVO: mostrar aunque available === false
+  mapItem, // opcional: transformar item antes de render
+  alwaysShow = false, // forzar render aunque count sea 0
+  includeUnavailable = true, // mostrar aunque available === false
 }) {
   const { addItem } = useCart();
+
   const filterItems = (arr = []) =>
     arr.filter((item) => {
       const okQuery = matchesQuery(
@@ -61,12 +62,12 @@ export default function ProductSection({
     return filtered.length;
   }, [grouped, filtered]);
 
-  // reportar conteo bruto al padre (si lo usa)
-  if (typeof onCount === "function") {
-    // Nota: onCount debe ser idempotente; React puede invocar más de una vez en dev
-    // Deja así para simplicidad; si prefieres, muévelo a un useEffect.
-    onCount(count);
-  }
+  // Reporta el conteo al padre sin hacer setState durante el render
+  useEffect(() => {
+    if (typeof onCount === "function") {
+      onCount(count);
+    }
+  }, [count, onCount]);
 
   // Si no hay productos visibles y no queremos forzar, no renderizamos
   if (!count && !alwaysShow) return null;
@@ -123,3 +124,4 @@ export default function ProductSection({
     </Section>
   );
 }
+
