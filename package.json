@@ -19,7 +19,8 @@
     "react-dom": "^18.2.0",
     "react-qr-code": "2.0.18",
     "react-scroll": "^1.9.3",
-    "react-swipeable": "^7.0.2"
+    "react-swipeable": "^7.0.2",
+    "react-window": "^1.8.11"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
