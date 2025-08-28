@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useCallback, useState, useRef } from "react";
+import { FixedSizeList } from "react-window";
 import { useSwipeable } from "react-swipeable";
 import { useCart } from "../context/CartContext";
 import { formatCOP } from "../utils/money";
@@ -459,17 +460,29 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories";
    );
  }
  
- function List({ items, onQuickView }) {
-   return (
-     <ul className="space-y-3">
-       {items.map((p) => (
-         <ProductRow key={p.id} item={p} onQuickView={onQuickView} />
-       ))}
-     </ul>
-   );
- }
- 
- function ProductRow({ item, onQuickView }) {
+function List({ items, onQuickView }) {
+  const ITEM_SIZE = 120;
+  const height = Math.min(items.length * ITEM_SIZE, 600);
+  return (
+    <FixedSizeList
+      height={height}
+      itemCount={items.length}
+      itemSize={ITEM_SIZE}
+      width="100%"
+    >
+      {({ index, style }) => (
+        <ProductRow
+          index={index}
+          style={style}
+          item={items[index]}
+          onQuickView={onQuickView}
+        />
+      )}
+    </FixedSizeList>
+  );
+}
+
+function ProductRow({ item, onQuickView, style, index }) {
   const { addItem } = useCart();
   const st = getStockState(item.id || slugify(item.name));
   const unavailable = st === "out" || isUnavailable(item);
@@ -484,7 +497,8 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories";
   const [imgReady, setImgReady] = useState(false);
   const imgSrc = getProductImage(product);
   return (
-    <article className={`group grid ${imgSrc && imgReady ? "grid-cols-[96px_1fr] md:grid-cols-[112px_1fr]" : "grid-cols-1"} gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 md:gap-4 md:p-4 ${unavailable ? "opacity-70 grayscale" : ""}`}>
+    <div style={style} className="pb-3">
+      <article className={`group grid ${imgSrc && imgReady ? "grid-cols-[96px_1fr] md:grid-cols-[112px_1fr]" : "grid-cols-1"} gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 md:gap-4 md:p-4 ${unavailable ? "opacity-70 grayscale" : ""}`}>
       {/* Pre-carga oculta para no reservar espacio */}
       {imgSrc && !imgReady && (
         <AAImage
@@ -550,6 +564,7 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories";
            </button>
          </div>
        </div>
-     </article>
-   );
- }
+      </article>
+    </div>
+  );
+}
