@@ -112,6 +112,14 @@ export const IMAGE_MAP = {
   // "cumbre:amarillos": "/img/products/cumbre-amarillos.jpg",
   // "cumbre:blancos": "/img/products/cumbre-blancos.jpg",
    "cumbre:choco": "/img/products/cumbre-choco.png",
+
+  // === Veggie (nuevo) ===
+  // Descomenta la(s) línea(s) cuando subas las fotos a /public/img/products
+  // "veg-tostada-primavera": "/img/products/veg-tostada-primavera.jpg",
+  // "veg-cosecha-huerto": "/img/products/veg-cosecha-huerto.jpg",
+  // "veg-alfredo-bosque": "/img/products/veg-alfredo-bosque.jpg",
+  // "veg-ensalada-jardin-altura": "/img/products/veg-ensalada-jardin-altura.jpg",
+  // "veg-pasta-bolonesa": "/img/products/veg-pasta-bolonesa.jpg",
 };
 
 /**
