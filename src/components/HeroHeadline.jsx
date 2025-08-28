@@ -1,31 +1,40 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { CATEGORIES_LIST as menuCategories } from "../config/categories";
+import { CATEGORIES_LIST as menuCategories } from "../config/categories.veggie";
 import { useCart } from "../context/CartContext";
 import { getStockState, slugify } from "../utils/stock";
 import * as menu from "../data/menuItems";
 import AAImage from "./ui/AAImage";
 
-// Frases por momento del día
+// Frases por momento del día (enfocadas en producto)
 const templates = {
   manana: [
-    "Empieza tu día con energía con {nombre}",
-    "Descubre nuestro {nombre} para una mañana perfecta",
-    "Tu mañana pide un {nombre} delicioso",
+    "Empieza tu día con {producto}",
+    "Descubre {producto} para una mañana perfecta",
+    "Tu mañana pide {producto} delicioso",
+    "Arranca con energía: {producto}",
+    "Buen día para un {producto}",
+    "Levántate con un {producto} cálido",
   ],
   tarde: [
-    "La tarde es mejor con {nombre}",
-    "Un {nombre} para recargar energías",
-    "Disfruta la tarde con nuestro {nombre} especial",
+    "La tarde es mejor con {producto}",
+    "Recarga energías con {producto}",
+    "Un break con {producto}",
+    "Disfruta la tarde con {producto} especial",
+    "Para la tarde: {producto}",
+    "Un antojo: {producto}",
   ],
   noche: [
-    "Termina tu día con {nombre}",
-    "Relájate con un {nombre} reconfortante",
-    "Tu noche pide {nombre} lleno de sabor",
+    "Termina tu día con {producto}",
+    "Relájate con {producto}",
+    "Tu noche pide {producto}",
+    "Antes de dormir, {producto}",
+    "Noches sabrosas con {producto}",
+    "Despide el día con {producto}",
   ],
 };
 
-// Categorías sugeridas por momento
+// Categorías sugeridas por momento (coherencia visual)
 const preferredTime = {
   desayunos: "manana",
   bowls: "manana",
@@ -46,25 +55,18 @@ function getTimeContext() {
     tarde: "Buenas tardes desde Zipaquirá",
     noche: "Buenas noches en Zipaquirá",
   };
-
-  const filteredCats = menuCategories.filter((cat) => preferredTime[cat.id] === currentTime);
-  const candidates = filteredCats.length > 0 ? filteredCats : menuCategories;
-  const randomCat = candidates[Math.floor(Math.random() * candidates.length)];
-  const templateList = templates[currentTime];
-  const randomTemplate = templateList[Math.floor(Math.random() * templateList.length)];
-  const tip = randomTemplate.replace("{nombre}", randomCat.label);
-  return { emoji: emojiMap[currentTime], label: labelMap[currentTime], tip, link: randomCat.id, time: currentTime };
+  return { emoji: emojiMap[currentTime], label: labelMap[currentTime], time: currentTime };
 }
 
 export default function HeroHeadline() {
   const cart = useCart();
-  const { emoji, label, tip, link, time } = getTimeContext();
+  const { emoji, label, time } = getTimeContext();
 
   // Selección de producto recomendado con stock disponible
   const pools = {
-    manana: [menu.breakfastItems, menu.coffees, menu.infusions],
-    tarde: [menu.smoothies, menu.funcionales, menu.sodas, menu.otherDrinks],
-    noche: [menu.mainDishes, menu.sandwichItems, menu.dessertBaseItems],
+    manana: [menu.breakfastItems, menu.coffees, menu.infusions, menu.teasAndChai, menu.moreInfusions],
+    tarde: [menu.smoothies, menu.funcionales, menu.sodas, menu.otherDrinks, menu.coffees],
+    noche: [menu.mainDishes, menu.sandwichItems, menu.dessertBaseItems, menu.coffees],
   };
   const items = (pools[time] || []).flatMap((arr) => (Array.isArray(arr) ? arr : []));
   const candidates = items
@@ -85,21 +87,19 @@ export default function HeroHeadline() {
     if (!candidates.length) return;
     const id = setInterval(() => {
       setRecIndex((i) => (i + 1) % candidates.length);
-    }, 12000);
+    }, 25000); // cambia más lento
     return () => clearInterval(id);
   }, [candidates.length]);
 
-  const scrollToSection = (catId) => {
-    const el = document.getElementById(`section-${catId}`);
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const y = window.scrollY + rect.top - 96;
-    window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
-  };
+  const phraseTemplates = templates[time] || [];
+  const phraseTemplate = phraseTemplates.length
+    ? phraseTemplates[recIndex % phraseTemplates.length]
+    : "Disfruta {producto}";
+  const tip = phraseTemplate.replace("{producto}", rec?.name || "algo rico");
 
   return (
-    <section aria-labelledby="home-headline" className="mb-3 md:mb-4 relative">
-      {/* decor sutil para coherencia visual */}
+    <section aria-labelledby="home-headline" className="relative mb-3 md:mb-4">
+      {/* decor sutil */}
       <AAImage src="/decor-tl.png" alt="" aria-hidden className="pointer-events-none absolute -left-16 -top-16 w-32 opacity-30 blur-sm" />
       <AAImage src="/decor-tr.png" alt="" aria-hidden className="pointer-events-none absolute -top-16 -right-32 w-64 opacity-25" />
 
@@ -121,37 +121,39 @@ export default function HeroHeadline() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4, duration: 0.5 }}
       >
-        Ingredientes locales y de temporada • Pet friendly
+        Ingredientes locales y de temporada
       </motion.p>
 
       <motion.div
-        className="mt-4 flex flex-col gap-2 rounded-2xl bg-white/70 px-4 py-3 shadow-sm ring-1 ring-white/40 backdrop-blur-md md:flex-row md:items-center md:gap-3"
+        className="relative mt-4 flex flex-col gap-2 rounded-2xl bg-white/70 px-4 py-3 shadow-sm ring-1 ring-white/40 backdrop-blur-md md:flex-row md:items-center md:gap-3"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6, duration: 0.4 }}
       >
-        <span className="text-2xl">{emoji}</span>
+        <span className="absolute right-3 top-3 text-2xl sm:text-3xl" aria-hidden>{emoji}</span>
         <div className="flex-1">
           <p className="text-sm font-medium text-[#2f4131]">{label}</p>
           <p className="text-xs text-neutral-700">{tip}</p>
         </div>
         <div className="flex flex-col gap-2 md:flex-row md:items-center">
-          {link && (
+          {rec && (
             <button
               type="button"
-              onClick={() => scrollToSection(link)}
-              className="mt-2 inline-block rounded-lg bg-[#2f4131] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#243326] md:mt-0"
-            >
-              Ver en menú
-            </button>
-          )}
-          {rec && typeof rec.price === "number" && rec.price > 0 && (
-            <button
-              type="button"
-              onClick={() => cart.addItem({ productId: rec.id, name: rec.name, price: rec.price })}
+              onClick={() => {
+                // Buscar el objeto completo para obtener descripción e imagen
+                const getId = (p) => p.id || p.productId || (p.key ? `sandwich:${p.key}` : slugify(p.name));
+                const full = (items || []).find((p) => getId(p) === rec.id) || null;
+                const payload = {
+                  id: rec.id,
+                  name: rec.name,
+                  price: rec.price,
+                  subtitle: full?.desc || full?.subtitle || "",
+                };
+                window.dispatchEvent(new CustomEvent("aa:quickview", { detail: payload }));
+              }}
               className="mt-2 inline-block rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[#2f4131] ring-1 ring-[#2f4131]/20 hover:bg-white/90 md:mt-0"
             >
-              Añadir {rec.name}
+              Ver {rec.name}
             </button>
           )}
         </div>
