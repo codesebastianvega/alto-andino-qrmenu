@@ -15,7 +15,9 @@ function gatherCatalog() {
   addArray(menu.smoothies, "smoothies");
   addArray(menu.funcionales, "smoothies");
   addArray(menu.coffees, "cafe");
+  addArray(menu.teasAndChai, "cafe");
   addArray(menu.infusions, "cafe");
+  addArray(menu.moreInfusions, "cafe");
   addArray(menu.sodas, "bebidasfrias");
   addArray(menu.otherDrinks, "bebidasfrias");
   if (Array.isArray(menu.sandwichItems)) {
