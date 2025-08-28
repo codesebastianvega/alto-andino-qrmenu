@@ -1,6 +1,6 @@
 // src/App.jsx
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import { CATEGORIES_LIST } from "./config/categories";
+import { CATEGORIES_LIST } from "./config/categories.veggie";
 import { FEATURE_TABS, PUBLIC_URL } from "./config/featureFlags";
 
 // Layout / UI
@@ -32,6 +32,8 @@ import {
   sodas,
   otherDrinks,
   sandwichItems,
+  teasAndChai,
+  moreInfusions,
 } from "./data/menuItems";
 import { getStockState, slugify } from "./utils/stock";
 
@@ -74,7 +76,7 @@ export default function App() {
       items.filter((p) => {
         const pid = p.id || p.productId || (p.key ? "sandwich:" + p.key : slugify(p.name));
         const st = getStockState(pid);
-        return st === "ok" || st === "low";
+        return st === "in" || st === "low";
       }).length;
 
     const result = {
@@ -85,7 +87,7 @@ export default function App() {
         sandwichItems?.map((it) => ({ id: "sandwich:" + it.key, name: it.name })) || [],
       ),
       smoothies: count([...(smoothies || []), ...(funcionales || [])]),
-      cafe: count([...(coffees || []), ...(infusions || [])]),
+      cafe: count([...(coffees || []), ...(infusions || []), ...(teasAndChai || []), ...(moreInfusions || [])]),
       bebidasfrias: count([...(sodas || []), ...(otherDrinks || [])]),
       postres: count(dessertBaseItems),
     };
@@ -159,7 +161,9 @@ export default function App() {
         >
           <div className="mb-6 mt-2">
             <HeroHeadline />
-            <SearchBar value={query} onQueryChange={setQuery} />
+            <div className="mt-3 sm:mt-4">
+              <SearchBar value={query} onQueryChange={setQuery} />
+            </div>
           </div>
           <PromoBannerCarousel />
           <ProductLists
