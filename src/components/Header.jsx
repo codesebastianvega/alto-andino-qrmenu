@@ -1,7 +1,12 @@
+import React from "react";
 import { Icon } from "@iconify-icon/react";
 import { motion } from "framer-motion";
+import { getTableId } from "@/utils/table";
+
 
 export default function Header({ onCartOpen, onGuideOpen, cartCount = 0 }) {
+  const [table, setTable] = React.useState("");
+  React.useEffect(() => { try { const t = getTableId(); if (t) setTable(t); } catch {} }, []);
   return (
     <motion.header
       role="banner"
@@ -13,14 +18,20 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0 }) {
     >
       <div className="mx-auto flex h-full max-w-screen-md items-center justify-between gap-3 px-4 md:px-6">
         <h1 className="flex-1 select-none text-[18px] font-semibold tracking-tight text-white md:text-lg">
-          Alto Andino Zipaquirá
+          Alto Andino ZipaquirÃÂ¡
         </h1>
 
         <div className="relative flex items-center gap-2">
+          {table && (
+            <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-1 text-[11px] font-semibold text-white ring-1 ring-white/25" title={`Mesa ${table}`}>
+              <Icon icon="mdi:table-chair" className="text-[14px]" />
+              Mesa {table}
+            </span>
+          )}
           <button
             type="button"
             onClick={onGuideOpen}
-            aria-label="Información"
+            aria-label="InformaciÃÂ³n"
             className="group inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
           >
             <Icon
@@ -50,3 +61,5 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0 }) {
     </motion.header>
   );
 }
+
+
