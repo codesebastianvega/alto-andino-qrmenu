@@ -8,6 +8,7 @@ import { getStockState, slugify, isUnavailable } from "../utils/stock";
 import { matchesQuery } from "../utils/strings";
  import { StatusChip } from "./Buttons";
  import Section from "./Section";
+ import ProductSection from "./ProductSection";
  import Sandwiches from "./Sandwiches";
  import SmoothiesSection from "./SmoothiesSection";
  import CoffeeSection from "./CoffeeSection";
@@ -91,13 +92,18 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories";
     if (breakfasts.length) {
       arr.push({
         id: "desayunos",
-         element: (
-           <Section title="Desayunos" count={breakfasts.length}>
-             <List items={breakfasts} onQuickView={onQuickView} />
-           </Section>
-         ),
-       });
-     }
+        element: (
+          <ProductSection
+            id="desayunos"
+            title="Desayunos"
+            query={query}
+            items={breakfasts}
+            onCount={(n) => setCount("desayunos", n)}
+            onQuickView={onQuickView}
+          />
+        ),
+      });
+    }
     arr.push({
       id: "bowls",
       element: (
@@ -110,16 +116,21 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories";
         </Section>
       ),
     });
-     if (mains.length) {
-       arr.push({
-         id: "platos",
-         element: (
-           <Section title="Platos Fuertes" count={mains.length}>
-             <List items={mains} onQuickView={onQuickView} />
-           </Section>
-         ),
-       });
-     }
+    if (mains.length) {
+      arr.push({
+        id: "platos",
+        element: (
+          <ProductSection
+            id="platos"
+            title="Platos Fuertes"
+            query={query}
+            items={mains}
+            onCount={(n) => setCount("platos", n)}
+            onQuickView={onQuickView}
+          />
+        ),
+      });
+    }
     arr.push({
       id: "sandwiches",
       element: (
