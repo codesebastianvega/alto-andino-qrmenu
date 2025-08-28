@@ -235,6 +235,14 @@ export const coffees = [
     kind: "espresso",
   },
   {
+    id: "cof-ristretto",
+    name: "Ristretto",
+    price: 4000,
+    desc: "Café concentrado, 20–25 ml. Más intenso y corto que el espresso.",
+    milkPolicy: "optional",
+    kind: "espresso",
+  },
+  {
     id: "cof-americano",
     name: "Americano",
     price: 4500,
@@ -389,3 +397,87 @@ export const frappes = [];
 
 // Alias para mantener compatibilidad con componentes existentes
 export const functionalSmoothies = funcionales;
+
+// Nuevas subcategorías y ampliaciones para Café
+export const moreInfusions = [
+  {
+    id: "inf-frutos-andinos",
+    name: "Frutos rojos andinos",
+    price: 5000,
+    desc: "Té de frutos rojos con yerbabuena y fresas deshidratadas.",
+  },
+  {
+    id: "inf-yerbabuena-manzanilla",
+    name: "Aromática de yerbabuena y manzanilla",
+    price: 5000,
+    desc: "Infusión calmante de yerbabuena y manzanilla.",
+  },
+  {
+    id: "inf-super-blend-azul",
+    name: "Super Blend Hindú Azul (relax)",
+    price: 4500,
+    desc: "Con vitamina B3; manzanilla, canela y cidrón. Sabor a lavanda y coco.",
+  },
+  {
+    id: "inf-super-blend-amarillo",
+    name: "Super Blend Hindú Amarillo (digest)",
+    price: 4500,
+    desc: "Con probióticos (Bacillus coagulans). Sabor a pitaya.",
+  },
+];
+
+// === Veggie ===
+// Nuevos productos para la categoría Veggie
+export const veggieBreakfast = [
+  {
+    id: "veg-tostada-primavera",
+    name: "Tostada Primavera",
+    price: 19200,
+    desc:
+      "Comienza tu día con energía con nuestra tostada de pan artesanal, generosamente cubierta con cremoso tofu sazonado, aguacate fresco en láminas, vibrantes tomates cherry y un toque de perejil y pimienta. Acompaña con tu bebida caliente favorita.",
+  },
+  {
+    id: "veg-cosecha-huerto",
+    name: "Cosecha del Huerto",
+    price: 21500,
+    desc:
+      "Un plato robusto y nutritivo que celebra los sabores de la tierra. Disfruta de una mezcla abundante de garbanzos, tiernas berenjenas, dulces tomates cherry y tofu dorado, todo preparado para ofrecer una experiencia deliciosa y completa. Incluye tu bebida caliente a elección.",
+  },
+];
+
+export const veggieMains = [
+  {
+    id: "veg-alfredo-bosque",
+    name: "Alfredo Cremoso del Bosque",
+    price: 27000,
+    desc:
+      "Déjate seducir por nuestra pasta de arroz vegana, bañada en una exquisita salsa Alfredo casera, elaborada con la riqueza de la leche de almendras y la cremosidad de los anacardos. Complementada con champiñones salteados a la perfección en aceite de coco.",
+  },
+  {
+    id: "veg-ensalada-jardin-altura",
+    name: "Ensalada Jardín de Altura",
+    price: 28500,
+    desc:
+      "Una explosión de frescura y color en cada bocado. Esta deliciosa ensalada combina espárragos tiernos, garbanzos, jugosos tomates, aguacate asado, brotes frescos y brócoli. Todo ello coronado con crujientes semillas de calabaza y una exquisita reducción balsámica.",
+  },
+  {
+    id: "veg-pasta-bolonesa",
+    name: "Pasta Tipo Boloñesa",
+    price: 26000,
+    desc:
+      "Deléitate con nuestra versión. Disfruta de nuestro spaghetti vegano sin gluten, cubierto con una sustanciosa salsa boloñesa casera, rica en proteína vegetal, albahaca fresca, tomates maduros, pimientos y cebolla. Servido con brócoli al vapor para una comida completa y deliciosa.",
+  },
+];
+
+export const teasAndChai = [
+  { id: "te-negro", name: "Té negro", price: 4500 },
+  { id: "te-verde", name: "Té verde", price: 4500 },
+  {
+    id: "inf-chai",
+    name: "Chai",
+    price: 7000,
+    desc: "Blend especiado. Puede ser infusión o con leche (Chai Latte).",
+    chai: true,
+  },
+  { id: "matcha-lulo", name: "Matcha lulo", price: 7000 },
+];
