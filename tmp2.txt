@@ -1,0 +1,231 @@
+    1:import { useEffect, useMemo, useRef, useState } from "react";
+    2:import { banners as buildBanners } from "../data/banners";
+    3:import { resolveProductById } from "../utils/resolver";
+    4:import { useCart } from "../context/CartContext";
+    5:import ProductQuickView from "./ProductQuickView";
+    6:import PetFriendlyModal from "./PetFriendlyModal";
+    7:import StoryModal from "./StoryModal";
+    8:import { toast } from "./Toast";
+    9:import { formatCOP } from "../utils/money";
+   10:import { productStories } from "../data/stories";
+   11:import AAImage from "./ui/AAImage";
+   12:
+   13:export default function PromoBannerCarousel() {
+   14:  const { addItem } = useCart();
+   15:  const [index, setIndex] = useState(0);
+   16:  const [paused, setPaused] = useState(false);
+   17:  const [quickOpen, setQuickOpen] = useState(false);
+   18:  const [quickProduct, setQuickProduct] = useState(null);
+   19:  const [petOpen, setPetOpen] = useState(false);
+   20:  const [storyOpen, setStoryOpen] = useState(false);
+   21:  const [story, setStory] = useState(null);
+   22:  const trackRef = useRef(null);
+   23:
+   24:  const items = useMemo(() => {
+   25:    return (buildBanners(import.meta.env) || []).map((item) => {
+   26:      const product = item.productId ? resolveProductById(item.productId) : null;
+   27:      const isPlaceholder = !item.image || /placehold\.co/.test(String(item.image || ""));
+   28:      return { ...item, product, isPlaceholder };
+   29:    });
+   30:  }, []);
+   31:
+   32:  const count = items.length;
+   33:
+   34:  useEffect(() => {
+   35:    if (paused || count <= 1) return;
+   36:    const el = trackRef.current;
+   37:    if (!el) return;
+   38:    const id = setTimeout(() => {
+   39:      const next = (index + 1) % count;
+   40:      el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
+   41:    }, 6000);
+   42:    return () => clearTimeout(id);
+   43:  }, [paused, count, index]);
+   44:
+   45:  const handleAction = (action, product, productId) => {
+   46:    if (!action) return;
+   47:    if (action === "add") {
+   48:      if (product) {
+   49:        addItem(product, 1);
+   50:        toast();
+   51:      } else {
+   52:        toast("Producto no disponible");
+   53:      }
+   54:    } else if (action === "quickview") {
+   55:      if (product) {
+   56:        setQuickProduct(product);
+   57:        setQuickOpen(true);
+   58:      } else {
+   59:        toast("Producto no disponible");
+   60:      }
+   61:    } else if (action === "modal:petfriendly") {
+   62:      setPetOpen(true);
+   63:    } else if (action === "story" || action === "recipe") {
+   64:      const st = productStories[productId];
+   65:      if (!st) {
+   66:        toast("Aún no tenemos historia para este producto");
+   67:        return;
+   68:      }
+   69:      setStory(st);
+   70:      setStoryOpen(true);
+   71:    } else if (action === "link:reviews") {
+   72:      const url = "https://g.page/r/CUlqcqk_KCXBEBM/review";
+   73:      if (url) window.open(url, "_blank", "noopener,noreferrer");
+   74:    }
+   75:  };
+   76:
+   77:  return (
+   78:    <div className="my-4 md:my-6">
+   79:      <div
+   80:        className="relative overflow-hidden rounded-2xl"
+   81:        aria-roledescription="carousel"
+   82:        onMouseEnter={() => setPaused(true)}
+   83:        onMouseLeave={() => setPaused(false)}
+   84:      >
+   85:        <div
+   86:          ref={trackRef}
+   87:          className="scrollbar-none flex snap-x snap-mandatory overflow-x-auto scroll-smooth"
+   88:          onScroll={() => {
+   89:            const el = trackRef.current;
+   90:            if (!el) return;
+   91:            const newIndex = Math.round(el.scrollLeft / el.clientWidth);
+   92:            setIndex(newIndex);
+   93:          }}
+   94:        >
+   95:          {items.map((item, i) => {
+   96:            const product = item.product;
+   97:            const price = Number(product?.price);
+   98:            const canAdd = !!product && Number.isFinite(price) && price > 0;
+   99:            const addLabel = item.ctas?.primary?.label || "Agregar";
+  100:            const viewLabel = item.ctas?.secondary?.label || "Ver";
+  101:            return (
+  102:              <div key={item.id} className="relative h-44 w-full flex-shrink-0 snap-center sm:h-56">
+  103:                {/* Fondo s�lido inline (forzado) */}
+  104:                {(() => {
+  105:                  const id = item.id;
+  106:                  let bgColor = "#F5EDE3"; // beige
+  107:                  if (id === "news" || id === "reviews" || id === "barista") bgColor = "#EAE6DE"; // greige
+  108:                  else if (id === "recipes") bgColor = "#FFFCF8"; // warmwhite
+  109:                  return (
+  110:                    <div className="absolute inset-0 z-0 h-full w-full" style={{ backgroundColor: bgColor }} />
+  111:                  );
+  112:                })()}
+  113:                {/* Fondo sólido alineado a paleta (siempre) */}
+  114:                <div
+  115:                  className={[
+  116:                    "absolute inset-0 z-0 h-full w-full ",
+  117:                    item.id === "news" && "bg-alto-greige",
+  118:                    item.id === "recipes" && "bg-alto-warmwhite",
+  119:                    item.id === "reviews" && "bg-alto-greige",
+  120:                    item.id === "pet" && "bg-alto-beige",
+  121:                    item.id === "featured" && "bg-alto-beige",
+  122:                    item.id === "seasonal" && "bg-alto-beige",
+  123:                    item.id === "barista" && "bg-alto-greige",
+  124:                  ]
+  125:                    .filter(Boolean)
+  126:                    .join(" ")}
+  127:                />
+  128:                <div className="pointer-events-auto relative z-30 flex h-full w-full flex-col justify-end p-4">
+  129:                  <h3 className={"text-lg font-semibold text-neutral-900"}>{item.title}</h3>
+  130:                  {item.subtitle && (
+  131:                    <p className="text-sm text-neutral-800">{item.subtitle}</p>
+  132:                  )}
+  133:                  {item.type === "product" ? (
+  134:                    <div className="mt-3 flex flex-wrap items-center gap-2">
+  135:                      <button
+  136:                        type="button"
+  137:                        onClick={() => handleAction(item.ctas?.primary?.action, product, item.productId)}
+  138:                        aria-label={addLabel}
+  139:                        disabled={!canAdd}
+  140:                        aria-disabled={!canAdd}
+  141:                        className="h-8 rounded-lg bg-[#2f4131] px-3 text-sm font-medium text-white hover:bg-[#243326] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 disabled:bg-neutral-400 disabled:text-white/80"
+  142:                      >
+  143:                        {addLabel}
+  144:                      </button>
+  145:                      <button
+  146:                        type="button"
+  147:                        onClick={() => handleAction(item.ctas?.secondary?.action, product, item.productId)}
+  148:                        aria-label={viewLabel}
+  149:                        disabled={!product}
+  150:                        aria-disabled={!product}
+  151:                          className={"h-8 rounded-lg bg-white px-3 text-sm font-medium text-neutral-900 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 disabled:bg-neutral-100 disabled:text-neutral-400"}
+  152:                      >
+  153:                        {viewLabel}
+  154:                      </button>
+  155:                      {productStories[item.productId] && (
+  156:                        <button
+  157:                          type="button"
+  158:                          onClick={() => handleAction("story", product, item.productId)}
+  159:                          aria-label={productStories[item.productId].ctaLabel || "Historia"}
+  160:                          className={"h-8 rounded-lg bg-white px-3 text-sm font-medium text-neutral-900 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"}
+  161:                        >
+  162:                          {productStories[item.productId].ctaLabel || "Historia"}
+  163:                        </button>
+  164:                      )}
+  165:                    </div>
+  166:                  ) : (
+  167:                    <div className="mt-3">
+  168:                      {item.ctas?.primary && (
+  169:                        <button
+  170:                          type="button"
+  171:                          onClick={() => handleAction(item.ctas.primary.action, product, item.productId)}
+  172:                          aria-label={item.ctas.primary.label || "Ver"}
+  173:                          className={"h-8 rounded-lg bg-white px-3 text-sm font-medium text-neutral-900 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"}
+  174:                        >
+  175:                          {item.ctas.primary.label || "Ver"}
+  176:                        </button>
+  177:                      )}
+  178:                    </div>
+  179:                  )}
+  180:                </div>
+  181:                {item.type === "product" &&
+  182:                  (canAdd ? (
+  183:                    <div
+  184:                      aria-label="Precio"
+  185:                      tabIndex={-1}
+  186:                      className="absolute right-3 top-3 z-30 rounded-full bg-white/85 px-3 py-1 text-sm font-medium text-[#2f4131] shadow-sm backdrop-blur md:right-4 md:top-4"
+  187:                    >
+  188:                      {formatCOP(price)}
+  189:                    </div>
+  190:                  ) : (
+  191:                    !product && (
+  192:                      <div
+  193:                        aria-label="No disponible"
+  194:                        tabIndex={-1}
+  195:                        className="absolute right-3 top-3 z-30 rounded-full bg-white/85 px-3 py-1 text-sm font-medium text-[#2f4131] shadow-sm backdrop-blur md:right-4 md:top-4"
+  196:                      >
+  197:                        No disponible
+  198:                      </div>
+  199:                    )
+  200:                  ))}
+  201:              </div>
+  202:            );
+  203:          })}
+  204:        </div>
+  205:
+  206:        <div className="pointer-events-none absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 gap-2 md:bottom-3">
+  207:          {items.map((_, i) => (
+  208:            <button
+  209:              key={i}
+  210:              type="button"
+  211:              onClick={() => {
+  212:                const el = trackRef.current;
+  213:                if (el) el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+  214:              }}
+  215:              aria-label={`Ir al slide ${i + 1}`}
+  216:              className="pointer-events-auto grid h-8 w-8 place-items-center rounded-full focus:outline-none focus:ring-2 focus:ring-white"
+  217:            >
+  218:              <span className={`h-2 w-2 rounded-full ${i === index ? "bg-white/80" : "bg-white/40"}`} />
+  219:            </button>
+  220:          ))}
+  221:        </div>
+  222:      </div>
+  223:
+  224:      <ProductQuickView open={quickOpen} product={quickProduct} onClose={() => setQuickOpen(false)} />
+  225:      <PetFriendlyModal open={petOpen} onClose={() => setPetOpen(false)} />
+  226:      <StoryModal open={storyOpen} story={story} onClose={() => setStoryOpen(false)} />
+  227:    </div>
+  228:  );
+  229:}
+  230:
+  231:
