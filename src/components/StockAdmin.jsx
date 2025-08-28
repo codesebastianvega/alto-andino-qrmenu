@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import * as menu from "@/data/menuItems";
-import stock from "@/data/stock.json";
-import { slugify } from "@/utils/stock";
+import * as menu from "../data/menuItems";
+import stock from "../data/stock.json";
+import { slugify } from "../utils/stock";
 
 function gatherCatalog() {
   const items = [];
@@ -13,14 +13,11 @@ function gatherCatalog() {
   addArray(menu.mainDishes, "platos");
   addArray(menu.dessertBaseItems, "postres");
   addArray(menu.smoothies, "smoothies");
-  addArray(menu.funcionales || menu.functionalSmoothies, "smoothies");
+  addArray(menu.funcionales, "smoothies");
   addArray(menu.coffees, "cafe");
   addArray(menu.infusions, "cafe");
   addArray(menu.sodas, "bebidasfrias");
   addArray(menu.otherDrinks, "bebidasfrias");
-  addArray(menu.lemonades, "bebidasfrias");
-  addArray(menu.waters, "bebidasfrias");
-  addArray(menu.frappes, "bebidasfrias");
   if (Array.isArray(menu.sandwichItems)) {
     for (const it of menu.sandwichItems)
       push(`sandwich:${it?.key || slugify(it?.name || "")}`, it?.name, "sandwiches");
