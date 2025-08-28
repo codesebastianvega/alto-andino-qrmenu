@@ -18,7 +18,7 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0 }) {
     >
       <div className="mx-auto flex h-full max-w-screen-md items-center justify-between gap-3 px-4 md:px-6">
         <h1 className="flex-1 select-none text-[18px] font-semibold tracking-tight text-white md:text-lg">
-          Alto Andino ZipaquirÃÂ¡
+          Alto Andino Zipaquirá
         </h1>
 
         <div className="relative flex items-center gap-2">
@@ -31,7 +31,7 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0 }) {
           <button
             type="button"
             onClick={onGuideOpen}
-            aria-label="InformaciÃÂ³n"
+            aria-label="Información"
             className="group inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
           >
             <Icon

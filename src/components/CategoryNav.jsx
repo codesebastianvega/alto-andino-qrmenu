@@ -41,7 +41,7 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
             type="button"
             onClick={() => handleSelect(cat, idx)}
             className={clsx(
-              // Base size and layout (mÃ¡s grandes)
+              // Base size and layout (más grandes)
               "flex h-28 w-24 flex-shrink-0 flex-col items-center justify-center gap-1 rounded-xl p-2 text-center transition-all duration-300 ease-in-out",
               "snap-center",
               // Glassmorphism base style (blur removed for performance)
