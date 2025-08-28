@@ -55,12 +55,12 @@ function getTimeContext() {
     tarde: "Buenas tardes desde Zipaquirá",
     noche: "Buenas noches en Zipaquirá",
   };
-  return { emoji: emojiMap[currentTime], label: labelMap[currentTime], time: currentTime };
+  return { emoji: emojiMap[currentTime], label: labelMap[currentTime], time: currentTime, hour };
 }
 
 export default function HeroHeadline() {
   const cart = useCart();
-  const { emoji, label, time } = getTimeContext();
+  const { emoji, label, time, hour } = getTimeContext();
 
   // Selección de producto recomendado con stock disponible
   const pools = {
@@ -68,7 +68,10 @@ export default function HeroHeadline() {
     tarde: [menu.smoothies, menu.funcionales, menu.sodas, menu.otherDrinks, menu.coffees],
     noche: [menu.mainDishes, menu.sandwichItems, menu.dessertBaseItems, menu.coffees],
   };
-  const items = (pools[time] || []).flatMap((arr) => (Array.isArray(arr) ? arr : []));
+  const baseBucket = pools[time] || [];
+  const offerHot = hour >= 16 && hour < 19;
+  const bucket = offerHot ? [menu.coffees, menu.teasAndChai, menu.infusions] : baseBucket;
+  const items = bucket.flatMap((arr) => (Array.isArray(arr) ? arr : []));
   const candidates = items
     .map((p) => ({ id: p.id || p.productId || (p.key ? `sandwich:${p.key}` : slugify(p.name)), name: p.name, price: p.price }))
     .filter((p) => {
@@ -99,9 +102,19 @@ export default function HeroHeadline() {
 
   return (
     <section aria-labelledby="home-headline" className="relative mb-3 md:mb-4">
-      {/* decor sutil */}
-      <AAImage src="/decor-tl.png" alt="" aria-hidden className="pointer-events-none absolute -left-16 -top-16 w-32 opacity-30 blur-sm" />
-      <AAImage src="/decor-tr.png" alt="" aria-hidden className="pointer-events-none absolute -top-16 -right-32 w-64 opacity-25" />
+      {/* Decoración TL: mitad visible hacia la izquierda, leve blur */}
+      <AAImage
+        src="/decor-tl.png"
+        alt=""
+        aria-hidden
+        className="pointer-events-none absolute -left-16 -top-20 w-28 sm:-left-20 sm:-top-14 sm:w-40 md:-left-24 md:-top-16 md:w-40 opacity-40 blur-[1px] z-0"
+      />
+      <AAImage
+        src="/decor-tr.png"
+        alt=""
+        aria-hidden
+        className="pointer-events-none absolute -right-10 -top-6 w-40 sm:-right-12 sm:w-52 md:-right-16 md:w-64 opacity-25 z-0"
+      />
 
       <motion.h1
         id="home-headline"
@@ -161,3 +174,6 @@ export default function HeroHeadline() {
     </section>
   );
 }
+
+
+
