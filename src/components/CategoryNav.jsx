@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import clsx from "clsx";
 import { Icon } from "@iconify-icon/react";
 import { categoryIcons } from "../data/categoryIcons";
@@ -27,9 +27,9 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
   return (
     <div
       ref={railRef}
-      className="scrollbar-none -mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto py-4 px-1 pb-6"
+      className="scrollbar-none -mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto py-5 px-1 pb-7"
       role="tablist"
-      aria-label="Categorías"
+      aria-label="CategorÃ­as"
     >
       {categories.map((cat, idx) => {
         const active = activeId === cat.id;
@@ -41,7 +41,7 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
             type="button"
             onClick={() => handleSelect(cat, idx)}
             className={clsx(
-              // Base size and layout
+              // Base size and layout (mÃ¡s grandes)
               "flex h-36 w-28 flex-shrink-0 flex-col items-center justify-center gap-1.5 rounded-2xl p-2 text-center transition-all duration-300 ease-in-out",
               "snap-center",
               // Glassmorphism base style (blur removed for performance)
@@ -57,9 +57,10 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
             <Icon
               icon={iconName}
               className={clsx(
-                "h-[64px] w-[64px] transition-colors",
+                "transition-colors",
                 active ? "text-[#2f4131]" : "text-neutral-700"
               )}
+              style={{ fontSize: 70, width: 70, height: 70 }}
             />
             <span
               className={clsx(
@@ -75,3 +76,5 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
     </div>
   );
 }
+
+
