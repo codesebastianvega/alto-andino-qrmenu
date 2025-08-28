@@ -14,68 +14,118 @@ const bases = ["Arroz", "Quinoa", "Mix de lechugas"];
 const proteins = [
   { name: "Pollo", premium: false },
   { name: "Res", premium: false },
-  { name: "Tofu", premium: false },
-  { name: "Atun", premium: false },
-  { name: "Salmon", premium: true },
-  { name: "Camaron", premium: true },
+  { name: "Tofu", premium: true },
+  { name: "Atún rallado", premium: false },
+  { name: "Salmón salteado", premium: true },
+  { name: "Camarón salteado", premium: true },
 ];
 
 const toppings = [
   "Aguacate",
   "Mango",
   "Pepino",
-  "Maiz",
+  "Maíz desgranado",
   "Cebolla morada",
   "Tomate cherry",
+  "Rábano",
+  "Queso en cubos",
+  "Zanahoria",
+  "Pimentón",
+  "Brócoli",
+  "Champiñones",
+  "Hummus",
+  "Arándanos",
+  "Kiwi",
 ];
 
-const extras = ["Guacamole", "Queso crema", "Nachos", "Ajonjoli", "Cebollin"];
+const extras = [
+  "Guacamole",
+  "Ajonjolí tostado",
+  "Cebollín",
+  "Semilla de chía",
+  "Semillas de linaza",
+  "Láminas de almendras",
+  "Jalapeños",
+  "Alga nori",
+  "Jengibre encurtido",
+  "Pepinillos",
+  "Aceituna negra",
+  "Aceituna verde",
+  "Aceite de oliva",
+  "Ajonjolí negro",
+  "Semillas de amapola",
+  "Semilla de amaranto",
+  "Orégano",
+  "Pimienta cayena",
+  "Aceite de aguacate",
+];
 
 const sauces = [
-  "HotSweet de la Casa",
+  "HotSweet de la casa",
   "Mango-yaki",
-  "Balsamico",
-  "Yogur",
+  "Balsámico",
+  "Yogurt",
   "Soja",
   "Mayo-pesto",
-  "Sin Salsa",
+  "Sin salsa",
 ];
 
 const MAX_TOPS = 4;
 const MAX_EXTS = 3;
 
-// Emojis simples para acompañar
-function ico(label) {
-  const s = String(label || "").toLowerCase();
+// Emoji helpers (normalizar acentos y mapa)
+function normalizeLabel(s) {
+  return String(s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function icoEmoji(label) {
+  const s = normalizeLabel(label);
+  // Bases
   if (s.includes("arroz")) return "🍚";
   if (s.includes("quinoa")) return "🌾";
-  if (s.includes("lechuga") || s.includes("mix")) return "🥗";
-
+  if (s.includes("lechuga") || s.includes("mix")) return "🥬";
+  // Proteínas
   if (s.includes("pollo")) return "🍗";
   if (s.includes("res") || s.includes("carne")) return "🥩";
-  if (s.includes("tofu")) return "🧈";
-  if (s.includes("atun") || s.includes("salmon")) return "🐟";
-  if (s.includes("camaron")) return "🦐";
-
-  if (s.includes("aguacate") || s.includes("palta")) return "🥑";
+  if (s.includes("tofu")) return "🧊";
+  if (s.includes("atun") || s.includes("salm")) return "🐟";
+  if (s.includes("camar")) return "🍤";
+  // Toppings / extras
+  if (s.includes("aguacate") || s.includes("palta") || s.includes("guacamole")) return "🥑";
   if (s.includes("mango")) return "🥭";
-  if (s.includes("pepino")) return "🥒";
+  if (s.includes("pepino") || s.includes("pepinillo")) return "🥒";
   if (s.includes("maiz")) return "🌽";
-  if (s.includes("cebolla")) return "🧅";
+  if (s.includes("cebolla") || s.includes("cebollin")) return "🧅";
   if (s.includes("tomate")) return "🍅";
-
-  if (s.includes("guacamole")) return "🥑";
+  if (s.includes("rabano")) return "🥗";
   if (s.includes("queso")) return "🧀";
-  if (s.includes("nachos")) return "🥨";
-  if (s.includes("ajonjoli") || s.includes("sesamo")) return "🌾";
-  if (s.includes("cebollin")) return "🧅";
-
-  if (s.includes("hotsweet") || s.includes("picante")) return "🌶️";
+  if (s.includes("zanahoria")) return "🥕";
+  if (s.includes("pimenton") || s.includes("pimiento")) return "🫑";
+  if (s.includes("brocoli")) return "🥦";
+  if (s.includes("champi")) return "🍄";
+  if (s.includes("arandanos")) return "🫐";
+  if (s.includes("kiwi")) return "🥝";
+  if (s.includes("almendra")) return "🥜";
+  if (s.includes("linaza") || s.includes("chia") || s.includes("amapola") || s.includes("amaranto") || s.includes("semilla")) return "🌱";
+  if (s.includes("jalapen")) return "🌶️";
+  if (s.includes("alga") || s.includes("nori") || s.includes("jengibre")) return "🍣";
+  if (s.includes("aceituna")) return "🫒";
+  if (s.includes("aceite")) {
+    if (s.includes("aguacate")) return "🥑";
+    if (s.includes("oliva")) return "🫒";
+    return "🧴";
+  }
+  if (s.includes("oregano") || s.includes("hierbas") || s.includes("pimienta")) return "🌿";
+  // Salsas
+  if (s.includes("hotsweet") || s.includes("picante") || s.includes("cayena")) return "🌶️";
   if (s.includes("bals")) return "🧴";
   if (s.includes("yogur")) return "🥛";
-  if (s.includes("soja") || s.includes("soya")) return "🍶";
-  if (s.includes("mayo") || s.includes("pesto")) return "🧂";
-  if (s.includes("sin salsa")) return "✅";
+  if (s.includes("soja") || s.includes("soya")) return "🥢";
+  if (s.includes("mayo") || s.includes("pesto")) return "🧄";
+  if (s.includes("sin salsa")) return "🚫";
   return "";
 }
 
@@ -144,7 +194,7 @@ export default function BowlBuilder({ open, onClose }) {
   const [protein, setProtein] = useState("Pollo");
   const [tops, setTops] = useState([]);
   const [exts, setExts] = useState([]);
-  const [sauce, setSauce] = useState("Sin Salsa");
+  const [sauce, setSauce] = useState("Sin salsa");
   const [note, setNote] = useState("");
 
   const isPremium = useMemo(() => proteins.find((p) => p.name === protein)?.premium === true, [protein]);
@@ -164,7 +214,7 @@ export default function BowlBuilder({ open, onClose }) {
     setProtein("Pollo");
     setTops([]);
     setExts([]);
-    setSauce("Sin Salsa");
+    setSauce("Sin salsa");
     setNote("");
   };
 
@@ -228,8 +278,7 @@ export default function BowlBuilder({ open, onClose }) {
           <div className="flex-1 min-h-0 space-y-3 overflow-y-auto overscroll-contain px-4 pt-3 sm:space-y-4 sm:pt-4">
             {/* Resumen */}
             <div className="rounded-lg bg-white/60 px-3 py-2 text-sm text-neutral-800 ring-1 ring-white/40 shadow-sm backdrop-blur-md">
-              Base: {base} • Prot: {protein} {isPremium && "(+ $4.000)"} • Top: {tops.length}/{MAX_TOPS} • Extras: {exts.length}
-              /{MAX_EXTS} • Salsa: {sauce} • Total: {formatCOP(price)}
+              Base: {base} • Prot: {protein} {isPremium && "(+$4.000)"} • Top: {tops.length}/{MAX_TOPS} • Extras: {exts.length}/{MAX_EXTS} • Salsa: {sauce} • Total: {formatCOP(price)}
             </div>
 
             {/* Base */}
@@ -238,7 +287,7 @@ export default function BowlBuilder({ open, onClose }) {
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 {bases.map((b) => (
                   <Tile key={b} active={b === base} onClick={() => setBase(b)}>
-                    {ico(b)}&nbsp;{b}
+                    {icoEmoji(b)}&nbsp;{b}
                   </Tile>
                 ))}
               </div>
@@ -250,7 +299,7 @@ export default function BowlBuilder({ open, onClose }) {
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 {proteins.map((p) => (
                   <Tile key={p.name} active={p.name === protein} onClick={() => setProtein(p.name)}>
-                    {ico(p.name)}&nbsp;{p.name}
+                    {icoEmoji(p.name)}&nbsp;{p.name}
                     {p.premium ? " • (+$4.000)" : ""}
                   </Tile>
                 ))}
@@ -271,7 +320,7 @@ export default function BowlBuilder({ open, onClose }) {
                     disabled={!tops.includes(t) && tops.length >= MAX_TOPS}
                     onClick={() => toggleLimited(tops, setTops, MAX_TOPS, t)}
                   >
-                    {ico(t)}&nbsp;{t}
+                    {icoEmoji(t)}&nbsp;{t}
                   </Tile>
                 ))}
               </div>
@@ -291,7 +340,7 @@ export default function BowlBuilder({ open, onClose }) {
                     disabled={!exts.includes(e) && exts.length >= MAX_EXTS}
                     onClick={() => toggleLimited(exts, setExts, MAX_EXTS, e)}
                   >
-                    {ico(e)}&nbsp;{e}
+                    {icoEmoji(e)}&nbsp;{e}
                   </Tile>
                 ))}
               </div>
@@ -303,7 +352,7 @@ export default function BowlBuilder({ open, onClose }) {
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 {sauces.map((s) => (
                   <Tile key={s} active={s === sauce} onClick={() => setSauce(s)}>
-                    {ico(s)}&nbsp;{s}
+                    {icoEmoji(s)}&nbsp;{s}
                   </Tile>
                 ))}
               </div>
@@ -348,4 +397,3 @@ export default function BowlBuilder({ open, onClose }) {
     </Portal>
   );
 }
-
