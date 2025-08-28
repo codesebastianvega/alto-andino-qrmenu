@@ -63,7 +63,7 @@ export default function HeroHeadline() {
   // Selección de producto recomendado con stock disponible
   const pools = {
     manana: [menu.breakfastItems, menu.coffees, menu.infusions],
-    tarde: [menu.smoothies, menu.funcionales || menu.functionalSmoothies, menu.sodas, menu.otherDrinks],
+    tarde: [menu.smoothies, menu.funcionales, menu.sodas, menu.otherDrinks],
     noche: [menu.mainDishes, menu.sandwichItems, menu.dessertBaseItems],
   };
   const items = (pools[time] || []).flatMap((arr) => (Array.isArray(arr) ? arr : []));
@@ -78,7 +78,6 @@ export default function HeroHeadline() {
   const rec = candidates.length ? candidates[Math.min(recIndex, candidates.length - 1)] : null;
 
   React.useEffect(() => {
-    // reset index if pool changes
     setRecIndex(0);
   }, [time]);
 
@@ -86,7 +85,7 @@ export default function HeroHeadline() {
     if (!candidates.length) return;
     const id = setInterval(() => {
       setRecIndex((i) => (i + 1) % candidates.length);
-    }, 12000); // rota cada 12s
+    }, 12000);
     return () => clearInterval(id);
   }, [candidates.length]);
 
@@ -122,7 +121,7 @@ export default function HeroHeadline() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4, duration: 0.5 }}
       >
-        Ingredientes locales y de temporada · Pet friendly
+        Ingredientes locales y de temporada • Pet friendly
       </motion.p>
 
       <motion.div
