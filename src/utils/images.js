@@ -123,14 +123,17 @@ export const IMAGE_MAP = {
 };
 
 /**
- * Dado un producto { id?, name? }, devuelve una ruta de imagen.
- * 1) Busca en IMAGE_MAP por id o slug(name)
+ * Dado un producto { id?, productId?, name? }, devuelve una ruta de imagen.
+ * 1) Busca en IMAGE_MAP por id, productId o slug(name)
  * 2) Si no, intenta /img/products/<id|slug>.png o .jpg
  * 3) Si no, retorna null
  */
 export function getProductImage(product) {
   if (!product) return null;
-  const key = product.id || (product.name ? slugify(product.name) : "");
+  const key =
+    product.id ||
+    product.productId ||
+    (product.name ? slugify(product.name) : "");
   if (key && IMAGE_MAP[key]) return IMAGE_MAP[key];
   // No realizamos comprobaciones síncronas ni adivinamos rutas por defecto
   // para evitar bloqueos y placeholders. Solo mostramos imágenes mapeadas.
