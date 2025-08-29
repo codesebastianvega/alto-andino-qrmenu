@@ -111,7 +111,7 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
             type="button"
             aria-label={`Agregar ${item.name || "producto"}`}
             onClick={handleAdd}
-            className="grid h-10 w-10 place-items-center rounded-full bg-[#2f4131] text-white shadow-sm ring-1 ring-black/5 transition-transform duration-150 hover:scale-110 hover:bg-[#263729] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 md:h-11 md:w-11"
+            className="grid h-10 w-10 place-items-center rounded-full bg-[#2f4131] text-white shadow-sm ring-1 ring-black/5 transition-transform duration-150 hover:scale-110 hover:bg-[#263729] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 md:h-11 md:w-11 flex-shrink-0"
           >
             +
           </button>
