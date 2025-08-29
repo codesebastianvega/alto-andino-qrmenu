@@ -33,28 +33,28 @@ function slugify(s = "") {
 
 export const IMAGE_MAP = {
   // === Desayunos ===
-  // "des-sendero": "/img/products/des-sendero.jpg", // Sendero Matinal
+  "des-sendero": "/img/products/des-sendero.jpg", // Sendero Matinal
   // "des-cumbre": "/img/products/des-cumbre.jpg", // Cumbre Energética
   // "des-huevos": "/img/products/des-huevos.jpg", // Huevos al Gusto
-  // "des-caldo": "/img/products/des-caldo.jpg", // Caldo de Costilla de Res
-  // "des-amanecer": "/img/products/des-amanecer.jpg", // Bowl Amanecer Andino
+  "des-caldo": "/img/products/des-caldo.jpg", // Caldo de Costilla de Res
+  "des-amanecer": "/img/products/des-amanecer.jpg", // Bowl Amanecer Andino
 
   // === Bowls (Prearmado) ===
-  // "bowl-poke-hawaiano": "/img/products/bowl-poke-hawaiano.jpg",
+  "bowl-poke-hawaiano": "/img/products/bowl-poke-hawaiano.jpg",
 
   // === Platos Fuertes ===
   // "main-salmon": "/img/products/main-salmon.jpg", // Salmón Andino 200 gr
   // "main-trucha": "/img/products/main-trucha.jpg", // Trucha del Páramo 450 gr
   // "main-bolo": "/img/products/main-bolo.jpg", // Spaghetti a la Boloñesa
   // "main-champi": "/img/products/main-champi.jpg", // Champiñones a la Madrileña
-  // "main-ceviche": "/img/products/main-ceviche.jpg", // Ceviche de Camarón
+  "main-ceviche": "/img/products/main-ceviche.jpg", // Ceviche de Camarón
   // "main-burger": "/img/products/main-burger.jpg", // Burger Andina (Pavo 150 gr)
 
   // === Sándwiches ===
   // Nota: las cards usan ids tipo "sandwich:<key>"
   // "sandwich:pollo": "/img/products/sandwich-pollo.jpg",
   // "sandwich:pavo": "/img/products/sandwich-pavo.jpg",
-  // "sandwich:serrano": "/img/products/sandwich-serrano.jpg",
+  "sandwich:serrano": "/img/products/sandwich-serrano.jpg",
   // "sandwich:cosecha": "/img/products/sandwich-cosecha.jpg",
   "sandwich:cerdo": "/img/products/sancerdo1.png", // ya existente
 
@@ -100,16 +100,16 @@ export const IMAGE_MAP = {
 
   // === Postres ===
   // "post-red": "/img/products/post-red.jpg", // Red Velvet
-  // "post-tres": "/img/products/post-tres.jpg", // Tres Leches (saludable)
-  // "post-tira": "/img/products/post-tira.jpg", // Tiramisú (saludable)
+  "post-tres": "/img/products/post-tres.jpg", // Tres Leches (saludable)
+  "post-tira": "/img/products/post-tira.jpg", // Tiramisú (saludable)
   // "post-amap": "/img/products/post-amap.jpg", // Torta de Amapola
   // "post-vasca": "/img/products/post-vasca.jpg", // Torta Vasca de Limón
   // "post-fresas": "/img/products/post-fresas.jpg", // Fresas con Crema
 
   // === Cumbre Andino (postres fríos) ===
   // Ids en runtime: "cumbre:<sabor>"
-  // "cumbre:rojos": "/img/products/cumbre-rojos.jpg",
-  // "cumbre:amarillos": "/img/products/cumbre-amarillos.jpg",
+  "cumbre:rojos": "/img/products/cumbre-rojos.jpg",
+  "cumbre:amarillos": "/img/products/cumbre-amarillos.jpg",
   // "cumbre:blancos": "/img/products/cumbre-blancos.jpg",
    "cumbre:choco": "/img/products/cumbre-choco.png",
 

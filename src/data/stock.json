@@ -33,7 +33,7 @@
     "post-tira": true,
     "post-amap": true,
     "post-vasca": "low",
-    "post-fresas": false,
+    "post-fresas": "low",
     "cumbre:rojos": true,
     "cumbre:amarillos": true,
     "cumbre:blancos": false,
