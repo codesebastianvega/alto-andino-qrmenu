@@ -143,7 +143,12 @@ export default function HeroHeadline() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6, duration: 0.4 }}
       >
-        <span className="absolute right-3 top-3 text-2xl sm:text-3xl" aria-hidden>{emoji}</span>
+        <span
+          className="pointer-events-none absolute right-3 top-3 -z-10 text-2xl sm:text-3xl md:-right-10 md:top-1/2 md:-translate-y-1/2 md:text-5xl"
+          aria-hidden
+        >
+          {emoji}
+        </span>
         <div className="flex-1">
           <p className="text-sm font-medium text-[#2f4131]">{label}</p>
           <p className="text-xs text-neutral-700">{tip}</p>
