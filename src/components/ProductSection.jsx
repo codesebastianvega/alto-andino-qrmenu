@@ -87,7 +87,7 @@ export default function ProductSection({
   }
 
   const renderProducts = (arr, keySeed = 0) => (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 sm:gap-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
       {arr.map((item, i) => {
         const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
         return (
