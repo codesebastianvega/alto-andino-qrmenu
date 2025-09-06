@@ -1,6 +1,7 @@
 // src/App.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppStateProvider, useAppState } from "./state/appState";
+import { subscribeAvailability } from "./services/catalog";
 
 import Splash from "./views/Splash";
 import Hub from "./views/Hub";
@@ -9,7 +10,7 @@ import TiendaView from "./views/TiendaView";
 import MiniCart from "./components/shared/MiniCart";
 
 function AppScreens() {
-  const { setArea } = useAppState();
+  const { setArea, applyRealtimePatch } = useAppState();
   const [screen, setScreen] = useState("splash");
 
   const handleSplashFinish = (next) => {
@@ -21,6 +22,11 @@ function AppScreens() {
     setArea(area);
     setScreen(area);
   };
+
+  useEffect(() => {
+    const unsub = subscribeAvailability(applyRealtimePatch);
+    return () => unsub?.();
+  }, [applyRealtimePatch]);
 
   let content = null;
   if (screen === "splash") content = <Splash onFinish={handleSplashFinish} />;
