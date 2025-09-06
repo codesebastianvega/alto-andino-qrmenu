@@ -7,6 +7,8 @@ export function AppStateProvider({ children }) {
   const [mode, setModeState] = useState("pickup");
   const [area, setAreaState] = useState("menu");
   const [cart, setCart] = useState({ items: [] });
+  const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
 
   const setMode = (m) => {
     setModeState(m);
@@ -24,7 +26,24 @@ export function AppStateProvider({ children }) {
 
   const resetCart = () => setCart({ items: [] });
 
-  const value = { mode, area, cart, setMode, setArea, resetCart };
+  const applyRealtimePatch = (p) =>
+    setProducts((prev) =>
+      prev.map((item) => (item.id === p.id ? { ...item, ...p } : item))
+    );
+
+  const value = {
+    mode,
+    area,
+    cart,
+    categories,
+    products,
+    setMode,
+    setArea,
+    resetCart,
+    setCategories,
+    setProducts,
+    applyRealtimePatch,
+  };
   return React.createElement(AppStateContext.Provider, { value }, children);
 }
 
