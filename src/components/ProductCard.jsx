@@ -58,28 +58,24 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
         imageSrc ? "grid-cols-[96px_1fr] md:grid-cols-[112px_1fr]" : "grid-cols-1"
       } gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 transition-all duration-200 md:gap-4 md:p-4 hover:shadow-md hover:ring-black/10 hover:-translate-y-0.5 ${
         unavailable ? "opacity-70 grayscale" : ""
-      }`}
+      } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2`}
+      onClick={handleQuickView}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="button"
     >
       {imageSrc && (
-        <button
-          type="button"
-          onClick={handleQuickView}
-          onKeyDown={handleKeyDown}
-          aria-label={`Ver ${product.title || product.name || "producto"}`}
-          className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
-        >
-          <div className="h-24 w-24 overflow-hidden rounded-xl md:h-28 md:w-28">
-            <AAImage
-              src={imageSrc}
-              alt={item.name || "Producto"}
-              onLoad={() => setImgLoaded(true)}
-              onError={() => setImgLoaded(false)}
-              className={`h-full w-full object-cover transition-opacity duration-300 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
-              width={112}
-              height={112}
-            />
-          </div>
-        </button>
+        <div className="h-24 w-24 overflow-hidden rounded-xl md:h-28 md:w-28">
+          <AAImage
+            src={imageSrc}
+            alt={item.name || "Producto"}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgLoaded(false)}
+            className={`h-full w-full object-cover transition-opacity duration-300 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+            width={112}
+            height={112}
+          />
+        </div>
       )}
 
       <div className="flex min-w-0 flex-col">
