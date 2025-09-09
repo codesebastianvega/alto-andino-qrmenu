@@ -1,5 +1,6 @@
 // src/services/orders.js
 import supabase from "@/lib/supabaseClient";
+import { toast } from "@/components/Toast";
 
 /**
  * Crea una orden y sus items asociados.
@@ -27,7 +28,10 @@ export async function createOrder({
   if (!supabase) throw new Error("Supabase no configurado");
 
   // Estado inicial según modo: mesa -> awaiting_cash, pickup/delivery -> pending_payment
-  const status = mode === "mesa" ? "awaiting_cash" : "pending_payment";
+  let status = "pending_payment";
+  if (mode === "mesa") {
+    status = "awaiting_cash";
+  }
 
   const { data: orderData, error: orderError } = await supabase
     .from("orders")
@@ -49,7 +53,10 @@ export async function createOrder({
     .single();
 
   if (orderError || !orderData) {
-    throw orderError || new Error("No se pudo crear la orden");
+    const err = orderError || new Error("No se pudo crear la orden");
+    toast(err.message);
+    err.__toastShown = true;
+    throw err;
   }
 
   const orderId = orderData.id;
@@ -68,6 +75,8 @@ export async function createOrder({
 
   if (itemsError) {
     await supabase.from("orders").delete().eq("id", orderId);
+    toast(itemsError.message);
+    itemsError.__toastShown = true;
     throw itemsError;
   }
 
