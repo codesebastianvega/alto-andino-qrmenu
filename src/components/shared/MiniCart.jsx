@@ -2,6 +2,7 @@
 import { useAppState } from "../../state/appState";
 import { useNavigate } from "react-router-dom";
 import { formatCOP } from "@/utils/money";
+import { toast } from "@/components/Toast";
 
 export default function MiniCart() {
   const {
@@ -9,6 +10,8 @@ export default function MiniCart() {
     mode,
     getIncompatibleItemsForMode,
     getCartTotalCop,
+    products,
+    removeItemsByIds,
   } = useAppState();
   const count = cart?.items?.length || 0;
   const incompatible = getIncompatibleItemsForMode(mode);
@@ -19,7 +22,17 @@ export default function MiniCart() {
   const navigate = useNavigate();
 
   const goCheckout = () => {
-    if (!disabled) navigate("/checkout");
+    if (disabled) return;
+    const unavailable = cart.items.filter((it) => {
+      const p = products.find((pr) => pr.id === it.productId);
+      return p && (!p.is_available || (typeof p.stock === "number" && p.stock <= 0));
+    });
+    if (unavailable.length > 0) {
+      removeItemsByIds(unavailable.map((u) => u.id));
+      toast("Quitamos productos sin stock del carrito");
+      if (count - unavailable.length === 0) return;
+    }
+    navigate("/checkout");
   };
 
   return (
