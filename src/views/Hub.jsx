@@ -1,25 +1,37 @@
 // src/views/Hub.jsx
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAppState } from "../state/appState";
+import ConfirmDialog from "../components/shared/ConfirmDialog";
 
 export default function Hub({ onSelect }) {
-  const { setMode, setArea } = useAppState();
-  const params = new URLSearchParams(window.location.search);
-  const mesa = params.get("mesa");
+  const {
+    setMode,
+    setArea,
+    getIncompatibleItemsForMode,
+    removeItemsByIds,
+  } = useAppState();
 
-  const [step, setStep] = useState(mesa ? 2 : 1);
-
-  useEffect(() => {
-    if (mesa) {
-      setMode("mesa");
-      setArea("menu");
-    }
-  }, [mesa, setMode, setArea]);
+  const [step, setStep] = useState(1);
+  const [confirm, setConfirm] = useState({ open: false, mode: null, items: [] });
 
   const handleMode = (m) => {
-    setMode(m);
-    setStep(2);
+    const incompatible = getIncompatibleItemsForMode(m);
+    if (incompatible.length > 0) {
+      setConfirm({ open: true, mode: m, items: incompatible });
+    } else {
+      setMode(m);
+      setStep(2);
+    }
   };
+
+  const confirmChange = () => {
+    removeItemsByIds(confirm.items);
+    setMode(confirm.mode);
+    setStep(2);
+    setConfirm({ open: false, mode: null, items: [] });
+  };
+
+  const cancelChange = () => setConfirm({ open: false, mode: null, items: [] });
 
   const handleArea = (a) => {
     setArea(a);
@@ -28,11 +40,6 @@ export default function Hub({ onSelect }) {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4 text-center">
-      {mesa && (
-        <div className="mb-4 rounded bg-gray-200 px-4 py-2 text-lg font-semibold">
-          Mesa #{mesa}
-        </div>
-      )}
 
       {step === 1 && (
         <div className="space-y-4">
@@ -79,6 +86,14 @@ export default function Hub({ onSelect }) {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={confirm.open}
+        title={`Tienes ${confirm.items.length} ítems no compatibles con ${confirm.mode}. ¿Quitarlos y cambiar, o cancelar?`}
+        confirmText="Quitar y cambiar"
+        cancelText="Cancelar"
+        onConfirm={confirmChange}
+        onCancel={cancelChange}
+      />
     </div>
   );
 }

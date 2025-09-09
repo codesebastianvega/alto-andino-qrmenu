@@ -7,12 +7,20 @@ import { formatCOP } from "@/utils/money";
 const PLACEHOLDER_IMG =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 
+const MODE_BADGES = {
+  delivery: "No va a domicilio",
+  mesa: "Solo para llevar/entrega",
+  pickup: "No disponible para recoger",
+};
+
 export default function TiendaView({ onSwitch }) {
   const {
     categories,
     products,
     setCategories,
     setProducts,
+    mode,
+    tableId,
   } = useAppState();
 
   const [visible, setVisible] = useState(false);
@@ -21,6 +29,7 @@ export default function TiendaView({ onSwitch }) {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState(null);
   const [visibleCount, setVisibleCount] = useState(20);
+  const [onlyCompatible, setOnlyCompatible] = useState(false);
 
   useEffect(() => setVisible(true), []);
 
@@ -67,7 +76,10 @@ export default function TiendaView({ onSwitch }) {
         p.name.toLowerCase().includes(t) ||
         (p.tags || []).some((tag) => tag.toLowerCase().includes(t))
       );
-    });
+    })
+    .filter((p) =>
+      onlyCompatible ? (p.fulfillment_modes || []).includes(mode) : true
+    );
 
   useEffect(() => {
     const handleScroll = () => {
@@ -97,6 +109,11 @@ export default function TiendaView({ onSwitch }) {
       }`}
     >
       <h1 className="mb-4 text-2xl font-bold">Tienda</h1>
+      {mode === "mesa" && tableId && (
+        <div className="mb-4 rounded bg-gray-200 px-4 py-2 text-center">
+          Mesa {tableId}
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 text-center text-sm text-red-600">
@@ -138,6 +155,15 @@ export default function TiendaView({ onSwitch }) {
         ))}
       </div>
 
+      <label className="mb-4 flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={onlyCompatible}
+          onChange={(e) => setOnlyCompatible(e.target.checked)}
+        />
+        Mostrar solo compatibles
+      </label>
+
       {loading && (
         <div className="grid grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((n) => (
@@ -159,6 +185,8 @@ export default function TiendaView({ onSwitch }) {
         {visibleProducts.map((p) => {
           const unavailable = !p.is_available || p.stock <= 0;
           const img = p.image_url || `/img/products/${p.slug || p.id}.jpg`;
+          const compatible = (p.fulfillment_modes || []).includes(mode);
+          const badge = MODE_BADGES[mode];
           return (
             <div
               key={p.id}
@@ -175,6 +203,11 @@ export default function TiendaView({ onSwitch }) {
                   Agotado
                 </span>
               )}
+              {!compatible && (
+                <span className="absolute right-0 top-0 rounded-bl bg-black/70 px-2 py-1 text-xs text-white">
+                  {badge}
+                </span>
+              )}
               <div className="mt-2">
                 <h3 className="text-sm font-medium">{p.name}</h3>
                 <div className="text-xs text-neutral-600">
@@ -185,10 +218,11 @@ export default function TiendaView({ onSwitch }) {
                 </div>
               </div>
               <button
-                disabled={unavailable}
+                disabled={unavailable || !compatible}
+                title={!compatible ? badge : undefined}
                 className={`mt-2 w-full rounded-full px-3 py-1 text-sm ${
-                  unavailable
-                    ? "bg-gray-300 text-gray-500"
+                  unavailable || !compatible
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                     : "bg-alto-primary text-white"
                 }`}
               >
