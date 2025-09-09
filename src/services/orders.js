@@ -61,13 +61,16 @@ export async function createOrder({
 
   const orderId = orderData.id;
 
-  const itemsPayload = items.map((it) => ({
-    order_id: orderId,
-    product_id: it.productId,
-    qty: it.qty,
-    unit_price_cop: it.unit_price_cop,
-    total_cop: (it.unit_price_cop || 0) * (it.qty || 1),
-  }));
+  const itemsPayload = items.map((it) => {
+    const unitPrice = it.unit_price_cop ?? it.price_cop ?? 0;
+    return {
+      order_id: orderId,
+      product_id: it.productId ?? it.id,
+      qty: it.qty,
+      unit_price_cop: unitPrice,
+      total_cop: unitPrice * (it.qty || 0),
+    };
+  });
 
   const { error: itemsError } = await supabase
     .from("order_items")
