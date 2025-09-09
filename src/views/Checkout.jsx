@@ -94,6 +94,7 @@ export default function Checkout() {
           total_cop: sub,
         },
       });
+      if (!id) throw new Error("Orden inválida");
       clearCart();
       try {
         window.sessionStorage.setItem("lastOrderId", id);
@@ -101,7 +102,7 @@ export default function Checkout() {
       navigate(`/checkout/success?orderId=${id}`);
     } catch (err) {
       console.error(err);
-      toast("No se pudo crear la orden");
+      if (!err.__toastShown) toast(err.message || "No se pudo crear la orden");
     } finally {
       setSubmitting(false);
     }
@@ -140,6 +141,7 @@ export default function Checkout() {
           total_cop: sub,
         },
       });
+      if (!id) throw new Error("Orden inválida");
       clearCart();
       try {
         window.sessionStorage.setItem("lastOrderId", id);
@@ -154,7 +156,8 @@ export default function Checkout() {
       window.location.href = data.checkout_url;
     } catch (err) {
       console.error(err);
-      toast("No se pudo iniciar pago en línea");
+      if (!err.__toastShown)
+        toast(err.message || "No se pudo iniciar pago en línea");
     } finally {
       setSubmitting(false);
     }
