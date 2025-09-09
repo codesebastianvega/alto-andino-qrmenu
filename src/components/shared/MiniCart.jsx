@@ -1,5 +1,6 @@
 // src/components/shared/MiniCart.jsx
 import { useAppState } from "../../state/appState";
+import { useNavigate } from "react-router-dom";
 import { formatCOP } from "@/utils/money";
 
 export default function MiniCart() {
@@ -15,8 +16,10 @@ export default function MiniCart() {
 
   const disabled = count === 0 || incompatible.length > 0;
 
+  const navigate = useNavigate();
+
   const goCheckout = () => {
-    if (!disabled) window.location.href = "/checkout";
+    if (!disabled) navigate("/checkout");
   };
 
   return (
