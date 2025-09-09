@@ -7,19 +7,28 @@ import Splash from "./views/Splash";
 import Hub from "./views/Hub";
 import MenuView from "./views/MenuView";
 import TiendaView from "./views/TiendaView";
+import Checkout from "./views/Checkout";
 import MiniCart from "./components/shared/MiniCart";
 
 function AppScreens() {
   const { setArea, applyRealtimePatch } = useAppState();
-  const [screen, setScreen] = useState("splash");
+  const [screen, setScreen] = useState(() =>
+    window.location.pathname === "/checkout" ? "checkout" : "splash",
+  );
 
   const handleSplashFinish = (next) => {
     // next can be "hub", "menu" or "tienda"
+    if (window.location.pathname !== "/") {
+      window.history.replaceState(null, "", "/");
+    }
     setScreen(next);
   };
 
   const handleAreaSelect = (area) => {
     setArea(area);
+    if (window.location.pathname !== "/") {
+      window.history.replaceState(null, "", "/");
+    }
     setScreen(area);
   };
 
@@ -33,11 +42,12 @@ function AppScreens() {
   else if (screen === "hub") content = <Hub onSelect={handleAreaSelect} />;
   else if (screen === "menu") content = <MenuView onSwitch={() => handleAreaSelect("tienda")} />;
   else if (screen === "tienda") content = <TiendaView onSwitch={() => handleAreaSelect("menu")} />;
+  else if (screen === "checkout") content = <Checkout />;
 
   return (
     <div className="flex min-h-screen flex-col">
       {content}
-      <MiniCart />
+      {screen !== "checkout" && <MiniCart />}
     </div>
   );
 }
