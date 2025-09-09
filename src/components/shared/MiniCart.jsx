@@ -6,6 +6,12 @@ export default function MiniCart() {
   const count = cart?.items?.length || 0;
   const incompatible = getIncompatibleItemsForMode(mode);
 
+  const disabled = count === 0 || incompatible.length > 0;
+
+  const goCheckout = () => {
+    if (!disabled) window.location.href = "/checkout";
+  };
+
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white shadow md:top-0 md:bottom-auto md:left-auto md:right-0 md:m-4 md:w-64 md:rounded md:border">
       <div className="flex flex-col gap-2 border-t p-4 md:border-0">
@@ -30,10 +36,16 @@ export default function MiniCart() {
             <span className="text-sm">{count}</span>
           </div>
           <button
-            disabled
-            className="cursor-not-allowed rounded bg-gray-300 px-4 py-2 text-gray-500"
+            onClick={goCheckout}
+            disabled={disabled}
+            className={[
+              "rounded px-4 py-2 text-sm",
+              disabled
+                ? "cursor-not-allowed bg-gray-300 text-gray-500"
+                : "bg-[#2f4131] text-white hover:bg-[#243326]",
+            ].join(" ")}
           >
-            Revisar pedido
+            Ir al checkout
           </button>
         </div>
       </div>

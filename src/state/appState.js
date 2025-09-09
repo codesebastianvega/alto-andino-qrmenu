@@ -72,7 +72,13 @@ export function AppStateProvider({ children }) {
     }));
   };
 
-  const resetCart = () => setCart({ items: [] });
+  const clearCart = () => setCart({ items: [] });
+
+  const getCartTotalCop = () =>
+    cart.items.reduce(
+      (sum, it) => sum + (it.unit_price_cop || 0) * (it.qty || 1),
+      0,
+    );
 
   const applyRealtimePatch = (p) =>
     setProducts((prev) =>
@@ -91,7 +97,8 @@ export function AppStateProvider({ children }) {
     setArea,
     getIncompatibleItemsForMode,
     removeItemsByIds,
-    resetCart,
+    clearCart,
+    getCartTotalCop,
     setCategories,
     setProducts,
     applyRealtimePatch,
@@ -100,4 +107,9 @@ export function AppStateProvider({ children }) {
 }
 
 export const useAppState = () => useContext(AppStateContext);
+
+export const useCartItems = () => {
+  const { cart } = useAppState();
+  return cart.items;
+};
 
