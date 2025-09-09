@@ -21,6 +21,7 @@ export default function TiendaView({ onSwitch }) {
     setProducts,
     mode,
     tableId,
+    addToCart,
   } = useAppState();
 
   const [visible, setVisible] = useState(false);
@@ -77,9 +78,10 @@ export default function TiendaView({ onSwitch }) {
         (p.tags || []).some((tag) => tag.toLowerCase().includes(t))
       );
     })
-    .filter((p) =>
-      onlyCompatible ? (p.fulfillment_modes || []).includes(mode) : true
-    );
+    .filter((p) => {
+      const modes = p.fulfillment_modes || ["mesa", "pickup", "delivery"];
+      return onlyCompatible ? modes.includes(mode) : true;
+    });
 
   useEffect(() => {
     const handleScroll = () => {
@@ -185,7 +187,8 @@ export default function TiendaView({ onSwitch }) {
         {visibleProducts.map((p) => {
           const unavailable = !p.is_available || p.stock <= 0;
           const img = p.image_url || `/img/products/${p.slug || p.id}.jpg`;
-          const compatible = (p.fulfillment_modes || []).includes(mode);
+          const modes = p.fulfillment_modes || ["mesa", "pickup", "delivery"];
+          const compatible = modes.includes(mode);
           const badge = MODE_BADGES[mode];
           return (
             <div
@@ -220,6 +223,7 @@ export default function TiendaView({ onSwitch }) {
               <button
                 disabled={unavailable || !compatible}
                 title={!compatible ? badge : undefined}
+                onClick={() => addToCart(p)}
                 className={`mt-2 w-full rounded-full px-3 py-1 text-sm ${
                   unavailable || !compatible
                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"

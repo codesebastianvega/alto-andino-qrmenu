@@ -1,5 +1,5 @@
 // src/state/appState.js
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 const AppStateContext = createContext(null);
 
@@ -25,7 +25,15 @@ export function AppStateProvider({ children }) {
       return "menu";
     }
   });
-  const [cart, setCart] = useState({ items: [] });
+  const [cart, setCart] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem("cart");
+      const parsed = raw ? JSON.parse(raw) : { items: [] };
+      return Array.isArray(parsed?.items) ? parsed : { items: [] };
+    } catch {
+      return { items: [] };
+    }
+  });
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
 
@@ -61,7 +69,8 @@ export function AppStateProvider({ children }) {
     return cart.items
       .filter((item) => {
         const product = products.find((p) => p.id === item.productId);
-        return !((product?.fulfillment_modes || []).includes(m));
+        const modes = product?.fulfillment_modes || ["mesa", "pickup", "delivery"];
+        return !modes.includes(m);
       })
       .map((item) => item.id);
   };
@@ -72,7 +81,30 @@ export function AppStateProvider({ children }) {
     }));
   };
 
+  const addToCart = (p = {}) => {
+    const modes = p.fulfillment_modes || ["mesa", "pickup", "delivery"];
+    if (!modes.includes(mode)) return;
+    setCart((prev) => ({
+      items: [
+        ...prev.items,
+        {
+          id: `${p.id || p.productId}-${Date.now()}`,
+          productId: p.id || p.productId,
+          name: p.name,
+          unit_price_cop: p.price_cop,
+          qty: 1,
+        },
+      ],
+    }));
+  };
+
   const clearCart = () => setCart({ items: [] });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("cart", JSON.stringify(cart));
+    } catch {}
+  }, [cart]);
 
   const getCartTotalCop = () =>
     cart.items.reduce(
@@ -95,6 +127,7 @@ export function AppStateProvider({ children }) {
     setMode,
     setTableId,
     setArea,
+    addToCart,
     getIncompatibleItemsForMode,
     removeItemsByIds,
     clearCart,

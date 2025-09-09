@@ -1,10 +1,17 @@
 // src/components/shared/MiniCart.jsx
 import { useAppState } from "../../state/appState";
+import { formatCOP } from "@/utils/money";
 
 export default function MiniCart() {
-  const { cart, mode, getIncompatibleItemsForMode } = useAppState();
+  const {
+    cart,
+    mode,
+    getIncompatibleItemsForMode,
+    getCartTotalCop,
+  } = useAppState();
   const count = cart?.items?.length || 0;
   const incompatible = getIncompatibleItemsForMode(mode);
+  const total = getCartTotalCop();
 
   const disabled = count === 0 || incompatible.length > 0;
 
@@ -33,7 +40,9 @@ export default function MiniCart() {
             >
               <path d="M3 3h2l.4 2M7 13h10l4-8H5.4" stroke="currentColor" strokeWidth="2" fill="none" />
             </svg>
-            <span className="text-sm">{count}</span>
+            <span className="text-sm">
+              {count} · {formatCOP(total)}
+            </span>
           </div>
           <button
             onClick={goCheckout}
