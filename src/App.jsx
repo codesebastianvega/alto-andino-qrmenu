@@ -1,5 +1,6 @@
 // src/App.jsx
 import { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppStateProvider, useAppState } from "./state/appState";
 import { subscribeAvailability } from "./services/catalog";
 
@@ -12,9 +13,7 @@ import MiniCart from "./components/shared/MiniCart";
 
 function AppScreens() {
   const { setArea, applyRealtimePatch } = useAppState();
-  const [screen, setScreen] = useState(() =>
-    window.location.pathname === "/checkout" ? "checkout" : "splash",
-  );
+  const [screen, setScreen] = useState("splash");
 
   const handleSplashFinish = (next) => {
     // next can be "hub", "menu" or "tienda"
@@ -42,12 +41,11 @@ function AppScreens() {
   else if (screen === "hub") content = <Hub onSelect={handleAreaSelect} />;
   else if (screen === "menu") content = <MenuView onSwitch={() => handleAreaSelect("tienda")} />;
   else if (screen === "tienda") content = <TiendaView onSwitch={() => handleAreaSelect("menu")} />;
-  else if (screen === "checkout") content = <Checkout />;
 
   return (
     <div className="flex min-h-screen flex-col">
       {content}
-      {screen !== "checkout" && <MiniCart />}
+      <MiniCart />
     </div>
   );
 }
@@ -55,7 +53,12 @@ function AppScreens() {
 export default function App() {
   return (
     <AppStateProvider>
-      <AppScreens />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="*" element={<AppScreens />} />
+        </Routes>
+      </BrowserRouter>
     </AppStateProvider>
   );
 }
