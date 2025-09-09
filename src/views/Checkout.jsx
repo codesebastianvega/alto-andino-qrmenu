@@ -1,5 +1,6 @@
 // src/views/Checkout.jsx
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAppState } from "@/state/appState";
 import { createOrder } from "@/services/orders";
 import { formatCOP } from "@/utils/money";
@@ -13,6 +14,8 @@ export default function Checkout() {
     getIncompatibleItemsForMode,
     clearCart,
     getCartTotalCop,
+    products,
+    removeItemsByIds,
   } = useAppState();
   const [form, setForm] = useState({
     contact_name: "",
@@ -20,15 +23,28 @@ export default function Checkout() {
     address_line: "",
     address_notes: "",
     notes: "",
-    payment_method: "cash",
   });
-  const [orderId, setOrderId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const navigate = useNavigate();
 
   const items = cart.items || [];
   const incompatible = getIncompatibleItemsForMode(mode);
   const subtotal = getCartTotalCop();
   const total = subtotal;
+
+  const filterUnavailableItems = () => {
+    const current = cart.items || [];
+    const unavailable = current.filter((it) => {
+      const p = products.find((pr) => pr.id === it.productId);
+      return p && (!p.is_available || (typeof p.stock === "number" && p.stock <= 0));
+    });
+    if (unavailable.length > 0) {
+      removeItemsByIds(unavailable.map((u) => u.id));
+      toast("Quitamos productos sin stock del carrito");
+    }
+    const ids = new Set(unavailable.map((u) => u.id));
+    return current.filter((it) => !ids.has(it.id));
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -36,6 +52,7 @@ export default function Checkout() {
   };
 
   const isValid = () => {
+    if (items.length === 0) return false;
     if (mode === "mesa") return true;
     if (!form.contact_name) return false;
     if (!/^\d{10}$/.test(form.contact_phone)) return false;
@@ -46,12 +63,17 @@ export default function Checkout() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (incompatible.length > 0) return;
-    if (!isValid()) {
+    const validItems = filterUnavailableItems();
+    if (!isValid() || validItems.length === 0) {
       toast("Faltan campos obligatorios");
       return;
     }
     setSubmitting(true);
     try {
+      const sub = validItems.reduce(
+        (sum, it) => sum + (it.unit_price_cop || 0) * (it.qty || 1),
+        0,
+      );
       const id = await createOrder({
         mode,
         tableId,
@@ -64,19 +86,19 @@ export default function Checkout() {
           notes: form.address_notes,
         },
         notes: form.notes,
-        payment_method: mode === "mesa" ? "cash" : form.payment_method,
-        items,
+        payment_method: "cash",
+        items: validItems,
         totals: {
-          subtotal_cop: subtotal,
+          subtotal_cop: sub,
           delivery_fee_cop: 0,
-          total_cop: total,
+          total_cop: sub,
         },
       });
       clearCart();
       try {
-        window.localStorage.setItem("lastOrderId", id);
+        window.sessionStorage.setItem("lastOrderId", id);
       } catch {}
-      setOrderId(id);
+      navigate(`/checkout/success?orderId=${id}`);
     } catch (err) {
       console.error(err);
       toast("No se pudo crear la orden");
@@ -85,16 +107,58 @@ export default function Checkout() {
     }
   };
 
-  if (orderId) {
-    return (
-      <div className="p-4 space-y-2">
-        <h2 className="text-xl font-semibold">Orden creada</h2>
-        <p className="text-sm">Modo: {mode}</p>
-        <p className="text-sm">Número de orden: {orderId}</p>
-        <p className="text-sm">Total: {formatCOP(total)}</p>
-      </div>
-    );
-  }
+  const handleBoldPay = async () => {
+    if (incompatible.length > 0) return;
+    const validItems = filterUnavailableItems();
+    if (!isValid() || validItems.length === 0) {
+      toast("Faltan campos obligatorios");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const sub = validItems.reduce(
+        (sum, it) => sum + (it.unit_price_cop || 0) * (it.qty || 1),
+        0,
+      );
+      const id = await createOrder({
+        mode,
+        tableId,
+        contact: {
+          name: form.contact_name,
+          phone: form.contact_phone,
+        },
+        address: {
+          line: form.address_line,
+          notes: form.address_notes,
+        },
+        notes: form.notes,
+        payment_method: "online",
+        items: validItems,
+        totals: {
+          subtotal_cop: sub,
+          delivery_fee_cop: 0,
+          total_cop: sub,
+        },
+      });
+      clearCart();
+      try {
+        window.sessionStorage.setItem("lastOrderId", id);
+      } catch {}
+      const resp = await fetch("/api/payments/bold/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: id }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.checkout_url) throw new Error("Bold error");
+      window.location.href = data.checkout_url;
+    } catch (err) {
+      console.error(err);
+      toast("No se pudo iniciar pago en línea");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="p-4 space-y-4">
@@ -172,26 +236,6 @@ export default function Checkout() {
         />
       </div>
 
-      {mode !== "mesa" && (
-        <div className="space-y-2">
-          <p className="text-sm text-neutral-700">Método de pago</p>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="payment_method"
-              value="cash"
-              checked={form.payment_method === "cash"}
-              onChange={handleChange}
-            />
-            Pagar en caja
-          </label>
-          <label className="flex items-center gap-2 text-sm text-neutral-400">
-            <input type="radio" disabled />
-            Pagar en línea (Bold)
-          </label>
-        </div>
-      )}
-
       <div className="space-y-1">
         <h3 className="font-medium">Resumen</h3>
         <ul className="space-y-1">
@@ -211,6 +255,16 @@ export default function Checkout() {
       >
         Confirmar pedido
       </button>
+      {mode !== "mesa" && total > 0 && (
+        <button
+          type="button"
+          onClick={handleBoldPay}
+          disabled={submitting || incompatible.length > 0 || !isValid()}
+          className="w-full rounded border border-[#2f4131] py-2 text-[#2f4131] disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-500"
+        >
+          Pagar con Bold
+        </button>
+      )}
     </form>
   );
 }

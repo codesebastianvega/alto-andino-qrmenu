@@ -9,6 +9,7 @@ import Hub from "./views/Hub";
 import MenuView from "./views/MenuView";
 import TiendaView from "./views/TiendaView";
 import Checkout from "./views/Checkout";
+import SuccessView from "./views/SuccessView";
 import MiniCart from "./components/shared/MiniCart";
 
 function AppScreens() {
@@ -56,6 +57,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/checkout/success" element={<SuccessView />} />
           <Route path="*" element={<AppScreens />} />
         </Routes>
       </BrowserRouter>

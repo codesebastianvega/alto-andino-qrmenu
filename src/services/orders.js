@@ -26,7 +26,8 @@ export async function createOrder({
 }) {
   if (!supabase) throw new Error("Supabase no configurado");
 
-  const status = payment_method === "cash" ? "awaiting_cash" : "pending";
+  // Estado inicial según modo: mesa -> awaiting_cash, pickup/delivery -> pending_payment
+  const status = mode === "mesa" ? "awaiting_cash" : "pending_payment";
 
   const { data: orderData, error: orderError } = await supabase
     .from("orders")
@@ -56,10 +57,9 @@ export async function createOrder({
   const itemsPayload = items.map((it) => ({
     order_id: orderId,
     product_id: it.productId,
-    name: it.name,
-    unit_price_cop: it.unit_price_cop,
     qty: it.qty,
-    subtotal_cop: (it.unit_price_cop || 0) * (it.qty || 1),
+    unit_price_cop: it.unit_price_cop,
+    total_cop: (it.unit_price_cop || 0) * (it.qty || 1),
   }));
 
   const { error: itemsError } = await supabase
