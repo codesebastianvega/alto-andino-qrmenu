@@ -17,7 +17,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   line-height: 1.5; /* slightly more relaxed baseline */
+  /* Fondo global para evitar franjas blancas por desbordes o contenedores con bg local */
+  background-color: #f6f7f5;
+  /* Previene scroll horizontal por elementos fijos/transformados marginalmente */
+  overflow-x: hidden;
 }
+/* Asegura que el contenedor raíz herede el fondo y ocupe toda la altura */
+#root { min-height: 100vh; background-color: inherit; }
 ::selection {
   background: rgba(47, 65, 49, 0.16);
 }
