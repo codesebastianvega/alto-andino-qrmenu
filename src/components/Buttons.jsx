@@ -118,6 +118,7 @@ export function StatusChip({ intent, variant = "neutral", size = "xs", className
     warn: "bg-amber-50 text-amber-800 border-amber-300",
     error: "bg-red-50 text-red-800 border-red-300",
     neutral: "bg-neutral-100 text-neutral-700 border-neutral-200",
+    info: "bg-sky-100 text-sky-900 border-sky-200",
   };
 
   const variantMap = {

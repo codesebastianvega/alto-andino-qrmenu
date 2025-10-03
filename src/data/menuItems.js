@@ -25,7 +25,7 @@ export const breakfastItems = [
   {
     id: "des-huevos",
     name: "Huevos al Gusto",
-    price: 17500,
+    price: 16500,
     desc: "3 huevos en sartén de hierro; 2 tostadas con queso crema y vegetales + Bebida caliente. 🥚🌾🥛",
   },
   {
@@ -43,7 +43,7 @@ export const breakfastItems = [
   {
     id: "des-changua",
     name: "Changua",
-    price: 15000,
+    price: 9000,
     desc: "Leche caliente con huevo, cebolla larga y cilantro, acompañado de pan tostado. 🥚🥛🌾",
   },
 ];
@@ -51,41 +51,62 @@ export const breakfastItems = [
 export const mainDishes = [
   {
     id: "main-salmon",
-    name: "Salmón Andino 200 gr",
+    name: "Salmon Andino 200 gr",
     price: 47000,
-    desc: "En sartén de hierro, salsa miel-mostaza y orégano con guarnición de pure de ahuyama y ensalada de granos calientes.",
+    desc: "En sarten de hierro, salsa miel-mostaza y oregano con guarnicion de pure de ahuyama y ensalada de granos calientes.",
+    group: "especiales",
+    origin: "Region Andina",
   },
   {
     id: "main-trucha",
-    name: "Trucha del Páramo 450 gr",
+    name: "Trucha del Paramo 450 gr",
     price: 42000,
-    desc: "A la plancha con alioli griego con guarnición pure de papa y ensalada fría.",
+    desc: "A la plancha con alioli griego con guarnicion de pure de papa y ensalada fria.",
+    group: "especiales",
+    origin: "Boyaca, Colombia",
   },
   {
     id: "main-bolo",
-    name: "Spaghetti a la Boloñesa",
+    name: "Spaghetti a la Bolonesa",
     price: 28000,
-    desc: "Salsa pomodoro, carne de res; albahaca fresca y ralladura de parmesano. 🌾🥛",
+    desc: "Salsa pomodoro, carne de res; albahaca fresca y ralladura de parmesano.",
+    group: "pastas",
+    origin: "Italia",
+  },
+  {
+    id: "main-bolo-pollo",
+    name: "Pasta cremosa de pollo y champinones",
+    price: 30000,
+    desc: "Fetuccini en salsa cremosa de queso, pollo en cubos, champinones salteados y perejil fresco.",
+    group: "pastas",
+    origin: "Italia",
   },
   {
     id: "main-champi",
-    name: "Champiñones a la Madrileña",
+    name: "Champinones a la Madrilena",
     price: 18000,
-    desc: "125 gr de champiñones en mantequilla y ajo, vino espumoso, jamón serrano, perejil y ralladura de parmesano. 🥛",
+    desc: "125 gr de champinones en mantequilla y ajo, vino espumoso, jamon serrano, perejil y ralladura de parmesano.",
+    group: "sabores",
+    origin: "Madrid, Espana",
   },
   {
     id: "main-ceviche",
-    name: "Ceviche de Camarón",
+    name: "Ceviche de Camaron",
     price: 22000,
-    desc: "Camarón marinado en cítricos; pimentón, salsa de tomate casera, cilantro y cebolla morada; con aguacate.",
+    desc: "Camaron marinado en citricos; pimenton, salsa de tomate casera, cilantro y cebolla morada; con aguacate.",
+    group: "sabores",
+    origin: "Costa del Pacifico",
   },
   {
     id: "main-burger",
-    name: "Burger Andina (Pavo 150 gr)",
+    name: "Burger Andina",
     price: 26000,
-    desc: "Pavo sazonado, salsa de yogur, tomate, lechuga, chucrut y queso Colby Jack en pan artesanal. 🥛🌾",
+    desc: "",
+    group: "en_preparacion",
+    origin: "Andes Colombianos",
   },
 ];
+
 
 export const dessertBaseItems = [
   {
@@ -158,27 +179,63 @@ export const sandwichItems = [
   {
     key: "cerdo",
     name: "Sandwich de Cerdo",
-    desc: "Pierna de cerdo horneada con Mayo-Pesto, lechuga, tomate y suero costeño.",
+    desc: "Pierna de cerdo horneada con Mayo-Pesto, lechuga, tomate y suero costeno.",
+    group: "artesanal",
   },
   {
     key: "pollo",
     name: "Sandwich de Pollo",
-    desc: "Pechuga en cocción lenta, alioli de yogurt (con ajo), lechuga y tomate.",
+    desc: "Pechuga en coccion lenta, alioli de yogurt (con ajo), lechuga y tomate.",
+    group: "artesanal",
   },
   {
     key: "pavo",
     name: "Sandwich de Pavo",
-    desc: "Pavo horneado en cocción lenta, alioli de yogurt (con ajo), tomates secos y lechuga.",
+    desc: "Pavo horneado en coccion lenta, alioli de yogurt (con ajo), tomates secos y lechuga.",
+    group: "artesanal",
   },
   {
     key: "serrano",
-    name: "Serrano Di Búfala",
-    desc: "Queso crema, espinaca, jamón serrano, queso de búfala, tomate cherry salteado y balsámico. 🥛",
+    name: "Serrano Di Bufala",
+    desc: "Queso crema, espinaca, jamon serrano, queso de bufala, tomate cherry salteado y balsamico.",
+    group: "especial",
   },
   {
     key: "cosecha",
-    name: "Cosecha del Páramo 🌿",
-    desc: "Hummus casero, pimientos asados, aguacate, champiñón a la plancha, pepino y lechugas; lámina de queso costeño frito. 🥛",
+    name: "Cosecha del Paramo",
+    desc: "Hummus casero, pimientos asados, aguacate, champinon a la plancha, pepino y lechugas; lamina de queso costeno frito.",
+    group: "especial",
+  },
+];
+
+
+export const sandwichTraditionals = [
+  {
+    id: "sandwich:tradicional-multigranos",
+    name: "Multigranos Andino",
+    desc: "Tres panes tajados multigranos, lechuga, tomate, salsas y jamon de pollo con queso mozzarella.",
+    price: 8000,
+  },
+  {
+    id: "sandwich:tradicional-calentito",
+    name: "Calentito del Paramo",
+    desc: "Dos panes tajados multigranos con jamon de pollo y queso mozzarella derretidos.",
+    price: 5000,
+  },
+];
+
+export const sandwichAdditions = [
+  {
+    id: "add-pan-masa-madre-paipa",
+    name: "Pan de masa madre - Queso Paipa (150 g)",
+    price: 4000,
+    desc: "Miga suave con infusion de queso Paipa artesanal.",
+  },
+  {
+    id: "add-pan-masa-madre-semillas",
+    name: "Pan de masa madre - Semillas (150 g)",
+    price: 4000,
+    desc: "Corteza crujiente con mezcla de semillas tostadas.",
   },
 ];
 
@@ -480,4 +537,19 @@ export const teasAndChai = [
     chai: true,
   },
   { id: "matcha-lulo", name: "Matcha lulo", price: 7000 },
+];
+
+
+
+export const breakfastAdditions = [
+  { id: "add-caldo-costilla", name: "Caldo de costilla", price: 9000 },
+  { id: "add-ensalada-frutas", name: "Ensalada de frutas", price: 16000 },
+  { id: "add-huevo-sencillo", name: "1 huevo al gusto", price: 3500 },
+  { id: "add-tajada-pan", name: "Tajada de pan", price: 2500 },
+  { id: "add-masa-madre", name: "Pan de masa madre - porcion", price: 4000 },
+  { id: "add-queso-campesino", name: "Queso campesino (tajada)", price: 3500 },
+  { id: "add-queso-loncha", name: "Queso loncha", price: 2500 },
+  { id: "add-fruta-extra", name: "Adicion de fruta", price: 3500 },
+  { id: "add-aguacate-extra", name: "Aguacate extra", price: 3000 },
+  { id: "add-griego-extra", name: "Extra porcion de griego", price: 6500 },
 ];

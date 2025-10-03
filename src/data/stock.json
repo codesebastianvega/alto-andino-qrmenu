@@ -1,5 +1,5 @@
 {
-  "_comment": "Valores de disponibilidad: true, false y \"low\"",
+  "_comment": "Valores de disponibilidad: true, false, \"low\" y \"soon\"",
   "products": {
     "des-sendero": true,
     "des-cumbre": true,
@@ -11,18 +11,23 @@
     "bowl-poke-hawaiano": true,
     "bowl-personalizado": true,
 
-    "main-salmon": "low",
-    "main-trucha": true,
+    "main-salmon": false,
+    "main-trucha": false,
     "main-bolo": true,
-    "main-champi": true,
+    "main-champi": "low",
+    "main-bolo-pollo": true,
     "main-ceviche": true,
-    "main-burger": false,
+    "main-burger": "soon",
 
     "sandwich:cerdo": true,
     "sandwich:pollo": true,
     "sandwich:pavo": true,
     "sandwich:serrano": true,
     "sandwich:cosecha": false,
+    "sandwich:tradicional-multigranos": true,
+    "sandwich:tradicional-calentito": true,
+    "add-pan-masa-madre-paipa": true,
+    "add-pan-masa-madre-semillas": true,
 
     "smoothie:Brisas Tropicales": true,
     "smoothie:El Néctar Andino": true,
@@ -39,10 +44,10 @@
     "cumbre:blancos": false,
     "cumbre:choco": true,
 
-    "veg-tostada-primavera": true,
-    "veg-cosecha-huerto": true,
-    "veg-alfredo-bosque": true,
-    "veg-ensalada-jardin-altura": true,
+    "veg-tostada-primavera": "soon",
+    "veg-cosecha-huerto": "soon",
+    "veg-alfredo-bosque": "soon",
+    "veg-ensalada-jardin-altura": "soon",
     "veg-pasta-bolonesa": true,
 
     "cof-espresso": true,

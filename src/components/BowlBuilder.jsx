@@ -13,11 +13,7 @@ const bases = ["Arroz", "Quinoa", "Mix de lechugas"];
 
 const proteins = [
   { name: "Pollo", premium: false },
-  { name: "Res", premium: false },
-  { name: "Tofu", premium: true },
-  { name: "Atún rallado", premium: false },
-  { name: "Salmón salteado", premium: true },
-  { name: "Camarón salteado", premium: true },
+  { name: "Carne", premium: false },
 ];
 
 const toppings = [

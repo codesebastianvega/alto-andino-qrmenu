@@ -10,6 +10,7 @@ function gatherCatalog() {
     for (const it of arr) push(it?.id || slugify(it?.name || ""), it?.name, cat);
   };
   addArray(menu.breakfastItems, "desayunos");
+  addArray(menu.breakfastAdditions, "desayunos");
   addArray(menu.mainDishes, "platos");
   addArray(menu.dessertBaseItems, "postres");
   addArray(menu.smoothies, "smoothies");
@@ -20,6 +21,8 @@ function gatherCatalog() {
   addArray(menu.moreInfusions, "cafe");
   addArray(menu.sodas, "bebidasfrias");
   addArray(menu.otherDrinks, "bebidasfrias");
+  addArray(menu.sandwichTraditionals, "sandwiches");
+  addArray(menu.sandwichAdditions, "sandwiches");
   if (Array.isArray(menu.sandwichItems)) {
     for (const it of menu.sandwichItems)
       push(`sandwich:${it?.key || slugify(it?.name || "")}`, it?.name, "sandwiches");
@@ -60,7 +63,16 @@ export default function StockAdmin() {
   });
 
   const setState = (id, state) =>
-    setProducts((prev) => ({ ...prev, [id]: state }));
+    setProducts((prev) => ({
+      ...prev,
+      [id]: state === "in" ? true : state === "out" ? false : state,
+    }));
+
+  const normalizeState = (value) => {
+    if (value === "low" || value === "soon") return value;
+    if (value === false || value === "out") return "out";
+    return "in";
+  };
 
   const json = useMemo(
     () => JSON.stringify({ products }, null, 2),
@@ -96,8 +108,11 @@ export default function StockAdmin() {
   }, [catalog, query, filterCat]);
 
   const counts = useMemo(() => {
-    const acc = { in: 0, low: 0, out: 0 };
-    for (const id of Object.keys(products)) acc[products[id]] = (acc[products[id]] || 0) + 1;
+    const acc = { in: 0, low: 0, soon: 0, out: 0 };
+    for (const id of Object.keys(products)) {
+      const state = normalizeState(products[id]);
+      acc[state] = (acc[state] || 0) + 1;
+    }
     return acc;
   }, [products]);
 
@@ -148,7 +163,7 @@ export default function StockAdmin() {
             Importar JSON
           </label>
           <div className="ml-auto hidden text-xs text-neutral-700 sm:block">
-            in: {counts.in} · low: {counts.low} · out: {counts.out}
+            in: {counts.in} · low: {counts.low} · soon: {counts.soon} · out: {counts.out}
           </div>
           <button
             type="button"
@@ -169,14 +184,17 @@ export default function StockAdmin() {
               {[
                 { k: "in", label: "in" },
                 { k: "low", label: "low" },
+                { k: "soon", label: "soon" },
                 { k: "out", label: "out" },
-              ].map((opt) => (
+              ].map((opt) => {
+                const current = normalizeState(products[it.id]);
+                return (
                 <button
                   key={opt.k}
                   type="button"
                   className={[
                     "rounded-md px-2 py-1 text-xs ring-1",
-                    products[it.id] === opt.k
+                    current === opt.k
                       ? "bg-[#2f4131] text-white ring-[#2f4131]"
                       : "bg-white text-neutral-800 ring-neutral-300 hover:bg-neutral-50",
                   ].join(" ")}
@@ -184,7 +202,8 @@ export default function StockAdmin() {
                 >
                   {opt.label}
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}

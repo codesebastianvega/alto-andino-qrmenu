@@ -8,11 +8,25 @@ export const slugify = (s = "") =>
 
 const products = stock?.products || {};
 
+export function getStockFlags(id) {
+  const raw = products[id];
+  let state;
+  if (raw === "soon") state = "soon";
+  else if (raw === "low") state = "low";
+  else if (raw === false || raw === "out") state = "out";
+  else state = "in";
+
+  return {
+    state,
+    isSoon: state === "soon",
+    isLow: state === "low",
+    isOut: state === "out",
+    isIn: state === "in",
+  };
+}
+
 export function getStockState(id) {
-  const state = products[id];
-  if (state === "low") return "low";
-  if (state === false) return "out";
-  return "in";
+  return getStockFlags(id).state;
 }
 
 export function isUnavailable(itemOrId) {

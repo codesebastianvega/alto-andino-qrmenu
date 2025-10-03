@@ -3,7 +3,7 @@ import { FixedSizeList } from "react-window";
 import { useSwipeable } from "react-swipeable";
 import { useCart } from "../context/CartContext";
 import { formatCOP } from "../utils/money";
-import { getStockState, slugify, isUnavailable } from "../utils/stock";
+import { getStockFlags, getStockState, slugify, isUnavailable } from "../utils/stock";
  import { toast } from "./Toast";
 import { matchesQuery } from "../utils/strings";
  import { StatusChip } from "./Buttons";
@@ -19,8 +19,10 @@ import { getProductImage } from "../utils/images";
  import CategoryHeader from "./CategoryHeader";
  import CategoryNav from "./CategoryNav";
 import AAImage from "./ui/AAImage";
+import AdditionsAccordion from "./AdditionsAccordion";
  import {
    breakfastItems,
+   breakfastAdditions,
    mainDishes,
    dessertBaseItems,
    preBowl,
@@ -63,27 +65,68 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
   const categories = useMemo(() => CATEGORIES_LIST, []);
  
   const tabItems = useMemo(() => TABS_ITEMS(categories), [categories]);
-   const breakfasts = useMemo(
-     () =>
-       (breakfastItems || []).filter((it) =>
+  const breakfasts = useMemo(
+    () =>
+      (breakfastItems || []).filter((it) =>
         matchesQuery({ title: it.name, description: it.desc }, query),
-       ),
+      ),
     [query],
-   );
-   useEffect(() => {
-     setCount("desayunos", breakfasts.length);
-   }, [breakfasts.length, setCount]);
+  );
+  const breakfastExtras = useMemo(
+    () =>
+      (breakfastAdditions || []).filter((it) =>
+        matchesQuery({ title: it.name }, query),
+      ),
+    [query],
+  );
+  useEffect(() => {
+    setCount("desayunos", breakfasts.length + breakfastExtras.length);
+  }, [breakfasts.length, breakfastExtras.length, setCount]);
  
-   const mains = useMemo(
-     () =>
-       (mainDishes || []).filter((it) =>
-        matchesQuery({ title: it.name, description: it.desc }, query),
-       ),
-    [query],
-   );
-   useEffect(() => {
-     setCount("platos", mains.length);
-   }, [mains.length, setCount]);
+  const allMains = mainDishes || [];
+  const mainGroups = useMemo(() => {
+    const ORDER = [
+      { id: "especiales", title: "Especiales" },
+      { id: "pastas", title: "Pastas" },
+      { id: "sabores", title: "Sabores del mundo" },
+      { id: "en_preparacion", title: "En preparación" },
+    ];
+    const buckets = new Map();
+    ORDER.forEach(({ id }) => buckets.set(id, []));
+
+    for (const item of allMains) {
+      if (!matchesQuery({ title: item.name, description: item.desc }, query)) continue;
+      const key = item.group || "en_preparacion";
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(item);
+    }
+
+    const ordered = ORDER.map(({ id, title }) => ({ title, items: buckets.get(id) || [] })).filter(
+      (group) => group.items.length,
+    );
+
+    const extras = [];
+    for (const [key, items] of buckets.entries()) {
+      if (ORDER.find((entry) => entry.id === key)) continue;
+      if (!items.length) continue;
+      const pretty = key
+        .split("_")
+        .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+        .join(" ");
+      extras.push({ title: pretty, items });
+    }
+
+    return [...ordered, ...extras];
+  }, [allMains, query]);
+
+  const mainsVisible = useMemo(
+    () => mainGroups.reduce((acc, group) => acc + group.items.length, 0),
+    [mainGroups],
+  );
+
+  useEffect(() => {
+    setCount("platos", mainsVisible);
+  }, [mainsVisible, setCount]);
  
    const dessertsCumbre = useMemo(
      () => cumbreFlavors.filter((s) => matchesQuery({ title: s.label }, query)),
@@ -103,7 +146,7 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
  
   const sections = useMemo(() => {
     const arr = [];
-    if (breakfasts.length) {
+    if (breakfasts.length || breakfastExtras.length) {
       arr.push({
         id: "desayunos",
         element: (
@@ -112,8 +155,17 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
             title="Desayunos"
             query={query}
             items={breakfasts}
-            onCount={(n) => setCount("desayunos", n)}
+            onCount={(n) => setCount("desayunos", n + breakfastExtras.length)}
             onQuickView={onQuickView}
+            renderAfter={() => (
+              <AdditionsAccordion
+                items={breakfastExtras}
+                idPrefix="breakfast-additions"
+              />
+            )}
+            alwaysShow={Boolean(breakfastExtras.length)}
+            renderEmpty={() => null}
+            countValue={breakfasts.length + breakfastExtras.length}
           />
         ),
       });
@@ -134,7 +186,7 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
         ),
       });
     }
-    if (mains.length) {
+    if (mainGroups.length) {
       arr.push({
         id: "platos",
         element: (
@@ -142,7 +194,7 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
             id="platos"
             title="Platos Fuertes"
             query={query}
-            items={mains}
+            groups={mainGroups}
             onCount={(n) => setCount("platos", n)}
             onQuickView={onQuickView}
           />
@@ -235,7 +287,8 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
     return arr;
   }, [
     breakfasts,
-    mains,
+    breakfastExtras,
+    mainGroups,
     dessertsCumbre,
     dessertsBase,
     dessertsCount,
@@ -542,8 +595,10 @@ function List({ items, onQuickView }) {
 
 function ProductRow({ item, onQuickView, style, index }) {
   const { addItem } = useCart();
-  const st = getStockState(item.id || slugify(item.name));
-  const unavailable = st === "out" || isUnavailable(item);
+  const { state: stockState, isSoon, isLow, isOut: outFromStock } = getStockFlags(
+    item.id || slugify(item.name),
+  );
+  const unavailable = outFromStock || isUnavailable(item);
   const product = {
     productId: item.id,
     id: unavailable ? undefined : item.id,
@@ -558,9 +613,14 @@ function ProductRow({ item, onQuickView, style, index }) {
     setImgLoaded(false);
   }, [imgSrc]);
   return (
-    <article className={`group grid ${imgSrc ? "grid-cols-[96px_1fr] md:grid-cols-[112px_1fr]" : "grid-cols-1"} gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 md:gap-4 md:p-4 ${unavailable ? "opacity-70 grayscale" : ""}`}>
+    <article
+      className={`group grid ${imgSrc ? "grid-cols-[96px_1fr] md:grid-cols-[112px_1fr]" : "grid-cols-1"} gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 md:gap-4 md:p-4 ${
+        unavailable ? "opacity-70 grayscale" : ""
+      }`}
+      style={style}
+      data-index={index}
+    >
       {imgSrc && (
-
         <button
           type="button"
           onClick={() => onQuickView?.(product)}
@@ -591,37 +651,55 @@ function ProductRow({ item, onQuickView, style, index }) {
         </button>
       )}
       <div className="flex min-w-0 flex-col">
-        <h3 className="truncate text-base font-semibold text-neutral-900 md:text-[17px]">
-          {item.name}
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="truncate text-base font-semibold text-neutral-900 md:text-[17px]">
+            {item.name}
+          </h3>
+          {item.origin && (
+            <span className="whitespace-nowrap rounded-full border border-neutral-200 bg-neutral-100 px-2 py-[1px] text-[11px] font-medium text-neutral-600">
+              {item.origin}
+            </span>
+          )}
+        </div>
         {item.desc && <p className="mt-0.5 line-clamp-2 text-sm text-neutral-600">{item.desc}</p>}
-         <div className="mt-2 flex flex-wrap gap-2">
-           {st === "low" && <StatusChip variant="low">Pocas unidades</StatusChip>}
-           {unavailable && <StatusChip variant="soldout">No Disponible</StatusChip>}
-         </div>
-         <div className="mt-auto flex items-end justify-between gap-3 pt-2">
-           <div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {isSoon ? (
+            <StatusChip intent="info">Proximamente</StatusChip>
+          ) : (
+            <>
+              {isLow && <StatusChip intent="warn">Pocas unidades</StatusChip>}
+              {unavailable && <StatusChip intent="neutral">No Disponible</StatusChip>}
+            </>
+          )}
+        </div>
+        <div className="mt-auto flex items-end justify-between gap-3 pt-2">
+          <div>
             <div className="text-base font-semibold text-neutral-900 md:text-[17px]">
-               {typeof item.price === "number" ? formatCOP(item.price) : item.price}
-             </div>
-           </div>
-           <button
-             type="button"
-             aria-label={`Agregar ${item.name || "producto"}`}
-             onClick={(e) => {
-               e.stopPropagation();
-               if (unavailable) {
-                 toast("Producto no disponible");
-                 return;
-               }
-               addItem({ productId: item.id, name: item.name, price: item.price });
-             }}
-            className="grid h-10 w-10 place-items-center rounded-full bg-[#2f4131] text-white shadow-sm ring-1 ring-black/5 hover:bg-[#263729] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 md:h-11 md:w-11"
-           >
-             +
-           </button>
-         </div>
-       </div>
-      </article>
+              {typeof item.price === "number" ? formatCOP(item.price) : item.price}
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label={`Agregar ${item.name || "producto"}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (unavailable) {
+                toast("Producto no disponible");
+                return;
+              }
+              if (isSoon) {
+                toast("Disponible proximamente");
+                return;
+              }
+              addItem({ productId: item.id, name: item.name, price: item.price });
+            }}
+            disabled={unavailable || isSoon}
+            className="grid h-10 w-10 place-items-center rounded-full bg-[#2f4131] text-white shadow-sm ring-1 ring-black/5 hover:bg-[#263729] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 md:h-11 md:w-11 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            +
+          </button>
+        </div>
+      </div>
+    </article>
   );
 }
