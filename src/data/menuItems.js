@@ -13,38 +13,44 @@ export const breakfastItems = [
   {
     id: "des-sendero",
     name: "Sendero Matinal",
-    price: 16000,
-    desc: "Bebida caliente + omelette con champiñones, lechugas, tomate cherry y queso, con tostadas multigranos. 🥚🌾🥛",
+    price: 17000,
+    desc: "Omelette con champiñones, lechugas, tomate cherry y queso decorado con pimentón, acompañado de tostadas multigranos y una bebida caliente a elección. 🥚🌾🥛",
   },
   {
     id: "des-cumbre",
     name: "Cumbre Energética",
     price: 18000,
-    desc: "Bebida caliente + arepa con queso mozzarella, aguacate y ajonjolí negro; yogur griego con arándanos y chía. 🥛🌾",
+    desc: "Comienza el día con una bebida caliente a elección, acompañada de una arepa con queso mozzarella derretido, aguacate fresco y ajonjolí negro. Completa tu experiencia con un cremoso yogur griego, arándanos jugosos y semillas de chía. 🥛🌾",
   },
   {
     id: "des-huevos",
     name: "Huevos al Gusto",
     price: 16500,
-    desc: "3 huevos en sartén de hierro; 2 tostadas con queso crema y vegetales + Bebida caliente. 🥚🌾🥛",
+    desc: "Disfruta de 3 huevos preparados a tu gusto en sartén de hierro, servidos con dos tostadas crujientes untadas con queso crema y frescos vegetales. Incluye una bebida caliente a elección. 🥚🌾🥛",
   },
   {
     id: "des-caldo",
-    name: "Caldo de Costilla de Res",
-    price: 18500,
-    desc: "Con papa y cilantro. Incluye bebida caliente + huevos al gusto, arepa y queso. 🥚🥛",
+    name: "Combo - Caldo de Costilla de Res",
+    price: 19000,
+    desc: "Caldo de costilla de res con papa y cilantro fresco. Acompañado de una bebida caliente, huevos preparados a tu gusto, arepa tradicional con queso. 🥚🥛",
   },
   {
     id: "des-amanecer",
     name: "Bowl Amanecer Andino",
-    price: 19000,
-    desc: "Yogur griego + açaí, avena, coco, banano, fresa y arándanos; topping de chía o amapola. 🥛🌾🥜",
+    price: 13500,
+    desc: "Un vibrante bowl con yogur griego y açaí, mezclado con avena en hojuelas, semillas de calabaza, coco rallado, rodajas de banano, fresas frescas y arándanos. Elige tu topping entre chía o amapola. 🥛🌾🥜",
   },
   {
     id: "des-changua",
-    name: "Changua",
+    name: "Changua Tradicional",
     price: 9000,
-    desc: "Leche caliente con huevo, cebolla larga y cilantro, acompañado de pan tostado. 🥚🥛🌾",
+    desc: "La clásica changua bogotana: leche caliente con huevo escalfado, cebolla larga y cilantro fresco, servida con pan tostado. 🥚🥛🌾",
+  },
+  {
+    id: "des-changua-2",
+    name: "Changua Alto Andino",
+    price: 12000,
+    desc: "Nuestra versión especial de changua: leche caliente con huevo escalfado, trozos de almojábana, queso fresco y cilantro, para un sabor único. 🥚🥛🌾",
   },
 ];
 
@@ -164,14 +170,14 @@ export const cumbrePrices = {
 export const preBowl = {
   id: "bowl-poke-hawaiano",
   name: "Poke Hawaiano",
-  price: 32000, // 28.000 base + 4.000 premium salmón
-  desc: "Arroz blanco, salmón, aguacate, mango y pepino; ajonjolí y salsa mango-yaki.",
+  price: 28000, 
+  desc: "Arroz blanco, Pollo en cubos, aguacate, mango y pepino; ajonjolí y salsa sweet Hot de la casa.",
   options: {
     Base: "Arroz blanco",
-    Proteína: "Salmón",
+    Proteína: "Pollo en cubos",
     Toppings: ["Aguacate", "Mango", "Pepino"],
     Extras: ["Ajonjolí"],
-    Salsa: "Mango-yaki",
+    Salsa: "Sweet Hot de la casa",
   },
 };
 
