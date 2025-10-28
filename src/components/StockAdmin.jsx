@@ -11,6 +11,7 @@ function gatherCatalog() {
   };
   addArray(menu.breakfastItems, "desayunos");
   addArray(menu.breakfastAdditions, "desayunos");
+  addArray(menu.breadAndCakes, "panes");
   addArray(menu.mainDishes, "platos");
   addArray(menu.dessertBaseItems, "postres");
   addArray(menu.smoothies, "smoothies");
@@ -20,9 +21,12 @@ function gatherCatalog() {
   addArray(menu.infusions, "cafe");
   addArray(menu.moreInfusions, "cafe");
   addArray(menu.sodas, "bebidasfrias");
+  addArray(menu.sodasTeaPop, "bebidasfrias");
   addArray(menu.otherDrinks, "bebidasfrias");
+  addArray(menu.naturalJuices, "bebidasfrias");
   addArray(menu.sandwichTraditionals, "sandwiches");
-  addArray(menu.sandwichAdditions, "sandwiches");
+  addArray(menu.sandwichBreadOptions, "sandwiches");
+  addArray(menu.sandwichExtras, "sandwiches");
   if (Array.isArray(menu.sandwichItems)) {
     for (const it of menu.sandwichItems)
       push(`sandwich:${it?.key || slugify(it?.name || "")}`, it?.name, "sandwiches");

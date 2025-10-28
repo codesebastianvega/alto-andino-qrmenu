@@ -1,5 +1,6 @@
 export const cats = [
   "desayunos",
+  "panes",
   "bowls",
   "platos",
   "sandwiches",
@@ -230,7 +231,70 @@ export const sandwichTraditionals = [
   },
 ];
 
-export const sandwichAdditions = [
+export const sandwichExtras = [
+  {
+    id: "sand-extra-queso-campesino",
+    name: "Queso campesino tajada",
+    price: 3500,
+  },
+  {
+    id: "sand-extra-queso-loncha",
+    name: "Queso loncha",
+    price: 2500,
+  },
+  {
+    id: "sand-extra-pepinillos",
+    name: "Pepinillos",
+    price: 2500,
+  },
+  {
+    id: "sand-extra-aguacate",
+    name: "Aguacate extra",
+    price: 3000,
+  },
+  {
+    id: "sand-extra-jalapenos",
+    name: "Jalapenos",
+    price: 2500,
+  },
+  {
+    id: "sand-extra-vegetales",
+    name: "Vegetales extra",
+    price: 2000,
+  },
+  {
+    id: "sand-extra-pimenton",
+    name: "Pimenton asado",
+    price: 3500,
+  },
+  {
+    id: "sand-extra-queso-bufala",
+    name: "Queso de Bufala",
+    price: 3500,
+  },
+  {
+    id: "sand-extra-huevo-frito",
+    name: "Huevo frito",
+    price: 2500,
+  },
+  {
+    id: "sand-extra-salsa",
+    name: "Salsa extra",
+    price: 1000,
+  },
+  {
+    id: "sand-extra-tomate-seco",
+    name: "Tomate seco",
+    price: 2500,
+  },
+  {
+    id: "sand-extra-hummus",
+    name: "Hummus",
+    price: 3000,
+  },
+];
+
+export const sandwichBreadOptions = [
   {
     id: "add-pan-masa-madre-paipa",
     name: "Pan de masa madre - Queso Paipa (150 g)",
@@ -418,6 +482,12 @@ export const sodas = [
   },
 ];
 
+export const sodasTeaPop = [
+  { id: "soda-tea-frutos-rojos", name: "Frutos rojos", price: 8000 },
+  { id: "soda-tea-pepino", name: "Pepino", price: 7000 },
+  { id: "soda-tea-limon", name: "Limon", price: 6000 },
+];
+
 export const otherDrinks = [
   {
     id: "te-hatsu-400",
@@ -453,6 +523,22 @@ export const otherDrinks = [
   },
 ];
 
+
+
+export const naturalJuices = [
+  {
+    id: "jugos-naturales-agua",
+    name: "En agua",
+    price: 6000,
+    desc: "Sabores: Mora, Guanabana, Mango, Pina, Maracuya, Fresa, Arandanos, Kiwi, Zanahoria.",
+  },
+  {
+    id: "jugos-naturales-leche",
+    name: "En leche",
+    price: 7500,
+    desc: "Sabores: Mora, Guanabana, Mango, Pina, Maracuya, Fresa, Arandanos, Kiwi, Zanahoria.",
+  },
+];
 // Categorías pendientes de catalogar
 export const lemonades = [];
 export const waters = [];
@@ -558,4 +644,25 @@ export const breakfastAdditions = [
   { id: "add-fruta-extra", name: "Adicion de fruta", price: 3500 },
   { id: "add-aguacate-extra", name: "Aguacate extra", price: 3000 },
   { id: "add-griego-extra", name: "Extra porcion de griego", price: 6500 },
+];
+
+export const breadAndCakes = [
+  {
+    id: "pan-masa-madre",
+    name: "Pan de Masa Madre",
+    price: 5000,
+    desc: "Baguettina de queso paipa o multigranos reposado por mas de 24 horas.",
+  },
+  {
+    id: "pan-masa-madre-frutos",
+    name: "Pan de Masa Madre y frutos Rojos",
+    price: 4000,
+    desc: "Pan de masa madre con dulce de frutos rojos, perfecto para acompanar con un cafe de especialidad.",
+  },
+  {
+    id: "rollitos-canela",
+    name: "Rollitos de canela",
+    price: 8000,
+    desc: "Pan de masa madre enrollado con canela.",
+  },
 ];

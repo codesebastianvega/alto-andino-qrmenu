@@ -2,6 +2,7 @@ import { categoryIcons } from "../data/categoryIcons";
 
 export const CATEGORIES_LIST = [
   { id: "desayunos", label: "Desayunos", tintClass: "bg-amber-50" },
+  { id: "panes", label: "Panes & Biscochuelos", targetId: "section-panes", tintClass: "bg-yellow-50" },
   { id: "bowls", label: "Poke Bowls", tintClass: "bg-emerald-50" },
   {
     id: "platos",
@@ -30,7 +31,7 @@ export const CATEGORIES_LIST = [
   },
   {
     id: "bebidasfrias",
-    label: "Bebidas frías",
+    label: "Bebidas frï¿½as",
     targetId: "section-bebidasfrias",
     tintClass: "bg-sky-50",
   },

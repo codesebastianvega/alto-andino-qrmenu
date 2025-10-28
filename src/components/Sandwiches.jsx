@@ -5,10 +5,12 @@ import { formatCOP } from "@/utils/money";
 import {
   sandwichItems,
   sandwichTraditionals,
-  sandwichAdditions,
+  sandwichBreadOptions,
+  sandwichExtras,
 } from "@/data/menuItems";
 import { SANDWICH_PRICE_BY_ITEM } from "@/config/prices";
 import { getStockFlags } from "@/utils/stock";
+import AdditionsAccordion from "./AdditionsAccordion";
 
 const SIZE_OPTIONS = [
   { id: "clasico", label: "Clasico", helper: "100 g de proteina" },
@@ -42,7 +44,7 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
   const [size, setSize] = useState("clasico");
   const [bread, setBread] = useState("baguette");
 
-  const breadOptions = useMemo(() => buildBreadOptions(sandwichAdditions), []);
+  const breadOptions = useMemo(() => buildBreadOptions(sandwichBreadOptions), []);
   const firstAvailableBread = useMemo(
     () => breadOptions.find((opt) => !opt.flags.isOut) || breadOptions[0],
     [breadOptions],
@@ -120,7 +122,13 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
     [specialsBase, size],
   );
 
-  const totalCount = traditional.length + artisanal.length + specials.length;
+  const extras = useMemo(
+    () =>
+      (sandwichExtras || []).filter((item) => matchesQuery({ title: item.name }, query)),
+    [query],
+  );
+
+  const totalCount = traditional.length + artisanal.length + specials.length + extras.length;
 
   useEffect(() => {
     onCount?.(totalCount);
@@ -240,6 +248,14 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
           items={specials}
           includeUnavailable
           onQuickView={onQuickView}
+        />
+      )}
+
+      {extras.length > 0 && (
+        <AdditionsAccordion
+          items={extras}
+          idPrefix="sandwich-extras"
+          title="Adiciones"
         />
       )}
     </div>

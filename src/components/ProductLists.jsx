@@ -23,6 +23,7 @@ import AdditionsAccordion from "./AdditionsAccordion";
  import {
    breakfastItems,
    breakfastAdditions,
+   breadAndCakes,
    mainDishes,
    dessertBaseItems,
    preBowl,
@@ -79,9 +80,19 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
       ),
     [query],
   );
+  const breadItems = useMemo(
+    () =>
+      (breadAndCakes || []).filter((it) =>
+        matchesQuery({ title: it.name, description: it.desc }, query),
+      ),
+    [query],
+  );
   useEffect(() => {
     setCount("desayunos", breakfasts.length + breakfastExtras.length);
   }, [breakfasts.length, breakfastExtras.length, setCount]);
+  useEffect(() => {
+    setCount("panes", breadItems.length);
+  }, [breadItems.length, setCount]);
  
   const allMains = mainDishes || [];
   const mainGroups = useMemo(() => {
@@ -170,6 +181,19 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
         ),
       });
     }
+    arr.push({
+      id: "panes",
+      element: (
+        <ProductSection
+          id="panes"
+          title="Panes & Biscochuelos"
+          query={query}
+          items={breadItems}
+          onCount={(n) => setCount("panes", n)}
+          onQuickView={onQuickView}
+        />
+      ),
+    });
     // Mostrar Bowls solo si coincide con la búsqueda (o si no hay query)
     const showBowls = !query || matchesQuery({ title: preBowl?.name, description: preBowl?.desc }, query);
     if (showBowls) {

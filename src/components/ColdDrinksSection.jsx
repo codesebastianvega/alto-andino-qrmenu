@@ -14,6 +14,8 @@ function pickArray(...candidates) {
 export default function ColdDrinksSection({ query, onCount, onQuickView }) {
   const groupsRaw = [
     { title: "Gaseosas y Sodas", items: pickArray("sodas", "gaseosas") },
+    { title: "Sodas Tea Pop", items: pickArray("sodasTeaPop") },
+    { title: "Jugos Naturales", items: pickArray("naturalJuices", "jugosNaturales") },
     { title: "Jugos y otras bebidas frías", items: pickArray("otherDrinks", "jugos", "bebidasFrias", "bebidasfrias") },
     { title: "Limonadas", items: pickArray("lemonades", "limonadas") },
     { title: "Aguas", items: pickArray("waters", "aguas") },
