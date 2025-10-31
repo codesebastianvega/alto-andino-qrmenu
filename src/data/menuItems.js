@@ -14,19 +14,19 @@ export const breakfastItems = [
   {
     id: "des-sendero",
     name: "Sendero Matinal",
-    price: 17000,
+    price: 18000,
     desc: "Omelette con champiñones, lechugas, tomate cherry y queso decorado con pimentón, acompañado de tostadas multigranos y una bebida caliente a elección. 🥚🌾🥛",
   },
   {
     id: "des-cumbre",
     name: "Cumbre Energética",
-    price: 18000,
+    price: 17000,
     desc: "Comienza el día con una bebida caliente a elección, acompañada de una arepa con queso mozzarella derretido, aguacate fresco y ajonjolí negro. Completa tu experiencia con un cremoso yogur griego, arándanos jugosos y semillas de chía. 🥛🌾",
   },
   {
     id: "des-huevos",
     name: "Huevos al Gusto",
-    price: 16500,
+    price: 17000,
     desc: "Disfruta de 3 huevos preparados a tu gusto en sartén de hierro, servidos con dos tostadas crujientes untadas con queso crema y frescos vegetales. Incluye una bebida caliente a elección. 🥚🌾🥛",
   },
   {
@@ -349,6 +349,12 @@ export const funcionales = [
     price: 22000,
     desc: "Leche de almendras, proteína vegetal (vainilla/chocolate), banano y chía. 🥜",
   },
+  {
+    id: "smoothie:Avena Digestiva",
+    name: "Avena Digestiva",
+    price: 17000,
+    desc: "Avena en copos, leche de tu preferencia, psyllium, vainilla, canela en polvo y endulzante natural",
+  },
 ];
 
 export const coffees = [
@@ -634,7 +640,7 @@ export const teasAndChai = [
 
 
 export const breakfastAdditions = [
-  { id: "add-caldo-costilla", name: "Caldo de costilla", price: 9000 },
+  { id: "add-arepa-peto-queso", name: "Arepa de peto con Queso", price: 3500 },
   { id: "add-ensalada-frutas", name: "Ensalada de frutas", price: 16000 },
   { id: "add-huevo-sencillo", name: "1 huevo al gusto", price: 3500 },
   { id: "add-tajada-pan", name: "Tajada de pan", price: 2500 },
@@ -662,7 +668,7 @@ export const breadAndCakes = [
   {
     id: "rollitos-canela",
     name: "Rollitos de canela",
-    price: 8000,
+    price: 5000,
     desc: "Pan de masa madre enrollado con canela.",
   },
 ];
