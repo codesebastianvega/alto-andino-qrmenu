@@ -16,6 +16,7 @@ export const MenuDataProvider = ({ children }) => {
         const { data: cats, error: catError } = await supabase
           .from('categories')
           .select('*')
+          .eq('is_active', true)
           .order('sort_order', { ascending: true });
 
         if (catError) throw catError;
@@ -43,7 +44,7 @@ export const MenuDataProvider = ({ children }) => {
           .from('products')
           .select(`
             *,
-            categories (slug)
+            categories:category_id (slug)
           `)
           .eq('is_active', true);
 
@@ -52,8 +53,9 @@ export const MenuDataProvider = ({ children }) => {
         // Group products by category slug
         const grouped = {};
         products.forEach(product => {
-          const cat = product.categories; // it's an object or array? select categories(slug) -> single object usually if FK
-          const catSlug = Array.isArray(cat) ? cat[0]?.slug : cat?.slug || 'otros';
+          // With the join above, product.categories should be { slug: '...' }
+          const cat = product.categories; 
+          const catSlug = cat?.slug || 'otros';
           
           if (!grouped[catSlug]) grouped[catSlug] = [];
           

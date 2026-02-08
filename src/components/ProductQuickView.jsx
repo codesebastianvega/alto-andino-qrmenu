@@ -15,8 +15,6 @@ import AAImage from "@/components/ui/AAImage";
 
 
 export default function ProductQuickView({ open: isOpen, product, onClose, onAdd }) {
-  if (!isOpen || !product) return null;
-
   useLockBodyScroll(isOpen);
   const { addItem } = useCart();
   const modalRef = useRef(null);
@@ -30,6 +28,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   }, [productId]);
 
   useEffect(() => {
+    if (!isOpen) return;
     lastFocused.current = document.activeElement;
     const el = modalRef.current;
     el?.focus();
@@ -37,10 +36,10 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
     const onKey = (e) => {
       if (e.key === "Escape") onClose?.();
       if (e.key === "Tab") {
-        const focusables = el.querySelectorAll(
+        const focusables = el?.querySelectorAll(
           'a,button,input,select,textarea,[tabindex]:not([tabindex="-1"])',
         );
-        if (!focusables.length) return;
+        if (!focusables?.length) return;
         const first = focusables[0],
           last = focusables[focusables.length - 1];
         if (e.shiftKey && document.activeElement === first) {
@@ -58,7 +57,10 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
       document.removeEventListener("keydown", onKey);
       lastFocused.current?.focus?.();
     };
-  }, [onClose]);
+  }, [isOpen, onClose]);
+
+  if (!isOpen || !product) return null;
+
 
   const title = product?.title || product?.name || "";
   const subtitle = product?.subtitle;

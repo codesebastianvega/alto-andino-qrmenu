@@ -33,25 +33,51 @@ import AdditionsAccordion from "./AdditionsAccordion";
 } from "../data/menuItems";
 import { veggieBreakfast, veggieMains } from "../data/menuItems";
 import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
- export default function ProductLists({
-   query,
-   selectedCategory,
-   onCategorySelect,
-   featureTabs = false,
- }) {
-  const { getProductsByCategory, loading: menuLoading } = useMenuData();
+import CategoryBanner from "./CategoryBanner";
+
+export default function ProductLists({
+  query,
+  selectedCategory,
+  onCategorySelect,
+  featureTabs = false,
+}) {
+  const { categories: dbCategories, getProductsByCategory, loading: menuLoading } = useMenuData();
   const [counts, setCounts] = useState({});
   const manualRef = useRef(false);
   const scrollerRef = useRef(null);
- const [quickOpen, setQuickOpen] = useState(false);
- const [quickProduct, setQuickProduct] = useState(null);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [quickProduct, setQuickProduct] = useState(null);
+
+  const categories = useMemo(() => {
+    return dbCategories.map(dbCat => {
+      const config = CATEGORIES_LIST.find(c => c.id === dbCat.slug) || {};
+      return {
+        ...dbCat,
+        id: dbCat.slug,
+        label: dbCat.name,
+        targetId: config.targetId || `section-${dbCat.slug}`,
+        tintClass: config.tintClass || "bg-white"
+      };
+    });
+  }, [dbCategories]);
+
   const onQuickView = useCallback((p) => {
     if (!p) return;
     setQuickProduct(p);
     setQuickOpen(true);
   }, []);
 
-  // Permite abrir QuickView desde otros componentes (p. ej., HeroHeadline)
+  const setCount = useCallback((id, n) => {
+    setCounts((prev) => (prev[id] === n ? prev : { ...prev, [id]: n }));
+  }, []);
+
+  // Helper to find a customizable product for a banner
+  const getBannerProductForCategory = (catId) => {
+    const products = getProductsByCategory(catId);
+    return products.find(p => p.config_options?.creator_type);
+  };
+
+  // Permite abrir QuickView desde otros componentes
   useEffect(() => {
     const onGlobalQV = (e) => {
       const p = e?.detail;
@@ -62,10 +88,6 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
     window.addEventListener("aa:quickview", onGlobalQV);
     return () => window.removeEventListener("aa:quickview", onGlobalQV);
   }, []);
-   const setCount = useCallback((id, n) => {
-     setCounts((prev) => (prev[id] === n ? prev : { ...prev, [id]: n }));
-   }, []);
-  const categories = useMemo(() => CATEGORIES_LIST, []);
  
   const tabItems = useMemo(() => TABS_ITEMS(categories), [categories]);
   // Get breakfast items from Supabase ONLY
@@ -165,187 +187,177 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
    }, [dessertsCount, setCount]);
  
   const sections = useMemo(() => {
-    const arr = [];
-    if (breakfasts.length || breakfastExtras.length) {
-      arr.push({
-        id: "desayunos",
-        element: (
-          <ProductSection
-            id="desayunos"
-            title="Desayunos"
-            query={query}
-            items={breakfasts}
-            onCount={(n) => setCount("desayunos", n + breakfastExtras.length)}
-            onQuickView={onQuickView}
-            renderAfter={() => (
-              <AdditionsAccordion
-                items={breakfastExtras}
-                idPrefix="breakfast-additions"
-              />
-            )}
-            alwaysShow={Boolean(breakfastExtras.length)}
-            renderEmpty={() => null}
-            countValue={breakfasts.length + breakfastExtras.length}
-          />
-        ),
-      });
-    }
-    arr.push({
-      id: "panes",
-      element: (
-        <ProductSection
-          id="panes"
-          title="Panes & Biscochuelos"
-          query={query}
-          items={breadItems}
-          onCount={(n) => setCount("panes", n)}
-          onQuickView={onQuickView}
-        />
-      ),
-    });
-    // Mostrar Bowls solo si coincide con la búsqueda (o si no hay query)
-    const showBowls = !query || matchesQuery({ title: preBowl?.name, description: preBowl?.desc }, query);
-    if (showBowls) {
-      arr.push({
-        id: "bowls",
-        element: (
-          <Section id="section-bowls" title="Poke Bowls" count={counts["bowls"]}>
-            <BowlsSection
+    return categories.map(cat => {
+      const items = getProductsByCategory(cat.slug).filter(it => 
+        matchesQuery({ title: it.name, description: it.desc }, query)
+      );
+
+      // Component mapping based on slug
+      let element = null;
+
+      switch(cat.slug) {
+        case 'desayunos':
+          element = (
+            <ProductSection
+              id="desayunos"
+              title={cat.name}
               query={query}
-              onCount={(n) => setCount("bowls", n)}
+              items={items}
+              onCount={(n) => setCount("desayunos", n + breakfastExtras.length)}
+              onQuickView={onQuickView}
+              renderAfter={() => (
+                <AdditionsAccordion
+                  items={breakfastExtras}
+                  idPrefix="breakfast-additions"
+                />
+              )}
+              alwaysShow={Boolean(breakfastExtras.length)}
+              renderEmpty={() => null}
+              countValue={items.length + breakfastExtras.length}
+            />
+          );
+          break;
+        case 'bowls':
+          element = (
+            <Section id="section-bowls" title={cat.name} count={counts["bowls"]}>
+              <BowlsSection
+                query={query}
+                onCount={(n) => setCount("bowls", n)}
+                onQuickView={onQuickView}
+              />
+            </Section>
+          );
+          break;
+        case 'platos':
+          element = (
+            <ProductSection
+              id="platos"
+              title={cat.name}
+              query={query}
+              groups={mainGroups}
+              onCount={(n) => setCount("platos", n)}
               onQuickView={onQuickView}
             />
-          </Section>
-        ),
-      });
-    }
-    if (mainGroups.length) {
-      arr.push({
-        id: "platos",
-        element: (
-          <ProductSection
-            id="platos"
-            title="Platos Fuertes"
-            query={query}
-            groups={mainGroups}
-            onCount={(n) => setCount("platos", n)}
-            onQuickView={onQuickView}
-          />
-        ),
-      });
-    }
-    // Veggie (agrupado)
-    if ((veggieBreakfast?.length || 0) + (veggieMains?.length || 0)) {
-      arr.push({
-        id: "veggie",
-        element: (
-          <ProductSection
-            id="veggie"
-            title="Veggie"
-            query={query}
-            groups={[
-              {
-                title: "Desayunos",
-                items: (veggieBreakfast || []).filter((it) =>
-                  matchesQuery({ title: it.name, description: it.desc }, query),
-                ),
-              },
-              {
-                title: "Platos fuertes",
-                items: (veggieMains || []).filter((it) =>
-                  matchesQuery({ title: it.name, description: it.desc }, query),
-                ),
-              },
-            ]}
-            onCount={(n) => setCount("veggie", n)}
-            onQuickView={onQuickView}
-          />
-        ),
-      });
-    }
-    arr.push({
-      id: "sandwiches",
-      element: (
-        <Sandwiches
-          query={query}
-          onCount={(n) => setCount("sandwiches", n)}
-          onQuickView={onQuickView}
-        />
-      ),
-    });
-    arr.push({
-      id: "smoothies",
-      element: (
-        <SmoothiesSection
-          query={query}
-          onCount={(n) => setCount("smoothies", n)}
-          onQuickView={onQuickView}
-        />
-      ),
-    });
-    arr.push({
-      id: "cafe",
-      element: (
-        <CoffeeSection
-          query={query}
-          onCount={(n) => setCount("cafe", n)}
-          onQuickView={onQuickView}
-        />
-      ),
-    });
-    arr.push({
-      id: "bebidasfrias",
-      element: (
-        <ColdDrinksSection
-          query={query}
-          onCount={(n) => setCount("bebidasfrias", n)}
-          onQuickView={onQuickView}
-        />
-      ),
-    });
-    if (dessertsCount) {
-      arr.push({
-        id: "postres",
-        element: (
-          <Section title="Postres" count={dessertsCount}>
-            <Desserts
-              cumbre={dessertsCumbre}
-              base={dessertsBase}
+          );
+          break;
+        case 'sandwiches':
+          element = (
+            <Sandwiches
+              query={query}
+              onCount={(n) => setCount("sandwiches", n)}
               onQuickView={onQuickView}
             />
-          </Section>
-        ),
-      });
-    }
-    return arr;
+          );
+          break;
+        case 'smoothies':
+          element = (
+            <SmoothiesSection
+              query={query}
+              onCount={(n) => setCount("smoothies", n)}
+              onQuickView={onQuickView}
+            />
+          );
+          break;
+        case 'cafe':
+          element = (
+            <CoffeeSection
+              query={query}
+              onCount={(n) => setCount("cafe", n)}
+              onQuickView={onQuickView}
+            />
+          );
+          break;
+        case 'bebidasfrias':
+          element = (
+            <ColdDrinksSection
+              query={query}
+              onCount={(n) => setCount("bebidasfrias", n)}
+              onQuickView={onQuickView}
+            />
+          );
+          break;
+        case 'postres':
+          element = (
+            <Section title={cat.name} count={dessertsCount}>
+              <Desserts
+                cumbre={dessertsCumbre}
+                base={dessertsBase}
+                onQuickView={onQuickView}
+              />
+            </Section>
+          );
+          break;
+        default:
+          // Generic section for anything else
+          element = (
+            <ProductSection
+              id={cat.slug}
+              title={cat.name}
+              query={query}
+              items={items}
+              onCount={(n) => setCount(cat.slug, n)}
+              onQuickView={onQuickView}
+            />
+          );
+      }
+
+      return {
+        id: cat.slug,
+        element
+      };
+    }).filter(s => {
+      // Filter out empty sections if searching, otherwise show all active
+      if (!query) return true;
+      return counts[s.id] > 0;
+    });
   }, [
-    breakfasts,
+    categories,
+    getProductsByCategory,
+    query,
     breakfastExtras,
     mainGroups,
+    dessertsCount,
     dessertsCumbre,
     dessertsBase,
-    dessertsCount,
-    onQuickView,
-    query,
     counts,
+    onQuickView
   ]);
-  const renderPanel = (s, inTodos = false) => (
-     <div
-       key={s.id}
-       id={`panel-${s.id}${inTodos ? "-todos" : ""}`}
-       role="tabpanel"
-       tabIndex={-1}
-       aria-labelledby={`tab-${s.id}${inTodos ? "-todos" : ""}`}
-      className="will-change-transform contain-content [transform:translateZ(0)]"
-     >
-       {inTodos && (
-         <span id={`tab-${s.id}-todos`} className="sr-only">
-           {categories.find((c) => c.id === s.id)?.label || s.id}
-         </span>
-       )}
-      {s.element}
-    </div>
-  );
+  const renderPanel = (s, inTodos = false) => {
+    const category = categories.find(c => c.id === s.id);
+    const bannerProduct = getBannerProductForCategory(s.id);
+    
+    // Show banner if we have custom category banner OR a creator product
+    const showBanner = (category?.banner_image_url || bannerProduct) && !query;
+    
+    const banner = showBanner ? (
+      <div className="mb-6 px-4 sm:px-0">
+        <CategoryBanner 
+          category={category}
+          product={bannerProduct} 
+          onOpenBuilder={bannerProduct ? () => onQuickView(bannerProduct) : undefined} 
+        />
+      </div>
+    ) : null;
+
+    return (
+      <div
+        key={s.id}
+        id={`panel-${s.id}${inTodos ? "-todos" : ""}`}
+        role="tabpanel"
+        tabIndex={-1}
+        aria-labelledby={`tab-${s.id}${inTodos ? "-todos" : ""}`}
+        className="will-change-transform contain-content [transform:translateZ(0)]"
+      >
+        {inTodos && (
+          <span id={`tab-${s.id}-todos`} className="sr-only">
+            {categories.find((c) => c.id === s.id)?.label || s.id}
+          </span>
+        )}
+        {banner}
+        {s.element}
+      </div>
+    );
+  };
  
   const orderedTabs = useMemo(() => ["todos", ...categories.map((c) => c.id)], [categories]);
  
@@ -468,6 +480,13 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
   });
 
   const _safeSwipeHandlers = swipeHandlers || {};
+
+  if (menuLoading) return (
+    <div className="flex flex-col items-center justify-center p-20 space-y-4 text-center">
+      <div className="w-10 h-10 border-4 border-[#2f4131]/20 border-t-[#2f4131] rounded-full animate-spin" />
+      <p className="text-[10px] font-black uppercase tracking-widest text-[#2f4131]/60">Cargando Experiencias...</p>
+    </div>
+  );
 
   return (
     <>
