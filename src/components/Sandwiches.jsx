@@ -2,130 +2,120 @@
 import ProductSection from "./ProductSection";
 import { matchesQuery } from "@/utils/strings";
 import { formatCOP } from "@/utils/money";
-import {
-  sandwichItems,
-  sandwichTraditionals,
-  sandwichBreadOptions,
-  sandwichExtras,
-} from "@/data/menuItems";
-import { SANDWICH_PRICE_BY_ITEM } from "@/config/prices";
 import { getStockFlags } from "@/utils/stock";
 import AdditionsAccordion from "./AdditionsAccordion";
+import { useMenuData } from "@/context/MenuDataContext";
 
 const SIZE_OPTIONS = [
-  { id: "clasico", label: "Clasico", helper: "100 g de proteina" },
-  { id: "grande", label: "Grande", helper: "300 g de proteina" },
+  { id: "clasico", label: "Clásico", helper: "100 g de proteína" },
+  { id: "grande", label: "Grande", helper: "300 g de proteína" },
 ];
 
 function buildBreadOptions(list = []) {
-  const base = [
-    {
-      id: "baguette",
-      name: "Baguette artesanal",
-      helper: "Incluido",
-      surcharge: 0,
-      flags: { isOut: false, isSoon: false },
-    },
-  ];
-
-  const extras = list.map((item) => ({
+  // Always ensure we have at least one option if list is empty, but list should come from DB
+  if (!list.length) return [];
+  
+  return list.map((item) => ({
     id: item.id,
     name: item.name,
-    helper: `+${formatCOP(item.price || 0)}`,
+    helper: item.price > 0 ? `+${formatCOP(item.price)}` : "Incluido",
     surcharge: item.price || 0,
-    description: item.desc,
-    flags: getStockFlags(item.id),
+    description: item.description,
+    flags: getStockFlags(item.id), // We can use item.id for stock check if we sync stock
   }));
-
-  return [...base, ...extras];
 }
 
 export default function Sandwiches({ query, onCount, onQuickView }) {
+  const { getProductsByCategory, getModifiers } = useMenuData();
   const [size, setSize] = useState("clasico");
-  const [bread, setBread] = useState("baguette");
+  
+  // Bread logic
+  const dbBreadOptions = getModifiers('sandwich-bread');
+  const breadOptions = useMemo(() => buildBreadOptions(dbBreadOptions), [dbBreadOptions]);
+  
+  const [bread, setBread] = useState(null);
 
-  const breadOptions = useMemo(() => buildBreadOptions(sandwichBreadOptions), []);
-  const firstAvailableBread = useMemo(
-    () => breadOptions.find((opt) => !opt.flags.isOut) || breadOptions[0],
-    [breadOptions],
+  // Set default bread once loaded
+  useEffect(() => {
+    if (!bread && breadOptions.length > 0) {
+      const firstAvailable = breadOptions.find((opt) => !opt.flags.isOut) || breadOptions[0];
+      setBread(firstAvailable?.id);
+    }
+  }, [bread, breadOptions]);
+
+  const activeBread = useMemo(() => 
+    breadOptions.find((opt) => opt.id === bread),
+    [breadOptions, bread]
   );
 
-  useEffect(() => {
-    const current = breadOptions.find((opt) => opt.id === bread);
-    if (!current || current.flags.isOut) {
-      if (firstAvailableBread) setBread(firstAvailableBread.id);
-    }
-  }, [bread, breadOptions, firstAvailableBread]);
+  const products = getProductsByCategory('sandwiches');
 
-  const activeBread = breadOptions.find((opt) => opt.id === bread) || firstAvailableBread;
-
-  const priceByItem = SANDWICH_PRICE_BY_ITEM || {};
-
+  // Filter groups
   const traditional = useMemo(
     () =>
-      (sandwichTraditionals || []).filter((item) =>
-        matchesQuery({ title: item.name, description: item.desc }, query),
+      products.filter((item) =>
+        item.tags.includes('tradicional') &&
+        matchesQuery({ title: item.name, description: item.desc }, query)
       ),
-    [query],
+    [products, query]
   );
 
   const artisanalBase = useMemo(
     () =>
-      (sandwichItems || []).filter(
-        (item) => item.group === "artesanal" && matchesQuery({ title: item.name, description: item.desc }, query),
+      products.filter(
+        (item) => item.tags.includes('artesanal') && matchesQuery({ title: item.name, description: item.desc }, query)
       ),
-    [query],
+    [products, query]
   );
 
   const specialsBase = useMemo(
     () =>
-      (sandwichItems || []).filter(
-        (item) => item.group === "especial" && matchesQuery({ title: item.name, description: item.desc }, query),
+      products.filter(
+        (item) => item.tags.includes('especial') && matchesQuery({ title: item.name, description: item.desc }, query)
       ),
-    [query],
+    [products, query]
   );
 
-  const priceFor = (key) => {
-    const entry = priceByItem[key] || {};
-    if (entry.unico != null) return entry.unico;
-    return entry[size];
+  // Helpers for pricing
+  const getProductPrice = (item, currentSize) => {
+    if (!item.variants || !item.variants.length) return item.price;
+    const variant = item.variants.find(v => v.name.toLowerCase() === currentSize.toLowerCase());
+    return variant ? variant.price : item.price;
   };
 
-  const sizeLabel = (key) => {
-    const entry = priceByItem[key] || {};
-    if (entry.unico != null) return "Precio unico";
-    return size === "clasico" ? "Clasico" : "Grande";
-  };
-
-  const breadLabel = activeBread?.name || "Baguette artesanal";
+  const breadLabel = activeBread?.name || "Pan";
   const breadExtra = activeBread?.surcharge || 0;
 
   const artisanal = useMemo(
     () =>
-      artisanalBase.map((item) => ({
-        id: `sandwich:${item.key}`,
-        name: `${item.name} (${sizeLabel(item.key)} · ${breadLabel})`,
-        desc: item.desc,
-        price: priceFor(item.key) + breadExtra,
-      })),
-    [artisanalBase, size, breadLabel, breadExtra],
+      artisanalBase.map((item) => {
+        // Find variant for current size to get helper text if needed? 
+        // For now just price.
+        const basePrice = getProductPrice(item, size);
+        return {
+          ...item,
+          id: item.id, // Keep original ID (UUID)
+          name: `${item.name} (${size === 'clasico' ? 'Clásico' : 'Grande'} · ${breadLabel})`,
+          price: basePrice + breadExtra,
+        };
+      }),
+    [artisanalBase, size, breadLabel, breadExtra]
   );
 
   const specials = useMemo(
     () =>
       specialsBase.map((item) => ({
-        id: `sandwich:${item.key}`,
-        name: item.name,
-        desc: item.desc,
-        price: priceFor(item.key),
+        ...item,
+        price: getProductPrice(item, size), // Specials might specify unique price or variants
       })),
-    [specialsBase, size],
+    [specialsBase, size]
   );
 
+  const dbExtras = getModifiers('sandwich-extras');
   const extras = useMemo(
     () =>
-      (sandwichExtras || []).filter((item) => matchesQuery({ title: item.name }, query)),
-    [query],
+      dbExtras.filter((item) => matchesQuery({ title: item.name }, query)),
+    [dbExtras, query]
   );
 
   const totalCount = traditional.length + artisanal.length + specials.length + extras.length;
@@ -158,7 +148,7 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
           includeUnavailable
           onQuickView={onQuickView}
           renderHeader={() => (
-            <div className="space-y-4 rounded-2xl bg-[#f5f3f0] p-4 text-[#2f4131] ring-1 ring-[#e7dcc9]">
+            <div className="space-y-4 rounded-2xl bg-[#f5f3f0] p-4 text-[#2f4131] ring-1 ring-[#e7dcc9] mb-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.08em]">Tamaño</p>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -186,53 +176,45 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
                 </div>
               </div>
 
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.08em]">Tipo de pan</p>
-                <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                  {breadOptions.map((option) => {
-                    const active = bread === option.id;
-                    const { isOut, isSoon } = option.flags;
-                    const disabled = isOut;
-                    return (
-                      <button
-                        key={option.id}
-                        type="button"
-                        onClick={() => !disabled && setBread(option.id)}
-                        aria-pressed={active}
-                        disabled={disabled}
-                        className={`flex flex-col items-start gap-1 rounded-xl border px-4 py-3 text-left transition-all duration-150 ${
-                          active
-                            ? "border-[#2f4131] bg-white shadow"
-                            : "border-[#2f4131]/15 bg-white/90 hover:border-[#2f4131]/30 hover:shadow-sm"
-                        } ${disabled ? "opacity-40" : ""}`}
-                      >
-                        <span className="text-sm font-semibold text-[#2f4131]">{option.name}</span>
-                        {option.description && (
-                          <span className="text-[11px] text-[#2f4131]/70">{option.description}</span>
-                        )}
-                        <div className="mt-1 flex items-center gap-2 text-[11px] font-medium">
-                          <span className={active ? "text-[#2f4131]" : "text-[#2f4131]/70"}>
-                            {option.helper}
-                          </span>
-                          {isSoon && !disabled && (
-                            <span className="rounded-full bg-amber-100 px-2 py-[1px] text-[10px] font-semibold text-amber-700">
-                              Proximamente
-                            </span>
+              {breadOptions.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em]">Tipo de pan</p>
+                  <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                    {breadOptions.map((option) => {
+                      const active = bread === option.id;
+                      const { isOut, isSoon } = option.flags || {};
+                      const disabled = isOut;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => !disabled && setBread(option.id)}
+                          aria-pressed={active}
+                          disabled={disabled}
+                          className={`flex flex-col items-start gap-1 rounded-xl border px-4 py-3 text-left transition-all duration-150 ${
+                            active
+                              ? "border-[#2f4131] bg-white shadow"
+                              : "border-[#2f4131]/15 bg-white/90 hover:border-[#2f4131]/30 hover:shadow-sm"
+                          } ${disabled ? "opacity-40" : ""}`}
+                        >
+                          <span className="text-sm font-semibold text-[#2f4131]">{option.name}</span>
+                          {option.description && (
+                            <span className="text-[11px] text-[#2f4131]/70">{option.description}</span>
                           )}
-                          {disabled && (
-                            <span className="rounded-full bg-neutral-200 px-2 py-[1px] text-[10px] font-semibold text-neutral-700">
-                              No disponible
+                          <div className="mt-1 flex items-center gap-2 text-[11px] font-medium">
+                            <span className={active ? "text-[#2f4131]" : "text-[#2f4131]/70"}>
+                              {option.helper}
                             </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="rounded-xl bg-white/80 px-3 py-2 text-xs text-[#2f4131]/80 ring-1 ring-[#e7dcc9]">
-                Resumen: {size === "clasico" ? "Clasico" : "Grande"} · {breadLabel}
+                Resumen: {size === "clasico" ? "Clásico" : "Grande"} · {breadLabel}
                 {breadExtra ? ` · +${formatCOP(breadExtra)}` : " · Pan incluido"}
               </div>
             </div>

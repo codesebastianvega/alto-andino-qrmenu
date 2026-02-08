@@ -1,0 +1,317 @@
+[
+  {
+    "id": "dcecaef2-544c-4f35-92af-132c5dde3db9",
+    "name": "Baguette artesanal",
+    "price": 0,
+    "group": "sandwich-bread",
+    "description": "Incluido",
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "ad6d3e96-d46d-4627-b921-8fc0871a25a5",
+    "name": "Pan de masa madre - Queso Paipa (150 g)",
+    "price": 4000,
+    "group": "sandwich-bread",
+    "description": "Miga suave con infusion de queso Paipa artesanal.",
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "3c746573-50bf-4e2d-878c-f9edd7cfd987",
+    "name": "Pan de masa madre - Semillas (150 g)",
+    "price": 4000,
+    "group": "sandwich-bread",
+    "description": "Corteza crujiente con mezcla de semillas tostadas.",
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "4d758364-4345-45ef-af73-b75403c36136",
+    "name": "Queso campesino tajada",
+    "price": 3500,
+    "group": "sandwich-extras",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "46e561b0-5b4a-4de3-bc5a-d8dc0a5deea4",
+    "name": "Queso de Bufala",
+    "price": 3500,
+    "group": "sandwich-extras",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "edcf0d35-653f-41a7-9fb1-f32eee309a83",
+    "name": "Pimenton asado",
+    "price": 3500,
+    "group": "sandwich-extras",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "528dc866-d199-4dda-b69d-e0a9fe742183",
+    "name": "Queso loncha",
+    "price": 2500,
+    "group": "sandwich-extras",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "cecc5d4b-7c23-4fd6-a20a-c31040f7e8dc",
+    "name": "Pepinillos",
+    "price": 2500,
+    "group": "sandwich-extras",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "798c4f5e-9fe2-4160-856b-c8aeaf047165",
+    "name": "Jalapenos",
+    "price": 2500,
+    "group": "sandwich-extras",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "bb5b7ac6-8000-44a1-ada6-561857a8a71b",
+    "name": "Huevo frito",
+    "price": 2500,
+    "group": "sandwich-extras",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "105e3efb-94e2-41c5-8632-d30638f66c97",
+    "name": "Tomate seco",
+    "price": 2500,
+    "group": "sandwich-extras",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "85582780-59b8-49b4-ad8e-6ad043a79d0b",
+    "name": "Aguacate extra",
+    "price": 3000,
+    "group": "sandwich-extras",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "7668290b-1fa1-4a3e-b3b9-02350361b34e",
+    "name": "Hummus",
+    "price": 3000,
+    "group": "sandwich-extras",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "7bd26902-dbec-4ed8-ac2b-75669d65da78",
+    "name": "Vegetales extra",
+    "price": 2000,
+    "group": "sandwich-extras",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "deefee94-e24e-40fc-85ae-cc97d3dd7bd9",
+    "name": "Salsa extra",
+    "price": 1000,
+    "group": "sandwich-extras",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "811c7214-8566-4615-913c-d0bb3f028dd6",
+    "name": "Entera",
+    "price": 0,
+    "group": "milk-options",
+    "description": "Leche entera clásica",
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "7d475485-83e3-4042-a3fb-eef74a965227",
+    "name": "Deslactosada",
+    "price": 500,
+    "group": "milk-options",
+    "description": "Leche sin lactosa",
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "4a1ce717-3f6a-4647-a5e0-a4d37743ddaf",
+    "name": "Almendras",
+    "price": 2000,
+    "group": "milk-options",
+    "description": "Bebida vegetal de almendras",
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "6dba55b9-59a5-4082-b6d1-5ff25834f96a",
+    "name": "Soya",
+    "price": 1500,
+    "group": "milk-options",
+    "description": "Bebida vegetal de soya",
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "b3ee0af4-aa59-44cb-8c1c-ef7cd1a0249b",
+    "name": "Mora",
+    "price": 0,
+    "group": "juice-flavors",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "d6e7037b-906d-41cd-bf68-e5c2a5d07d62",
+    "name": "Guanabana",
+    "price": 0,
+    "group": "juice-flavors",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "78122feb-db46-4677-b2fa-83b9acd85d30",
+    "name": "Mango",
+    "price": 0,
+    "group": "juice-flavors",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "b1617eb9-278a-46a5-b45d-4790f9a09022",
+    "name": "Pina",
+    "price": 0,
+    "group": "juice-flavors",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "8e939f07-4c5c-41b5-94a1-c7c7e718db9a",
+    "name": "Maracuya",
+    "price": 0,
+    "group": "juice-flavors",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "bd5d75fb-290f-41dd-9bcf-129eb506c06c",
+    "name": "Fresa",
+    "price": 0,
+    "group": "juice-flavors",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "fb22dc5d-4692-4bac-9e06-0cb3a398552a",
+    "name": "Arandanos",
+    "price": 0,
+    "group": "juice-flavors",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "ee13d768-e222-485b-8c3f-443c4eb4771a",
+    "name": "Kiwi",
+    "price": 0,
+    "group": "juice-flavors",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "09184ba6-1e6c-4940-84f5-17a77863d9c2",
+    "name": "Zanahoria",
+    "price": 0,
+    "group": "juice-flavors",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "96b8b49e-bbfd-4c83-bac0-d3e6f6836dd8",
+    "name": "Arroz blanco",
+    "price": 0,
+    "group": "bowl-base",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "c72e137a-889b-4a68-a4ec-50dc76b324b5",
+    "name": "Pollo en cubos",
+    "price": 0,
+    "group": "bowl-protein",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "c4019ab6-f867-40fa-bc9a-3fbaf8ba63f3",
+    "name": "Aguacate",
+    "price": 0,
+    "group": "bowl-topping",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "919f0b6c-c99b-4900-970d-d0f44c55e9bb",
+    "name": "Mango",
+    "price": 0,
+    "group": "bowl-topping",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "bfc50e84-6c94-4e1b-bddb-c29ea0501a5d",
+    "name": "Pepino",
+    "price": 0,
+    "group": "bowl-topping",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "75e2c417-f770-4435-8fdf-0621b8acd6f4",
+    "name": "Ajonjolí",
+    "price": 0,
+    "group": "bowl-extras",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  },
+  {
+    "id": "293c290d-827c-45dd-9caa-e4184870bb4d",
+    "name": "Sweet Hot de la casa",
+    "price": 0,
+    "group": "bowl-salsa",
+    "description": null,
+    "is_active": true,
+    "created_at": "2026-02-08T03:38:50.482573+00:00"
+  }
+]

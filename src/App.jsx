@@ -3,6 +3,9 @@ import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { CATEGORIES_LIST } from "./config/categories.veggie";
 import { FEATURE_TABS, PUBLIC_URL } from "./config/featureFlags";
 
+// Admin
+import AdminLayout from "./components/admin/AdminLayout";
+
 // Layout / UI
 import Header from "./components/Header";
 import Footer from "./components/Footer";
@@ -128,13 +131,23 @@ export default function App() {
     );
   }
 
-  const isAdmin = (() => {
+  // Check for admin routes: #admin (new panel) or ?admin=1 (old stock admin)
+  const isNewAdminPanel = (() => {
+    if (typeof window === "undefined") return false;
+    return window.location.hash === '#admin';
+  })();
+
+  const isOldStockAdmin = (() => {
     if (typeof window === "undefined") return false;
     const params = new URLSearchParams(window.location.search);
     return params.get("admin") === "1";
   })();
 
-  if (isAdmin) {
+  if (isNewAdminPanel) {
+    return <AdminLayout />;
+  }
+
+  if (isOldStockAdmin) {
     return (
       <div className="bg-alto-beige leading-snug text-alto-text">
         <main className="mx-auto max-w-3xl px-5 pt-5 sm:px-6 md:px-8">

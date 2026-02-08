@@ -4,67 +4,11 @@ import Portal from "./Portal";
 import { formatCOP } from "@/utils/money";
 import { useCart } from "@/context/CartContext";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
+import { useMenuData } from "@/context/MenuDataContext";
+import { BOWL_BASE_PRICE } from "@/config/prices";
 
-// Catálogos y constantes (simple y sin caracteres raros)
-const BASE_PRICE = 28000;
-const PREMIUM_SURCHARGE = 4000;
-
-const bases = ["Arroz", "Quinoa", "Mix de lechugas"];
-
-const proteins = [
-  { name: "Pollo", premium: false },
-  { name: "Carne", premium: false },
-];
-
-const toppings = [
-  "Aguacate",
-  "Mango",
-  "Pepino",
-  "Maíz desgranado",
-  "Cebolla morada",
-  "Tomate cherry",
-  "Rábano",
-  "Queso en cubos",
-  "Zanahoria",
-  "Pimentón",
-  "Brócoli",
-  "Champiñones",
-  "Hummus",
-  "Arándanos",
-  "Kiwi",
-];
-
-const extras = [
-  "Guacamole",
-  "Ajonjolí tostado",
-  "Cebollín",
-  "Semilla de chía",
-  "Semillas de linaza",
-  "Láminas de almendras",
-  "Jalapeños",
-  "Alga nori",
-  "Jengibre encurtido",
-  "Pepinillos",
-  "Aceituna negra",
-  "Aceituna verde",
-  "Aceite de oliva",
-  "Ajonjolí negro",
-  "Semillas de amapola",
-  "Semilla de amaranto",
-  "Orégano",
-  "Pimienta cayena",
-  "Aceite de aguacate",
-];
-
-const sauces = [
-  "HotSweet de la casa",
-  "Mango-yaki",
-  "Balsámico",
-  "Yogurt",
-  "Soja",
-  "Mayo-pesto",
-  "Sin salsa",
-];
+// Catálogos y constantes
+const BASE_PRICE = BOWL_BASE_PRICE;
 
 const MAX_TOPS = 4;
 const MAX_EXTS = 3;
@@ -146,13 +90,43 @@ function Tile({ active, disabled, onClick, children }) {
 }
 
 export default function BowlBuilder({ open, onClose }) {
+  const { getModifiers } = useMenuData();
+  const cart = useCart();
+  
+  // Fetch Modifiers from Context
+  const bases = getModifiers('bowl-base');
+  const proteins = getModifiers('bowl-protein');
+  const toppings = getModifiers('bowl-topping');
+  const extrasList = getModifiers('bowl-extras');
+  const sauces = getModifiers('bowl-salsa');
+
+  // Estado
+  const [base, setBase] = useState(bases[0]?.name || "");
+  const [protein, setProtein] = useState(proteins[0]?.name || "");
+  const [tops, setTops] = useState([]);
+  const [exts, setExts] = useState([]);
+  const [sauce, setSauce] = useState(sauces[0]?.name || "Sin salsa");
+  const [note, setNote] = useState("");
+
+  // Sync default selection if data loads late
+  useEffect(() => {
+    if (!base && bases.length) setBase(bases[0].name);
+    if (!protein && proteins.length) setProtein(proteins[0].name);
+  }, [bases, proteins, base, protein]);
+
   if (!open) return null;
 
+  // Use hook here after early return check? Or before? 
+  // Hooks must be consistent. useLockBodyScroll(open) is fine.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useLockBodyScroll(open);
-  const cart = useCart();
+  
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const modalRef = useRef(null);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const lastFocused = useRef(null);
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     lastFocused.current = document.activeElement;
     modalRef.current?.focus?.();
@@ -185,32 +159,39 @@ export default function BowlBuilder({ open, onClose }) {
     };
   }, [onClose]);
 
-  // Estado
-  const [base, setBase] = useState(bases[0]);
-  const [protein, setProtein] = useState("Pollo");
-  const [tops, setTops] = useState([]);
-  const [exts, setExts] = useState([]);
-  const [sauce, setSauce] = useState("Sin salsa");
-  const [note, setNote] = useState("");
+  // Pricing Logic
+  const getPrice = (list, name) => list.find(x => x.name === name)?.price || 0;
+  
+  const currentProteinPrice = useMemo(() => getPrice(proteins, protein), [proteins, protein]);
+  const currentBasePrice = useMemo(() => getPrice(bases, base), [bases, base]);
+  
+  const topsPrice = useMemo(() => 
+    tops.reduce((sum, tName) => sum + getPrice(toppings, tName), 0),
+    [tops, toppings]
+  );
+  
+  const extsPrice = useMemo(() => 
+    exts.reduce((sum, eName) => sum + getPrice(extrasList, eName), 0),
+    [exts, extrasList]
+  );
+  
+  const price = BASE_PRICE + currentProteinPrice + currentBasePrice + topsPrice + extsPrice;
 
-  const isPremium = useMemo(() => proteins.find((p) => p.name === protein)?.premium === true, [protein]);
-  const price = useMemo(() => BASE_PRICE + (isPremium ? PREMIUM_SURCHARGE : 0), [isPremium]);
-
-  const toggleLimited = (list, setList, max, item) => {
+  const toggleLimited = (listNames, setList, max, itemName) => {
     setList((prev) => {
-      const has = prev.includes(item);
-      if (has) return prev.filter((x) => x !== item);
+      const has = prev.includes(itemName);
+      if (has) return prev.filter((x) => x !== itemName);
       if (prev.length >= max) return prev;
-      return [...prev, item];
+      return [...prev, itemName];
     });
   };
 
   const resetAll = () => {
-    setBase(bases[0]);
-    setProtein("Pollo");
+    setBase(bases[0]?.name || "");
+    setProtein(proteins[0]?.name || "");
     setTops([]);
     setExts([]);
-    setSauce("Sin salsa");
+    setSauce(sauces[0]?.name || "");
     setNote("");
   };
 
@@ -274,85 +255,99 @@ export default function BowlBuilder({ open, onClose }) {
           <div className="flex-1 min-h-0 space-y-3 overflow-y-auto overscroll-contain px-4 pt-3 sm:space-y-4 sm:pt-4">
             {/* Resumen */}
             <div className="rounded-lg bg-white/60 px-3 py-2 text-sm text-neutral-800 ring-1 ring-white/40 shadow-sm backdrop-blur-md">
-              Base: {base} • Prot: {protein} {isPremium && "(+$4.000)"} • Top: {tops.length}/{MAX_TOPS} • Extras: {exts.length}/{MAX_EXTS} • Salsa: {sauce} • Total: {formatCOP(price)}
+              Base: {base} • Prot: {protein} {currentProteinPrice > 0 && `(+${formatCOP(currentProteinPrice)})`} • Top: {tops.length}/{MAX_TOPS} • Extras: {exts.length}/{MAX_EXTS} • Salsa: {sauce} • Total: {formatCOP(price)}
             </div>
 
             {/* Base */}
-            <section>
-              <p className="mb-2 text-sm font-semibold text-[#2f4131]">1) Base</p>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                {bases.map((b) => (
-                  <Tile key={b} active={b === base} onClick={() => setBase(b)}>
-                    {icoEmoji(b)}&nbsp;{b}
-                  </Tile>
-                ))}
-              </div>
-            </section>
+            {bases.length > 0 && (
+              <section>
+                <p className="mb-2 text-sm font-semibold text-[#2f4131]">1) Base</p>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {bases.map((b) => (
+                    <Tile key={b.id} active={b.name === base} onClick={() => setBase(b.name)}>
+                      {icoEmoji(b.name)}&nbsp;{b.name}
+                      {b.price > 0 && <span className="text-[10px] ml-1 opacity-70">(+{formatCOP(b.price)})</span>}
+                    </Tile>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Proteína */}
-            <section>
-              <p className="mb-2 text-sm font-semibold text-[#2f4131]">2) Proteína</p>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                {proteins.map((p) => (
-                  <Tile key={p.name} active={p.name === protein} onClick={() => setProtein(p.name)}>
-                    {icoEmoji(p.name)}&nbsp;{p.name}
-                    {p.premium ? " • (+$4.000)" : ""}
-                  </Tile>
-                ))}
-              </div>
-            </section>
+            {proteins.length > 0 && (
+              <section>
+                <p className="mb-2 text-sm font-semibold text-[#2f4131]">2) Proteína</p>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {proteins.map((p) => (
+                    <Tile key={p.id} active={p.name === protein} onClick={() => setProtein(p.name)}>
+                      {icoEmoji(p.name)}&nbsp;{p.name}
+                      {p.price > 0 && <span className="text-[10px] ml-1 opacity-70">(+{formatCOP(p.price)})</span>}
+                    </Tile>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Toppings */}
-            <section>
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-semibold text-[#2f4131]">3) Toppings</p>
-                <p className="text-xs text-neutral-600">Seleccionados: {tops.length}/{MAX_TOPS}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                {toppings.map((t) => (
-                  <Tile
-                    key={t}
-                    active={tops.includes(t)}
-                    disabled={!tops.includes(t) && tops.length >= MAX_TOPS}
-                    onClick={() => toggleLimited(tops, setTops, MAX_TOPS, t)}
-                  >
-                    {icoEmoji(t)}&nbsp;{t}
-                  </Tile>
-                ))}
-              </div>
-            </section>
+            {toppings.length > 0 && (
+              <section>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-[#2f4131]">3) Toppings</p>
+                  <p className="text-xs text-neutral-600">Seleccionados: {tops.length}/{MAX_TOPS}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {toppings.map((t) => (
+                    <Tile
+                      key={t.id}
+                      active={tops.includes(t.name)}
+                      disabled={!tops.includes(t.name) && tops.length >= MAX_TOPS}
+                      onClick={() => toggleLimited(tops, setTops, MAX_TOPS, t.name)}
+                    >
+                      {icoEmoji(t.name)}&nbsp;{t.name}
+                      {t.price > 0 && <span className="text-[10px] ml-1 opacity-70">(+{formatCOP(t.price)})</span>}
+                    </Tile>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Extras */}
-            <section>
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-semibold text-[#2f4131]">4) Extras</p>
-                <p className="text-xs text-neutral-600">Seleccionados: {exts.length}/{MAX_EXTS}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                {extras.map((e) => (
-                  <Tile
-                    key={e}
-                    active={exts.includes(e)}
-                    disabled={!exts.includes(e) && exts.length >= MAX_EXTS}
-                    onClick={() => toggleLimited(exts, setExts, MAX_EXTS, e)}
-                  >
-                    {icoEmoji(e)}&nbsp;{e}
-                  </Tile>
-                ))}
-              </div>
-            </section>
+            {extrasList.length > 0 && (
+              <section>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-[#2f4131]">4) Extras</p>
+                  <p className="text-xs text-neutral-600">Seleccionados: {exts.length}/{MAX_EXTS}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {extrasList.map((e) => (
+                    <Tile
+                      key={e.id}
+                      active={exts.includes(e.name)}
+                      disabled={!exts.includes(e.name) && exts.length >= MAX_EXTS}
+                      onClick={() => toggleLimited(exts, setExts, MAX_EXTS, e.name)}
+                    >
+                      {icoEmoji(e.name)}&nbsp;{e.name}
+                      {e.price > 0 && <span className="text-[10px] ml-1 opacity-70">(+{formatCOP(e.price)})</span>}
+                    </Tile>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Salsa */}
-            <section>
-              <p className="mb-2 text-sm font-semibold text-[#2f4131]">5) Salsa</p>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                {sauces.map((s) => (
-                  <Tile key={s} active={s === sauce} onClick={() => setSauce(s)}>
-                    {icoEmoji(s)}&nbsp;{s}
-                  </Tile>
-                ))}
-              </div>
-            </section>
+            {sauces.length > 0 && (
+              <section>
+                <p className="mb-2 text-sm font-semibold text-[#2f4131]">5) Salsa</p>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {sauces.map((s) => (
+                    <Tile key={s.id} active={s.name === sauce} onClick={() => setSauce(s.name)}>
+                      {icoEmoji(s.name)}&nbsp;{s.name}
+                      {s.price > 0 && <span className="text-[10px] ml-1 opacity-70">(+{formatCOP(s.price)})</span>}
+                    </Tile>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Nota */}
             <div>

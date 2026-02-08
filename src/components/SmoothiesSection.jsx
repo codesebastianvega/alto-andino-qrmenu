@@ -1,19 +1,24 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import ProductSection from "./ProductSection";
-import { smoothies, funcionales as functionalSmoothies } from "@/data/menuItems";
+import { useMenuData } from "@/context/MenuDataContext";
 
 export default function SmoothiesSection({ query, onCount, onQuickView }) {
+  const { getProductsByCategory } = useMenuData();
   const [visible, setVisible] = useState(false);
   const sectionRef = useRef(null);
 
-  const groups = [];
-  if (Array.isArray(smoothies) && smoothies.length) {
-    groups.push({ title: "Smoothies", items: smoothies });
-  }
-  if (Array.isArray(functionalSmoothies) && functionalSmoothies.length) {
-    groups.push({ title: "Funcionales", items: functionalSmoothies });
-  }
-  const finalGroups = groups.length > 1 ? groups : groups.map(({ items }) => ({ items }));
+  const products = getProductsByCategory('smoothies');
+
+  const groups = useMemo(() => {
+    const traditional = products.filter(p => !(p.tags || []).includes('funcional'));
+    const functional = products.filter(p => (p.tags || []).includes('funcional'));
+    
+    const result = [];
+    if (traditional.length) result.push({ title: "Smoothies", items: traditional });
+    if (functional.length) result.push({ title: "Funcionales", items: functional });
+    
+    return result;
+  }, [products]);
 
   useEffect(() => {
     const el = sectionRef.current;
@@ -33,6 +38,9 @@ export default function SmoothiesSection({ query, onCount, onQuickView }) {
     return () => observer.disconnect();
   }, []);
 
+  // If no products at all (before filtering), we might want to hide or show empty? 
+  // ProductSection handles empty via query.
+  
   return (
     <div
       ref={sectionRef}
@@ -44,7 +52,7 @@ export default function SmoothiesSection({ query, onCount, onQuickView }) {
         id="smoothies"
         title="Smoothies & Funcionales"
         query={query}
-        groups={finalGroups}
+        groups={groups}
         onCount={onCount}
         onQuickView={onQuickView}
       />

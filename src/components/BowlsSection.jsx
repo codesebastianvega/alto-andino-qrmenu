@@ -1,4 +1,3 @@
-// src/components/BowlsSection.jsx
 import React, { lazy, Suspense, useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import { formatCOP } from "@/utils/money";
@@ -6,52 +5,63 @@ import { matchesQuery } from "@/utils/strings";
 import { PILL_XS, PILL_SM } from "./Buttons";
 import { toast } from "./Toast";
 import AAImage from "@/components/ui/AAImage";
-const BowlBuilder = lazy(() => import("./BowlBuilder"));
-import { getStockState, slugify, isUnavailable } from "@/utils/stock";
-import { preBowl } from "@/data/menuItems";
+import { getStockState, isUnavailable } from "@/utils/stock";
 import { BOWL_BASE_PRICE } from "@/config/prices";
 import ProductCard from "./ProductCard";
+import { useMenuData } from "@/context/MenuDataContext";
+
+const BowlBuilder = lazy(() => import("./BowlBuilder"));
 
 // ← editar nombres y precios aquí
 const BASE_PRICE = BOWL_BASE_PRICE;
 
 export default function BowlsSection({ query, onCount, onQuickView, id }) {
+  const { getProductsByCategory } = useMenuData();
   const { addItem } = useCart();
   const [open, setOpen] = useState(false);
 
+  const products = getProductsByCategory('bowls');
+  const preBowl = products.length > 0 ? products[0] : null;
+
   const openBuilder = () => setOpen(true);
 
-  if (!preBowl) return null;
-
-  const addPre = () =>
+  const addPre = () => {
+    if (!preBowl) return;
     addItem({
       productId: preBowl.id,
       name: preBowl.name,
       price: preBowl.price,
-      options: preBowl.options,
+      options: preBowl.configOptions || {}, // Was 'options' in hardcoded file, but now likely in configOptions or just description?
+      // Pre-built bowl usually has fixed ingredients in description, not selectable options in this context.
+      // If we want to pass options, we'd need to parse them or store them. 
+      // For now, simple add is fine.
     });
+  };
 
-  const st = getStockState(preBowl.id || slugify(preBowl.name));
-  const unavailable = st === "out" || isUnavailable(preBowl);
-
-  const show = matchesQuery({ title: preBowl.name, description: preBowl.desc }, query);
+  const show = preBowl && matchesQuery({ title: preBowl.name, description: preBowl.desc }, query);
   const count = show ? 1 : 0;
 
   useEffect(() => {
     onCount?.(count);
   }, [count, onCount]);
 
-  if (!count) return null;
+  // Always render the "Builder" banner if query matches "bowl" or is empty? 
+  // Should the builder banner count as a result? 
+  // If preBowl matches, we show banner AND card.
+  // If query is "poke", preBowl matches.
+  // If query is "personalizado", maybe match banner?
+  // Current logic: if preBowl matches query, count=1.
+  
+  if (!count && !query) {
+      // If loading or no products, but no query, maybe show banner?
+      // For now, stick to original logic: if !preBowl return null.
+      if (!preBowl) return null;
+  }
+  
+  if (!count && query) return null;
 
-  const product = {
-    productId: preBowl.id,
-    id: unavailable ? undefined : preBowl.id,
-    title: preBowl.name,
-    name: preBowl.name,
-    subtitle: preBowl.desc,
-    price: preBowl.price,
-    options: preBowl.options,
-  };
+  const st = preBowl ? getStockState(preBowl.id) : null;
+  const unavailable = st === "out" || (preBowl && isUnavailable(preBowl));
 
   return (
     <div id={id} className="space-y-4">
@@ -105,14 +115,16 @@ export default function BowlsSection({ query, onCount, onQuickView, id }) {
 
       {/* Card del prearmado (usa ProductCard) */}
       <div className="mt-4">
+        {preBowl && (
         <ProductCard
-          item={{ id: preBowl.id, name: preBowl.name, desc: preBowl.desc, price: preBowl.price }}
+          item={preBowl}
           onAdd={() => {
             if (unavailable) return toast("Producto no disponible");
             addPre();
           }}
-          onQuickView={() => onQuickView?.(product)}
+          onQuickView={() => onQuickView?.(preBowl)}
         />
+        )}
       </div>
 
       {/* Modal de armado */}

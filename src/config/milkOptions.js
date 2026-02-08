@@ -6,7 +6,14 @@ export const MILK_OPTIONS = [
 ];
 
 export const isMilkEligible = (product = {}) => {
-  if (product.allowMilk) return true;
+  // Check explicit config first (handle both camelCase from app and snake_case from DB)
+  const config = product.configOptions || product.config_options || {};
+  
+  if (config.milk_policy === 'none') return false;
+  if (config.milk_policy === 'required' || config.milk_policy === 'optional') return true;
+  if (config.allowMilk === true) return true;
+
+  // Fallback to name matching if no explicit config prevents it
   const hay = `${(product.name || "").toLowerCase()} ${(product.category || product.categoryName || "").toLowerCase()}`;
   return [
     "latte",
@@ -20,6 +27,7 @@ export const isMilkEligible = (product = {}) => {
     "chai",
     "chocolate",
     "café",
+    "cafe",
     "frapp",
     "frappe",
     "malteada",

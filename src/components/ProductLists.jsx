@@ -2,6 +2,7 @@ import { useMemo, useEffect, useCallback, useState, useRef } from "react";
 import { FixedSizeList } from "react-window";
 import { useSwipeable } from "react-swipeable";
 import { useCart } from "../context/CartContext";
+import { useMenuData } from "../context/MenuDataContext";
 import { formatCOP } from "../utils/money";
 import { getStockFlags, getStockState, slugify, isUnavailable } from "../utils/stock";
  import { toast } from "./Toast";
@@ -38,6 +39,7 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
    onCategorySelect,
    featureTabs = false,
  }) {
+  const { getProductsByCategory, loading: menuLoading } = useMenuData();
   const [counts, setCounts] = useState({});
   const manualRef = useRef(false);
   const scrollerRef = useRef(null);
@@ -66,12 +68,14 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
   const categories = useMemo(() => CATEGORIES_LIST, []);
  
   const tabItems = useMemo(() => TABS_ITEMS(categories), [categories]);
+  // Get breakfast items from Supabase ONLY
+  const breakfastsFromDB = getProductsByCategory('desayunos');
   const breakfasts = useMemo(
     () =>
-      (breakfastItems || []).filter((it) =>
+      breakfastsFromDB.filter((it) =>
         matchesQuery({ title: it.name, description: it.desc }, query),
       ),
-    [query],
+    [query, breakfastsFromDB],
   );
   const breakfastExtras = useMemo(
     () =>
@@ -80,12 +84,14 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
       ),
     [query],
   );
+  // Get panes from Supabase ONLY
+  const panesFromDB = getProductsByCategory('panes');
   const breadItems = useMemo(
     () =>
-      (breadAndCakes || []).filter((it) =>
+      panesFromDB.filter((it) =>
         matchesQuery({ title: it.name, description: it.desc }, query),
       ),
-    [query],
+    [query, panesFromDB],
   );
   useEffect(() => {
     setCount("desayunos", breakfasts.length + breakfastExtras.length);
@@ -94,7 +100,8 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
     setCount("panes", breadItems.length);
   }, [breadItems.length, setCount]);
  
-  const allMains = mainDishes || [];
+  // Get main dishes from Supabase ONLY
+  const allMains = getProductsByCategory('platos');
   const mainGroups = useMemo(() => {
     const ORDER = [
       { id: "especiales", title: "Especiales" },
@@ -143,12 +150,14 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
      () => cumbreFlavors.filter((s) => matchesQuery({ title: s.label }, query)),
     [query],
    );
+   // Get desserts from Supabase ONLY
+   const dessertsFromDB = getProductsByCategory('postres');
    const dessertsBase = useMemo(
      () =>
-       (dessertBaseItems || []).filter((p) =>
+       dessertsFromDB.filter((p) =>
         matchesQuery({ title: p.name, description: p.desc }, query),
        ),
-    [query],
+    [query, dessertsFromDB],
    );
    const dessertsCount = dessertsCumbre.length + dessertsBase.length;
    useEffect(() => {
@@ -327,7 +336,7 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
        role="tabpanel"
        tabIndex={-1}
        aria-labelledby={`tab-${s.id}${inTodos ? "-todos" : ""}`}
-      className="overscroll-y-contain will-change-transform contain-content [transform:translateZ(0)]"
+      className="will-change-transform contain-content [transform:translateZ(0)]"
      >
        {inTodos && (
          <span id={`tab-${s.id}-todos`} className="sr-only">
@@ -455,13 +464,13 @@ import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
       }
     },
     trackMouse: true,
-    preventDefaultTouchmoveEvent: true,
+    preventDefaultTouchmoveEvent: false,
   });
 
   const _safeSwipeHandlers = swipeHandlers || {};
 
   return (
-     <>
+    <>
       {!featureTabs && <CategoryHeader />}
       <CategoryNav
         categories={[{ id: "todos", label: "Todos" }, ...categories]}
