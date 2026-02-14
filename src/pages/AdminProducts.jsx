@@ -1,20 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAdminProducts } from '../hooks/useAdminProducts';
 import { useCategories } from '../hooks/useCategories';
+import { useAdminRecipes } from '../hooks/useAdminRecipes';
 import { formatCOP } from '../utils/money';
 import ProductForm from '../components/admin/ProductForm';
 
 export default function AdminProducts() {
-  const { products, loading, createProduct, updateProduct, deleteProduct, toggleActive } = useAdminProducts();
+  const { products, loading: loadingProd, createProduct, updateProduct, deleteProduct, toggleActive } = useAdminProducts();
   const { categories, loading: loadingCats } = useCategories();
+  const { recipes, fetchRecipes } = useAdminRecipes();
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
+  useEffect(() => {
+    fetchRecipes();
+  }, [fetchRecipes]);
+
+  const loading = loadingProd || loadingCats;
+
   // Debug: log categories (removed)
 
   const filteredProducts = products.filter(product => {
+    // Only show main products (not addons/ingredients)
+    if (product.is_addon) return false;
+
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          product.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || product.category_id === selectedCategory;
@@ -38,13 +50,17 @@ export default function AdminProducts() {
   };
 
   const handleSave = async (data) => {
+    let result;
     if (editingProduct) {
-      await updateProduct(editingProduct.id, data);
+      result = await updateProduct(editingProduct.id, data);
     } else {
-      await createProduct(data);
+      result = await createProduct(data);
     }
-    setIsFormOpen(false);
-    setEditingProduct(null);
+    
+    if (result) {
+      setIsFormOpen(false);
+      setEditingProduct(null);
+    }
   };
 
   if (loading) {
@@ -203,6 +219,7 @@ export default function AdminProducts() {
         <ProductForm
           product={editingProduct}
           categories={categories}
+          recipes={recipes}
           onSave={handleSave}
           onCancel={() => {
             setIsFormOpen(false);

@@ -51,7 +51,14 @@ export default function App() {
   const [openGuide, setOpenGuide] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("todos");
+  const [currentHash, setCurrentHash] = useState(window.location.hash);
   const cart = useCart();
+
+  useEffect(() => {
+    const handleHashChange = () => setCurrentHash(window.location.hash);
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   function handleCategorySelect(cat) {
     const slug = typeof cat === "string" ? cat : cat.id;
@@ -132,10 +139,7 @@ export default function App() {
   }
 
   // Check for admin routes: #admin (new panel) or ?admin=1 (old stock admin)
-  const isNewAdminPanel = (() => {
-    if (typeof window === "undefined") return false;
-    return window.location.hash === '#admin';
-  })();
+  const isNewAdminPanel = currentHash === '#admin';
 
   const isOldStockAdmin = (() => {
     if (typeof window === "undefined") return false;

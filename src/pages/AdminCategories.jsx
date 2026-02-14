@@ -24,13 +24,17 @@ export default function AdminCategories() {
   };
 
   const handleSave = async (data) => {
+    let result;
     if (editingCategory) {
-      await updateCategory(editingCategory.id, data);
+      result = await updateCategory(editingCategory.id, data);
     } else {
-      await createCategory(data);
+      result = await createCategory(data);
     }
-    setIsFormOpen(false);
-    setEditingCategory(null);
+
+    if (result && result.success) {
+      setIsFormOpen(false);
+      setEditingCategory(null);
+    }
   };
 
   if (loading) {

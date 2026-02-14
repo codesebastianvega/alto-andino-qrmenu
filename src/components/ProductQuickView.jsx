@@ -74,9 +74,14 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
 
   const basePrice = Number(product?.price || 0);
   const finalPrice = basePrice + milkDelta;
-  const canAdd = !!id && Number.isFinite(basePrice) && basePrice > 0;
+  const isOutOfStock = product?.stock_status === 'out';
+  const canAdd = !!id && Number.isFinite(basePrice) && basePrice > 0 && !isOutOfStock;
 
   const handleAdd = () => {
+    if (isOutOfStock) {
+      toast("Producto agotado");
+      return;
+    }
     if (!canAdd) {
       toast("Producto no disponible");
       return;
@@ -154,7 +159,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
       style={stagger(5)}
       className="mt-4 h-10 w-full rounded-xl bg-[#2f4131] text-white transition-colors duration-150 hover:bg-[#243326] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 disabled:bg-neutral-400 disabled:text-white/80"
     >
-      {canAdd ? "Agregar" : "Producto no disponible"}
+      {isOutOfStock ? "Agotado" : canAdd ? "Agregar" : "Producto no disponible"}
     </button>
   );
 

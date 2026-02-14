@@ -2,12 +2,17 @@ import { useState } from 'react';
 import AdminProducts from '../../pages/AdminProducts';
 import AdminCategories from '../../pages/AdminCategories';
 import AdminModifiers from '../../pages/AdminModifiers';
+import AdminExperiences from '../../pages/AdminExperiences';
+import AdminRecipes from '../../pages/AdminRecipes';
+import AdminBranding from '../../pages/AdminBranding';
 
 const MENU_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊', disabled: true },
   { id: 'products', label: 'Productos', icon: '🍔' },
   { id: 'categories', label: 'Categorías', icon: '📂' },
+  { id: 'experiences', label: 'Experiencias', icon: '✨' },
   { id: 'modifiers', label: 'Insumos', icon: '🥕' },
+  { id: 'recipes', label: 'Recetas', icon: '📝' },
   { id: 'branding', label: 'Branding', icon: '🎨' },
   { id: 'orders', label: 'Pedidos', icon: '📋', disabled: true },
   { id: 'settings', label: 'Configuración', icon: '⚙️', disabled: true },
@@ -105,52 +110,10 @@ export default function AdminLayout() {
         <div className="flex-1">
           {currentPage === 'products' && <AdminProducts />}
           {currentPage === 'categories' && <AdminCategories />}
+          {currentPage === 'experiences' && <AdminExperiences />}
+          {currentPage === 'recipes' && <AdminRecipes />}
           {currentPage === 'modifiers' && <AdminModifiers />}
-          {currentPage === 'branding' && (
-            <div className="p-10">
-              <div className="max-w-2xl bg-white rounded-3xl p-10 shadow-sm border border-gray-100">
-                <h3 className="text-2xl font-black text-gray-900 mb-2">Personalización de Marca</h3>
-                <p className="text-gray-500 mb-8 font-medium">Define la identidad visual de tu menú digital.</p>
-                
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Nombre del Negocio</label>
-                    <input type="text" className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl font-bold text-gray-900 focus:ring-2 focus:ring-[#2f4131]" defaultValue="Alto Andino" />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Color Primario</label>
-                      <div className="flex gap-2">
-                        <input type="color" className="w-12 h-12 rounded-xl overflow-hidden border-none cursor-pointer" defaultValue="#2f4131" />
-                        <input type="text" className="flex-1 px-5 py-3 bg-gray-50 border-none rounded-2xl font-bold text-gray-900" defaultValue="#2F4131" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Color Secundario</label>
-                      <div className="flex gap-2">
-                        <input type="color" className="w-12 h-12 rounded-xl overflow-hidden border-none cursor-pointer" defaultValue="#fa6e39" />
-                        <input type="text" className="flex-1 px-5 py-3 bg-gray-50 border-none rounded-2xl font-bold text-gray-900" defaultValue="#FA6E39" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Logotipo</label>
-                    <div className="border-2 border-dashed border-gray-200 rounded-3xl p-10 text-center">
-                      <div className="text-3xl mb-2">🖼️</div>
-                      <p className="text-sm font-bold text-gray-400 mb-4">Sube tu logo (PNG o SVG recomendado)</p>
-                      <button className="px-6 py-2.5 bg-gray-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-black transition-all">Seleccionar Archivo</button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-10 pt-10 border-t border-gray-100 flex justify-end">
-                   <button className="px-10 py-4 bg-[#2f4131] text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl shadow-green-900/40 hover:scale-105 active:scale-95 transition-all">Guardar Cambios</button>
-                </div>
-              </div>
-            </div>
-          )}
+          {currentPage === 'branding' && <AdminBranding />}
           {currentPage === 'dashboard' && (
             <div className="p-20 text-center opacity-20">
                <h3 className="text-4xl font-black uppercase tracking-widest">Dashboard</h3>

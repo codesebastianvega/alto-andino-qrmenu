@@ -114,6 +114,14 @@ export default function Footer() {
             <IconStar className="h-3.5 w-3.5" />
             <span>Reseñas</span>
           </a>
+
+          <a
+            href="#admin"
+            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-transparent px-3 text-[12px] opacity-20 hover:opacity-100 transition-all focus-visible:outline-none"
+            style={{ color: TEXT, border: `1px solid ${BORDER}` }}
+          >
+            <span>⚙️ Admin</span>
+          </a>
         </div>
 
         <div className="mt-3 text-center text-[12px]" style={{ color: TEXT_SUB }}>

@@ -7,6 +7,7 @@ export const MenuDataProvider = ({ children }) => {
   const [categories, setCategories] = useState([]);
   const [productsByCategory, setProductsByCategory] = useState({});
   const [modifiers, setModifiers] = useState({});
+  const [experiences, setExperiences] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,23 +22,39 @@ export const MenuDataProvider = ({ children }) => {
 
         if (catError) throw catError;
 
-        // Fetch modifiers
+        // Fetch modifiers from ingredients table with their category names
         const { data: mods, error: modError } = await supabase
-          .from('modifiers')
-          .select('*')
-          .eq('is_active', true);
+          .from('ingredients')
+          .select('*, ingredient_categories(name)')
+          .eq('is_active', true)
+          .eq('is_modifier', true);
         
         if (modError) console.warn('Error fetching modifiers:', modError);
 
-        // Group modifiers by group
+        // Group modifiers by category
         const modGroups = {};
         if (mods) {
           mods.forEach(m => {
-            if (!modGroups[m.group]) modGroups[m.group] = [];
-            modGroups[m.group].push(m);
+            const groupName = m.ingredient_categories?.name || m.category || 'adiciones';
+            if (!modGroups[groupName]) modGroups[groupName] = [];
+            modGroups[groupName].push({
+              ...m,
+              price: m.selling_price || 0,
+              group: groupName
+            });
           });
         }
         setModifiers(modGroups);
+
+        // Fetch experiences
+        const { data: exp, error: expError } = await supabase
+          .from('experiences')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+        
+        if (expError) console.warn('Error fetching experiences (table might not exist yet):', expError);
+        setExperiences(exp || []);
 
         // Fetch all products with their category info
         const { data: products, error: prodError } = await supabase
@@ -53,6 +70,9 @@ export const MenuDataProvider = ({ children }) => {
         // Group products by category slug
         const grouped = {};
         products.forEach(product => {
+          // Filter out items that are strictly addons from the main menu lists
+          if (product.is_addon === true) return;
+
           // With the join above, product.categories should be { slug: '...' }
           const cat = product.categories; 
           const catSlug = cat?.slug || 'otros';
@@ -66,7 +86,7 @@ export const MenuDataProvider = ({ children }) => {
             price: product.price,
             desc: product.description || '',
             tags: product.tags || [],
-            stock: product.stock_status || 'in',
+            stock_status: product.stock_status || 'in', // Changed from 'stock' to 'stock_status'
             image: product.image_url,
             variants: product.variants || [],
             modifierGroups: product.modifier_groups || [],
@@ -82,7 +102,8 @@ export const MenuDataProvider = ({ children }) => {
         console.log('✅ Datos cargados:', {
           cats: cats.length,
           mods: mods?.length || 0,
-          products: products.length
+          products: products.length,
+          experiences: exp?.length || 0
         });
       } catch (err) {
         console.error('Error fetching menu data:', err);
@@ -115,6 +136,7 @@ export const MenuDataProvider = ({ children }) => {
         getAllProducts,
         getModifiers,
         modifiers,
+        experiences,
         loading 
       }}
     >
