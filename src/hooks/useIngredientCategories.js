@@ -58,6 +58,25 @@ export function useIngredientCategories() {
     }
   };
 
+  const updateCategory = async (id, name) => {
+    try {
+      const { data, error } = await supabase
+        .from('ingredient_categories')
+        .update({ name })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      toast('Categoría actualizada');
+      fetchCategories();
+      return data;
+    } catch (err) {
+      toast('Error al actualizar: ' + err.message);
+      return null;
+    }
+  };
+
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
@@ -67,6 +86,7 @@ export function useIngredientCategories() {
     loading,
     fetchCategories,
     createCategory,
+    updateCategory,
     deleteCategory
   };
 }

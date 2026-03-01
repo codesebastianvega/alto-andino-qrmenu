@@ -1,12 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 html,
 body,
 #root {
   overflow-x: hidden;
   max-width: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 html,
 body {
   margin: 0;
   padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* Admin typography scale */
+.admin-display  { font-size: 1.5rem;  font-weight: 600; letter-spacing: -0.025em; }
+.admin-title    { font-size: 1.125rem; font-weight: 600; }
+.admin-body     { font-size: 0.875rem; font-weight: 500; color: #374151; }
+.admin-label    { font-size: 0.6875rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: #9CA3AF; }
+.admin-mono     { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 0.75rem; }
+

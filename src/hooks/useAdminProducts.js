@@ -161,6 +161,23 @@ export const useAdminProducts = () => {
     }
   };
 
+  const toggleStock = async (id, currentStatus) => {
+    const next = currentStatus === 'in' ? 'out' : 'in';
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ stock_status: next })
+        .eq('id', id);
+      if (error) throw error;
+      await fetchProducts();
+      return true;
+    } catch (err) {
+      console.error('Error toggling stock status:', err);
+      toast.error('Error al cambiar disponibilidad');
+      return false;
+    }
+  };
+
   return {
     products,
     loading,
@@ -169,6 +186,7 @@ export const useAdminProducts = () => {
     updateProduct,
     deleteProduct,
     toggleActive,
+    toggleStock,
     refreshProducts: fetchProducts
   };
 };
