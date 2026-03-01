@@ -1,510 +1,322 @@
 import { useState, useEffect } from 'react';
 import { useMenuData } from '../../context/MenuDataContext';
+import { Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButton } from './ui';
 
-export default function ProductForm({ product, categories, onSave, onCancel }) {
-  const { modifiers: modifierGroupsData } = useMenuData(); // modifiers is { groupName: [items] }
+export default function ProductForm({ product, categories, recipes = [], onSave, onCancel }) {
+  const { modifiers: modifierGroupsData } = useMenuData();
   const availableGroups = Object.keys(modifierGroupsData || {});
 
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: '',
-    cost: '', 
-    category_id: '',
-    stock_status: 'in',
-    image_url: '',
-    tags: [],
-    is_active: true,
-    variants: [],
-    modifier_groups: [],
-    config_options: {},
+    name: '', description: '', price: '', cost: '',
+    category_id: '', stock_status: 'in', image_url: '',
+    tags: [], is_active: true, is_addon: false,
+    variants: [], modifier_groups: [], config_options: {}, recipe_id: null,
   });
-
-  const [tagInput, setTagInput] = useState('');
+  const [targetMargin, setTargetMargin] = useState(35);
 
   useEffect(() => {
     if (product) {
       setFormData({
-        name: product.name || '',
-        description: product.description || '',
-        price: product.price || '',
-        cost: product.cost || '', 
-        category_id: product.category_id || '',
-        stock_status: product.stock_status || 'in',
-        image_url: product.image_url || '',
-        tags: product.tags || [],
-        is_active: product.is_active ?? true,
-        variants: product.variants || [],
-        modifier_groups: product.modifier_groups || [],
-        config_options: product.config_options || {},
+        name: product.name || '', description: product.description || '',
+        price: product.price || '', cost: product.cost || '',
+        category_id: product.category_id || '', stock_status: product.stock_status || 'in',
+        image_url: product.image_url || '', tags: product.tags || [],
+        is_active: product.is_active ?? true, is_addon: product.is_addon || false,
+        variants: product.variants || [], modifier_groups: product.modifier_groups || [],
+        config_options: product.config_options || {}, recipe_id: product.recipe_id || null,
       });
     }
   }, [product]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  // Tags Management
-  const handleAddTag = () => {
-    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...prev.tags, tagInput.trim()]
-      }));
-      setTagInput('');
-    }
-  };
-
-  const handleRemoveTag = (tag) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(t => t !== tag)
-    }));
-  };
-
-  // Modifier Groups Management
   const toggleModifierGroup = (group) => {
     setFormData(prev => {
       const current = prev.modifier_groups || [];
-      if (current.includes(group)) {
-        return { ...prev, modifier_groups: current.filter(g => g !== group) };
-      }
-      return { ...prev, modifier_groups: [...current, group] };
+      return { ...prev, modifier_groups: current.includes(group) ? current.filter(g => g !== group) : [...current, group] };
     });
-  };
-
-  // Variants Management
-  const handleAddVariant = () => {
-    setFormData(prev => ({
-      ...prev,
-      variants: [
-        ...prev.variants,
-        { key: Date.now().toString(), name: '', price: 0, stock_status: 'in' }
-      ]
-    }));
-  };
-
-  const updateVariant = (index, field, value) => {
-    const newVariants = [...formData.variants];
-    newVariants[index] = { ...newVariants[index], [field]: value };
-    setFormData(prev => ({ ...prev, variants: newVariants }));
-  };
-
-  const removeVariant = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      variants: prev.variants.filter((_, i) => i !== index)
-    }));
-  };
-
-  // Config Options Logic
-  const updateConfig = (key, value) => {
-      setFormData(prev => {
-          const currentConfig = prev.config_options || {};
-          const newConfig = { ...currentConfig, [key]: value };
-          if (value === '' || value === null || value === undefined) {
-              delete newConfig[key];
-          }
-          return { ...prev, config_options: newConfig };
-      });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
     if (!formData.name || !formData.price || !formData.category_id) {
-      alert('Por favor completa todos los campos requeridos');
+      alert('Por favor completa nombre, precio y categoría.');
       return;
     }
-
-    onSave({
-      ...formData,
-      price: parseFloat(formData.price),
-      cost: parseFloat(formData.cost) || 0,
-    });
+    onSave({ ...formData, price: parseFloat(formData.price), cost: parseFloat(formData.cost) || 0 });
   };
 
-  const currentConfig = formData.config_options || {};
-  
-  // Financial Metrics
-  const priceNum = parseFloat(formData.price) || 0;
-  const costNum = parseFloat(formData.cost) || 0;
-  const profit = priceNum - costNum;
-  const margin = priceNum > 0 ? (profit / priceNum) * 100 : 0;
+  const priceNum  = parseFloat(formData.price) || 0;
+  const costNum   = parseFloat(formData.cost)  || 0;
+  const profit    = priceNum - costNum;
+  const margin    = priceNum > 0 ? (profit / priceNum) * 100 : 0;
+  // suggested = cost / (1 - targetMargin/100)
+  const suggested = costNum > 0 ? Math.round(costNum / (1 - (targetMargin / 100))) : 0;
+  const marginDiff = margin - targetMargin;
 
-  // Conditional Sections
-  const selectedCategory = categories.find(c => c.id === formData.category_id);
-  const catSlug = (selectedCategory?.slug || '').toLowerCase();
-  const isDrink = catSlug.includes('cafe') || catSlug.includes('smoothie') || catSlug.includes('bebida') || catSlug.includes('jugo');
+  const linkedRecipe = recipes.find(r => r.id === formData.recipe_id);
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
-      <div className="bg-[#FAF7F2] rounded-3xl max-w-6xl w-full max-h-[92vh] overflow-hidden shadow-2xl flex flex-col border border-white/20">
-        
-        {/* Sticky Header */}
-        <div className="bg-[#2f4131] px-8 py-5 flex justify-between items-center text-white">
+    <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-[100] p-4 overflow-y-auto backdrop-blur-sm">
+      <div className="bg-white rounded-2xl w-full max-w-5xl my-8 overflow-hidden shadow-2xl">
+
+        {/* ── Header */}
+        <div className="flex items-start justify-between px-8 py-6 border-b border-gray-100">
           <div>
-            <h2 className="text-xl font-bold tracking-tight">
-              {product ? 'Refinar Producto' : 'Crear Nuevo Producto'}
+            <h2 className="text-lg font-semibold text-gray-900 leading-tight">
+              {product ? 'Editar producto' : 'Nuevo producto'}
             </h2>
-            <p className="text-xs text-white/70 uppercase tracking-widest mt-0.5">Gestión de Inventario y Experiencia</p>
+            <p className="text-[13px] text-gray-400 font-medium mt-0.5">
+              {product ? `Editando: ${product.name}` : 'Completa los datos del nuevo producto.'}
+            </p>
           </div>
-          <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+          <button onClick={onCancel} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all mt-0.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
 
-        {/* Scrollable Form Body */}
-        <form onSubmit={handleSubmit} className="p-8 overflow-y-auto grid grid-cols-1 lg:grid-cols-3 gap-10">
-          
-          {/* LEFT: MAIN CONTENT */}
-          <div className="lg:col-span-2 space-y-10">
-            
-            {/* 1. Basic Information */}
-            <section className="space-y-5">
-              <div className="flex items-center gap-3">
-                 <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-700 font-bold text-sm">01</div>
-                 <h3 className="text-sm font-black uppercase tracking-widest text-[#2f4131]">Información Esencial</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <form onSubmit={handleSubmit} className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+          {/* ── Left: 2 columns */}
+          <div className="lg:col-span-2 space-y-6">
+
+            {/* Basic Info */}
+            <section className="border border-gray-100 rounded-2xl p-6 space-y-4">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Información general</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Nombre Comercial</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
-                    placeholder="Ej. Latte de Vainilla"
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#2f4131] transition-all text-gray-800 font-medium"
-                  />
+                  <FormField label="Nombre público">
+                    <TextInput required name="name" value={formData.name} onChange={handleChange} placeholder="Ej. Bowl de Acai Amazónico" />
+                  </FormField>
                 </div>
-                
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Categoría</label>
-                  <select
-                    name="category_id"
-                    value={formData.category_id}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#2f4131] outline-none font-medium"
-                  >
-                    <option value="">Seleccionar...</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
+                <FormField label="Categoría">
+                  <select required name="category_id" value={formData.category_id} onChange={handleChange}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none">
+                    <option value="">Seleccionar…</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
+                </FormField>
+                <FormField label="Disponibilidad">
+                  <select name="stock_status" value={formData.stock_status} onChange={handleChange}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none">
+                    <option value="in">Disponible</option>
+                    <option value="out">Agotado</option>
+                  </select>
+                </FormField>
+                <div className="md:col-span-2">
+                  <FormField label="Descripción">
+                    <textarea name="description" value={formData.description} onChange={handleChange} rows={3}
+                      placeholder="Describe los sabores, texturas y por qué deberían pedirlo…"
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-[#2f4131] outline-none resize-none" />
+                  </FormField>
                 </div>
-
-                <div>
-                   <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Disponibilidad</label>
-                   <select
-                     name="stock_status"
-                     value={formData.stock_status}
-                     onChange={handleChange}
-                     className={`w-full px-4 py-3 border-none rounded-xl focus:ring-2 outline-none font-medium transition-colors ${
-                         formData.stock_status === 'out' ? 'bg-red-50 text-red-700' : 
-                         formData.stock_status === 'low' ? 'bg-amber-50 text-amber-700' : 
-                         'bg-gray-50'
-                     }`}
-                   >
-                     <option value="in">Disponible ahora</option>
-                     <option value="low">Pocas unidades</option>
-                     <option value="out">Agotado temporalmente</option>
-                   </select>
-                </div>
-
-                {/* Costs & Margins Dashboard */}
-                <div className="md:col-span-2 bg-neutral-900 rounded-2xl p-6 text-white grid grid-cols-1 md:grid-cols-3 gap-6 shadow-xl">
-                    <div className="space-y-1">
-                      <label className="block text-[9px] font-bold text-gray-500 uppercase tracking-widest">Precio Venta</label>
-                      <div className="flex items-center gap-1">
-                        <span className="text-gray-500 font-bold">$</span>
-                        <input
-                          type="number"
-                          name="price"
-                          value={formData.price}
-                          onChange={handleChange}
-                          required
-                          className="bg-transparent border-none p-0 text-xl font-black w-full focus:ring-0"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1 border-l border-white/10 pl-6">
-                      <label className="block text-[9px] font-bold text-gray-500 uppercase tracking-widest">Costo Base (Insumos)</label>
-                      <div className="flex items-center gap-1">
-                        <span className="text-gray-500 font-bold">$</span>
-                        <input
-                          type="number"
-                          name="cost"
-                          value={formData.cost}
-                          onChange={handleChange}
-                          className="bg-transparent border-none p-0 text-xl font-black w-full focus:ring-0 text-blue-400"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="pl-6 border-l border-white/10 flex flex-col justify-center">
-                        <div className="flex items-center justify-between">
-                            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Rentabilidad</span>
-                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                                margin > 50 ? 'bg-green-500/20 text-green-400' :
-                                margin > 30 ? 'bg-amber-500/20 text-amber-400' :
-                                'bg-red-500/20 text-red-400'
-                            }`}>
-                                {margin > 40 ? 'SALUDABLE' : margin > 20 ? 'OK' : 'BAJA'}
-                            </span>
+                <div className="md:col-span-2">
+                  <FormField label="Visibilidad en menú">
+                    <button type="button" onClick={() => setFormData(prev => ({ ...prev, is_active: !prev.is_active }))}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${formData.is_active ? 'bg-green-50 border-green-200 text-green-800' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-5 rounded-full relative transition-all ${formData.is_active ? 'bg-green-500' : 'bg-gray-300'}`}>
+                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${formData.is_active ? 'left-4' : 'left-0.5'}`} />
                         </div>
-                        <span className="text-2xl font-black">{margin.toFixed(0)}% <span className="text-xs text-gray-400 font-normal">Margen</span></span>
-                    </div>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Descripción para el Cliente</label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    rows={2}
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#2f4131] outline-none resize-none font-medium"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">URL Imagen</label>
-                  <input
-                    type="url"
-                    name="image_url"
-                    value={formData.image_url}
-                    onChange={handleChange}
-                    placeholder="/img/products/..."
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-[#2f4131] outline-none font-medium"
-                  />
+                        <span>{formData.is_active ? 'Activo — visible en el menú' : 'Inactivo — oculto del menú'}</span>
+                      </div>
+                    </button>
+                  </FormField>
                 </div>
               </div>
             </section>
 
-            {/* 2. Variants / Sizes */}
-            <section className="space-y-5">
-               <div className="flex justify-between items-center">
-                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">02</div>
-                    <h3 className="text-sm font-black uppercase tracking-widest text-[#2f4131]">Variantes y Tamaños</h3>
-                 </div>
-                 <button type="button" onClick={handleAddVariant} className="text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 shadow-md">
-                    + Añadir Variación
-                 </button>
-               </div>
-
-               {formData.variants.length === 0 ? (
-                   <div className="bg-white/40 border-2 border-dashed border-gray-200 rounded-2xl py-8 text-center text-gray-400 text-sm italic">
-                       Sin variaciones (Producto único)
-                   </div>
-               ) : (
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     {formData.variants.map((variant, index) => (
-                       <div key={variant.key || index} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 group">
-                         <div className="flex-1 space-y-3">
-                           <div>
-                              <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Etiqueta (Ej: Grande)</label>
-                              <input
-                                type="text"
-                                value={variant.name}
-                                onChange={(e) => updateVariant(index, 'name', e.target.value)}
-                                className="w-full bg-gray-50 border-none rounded-lg py-2 px-3 text-sm font-bold"
-                              />
-                           </div>
-                           <div className="flex items-center gap-2">
-                              <span className="text-xs font-black text-gray-400">$</span>
-                              <input
-                                type="number"
-                                value={variant.price}
-                                onChange={(e) => updateVariant(index, 'price', parseFloat(e.target.value))}
-                                className="w-full bg-gray-50 border-none rounded-lg py-2 px-3 text-sm font-black text-[#2f4131]"
-                              />
-                           </div>
-                         </div>
-                         <button 
-                            type="button" 
-                            onClick={() => removeVariant(index)} 
-                            className="w-10 h-10 flex items-center justify-center bg-red-50 text-red-400 rounded-full hover:bg-red-500 hover:text-white transition-all transform hover:rotate-90"
-                         >✕</button>
-                       </div>
-                     ))}
-                   </div>
-               )}
-            </section>
-
-            {/* 3. Modifier Groups */}
-            <section className="space-y-5">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-sm">03</div>
-                    <h3 className="text-sm font-black uppercase tracking-widest text-[#2f4131]">Opciones de Personalización</h3>
-                </div>
-                
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 grid grid-cols-2 md:grid-cols-3 gap-3">
-                   {availableGroups.map(group => {
-                       const isSelected = (formData.modifier_groups || []).includes(group);
-                       return (
-                         <label key={group} className={`relative p-3 rounded-xl cursor-pointer border-2 transition-all flex flex-col justify-center items-center text-center gap-2 ${
-                             isSelected ? 'bg-purple-900 border-purple-900 text-white shadow-lg scale-[1.02]' : 'bg-gray-50 border-transparent text-gray-500 hover:border-purple-200'
-                         }`}>
-                             <input
-                                 type="checkbox"
-                                 checked={isSelected}
-                                 onChange={() => toggleModifierGroup(group)}
-                                 className="sr-only"
-                             />
-                             <span className="text-[10px] font-black uppercase tracking-tighter leading-none break-words w-full">
-                                 {group.replace(/-/g, ' ')}
-                             </span>
-                             {isSelected && <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-white animate-pulse"></div>}
-                         </label>
-                       );
-                   })}
-                </div>
-            </section>
-
-          </div>
-
-          {/* RIGHT: ADVANCED CONFIG & ACTIONS */}
-          <div className="space-y-8">
-            
-            {/* Conditional Drinking Config */}
-            {isDrink && (
-                <div className="bg-blue-900 text-white p-6 rounded-3xl shadow-xl shadow-blue-900/10 space-y-6">
-                    <div className="flex items-center gap-2">
-                        <span className="text-xl">☕</span>
-                        <h3 className="text-xs font-black uppercase tracking-widest">Lógica de Bebidas</h3>
-                    </div>
-                    
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between p-3 bg-white/10 rounded-2xl">
-                             <div>
-                                 <span className="block text-[10px] font-bold uppercase tracking-wider">Habilitar Leche</span>
-                                 <span className="text-[9px] text-white/50 block">Muestra tipos de leches</span>
-                             </div>
-                             <div 
-                                onClick={() => updateConfig('allowMilk', !currentConfig.allowMilk)}
-                                className={`relative w-10 h-5 rounded-full cursor-pointer transition-colors ${currentConfig.allowMilk ? 'bg-green-400' : 'bg-white/20'}`}
-                             >
-                                <div className={`absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full shadow transition-transform ${currentConfig.allowMilk ? 'translate-x-5' : 'translate-x-0'}`} />
-                             </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="block text-[10px] font-bold uppercase tracking-wider opacity-60 ml-1">Requerimiento</label>
-                            <select
-                                value={currentConfig.milk_policy || 'optional'}
-                                onChange={(e) => updateConfig('milk_policy', e.target.value)}
-                                className="w-full bg-white/10 border-none rounded-xl text-xs font-bold py-3 px-4 focus:ring-0 focus:bg-white/20 transition-all text-white"
-                            >
-                                <option className="bg-blue-900" value="optional">Opcional</option>
-                                <option className="bg-blue-900" value="required">Obligatorio</option>
-                                <option className="bg-blue-900" value="none">Desactivado</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Tag Management */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col min-h-[220px]">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                    🏷️ Etiquetas de Búsqueda
-                </h3>
-                <div className="group relative">
-                    <span className="cursor-help text-gray-300 hover:text-gray-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </span>
-                    {/* Tooltip */}
-                    <div className="absolute right-0 bottom-full mb-2 w-48 p-3 bg-gray-900 text-white text-[9px] rounded-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-20 font-medium shadow-2xl">
-                        <p className="font-bold border-b border-white/10 pb-1 mb-1 text-blue-400 uppercase">Tags Reutilizables</p>
-                        No necesitas crearlos cada vez. Usa palabras clave para filtrar en el buscador y organizar categorías dinámicas.
-                    </div>
-                </div>
+            {/* Recipe Linking */}
+            <section className="border border-gray-100 rounded-2xl p-6">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">Receta vinculada</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+                <button type="button" onClick={() => setFormData(prev => ({ ...prev, recipe_id: null, cost: 0 }))}
+                  className={`p-4 rounded-xl border-2 text-left transition-all ${!formData.recipe_id ? 'border-[#2f4131] bg-green-50' : 'border-gray-100 hover:border-gray-200'}`}>
+                  <span className={`block text-sm font-semibold ${!formData.recipe_id ? 'text-[#2f4131]' : 'text-gray-400'}`}>Sin receta</span>
+                  <span className="text-[11px] text-gray-400">Costo manual</span>
+                </button>
+                {recipes.map(recipe => (
+                  <button key={recipe.id} type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, recipe_id: recipe.id, cost: recipe.total_cost || 0 }))}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${formData.recipe_id === recipe.id ? 'border-blue-400 bg-blue-50' : 'border-gray-100 hover:border-blue-100'}`}>
+                    <span className={`block text-sm font-semibold truncate ${formData.recipe_id === recipe.id ? 'text-blue-900' : 'text-gray-900'}`}>{recipe.name}</span>
+                    <span className="text-[11px] text-gray-400">${recipe.total_cost?.toLocaleString()}</span>
+                    {formData.recipe_id === recipe.id && <span className="text-[10px] font-semibold text-blue-500 block mt-0.5">✓ Vinculada</span>}
+                  </button>
+                ))}
               </div>
 
-               <div className="flex gap-2 mb-4">
-                  <input
-                    type="text"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                    className="flex-1 bg-gray-50 border-none rounded-xl py-3 px-3 text-xs font-medium outline-none"
-                    placeholder="Ej: nuevo"
-                  />
-                  <button type="button" onClick={handleAddTag} className="w-10 h-10 bg-gray-900 text-white rounded-xl flex items-center justify-center font-bold shadow-lg hover:scale-105 transition-transform">+</button>
-               </div>
-               
-               <div className="flex flex-wrap gap-2 flex-1 items-start content-start">
-                 {formData.tags.map(tag => (
-                   <span key={tag} className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#2f4131]/10 text-[#2f4131] rounded-lg text-[9px] font-black uppercase tracking-tighter border border-[#2f4131]/10">
-                     {tag}
-                     <button type="button" onClick={() => handleRemoveTag(tag)} className="text-[#2f4131]/40 hover:text-red-500">✕</button>
-                   </span>
-                 ))}
-                 {formData.tags.length === 0 && <span className="text-[10px] text-gray-300 italic">Sin etiquetas asignadas...</span>}
-               </div>
-
-               {/* Quick Tags Suggestions */}
-               <div className="mt-6 pt-6 border-t border-gray-100">
-                  <span className="text-[8px] font-black text-gray-400 uppercase mb-3 block tracking-widest">Sugerencias Rápidas</span>
-                  <div className="flex flex-wrap gap-1.5">
-                      {['tradicional', 'especial', 'artesanal', 'veggie', 'picante', 'cafe'].map(t => (
-                        <button 
-                            key={t}
-                            type="button"
-                            onClick={() => {
-                                if (!formData.tags.includes(t)) setFormData(p => ({ ...p, tags: [...p.tags, t] }));
-                            }}
-                            className="px-2 py-1 bg-white border border-gray-100 text-[8px] font-bold text-gray-500 rounded-md hover:bg-gray-800 hover:text-white transition-all uppercase tracking-tight shadow-sm"
-                        >
-                            + {t}
-                        </button>
-                      ))}
+              {/* Cost + suggested price bar */}
+              <div className="flex items-stretch gap-0 p-0 bg-gray-900 rounded-xl overflow-hidden">
+                {/* Costo */}
+                <div className="flex-[2] p-4">
+                  <p className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Costo de producción</p>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-gray-500">$</span>
+                    <input type="number" name="cost" value={formData.cost} onChange={handleChange}
+                      readOnly={!!formData.recipe_id}
+                      className={`bg-transparent border-none p-0 text-2xl font-semibold w-28 focus:ring-0 outline-none ${formData.recipe_id ? 'text-blue-400 cursor-not-allowed' : 'text-white'}`} />
                   </div>
-               </div>
-            </div>
+                  {formData.recipe_id && <p className="text-[10px] text-blue-400/60 font-medium mt-0.5">Sincronizado con receta</p>}
+                </div>
 
-            {/* Active Switch */}
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between">
-                 <div className="space-y-0.5">
-                    <span className="block text-[10px] font-black text-gray-900 uppercase">Visible en tienda</span>
-                    <span className="text-[9px] text-gray-400 font-bold uppercase truncate">Canal Digital Activo</span>
-                 </div>
-                 <div 
-                    onClick={() => setFormData(p => ({ ...p, is_active: !p.is_active }))}
-                    className={`relative w-12 h-6 rounded-full cursor-pointer transition-all duration-300 shadow-inner ${formData.is_active ? 'bg-green-500' : 'bg-gray-200'}`}
-                 >
-                    <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-lg transform transition-transform duration-300 ${formData.is_active ? 'translate-x-6' : 'translate-x-0'}`} />
-                 </div>
-            </div>
+                {/* Divider */}
+                <div className="w-px bg-white/5" />
 
-            {/* Sticky Actions */}
-            <div className="pt-2 flex flex-col gap-3">
-                <button type="submit" className="w-full py-4 bg-[#2f4131] text-white rounded-2xl font-black shadow-2xl shadow-green-900/30 hover:bg-[#243326] transform active:scale-[0.97] transition-all text-xs uppercase tracking-[0.2em]">
-                    Sincronizar Cambios
-                </button>
-                <button type="button" onClick={onCancel} className="w-full py-3 bg-white border border-gray-200 text-gray-400 rounded-2xl font-black hover:text-gray-900 transition-all text-[10px] uppercase tracking-widest">
-                    Descartar Edición
-                </button>
-            </div>
+                {/* Precio sugerido: editable margin % + value + button */}
+                <div className="flex-[3] p-4 flex flex-col justify-between">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Precio sugerido</span>
+                    <div className="flex items-center gap-1.5 bg-white/10 border border-white/10 rounded-lg px-3 py-1">
+                      <input
+                        type="number"
+                        min="1" max="99"
+                        value={targetMargin}
+                        onChange={e => setTargetMargin(Math.min(99, Math.max(1, Number(e.target.value))))}
+                        className="w-10 bg-transparent border-none p-0 text-[13px] font-semibold text-white text-center focus:ring-0 outline-none"
+                      />
+                      <span className="text-[13px] text-gray-400 font-semibold">%</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xl font-semibold text-gray-300 tabular-nums">
+                      {suggested > 0 ? `$${suggested.toLocaleString()}` : '—'}
+                    </p>
+                    {suggested > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, price: suggested }))}
+                        className="px-2.5 py-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-[11px] font-semibold text-white/70 hover:text-white transition-all whitespace-nowrap"
+                      >
+                        ↑ Usar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
 
+            {/* Modifier Groups */}
+            {availableGroups.length > 0 && (
+              <section className="border border-gray-100 rounded-2xl p-6">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">Personalizaciones / Extras</p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {availableGroups.map(group => {
+                    const isSelected = (formData.modifier_groups || []).includes(group);
+                    return (
+                      <button key={group} type="button" onClick={() => toggleModifierGroup(group)}
+                        className={`p-3 rounded-xl border-2 text-left flex justify-between items-center transition-all ${isSelected ? 'bg-violet-50 border-violet-200 text-violet-900' : 'bg-gray-50 border-transparent text-gray-400 hover:border-gray-200'}`}>
+                        <span className="text-[12px] font-semibold truncate pr-2">{group.replace(/-/g, ' ')}</span>
+                        <span className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] ${isSelected ? 'bg-violet-600 border-violet-600 text-white' : 'border-gray-200'}`}>
+                          {isSelected ? '✓' : ''}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
           </div>
 
+          {/* ── Right sidebar */}
+          <div className="space-y-5">
+            {/* Price & margin card */}
+            <div className="bg-[#2f4131] rounded-2xl p-6 text-white">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40 mb-4">Precio al público (COP)</p>
+              <div className="flex items-baseline gap-1 mb-6 min-w-0">
+                <span className="text-white/30 text-2xl font-semibold flex-shrink-0">$</span>
+                <input type="number" name="price" value={formData.price} onChange={handleChange} required
+                  className="bg-transparent border-none p-0 text-4xl font-semibold w-full min-w-0 focus:ring-0 placeholder:text-white/10 outline-none"
+                  placeholder="0" />
+              </div>
+              <div className="border-t border-white/10 pt-4">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[11px] text-white/40 font-medium uppercase tracking-wider">Margen real</span>
+                  <span className={`text-2xl font-semibold ${
+                    margin >= targetMargin ? 'text-green-400' : margin > 0 ? 'text-amber-400' : 'text-white/20'
+                  }`}>{margin.toFixed(0)}%</span>
+                </div>
+                {/* Target marker */}
+                <div className="relative w-full bg-white/10 h-1.5 rounded-full overflow-visible mb-1">
+                  <div className={`h-full rounded-full transition-all duration-300 ${
+                    margin >= targetMargin ? 'bg-green-400' : 'bg-amber-400'
+                  }`} style={{ width: `${Math.min(100, Math.max(0, margin))}%` }} />
+                  {/* Target line */}
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 w-0.5 h-3.5 bg-white/30 rounded-full"
+                    style={{ left: `${Math.min(100, targetMargin)}%` }}
+                    title={`Meta: ${targetMargin}%`}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] text-white/25 font-medium">
+                  <span>0%</span>
+                  <span>Meta {targetMargin}%</span>
+                </div>
+                <p className="text-[11px] text-white/30 font-medium mt-2 text-center leading-relaxed">
+                  Ganancia: ${profit.toLocaleString(undefined, { maximumFractionDigits: 0 })} por unidad
+                  {marginDiff !== 0 && priceNum > 0 && (
+                    <span className={`ml-2 font-semibold ${
+                      marginDiff >= 0 ? 'text-green-400/60' : 'text-red-400/60'
+                    }`}>
+                      ({marginDiff > 0 ? '+' : ''}{marginDiff.toFixed(0)}% vs meta)
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* Recipe status card */}
+            <div className="border border-gray-100 rounded-2xl p-5">
+              <div className="flex justify-between items-center mb-3">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Ficha técnica</p>
+                {formData.recipe_id && (
+                  <button type="button" onClick={() => setFormData(prev => ({ ...prev, recipe_id: null, cost: 0 }))}
+                    className="text-[11px] font-semibold text-red-400 hover:text-red-600 transition-colors">
+                    Desvincular
+                  </button>
+                )}
+              </div>
+              {linkedRecipe ? (
+                <div className="flex justify-between items-center bg-blue-50 rounded-xl p-4">
+                  <div>
+                    <p className="text-[11px] font-semibold text-blue-400 uppercase">Vinculada a</p>
+                    <p className="text-sm font-semibold text-gray-900 mt-0.5">{linkedRecipe.name}</p>
+                  </div>
+                  <p className="text-base font-semibold text-[#2f4131]">${linkedRecipe.total_cost?.toLocaleString()}</p>
+                </div>
+              ) : (
+                <p className="text-[13px] text-gray-400 italic text-center py-3">Sin ficha técnica vinculada.</p>
+              )}
+            </div>
+
+            {/* Image */}
+            <div className="border border-gray-100 rounded-2xl p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-3">Imagen</p>
+              {formData.image_url && (
+                <div className="aspect-video rounded-xl overflow-hidden bg-gray-100 mb-3">
+                  <img src={formData.image_url} alt="Preview" className="w-full h-full object-cover"
+                    onError={e => { e.target.style.display = 'none'; }} />
+                </div>
+              )}
+              <FormField label="URL de imagen">
+                <TextInput type="url" name="image_url" value={formData.image_url} onChange={handleChange}
+                  placeholder="https://ejemplo.com/foto.jpg" />
+              </FormField>
+            </div>
+
+            {/* Action buttons */}
+            <div className="space-y-2">
+              <PrimaryButton type="submit" className="w-full py-3">
+                {product ? 'Guardar cambios' : 'Crear producto'}
+              </PrimaryButton>
+              <SecondaryButton type="button" onClick={onCancel} className="w-full py-3">
+                Cancelar
+              </SecondaryButton>
+            </div>
+          </div>
         </form>
       </div>
     </div>

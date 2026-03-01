@@ -1,6 +1,6 @@
 ﻿import React from "react";
 import { formatCOP } from "@/utils/money";
-import { getStockFlags, slugify, isUnavailable } from "@/utils/stock";
+import { slugify } from "@/utils/stock";
 import { getProductImage } from "@/utils/images";
 import { StatusChip } from "./Buttons";
 import { toast } from "./Toast";
@@ -14,9 +14,10 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
   if (!item) return null;
 
   const productId = item.id || slugify(item.name);
-  const { state: stockState, isSoon, isLow, isOut: outFromStock } = getStockFlags(productId);
-  const isOut = outFromStock || isUnavailable(item);
-
+  
+  // Use stock_status from database (Supabase)
+  const isOut = item.stock_status === 'out';
+  
   const product = {
     productId,
     id: isOut ? undefined : productId,
@@ -45,11 +46,7 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
   const handleAdd = (e) => {
     e.stopPropagation();
     if (isOut) {
-      toast("Producto no disponible");
-      return;
-    }
-    if (isSoon) {
-      toast("Disponible proximamente");
+      toast("Producto agotado");
       return;
     }
     onAdd?.({ productId, name: item.name, price: item.price, qty: 1 });
@@ -99,14 +96,7 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
         )}
 
         <div className="mt-2 flex flex-wrap gap-2">
-          {isSoon ? (
-            <StatusChip intent="info">Proximamente</StatusChip>
-          ) : (
-            <>
-              {isLow && <StatusChip intent="warn">Pocas unidades</StatusChip>}
-              {isOut && <StatusChip intent="neutral">No Disponible</StatusChip>}
-            </>
-          )}
+          {isOut && <StatusChip intent="neutral">Agotado</StatusChip>}
         </div>
 
         <div className="mt-auto flex items-end justify-between gap-3 pt-2">
@@ -119,7 +109,7 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
             type="button"
             aria-label={`Agregar ${item.name || "producto"}`}
             onClick={handleAdd}
-            disabled={isOut || isSoon}
+            disabled={isOut}
             className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-full bg-[#2f4131] text-white shadow-sm ring-1 ring-black/5 transition-transform duration-150 hover:scale-110 hover:bg-[#263729] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 md:h-11 md:w-11 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 disabled:hover:bg-[#2f4131]"
           >
             +

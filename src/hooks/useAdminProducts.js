@@ -52,10 +52,11 @@ export const useAdminProducts = () => {
         image_url: productData.image_url,
         tags: productData.tags || [],
         is_active: productData.is_active ?? true,
+        is_addon: productData.is_addon || false,
+        recipe_id: productData.recipe_id || null,
         variants: productData.variants || [],
         modifier_groups: productData.modifier_groups || [],
-        config_options: productData.config_options || {},
-        created_at: new Date().toISOString()
+        config_options: productData.config_options || {}
       };
 
       const { data, error } = await supabase
@@ -92,10 +93,11 @@ export const useAdminProducts = () => {
         image_url: productData.image_url,
         tags: productData.tags || [],
         is_active: productData.is_active ?? true,
+        is_addon: productData.is_addon || false,
+        recipe_id: productData.recipe_id || null,
         variants: productData.variants || [],
         modifier_groups: productData.modifier_groups || [],
-        config_options: productData.config_options || {},
-        updated_at: new Date().toISOString()
+        config_options: productData.config_options || {}
       };
 
       const { data, error } = await supabase
@@ -141,6 +143,41 @@ export const useAdminProducts = () => {
     }
   };
 
+  const toggleActive = async (id, currentStatus) => {
+    console.log('toggleActive called for id:', id, 'currentStatus:', currentStatus);
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ is_active: !currentStatus })
+        .eq('id', id);
+
+      if (error) throw error;
+      await fetchProducts();
+      return true;
+    } catch (err) {
+      console.error('Error toggling active status:', err);
+      toast.error('Error al cambiar estado');
+      return false;
+    }
+  };
+
+  const toggleStock = async (id, currentStatus) => {
+    const next = currentStatus === 'in' ? 'out' : 'in';
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ stock_status: next })
+        .eq('id', id);
+      if (error) throw error;
+      await fetchProducts();
+      return true;
+    } catch (err) {
+      console.error('Error toggling stock status:', err);
+      toast.error('Error al cambiar disponibilidad');
+      return false;
+    }
+  };
+
   return {
     products,
     loading,
@@ -148,6 +185,8 @@ export const useAdminProducts = () => {
     createProduct,
     updateProduct,
     deleteProduct,
+    toggleActive,
+    toggleStock,
     refreshProducts: fetchProducts
   };
 };

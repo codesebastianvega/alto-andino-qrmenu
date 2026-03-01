@@ -1,125 +1,131 @@
 import { useState } from 'react';
 import { useCategories } from '../hooks/useCategories';
 import CategoryForm from '../components/admin/CategoryForm';
+import {
+  PageHeader, PrimaryButton, Badge,
+  TableContainer, Th, SearchInput
+} from '../components/admin/ui';
 
 export default function AdminCategories() {
   const { categories, loading, error, createCategory, updateCategory, deleteCategory } = useCategories();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [search, setSearch] = useState('');
 
-  const handleCreate = () => {
-    setEditingCategory(null);
-    setIsFormOpen(true);
-  };
-
-  const handleEdit = (category) => {
-    setEditingCategory(category);
-    setIsFormOpen(true);
-  };
-
-  const handleDelete = async (id) => {
-    if (window.confirm('¿Estás seguro de eliminar esta categoría?')) {
-      await deleteCategory(id);
-    }
-  };
+  const handleCreate  = () => { setEditingCategory(null); setIsFormOpen(true); };
+  const handleEdit    = (cat) => { setEditingCategory(cat); setIsFormOpen(true); };
+  const handleDelete  = async (id) => { await deleteCategory(id); setConfirmDeleteId(null); };
 
   const handleSave = async (data) => {
-    if (editingCategory) {
-      await updateCategory(editingCategory.id, data);
-    } else {
-      await createCategory(data);
-    }
-    setIsFormOpen(false);
-    setEditingCategory(null);
+    const result = editingCategory
+      ? await updateCategory(editingCategory.id, data)
+      : await createCategory(data);
+    if (result?.success) { setIsFormOpen(false); setEditingCategory(null); }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center h-64 text-gray-400 text-sm font-medium">Cargando…</div>
+  );
+  if (error)   return (
+    <div className="p-8 text-red-500 text-sm font-medium">Error cargando categorías: {error}</div>
+  );
 
-  if (error) {
-    return <div className="p-8 text-red-600">Error cargando categorías: {error}</div>;
-  }
+  const filtered = categories.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    (c.slug || '').toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-900">Categorías ({categories.length})</h2>
-          <button 
-            onClick={handleCreate}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
-          >
-            + Nueva Categoría
-          </button>
-        </div>
-        
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Orden</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Slug</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Icono</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {categories.map((cat) => (
-              <tr key={cat.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {cat.sort_order}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{cat.name}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {cat.slug}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <span className="text-xl">{cat.icon}</span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    cat.is_active !== false ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {cat.is_active !== false ? 'Activa' : 'Inactiva'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button 
-                    onClick={() => handleEdit(cat)}
-                    className="text-green-600 hover:text-green-900 mr-4"
-                  >
-                    Editar
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(cat.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="p-8 max-w-7xl mx-auto">
+      <PageHeader
+        badge="Carta"
+        title="Categorías"
+        subtitle={`${categories.length} categorías del menú`}
+      >
+        <PrimaryButton onClick={handleCreate}>+ Nueva categoría</PrimaryButton>
+      </PageHeader>
+
+      <div className="mb-5 max-w-sm">
+        <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar categoría…" />
       </div>
 
+      <TableContainer>
+        <table className="w-full min-w-[600px] border-collapse">
+          <thead>
+            <tr>
+              <Th>Orden</Th>
+              <Th>Categoría</Th>
+              <Th>Slug</Th>
+              <Th>Ícono</Th>
+              <Th>Estado</Th>
+              <Th right>Acciones</Th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {filtered.map(cat => (
+              <tr key={cat.id} className="group hover:bg-gray-50/60 transition-colors">
+                {confirmDeleteId === cat.id ? (
+                  <td colSpan={6} className="px-5 py-3 bg-red-50">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-red-700">¿Eliminar la categoría <strong>"{cat.name}"</strong>?</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleDelete(cat.id)}
+                          className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-[12px] font-semibold hover:bg-red-700 transition-all">
+                          Eliminar
+                        </button>
+                        <button onClick={() => setConfirmDeleteId(null)}
+                          className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-[12px] font-semibold hover:bg-gray-50 transition-all">
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+                ) : (
+                  <>
+                    <td className="px-5 py-3.5 text-sm text-gray-400 font-medium tabular-nums">{cat.sort_order || 0}</td>
+                    <td className="px-5 py-3.5">
+                      <p className="text-sm font-semibold text-gray-900">{cat.name}</p>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="font-mono text-[12px] text-gray-400">{cat.slug}</span>
+                    </td>
+                    <td className="px-5 py-3.5 text-xl">{cat.icon}</td>
+                    <td className="px-5 py-3.5">
+                      <Badge variant={cat.is_active !== false ? 'green' : 'gray'}>
+                        {cat.is_active !== false ? 'Activa' : 'Inactiva'}
+                      </Badge>
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleEdit(cat)}
+                          className="px-3 py-1.5 text-[12px] font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
+                          Editar
+                        </button>
+                        <button onClick={() => setConfirmDeleteId(cat.id)}
+                          className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                            <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </>
+                )}
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr><td colSpan={6} className="px-5 py-14 text-center text-sm text-gray-400 font-medium">
+                {search ? 'Sin resultados.' : 'No hay categorías aún.'}
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </TableContainer>
+
       {isFormOpen && (
-        <CategoryForm
-          category={editingCategory}
-          onSave={handleSave}
-          onCancel={() => {
-            setIsFormOpen(false);
-            setEditingCategory(null);
-          }}
-        />
+        <CategoryForm category={editingCategory} onSave={handleSave} onCancel={() => { setIsFormOpen(false); setEditingCategory(null); }} />
       )}
     </div>
   );

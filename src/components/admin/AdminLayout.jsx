@@ -2,159 +2,238 @@ import { useState } from 'react';
 import AdminProducts from '../../pages/AdminProducts';
 import AdminCategories from '../../pages/AdminCategories';
 import AdminModifiers from '../../pages/AdminModifiers';
+import AdminExperiences from '../../pages/AdminExperiences';
+import AdminRecipes from '../../pages/AdminRecipes';
+import AdminBranding from '../../pages/AdminBranding';
+
+// ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
+const Icons = {
+  Products: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+      <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+    </svg>
+  ),
+  Categories: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18M3 12h18M3 18h18"/>
+    </svg>
+  ),
+  Modifiers: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+    </svg>
+  ),
+  Recipes: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+      <rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>
+    </svg>
+  ),
+  Experiences: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </svg>
+  ),
+  Branding: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
+      <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
+      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+    </svg>
+  ),
+  Orders: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
+      <path d="M16 10a4 4 0 0 1-8 0"/>
+    </svg>
+  ),
+  Dashboard: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/>
+    </svg>
+  ),
+  Settings: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  ),
+  ChevronLeft: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+  ),
+  ChevronRight: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>
+  ),
+  Home: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  ),
+};
 
 const MENU_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊', disabled: true },
-  { id: 'products', label: 'Productos', icon: '🍔' },
-  { id: 'categories', label: 'Categorías', icon: '📂' },
-  { id: 'modifiers', label: 'Insumos', icon: '🥕' },
-  { id: 'branding', label: 'Branding', icon: '🎨' },
-  { id: 'orders', label: 'Pedidos', icon: '📋', disabled: true },
-  { id: 'settings', label: 'Configuración', icon: '⚙️', disabled: true },
+  { id: 'sep-menu', type: 'separator', label: 'Carta' },
+  { id: 'products',   label: 'Productos',   Icon: Icons.Products },
+  { id: 'categories', label: 'Categorías',  Icon: Icons.Categories },
+  { id: 'sep-prod', type: 'separator', label: 'Producción' },
+  { id: 'modifiers', label: 'Insumos',      Icon: Icons.Modifiers },
+  { id: 'recipes',   label: 'Recetas',      Icon: Icons.Recipes },
+  { id: 'sep-biz', type: 'separator', label: 'Negocio' },
+  { id: 'experiences', label: 'Experiencias', Icon: Icons.Experiences, disabled: true },
+  { id: 'branding',    label: 'Branding',     Icon: Icons.Branding,     disabled: true },
+  { id: 'orders',      label: 'Pedidos',      Icon: Icons.Orders,       disabled: true },
+  { id: 'dashboard',   label: 'Dashboard',    Icon: Icons.Dashboard,    disabled: true },
+  { id: 'settings',    label: 'Config.',      Icon: Icons.Settings,     disabled: true },
 ];
 
 export default function AdminLayout() {
   const [currentPage, setCurrentPage] = useState('products');
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  const currentItem = MENU_ITEMS.find(i => i.id === currentPage);
+
   return (
-    <div className="flex min-h-screen bg-[#FAF9F6]">
-      {/* Sidebar */}
-      <aside 
-        className={`fixed left-0 top-0 bottom-0 bg-[#2f4131] text-white flex flex-col z-50 transition-all duration-300 ${
-          isCollapsed ? 'w-20' : 'w-64'
+    <div className="flex min-h-screen bg-[#F4F4F2]" style={{ fontFamily: "'Inter', sans-serif" }}>
+      {/* ── Sidebar ────────────────────────────────────────────────────── */}
+      <aside
+        className={`fixed left-0 top-0 bottom-0 bg-[#1C2B1E] flex flex-col z-50 transition-all duration-250 ${
+          isCollapsed ? 'w-[60px]' : 'w-[220px]'
         }`}
       >
-        <div className="p-4 flex flex-col h-full">
-           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} mb-10 mt-4`}>
-              <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-2xl shrink-0">🌋</div>
-              {!isCollapsed && (
-                <div className="overflow-hidden whitespace-nowrap">
-                   <h1 className="text-lg font-black tracking-tight leading-none">Alto Andino</h1>
-                   <span className="text-[10px] font-black uppercase tracking-widest text-green-400 opacity-80">Admin SaaS</span>
-                </div>
-              )}
-           </div>
+        <div className="flex flex-col h-full">
+          {/* Logo */}
+          <div className={`flex items-center h-16 border-b border-white/5 px-4 gap-3 shrink-0 ${isCollapsed ? 'justify-center px-0' : ''}`}>
+            <div className="w-7 h-7 bg-[#4a6741] rounded-lg flex items-center justify-center shrink-0">
+              <span className="text-sm font-bold text-white leading-none">A</span>
+            </div>
+            {!isCollapsed && (
+              <div>
+                <p className="text-[13px] font-semibold text-white leading-none tracking-tight">Alto Andino</p>
+                <p className="text-[10px] text-white/30 font-medium mt-0.5">Admin</p>
+              </div>
+            )}
+          </div>
 
-           <nav className="space-y-1">
-              {MENU_ITEMS.map((item) => (
+          {/* Nav */}
+          <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
+            {MENU_ITEMS.map((item) => {
+              if (item.type === 'separator') {
+                return (
+                  <div key={item.id} className="pt-5 pb-1.5">
+                    {!isCollapsed ? (
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-white/20 px-2">
+                        {item.label}
+                      </span>
+                    ) : (
+                      <div className="h-px bg-white/8 mx-2" />
+                    )}
+                  </div>
+                );
+              }
+
+              const { Icon } = item;
+              const isActive = currentPage === item.id;
+
+              return (
                 <button
                   key={item.id}
                   disabled={item.disabled}
-                  onClick={() => setCurrentPage(item.id)}
+                  onClick={() => !item.disabled && setCurrentPage(item.id)}
                   title={isCollapsed ? item.label : ''}
-                  className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3.5 rounded-2xl font-bold text-sm transition-all duration-200 ${
-                    currentPage === item.id 
-                      ? 'bg-white text-[#2f4131] shadow-xl shadow-green-900/40' 
-                      : item.disabled 
-                        ? 'opacity-30 cursor-not-allowed'
-                        : 'text-white/60 hover:text-white hover:bg-white/5'
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+                    isCollapsed ? 'justify-center px-0' : ''
+                  } ${
+                    isActive
+                      ? 'bg-white/10 text-white'
+                      : item.disabled
+                        ? 'text-white/20 cursor-not-allowed'
+                        : 'text-white/50 hover:text-white/80 hover:bg-white/5'
                   }`}
                 >
-                  <span className="text-lg shrink-0">{item.icon}</span>
+                  <span className={`shrink-0 ${isActive ? 'text-[#7db87a]' : ''}`}>
+                    <Icon />
+                  </span>
                   {!isCollapsed && (
-                    <span className="overflow-hidden whitespace-nowrap">
+                    <span className="flex-1 text-left truncate">
                       {item.label}
-                      {item.disabled && <span className="ml-2 text-[8px] bg-white/10 px-1.5 py-0.5 rounded uppercase">Soon</span>}
+                      {item.disabled && (
+                        <span className="ml-2 text-[9px] font-semibold text-white/20 align-middle">soon</span>
+                      )}
                     </span>
                   )}
+                  {!isCollapsed && isActive && (
+                    <span className="w-1 h-1 rounded-full bg-[#7db87a] shrink-0" />
+                  )}
                 </button>
-              ))}
-           </nav>
+              );
+            })}
+          </nav>
 
-           <div className="mt-auto space-y-2">
-              <button
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                className="w-full flex items-center justify-center py-3 rounded-2xl text-white/40 hover:text-white hover:bg-white/5 transition-all"
-              >
-                <span className="text-sm font-bold">{isCollapsed ? '→' : '← Colapsar'}</span>
-              </button>
-              
-              <a
-                href="/"
-                className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 rounded-2xl text-white/60 hover:text-white hover:bg-white/5 font-bold text-sm transition-all`}
-              >
-                <span>🏠</span>
-                {!isCollapsed && <span className="whitespace-nowrap">Volver al Menú</span>}
-              </a>
-           </div>
+          {/* Footer */}
+          <div className="border-t border-white/5 px-2 py-3 space-y-0.5 shrink-0">
+            <a
+              href="/"
+              title={isCollapsed ? 'Ver Menú' : ''}
+              className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium text-white/40 hover:text-white/70 hover:bg-white/5 transition-all ${
+                isCollapsed ? 'justify-center px-0' : ''
+              }`}
+            >
+              <Icons.Home />
+              {!isCollapsed && <span>Ver Menú</span>}
+            </a>
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium text-white/30 hover:text-white/60 hover:bg-white/5 transition-all ${
+                isCollapsed ? 'justify-center px-0' : ''
+              }`}
+            >
+              {isCollapsed ? <Icons.ChevronRight /> : <><Icons.ChevronLeft /><span>Colapsar</span></>}
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main 
-        className={`flex-1 min-h-screen flex flex-col transition-all duration-300 ${
-          isCollapsed ? 'ml-20' : 'ml-64'
+      {/* ── Main ──────────────────────────────────────────────────────── */}
+      <main
+        className={`flex-1 min-h-screen flex flex-col transition-all duration-250 ${
+          isCollapsed ? 'ml-[60px]' : 'ml-[220px]'
         }`}
       >
-        {/* Top Header */}
-        <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-10 sticky top-0 z-40">
-           <h2 className="text-xl font-black text-gray-900 uppercase tracking-widest text-[10px]">
-              {MENU_ITEMS.find(i => i.id === currentPage)?.label || 'Panel'}
-           </h2>
-           <div className="flex items-center gap-4">
-              <div className="text-right">
-                 <p className="text-xs font-black text-gray-900 leading-none">Admin User</p>
-                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Super Admin</span>
-              </div>
-              <div className="w-10 h-10 bg-gray-100 rounded-full border-2 border-white shadow-sm ring-1 ring-gray-100" />
-           </div>
+        {/* Topbar */}
+        <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-8 sticky top-0 z-40">
+          <div className="flex items-center gap-2 text-gray-400">
+            <span className="text-[12px] font-medium">Admin</span>
+            <span className="text-gray-300">/</span>
+            <span className="text-[13px] font-semibold text-gray-700">
+              {currentItem?.label || 'Panel'}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-[#2f4131] flex items-center justify-center">
+              <span className="text-white text-[11px] font-semibold">AA</span>
+            </div>
+          </div>
         </header>
 
-        {/* Dynamic Page Rendering */}
+        {/* Content */}
         <div className="flex-1">
-          {currentPage === 'products' && <AdminProducts />}
-          {currentPage === 'categories' && <AdminCategories />}
-          {currentPage === 'modifiers' && <AdminModifiers />}
-          {currentPage === 'branding' && (
-            <div className="p-10">
-              <div className="max-w-2xl bg-white rounded-3xl p-10 shadow-sm border border-gray-100">
-                <h3 className="text-2xl font-black text-gray-900 mb-2">Personalización de Marca</h3>
-                <p className="text-gray-500 mb-8 font-medium">Define la identidad visual de tu menú digital.</p>
-                
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Nombre del Negocio</label>
-                    <input type="text" className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl font-bold text-gray-900 focus:ring-2 focus:ring-[#2f4131]" defaultValue="Alto Andino" />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Color Primario</label>
-                      <div className="flex gap-2">
-                        <input type="color" className="w-12 h-12 rounded-xl overflow-hidden border-none cursor-pointer" defaultValue="#2f4131" />
-                        <input type="text" className="flex-1 px-5 py-3 bg-gray-50 border-none rounded-2xl font-bold text-gray-900" defaultValue="#2F4131" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Color Secundario</label>
-                      <div className="flex gap-2">
-                        <input type="color" className="w-12 h-12 rounded-xl overflow-hidden border-none cursor-pointer" defaultValue="#fa6e39" />
-                        <input type="text" className="flex-1 px-5 py-3 bg-gray-50 border-none rounded-2xl font-bold text-gray-900" defaultValue="#FA6E39" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Logotipo</label>
-                    <div className="border-2 border-dashed border-gray-200 rounded-3xl p-10 text-center">
-                      <div className="text-3xl mb-2">🖼️</div>
-                      <p className="text-sm font-bold text-gray-400 mb-4">Sube tu logo (PNG o SVG recomendado)</p>
-                      <button className="px-6 py-2.5 bg-gray-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-black transition-all">Seleccionar Archivo</button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-10 pt-10 border-t border-gray-100 flex justify-end">
-                   <button className="px-10 py-4 bg-[#2f4131] text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl shadow-green-900/40 hover:scale-105 active:scale-95 transition-all">Guardar Cambios</button>
-                </div>
+          {currentPage === 'products'    && <AdminProducts />}
+          {currentPage === 'categories'  && <AdminCategories />}
+          {currentPage === 'experiences' && <AdminExperiences />}
+          {currentPage === 'recipes'     && <AdminRecipes />}
+          {currentPage === 'modifiers'   && <AdminModifiers />}
+          {currentPage === 'branding'    && <AdminBranding />}
+          {currentPage === 'dashboard'   && (
+            <div className="flex items-center justify-center h-96 text-gray-300">
+              <div className="text-center">
+                <Icons.Dashboard />
+                <p className="mt-4 text-sm font-medium">Dashboard · Próximamente</p>
               </div>
-            </div>
-          )}
-          {currentPage === 'dashboard' && (
-            <div className="p-20 text-center opacity-20">
-               <h3 className="text-4xl font-black uppercase tracking-widest">Dashboard</h3>
-               <p>Coming Soon</p>
             </div>
           )}
         </div>
@@ -162,4 +241,3 @@ export default function AdminLayout() {
     </div>
   );
 }
-
