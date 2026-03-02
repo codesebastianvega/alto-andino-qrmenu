@@ -15,12 +15,18 @@ const safeNum = (raw) => {
 };
 const getTable = () => {
   try {
+    const sp = new URL(location.href).searchParams;
+    const fromUrl = sp.get("mesa") || sp.get("t");
+    if (fromUrl) return fromUrl;
+
+    const sess = sessionStorage.getItem("aa_current_mesa");
+    if (sess) return sess;
+
     for (const k of ["aa_table", "aa_table_num", "aa_t", "mesa", "table"]) {
       const v = localStorage.getItem(k);
       if (v) return v;
     }
-    const sp = new URL(location.href).searchParams.get("t");
-    return sp || "";
+    return "";
   } catch {
     return "";
   }

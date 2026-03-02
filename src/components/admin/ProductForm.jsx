@@ -3,7 +3,7 @@ import { useMenuData } from '../../context/MenuDataContext';
 import { supabase } from '../../config/supabase';
 import { Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButton } from './ui';
 
-export default function ProductForm({ product, categories, recipes = [], onSave, onCancel }) {
+export default function ProductForm({ product, categories, recipes = [], allergens = [], onSave, onCancel }) {
   const { modifiers: modifierGroupsData } = useMenuData();
   const availableGroups = Object.keys(modifierGroupsData || {});
 
@@ -52,6 +52,16 @@ export default function ProductForm({ product, categories, recipes = [], onSave,
         modifier_groups: newGroups,
         config_options: { ...prev.config_options, modifier_config: newConfig },
       };
+    });
+  };
+
+  const toggleTag = (tagName) => {
+    setFormData(prev => {
+      const current = prev.tags || [];
+      const newTags = current.includes(tagName)
+        ? current.filter(t => t !== tagName)
+        : [...current, tagName];
+      return { ...prev, tags: newTags };
     });
   };
 
@@ -200,6 +210,36 @@ export default function ProductForm({ product, categories, recipes = [], onSave,
                       </div>
                     </button>
                   </FormField>
+                </div>
+
+                {/* Dietary Tags & Allergens */}
+                <div className="md:col-span-2 mt-4 pt-4 border-t border-gray-100">
+                  <p className="block text-sm font-medium text-gray-700 mb-2">Dietas y Alérgenos</p>
+                  <div className="flex flex-wrap gap-2">
+                    {allergens.length > 0 ? allergens.map(allergen => {
+                      const isSelected = formData.tags?.includes(allergen.name);
+                      return (
+                        <button
+                          key={allergen.id}
+                          type="button"
+                          onClick={() => toggleTag(allergen.name)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-xl text-sm transition-colors ${
+                            isSelected
+                              ? 'bg-[#1C2B1E]/10 border-[#1C2B1E]/20 text-[#1C2B1E] font-semibold'
+                              : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span className="text-base">{allergen.emoji}</span>
+                          <span>{allergen.name}</span>
+                        </button>
+                      );
+                    }) : (
+                      <p className="text-xs text-gray-400">No hay alérgenos configurados. Asegúrate de agregarlos en Configuración.</p>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Estas etiquetas se mostrarán en la carta virtual junto al producto.
+                  </p>
                 </div>
               </div>
             </section>

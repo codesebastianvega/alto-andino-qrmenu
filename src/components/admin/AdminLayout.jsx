@@ -5,6 +5,9 @@ import AdminModifiers from '../../pages/AdminModifiers';
 import AdminExperiences from '../../pages/AdminExperiences';
 import AdminRecipes from '../../pages/AdminRecipes';
 import AdminBranding from '../../pages/AdminBranding';
+import AdminSettings from '../../pages/AdminSettings';
+import AdminAllergens from '../../pages/AdminAllergens';
+import AdminTables from '../../pages/AdminTables';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
 const Icons = {
@@ -59,6 +62,18 @@ const Icons = {
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
     </svg>
   ),
+  Allergens: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+      <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+    </svg>
+  ),
+  Tables: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="3" width="16" height="4" rx="1"/>
+      <path d="M6 7v14M18 7v14M12 7v14M4 14h16"/>
+    </svg>
+  ),
   ChevronLeft: () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="15 18 9 12 15 6"/>
@@ -80,15 +95,17 @@ const MENU_ITEMS = [
   { id: 'sep-menu', type: 'separator', label: 'Carta' },
   { id: 'products',   label: 'Productos',   Icon: Icons.Products },
   { id: 'categories', label: 'Categorías',  Icon: Icons.Categories },
+  { id: 'allergens',  label: 'Dietas y Alérgenos', Icon: Icons.Allergens },
   { id: 'sep-prod', type: 'separator', label: 'Producción' },
   { id: 'modifiers', label: 'Inventario',      Icon: Icons.Modifiers },
   { id: 'recipes',   label: 'Recetas',      Icon: Icons.Recipes },
   { id: 'sep-biz', type: 'separator', label: 'Negocio' },
+  { id: 'tables',    label: 'Mesas (QR)',   Icon: Icons.Tables },
   { id: 'experiences', label: 'Experiencias', Icon: Icons.Experiences, disabled: true },
-  { id: 'branding',    label: 'Branding',     Icon: Icons.Branding,     disabled: true },
+  { id: 'branding',    label: 'Branding y Diseño', Icon: Icons.Branding },
   { id: 'orders',      label: 'Pedidos',      Icon: Icons.Orders,       disabled: true },
   { id: 'dashboard',   label: 'Dashboard',    Icon: Icons.Dashboard,    disabled: true },
-  { id: 'settings',    label: 'Config.',      Icon: Icons.Settings,     disabled: true },
+  { id: 'settings',    label: 'Ajustes Generales', Icon: Icons.Settings },
 ];
 
 export default function AdminLayout() {
@@ -224,10 +241,13 @@ export default function AdminLayout() {
         <div className="flex-1">
           {currentPage === 'products'    && <AdminProducts />}
           {currentPage === 'categories'  && <AdminCategories />}
+          {currentPage === 'allergens'   && <AdminAllergens />}
           {currentPage === 'experiences' && <AdminExperiences />}
           {currentPage === 'recipes'     && <AdminRecipes />}
           {currentPage === 'modifiers'   && <AdminModifiers />}
+          {currentPage === 'tables'      && <AdminTables />}
           {currentPage === 'branding'    && <AdminBranding />}
+          {currentPage === 'settings'    && <AdminSettings />}
           {currentPage === 'dashboard'   && (
             <div className="flex items-center justify-center h-96 text-gray-300">
               <div className="text-center">

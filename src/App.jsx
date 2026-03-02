@@ -66,8 +66,14 @@ export default function App() {
   }
 
   useEffect(() => {
-    const p = new URLSearchParams(window.location.search).get("cat");
+    const params = new URLSearchParams(window.location.search);
+    const p = params.get("cat");
     if (p && isValidCat(p)) setSelectedCategory(p);
+
+    const mesa = params.get("mesa");
+    if (mesa) {
+      sessionStorage.setItem("aa_current_mesa", mesa);
+    }
   }, []);
 
   useEffect(() => {

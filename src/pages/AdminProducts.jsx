@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAdminProducts } from '../hooks/useAdminProducts';
 import { useCategories } from '../hooks/useCategories';
 import { useAdminRecipes } from '../hooks/useAdminRecipes';
+import { useAllergens } from '../hooks/useAllergens';
 import { formatCOP } from '../utils/money';
 import ProductForm from '../components/admin/ProductForm';
 import {
@@ -28,6 +29,7 @@ export default function AdminProducts() {
   const { products, loading: loadingProd, createProduct, updateProduct, deleteProduct, toggleActive, toggleStock, reorderProducts } = useAdminProducts();
   const { categories, loading: loadingCats } = useCategories();
   const { recipes, fetchRecipes } = useAdminRecipes();
+  const { allergens, loading: loadingAllergens } = useAllergens();
 
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('all');
@@ -458,6 +460,7 @@ export default function AdminProducts() {
           product={editingProduct}
           categories={categories}
           recipes={recipes}
+          allergens={allergens}
           onSave={handleSave}
           onCancel={() => { setIsFormOpen(false); setEditingProduct(null); }}
         />

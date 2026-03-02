@@ -8,6 +8,7 @@ export const MenuDataProvider = ({ children }) => {
   const [productsByCategory, setProductsByCategory] = useState({});
   const [modifiers, setModifiers] = useState({});
   const [experiences, setExperiences] = useState([]);
+  const [allergens, setAllergens] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -55,6 +56,15 @@ export const MenuDataProvider = ({ children }) => {
         
         if (expError) console.warn('Error fetching experiences (table might not exist yet):', expError);
         setExperiences(exp || []);
+
+        // Fetch allergens
+        const { data: allgs, error: allgError } = await supabase
+          .from('allergens')
+          .select('*')
+          .order('name');
+        
+        if (allgError) console.warn('Error fetching allergens:', allgError);
+        setAllergens(allgs || []);
 
         // Fetch all products with their category info
         const { data: products, error: prodError } = await supabase
@@ -105,7 +115,8 @@ export const MenuDataProvider = ({ children }) => {
           cats: cats.length,
           mods: mods?.length || 0,
           products: products.length,
-          experiences: exp?.length || 0
+          experiences: exp?.length || 0,
+          allergens: allgs?.length || 0
         });
       } catch (err) {
         console.error('Error fetching menu data:', err);
@@ -139,6 +150,7 @@ export const MenuDataProvider = ({ children }) => {
         getModifiers,
         modifiers,
         experiences,
+        allergens,
         loading 
       }}
     >

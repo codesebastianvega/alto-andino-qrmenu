@@ -1,7 +1,14 @@
 import React from "react";
+import { useMenuData } from "./../context/MenuDataContext";
 
 export default function DietaryGuide() {
-  const markers = [
+  const { allergens = [] } = useMenuData();
+
+  // Fallback markers if no allergens in database
+  const markers = allergens.length > 0 ? allergens.map(a => ({
+    icon: a.emoji || "🏷️",
+    label: a.name
+  })) : [
     { icon: "🌿", label: "Veggie/Vegano" },
     { icon: "🌶️", label: "Picante" },
     { icon: "🐝", label: "Con miel" },

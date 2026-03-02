@@ -70,6 +70,10 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   const subtitle = product?.subtitle;
   const image = product ? getProductImage(product) : null;
 
+  const productAllergens = (product?.tags || []).map(tagName => {
+    return (menuData?.allergens || []).find(a => a.name === tagName);
+  }).filter(Boolean);
+
   const assignedGroups = product?.modifierGroups || product?.modifier_groups || [];
   // categorySlug is set by MenuDataContext when mapping products
   const isCafe = product?.categorySlug === 'cafe';
@@ -246,6 +250,21 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                   <p className="mt-3 text-sm md:text-base text-neutral-500 leading-relaxed" style={stagger(2)}>
                     {subtitle}
                   </p>
+                )}
+                {/* Alérgenos */}
+                {productAllergens.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2" style={stagger(2)}>
+                    {productAllergens.map((alg) => (
+                      <span
+                        key={alg.id}
+                        className="flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 shadow-sm"
+                        title={alg.name}
+                      >
+                        <span className="text-sm">{alg.emoji}</span>
+                        <span>{alg.name}</span>
+                      </span>
+                    ))}
+                  </div>
                 )}
 
                 {/* Modifier groups */}

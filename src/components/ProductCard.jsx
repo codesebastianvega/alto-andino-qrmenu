@@ -5,6 +5,7 @@ import { getProductImage } from "@/utils/images";
 import { StatusChip } from "./Buttons";
 import { toast } from "./Toast";
 import AAImage from "@/components/ui/AAImage";
+import { useMenuData } from "@/context/MenuDataContext";
 
 // Comentario guia encima de donde uses <img> o <AAImage>:
 {/* Las imagenes de producto se configuran en src/utils/images.js.
@@ -14,6 +15,14 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
   if (!item) return null;
 
   const productId = item.id || slugify(item.name);
+  
+  // Get allergens from context
+  const { allergens = [] } = useMenuData() || {};
+
+  // Find emojis for the tags the product has
+  const productAllergens = (item.tags || []).map(tagName => {
+    return allergens.find(a => a.name === tagName);
+  }).filter(Boolean);
   
   // Use stock_status from database (Supabase)
   const isOut = item.stock_status === 'out';
@@ -88,10 +97,20 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
       )}
 
       <div className="flex min-w-0 flex-col">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <h3 className="truncate text-base font-semibold text-neutral-900 md:text-[17px]">
             {item.name}
           </h3>
+          {/* Muestra las Emojis de alergias dinámicas acá */}
+          {productAllergens.length > 0 && (
+             <div className="flex gap-1 items-center">
+                 {productAllergens.map((alg) => (
+                    <span key={alg.id} title={alg.name} className="text-[13px] leading-none">
+                       {alg.emoji}
+                    </span>
+                 ))}
+             </div>
+          )}
           {item.origin && (
             <span className="whitespace-nowrap rounded-full border border-neutral-200 bg-neutral-100 px-2 py-[1px] text-[11px] font-medium text-neutral-600">
               {item.origin}
