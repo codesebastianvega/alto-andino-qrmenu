@@ -87,11 +87,22 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
 
   const groups = useMemo(() => {
     return effectiveGroups
-      .map((groupName) => ({
-        name: groupName,
-        type: modifierConfig[groupName] || (groupName === 'milk-options' || groupName === 'sandwich-bread' ? 'required' : 'optional'),
-        items: getModifiers(groupName),
-      }))
+      .map((groupName) => {
+        const config = modifierConfig[groupName] || (groupName === 'milk-options' || groupName === 'sandwich-bread' ? 'required' : 'optional');
+        let min = 0; let max = 999;
+        if (config === 'required') { min = 1; max = 1; }
+        else if (config === 'optional') { min = 0; max = 999; }
+        else if (typeof config === 'object') { min = config.min || 0; max = config.max || 999; }
+        
+        return {
+          name: groupName,
+          type: config,
+          min,
+          max,
+          isRequired: min > 0,
+          items: getModifiers(groupName),
+        };
+      })
       .filter((g) => g.items.length > 0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveGroups.join(","), JSON.stringify(modifierConfig), modifierGroupsData]);
@@ -99,16 +110,11 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   const extraPrice = useMemo(() => {
     let total = 0;
     groups.forEach((g) => {
-      const sel = selections[g.name];
-      if (g.type === "required") {
-        const item = g.items.find((i) => i.id === sel);
+      const sel = selections[g.name] || [];
+      sel.forEach((selectedId) => {
+        const item = g.items.find((i) => i.id === selectedId);
         total += item?.selling_price || item?.price || 0;
-      } else {
-        (sel || []).forEach((selectedId) => {
-          const item = g.items.find((i) => i.id === selectedId);
-          total += item?.selling_price || item?.price || 0;
-        });
-      }
+      });
     });
     return total;
   }, [selections, groups]);
@@ -123,27 +129,35 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   const canAdd = !!id && Number.isFinite(basePrice) && basePrice > 0 && !isOutOfStock;
 
   const missingRequired = groups
-    .filter((g) => g.type === "required" && !selections[g.name])
+    .filter((g) => (selections[g.name] || []).length < g.min)
     .map((g) => g.name);
 
-  // If already selected, clicking it again DOES NOT clear the selection for required groups
-  // They must click a different option to change it (true radio behavior).
-  const handleRequired = (groupName, itemId) =>
-    setSelections((prev) => ({
-      ...prev,
-      [groupName]: itemId,
-    }));
+  const handleSelection = (groupName, itemId) => {
+    const group = groups.find(g => g.name === groupName);
+    if (!group) return;
 
-  const handleOptional = (groupName, itemId) =>
     setSelections((prev) => {
       const current = prev[groupName] || [];
-      return {
-        ...prev,
-        [groupName]: current.includes(itemId)
-          ? current.filter((x) => x !== itemId)
-          : [...current, itemId],
-      };
+      const isSelected = current.includes(itemId);
+
+      if (isSelected) {
+        // Enforce true radio behavior: cannot deselect if min is 1 and max is 1 and it's the only one selected
+        if (group.min === 1 && group.max === 1 && current.length === 1) {
+          return prev;
+        }
+        return { ...prev, [groupName]: current.filter(x => x !== itemId) };
+      } else {
+        if (group.max === 1) {
+          return { ...prev, [groupName]: [itemId] };
+        } else if (current.length < group.max) {
+          return { ...prev, [groupName]: [...current, itemId] };
+        } else {
+          toast(`Máximo ${group.max} opciones permitidas`);
+          return prev;
+        }
+      }
     });
+  };
 
   const handleAdd = () => {
     if (isOutOfStock) { toast("Producto agotado"); return; }
@@ -154,9 +168,17 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
     }
     const selectedModifiers = {};
     groups.forEach((g) => {
-      if (selections[g.name]) selectedModifiers[g.name] = selections[g.name];
+      const sel = selections[g.name];
+      if (sel && sel.length > 0) {
+        // Map IDs to Names
+        const names = sel.map(id => {
+          const opt = g.items.find(o => o.id === id);
+          return opt ? opt.name : id;
+        });
+        selectedModifiers[g.name] = g.max === 1 ? names[0] : names;
+      }
     });
-    addItem({ ...product, price: finalPrice, selectedModifiers }, 1);
+    addItem({ ...product, price: finalPrice, options: selectedModifiers }, 1);
     onAdd?.();
     onClose?.();
   };
@@ -236,43 +258,50 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
 
                     return (
                       <div key={group.name} style={stagger(3 + gi)} className="bg-white">
-                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-neutral-100">
+                        <div className="flex items-center justify-between mb-3 pb-2 border-b border-neutral-100">
                           <div>
                             <p className="text-base font-bold text-neutral-900 capitalize">
                               {label}
                             </p>
                             <p className="text-[11px] text-neutral-400 mt-0.5">
-                              {isRequired ? "Elige 1 opción" : "Elige opciones extras"}
+                              {group.min > 0 && group.min === group.max 
+                                ? `Elige ${group.min} opción`
+                                : group.min > 0 
+                                  ? `Mín. ${group.min} - Máx. ${group.max}`
+                                  : group.max === 999 
+                                    ? "Elige extras (opcional)"
+                                    : `Límite: ${group.max} extras`
+                              }
                             </p>
                           </div>
-                          {isRequired ? (
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#2f4131] bg-[#2f4131]/10 px-2.5 py-1 rounded-md">
-                              Obligatorio
+                          {group.min > 0 ? (
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-500 bg-neutral-100 px-2 py-1 rounded">
+                              {group.min === group.max ? "Obligatorio" : "Requerido"}
                             </span>
                           ) : (
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 bg-neutral-100 px-2.5 py-1 rounded-md">
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400 bg-neutral-50 px-2 py-1 rounded border border-neutral-100">
                               Opcional
                             </span>
                           )}
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-2.5">
                           {group.items.map((item) => {
                             const itemPrice = item.selling_price || item.price || 0;
-                            const isSelected = isRequired
-                              ? groupSel === item.id
-                              : (groupSel || []).includes(item.id);
+                            const groupSel = selections[group.name] || [];
+                            const isSelected = groupSel.includes(item.id);
 
-                            const baseClasses = "flex items-center justify-between p-3.5 rounded-xl border-2 transition-all duration-200 cursor-pointer w-full text-left";
+                            const baseClasses = "flex items-center justify-between p-4 rounded-2xl border transition-all duration-200 cursor-pointer w-full text-left";
                             
                             const stateClasses = isSelected
-                              ? "border-[#2f4131] bg-[#2f4131]/5 shadow-sm"
-                              : isMissing && isRequired
+                              ? "border-[#2f4131] bg-[#2f4131]/5 shadow-sm ring-1 ring-[#2f4131]"
+                              : isMissing
+
                               ? "border-amber-300 bg-amber-50 hover:bg-amber-100"
-                              : "border-neutral-100 bg-white hover:border-neutral-300 hover:bg-neutral-50";
+                              : "border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50";
 
                             const Icon = () => {
-                              if (isRequired) {
+                              if (group.max === 1) {
                                 return (
                                   <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${isSelected ? 'border-[#2f4131]' : 'border-neutral-300'}`}>
                                     {isSelected && <div className="h-2.5 w-2.5 rounded-full bg-[#2f4131]" />}
@@ -295,22 +324,18 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                               <button
                                 key={item.id}
                                 type="button"
-                                onClick={() =>
-                                  isRequired
-                                    ? handleRequired(group.name, item.id)
-                                    : handleOptional(group.name, item.id)
-                                }
+                                onClick={() => handleSelection(group.name, item.id)}
                                 className={`${baseClasses} ${stateClasses}`}
                               >
                                 <div className="flex items-center gap-3">
                                   <Icon />
-                                  <span className={`text-sm font-semibold ${isSelected ? 'text-[#2f4131]' : 'text-neutral-700'}`}>
+                                  <span className={`text-[13px] font-medium ${isSelected ? 'text-[#2f4131]' : 'text-neutral-700'}`}>
                                     {item.name}
                                   </span>
                                 </div>
                                 {itemPrice > 0 && (
                                   <span
-                                    className={`text-sm font-bold ${
+                                    className={`text-[13px] font-bold ${
                                       isSelected ? "text-[#2f4131]" : "text-neutral-400"
                                     }`}
                                   >

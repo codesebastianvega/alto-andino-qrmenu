@@ -13,33 +13,33 @@ export const useCategories = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setLoading(true);
-        console.log('Fetching categories...');
-        
-        const { data, error } = await supabase
-          .from('categories')
-          .select('*')
-          .order('sort_order', { ascending: true });
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      console.log('Fetching categories...');
+      
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('sort_order', { ascending: true });
 
-        if (error) {
-          console.error('Categories error:', error);
-          throw error;
-        }
-
-        console.log('Categories loaded:', data?.length);
-        setCategories(data || []);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching categories:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      if (error) {
+        console.error('Categories error:', error);
+        throw error;
       }
-    };
 
+      console.log('Categories loaded:', data?.length);
+      setCategories(data || []);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchCategories();
   }, []);
 
@@ -108,5 +108,32 @@ export const useCategories = () => {
     }
   };
 
-  return { categories, loading, error, createCategory, updateCategory, deleteCategory };
+  // Bulk update sort orders
+  const updateCategoryOrders = async (orderedCategories) => {
+    try {
+      // Optimistic UI update
+      setCategories(orderedCategories.map((cat, idx) => ({ ...cat, sort_order: idx + 1 })));
+
+      const updates = orderedCategories.map((cat, idx) => ({
+        id: cat.id,
+        sort_order: idx + 1
+      }));
+
+      // Execute updates in parallel
+      await Promise.all(
+        updates.map(u => 
+          supabase.from('categories').update({ sort_order: u.sort_order }).eq('id', u.id)
+        )
+      );
+
+      return { success: true };
+    } catch (err) {
+      console.error('Error updating category orders:', err);
+      toast.error('Error al actualizar orden: ' + err.message);
+      fetchCategories(); // Reload to fix optimistic UI failure
+      return { success: false, error: err.message };
+    }
+  };
+
+  return { categories, loading, error, createCategory, updateCategory, deleteCategory, updateCategoryOrders };
 };

@@ -1,7 +1,6 @@
 ﻿import { useEffect, useMemo } from "react";
 import ProductSection from "./ProductSection";
 import { matchesQuery } from "@/utils/strings";
-import AdditionsAccordion from "./AdditionsAccordion";
 import { useMenuData } from "@/context/MenuDataContext";
 
 export default function Sandwiches({ query, onCount, onQuickView }) {
@@ -35,14 +34,7 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
     [products, query]
   );
 
-  const dbExtras = getModifiers('sandwich-extras');
-  const extras = useMemo(
-    () =>
-      dbExtras.filter((item) => matchesQuery({ title: item.name }, query)),
-    [dbExtras, query]
-  );
-
-  const totalCount = traditional.length + artisanal.length + specials.length + extras.length;
+  const totalCount = traditional.length + artisanal.length + specials.length;
 
   useEffect(() => {
     onCount?.(totalCount);
@@ -82,14 +74,6 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
           items={specials}
           includeUnavailable
           onQuickView={onQuickView}
-        />
-      )}
-
-      {extras.length > 0 && (
-        <AdditionsAccordion
-          items={extras}
-          idPrefix="sandwich-extras"
-          title="Adiciones"
         />
       )}
     </div>

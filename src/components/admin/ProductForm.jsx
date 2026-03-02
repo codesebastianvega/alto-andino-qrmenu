@@ -55,12 +55,12 @@ export default function ProductForm({ product, categories, recipes = [], onSave,
     });
   };
 
-  const setModifierType = (group, type) => {
+  const setModifierConfig = (group, config) => {
     setFormData(prev => ({
       ...prev,
       config_options: {
         ...prev.config_options,
-        modifier_config: { ...(prev.config_options?.modifier_config || {}), [group]: type },
+        modifier_config: { ...(prev.config_options?.modifier_config || {}), [group]: config },
       },
     }));
   };
@@ -179,6 +179,24 @@ export default function ProductForm({ product, categories, recipes = [], onSave,
                           <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${formData.is_active ? 'left-4' : 'left-0.5'}`} />
                         </div>
                         <span>{formData.is_active ? 'Activo — visible en el menú' : 'Inactivo — oculto del menú'}</span>
+                      </div>
+                    </button>
+                  </FormField>
+                </div>
+                <div className="md:col-span-2">
+                  <FormField label="Modo 'Arma tu propio' (DIY)">
+                    <button type="button" onClick={() => setFormData(prev => ({ 
+                      ...prev, 
+                      config_options: { ...prev.config_options, is_diy: !prev.config_options?.is_diy } 
+                    }))}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${formData.config_options?.is_diy ? 'bg-violet-50 border-violet-200 text-violet-800' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-5 rounded-full relative transition-all ${formData.config_options?.is_diy ? 'bg-violet-500' : 'bg-gray-300'}`}>
+                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${formData.config_options?.is_diy ? 'left-4' : 'left-0.5'}`} />
+                        </div>
+                        <span className="text-left leading-tight">
+                          {formData.config_options?.is_diy ? 'Activo — Usará el modal Premium DIY por pasos' : 'Inactivo — Usará el modal rápido (QuickView)'}
+                        </span>
                       </div>
                     </button>
                   </FormField>
@@ -308,18 +326,47 @@ export default function ProductForm({ product, categories, recipes = [], onSave,
                         </button>
                         {/* Required/Optional toggle — only when selected */}
                         {isSelected && (
-                          <div className="border-t border-violet-100 px-3 py-2 flex gap-1">
-                            {['optional', 'required'].map(t => (
-                              <button key={t} type="button"
-                                onClick={() => setModifierType(group, t)}
-                                className={`flex-1 text-[11px] font-semibold py-1 rounded-lg transition-colors ${
-                                  modType === t
-                                    ? t === 'required' ? 'bg-violet-600 text-white' : 'bg-violet-100 text-violet-700'
-                                    : 'text-gray-400 hover:bg-gray-100'
-                                }`}>
-                                {t === 'required' ? 'Requerido' : 'Opcional'}
-                              </button>
-                            ))}
+                          <div className="border-t border-violet-100 p-3 bg-white/50 space-y-3">
+                            <div className="flex gap-1 bg-gray-100/50 p-1 rounded-xl">
+                              {['optional', 'required', 'custom'].map(t => {
+                                const currentConfig = modType; 
+                                const isCurrent = (typeof currentConfig === 'string' && currentConfig === t) || (typeof currentConfig === 'object' && t === 'custom');
+                                return (
+                                <button key={t} type="button"
+                                  onClick={() => {
+                                    if (t === 'custom') setModifierConfig(group, { type: 'custom', min: 1, max: 2 });
+                                    else setModifierConfig(group, t);
+                                  }}
+                                  className={`flex-1 text-[10px] font-semibold py-1.5 rounded-lg transition-colors ${
+                                    isCurrent
+                                      ? 'bg-violet-600 text-white shadow-sm'
+                                      : 'text-gray-500 hover:bg-violet-50'
+                                  }`}>
+                                  {t === 'required' ? 'Único' : t === 'optional' ? 'Múltiple' : 'Personalizado'}
+                                </button>
+                                );
+                              })}
+                            </div>
+                            
+                            {typeof modType === 'object' && (
+                              <div className="flex items-center gap-3 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                                <label className="flex-1 flex items-center justify-between text-[11px] font-semibold text-gray-600">
+                                  <span>Mín. a elegir:</span>
+                                  <input type="number" min="0" 
+                                    value={modType.min ?? 1}
+                                    onChange={e => setModifierConfig(group, { ...modType, min: parseInt(e.target.value) || 0 })}
+                                    className="w-12 px-2 py-1 text-center text-[12px] font-bold bg-white border border-gray-200 rounded focus:ring-1 focus:ring-violet-500 outline-none" />
+                                </label>
+                                <div className="w-px h-6 bg-gray-200" />
+                                <label className="flex-1 flex items-center justify-between text-[11px] font-semibold text-gray-600">
+                                  <span>Límite (Max):</span>
+                                  <input type="number" min="0" 
+                                    value={modType.max ?? 2}
+                                    onChange={e => setModifierConfig(group, { ...modType, max: parseInt(e.target.value) || 0 })}
+                                    className="w-12 px-2 py-1 text-center text-[12px] font-bold bg-white border border-gray-200 rounded focus:ring-1 focus:ring-violet-500 outline-none" />
+                                </label>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

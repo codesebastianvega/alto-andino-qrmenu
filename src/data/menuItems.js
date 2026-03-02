@@ -639,19 +639,6 @@ export const teasAndChai = [
 
 
 
-export const breakfastAdditions = [
-  { id: "add-arepa-peto-queso", name: "Arepa de peto con Queso", price: 3500 },
-  { id: "add-ensalada-frutas", name: "Ensalada de frutas", price: 16000 },
-  { id: "add-huevo-sencillo", name: "1 huevo al gusto", price: 3500 },
-  { id: "add-tajada-pan", name: "Tajada de pan", price: 2500 },
-  { id: "add-masa-madre", name: "Pan de masa madre - porcion", price: 4000 },
-  { id: "add-queso-campesino", name: "Queso campesino (tajada)", price: 3500 },
-  { id: "add-queso-loncha", name: "Queso loncha", price: 2500 },
-  { id: "add-fruta-extra", name: "Adicion de fruta", price: 3500 },
-  { id: "add-aguacate-extra", name: "Aguacate extra", price: 3000 },
-  { id: "add-griego-extra", name: "Extra porcion de griego", price: 6500 },
-];
-
 export const breadAndCakes = [
   {
     id: "pan-masa-madre",

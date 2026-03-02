@@ -10,7 +10,6 @@ function gatherCatalog() {
     for (const it of arr) push(it?.id || slugify(it?.name || ""), it?.name, cat);
   };
   addArray(menu.breakfastItems, "desayunos");
-  addArray(menu.breakfastAdditions, "desayunos");
   addArray(menu.breadAndCakes, "panes");
   addArray(menu.mainDishes, "platos");
   addArray(menu.dessertBaseItems, "postres");

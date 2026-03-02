@@ -16,14 +16,13 @@ import { matchesQuery } from "../utils/strings";
  import BowlsSection from "./BowlsSection";
  import ColdDrinksSection from "./ColdDrinksSection";
  import ProductQuickView from "./ProductQuickView";
+ import DIYProductModal from "./DIYProductModal";
  import ProductCard from "./ProductCard";
 import { getProductImage } from "../utils/images";
  import CategoryHeader from "./CategoryHeader";
  import CategoryNav from "./CategoryNav";
 import AAImage from "./ui/AAImage";
-import AdditionsAccordion from "./AdditionsAccordion";
  import {
-   breakfastItems,
    breadAndCakes,
    mainDishes,
    dessertBaseItems,
@@ -47,6 +46,8 @@ export default function ProductLists({
   const scrollerRef = useRef(null);
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickProduct, setQuickProduct] = useState(null);
+  const [diyOpen, setDiyOpen] = useState(false);
+  const [diyProduct, setDiyProduct] = useState(null);
 
   const categories = useMemo(() => {
     return dbCategories.map(dbCat => {
@@ -63,8 +64,13 @@ export default function ProductLists({
 
   const onQuickView = useCallback((p) => {
     if (!p) return;
-    setQuickProduct(p);
-    setQuickOpen(true);
+    if (p.configOptions?.is_diy) {
+      setDiyProduct(p);
+      setDiyOpen(true);
+    } else {
+      setQuickProduct(p);
+      setQuickOpen(true);
+    }
   }, []);
 
   const setCount = useCallback((id, n) => {
@@ -74,7 +80,7 @@ export default function ProductLists({
   // Helper to find a customizable product for a banner
   const getBannerProductForCategory = (catId) => {
     const products = getProductsByCategory(catId);
-    return products.find(p => p.config_options?.creator_type);
+    return products.find(p => p.configOptions?.creator_type);
   };
 
   // Permite abrir QuickView desde otros componentes
@@ -82,8 +88,13 @@ export default function ProductLists({
     const onGlobalQV = (e) => {
       const p = e?.detail;
       if (!p) return;
-      setQuickProduct(p);
-      setQuickOpen(true);
+      if (p.configOptions?.is_diy) {
+        setDiyProduct(p);
+        setDiyOpen(true);
+      } else {
+        setQuickProduct(p);
+        setQuickOpen(true);
+      }
     };
     window.addEventListener("aa:quickview", onGlobalQV);
     return () => window.removeEventListener("aa:quickview", onGlobalQV);
@@ -497,6 +508,12 @@ export default function ProductLists({
          product={quickProduct}
          onClose={() => setQuickOpen(false)}
          onAdd={() => setQuickOpen(false)}
+       />
+       <DIYProductModal
+         open={diyOpen}
+         product={diyProduct}
+         onClose={() => setDiyOpen(false)}
+         onAdd={() => setDiyOpen(false)}
        />
      </>
    );

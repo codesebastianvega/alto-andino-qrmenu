@@ -36,18 +36,24 @@ export function useAdminIngredients() {
         .insert([{
           ...ingredientData,
           category_id: ingredientData.category_id || null, // Normalize empty string to null
+          provider_id: ingredientData.provider_id || null,
           unit_cost: unitCost,
           selling_price: parseFloat(ingredientData.selling_price) || 0,
+          portion_size: parseFloat(ingredientData.portion_size) || 50,
           is_modifier: Boolean(ingredientData.is_modifier)
         }])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase create ingredient error:', error);
+        throw error;
+      }
       toast('Insumo creado correctamente');
       fetchIngredients();
       return data;
     } catch (err) {
+      console.error('Error in useAdminIngredients createIngredient:', err);
       toast('Error al crear insumo: ' + err.message);
       return null;
     }
@@ -65,19 +71,25 @@ export function useAdminIngredients() {
         .update({
           ...ingredientData,
           category_id: ingredientData.category_id || null, // Normalize empty string to null
+          provider_id: ingredientData.provider_id || null,
           unit_cost: unitCost,
           selling_price: parseFloat(ingredientData.selling_price) || 0,
+          portion_size: parseFloat(ingredientData.portion_size) || 50,
           is_modifier: Boolean(ingredientData.is_modifier)
         })
         .eq('id', id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase update ingredient error:', error);
+        throw error;
+      }
       toast('Insumo actualizado');
       fetchIngredients();
       return data;
     } catch (err) {
+      console.error('Error in useAdminIngredients updateIngredient:', err);
       toast('Error al actualizar: ' + err.message);
       return null;
     }
