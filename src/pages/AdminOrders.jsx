@@ -1,8 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../config/supabase';
-import { PageHeader } from '../components/admin/ui/PageHeader';
+import { PageHeader } from '../components/admin/ui';
 import { Icon } from '@iconify-icon/react';
-import toast from 'react-hot-toast';
+import { toast as toastFn } from '../components/Toast';
+
+const toast = {
+  success: (msg) => toastFn(msg, { duration: 3000 }),
+  error: (msg) => toastFn(msg, { duration: 4000 })
+};
 
 // Estados permitidos
 const ORDER_STATUSES = [
@@ -128,6 +133,29 @@ export default function AdminOrders() {
     }
   };
 
+  const shareToWhatsApp = (order) => {
+    let text = `*📌 PEDIDO #${order.id.slice(0, 4).toUpperCase()}*\n`;
+    text += `Origen: ${order.origin === 'table' ? ('Mesa ' + (order.restaurant_tables?.table_number || 'N/A')) : 'Para Llevar'}\n\n`;
+    text += `*CANT | PRODUCTO*\n`;
+    
+    order.order_items?.forEach(item => {
+      text += `🔸 ${item.quantity}x ${item.products?.name || 'Producto'}\n`;
+      if (item.modifiers && Object.keys(item.modifiers).length > 0) {
+         const mods = Object.entries(item.modifiers).map(([k, v]) => `${k}: ${v}`).join(', ');
+         text += `   - ${mods}\n`;
+      }
+      if (item.notes) {
+         text += `   - Nota: ${item.notes}\n`;
+      }
+    });
+
+    text += `\n*TOTAL:* $${order.total_amount?.toLocaleString('es-CO') || 0}\n`;
+    
+    // Al dejar el número en blanco en wa.me, le permite al usuario elegir el contacto a enviar en WA
+    const waHref = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(waHref, '_blank');
+  };
+
   const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled');
 
   return (
@@ -192,7 +220,12 @@ export default function AdminOrders() {
                             </div>
                           </div>
                           
-                          <OrderTimer createdAt={order.created_at} status={order.status} />
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => shareToWhatsApp(order)} className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-green-600 transition-colors" title="Compartir por WhatsApp">
+                              <Icon icon="logos:whatsapp-icon" className="text-lg" />
+                            </button>
+                            <OrderTimer createdAt={order.created_at} status={order.status} />
+                          </div>
                         </div>
 
                         {/* Items List */}

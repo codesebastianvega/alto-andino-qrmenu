@@ -144,11 +144,6 @@ export default function CartDrawer({ open, onClose }) {
   const [openNoteIndex, setOpenNoteIndex] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const waNum = safeNum(import.meta.env.VITE_WHATSAPP || "573209009972");
-  const waHref = items?.length
-    ? `https://wa.me/${waNum}?text=${buildWaText({ items, total, note })}`
-    : undefined;
-
   const handleConfirmOrder = async (e) => {
     e.preventDefault();
     if (!items.length) return;
@@ -205,12 +200,10 @@ export default function CartDrawer({ open, onClose }) {
       clearCart?.();
       onClose();
 
-      if (origin === 'table') {
-        toast.success("¡Pedido enviado a cocina exitosamente!");
-      } else {
-        toast.success("Pedido registrado. Abriendo WhatsApp...");
-        if (waHref) window.open(waHref, '_blank');
-      }
+      toast.success(origin === 'table' 
+        ? "¡Pedido enviado a cocina exitosamente! 👨‍🍳🔥"
+        : "¡Pedido registrado exitosamente! Pasa a recogerlo pronto. 🛍️"
+      );
 
     } catch (err) {
       console.error('Error enviando pedido:', err);
@@ -534,17 +527,12 @@ export default function CartDrawer({ open, onClose }) {
                     {isSubmitting ? (
                       <span className="flex items-center gap-2">
                         <Icon icon="line-md:loading-loop" className="text-xl" />
-                        Procesando...
+                        Enviando a Cocina...
                       </span>
-                    ) : getTable() ? (
-                      <>
-                        <Icon icon="heroicons:bell-alert" className="text-xl" />
-                        Enviar Pedido a Cocina
-                      </>
                     ) : (
                       <>
-                        <Icon icon="logos:whatsapp-icon" className="text-xl" />
-                        Pedir por WhatsApp
+                        <Icon icon="heroicons:bell-alert" className="text-xl" />
+                        Confirmar y Enviar Pedido
                       </>
                     )}
                   </button>

@@ -2,6 +2,10 @@
 -- V2 PHASE 2: Orders & KDS Schema
 -- ==========================================
 
+-- Clean up existing tables to avoid cached schema issues during dev
+DROP TABLE IF EXISTS public.order_items;
+DROP TABLE IF EXISTS public.orders;
+
 -- 1. Create Orders table
 CREATE TABLE IF NOT EXISTS public.orders (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -45,5 +49,3 @@ CREATE POLICY "Enable all for authenticated users on order_items" ON public.orde
 -- 4. Enable Supabase Realtime for orders
 -- It is recommended to enable this via the Supabase Dashboard:
 -- Database -> Replication -> Click '0 tables' next to supabase_realtime -> Toggle 'orders' table
--- Alternatively, if this SQL command fails, you can safely ignore it and do it via the UI.
-ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
