@@ -51,12 +51,16 @@ export const IMAGE_MAP = {
   // "main-burger": "/img/products/main-burger.jpg", // Burger Andina (Pavo 150 gr)
 
   // === Sándwiches ===
-  // Nota: las cards usan ids tipo "sandwich:<key>"
-  // "sandwich:pollo": "/img/products/sandwich-pollo.jpg",
-  // "sandwich:pavo": "/img/products/sandwich-pavo.jpg",
+  // Update: Base products use slug(name) like 'serrano-di-bufala' or 'sandwich-de-cerdo'
+  // "sandwich-de-pollo": "/img/products/sandwich-pollo.jpg",
+  // "sandwich-de-pavo": "/img/products/sandwich-pavo.jpg",
+  "serrano-di-bufala": "/img/products/sandwich-serrano.jpg",
+  // "cosecha-del-huerto": "/img/products/sandwich-cosecha.jpg",
+  "sandwich-de-cerdo": "/img/products/sancerdo1.png", // ya existente
+  
+  // Mantener las viejas por si acaso
   "sandwich:serrano": "/img/products/sandwich-serrano.jpg",
-  // "sandwich:cosecha": "/img/products/sandwich-cosecha.jpg",
-  "sandwich:cerdo": "/img/products/sancerdo1.png", // ya existente
+  "sandwich:cerdo": "/img/products/sancerdo1.png",
 
   // === Smoothies ===
   // Usa un nombre de archivo slug y mapea explícitamente (ids traen ":")
@@ -122,20 +126,22 @@ export const IMAGE_MAP = {
   // "veg-pasta-bolonesa": "/img/products/veg-pasta-bolonesa.jpg",
 };
 
-/**
- * Dado un producto { id?, productId?, name? }, devuelve una ruta de imagen.
- * 1) Busca en IMAGE_MAP por id, productId o slug(name)
- * 2) Si no, intenta /img/products/<id|slug>.png o .jpg
- * 3) Si no, retorna null
- */
 export function getProductImage(product) {
   if (!product) return null;
-  const key =
-    product.id ||
-    product.productId ||
-    (product.name ? slugify(product.name) : "");
-  if (key && IMAGE_MAP[key]) return IMAGE_MAP[key];
-  // No realizamos comprobaciones síncronas ni adivinamos rutas por defecto
-  // para evitar bloqueos y placeholders. Solo mostramos imágenes mapeadas.
+
+  // 1) Si la base de datos provee una URL de imagen, usarla directo
+  // Nota: MenuDataContext mapea product.image_url a product.image
+  const directUrl = product.image_url || product.image;
+  if (directUrl) return directUrl;
+
+  // 2) Intentar buscar en el mapa usando el slug del nombre (sirve para BD con UUIDs)
+  const slugKey = product.name ? slugify(product.name) : null;
+  if (slugKey && IMAGE_MAP[slugKey]) return IMAGE_MAP[slugKey];
+
+  // 3) Intentar buscar en el mapa usando el ID original (para legacy o items duros)
+  const idKey = product.id || product.productId;
+  if (idKey && IMAGE_MAP[idKey]) return IMAGE_MAP[idKey];
+
+  // No adivinamos rutas por defecto para evitar console.error(404)
   return null;
 }

@@ -19,6 +19,7 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
   const isOut = item.stock_status === 'out';
   
   const product = {
+    ...item,                            // preserve all DB fields (modifierGroups, categorySlug, configOptions, etc.)
     productId,
     id: isOut ? undefined : productId,
     title: item.name,
@@ -49,6 +50,14 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
       toast("Producto agotado");
       return;
     }
+
+    // Si tiene modificadores, abrir el modal en lugar de agregar directo
+    const hasModifiers = product.modifierGroups && product.modifierGroups.length > 0;
+    if (hasModifiers) {
+      handleQuickView();
+      return;
+    }
+
     onAdd?.({ productId, name: item.name, price: item.price, qty: 1 });
   };
 

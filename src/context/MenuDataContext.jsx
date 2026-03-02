@@ -86,12 +86,13 @@ export const MenuDataProvider = ({ children }) => {
             price: product.price,
             desc: product.description || '',
             tags: product.tags || [],
-            stock_status: product.stock_status || 'in', // Changed from 'stock' to 'stock_status'
+            stock_status: product.stock_status || 'in',
             image: product.image_url,
             variants: product.variants || [],
             modifierGroups: product.modifier_groups || [],
             configOptions: product.config_options || {},
-            _supabase: product // Keep original for debugging
+            categorySlug: catSlug,          // expose slug for QuickView fallback
+            _supabase: product
           });
         });
 

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMenuData } from '../../context/MenuDataContext';
+import { supabase } from '../../config/supabase';
 import { Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButton } from './ui';
 
 export default function ProductForm({ product, categories, recipes = [], onSave, onCancel }) {
@@ -13,6 +14,9 @@ export default function ProductForm({ product, categories, recipes = [], onSave,
     variants: [], modifier_groups: [], config_options: {}, recipe_id: null,
   });
   const [targetMargin, setTargetMargin] = useState(35);
+  const [manageGroups, setManageGroups] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (product) {
@@ -36,8 +40,61 @@ export default function ProductForm({ product, categories, recipes = [], onSave,
   const toggleModifierGroup = (group) => {
     setFormData(prev => {
       const current = prev.modifier_groups || [];
-      return { ...prev, modifier_groups: current.includes(group) ? current.filter(g => g !== group) : [...current, group] };
+      const isIn = current.includes(group);
+      const newGroups = isIn ? current.filter(g => g !== group) : [...current, group];
+      // When adding, default to optional; when removing, clean up config
+      const prevConfig = prev.config_options?.modifier_config || {};
+      const newConfig = { ...prevConfig };
+      if (!isIn) newConfig[group] = 'optional';
+      else delete newConfig[group];
+      return {
+        ...prev,
+        modifier_groups: newGroups,
+        config_options: { ...prev.config_options, modifier_config: newConfig },
+      };
     });
+  };
+
+  const setModifierType = (group, type) => {
+    setFormData(prev => ({
+      ...prev,
+      config_options: {
+        ...prev.config_options,
+        modifier_config: { ...(prev.config_options?.modifier_config || {}), [group]: type },
+      },
+    }));
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+      const fileExt = file.name.split('.').pop();
+      // Generate a unique file name
+      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('products')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('products')
+        .getPublicUrl(filePath);
+
+      setFormData(prev => ({ ...prev, image_url: data.publicUrl }));
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Error subiendo imagen. Intenta de nuevo.');
+    } finally {
+      setIsUploading(false);
+      // Reset input so the same file could be selected again if needed
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleSubmit = (e) => {
@@ -202,23 +259,111 @@ export default function ProductForm({ product, categories, recipes = [], onSave,
             {/* Modifier Groups */}
             {availableGroups.length > 0 && (
               <section className="border border-gray-100 rounded-2xl p-6">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">Personalizaciones / Extras</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="flex items-start justify-between mb-1">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Personalizaciones / Extras</p>
+                    <p className="text-[11px] text-gray-300 mt-0.5">Asigna grupos de opciones al producto</p>
+                  </div>
+                  <button type="button" onClick={() => setManageGroups(v => !v)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-violet-100 bg-violet-50 text-violet-600 hover:bg-violet-100 transition-all text-[11px] font-semibold">
+                    ⚙ {manageGroups ? 'Cerrar' : 'Gestionar grupos'}
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {availableGroups.map(group => {
                     const isSelected = (formData.modifier_groups || []).includes(group);
+                    const modType = formData.config_options?.modifier_config?.[group] || 'optional';
+                    const groupItems = modifierGroupsData[group] || [];
+                    const previewItems = groupItems.slice(0, 3);
                     return (
-                      <button key={group} type="button" onClick={() => toggleModifierGroup(group)}
-                        className={`p-3 rounded-xl border-2 text-left flex justify-between items-center transition-all ${isSelected ? 'bg-violet-50 border-violet-200 text-violet-900' : 'bg-gray-50 border-transparent text-gray-400 hover:border-gray-200'}`}>
-                        <span className="text-[12px] font-semibold truncate pr-2">{group.replace(/-/g, ' ')}</span>
-                        <span className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] ${isSelected ? 'bg-violet-600 border-violet-600 text-white' : 'border-gray-200'}`}>
-                          {isSelected ? '✓' : ''}
-                        </span>
-                      </button>
+                      <div key={group}
+                        className={`rounded-xl border-2 transition-all duration-150 overflow-hidden ${
+                          isSelected ? 'border-violet-200 bg-violet-50' : 'border-gray-100 bg-gray-50 opacity-60'
+                        }`}>
+                        {/* Card header — click to toggle */}
+                        <button type="button" onClick={() => toggleModifierGroup(group)}
+                          className="w-full p-3 text-left flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-3 h-3 rounded-full border-2 flex-shrink-0 ${
+                                isSelected ? 'bg-violet-600 border-violet-600' : 'border-gray-300'
+                              }`} />
+                              <span className={`text-[13px] font-semibold truncate capitalize ${
+                                isSelected ? 'text-violet-900' : 'text-gray-400'
+                              }`}>{group.replace(/-/g, ' ')}</span>
+                            </div>
+                            {/* Items preview */}
+                            {groupItems.length > 0 && (
+                              <p className={`text-[11px] mt-1 ml-5 truncate ${
+                                isSelected ? 'text-violet-500' : 'text-gray-300'
+                              }`}>
+                                {previewItems.map(i => i.name).join(' · ')}
+                                {groupItems.length > 3 ? ` +${groupItems.length - 3}` : ''}
+                              </p>
+                            )}
+                          </div>
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 mt-0.5 ${
+                            isSelected ? 'bg-violet-100 text-violet-600' : 'bg-gray-100 text-gray-300'
+                          }`}>{groupItems.length}</span>
+                        </button>
+                        {/* Required/Optional toggle — only when selected */}
+                        {isSelected && (
+                          <div className="border-t border-violet-100 px-3 py-2 flex gap-1">
+                            {['optional', 'required'].map(t => (
+                              <button key={t} type="button"
+                                onClick={() => setModifierType(group, t)}
+                                className={`flex-1 text-[11px] font-semibold py-1 rounded-lg transition-colors ${
+                                  modType === t
+                                    ? t === 'required' ? 'bg-violet-600 text-white' : 'bg-violet-100 text-violet-700'
+                                    : 'text-gray-400 hover:bg-gray-100'
+                                }`}>
+                                {t === 'required' ? 'Requerido' : 'Opcional'}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
+
+                {/* Groups management drawer */}
+                {manageGroups && (
+                  <div className="mt-4 border border-violet-100 rounded-xl overflow-hidden">
+                    <div className="px-4 py-2.5 bg-violet-50 border-b border-violet-100 flex items-center justify-between">
+                      <p className="text-[11px] font-semibold text-violet-700 uppercase tracking-wider">Grupos disponibles</p>
+                      <p className="text-[10px] text-violet-400">Los grupos se crean desde Insumos → Categorías</p>
+                    </div>
+                    <div className="divide-y divide-gray-50">
+                      {availableGroups.map(group => {
+                        const items = modifierGroupsData[group] || [];
+                        return (
+                          <div key={group} className="px-4 py-2.5 flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[12px] font-semibold text-gray-700 capitalize">{group.replace(/-/g, ' ')}</p>
+                              {items.length > 0 ? (
+                                <p className="text-[11px] text-gray-400 mt-0.5 truncate">
+                                  {items.map(i => i.name).join(' · ')}
+                                </p>
+                              ) : (
+                                <p className="text-[11px] text-gray-300 mt-0.5">Sin ítems aún</p>
+                              )}
+                            </div>
+                            <span className="text-[10px] font-semibold bg-violet-50 text-violet-600 px-2 py-0.5 rounded-full shrink-0 mt-0.5">
+                              {items.length} ítem{items.length !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-100">
+                      <p className="text-[10px] text-gray-400">Para agregar ítems a un grupo, ve a <strong>Insumos → Categorías</strong> y edita la categoría correspondiente</p>
+                    </div>
+                  </div>
+                )}
               </section>
             )}
+
           </div>
 
           {/* ── Right sidebar */}
@@ -301,10 +446,33 @@ export default function ProductForm({ product, categories, recipes = [], onSave,
                     onError={e => { e.target.style.display = 'none'; }} />
                 </div>
               )}
-              <FormField label="URL de imagen">
-                <TextInput type="url" name="image_url" value={formData.image_url} onChange={handleChange}
-                  placeholder="https://ejemplo.com/foto.jpg" />
-              </FormField>
+              
+              <div className="flex flex-col gap-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  ref={fileInputRef}
+                  disabled={isUploading}
+                  className="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-full file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-violet-50 file:text-violet-700
+                    hover:file:bg-violet-100 transition-all cursor-pointer disabled:opacity-50"
+                />
+                
+                {isUploading && (
+                  <p className="text-[11px] text-violet-600 font-medium animate-pulse">
+                    Subiendo imagen...
+                  </p>
+                )}
+
+                <FormField label="O ingresa la URL manualmente">
+                  <TextInput type="url" name="image_url" value={formData.image_url} onChange={handleChange}
+                    placeholder="https://ejemplo.com/foto.jpg" disabled={isUploading} />
+                </FormField>
+              </div>
             </div>
 
             {/* Action buttons */}

@@ -16,6 +16,7 @@ import { matchesQuery } from "../utils/strings";
  import BowlsSection from "./BowlsSection";
  import ColdDrinksSection from "./ColdDrinksSection";
  import ProductQuickView from "./ProductQuickView";
+ import ProductCard from "./ProductCard";
 import { getProductImage } from "../utils/images";
  import CategoryHeader from "./CategoryHeader";
  import CategoryNav from "./CategoryNav";
@@ -23,7 +24,6 @@ import AAImage from "./ui/AAImage";
 import AdditionsAccordion from "./AdditionsAccordion";
  import {
    breakfastItems,
-   breakfastAdditions,
    breadAndCakes,
    mainDishes,
    dessertBaseItems,
@@ -99,13 +99,7 @@ export default function ProductLists({
       ),
     [query, breakfastsFromDB],
   );
-  const breakfastExtras = useMemo(
-    () =>
-      (breakfastAdditions || []).filter((it) =>
-        matchesQuery({ title: it.name }, query),
-      ),
-    [query],
-  );
+
   // Get panes from Supabase ONLY
   const panesFromDB = getProductsByCategory('panes');
   const breadItems = useMemo(
@@ -116,8 +110,8 @@ export default function ProductLists({
     [query, panesFromDB],
   );
   useEffect(() => {
-    setCount("desayunos", breakfasts.length + breakfastExtras.length);
-  }, [breakfasts.length, breakfastExtras.length, setCount]);
+    setCount("desayunos", breakfasts.length);
+  }, [breakfasts.length, setCount]);
   useEffect(() => {
     setCount("panes", breadItems.length);
   }, [breadItems.length, setCount]);
@@ -203,17 +197,8 @@ export default function ProductLists({
               title={cat.name}
               query={query}
               items={items}
-              onCount={(n) => setCount("desayunos", n + breakfastExtras.length)}
+              onCount={(n) => setCount("desayunos", n)}
               onQuickView={onQuickView}
-              renderAfter={() => (
-                <AdditionsAccordion
-                  items={breakfastExtras}
-                  idPrefix="breakfast-additions"
-                />
-              )}
-              alwaysShow={Boolean(breakfastExtras.length)}
-              renderEmpty={() => null}
-              countValue={items.length + breakfastExtras.length}
             />
           );
           break;
@@ -314,7 +299,6 @@ export default function ProductLists({
     categories,
     getProductsByCategory,
     query,
-    breakfastExtras,
     mainGroups,
     dessertsCount,
     dessertsCumbre,
@@ -613,11 +597,16 @@ export default function ProductLists({
          </div>
        )}
        {base.length > 0 && (
-         <ul className="space-y-3">
+         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 mt-6">
            {base.map((p) => (
-             <ProductRow key={p.id} item={p} onQuickView={onQuickView} />
+             <ProductCard 
+               key={p.id} 
+               item={p} 
+               onQuickView={onQuickView} 
+               onAdd={(payload) => addItem(payload)}
+             />
            ))}
-         </ul>
+         </div>
        )}
       </div>
    );

@@ -91,6 +91,7 @@ export default function AdminProducts() {
               <Th>Precio</Th>
               <Th>Stock</Th>
               <Th>Receta</Th>
+              <Th>Extras</Th>
               <Th>Estado</Th>
               <Th right>Acciones</Th>
             </tr>
@@ -105,7 +106,7 @@ export default function AdminProducts() {
               // Inline delete confirmation row
               if (isDelConf) return (
                 <tr key={product.id}>
-                  <td colSpan={7} className="px-5 py-3 bg-red-50">
+                  <td colSpan={8} className="px-5 py-3 bg-red-50">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-red-700">
                         ¿Eliminar <strong>"{product.name}"</strong>? Esta acción no se puede deshacer.
@@ -194,6 +195,25 @@ export default function AdminProducts() {
                   <td className="px-5 py-3.5">
                     {recipe ? (
                       <Badge variant="indigo">{recipe.name}</Badge>
+                    ) : (
+                      <span className="text-[12px] text-gray-300 font-medium">—</span>
+                    )}
+                  </td>
+
+                  {/* Extras */}
+                  <td className="px-5 py-3.5">
+                    {(product.modifier_groups || []).length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {(product.modifier_groups || []).slice(0, 2).map(g => (
+                          <span key={g}
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-50 text-violet-700 border border-violet-100 capitalize">
+                            {g.replace(/-/g, ' ')}
+                          </span>
+                        ))}
+                        {(product.modifier_groups || []).length > 2 && (
+                          <span className="text-[10px] text-violet-400 font-semibold">+{(product.modifier_groups || []).length - 2}</span>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-[12px] text-gray-300 font-medium">—</span>
                     )}
