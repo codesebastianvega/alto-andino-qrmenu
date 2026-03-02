@@ -8,6 +8,7 @@ import AdminBranding from '../../pages/AdminBranding';
 import AdminSettings from '../../pages/AdminSettings';
 import AdminAllergens from '../../pages/AdminAllergens';
 import AdminTables from '../../pages/AdminTables';
+import AdminOrders from '../../pages/AdminOrders';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
 const Icons = {
@@ -103,7 +104,7 @@ const MENU_ITEMS = [
   { id: 'tables',    label: 'Mesas (QR)',   Icon: Icons.Tables },
   { id: 'experiences', label: 'Experiencias', Icon: Icons.Experiences, disabled: true },
   { id: 'branding',    label: 'Branding y Diseño', Icon: Icons.Branding },
-  { id: 'orders',      label: 'Pedidos',      Icon: Icons.Orders,       disabled: true },
+  { id: 'orders',      label: 'Pedidos',      Icon: Icons.Orders },
   { id: 'dashboard',   label: 'Dashboard',    Icon: Icons.Dashboard,    disabled: true },
   { id: 'settings',    label: 'Ajustes Generales', Icon: Icons.Settings },
 ];
@@ -242,12 +243,13 @@ export default function AdminLayout() {
           {currentPage === 'products'    && <AdminProducts />}
           {currentPage === 'categories'  && <AdminCategories />}
           {currentPage === 'allergens'   && <AdminAllergens />}
-          {currentPage === 'experiences' && <AdminExperiences />}
-          {currentPage === 'recipes'     && <AdminRecipes />}
-          {currentPage === 'modifiers'   && <AdminModifiers />}
-          {currentPage === 'tables'      && <AdminTables />}
-          {currentPage === 'branding'    && <AdminBranding />}
-          {currentPage === 'settings'    && <AdminSettings />}
+          { currentPage === 'experiences' && <AdminExperiences /> }
+          { currentPage === 'recipes'     && <AdminRecipes /> }
+          { currentPage === 'modifiers'   && <AdminModifiers /> }
+          { currentPage === 'tables'      && <AdminTables /> }
+          { currentPage === 'orders'      && <AdminOrders /> }
+          { currentPage === 'branding'    && <AdminBranding /> }
+          { currentPage === 'settings'    && <AdminSettings /> }
           {currentPage === 'dashboard'   && (
             <div className="flex items-center justify-center h-96 text-gray-300">
               <div className="text-center">

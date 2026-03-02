@@ -2,12 +2,18 @@ import React, { useEffect, useState, useRef } from "react";
 import { useCart, getItemUnit } from "@/context/CartContext";
 import SwipeRevealItem from "./SwipeRevealItem";
 import Portal from "./Portal";
-import { toast } from "./Toast";
+import { toast as toastFn } from "./Toast";
 import { getProductImage } from "@/utils/images";
 import { MILK_OPTIONS } from "@/config/milkOptions";
 import { formatCOP } from "@/utils/money";
 import AAImage from "@/components/ui/AAImage";
 import { Icon } from "@iconify-icon/react";
+import { supabase } from "@/config/supabase";
+
+const toast = {
+  success: (msg) => toastFn(msg, { duration: 3000 }),
+  error: (msg) => toastFn(msg, { duration: 4000 })
+};
 
 const safeNum = (raw) => {
   const n = String(raw || "").replace(/\D/g, "");
@@ -136,32 +142,82 @@ export default function CartDrawer({ open, onClose }) {
   
   // Track open state of per-item note input
   const [openNoteIndex, setOpenNoteIndex] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const waNum = safeNum(import.meta.env.VITE_WHATSAPP || "573209009972");
   const waHref = items?.length
     ? `https://wa.me/${waNum}?text=${buildWaText({ items, total, note })}`
     : undefined;
 
-  const onWhatsAppClick = (e) => {
-    if (!waHref) {
-      e.preventDefault();
-      return;
-    }
+  const handleConfirmOrder = async (e) => {
+    e.preventDefault();
+    if (!items.length) return;
+    
+    setIsSubmitting(true);
     try {
-      const snapshot = { items, note, total };
-      sessionStorage.setItem("aa_last_order", JSON.stringify(snapshot));
-    } catch {}
+      const mesa = getTable();
+      const origin = mesa ? 'table' : 'whatsapp';
 
-    setTimeout(() => {
+      // 1. Get exact table_id if mesa string matches table_number
+      let tableId = null;
+      if (mesa) {
+        const { data: tableData } = await supabase.from('restaurant_tables')
+          .select('id').eq('table_number', mesa).single();
+         if (tableData) tableId = tableData.id;
+      }
+
+      // 2. Insert Order
+      const { data: orderData, error: orderError } = await supabase.from('orders')
+        .insert([{
+          status: 'new',
+          origin: origin,
+          table_id: tableId,
+          total_amount: total,
+          customer_name: '',
+          customer_phone: ''
+        }])
+        .select()
+        .single();
+        
+      if (orderError) throw orderError;
+
+      // 3. Insert Order Items
+      const orderItemsToInsert = items.map(it => ({
+        order_id: orderData.id,
+        product_id: it.id, 
+        quantity: it.qty,
+        unit_price: getItemUnit(it),
+        modifiers: it.options || {},
+        notes: it.note || ''
+      }));
+
+      const { error: itemsError } = await supabase.from('order_items')
+        .insert(orderItemsToInsert);
+
+      if (itemsError) throw itemsError;
+
+      // 4. Handle Success
       try {
-        clearCart?.();
-        document.dispatchEvent(
-          new CustomEvent("aa:toast", {
-            detail: { message: "Pedido abierto en WhatsApp — Deshacer" },
-          })
-        );
+        const snapshot = { items, note, total };
+        sessionStorage.setItem("aa_last_order", JSON.stringify(snapshot));
       } catch {}
-    }, 300);
+
+      clearCart?.();
+      onClose();
+
+      if (origin === 'table') {
+        toast.success("¡Pedido enviado a cocina exitosamente!");
+      } else {
+        toast.success("Pedido registrado. Abriendo WhatsApp...");
+        if (waHref) window.open(waHref, '_blank');
+      }
+
+    } catch (err) {
+      console.error('Error enviando pedido:', err);
+      toast.error("Hubo un error al enviar el pedido. Por favor intenta de nuevo.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // setter flexible para nota por ítem
@@ -185,7 +241,7 @@ export default function CartDrawer({ open, onClose }) {
   const clearCartNow = () => {
     clearCart?.();
     setConfirmingClear(false);
-    toast("Carrito vaciado", {
+    toastFn("Carrito vaciado", {
       actionLabel: "Deshacer",
       duration: 5000,
       onAction: () => {
@@ -465,21 +521,33 @@ export default function CartDrawer({ open, onClose }) {
                 </div>
                 
                 <div className="flex flex-col gap-2.5">
-                  <a
-                    href={waHref}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={onWhatsAppClick}
-                    aria-disabled={!waHref}
+                  <button
+                    type="button"
+                    onClick={handleConfirmOrder}
+                    disabled={isSubmitting || !items.length}
                     className={`flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg transition-all active:scale-[0.98] ${
-                      waHref
+                      !isSubmitting && items.length
                         ? "bg-[#2f4131] hover:bg-[#202c21] text-white shadow-[#2f4131]/20 hover:-translate-y-0.5"
-                        : "pointer-events-none bg-neutral-100 text-neutral-400 shadow-none"
+                        : "bg-neutral-100 text-neutral-400 shadow-none pointer-events-none"
                     }`}
                   >
-                    <Icon icon="logos:whatsapp-icon" className="text-xl" />
-                    Enviar pedido por WhatsApp
-                  </a>
+                    {isSubmitting ? (
+                      <span className="flex items-center gap-2">
+                        <Icon icon="line-md:loading-loop" className="text-xl" />
+                        Procesando...
+                      </span>
+                    ) : getTable() ? (
+                      <>
+                        <Icon icon="heroicons:bell-alert" className="text-xl" />
+                        Enviar Pedido a Cocina
+                      </>
+                    ) : (
+                      <>
+                        <Icon icon="logos:whatsapp-icon" className="text-xl" />
+                        Pedir por WhatsApp
+                      </>
+                    )}
+                  </button>
                   <button
                     type="button"
                     onClick={onClose}
