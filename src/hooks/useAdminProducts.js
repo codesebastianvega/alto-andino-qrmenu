@@ -21,6 +21,7 @@ export const useAdminProducts = () => {
           *,
           category:categories(name, slug)
         `)
+        .order('sort_order', { ascending: true })
         .order('name');
       
       if (error) throw error;
@@ -178,6 +179,36 @@ export const useAdminProducts = () => {
     }
   };
 
+  const reorderProducts = async (orderedProducts) => {
+    try {
+      // Optimistic update
+      setProducts(prev => {
+        const updated = [...prev];
+        orderedProducts.forEach((p, i) => {
+          const idx = updated.findIndex(u => u.id === p.id);
+          if (idx !== -1) updated[idx] = { ...updated[idx], sort_order: i };
+        });
+        return updated;
+      });
+
+      // Batch update in DB
+      const updates = orderedProducts.map((p, i) =>
+        supabase.from('products').update({ sort_order: i }).eq('id', p.id)
+      );
+      const results = await Promise.all(updates);
+      const failed = results.find(r => r.error);
+      if (failed?.error) throw failed.error;
+
+      toast.success('Orden guardado');
+      return true;
+    } catch (err) {
+      console.error('Error reordering products:', err);
+      toast.error('Error al reordenar');
+      await fetchProducts();
+      return false;
+    }
+  };
+
   return {
     products,
     loading,
@@ -187,6 +218,7 @@ export const useAdminProducts = () => {
     deleteProduct,
     toggleActive,
     toggleStock,
+    reorderProducts,
     refreshProducts: fetchProducts
   };
 };

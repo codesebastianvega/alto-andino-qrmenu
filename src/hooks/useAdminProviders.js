@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../config/supabase';
 
 export function useAdminProviders() {
@@ -21,6 +21,10 @@ export function useAdminProviders() {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    fetchProviders();
+  }, [fetchProviders]);
 
   const createProvider = async (providerData) => {
     try {

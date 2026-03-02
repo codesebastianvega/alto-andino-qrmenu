@@ -81,7 +81,7 @@ const MENU_ITEMS = [
   { id: 'products',   label: 'Productos',   Icon: Icons.Products },
   { id: 'categories', label: 'Categorías',  Icon: Icons.Categories },
   { id: 'sep-prod', type: 'separator', label: 'Producción' },
-  { id: 'modifiers', label: 'Insumos',      Icon: Icons.Modifiers },
+  { id: 'modifiers', label: 'Inventario',      Icon: Icons.Modifiers },
   { id: 'recipes',   label: 'Recetas',      Icon: Icons.Recipes },
   { id: 'sep-biz', type: 'separator', label: 'Negocio' },
   { id: 'experiences', label: 'Experiencias', Icon: Icons.Experiences, disabled: true },

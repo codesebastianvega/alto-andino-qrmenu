@@ -16,13 +16,13 @@ const TrashIcon = () => (
 );
 
 const TABS = [
-  { id: 'insumos',    label: 'Insumos' },
-  { id: 'categorias', label: 'Categorías' },
-  { id: 'proveedores', label: 'Proveedores' },
+  { id: 'inventario',    label: 'Inventario' },
+  { id: 'gestion',       label: 'Categorías & Proveedores' },
+  { id: 'lista_compras', label: 'Lista de Compras' },
 ];
 
 export default function AdminModifiers() {
-  const [activeTab, setActiveTab] = useState('insumos');
+  const [activeTab, setActiveTab] = useState('inventario');
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -49,15 +49,52 @@ export default function AdminModifiers() {
         ))}
       </div>
 
-      {activeTab === 'insumos'    && <InsumosTab />}
-      {activeTab === 'categorias' && <CategoriasTab />}
-      {activeTab === 'proveedores' && <ProveedoresTab />}
+      {activeTab === 'inventario'    && <InsumosTab />}
+      {activeTab === 'gestion'       && <GestionSharedTab />}
+      {activeTab === 'lista_compras' && <ListaComprasTab />}
     </div>
   );
 }
 
 // ═══════════════════════════════════════════════════════
-// TAB 1 — INSUMOS
+// TAB LISTA COMPRAS
+// ═══════════════════════════════════════════════════════
+import { ShoppingListBoard } from '../components/admin/ShoppingListBoard';
+
+function ListaComprasTab() {
+  const { ingredients, fetchIngredients } = useAdminIngredients();
+  const { providers, fetchProviders } = useAdminProviders();
+
+  useEffect(() => {
+    fetchIngredients();
+    fetchProviders();
+  }, [fetchIngredients, fetchProviders]);
+
+  return (
+    <div className="animate-fade-in">
+      <ShoppingListBoard ingredients={ingredients} providers={providers} />
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════
+// TAB GESTIÓN COMPARTIDA (Categorías y Proveedores)
+// ═══════════════════════════════════════════════════════
+function GestionSharedTab() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-fade-in">
+      <div>
+        <CategoriasTab />
+      </div>
+      <div>
+        <ProveedoresTab />
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════
+// TAB 1 — INVENTARIO (Antes Insumos)
 // ═══════════════════════════════════════════════════════
 function InsumosTab() {
   const {
@@ -73,18 +110,6 @@ function InsumosTab() {
   const [search,        setSearch]        = useState('');
   const [catFilter,     setCatFilter]     = useState('all');
   const [showZeroOnly,  setShowZeroOnly]  = useState(false);
-  const [isShoppingListOpen, setIsShoppingListOpen] = useState(false);
-
-  // Group low stock items
-  const lowStockItems = useMemo(() => ingredients.filter(i => i.stock_current <= i.stock_min), [ingredients]);
-  const groupedByProvider = useMemo(() => {
-    return lowStockItems.reduce((acc, item) => {
-      const pId = item.provider_id || 'sin-proveedor';
-      if (!acc[pId]) acc[pId] = [];
-      acc[pId].push(item);
-      return acc;
-    }, {});
-  }, [lowStockItems]);
   // inlineEdit: { id, purchase_price, purchase_quantity, purchase_unit, usage_unit }
   const [inlineEdit,    setInlineEdit]    = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -268,13 +293,6 @@ function InsumosTab() {
           <option value="all">Todas las categorías</option>
           {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </SelectInput>
-        <button
-          onClick={() => setIsShoppingListOpen(true)}
-          className="px-4 py-2 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-sm font-semibold hover:bg-emerald-200 transition-all flex items-center justify-center gap-2"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
-          Lista Compras {lowStockItems.length > 0 && <span className="bg-emerald-500 text-white text-[10px] px-2 py-0.5 rounded-full">{lowStockItems.length}</span>}
-        </button>
         <PrimaryButton onClick={openCreate}>+ Nuevo insumo</PrimaryButton>
       </div>
 
@@ -398,7 +416,10 @@ function InsumosTab() {
                 }`}>
                   <td className="px-5 py-3.5">
                     <p className="text-sm font-semibold text-gray-900">{item.name}</p>
-                    <p className="text-[11px] text-gray-400 font-medium capitalize mt-0.5">{item.usage_unit || 'unidad'}</p>
+                    <p className="text-[11px] text-gray-400 font-medium capitalize mt-0.5">
+                      {item.usage_unit || 'unidad'}
+                      {item.sku && <span className="ml-2 font-mono text-[10px] text-gray-300 bg-gray-50 px-1.5 py-0.5 rounded">{item.sku}</span>}
+                    </p>
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex flex-col gap-1 items-start">
@@ -645,75 +666,6 @@ function InsumosTab() {
           </form>
         </Modal>
       )}
-
-      {/* Shopping List Modal */}
-      {isShoppingListOpen && (
-        <Modal title="Lista de Compras Inteligente" onClose={() => setIsShoppingListOpen(false)}>
-          <div className="space-y-6">
-            <div className="bg-emerald-50 text-emerald-800 p-4 rounded-xl border border-emerald-100 flex items-start gap-3">
-              <svg className="w-5 h-5 mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-              <div>
-                <h4 className="font-semibold text-sm mb-1">Insumos con bajo stock</h4>
-                <p className="text-[13px] opacity-90">Agrupados por proveedor para enviar pedidos fácilmente por WhatsApp.</p>
-              </div>
-            </div>
-
-            {lowStockItems.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 font-medium">
-                Todo parece estar en orden. No hay insumos con stock crítico. 🎉
-              </div>
-            ) : (
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                {Object.entries(groupedByProvider).map(([provId, items]) => {
-                  const provider = providers.find(p => p.id === provId);
-                  const provName = provider ? provider.name : 'Sin Proveedor Asignado';
-                  
-                  const message = `Hola${provider ? ` ${provider.name}` : ''}, necesito hacer el siguiente pedido:\n` + items.map(i => `- ${i.name}`).join('\n');
-                  const waLink = provider?.contact_info
-                    ? `https://wa.me/${provider.contact_info.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`
-                    : `https://wa.me/?text=${encodeURIComponent(message)}`;
-
-                  return (
-                    <div key={provId} className="bg-white border text-left border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                      <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                        <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
-                          <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                          {provName}
-                        </h3>
-                        <a
-                          href={waLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1.5 text-[12px] font-semibold bg-[#25D366]/10 text-[#075E54] hover:bg-[#25D366]/20 px-3 py-1.5 rounded-lg transition-colors"
-                        >
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.888-.788-1.489-1.761-1.662-2.06r-.006-.002c-.173-.298-.018-.46.13-.608.134-.134.298-.348.446-.522.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                          Enviar Pedido
-                        </a>
-                      </div>
-                      <div className="p-4">
-                        <ul className="space-y-3">
-                          {items.map(i => (
-                            <li key={i.id} className="flex items-center justify-between text-sm">
-                              <div className="flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                                <span className="font-semibold text-gray-800">{i.name}</span>
-                              </div>
-                              <div className="flex gap-4 text-gray-500 text-[12px]">
-                                <span>Stock: <strong className="text-red-600">{i.stock_current}</strong></span>
-                                {i.stock_ideal && <span>Ideal: <strong>{i.stock_ideal}</strong></span>}
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </Modal>
-      )}
     </>
   );
 }
@@ -855,26 +807,42 @@ function CategoriasTab() {
 function ProveedoresTab() {
   const { providers, loading, createProvider, updateProvider, deleteProvider } = useAdminProviders();
   const [editingId, setEditingId] = useState(null);
-  const [editingName, setEditingName] = useState('');
-  const [editingContactInfo, setEditingContactInfo] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState(null);
-
+  
+  // New States
   const [newName, setNewName] = useState('');
   const [newContactInfo, setNewContactInfo] = useState('');
+  const [newDeliveryDays, setNewDeliveryDays] = useState('');
+  const [newMinOrderAmount, setNewMinOrderAmount] = useState('');
+  const [newNotes, setNewNotes] = useState('');
+
+  // Edit States
+  const [editingForm, setEditingForm] = useState({});
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!newName.trim()) return;
-    const ok = await createProvider({ name: newName.trim(), contact_info: newContactInfo.trim() });
+    const ok = await createProvider({ 
+      name: newName.trim(), 
+      phone: newContactInfo.trim(),
+      delivery_days: newDeliveryDays.trim(),
+      min_order_amount: parseFloat(newMinOrderAmount) || null,
+      notes: newNotes.trim()
+    });
     if (ok) {
-      setNewName('');
-      setNewContactInfo('');
+      setNewName(''); setNewContactInfo(''); setNewDeliveryDays(''); setNewMinOrderAmount(''); setNewNotes('');
     }
   };
 
   const handleSaveEdit = async () => {
-    if (!editingName.trim()) return;
-    const ok = await updateProvider(editingId, { name: editingName.trim(), contact_info: editingContactInfo.trim() });
+    if (!editingForm.name.trim()) return;
+    const ok = await updateProvider(editingId, { 
+      name: editingForm.name.trim(), 
+      phone: editingForm.phone?.trim(),
+      delivery_days: editingForm.delivery_days?.trim(),
+      min_order_amount: parseFloat(editingForm.min_order_amount) || null,
+      notes: editingForm.notes?.trim()
+    });
     if (ok) setEditingId(null);
   };
 
@@ -883,105 +851,108 @@ function ProveedoresTab() {
     if (ok) setConfirmDelete(null);
   };
 
+  const startEdit = (prov) => {
+    setEditingId(prov.id);
+    setEditingForm({
+      name: prov.name || '',
+      phone: prov.phone || '',
+      delivery_days: prov.delivery_days || '',
+      min_order_amount: prov.min_order_amount || '',
+      notes: prov.notes || ''
+    });
+    setConfirmDelete(null);
+  };
+
   if (loading && !providers.length)
     return <div className="py-16 text-center text-sm text-gray-400 font-medium">Cargando proveedores…</div>;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      {/* Formulario de creación */}
-      <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Proveedores</p>
+          <p className="text-[12px] text-gray-400 font-medium mt-0.5">{providers.length} proveedores registrados</p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <h3 className="text-sm font-bold text-gray-900 mb-4">Añadir nuevo proveedor</h3>
-        <form onSubmit={handleCreate} className="flex gap-4 items-end">
-          <div className="flex-1">
-            <FormField label="Nombre del Proveedor">
-              <TextInput required value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej. Frutas Pérez" />
-            </FormField>
-          </div>
-          <div className="flex-1">
-            <FormField label="Contacto / WhatsApp (Opcional)">
-              <TextInput value={newContactInfo} onChange={e => setNewContactInfo(e.target.value)} placeholder="Ej. 3001234567 o Dirección" />
-            </FormField>
-          </div>
-          <div className="pb-1">
-            <PrimaryButton type="submit">Agregar</PrimaryButton>
+        <form onSubmit={handleCreate} className="grid grid-cols-1 gap-4 items-end">
+          <FormField label="Nombre (Obligatorio)">
+            <TextInput required value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej. Frutas Pérez" />
+          </FormField>
+          <FormField label="Contacto / WhatsApp">
+            <TextInput value={newContactInfo} onChange={e => setNewContactInfo(e.target.value)} placeholder="Ej. 3001234567" />
+          </FormField>
+          <FormField label="Días de Entrega">
+            <TextInput value={newDeliveryDays} onChange={e => setNewDeliveryDays(e.target.value)} placeholder="Ej. Lunes y Jueves" />
+          </FormField>
+          <FormField label="Pedido Mínimo ($)">
+            <TextInput type="number" step="0.01" value={newMinOrderAmount} onChange={e => setNewMinOrderAmount(e.target.value)} placeholder="Ej. 150000" />
+          </FormField>
+          <FormField label="Notas (Cuentas bancarias, horarios...)">
+            <TextInput value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Notas adicionales..." />
+          </FormField>
+          <div className="flex justify-end pt-2">
+            <PrimaryButton type="submit">Agregar Proveedor</PrimaryButton>
           </div>
         </form>
       </div>
 
-      {/* Lista de proveedores */}
-      {providers.length === 0 ? (
-        <div className="py-16 text-center text-sm text-gray-400 font-medium">
-          No hay proveedores registrados.<br/>
-          Crea el primero para empezar a organizar tus compras.
-        </div>
-      ) : (
-        <div className="divide-y divide-gray-50">
-          {providers.map((prov, i) => (
-            <div key={prov.id}>
-              {editingId === prov.id ? (
-                <div className="flex items-center gap-2 p-3">
-                  <span className="text-[11px] text-gray-300 font-medium w-6 text-center shrink-0">{i + 1}</span>
-                  <input
-                    autoFocus
-                    type="text"
-                    value={editingName}
-                    onChange={e => setEditingName(e.target.value)}
-                    placeholder="Nombre"
-                    className="flex-1 px-4 py-2 bg-gray-50 border-2 border-[#2f4131] rounded-xl text-sm font-medium focus:outline-none"
-                  />
-                  <input
-                    type="text"
-                    value={editingContactInfo}
-                    onChange={e => setEditingContactInfo(e.target.value)}
-                    placeholder="Contacto (Opcional)"
-                    className="flex-1 px-4 py-2 bg-gray-50 border-2 border-[#2f4131] rounded-xl text-sm font-medium focus:outline-none"
-                  />
-                  <PrimaryButton onClick={handleSaveEdit}>Guardar</PrimaryButton>
-                  <SecondaryButton onClick={() => setEditingId(null)}>✕</SecondaryButton>
-                </div>
-              ) : confirmDelete === prov.id ? (
-                <div className="flex items-center justify-between p-3 bg-red-50">
-                  <p className="text-sm font-medium text-red-700">
-                    ¿Eliminar <strong>"{prov.name}"</strong>?
-                  </p>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleDelete(prov.id)}
-                      className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-[12px] font-semibold hover:bg-red-700 transition-all">
-                      Eliminar
-                    </button>
-                    <button onClick={() => setConfirmDelete(null)}
-                      className="px-3 py-1.5 bg-white text-gray-600 border border-gray-200 rounded-lg text-[12px] font-semibold hover:bg-gray-50 transition-all">
-                      Cancelar
-                    </button>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {providers.length === 0 ? (
+          <div className="py-16 text-center text-sm text-gray-400 font-medium">
+            No hay proveedores registrados.
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {providers.map((prov, i) => (
+              <div key={prov.id} className="p-4 hover:bg-gray-50/50 transition-colors">
+                {editingId === prov.id ? (
+                  <div className="grid grid-cols-1 gap-3 bg-gray-50 border border-gray-200 rounded-xl p-4">
+                    <FormField label="Nombre"><TextInput value={editingForm.name} onChange={e => setEditingForm({...editingForm, name: e.target.value})} /></FormField>
+                    <FormField label="Contacto"><TextInput value={editingForm.phone} onChange={e => setEditingForm({...editingForm, phone: e.target.value})} /></FormField>
+                    <FormField label="Días Entrega"><TextInput value={editingForm.delivery_days} onChange={e => setEditingForm({...editingForm, delivery_days: e.target.value})} /></FormField>
+                    <FormField label="Pedido Mín ($)"><TextInput type="number" value={editingForm.min_order_amount} onChange={e => setEditingForm({...editingForm, min_order_amount: e.target.value})} /></FormField>
+                    <FormField label="Notas"><TextInput value={editingForm.notes} onChange={e => setEditingForm({...editingForm, notes: e.target.value})} /></FormField>
+                    <div className="flex justify-end gap-2 mt-2">
+                      <SecondaryButton onClick={() => setEditingId(null)}>Cancelar</SecondaryButton>
+                      <PrimaryButton onClick={handleSaveEdit}>Guardar</PrimaryButton>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 px-4 py-3 group hover:bg-gray-50/60 transition-colors">
-                  <span className="text-[11px] text-gray-300 font-medium w-6 text-center shrink-0">{i + 1}</span>
-                  <div className="flex-1 flex flex-col">
-                    <span className="text-sm font-medium text-gray-800">{prov.name}</span>
-                    {prov.contact_info && <span className="text-[11px] text-gray-500">{prov.contact_info}</span>}
+                ) : confirmDelete === prov.id ? (
+                  <div className="flex items-center justify-between p-4 bg-red-50 rounded-xl border border-red-100">
+                    <p className="text-sm font-medium text-red-700">¿Eliminar proveedor?</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setConfirmDelete(null)} className="px-3 py-1.5 bg-white text-gray-600 border border-gray-200 rounded-lg text-xs font-bold">Cancelar</button>
+                      <button onClick={() => handleDelete(prov.id)} className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold">Eliminar</button>
+                    </div>
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => { setEditingId(prov.id); setEditingName(prov.name); setEditingContactInfo(prov.contact_info || ''); setConfirmDelete(null); }}
-                      className="px-2.5 py-1.5 text-[12px] font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => { setConfirmDelete(prov.id); setEditingId(null); }}
-                      className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all"
-                    >
-                      <TrashIcon />
-                    </button>
+                ) : (
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[11px] text-gray-300 font-bold w-5">{i + 1}.</span>
+                        <h4 className="text-sm font-bold text-gray-900">{prov.name}</h4>
+                        {prov.phone && <Badge variant="gray">{prov.phone}</Badge>}
+                      </div>
+                      <div className="text-xs text-gray-500 pl-7 space-y-1">
+                        {prov.delivery_days && <p>📦 Entregas: <span className="font-medium text-gray-700">{prov.delivery_days}</span></p>}
+                        {prov.min_order_amount && <p>💰 Min. Pedido: <span className="font-medium text-gray-700">${parseFloat(prov.min_order_amount).toLocaleString()}</span></p>}
+                        {prov.notes && <p className="italic">📝 {prov.notes}</p>}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pl-7 sm:pl-0">
+                      <button onClick={() => startEdit(prov)} className="text-xs font-semibold text-blue-600 hover:text-blue-800">Editar</button>
+                      <button onClick={() => setConfirmDelete(prov.id)} className="text-xs font-semibold text-red-500 hover:text-red-700">Eliminar</button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

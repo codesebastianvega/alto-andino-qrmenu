@@ -21,24 +21,15 @@ export default function BowlsSection({ query, onCount, onQuickView, id }) {
   const [open, setOpen] = useState(false);
 
   const products = getProductsByCategory('bowls');
-  // Find the 'custom' product or use the first one as representative
-  const customProduct = products.find(p => p.configOptions?.creator_type) || products[0];
-  const preBowl = products.find(p => !p.configOptions?.creator_type) || products[1];
+  // Assume a product with creator_type is for the 'Arma tu bowl' builder
+  const customProduct = products.find(p => p.configOptions?.creator_type);
+  // The rest are preconfigured bowls
+  const preBowls = products.filter(p => p !== customProduct);
+
+  const visibleBowls = preBowls.filter(p => matchesQuery({ title: p.name, description: p.desc }, query));
+  const count = visibleBowls.length + (customProduct && matchesQuery({ title: customProduct.name, description: customProduct.desc }, query) ? 1 : 0);
 
   const openBuilder = () => setOpen(true);
-
-  const addPre = () => {
-    if (!preBowl) return;
-    addItem({
-      productId: preBowl.id,
-      name: preBowl.name,
-      price: preBowl.price,
-      options: preBowl.configOptions || {},
-    });
-  };
-
-  const show = preBowl && matchesQuery({ title: preBowl.name, description: preBowl.desc }, query);
-  const count = show ? 1 : 0;
 
   useEffect(() => {
     onCount?.(count);
@@ -46,29 +37,33 @@ export default function BowlsSection({ query, onCount, onQuickView, id }) {
 
   if (!count && query) return null;
 
-  const st = preBowl ? getStockState(preBowl.id) : null;
-  const unavailable = st === "out" || (preBowl && isUnavailable(preBowl));
-
   return (
     <div id={id} className="space-y-4">
-      {/* Card del prearmado (usa ProductCard) */}
-
-      {/* Card del prearmado (usa ProductCard) */}
-      <div className="mt-4">
-        {preBowl && (
-        <ProductCard
-          item={preBowl}
-          onAdd={() => {
-            if (unavailable) return toast("Producto no disponible");
-            addPre();
-          }}
-          onQuickView={() => onQuickView?.(preBowl)}
-        />
-        )}
+      <div className="mt-4 space-y-4 gap-4">
+        {visibleBowls.map(bowl => {
+          const st = getStockState(bowl.id);
+          const unavailable = st === "out" || isUnavailable(bowl);
+          return (
+            <ProductCard
+              key={bowl.id}
+              item={bowl}
+              onAdd={() => {
+                if (unavailable) return toast("Producto no disponible");
+                addItem({
+                  productId: bowl.id,
+                  name: bowl.name,
+                  price: bowl.price,
+                  options: bowl.configOptions || {},
+                });
+              }}
+              onQuickView={() => onQuickView?.(bowl)}
+            />
+          );
+        })}
       </div>
 
       {/* Modal de armado (Generalizado) */}
-      {open && (
+      {open && customProduct && (
         <Suspense fallback={null}>
           <BowlBuilder 
             product={customProduct}

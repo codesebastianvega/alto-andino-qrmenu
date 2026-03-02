@@ -26,22 +26,33 @@ export function useAdminIngredients() {
 
   const createIngredient = async (ingredientData) => {
     try {
-      // Calculate unit cost before saving
       const purchasePrice = parseFloat(ingredientData.purchase_price) || 0;
       const purchaseQuantity = parseFloat(ingredientData.purchase_quantity) || 1;
       const unitCost = purchasePrice / purchaseQuantity;
 
+      const cleanData = {
+        name: ingredientData.name,
+        description: ingredientData.description || null,
+        sku: ingredientData.sku || null,
+        category: ingredientData.category || null,
+        category_id: ingredientData.category_id || null,
+        provider_id: ingredientData.provider_id || null,
+        purchase_price: purchasePrice,
+        purchase_quantity: purchaseQuantity,
+        purchase_unit: ingredientData.purchase_unit || 'Unidad',
+        usage_unit: ingredientData.usage_unit || 'unidad',
+        unit_cost: unitCost,
+        selling_price: parseFloat(ingredientData.selling_price) || 0,
+        portion_size: parseFloat(ingredientData.portion_size) || 50,
+        is_modifier: Boolean(ingredientData.is_modifier),
+        is_active: ingredientData.is_active ?? true,
+        stock_current: parseFloat(ingredientData.stock_current) || 0,
+        stock_min: parseFloat(ingredientData.stock_min) || 0,
+      };
+
       const { data, error } = await supabase
         .from('ingredients')
-        .insert([{
-          ...ingredientData,
-          category_id: ingredientData.category_id || null, // Normalize empty string to null
-          provider_id: ingredientData.provider_id || null,
-          unit_cost: unitCost,
-          selling_price: parseFloat(ingredientData.selling_price) || 0,
-          portion_size: parseFloat(ingredientData.portion_size) || 50,
-          is_modifier: Boolean(ingredientData.is_modifier)
-        }])
+        .insert([cleanData])
         .select()
         .single();
 
@@ -61,22 +72,33 @@ export function useAdminIngredients() {
 
   const updateIngredient = async (id, ingredientData) => {
     try {
-      // Calculate unit cost before saving
       const purchasePrice = parseFloat(ingredientData.purchase_price) || 0;
       const purchaseQuantity = parseFloat(ingredientData.purchase_quantity) || 1;
       const unitCost = purchasePrice / purchaseQuantity;
 
+      const cleanData = {
+        name: ingredientData.name,
+        description: ingredientData.description || null,
+        sku: ingredientData.sku || null,
+        category: ingredientData.category || null,
+        category_id: ingredientData.category_id || null,
+        provider_id: ingredientData.provider_id || null,
+        purchase_price: purchasePrice,
+        purchase_quantity: purchaseQuantity,
+        purchase_unit: ingredientData.purchase_unit || 'Unidad',
+        usage_unit: ingredientData.usage_unit || 'unidad',
+        unit_cost: unitCost,
+        selling_price: parseFloat(ingredientData.selling_price) || 0,
+        portion_size: parseFloat(ingredientData.portion_size) || 50,
+        is_modifier: Boolean(ingredientData.is_modifier),
+        is_active: ingredientData.is_active ?? true,
+        stock_current: parseFloat(ingredientData.stock_current) || 0,
+        stock_min: parseFloat(ingredientData.stock_min) || 0,
+      };
+
       const { data, error } = await supabase
         .from('ingredients')
-        .update({
-          ...ingredientData,
-          category_id: ingredientData.category_id || null, // Normalize empty string to null
-          provider_id: ingredientData.provider_id || null,
-          unit_cost: unitCost,
-          selling_price: parseFloat(ingredientData.selling_price) || 0,
-          portion_size: parseFloat(ingredientData.portion_size) || 50,
-          is_modifier: Boolean(ingredientData.is_modifier)
-        })
+        .update(cleanData)
         .eq('id', id)
         .select()
         .single();

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAdminProducts } from '../hooks/useAdminProducts';
 import { useCategories } from '../hooks/useCategories';
 import { useAdminRecipes } from '../hooks/useAdminRecipes';
@@ -15,8 +15,17 @@ const STOCK_BADGE = {
   out: { label: 'Agotado',    variant: 'red'   },
 };
 
+/* ─── Drag handle icon ─── */
+const DragHandle = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+    <circle cx="9" cy="5" r="1"/><circle cx="15" cy="5" r="1"/>
+    <circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/>
+    <circle cx="9" cy="19" r="1"/><circle cx="15" cy="19" r="1"/>
+  </svg>
+);
+
 export default function AdminProducts() {
-  const { products, loading: loadingProd, createProduct, updateProduct, deleteProduct, toggleActive, toggleStock } = useAdminProducts();
+  const { products, loading: loadingProd, createProduct, updateProduct, deleteProduct, toggleActive, toggleStock, reorderProducts } = useAdminProducts();
   const { categories, loading: loadingCats } = useCategories();
   const { recipes, fetchRecipes } = useAdminRecipes();
 
@@ -26,7 +35,63 @@ export default function AdminProducts() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
+  // ─── Reorder mode state ───
+  const [reorderMode, setReorderMode] = useState(false);
+  const [orderedList, setOrderedList] = useState([]);
+  const [dragIdx, setDragIdx] = useState(null);
+  const [overIdx, setOverIdx] = useState(null);
+  const dragItem = useRef(null);
+  const dragOverItem = useRef(null);
+
   useEffect(() => { fetchRecipes(); }, [fetchRecipes]);
+
+  // When entering reorder mode, populate orderedList from filtered products
+  const enterReorderMode = useCallback(() => {
+    if (catFilter === 'all') return; // must pick a category first
+    const sorted = products
+      .filter(p => !p.is_addon && p.category_id === catFilter)
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    setOrderedList(sorted);
+    setReorderMode(true);
+    setSearch('');
+  }, [catFilter, products]);
+
+  const exitReorderMode = () => {
+    setReorderMode(false);
+    setOrderedList([]);
+    setDragIdx(null);
+    setOverIdx(null);
+  };
+
+  const saveOrder = async () => {
+    await reorderProducts(orderedList);
+    exitReorderMode();
+  };
+
+  // ─── Drag handlers ───
+  const handleDragStart = (idx) => {
+    dragItem.current = idx;
+    setDragIdx(idx);
+  };
+  const handleDragEnter = (idx) => {
+    dragOverItem.current = idx;
+    setOverIdx(idx);
+  };
+  const handleDragEnd = () => {
+    if (dragItem.current === null || dragOverItem.current === null) {
+      setDragIdx(null);
+      setOverIdx(null);
+      return;
+    }
+    const list = [...orderedList];
+    const [dragged] = list.splice(dragItem.current, 1);
+    list.splice(dragOverItem.current, 0, dragged);
+    setOrderedList(list);
+    dragItem.current = null;
+    dragOverItem.current = null;
+    setDragIdx(null);
+    setOverIdx(null);
+  };
 
   if (loadingProd || loadingCats) {
     return (
@@ -41,7 +106,7 @@ export default function AdminProducts() {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
     const matchCat    = catFilter === 'all' || p.category_id === catFilter;
     return matchSearch && matchCat;
-  });
+  }).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
   const handleEdit   = (p) => { setEditingProduct(p); setIsFormOpen(true); setConfirmDelete(null); };
   const handleCreate = ()  => { setEditingProduct(null); setIsFormOpen(true); setConfirmDelete(null); };
@@ -56,6 +121,100 @@ export default function AdminProducts() {
     if (ok) { setIsFormOpen(false); setEditingProduct(null); }
   };
 
+  /* ═══════════════════════════════════════
+           REORDER MODE UI
+     ═══════════════════════════════════════ */
+  if (reorderMode) {
+    const catName = categories.find(c => c.id === catFilter)?.name || 'Categoría';
+    return (
+      <div className="p-8 max-w-3xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Ordenar productos</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Arrastra para reordenar — <strong>{catName}</strong></p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={exitReorderMode}
+              className="px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all">
+              Cancelar
+            </button>
+            <button onClick={saveOrder}
+              className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-all shadow-sm">
+              Guardar orden
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          {orderedList.map((product, idx) => (
+            <div
+              key={product.id}
+              draggable
+              onDragStart={() => handleDragStart(idx)}
+              onDragEnter={() => handleDragEnter(idx)}
+              onDragEnd={handleDragEnd}
+              onDragOver={(e) => e.preventDefault()}
+              className={`flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-b-0 cursor-grab active:cursor-grabbing select-none transition-all ${
+                dragIdx === idx ? 'opacity-40 scale-[0.98]' : ''
+              } ${overIdx === idx && dragIdx !== idx ? 'bg-blue-50/60 border-blue-200' : 'hover:bg-gray-50/60'}`}
+            >
+              {/* Drag handle */}
+              <span className="text-gray-300 hover:text-gray-500 transition-colors shrink-0">
+                <DragHandle />
+              </span>
+
+              {/* Position number */}
+              <span className="text-[11px] text-gray-300 font-bold w-5 text-center tabular-nums shrink-0">
+                {idx + 1}
+              </span>
+
+              {/* Image */}
+              <div className="w-9 h-9 rounded-xl bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
+                {product.image_url ? (
+                  <img src={product.image_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-base">🍽</span>
+                )}
+              </div>
+
+              {/* Name */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{product.name}</p>
+                <p className="text-[11px] text-gray-400 font-medium tabular-nums">{formatCOP(product.price)}</p>
+              </div>
+
+              {/* Stock badge */}
+              {(() => {
+                const stock = STOCK_BADGE[product.stock_status] || STOCK_BADGE.out;
+                return (
+                  <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
+                    stock.variant === 'green'  ? 'bg-green-50 text-green-700 border-green-100' :
+                    stock.variant === 'amber'  ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                                 'bg-red-50 text-red-600 border-red-100'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      stock.variant === 'green' ? 'bg-green-500' :
+                      stock.variant === 'amber' ? 'bg-amber-500' : 'bg-red-500'
+                    }`}/>
+                    {stock.label}
+                  </span>
+                );
+              })()}
+            </div>
+          ))}
+          {orderedList.length === 0 && (
+            <p className="text-center text-sm text-gray-400 font-medium py-12">
+              No hay productos en esta categoría.
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  /* ═══════════════════════════════════════
+            NORMAL MODE UI
+     ═══════════════════════════════════════ */
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <PageHeader
@@ -63,7 +222,16 @@ export default function AdminProducts() {
         title="Productos"
         subtitle={`${filtered.length} de ${products.filter(p => !p.is_addon).length} productos`}
       >
-        <PrimaryButton onClick={handleCreate}>+ Nuevo producto</PrimaryButton>
+        <div className="flex gap-2">
+          {catFilter !== 'all' && (
+            <button onClick={enterReorderMode}
+              className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all flex items-center gap-2">
+              <DragHandle />
+              Ordenar
+            </button>
+          )}
+          <PrimaryButton onClick={handleCreate}>+ Nuevo producto</PrimaryButton>
+        </div>
       </PageHeader>
 
       {/* Filters */}
@@ -81,11 +249,22 @@ export default function AdminProducts() {
         </SelectInput>
       </div>
 
+      {/* Hint: select category to reorder */}
+      {catFilter === 'all' && (
+        <div className="mb-4 px-4 py-3 bg-blue-50/60 border border-blue-100 rounded-xl text-[13px] text-blue-700 font-medium flex items-center gap-2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+          </svg>
+          Selecciona una categoría para habilitar el botón de <strong className="ml-1">Ordenar</strong>.
+        </div>
+      )}
+
       {/* Table */}
       <TableContainer>
         <table className="w-full min-w-[900px] border-collapse">
           <thead>
             <tr>
+              <Th>#</Th>
               <Th>Producto</Th>
               <Th>Categoría</Th>
               <Th>Precio</Th>
@@ -97,7 +276,7 @@ export default function AdminProducts() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {filtered.map(product => {
+            {filtered.map((product, idx) => {
               const stock   = STOCK_BADGE[product.stock_status] || STOCK_BADGE.out;
               const recipe  = recipes.find(r => r.id === product.recipe_id);
               const catName = product.category?.name || product.categories?.name;
@@ -106,7 +285,7 @@ export default function AdminProducts() {
               // Inline delete confirmation row
               if (isDelConf) return (
                 <tr key={product.id}>
-                  <td colSpan={8} className="px-5 py-3 bg-red-50">
+                  <td colSpan={9} className="px-5 py-3 bg-red-50">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-red-700">
                         ¿Eliminar <strong>"{product.name}"</strong>? Esta acción no se puede deshacer.
@@ -128,6 +307,11 @@ export default function AdminProducts() {
 
               return (
                 <tr key={product.id} className="group hover:bg-gray-50/60 transition-colors">
+                  {/* # (sort order) */}
+                  <td className="px-5 py-3.5">
+                    <span className="text-[11px] text-gray-300 font-medium tabular-nums">{idx + 1}</span>
+                  </td>
+
                   {/* Producto */}
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
@@ -257,7 +441,7 @@ export default function AdminProducts() {
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan="7" className="px-5 py-16 text-center text-gray-400 text-sm font-medium">
+                <td colSpan="9" className="px-5 py-16 text-center text-gray-400 text-sm font-medium">
                   {search || catFilter !== 'all'
                     ? 'Sin resultados para los filtros actuales.'
                     : 'Aún no hay productos. Crea el primero.'}

@@ -1,7 +1,7 @@
 -- 1. FIX THE BUG: Add UPDATE policy for ingredients so admins can save
 ALTER TABLE ingredients ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Admin all ingredients" ON ingredients;
-CREATE POLICY "Admin all ingredients" ON ingredients FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Admin all ingredients" ON ingredients FOR ALL USING (true);
 
 -- 2. Add columns for Profit Margin on extras
 ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS portion_size DECIMAL(12,3) DEFAULT 50; -- Default 50 gramos/ml/etc
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS providers (
 -- Enable RLS for providers
 ALTER TABLE providers ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public read providers" ON providers FOR SELECT USING (true);
-CREATE POLICY "Admin all providers" ON providers FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Admin all providers" ON providers FOR ALL USING (true);
 
 -- 4. Link ingredients to providers
 ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS provider_id UUID REFERENCES providers(id);

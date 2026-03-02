@@ -63,7 +63,8 @@ export const MenuDataProvider = ({ children }) => {
             *,
             categories:category_id (slug)
           `)
-          .eq('is_active', true);
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
 
         if (prodError) throw prodError;
 
