@@ -10,7 +10,8 @@ DROP TABLE IF EXISTS public.orders;
 CREATE TABLE IF NOT EXISTS public.orders (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'preparing', 'ready', 'delivered', 'cancelled')),
-    origin TEXT NOT NULL DEFAULT 'table' CHECK (origin IN ('table', 'takeaway', 'whatsapp')),
+    origin TEXT NOT NULL DEFAULT 'table' CHECK (origin IN ('table', 'takeaway', 'whatsapp', 'delivery', 'scheduled')),
+    fulfillment_type TEXT DEFAULT 'dine_in' CHECK (fulfillment_type IN ('dine_in', 'takeaway', 'delivery', 'scheduled')),
     table_id UUID REFERENCES public.restaurant_tables(id) ON DELETE SET NULL,
     customer_name TEXT,
     customer_phone TEXT,
@@ -18,7 +19,9 @@ CREATE TABLE IF NOT EXISTS public.orders (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     ready_at TIMESTAMP WITH TIME ZONE,
-    delivered_at TIMESTAMP WITH TIME ZONE
+    delivered_at TIMESTAMP WITH TIME ZONE,
+    scheduled_time TIMESTAMP WITH TIME ZONE,
+    notes TEXT
 );
 
 -- 2. Create Order Items table

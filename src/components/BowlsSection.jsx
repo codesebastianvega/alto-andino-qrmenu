@@ -54,6 +54,7 @@ export default function BowlsSection({ query, onCount, onQuickView, id }) {
                   name: bowl.name,
                   price: bowl.price,
                   options: bowl.configOptions || {},
+                  packaging_fee: bowl.packaging_fee,
                 });
               }}
               onQuickView={() => onQuickView?.(bowl)}

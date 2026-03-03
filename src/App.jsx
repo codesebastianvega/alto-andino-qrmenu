@@ -20,6 +20,7 @@ const FloatingCartBar = lazy(() => import("./components/FloatingCartBar"));
 const CartDrawer = lazy(() => import("./components/CartDrawer"));
 const QrPoster = lazy(() => import("./components/QrPoster"));
 const StockAdmin = lazy(() => import("./components/StockAdmin"));
+const OrderStatus = lazy(() => import("./pages/OrderStatus"));
 
 // Carrito
 import { useCart } from "./context/CartContext";
@@ -146,6 +147,9 @@ export default function App() {
 
   // Check for admin routes: #admin (new panel) or ?admin=1 (old stock admin)
   const isNewAdminPanel = currentHash === '#admin';
+  
+  // Detect hash routing for order tracking #order/UUID
+  const orderTrackingId = currentHash.startsWith('#order/') ? currentHash.replace('#order/', '') : null;
 
   const isOldStockAdmin = (() => {
     if (typeof window === "undefined") return false;
@@ -155,6 +159,14 @@ export default function App() {
 
   if (isNewAdminPanel) {
     return <AdminLayout />;
+  }
+
+  if (orderTrackingId) {
+    return (
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-neutral-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
+        <OrderStatus orderId={orderTrackingId} />
+      </Suspense>
+    );
   }
 
   if (isOldStockAdmin) {

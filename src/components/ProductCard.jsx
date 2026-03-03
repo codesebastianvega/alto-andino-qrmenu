@@ -67,7 +67,7 @@ export default function ProductCard({ item, onAdd, onQuickView }) {
       return;
     }
 
-    onAdd?.({ productId, name: item.name, price: item.price, qty: 1 });
+    onAdd?.({ productId, name: item.name, price: item.price, qty: 1, packaging_fee: item.packaging_fee });
   };
 
   return (

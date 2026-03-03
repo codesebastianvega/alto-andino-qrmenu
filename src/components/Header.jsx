@@ -6,7 +6,18 @@ import { getTableId } from "@/utils/table";
 
 export default function Header({ onCartOpen, onGuideOpen, cartCount = 0 }) {
   const [table, setTable] = React.useState("");
-  React.useEffect(() => { try { const t = getTableId(); if (t) setTable(t); } catch {} }, []);
+  const [activeOrderId, setActiveOrderId] = React.useState(null);
+
+  React.useEffect(() => { 
+    try { 
+      const t = getTableId(); 
+      if (t) setTable(t); 
+      
+      const orderId = localStorage.getItem("aa_active_order");
+      if (orderId) setActiveOrderId(orderId);
+    } catch {} 
+  }, []);
+
   return (
     <motion.header
       role="banner"
@@ -28,6 +39,18 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0 }) {
               Mesa {table}
             </span>
           )}
+
+          {activeOrderId && (
+            <button
+              type="button"
+              onClick={() => window.location.href = `#order/${activeOrderId}`}
+              className="group inline-flex items-center gap-2 h-9 px-3 rounded-full bg-orange-500 hover:bg-orange-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+            >
+              <Icon icon="heroicons:shopping-bag" className="text-white" />
+              <span className="text-[12px] font-bold text-white hidden md:inline">Mi Pedido</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onGuideOpen}

@@ -11,7 +11,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
     name: '', description: '', price: '', cost: '',
     category_id: '', stock_status: 'in', image_url: '',
     tags: [], is_active: true, is_addon: false,
-    variants: [], modifier_groups: [], config_options: {}, recipe_id: null,
+    variants: [], modifier_groups: [], config_options: {}, recipe_id: null, packaging_fee: '',
   });
   const [targetMargin, setTargetMargin] = useState(35);
   const [manageGroups, setManageGroups] = useState(false);
@@ -28,6 +28,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
         is_active: product.is_active ?? true, is_addon: product.is_addon || false,
         variants: product.variants || [], modifier_groups: product.modifier_groups || [],
         config_options: product.config_options || {}, recipe_id: product.recipe_id || null,
+        packaging_fee: product.packaging_fee || '',
       });
     }
   }, [product]);
@@ -113,7 +114,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
       alert('Por favor completa nombre, precio y categoría.');
       return;
     }
-    onSave({ ...formData, price: parseFloat(formData.price), cost: parseFloat(formData.cost) || 0 });
+    onSave({ ...formData, price: parseFloat(formData.price), cost: parseFloat(formData.cost) || 0, packaging_fee: parseFloat(formData.packaging_fee) || 0 });
   };
 
   const priceNum  = parseFloat(formData.price) || 0;
@@ -173,6 +174,10 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                     <option value="out">Agotado</option>
                   </select>
                 </FormField>
+                <FormField label="Costo Empaque (Llevar)">
+                  <TextInput type="number" name="packaging_fee" value={formData.packaging_fee} onChange={handleChange} placeholder="Ej. 1500" />
+                </FormField>
+                <div className="hidden md:block"></div>
                 <div className="md:col-span-2">
                   <FormField label="Descripción">
                     <textarea name="description" value={formData.description} onChange={handleChange} rows={3}

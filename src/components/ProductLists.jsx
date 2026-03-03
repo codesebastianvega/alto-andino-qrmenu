@@ -749,7 +749,7 @@ function ProductRow({ item, onQuickView, style, index }) {
                 toast("Disponible proximamente");
                 return;
               }
-              addItem({ productId: item.id, name: item.name, price: item.price });
+              addItem({ productId: item.id, name: item.name, price: item.price, packaging_fee: item.packaging_fee });
             }}
             disabled={unavailable || isSoon}
             className="grid h-10 w-10 place-items-center rounded-full bg-[#2f4131] text-white shadow-sm ring-1 ring-black/5 hover:bg-[#263729] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 md:h-11 md:w-11 disabled:cursor-not-allowed disabled:opacity-40"
