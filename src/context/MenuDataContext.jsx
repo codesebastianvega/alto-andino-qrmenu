@@ -23,6 +23,37 @@ export const MenuDataProvider = ({ children }) => {
 
         if (catError) throw catError;
 
+        // Filter categories based on dayparting (time schedule)
+        const activeCats = cats.filter(cat => {
+          if (!cat.available_from && !cat.available_to) return true;
+          
+          const now = new Date();
+          const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+          const parseTime = (timeStr) => {
+            if (!timeStr) return null;
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + m;
+          };
+
+          const fromMinutes = parseTime(cat.available_from);
+          const toMinutes = parseTime(cat.available_to);
+
+          if (fromMinutes !== null && toMinutes !== null) {
+            if (fromMinutes < toMinutes) {
+              return currentMinutes >= fromMinutes && currentMinutes <= toMinutes;
+            } else {
+              // Day overlap, e.g., 18:00 to 02:00
+              return currentMinutes >= fromMinutes || currentMinutes <= toMinutes;
+            }
+          } else if (fromMinutes !== null) {
+            return currentMinutes >= fromMinutes;
+          } else if (toMinutes !== null) {
+            return currentMinutes <= toMinutes;
+          }
+          return true;
+        });
+
         // Fetch modifiers from ingredients table with their category names
         const { data: mods, error: modError } = await supabase
           .from('ingredients')
@@ -109,7 +140,7 @@ export const MenuDataProvider = ({ children }) => {
           });
         });
 
-        setCategories(cats);
+        setCategories(activeCats);
         setProductsByCategory(grouped);
         
         // Debug

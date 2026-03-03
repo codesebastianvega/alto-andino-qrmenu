@@ -73,6 +73,7 @@ export default function AdminCategories() {
                 <Th>Categoría</Th>
                 <Th>Slug</Th>
                 <Th>Ícono</Th>
+                <Th>Horario</Th>
                 <Th>Estado</Th>
                 <Th right>Acciones</Th>
               </tr>
@@ -137,6 +138,16 @@ export default function AdminCategories() {
                                 <span className="font-mono text-[12px] text-gray-400">{cat.slug}</span>
                               </td>
                               <td className="px-5 py-3.5 text-xl">{cat.icon}</td>
+                              <td className="px-5 py-3.5">
+                                {(cat.available_from || cat.available_to) ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                    {cat.available_from?.slice(0,5) || '00:00'} - {cat.available_to?.slice(0,5) || '23:59'}
+                                  </span>
+                                ) : (
+                                  <span className="text-[12px] text-gray-400">Todo el día</span>
+                                )}
+                              </td>
                               <td className="px-5 py-3.5">
                                 <Badge variant={cat.is_active !== false ? 'green' : 'gray'}>
                                   {cat.is_active !== false ? 'Activa' : 'Inactiva'}

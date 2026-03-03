@@ -4,7 +4,8 @@ import { Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButto
 export default function CategoryForm({ category, onSave, onCancel }) {
   const [formData, setFormData] = useState({
     name: '', slug: '', icon: '🍽️', sort_order: 0, is_active: true,
-    banner_image_url: '', banner_title: '', banner_description: '', accent_color: '#2f4131'
+    banner_image_url: '', banner_title: '', banner_description: '', accent_color: '#2f4131',
+    available_from: '', available_to: ''
   });
 
   useEffect(() => {
@@ -13,7 +14,8 @@ export default function CategoryForm({ category, onSave, onCancel }) {
         name: category.name || '', slug: category.slug || '', icon: category.icon || '🍽️',
         sort_order: category.sort_order || 0, is_active: category.is_active !== false,
         banner_image_url: category.banner_image_url || '', banner_title: category.banner_title || '',
-        banner_description: category.banner_description || '', accent_color: category.accent_color || '#2f4131'
+        banner_description: category.banner_description || '', accent_color: category.accent_color || '#2f4131',
+        available_from: category.available_from || '', available_to: category.available_to || ''
       });
     }
   }, [category]);
@@ -25,7 +27,12 @@ export default function CategoryForm({ category, onSave, onCancel }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ ...formData, sort_order: parseInt(formData.sort_order) || 0 });
+    const dataToSave = { ...formData, sort_order: parseInt(formData.sort_order) || 0 };
+    // Convert empty strings to null for time fields so Postgres doesn't complain
+    if (!dataToSave.available_from) dataToSave.available_from = null;
+    if (!dataToSave.available_to) dataToSave.available_to = null;
+    
+    onSave(dataToSave);
   };
 
   return (
@@ -56,6 +63,18 @@ export default function CategoryForm({ category, onSave, onCancel }) {
               </FormField>
               <FormField label="Orden">
                 <TextInput type="number" name="sort_order" value={formData.sort_order} onChange={handleChange} />
+              </FormField>
+            </div>
+            
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 pb-1 border-b border-gray-100 mt-6">
+              Horario de Disponibilidad
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Hora Inicio (Dejar vacío = Todo el día)">
+                <TextInput type="time" name="available_from" value={formData.available_from} onChange={handleChange} />
+              </FormField>
+              <FormField label="Hora Fin">
+                <TextInput type="time" name="available_to" value={formData.available_to} onChange={handleChange} />
               </FormField>
             </div>
           </div>
