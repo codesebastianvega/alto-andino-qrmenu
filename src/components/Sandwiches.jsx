@@ -3,7 +3,7 @@ import ProductSection from "./ProductSection";
 import { matchesQuery } from "@/utils/strings";
 import { useMenuData } from "@/context/MenuDataContext";
 
-export default function Sandwiches({ query, onCount, onQuickView }) {
+export default function Sandwiches({ query, onCount, onQuickView, variant = "standard" }) {
   const { getProductsByCategory, getModifiers } = useMenuData();
 
   const products = getProductsByCategory('sandwiches');
@@ -52,6 +52,7 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
           items={traditional}
           includeUnavailable
           onQuickView={onQuickView}
+          variant={variant}
         />
       )}
 
@@ -63,6 +64,7 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
           items={artisanal}
           includeUnavailable
           onQuickView={onQuickView}
+          variant={variant}
         />
       )}
 
@@ -74,6 +76,7 @@ export default function Sandwiches({ query, onCount, onQuickView }) {
           items={specials}
           includeUnavailable
           onQuickView={onQuickView}
+          variant={variant}
         />
       )}
     </div>

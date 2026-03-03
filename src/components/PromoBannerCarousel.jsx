@@ -9,8 +9,13 @@ import { toast } from "./Toast";
 import { formatCOP } from "../utils/money";
 import { productStories } from "../data/stories";
 
+import { useMenuData } from "../context/MenuDataContext";
+
 export default function PromoBannerCarousel() {
   const { addItem } = useCart();
+  const { banners: contextBanners, loading: contextLoading, getAllProducts } = useMenuData();
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
@@ -20,17 +25,57 @@ export default function PromoBannerCarousel() {
   const [story, setStory] = useState(null);
   const trackRef = useRef(null);
 
-  const items = useMemo(() => {
-    return (buildBanners(import.meta.env) || []).map((item) => {
-      const product = item.productId ? resolveProductById(item.productId) : null;
-      return { ...item, product };
-    });
-  }, []);
+  useEffect(() => {
+    if (contextLoading) return;
+
+    if (contextBanners && contextBanners.length > 0) {
+      const allProds = getAllProducts();
+      setItems(contextBanners.map(item => {
+        const type = item.type || 'info';
+        let product = null;
+        if (type === 'product' && item.product_id) {
+          product = allProds.find(p => p.id === item.product_id) || null;
+        }
+
+        let computedAction = 'link';
+        if (item.cta_link === 'story') computedAction = 'story';
+        else if (item.cta_link === 'modal:petfriendly') computedAction = 'modal:petfriendly';
+        else if (item.cta_link === 'link:reviews') computedAction = 'link:reviews';
+
+        const hasProduct = !!product;
+
+        return {
+          ...item,
+          type,
+          productId: type === 'product' ? item.product_id : item.cta_link,
+          bgColor: item.bg_color || '#2f4131',
+          product,
+          ctas: {
+            primary: { 
+              label: item.cta_text || (type === 'product' ? 'Agregar' : 'Ver más'), 
+              action: type === 'product' ? 'add' : computedAction
+            },
+            ...(type === 'product' ? { secondary: { label: 'Ver', action: 'quickview' } } : {})
+          }
+        };
+      }));
+    } else {
+      // Fallback to buildBanners only if not loading and no banners
+      if (!contextLoading) {
+        const fallbackItems = (buildBanners(import.meta.env) || []).map((item) => {
+          const product = item.productId ? resolveProductById(item.productId) : null;
+          return { ...item, product };
+        });
+        setItems(fallbackItems);
+      }
+    }
+    setLoading(false);
+  }, [contextBanners, contextLoading, getAllProducts]);
 
   const count = items.length;
 
   useEffect(() => {
-    if (paused || count <= 1) return;
+    if (paused || count <= 1 || loading) return;
     const el = trackRef.current;
     if (!el) return;
     const id = setInterval(() => {
@@ -38,7 +83,7 @@ export default function PromoBannerCarousel() {
       el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
     }, 6000);
     return () => clearInterval(id);
-  }, [paused, count, index]);
+  }, [paused, count, index, loading]);
 
   const handleAction = (action, product, productId) => {
     if (!action) return;
@@ -69,6 +114,14 @@ export default function PromoBannerCarousel() {
     } else if (action === "link:reviews") {
       const url = "https://g.page/r/CUlqcqk_KCXBEBM/review";
       if (url) window.open(url, "_blank", "noopener,noreferrer");
+    } else if (action === "link") {
+      if (productId) {
+        if (productId.startsWith('http')) {
+          window.open(productId, "_blank", "noopener,noreferrer");
+        } else {
+          window.location.href = productId;
+        }
+      }
     }
   };
 

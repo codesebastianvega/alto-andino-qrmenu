@@ -1,24 +1,48 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import ProductSection from "./ProductSection";
-import { useMenuData } from "@/context/MenuDataContext";
+import { useMenuData } from "../context/MenuDataContext";
 
-export default function SmoothiesSection({ query, onCount, onQuickView }) {
-  const { getProductsByCategory } = useMenuData();
+export default function SmoothiesSection({ query, onCount, onQuickView, variant = "standard" }) {
+  const menuData = useMenuData();
+  const categories = menuData?.categories || [];
+  const getProductsByCategory = menuData?.getProductsByCategory || (() => []);
   const [visible, setVisible] = useState(false);
   const sectionRef = useRef(null);
 
   const products = getProductsByCategory('smoothies');
 
   const groups = useMemo(() => {
-    const traditional = products.filter(p => !(p.tags || []).includes('funcional'));
-    const functional = products.filter(p => (p.tags || []).includes('funcional'));
+    const config = categories.find(c => c.slug === 'smoothies')?.visibility_config || {};
+    const definedSubs = config.subcategories || [];
     
-    const result = [];
-    if (traditional.length) result.push({ title: "Smoothies", items: traditional });
-    if (functional.length) result.push({ title: "Funcionales", items: functional });
-    
-    return result;
-  }, [products]);
+    // Group by subcategory
+    const grouped = {};
+    products.forEach(p => {
+      const sub = p.subcategory || 'Otros';
+      if (!grouped[sub]) grouped[sub] = [];
+      grouped[sub].push(p);
+    });
+
+    // Sort groups according to definedSubs if available, otherwise alpha
+    const subsToRender = definedSubs.length > 0 
+      ? definedSubs.filter(s => grouped[s])
+      : Object.keys(grouped).sort();
+
+    // Add 'Otros' at the end if it exists and wasn't in definedSubs
+    if (grouped['Otros'] && !subsToRender.includes('Otros')) {
+      subsToRender.push('Otros');
+    }
+
+    // Also pick up any subcategories not in definedSubs just in case
+    Object.keys(grouped).forEach(k => {
+      if (!subsToRender.includes(k)) subsToRender.push(k);
+    });
+
+    return subsToRender.map(title => ({
+      title,
+      items: grouped[title]
+    }));
+  }, [products, categories]);
 
   useEffect(() => {
     const el = sectionRef.current;
@@ -55,6 +79,7 @@ export default function SmoothiesSection({ query, onCount, onQuickView }) {
         groups={groups}
         onCount={onCount}
         onQuickView={onQuickView}
+        variant={variant === "smoothies" ? "standard" : variant}
       />
     </div>
   );

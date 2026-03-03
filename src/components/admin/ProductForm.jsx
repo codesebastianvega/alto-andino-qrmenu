@@ -12,7 +12,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
     category_id: '', stock_status: 'in', image_url: '',
     tags: [], is_active: true, is_addon: false,
     variants: [], modifier_groups: [], config_options: {}, recipe_id: null, packaging_fee: '',
-    is_upsell: false, requires_kitchen: true,
+    is_upsell: false, requires_kitchen: true, subcategory: '',
   });
   const [targetMargin, setTargetMargin] = useState(35);
   const [manageGroups, setManageGroups] = useState(false);
@@ -32,6 +32,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
         packaging_fee: product.packaging_fee || '',
         is_upsell: product.is_upsell ?? false,
         requires_kitchen: product.requires_kitchen ?? true,
+        subcategory: product.subcategory || '',
       });
     }
   }, [product]);
@@ -117,7 +118,13 @@ export default function ProductForm({ product, categories, recipes = [], allerge
       alert('Por favor completa nombre, precio y categoría.');
       return;
     }
-    onSave({ ...formData, price: parseFloat(formData.price), cost: parseFloat(formData.cost) || 0, packaging_fee: parseFloat(formData.packaging_fee) || 0 });
+    onSave({ 
+      ...formData, 
+      price: parseFloat(formData.price), 
+      cost: parseFloat(formData.cost) || 0, 
+      packaging_fee: parseFloat(formData.packaging_fee) || 0,
+      subcategory: formData.subcategory || null
+    });
   };
 
   const priceNum  = parseFloat(formData.price) || 0;
@@ -179,6 +186,42 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                 </FormField>
                 <FormField label="Costo Empaque (Llevar)">
                   <TextInput type="number" name="packaging_fee" value={formData.packaging_fee} onChange={handleChange} placeholder="Ej. 1500" />
+                </FormField>
+                <FormField label="Subcategoría (Opcional)">
+                  {(() => {
+                    // Extract subcategories if they exist for the selected category
+  const subcategories = (() => {
+    if (!formData.category_id || !categories) return [];
+    const cat = categories.find(c => String(c.id) === String(formData.category_id));
+    return cat?.visibility_config?.subcategories || [];
+  })();
+                    
+                    if (subcategories.length > 0) {
+                      return (
+                        <select 
+                          name="subcategory" 
+                          value={formData.subcategory} 
+                          onChange={handleChange}
+                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none"
+                        >
+                          <option value="">Seleccionar subcategoría...</option>
+                          {subcategories.map(sub => (
+                            <option key={sub} value={sub}>{sub}</option>
+                          ))}
+                          <option value="Otros">Otros</option>
+                        </select>
+                      );
+                    }
+                    
+                    return (
+                      <TextInput 
+                        name="subcategory" 
+                        value={formData.subcategory} 
+                        onChange={handleChange} 
+                        placeholder="Ej. Detox, Proteicos, etc." 
+                      />
+                    );
+                  })()}
                 </FormField>
                 <div className="hidden md:block"></div>
                 <div className="md:col-span-2">

@@ -23,3 +23,13 @@ body {
 .admin-label    { font-size: 0.6875rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: #9CA3AF; }
 .admin-mono     { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 0.75rem; }
 
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+

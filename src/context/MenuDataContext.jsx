@@ -8,6 +8,7 @@ export const MenuDataProvider = ({ children }) => {
   const [productsByCategory, setProductsByCategory] = useState({});
   const [modifiers, setModifiers] = useState({});
   const [experiences, setExperiences] = useState([]);
+  const [banners, setBanners] = useState([]);
   const [allergens, setAllergens] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,11 +24,22 @@ export const MenuDataProvider = ({ children }) => {
 
         if (catError) throw catError;
 
-        // Filter categories based on dayparting (time schedule)
+        // Filter categories based on dayparting (time schedule) and days of week
         const activeCats = cats.filter(cat => {
+          // 1. Basic active toggle
+          if (cat.is_active === false) return false;
+
+          const now = new Date();
+          const currentDay = now.getDay(); // 0 is Sunday, 6 is Saturday
+          
+          // 2. Filter by Day of Week
+          const config = cat.visibility_config || {};
+          const allowedDays = config.days || [0,1,2,3,4,5,6];
+          if (!allowedDays.includes(currentDay)) return false;
+
+          // 3. Filter by Time
           if (!cat.available_from && !cat.available_to) return true;
           
-          const now = new Date();
           const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
           const parseTime = (timeStr) => {
@@ -83,7 +95,7 @@ export const MenuDataProvider = ({ children }) => {
           .from('experiences')
           .select('*')
           .eq('is_active', true)
-          .order('sort_order', { ascending: true });
+          .order('created_at', { ascending: false });
         
         if (expError) console.warn('Error fetching experiences (table might not exist yet):', expError);
         setExperiences(exp || []);
@@ -96,6 +108,16 @@ export const MenuDataProvider = ({ children }) => {
         
         if (allgError) console.warn('Error fetching allergens:', allgError);
         setAllergens(allgs || []);
+
+        // Fetch banners
+        const { data: bnrs, error: bnrsError } = await supabase
+          .from('promo_banners')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+        
+        if (bnrsError) console.warn('Error fetching banners:', bnrsError);
+        setBanners(bnrs || []);
 
         // Fetch all products with their category info
         const { data: products, error: prodError } = await supabase
@@ -135,6 +157,7 @@ export const MenuDataProvider = ({ children }) => {
             configOptions: product.config_options || {},
             is_upsell: product.is_upsell || false,
             requires_kitchen: product.requires_kitchen ?? true,
+            subcategory: product.subcategory,
             categorySlug: catSlug,          // expose slug for QuickView fallback
             _supabase: product
           });
@@ -183,6 +206,7 @@ export const MenuDataProvider = ({ children }) => {
         getModifiers,
         modifiers,
         experiences,
+        banners,
         allergens,
         loading 
       }}

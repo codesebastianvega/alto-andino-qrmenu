@@ -90,3 +90,7 @@ export const toast = (message, opts = {}) => {
   } catch {}
 };
 
+toast.error = (message, opts = {}) => toast(message, { ...opts, type: 'error' });
+toast.success = (message, opts = {}) => toast(message, { ...opts, type: 'success' });
+toast.info = (message, opts = {}) => toast(message, { ...opts, type: 'info' });
+

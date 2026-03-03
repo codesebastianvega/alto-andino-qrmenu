@@ -12,7 +12,7 @@ const toast = {
   error: (msg) => toastFn(msg, { duration: 3000 }),
 };
 
-export default function AdminTables() {
+export default function AdminTables({ isEmbedded = false }) {
   const [tables, setTables] = useState([]);
   const [loadingTables, setLoadingTables] = useState(false);
   
@@ -144,14 +144,26 @@ export default function AdminTables() {
   );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <PageHeader
-        badge="Negocio"
-        title="Gestión de Mesas"
-        subtitle="Define las mesas físicas del local para tomar pedidos a ellas y generar códigos QR."
-      >
-        <PrimaryButton onClick={openCreate}>+ Nueva mesa</PrimaryButton>
-      </PageHeader>
+    <div className={isEmbedded ? "" : "p-8 max-w-7xl mx-auto"}>
+      {!isEmbedded && (
+        <PageHeader
+          badge="Negocio"
+          title="Gestión de Mesas"
+          subtitle="Define las mesas físicas del local para tomar pedidos a ellas y generar códigos QR."
+        >
+          <PrimaryButton onClick={openCreate}>+ Nueva mesa</PrimaryButton>
+        </PageHeader>
+      )}
+
+      {isEmbedded && (
+        <div className="flex justify-between items-center mb-6">
+           <div>
+              <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight italic">Listado de Mesas</h2>
+              <p className="text-xs text-gray-500 font-medium">Gestiona los QR para cada ubicación física.</p>
+           </div>
+           <PrimaryButton onClick={openCreate} className="px-6 py-2 text-xs rounded-xl">+ Nueva mesa</PrimaryButton>
+        </div>
+      )}
 
       <TableContainer>
         <table className="w-full min-w-[600px] border-collapse">

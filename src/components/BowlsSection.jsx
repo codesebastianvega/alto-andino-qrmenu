@@ -15,7 +15,7 @@ const BowlBuilder = lazy(() => import("./ProductCreator"));
 // ← editar nombres y precios aquí
 const BASE_PRICE = BOWL_BASE_PRICE;
 
-export default function BowlsSection({ query, onCount, onQuickView, id }) {
+export default function BowlsSection({ query, onCount, onQuickView, id, variant = "standard" }) {
   const { getProductsByCategory } = useMenuData();
   const { addItem } = useCart();
   const [open, setOpen] = useState(false);
@@ -39,7 +39,10 @@ export default function BowlsSection({ query, onCount, onQuickView, id }) {
 
   return (
     <div id={id} className="space-y-4">
-      <div className="mt-4 space-y-4 gap-4">
+      <div className={`mt-4 space-y-4 gap-4 ${
+        variant === 'grid' ? 'grid grid-cols-2 lg:grid-cols-3' : 
+        variant === 'wide-grid' ? 'grid grid-cols-1 sm:grid-cols-2' : ''
+      }`}>
         {visibleBowls.map(bowl => {
           const st = getStockState(bowl.id);
           const unavailable = st === "out" || isUnavailable(bowl);
@@ -47,6 +50,10 @@ export default function BowlsSection({ query, onCount, onQuickView, id }) {
             <ProductCard
               key={bowl.id}
               item={bowl}
+              variant={
+                variant === 'wide-grid' ? 'wide' : 
+                variant === 'simple-list' ? 'compact' : 'standard'
+              }
               onAdd={() => {
                 if (unavailable) return toast("Producto no disponible");
                 addItem({

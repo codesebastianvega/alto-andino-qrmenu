@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Icon } from '@iconify-icon/react';
 import { useStaff } from '../hooks/useStaff';
 import { toast } from '../components/Toast';
+import { PrimaryButton } from '../components/admin/ui';
 
-export default function AdminStaff() {
+export default function AdminStaff({ isEmbedded = false }) {
   const { staffList, loading, createStaff, updateStaff, deleteStaff } = useStaff();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
@@ -69,19 +70,29 @@ export default function AdminStaff() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto min-h-screen bg-gray-50/30">
-      <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-gray-900 border-l-4 border-[#2f4131] pl-4">PERSONAL Y ROLES</h1>
-          <p className="text-gray-500 mt-1 font-medium pl-4">Gestión de accesos y PINs</p>
+    <div className={`${isEmbedded ? "" : "p-4 md:p-8 max-w-5xl mx-auto min-h-screen bg-gray-50/30"}`}>
+      {!isEmbedded ? (
+        <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-black text-gray-900 border-l-4 border-[#2f4131] pl-4">PERSONAL Y ROLES</h1>
+            <p className="text-gray-500 mt-1 font-medium pl-4">Gestión de accesos y PINs</p>
+          </div>
+          <button 
+            onClick={() => openModal()}
+            className="bg-[#2f4131] hover:bg-[#1a251b] text-white px-5 py-2.5 rounded-xl font-bold transition-colors flex items-center gap-2"
+          >
+            <Icon icon="heroicons:plus" className="text-xl" /> Nuevo Empleado
+          </button>
+        </header>
+      ) : (
+        <div className="flex justify-between items-center mb-6">
+           <div>
+              <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight italic">Personal del Sistema</h2>
+              <p className="text-xs text-gray-500 font-medium">Controla quién accede a cada módulo.</p>
+           </div>
+           <PrimaryButton onClick={() => openModal()} className="px-6 py-2 text-xs rounded-xl">+ Nuevo empleado</PrimaryButton>
         </div>
-        <button 
-          onClick={() => openModal()}
-          className="bg-[#2f4131] hover:bg-[#1a251b] text-white px-5 py-2.5 rounded-xl font-bold transition-colors flex items-center gap-2"
-        >
-          <Icon icon="heroicons:plus" className="text-xl" /> Nuevo Empleado
-        </button>
-      </header>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {staffList.map(staff => (

@@ -11,7 +11,7 @@ function pickArray(...candidates) {
   return [];
 }
 
-export default function ColdDrinksSection({ query, onCount, onQuickView }) {
+export default function ColdDrinksSection({ query, onCount, onQuickView, variant = "standard" }) {
   const groupsRaw = [
     { title: "Gaseosas y Sodas", items: pickArray("sodas", "gaseosas") },
     { title: "Sodas Tea Pop", items: pickArray("sodasTeaPop") },
@@ -53,6 +53,7 @@ export default function ColdDrinksSection({ query, onCount, onQuickView }) {
         groups={finalGroups}
         onCount={onCount}
         onQuickView={onQuickView}
+        variant={variant}
         alwaysShow={forceShow}
         includeUnavailable={true}
       />

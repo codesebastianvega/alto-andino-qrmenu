@@ -26,9 +26,9 @@ export default function ProductSection({
   mapItem, // opcional: transformar item antes de render
   alwaysShow = false, // forzar render aunque count sea 0
   includeUnavailable = true, // mostrar aunque available === false
-  renderEmpty,
-  countValue,
   renderAfter,
+  countValue,
+  variant = "standard", // standard, simple-list, grid, wide-grid
 }) {
   const { addItem } = useCart();
 
@@ -100,21 +100,39 @@ export default function ProductSection({
       ? renderAfter({ hasResults: count > 0 })
       : null;
 
-  const renderProducts = (arr, keySeed = 0) => (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-      {arr.map((item, i) => {
-        const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
-        return (
-          <ProductCard
-            key={safeItem?.id || `${keySeed}-${i}`}
-            item={safeItem}
-            onAdd={(payload) => addItem(payload)}
-            onQuickView={onQuickView}
-          />
-        );
-      })}
-    </div>
-  );
+  const renderProducts = (arr, keySeed = 0) => {
+    let gridClasses = "grid gap-3 sm:gap-4";
+    let cardVariant = "standard";
+
+    if (variant === "grid") {
+      gridClasses += " grid-cols-2 lg:grid-cols-3";
+    } else if (variant === "wide-grid") {
+      gridClasses += " grid-cols-1 sm:grid-cols-2";
+      cardVariant = "wide";
+    } else if (variant === "simple-list") {
+      gridClasses += " grid-cols-1";
+      cardVariant = "compact";
+    } else {
+      gridClasses += " grid-cols-1 sm:grid-cols-2";
+    }
+
+    return (
+      <div className={gridClasses}>
+        {arr.map((item, i) => {
+          const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
+          return (
+            <ProductCard
+              key={safeItem?.id || `${keySeed}-${i}`}
+              item={safeItem}
+              variant={cardVariant}
+              onAdd={(payload) => addItem(payload)}
+              onQuickView={onQuickView}
+            />
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <Section id={`section-${id}`} title={title} count={displayCount}>

@@ -110,23 +110,19 @@ const Icons = {
   ),
 };
 
-const MENU_ITEMS = [
-  { id: 'sep-op', type: 'separator', label: 'Operación' },
-  { id: 'orders',      label: 'Pedidos',      Icon: Icons.Orders, roles: ['admin', 'cashier', 'waiter'] },
-  { id: 'kitchen',     label: 'Vista Cocina', Icon: Icons.Kitchen, roles: ['admin', 'kitchen'] },
-  { id: 'sep-menu', type: 'separator', label: 'Carta' },
+const CARTA_ITEMS = [
   { id: 'products',   label: 'Productos',   Icon: Icons.Products, roles: ['admin'] },
   { id: 'categories', label: 'Categorías',  Icon: Icons.Categories, roles: ['admin'] },
+  { id: 'experiences', label: 'Experiencias', Icon: Icons.Experiences, roles: ['admin'] },
   { id: 'allergens',  label: 'Dietas y Alérgenos', Icon: Icons.Allergens, roles: ['admin'] },
-  { id: 'sep-prod', type: 'separator', label: 'Producción' },
+];
+
+const PROD_ITEMS = [
   { id: 'recipes',   label: 'Recetas',      Icon: Icons.Recipes, roles: ['admin', 'kitchen'] },
   { id: 'modifiers', label: 'Inventario',      Icon: Icons.Modifiers, roles: ['admin', 'kitchen'] },
-  { id: 'sep-biz', type: 'separator', label: 'Negocio' },
-  { id: 'tables',    label: 'Mesas (QR)',   Icon: Icons.Tables, roles: ['admin', 'waiter', 'cashier'] },
-  { id: 'experiences', label: 'Experiencias', Icon: Icons.Experiences, disabled: true, roles: ['admin'] },
-  { id: 'branding',    label: 'Branding y Diseño', Icon: Icons.Branding, roles: ['admin'] },
-  { id: 'dashboard',   label: 'Dashboard',    Icon: Icons.Dashboard, roles: ['admin'] },
-  { id: 'staff',       label: 'Personal',     Icon: Icons.Staff, roles: ['admin'] },
+];
+
+const ADJUST_ITEMS = [
   { id: 'settings',    label: 'Ajustes Generales', Icon: Icons.Settings, roles: ['admin'] },
 ];
 
@@ -164,143 +160,204 @@ export default function AdminLayout() {
     return () => supabase.removeChannel(channel);
   }, []);
 
-  const currentItem = MENU_ITEMS.find(i => i.id === currentPage);
+  // Render helper for navigation sections
+  const NavSection = ({ title, items, current, onSelect, collapsed }) => {
+    const allowed = items.filter(item => !item.roles || item.roles.includes(user.role));
+    if (allowed.length === 0) return null;
+
+    return (
+      <div className="py-2">
+        {!collapsed ? (
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-4 mb-2 block">
+            {title}
+          </span>
+        ) : (
+          <div className="h-px bg-white/5 mx-2 my-4" />
+        )}
+        <div className="space-y-0.5 px-2">
+          {allowed.map((item) => {
+            const Icon = Icons[item.id.charAt(0).toUpperCase() + item.id.slice(1)];
+            const isActive = current === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => onSelect(item.id)}
+                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+                  collapsed ? 'justify-center px-0' : ''
+                } ${
+                  isActive
+                    ? 'bg-white/10 text-white shadow-sm shadow-black/20'
+                    : 'text-white/40 hover:text-white/80 hover:bg-white/5'
+                }`}
+              >
+                <span className={`shrink-0 ${isActive ? 'text-[#7db87a]' : ''}`}>
+                  <Icon />
+                </span>
+                {!collapsed && <span>{item.label}</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const currentItemLabel = [...CARTA_ITEMS, ...PROD_ITEMS, ...ADJUST_ITEMS, 
+    {id: 'dashboard', label: 'Dashboard'}, 
+    {id: 'orders', label: 'Pedidos'}, 
+    {id: 'kitchen', label: 'Cocina'}
+  ].find(i => i.id === currentPage)?.label || 'Panel';
 
   if (!user) {
     return <AdminPinLogin onLogin={setUser} />;
   }
 
-  const allowedItems = MENU_ITEMS.filter(item => 
-    item.type === 'separator' || !item.roles || item.roles.includes(user.role)
-  );
-
   return (
     <div className="flex min-h-screen bg-[#F4F4F2]" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* ── Sidebar ────────────────────────────────────────────────────── */}
       <aside
-        className={`fixed left-0 top-0 bottom-0 bg-[#1C2B1E] flex flex-col z-50 transition-all duration-250 ${
-          isCollapsed ? 'w-[60px]' : 'w-[220px]'
+        className={`fixed left-0 top-0 bottom-0 bg-[#0F170F] border-r border-white/5 flex flex-col z-50 transition-all duration-300 ${
+          isCollapsed ? 'w-20' : 'w-[240px]'
         }`}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className={`flex items-center h-16 border-b border-white/5 px-4 gap-3 shrink-0 ${isCollapsed ? 'justify-center px-0' : ''}`}>
-            <div className="w-7 h-7 bg-[#4a6741] rounded-lg flex items-center justify-center shrink-0">
-              <span className="text-sm font-bold text-white leading-none">A</span>
-            </div>
-            {!isCollapsed && (
-              <div>
-                <p className="text-[13px] font-semibold text-white leading-none tracking-tight">Alto Andino</p>
-                <p className="text-[10px] text-white/30 font-medium mt-0.5">Admin</p>
-              </div>
-            )}
+          {/* Logo Section */}
+          <div className={`flex items-center h-20 px-5 gap-3 shrink-0 ${isCollapsed ? 'justify-center px-0' : ''}`}>
+             <div className="w-9 h-9 bg-gradient-to-br from-[#4a6741] to-[#2f4131] rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-black/40">
+                <span className="text-lg font-black text-white italic">AA</span>
+             </div>
+             {!isCollapsed && (
+               <div>
+                 <p className="text-[14px] font-black text-white tracking-tight uppercase italic">Alto Andino</p>
+                 <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+                    <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">{user.role}</p>
+                 </div>
+               </div>
+             )}
           </div>
 
-          {/* Nav */}
-          <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
-            {allowedItems.map((item, index) => {
-              if (item.type === 'separator') {
-                // Peek next item to hide separator if no allowed items follow
-                const nextItems = allowedItems.slice(index + 1);
-                const hasNextAllowed = nextItems.findIndex(n => n.type !== 'separator') !== -1;
-                const nextIsSeparator = index + 1 < allowedItems.length && allowedItems[index + 1].type === 'separator';
-                
-                if (!hasNextAllowed || nextIsSeparator) return null;
-
-                return (
-                  <div key={item.id} className="pt-5 pb-1.5">
-                    {!isCollapsed ? (
-                      <span className="text-[10px] font-semibold uppercase tracking-widest text-white/20 px-2">
-                        {item.label}
-                      </span>
-                    ) : (
-                      <div className="h-px bg-white/8 mx-2" />
+          <div className="flex-1 overflow-y-auto custom-scrollbar pt-2">
+            {/* ── SEGMENTO ESPECIAL: OPERACIONES (TARJETAS) ── */}
+            <div className={`px-4 mb-6 space-y-3 ${isCollapsed ? 'px-2' : ''}`}>
+               {!isCollapsed && <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em] ml-1 mb-2 block">Operaciones</span>}
+               
+               {/* Dashboard Card */}
+               <button 
+                 onClick={() => setCurrentPage('dashboard')}
+                 className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
+                   currentPage === 'dashboard' 
+                    ? 'bg-gradient-to-r from-[#2f4131] to-[#1a251b] border-white/10 ring-1 ring-white/10 shadow-lg shadow-black/40' 
+                    : 'bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/10'
+                 }`}
+               >
+                 <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'dashboard' ? 'bg-[#7db87a]/20 text-[#7db87a]' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
+                       <Icons.Dashboard />
+                    </div>
+                    {!isCollapsed && (
+                      <div className="text-left">
+                        <p className={`text-[13px] font-bold leading-none ${currentPage === 'dashboard' ? 'text-white' : 'text-white/60'}`}>Dashboard</p>
+                        <p className="text-[9px] text-white/30 font-medium mt-1">Métricas y Resumen</p>
+                      </div>
                     )}
-                  </div>
-                );
-              }
+                 </div>
+               </button>
 
-              const { Icon } = item;
-              const isActive = currentPage === item.id;
+               {/* Pedidos Card */}
+               <button 
+                 onClick={() => setCurrentPage('orders')}
+                 className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
+                   currentPage === 'orders' 
+                    ? 'bg-gradient-to-r from-blue-900/40 to-blue-950/40 border-blue-500/20 ring-1 ring-blue-500/20 shadow-lg shadow-blue-950/40' 
+                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
+                 }`}
+               >
+                 <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'orders' ? 'bg-blue-400/20 text-blue-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
+                       <Icons.Orders />
+                    </div>
+                    {!isCollapsed && (
+                      <div className="text-left">
+                        <p className={`text-[13px] font-bold leading-none ${currentPage === 'orders' ? 'text-white' : 'text-white/60'}`}>Pedidos</p>
+                        <p className="text-[9px] text-white/30 font-medium mt-1">Gestión Activa</p>
+                      </div>
+                    )}
+                 </div>
+               </button>
 
-              return (
-                <button
-                  key={item.id}
-                  disabled={item.disabled}
-                  onClick={() => !item.disabled && setCurrentPage(item.id)}
-                  title={isCollapsed ? item.label : ''}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
-                    isCollapsed ? 'justify-center px-0' : ''
-                  } ${
-                    isActive
-                      ? 'bg-white/10 text-white'
-                      : item.disabled
-                        ? 'text-white/20 cursor-not-allowed'
-                        : 'text-white/50 hover:text-white/80 hover:bg-white/5'
-                  }`}
-                >
-                  <span className={`shrink-0 ${isActive ? 'text-[#7db87a]' : ''}`}>
-                    <Icon />
-                  </span>
-                  {!isCollapsed && (
-                    <span className="flex-1 text-left truncate flex items-center justify-between pr-1">
-                      <span>{item.label}</span>
-                      {item.id === 'kitchen' && pendingOrdersCount > 0 && (
-                        <span className="bg-red-500/20 text-red-500 border border-red-500/30 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-md animate-pulse">
-                          {pendingOrdersCount}
-                        </span>
-                      )}
-                      {item.disabled && (
-                        <span className="ml-2 text-[9px] font-semibold text-white/20 align-middle">soon</span>
-                      )}
-                    </span>
-                  )}
-                  {!isCollapsed && isActive && (
-                    <span className="w-1 h-1 rounded-full bg-[#7db87a] shrink-0" />
-                  )}
-                </button>
-              );
-            })}
-          </nav>
+               {/* Cocina Card */}
+               <button 
+                 onClick={() => setCurrentPage('kitchen')}
+                 className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
+                   currentPage === 'kitchen' 
+                    ? 'bg-gradient-to-r from-orange-900/40 to-orange-950/40 border-orange-500/20 ring-1 ring-orange-500/20 shadow-lg shadow-orange-950/40' 
+                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
+                 }`}
+               >
+                 <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'kitchen' ? 'bg-orange-400/20 text-orange-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
+                       <div className="relative">
+                          <Icons.Kitchen />
+                          {pendingOrdersCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-ping" />}
+                       </div>
+                    </div>
+                    {!isCollapsed && (
+                      <div className="text-left flex-1 flex justify-between items-center pr-1">
+                        <div>
+                          <p className={`text-[13px] font-bold leading-none ${currentPage === 'kitchen' ? 'text-white' : 'text-white/60'}`}>Cocina</p>
+                          <p className="text-[9px] text-white/30 font-medium mt-1">Monitor de Producción</p>
+                        </div>
+                        {pendingOrdersCount > 0 && (
+                          <span className="bg-orange-500 text-white text-[10px] font-black h-5 px-1.5 flex items-center justify-center rounded-md">
+                            {pendingOrdersCount}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                 </div>
+               </button>
+            </div>
 
-          {/* Footer */}
-          <div className="border-t border-white/5 px-2 py-3 space-y-0.5 shrink-0">
-            <a
-              href="/"
-              title={isCollapsed ? 'Ver Menú' : ''}
-              className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium text-white/40 hover:text-white/70 hover:bg-white/5 transition-all ${
-                isCollapsed ? 'justify-center px-0' : ''
-              }`}
-            >
-              <Icons.Home />
-              {!isCollapsed && <span>Ver Menú</span>}
-            </a>
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium text-white/30 hover:text-white/60 hover:bg-white/5 transition-all ${
-                isCollapsed ? 'justify-center px-0' : ''
-              }`}
-            >
-              {isCollapsed ? <Icons.ChevronRight /> : <><Icons.ChevronLeft /><span>Colapsar</span></>}
-            </button>
+            {/* SECCIONES ESTANDAR */}
+            <div className="h-px bg-white/5 mx-6 my-2" />
+            
+            <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={setCurrentPage} collapsed={isCollapsed} />
+            <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={setCurrentPage} collapsed={isCollapsed} />
+            <NavSection title="Configuración" items={ADJUST_ITEMS} current={currentPage} onSelect={setCurrentPage} collapsed={isCollapsed} />
+          </div>
+
+          {/* User Section / Collapse toggle */}
+          <div className="mt-auto border-t border-white/5 bg-black/10">
+             <button
+               href="/"
+               className={`flex items-center gap-2.5 px-5 py-3 text-[13px] font-medium text-white/40 hover:text-white/70 hover:bg-white/5 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
+             >
+                <Icons.Home />
+                {!isCollapsed && <span>Ver Menú Público</span>}
+             </button>
+             <button
+               onClick={() => setIsCollapsed(!isCollapsed)}
+               className="w-full h-12 flex items-center px-5 gap-3 text-white/30 hover:text-white/60 transition-colors border-t border-white/5"
+             >
+               <span className="shrink-0">
+                 {isCollapsed ? <Icons.ChevronRight /> : <Icons.ChevronLeft />}
+               </span>
+               {!isCollapsed && <span className="text-[11px] font-bold uppercase tracking-widest">Colapsar Sidebar</span>}
+             </button>
           </div>
         </div>
       </aside>
 
-      {/* ── Main ──────────────────────────────────────────────────────── */}
+      {/* ── Main Content ────────────────────────────────────────────────── */}
       <main
-        className={`flex-1 min-h-screen flex flex-col transition-all duration-250 ${
-          isCollapsed ? 'ml-[60px]' : 'ml-[220px]'
+        className={`flex-1 transition-all duration-300 ${
+          isCollapsed ? 'ml-20' : 'ml-[240px]'
         }`}
       >
-        {/* Topbar */}
-        <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-8 sticky top-0 z-40">
-          <div className="flex items-center gap-2 text-gray-400">
-            <span className="text-[12px] font-medium">Admin</span>
-            <span className="text-gray-300">/</span>
-            <span className="text-[13px] font-semibold text-gray-700">
-              {currentItem?.label || 'Panel'}
-            </span>
+        <header className="h-16 bg-white border-b border-gray-200/60 sticky top-0 z-40 flex items-center justify-between px-8 shadow-sm shadow-black/[0.02]">
+          <div className="flex items-center gap-3">
+             <h2 className="text-[15px] font-black text-gray-900 tracking-tight uppercase italic">{currentItemLabel}</h2>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">

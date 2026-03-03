@@ -57,7 +57,11 @@ export const useAdminProducts = () => {
         recipe_id: productData.recipe_id || null,
         variants: productData.variants || [],
         modifier_groups: productData.modifier_groups || [],
-        config_options: productData.config_options || {}
+        config_options: productData.config_options || {},
+        is_upsell: productData.is_upsell || false,
+        requires_kitchen: productData.requires_kitchen ?? true,
+        packaging_fee: parseFloat(productData.packaging_fee) || 0,
+        subcategory: productData.subcategory || null
       };
 
       const { data, error } = await supabase
@@ -98,7 +102,11 @@ export const useAdminProducts = () => {
         recipe_id: productData.recipe_id || null,
         variants: productData.variants || [],
         modifier_groups: productData.modifier_groups || [],
-        config_options: productData.config_options || {}
+        config_options: productData.config_options || {},
+        is_upsell: productData.is_upsell || false,
+        requires_kitchen: productData.requires_kitchen ?? true,
+        packaging_fee: parseFloat(productData.packaging_fee) || 0,
+        subcategory: productData.subcategory || null
       };
 
       const { data, error } = await supabase

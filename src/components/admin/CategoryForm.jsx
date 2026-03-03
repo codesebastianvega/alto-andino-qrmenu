@@ -5,7 +5,8 @@ export default function CategoryForm({ category, onSave, onCancel }) {
   const [formData, setFormData] = useState({
     name: '', slug: '', icon: '🍽️', sort_order: 0, is_active: true,
     banner_image_url: '', banner_title: '', banner_description: '', accent_color: '#2f4131',
-    available_from: '', available_to: ''
+    available_from: '', available_to: '',
+    visibility_config: { days: [0,1,2,3,4,5,6], subcategories: [], section_type: 'standard' }
   });
 
   useEffect(() => {
@@ -15,7 +16,8 @@ export default function CategoryForm({ category, onSave, onCancel }) {
         sort_order: category.sort_order || 0, is_active: category.is_active !== false,
         banner_image_url: category.banner_image_url || '', banner_title: category.banner_title || '',
         banner_description: category.banner_description || '', accent_color: category.accent_color || '#2f4131',
-        available_from: category.available_from || '', available_to: category.available_to || ''
+        available_from: category.available_from || '', available_to: category.available_to || '',
+        visibility_config: category.visibility_config || { days: [0,1,2,3,4,5,6], subcategories: [], section_type: 'standard' }
       });
     }
   }, [category]);
@@ -33,6 +35,51 @@ export default function CategoryForm({ category, onSave, onCancel }) {
     if (!dataToSave.available_to) dataToSave.available_to = null;
     
     onSave(dataToSave);
+  };
+
+  const toggleDay = (dayIndex) => {
+    setFormData(prev => {
+      const days = prev.visibility_config?.days || [0,1,2,3,4,5,6];
+      const newDays = days.includes(dayIndex) 
+        ? days.filter(d => d !== dayIndex) 
+        : [...days, dayIndex].sort();
+      return {
+        ...prev,
+        visibility_config: { ...prev.visibility_config, days: newDays }
+      };
+    });
+  };
+
+  const handleAddSubManual = (value) => {
+    if (!value) return;
+    const currentSubs = formData.visibility_config?.subcategories || [];
+    if (currentSubs.includes(value)) return;
+    
+    setFormData(prev => ({
+      ...prev,
+      visibility_config: {
+        ...prev.visibility_config,
+        subcategories: [...currentSubs, value]
+      }
+    }));
+  };
+
+  const addSubcategory = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddSubManual(e.target.value.trim());
+      e.target.value = '';
+    }
+  };
+
+  const removeSubcategory = (sub) => {
+    setFormData(prev => ({
+      ...prev,
+      visibility_config: {
+        ...prev.visibility_config,
+        subcategories: prev.visibility_config.subcategories.filter(s => s !== sub)
+      }
+    }));
   };
 
   return (
@@ -67,15 +114,35 @@ export default function CategoryForm({ category, onSave, onCancel }) {
             </div>
             
             <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 pb-1 border-b border-gray-100 mt-6">
-              Horario de Disponibilidad
+              Horario y Días de Disponibilidad
             </p>
             <div className="grid grid-cols-2 gap-3">
-              <FormField label="Hora Inicio (Dejar vacío = Todo el día)">
+              <FormField label="Hora Inicio">
                 <TextInput type="time" name="available_from" value={formData.available_from} onChange={handleChange} />
               </FormField>
               <FormField label="Hora Fin">
                 <TextInput type="time" name="available_to" value={formData.available_to} onChange={handleChange} />
               </FormField>
+            </div>
+            <div className="space-y-2 mt-2">
+              <p className="text-[11px] font-medium text-gray-500">Días activos</p>
+              <div className="flex flex-wrap gap-1.5">
+                {['D', 'L', 'M', 'X', 'J', 'V', 'S'].map((day, i) => {
+                  const isActive = formData.visibility_config?.days?.includes(i);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => toggleDay(i)}
+                      className={`w-7 h-7 rounded-lg text-[10px] font-bold transition-all ${
+                        isActive ? 'bg-[#2f4131] text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -102,6 +169,57 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                 <TextInput name="accent_color" value={formData.accent_color} onChange={handleChange} />
               </div>
             </FormField>
+
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 pb-1 border-b border-gray-100 mt-6">
+              Organización Interna
+            </p>
+            <FormField label="Subcategorías (una por línea)">
+              <div className="space-y-4">
+                <textarea
+                  value={formData.visibility_config?.subcategories?.join('\n') || ''}
+                  onChange={(e) => {
+                    const subs = e.target.value.split('\n').map(s => s.trim()).filter(Boolean);
+                    setFormData({
+                      ...formData,
+                      visibility_config: { ...formData.visibility_config, subcategories: subs }
+                    });
+                  }}
+                  placeholder="Ej:&#10;Clásicos&#10;Especiales&#10;Premium"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#7db87a]/30 transition-all min-h-[120px] outline-none"
+                />
+                
+                <div className="flex flex-wrap gap-2">
+                  {formData.visibility_config?.subcategories?.map(sub => (
+                    <span key={sub} className="inline-flex items-center gap-1.5 px-3 py-1 bg-violet-50 text-violet-700 rounded-xl text-[11px] font-bold border border-violet-100">
+                      {sub}
+                      <button type="button" onClick={() => removeSubcategory(sub)} className="hover:text-violet-900 ml-1 opacity-60 hover:opacity-100">
+                        <Icon icon="heroicons:x-mark" className="text-xs" />
+                      </button>
+                    </span>
+                  ))}
+                  {(!formData.visibility_config?.subcategories || formData.visibility_config.subcategories.length === 0) && (
+                    <p className="text-[11px] text-gray-400 italic px-2">Escribe las subcategorías arriba para organizarlas.</p>
+                  )}
+                </div>
+              </div>
+            </FormField>
+            <FormField label="Tipo de sección">
+              <select 
+                name="section_type" 
+                value={formData.visibility_config?.section_type || 'standard'}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  visibility_config: { ...prev.visibility_config, section_type: e.target.value }
+                }))}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none"
+              >
+                <option value="standard">Estándar (Lista)</option>
+                <option value="simple-list">Lista Compacta (Bebidas)</option>
+                <option value="smoothies">Especial: Smoothies & Funcionales</option>
+                <option value="grid">Cuadrícula (2 columnas)</option>
+                <option value="wide-grid">Cuadrícula Amplia (Fotos grandes)</option>
+              </select>
+            </FormField> 
           </div>
 
           {/* Active toggle */}

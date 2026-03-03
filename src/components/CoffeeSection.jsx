@@ -13,7 +13,7 @@ const useFilteredProducts = (products, conditionFn, query) => {
   );
 };
 
-export default function CoffeeSection({ query, onCount, onQuickView }) {
+export default function CoffeeSection({ query, onCount, onQuickView, variant = "standard" }) {
   const { getProductsByCategory } = useMenuData();
   const products = getProductsByCategory('cafe');
 
@@ -45,6 +45,7 @@ export default function CoffeeSection({ query, onCount, onQuickView }) {
           title="CAFÉS"
           items={coffees}
           onQuickView={onQuickView}
+          variant={variant}
         />
       )}
 
@@ -54,6 +55,7 @@ export default function CoffeeSection({ query, onCount, onQuickView }) {
           title="TÉ & CHAI"
           items={teas}
           onQuickView={onQuickView}
+          variant={variant}
         />
       )}
 
@@ -63,6 +65,7 @@ export default function CoffeeSection({ query, onCount, onQuickView }) {
           title="INFUSIONES"
           items={infusions}
           onQuickView={onQuickView}
+          variant={variant}
         />
       )}
     </div>
