@@ -11,6 +11,9 @@ import AdminAllergens from '../../pages/AdminAllergens';
 import AdminTables from '../../pages/AdminTables';
 import AdminOrders from '../../pages/AdminOrders';
 import AdminKitchen from '../../pages/AdminKitchen';
+import AdminDashboard from '../../pages/AdminDashboard';
+import AdminStaff from '../../pages/AdminStaff';
+import AdminPinLogin from './AdminPinLogin';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
 const Icons = {
@@ -70,6 +73,14 @@ const Icons = {
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
     </svg>
   ),
+  Staff: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  ),
   Allergens: () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
@@ -101,27 +112,36 @@ const Icons = {
 
 const MENU_ITEMS = [
   { id: 'sep-op', type: 'separator', label: 'Operación' },
-  { id: 'orders',      label: 'Pedidos',      Icon: Icons.Orders },
-  { id: 'kitchen',     label: 'Vista Cocina', Icon: Icons.Kitchen },
+  { id: 'orders',      label: 'Pedidos',      Icon: Icons.Orders, roles: ['admin', 'cashier', 'waiter'] },
+  { id: 'kitchen',     label: 'Vista Cocina', Icon: Icons.Kitchen, roles: ['admin', 'kitchen'] },
   { id: 'sep-menu', type: 'separator', label: 'Carta' },
-  { id: 'products',   label: 'Productos',   Icon: Icons.Products },
-  { id: 'categories', label: 'Categorías',  Icon: Icons.Categories },
-  { id: 'allergens',  label: 'Dietas y Alérgenos', Icon: Icons.Allergens },
+  { id: 'products',   label: 'Productos',   Icon: Icons.Products, roles: ['admin'] },
+  { id: 'categories', label: 'Categorías',  Icon: Icons.Categories, roles: ['admin'] },
+  { id: 'allergens',  label: 'Dietas y Alérgenos', Icon: Icons.Allergens, roles: ['admin'] },
   { id: 'sep-prod', type: 'separator', label: 'Producción' },
-  { id: 'recipes',   label: 'Recetas',      Icon: Icons.Recipes },
-  { id: 'modifiers', label: 'Inventario',      Icon: Icons.Modifiers },
+  { id: 'recipes',   label: 'Recetas',      Icon: Icons.Recipes, roles: ['admin', 'kitchen'] },
+  { id: 'modifiers', label: 'Inventario',      Icon: Icons.Modifiers, roles: ['admin', 'kitchen'] },
   { id: 'sep-biz', type: 'separator', label: 'Negocio' },
-  { id: 'tables',    label: 'Mesas (QR)',   Icon: Icons.Tables },
-  { id: 'experiences', label: 'Experiencias', Icon: Icons.Experiences, disabled: true },
-  { id: 'branding',    label: 'Branding y Diseño', Icon: Icons.Branding },
-  { id: 'dashboard',   label: 'Dashboard',    Icon: Icons.Dashboard,    disabled: true },
-  { id: 'settings',    label: 'Ajustes Generales', Icon: Icons.Settings },
+  { id: 'tables',    label: 'Mesas (QR)',   Icon: Icons.Tables, roles: ['admin', 'waiter', 'cashier'] },
+  { id: 'experiences', label: 'Experiencias', Icon: Icons.Experiences, disabled: true, roles: ['admin'] },
+  { id: 'branding',    label: 'Branding y Diseño', Icon: Icons.Branding, roles: ['admin'] },
+  { id: 'dashboard',   label: 'Dashboard',    Icon: Icons.Dashboard, roles: ['admin'] },
+  { id: 'staff',       label: 'Personal',     Icon: Icons.Staff, roles: ['admin'] },
+  { id: 'settings',    label: 'Ajustes Generales', Icon: Icons.Settings, roles: ['admin'] },
 ];
 
 export default function AdminLayout() {
+  const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('orders'); // Cambiado a orders por defecto
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+
+  // Auto-redirect if user's role doesn't have access to "orders"
+  useEffect(() => {
+    if (user && user.role === 'kitchen') {
+      setCurrentPage('kitchen');
+    }
+  }, [user]);
 
   useEffect(() => {
     const fetchPendingCount = async () => {
@@ -145,6 +165,14 @@ export default function AdminLayout() {
   }, []);
 
   const currentItem = MENU_ITEMS.find(i => i.id === currentPage);
+
+  if (!user) {
+    return <AdminPinLogin onLogin={setUser} />;
+  }
+
+  const allowedItems = MENU_ITEMS.filter(item => 
+    item.type === 'separator' || !item.roles || item.roles.includes(user.role)
+  );
 
   return (
     <div className="flex min-h-screen bg-[#F4F4F2]" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -170,8 +198,15 @@ export default function AdminLayout() {
 
           {/* Nav */}
           <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
-            {MENU_ITEMS.map((item) => {
+            {allowedItems.map((item, index) => {
               if (item.type === 'separator') {
+                // Peek next item to hide separator if no allowed items follow
+                const nextItems = allowedItems.slice(index + 1);
+                const hasNextAllowed = nextItems.findIndex(n => n.type !== 'separator') !== -1;
+                const nextIsSeparator = index + 1 < allowedItems.length && allowedItems[index + 1].type === 'separator';
+                
+                if (!hasNextAllowed || nextIsSeparator) return null;
+
                 return (
                   <div key={item.id} className="pt-5 pb-1.5">
                     {!isCollapsed ? (
@@ -268,9 +303,24 @@ export default function AdminLayout() {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#2f4131] flex items-center justify-center">
-              <span className="text-white text-[11px] font-semibold">AA</span>
+            <div className="text-right">
+              <div className="text-[13px] font-semibold text-gray-800 leading-tight">{user.name}</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">{user.role}</div>
             </div>
+            <button 
+              onClick={() => {
+                sessionStorage.removeItem('aa_admin_session');
+                setUser(null);
+              }}
+              className="w-8 h-8 rounded-full bg-[#1C2B1E] flex items-center justify-center hover:bg-red-600 transition-colors cursor-pointer"
+              title="Cerrar sesión"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+            </button>
           </div>
         </header>
 
@@ -287,14 +337,8 @@ export default function AdminLayout() {
           { currentPage === 'kitchen'     && <AdminKitchen /> }
           { currentPage === 'branding'    && <AdminBranding /> }
           { currentPage === 'settings'    && <AdminSettings /> }
-          {currentPage === 'dashboard'   && (
-            <div className="flex items-center justify-center h-96 text-gray-300">
-              <div className="text-center">
-                <Icons.Dashboard />
-                <p className="mt-4 text-sm font-medium">Dashboard · Próximamente</p>
-              </div>
-            </div>
-          )}
+          { currentPage === 'staff'       && <AdminStaff /> }
+          { currentPage === 'dashboard'   && <AdminDashboard /> }
         </div>
       </main>
     </div>

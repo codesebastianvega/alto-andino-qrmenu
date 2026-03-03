@@ -21,7 +21,8 @@
     "react-qr-code": "2.0.18",
     "react-scroll": "^1.9.3",
     "react-swipeable": "^7.0.2",
-    "react-window": "^1.8.11"
+    "react-window": "^1.8.11",
+    "recharts": "^3.7.0"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.98.0",

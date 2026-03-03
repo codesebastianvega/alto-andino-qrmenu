@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../config/supabase';
 import { Icon } from '@iconify-icon/react';
 import { toast } from '../components/Toast';
+import { useStaff } from '../hooks/useStaff';
 
 const ORDER_STATUSES = [
   { id: 'waiting_payment', label: 'Falta Pago', color: 'text-orange-600', icon: 'heroicons:banknotes' },
@@ -114,6 +115,26 @@ export default function AdminOrders() {
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
+
+  const { staffList } = useStaff();
+  const waiters = useMemo(() => staffList.filter(s => s.role === 'waiter' || s.role === 'admin'), [staffList]);
+
+  const assignWaiter = async (orderId, waiterId) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ waiter_id: waiterId || null })
+        .eq('id', orderId);
+      if (error) throw error;
+      toast('Mesero asignado', { icon: '🧑‍🍳' });
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, waiter_id: waiterId || null } : o));
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder(prev => ({ ...prev, waiter_id: waiterId || null }));
+      }
+    } catch (err) {
+      toast.error('Error al asignar');
+    }
+  };
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -321,6 +342,12 @@ export default function AdminOrders() {
                           <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded-lg">
                             {order.order_items?.length || 0} ítems
                           </span>
+                          {order.waiter_id && (
+                            <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-1 rounded-lg flex items-center gap-1">
+                              <Icon icon="heroicons:user-circle" />
+                              {waiters.find(w => w.id === order.waiter_id)?.name?.split(' ')[0] || 'Mesero'}
+                            </span>
+                          )}
                         </div>
                         
                         <div className="space-y-1">
@@ -405,6 +432,25 @@ export default function AdminOrders() {
                       ? `Mesa ${selectedOrder.restaurant_tables?.table_number || '?'}`
                       : getFulfillmentLabel(selectedOrder.fulfillment_type).text}
                   </p>
+                </div>
+
+                <div className="bg-blue-50/50 p-4 rounded-3xl border border-blue-100 col-span-2 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Mesero Asignado</p>
+                    <div className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                       <Icon icon="heroicons:user-circle" className="text-blue-500 text-lg" />
+                       <select 
+                         value={selectedOrder.waiter_id || ''}
+                         onChange={(e) => assignWaiter(selectedOrder.id, e.target.value)}
+                         className="bg-transparent border-none outline-none font-bold text-gray-800 cursor-pointer hover:bg-white rounded px-1 -ml-1"
+                       >
+                         <option value="">Sin asignar</option>
+                         {waiters.map(w => (
+                           <option key={w.id} value={w.id}>{w.name}</option>
+                         ))}
+                       </select>
+                    </div>
+                  </div>
                 </div>
 
                 {selectedOrder.status === 'delivered' && (
