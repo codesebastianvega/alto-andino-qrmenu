@@ -20,8 +20,12 @@ const EMPTY_FORM = {
 export default function AdminExperiences() {
   const {
     experiences, loading, createExperience, updateExperience, deleteExperience, toggleActive,
-    fetchBookings,
+    fetchBookings, fetchAllBookings, updateBooking,
   } = useExperiences();
+
+  const [activeTab, setActiveTab] = useState('experiencias'); // 'experiencias' | 'leads'
+  const [allLeads, setAllLeads] = useState([]);
+  const [loadingAllLeads, setLoadingAllLeads] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExp, setEditingExp] = useState(null);
@@ -34,6 +38,19 @@ export default function AdminExperiences() {
   const [selectedExpId, setSelectedExpId] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'leads') {
+      loadAllLeads();
+    }
+  }, [activeTab]);
+
+  const loadAllLeads = async () => {
+    setLoadingAllLeads(true);
+    const { data } = await fetchAllBookings();
+    setAllLeads(data);
+    setLoadingAllLeads(false);
+  };
 
   const openModal = (exp = null) => {
     if (exp) {
@@ -112,6 +129,17 @@ export default function AdminExperiences() {
     setLoadingBookings(false);
   };
 
+  const togglePaymentStatus = async (bookingId, currentStatus) => {
+    const newStatus = currentStatus === 'paid' ? 'pending' : 'paid';
+    await updateBooking(bookingId, { payment_status: newStatus });
+    if (activeTab === 'leads') {
+      setAllLeads(prev => prev.map(b => b.id === bookingId ? { ...b, payment_status: newStatus } : b));
+    }
+    if (selectedExpId) {
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, payment_status: newStatus } : b));
+    }
+  };
+
   const formatCurrency = (v) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(v);
 
   if (loading) {
@@ -138,8 +166,87 @@ export default function AdminExperiences() {
         </button>
       </header>
 
-      {/* Grid */}
-      {experiences.length === 0 ? (
+      {/* Tabs */}
+      <div className="flex bg-gray-100 p-1 rounded-xl mb-6 w-fit">
+        <button
+          onClick={() => setActiveTab('experiencias')}
+          className={`flex items-center gap-2 px-5 py-2 rounded-lg font-bold text-sm transition-all ${activeTab === 'experiencias' ? 'bg-white text-[#2f4131] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          <Icon icon="heroicons:sparkles" /> Experiencias
+        </button>
+        <button
+          onClick={() => setActiveTab('leads')}
+          className={`flex items-center gap-2 px-5 py-2 rounded-lg font-bold text-sm transition-all ${activeTab === 'leads' ? 'bg-white text-[#2f4131] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          <Icon icon="heroicons:users" /> Todos los Leads
+        </button>
+      </div>
+
+      {activeTab === 'leads' ? (
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+          {loadingAllLeads ? (
+            <div className="flex justify-center items-center h-48"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2f4131]"></div></div>
+          ) : allLeads.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">
+              <Icon icon="heroicons:ticket" className="text-5xl mb-4" />
+              <p className="font-medium">Ouch. Aún no hay reservas.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-widest border-b border-gray-100">
+                    <th className="p-4 font-bold">Cliente</th>
+                    <th className="p-4 font-bold max-w-[200px]">Experiencia</th>
+                    <th className="p-4 font-bold">Detalles</th>
+                    <th className="p-4 font-bold">Reserva</th>
+                    <th className="p-4 font-bold text-center">Pago</th>
+                    <th className="p-4 font-bold text-center">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {allLeads.map(lead => (
+                    <tr key={lead.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="p-4">
+                        <p className="font-bold text-gray-900">{lead.customer_name}</p>
+                        {lead.customer_email && <p className="text-xs text-gray-500">{lead.customer_email}</p>}
+                        {lead.customer_phone && <p className="text-xs text-gray-500">{lead.customer_phone}</p>}
+                      </td>
+                      <td className="p-4 max-w-[200px]">
+                        <p className="font-bold text-gray-700 text-sm truncate" title={lead.experiences?.title}>{lead.experiences?.title}</p>
+                      </td>
+                      <td className="p-4 text-sm text-gray-600">
+                        <p><Icon icon="heroicons:users" className="inline mr-1" />{lead.guests} personas</p>
+                        <p><Icon icon="heroicons:calendar" className="inline mr-1" />{new Date(lead.selected_date).toLocaleDateString('es-CO')}</p>
+                        {lead.notes && <p className="text-xs text-gray-400 italic mt-1 line-clamp-1" title={lead.notes}>"{lead.notes}"</p>}
+                      </td>
+                      <td className="p-4">
+                        <p className="text-xs text-gray-400">Creada: {new Date(lead.created_at).toLocaleDateString('es-CO')}</p>
+                      </td>
+                      <td className="p-4 text-center">
+                        <button
+                          onClick={() => togglePaymentStatus(lead.id, lead.payment_status)}
+                          className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${lead.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'} transition-colors`}
+                        >
+                          {lead.payment_status === 'paid' ? 'Pagada' : 'Pendiente'}
+                        </button>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ${
+                          lead.status === 'confirmed' ? 'bg-green-50 text-green-600' :
+                          lead.status === 'cancelled' ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {lead.status === 'confirmed' ? 'Confirmada' : lead.status === 'cancelled' ? 'Cancelada' : 'Completada'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : experiences.length === 0 ? (
         <div className="bg-white rounded-3xl p-16 border border-gray-100 text-center">
           <div className="text-6xl mb-4">✨</div>
           <h2 className="text-xl font-black text-gray-900 mb-2">Sin experiencias aún</h2>
@@ -386,11 +493,21 @@ export default function AdminExperiences() {
                         {b.customer_phone && <p className="text-xs text-gray-500">{b.customer_phone}</p>}
                         {b.customer_email && <p className="text-xs text-gray-500">{b.customer_email}</p>}
                       </div>
-                      <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ${
-                        b.status === 'confirmed' ? 'bg-green-50 text-green-600' :
-                        b.status === 'cancelled' ? 'bg-red-50 text-red-500' :
-                        'bg-gray-100 text-gray-600'
-                      }`}>{b.status === 'confirmed' ? 'Confirmada' : b.status === 'cancelled' ? 'Cancelada' : 'Completada'}</span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ${
+                          b.status === 'confirmed' ? 'bg-green-50 text-green-600' :
+                          b.status === 'cancelled' ? 'bg-red-50 text-red-500' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>{b.status === 'confirmed' ? 'Confirmada' : b.status === 'cancelled' ? 'Cancelada' : 'Completada'}</span>
+                        <button
+                          onClick={() => togglePaymentStatus(b.id, b.payment_status)}
+                          className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                            b.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                          } transition-colors`}
+                        >
+                          {b.payment_status === 'paid' ? 'Pagada' : 'Pendiente'}
+                        </button>
+                      </div>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-gray-500">
                       <span><Icon icon="heroicons:users" className="mr-1" />{b.guests} persona{b.guests > 1 ? 's' : ''}</span>

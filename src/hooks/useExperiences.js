@@ -59,6 +59,17 @@ export function useExperiences() {
     return { data: data || [], error };
   };
 
+  const fetchAllBookings = async () => {
+    const { data, error } = await supabase
+      .from('experience_bookings')
+      .select(`
+        *,
+        experiences:experience_id(title)
+      `)
+      .order('created_at', { ascending: false });
+    return { data: data || [], error };
+  };
+
   const createBooking = async (bookingData) => {
     const { data, error } = await supabase
       .from('experience_bookings')
@@ -68,10 +79,10 @@ export function useExperiences() {
     return { data, error };
   };
 
-  const updateBookingStatus = async (id, status) => {
+  const updateBooking = async (id, updates) => {
     const { data, error } = await supabase
       .from('experience_bookings')
-      .update({ status })
+      .update(updates)
       .eq('id', id)
       .select()
       .single();
@@ -87,7 +98,8 @@ export function useExperiences() {
     deleteExperience,
     toggleActive,
     fetchBookings,
+    fetchAllBookings,
     createBooking,
-    updateBookingStatus,
+    updateBooking,
   };
 }
