@@ -33,8 +33,6 @@ import AAImage from "./ui/AAImage";
 import { veggieBreakfast, veggieMains } from "../data/menuItems";
 import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
 import CategoryBanner from "./CategoryBanner";
-import ExperiencesSection from "./ExperiencesSection";
-import PromoBannerCarousel from "./PromoBannerCarousel";
 
 export default function ProductLists({
   query,
@@ -55,31 +53,17 @@ export default function ProductLists({
   const [diyProduct, setDiyProduct] = useState(null);
 
   const categories = useMemo(() => {
-    const list = dbCategories.map(dbCat => {
+    return dbCategories.map(dbCat => {
       const config = CATEGORIES_LIST.find(c => c.id === dbCat.slug) || {};
       return {
         ...dbCat,
-        slug: dbCat.slug,
         id: dbCat.slug,
         label: dbCat.name,
         targetId: config.targetId || `section-${dbCat.slug}`,
         tintClass: config.tintClass || "bg-white"
       };
     });
-
-    if (banners?.length > 0 || experiences?.length > 0) {
-      list.unshift({
-        id: 'experiencias',
-        slug: 'experiencias',
-        name: '✨ Novedades',
-        label: '✨ Novedades',
-        targetId: 'section-experiencias',
-        tintClass: 'bg-[#2f4131]/5'
-      });
-    }
-
-    return list;
-  }, [dbCategories, banners, experiences]);
+  }, [dbCategories]);
 
   const onQuickView = useCallback((p) => {
     if (!p) return;
@@ -251,14 +235,6 @@ export default function ProductLists({
       let element = null;
 
       switch(cat.slug) {
-        case 'experiencias':
-          element = (
-            <div id="experiencias" className="pt-2">
-               {banners?.length > 0 && <PromoBannerCarousel />}
-               {experiences?.length > 0 && <ExperiencesSection />}
-            </div>
-          );
-          break;
         case 'desayunos':
           element = (
             <ProductSection
