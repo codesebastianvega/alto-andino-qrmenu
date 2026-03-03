@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../../config/supabase';
 import AdminProducts from '../../pages/AdminProducts';
 import AdminCategories from '../../pages/AdminCategories';
 import AdminModifiers from '../../pages/AdminModifiers';
@@ -9,6 +10,7 @@ import AdminSettings from '../../pages/AdminSettings';
 import AdminAllergens from '../../pages/AdminAllergens';
 import AdminTables from '../../pages/AdminTables';
 import AdminOrders from '../../pages/AdminOrders';
+import AdminKitchen from '../../pages/AdminKitchen';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
 const Icons = {
@@ -57,6 +59,11 @@ const Icons = {
       <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/>
     </svg>
   ),
+  Kitchen: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.5 4 6.5 2 2 3 5.5 3 5.5s.5 2 0 3.5c-.5 1.5-2 3-4.5 3.5s-4.5-.5-5.5-1.5c-1-1-1.5-2.5-1.5-3.5 0-1 0-2 .5-3Z"/>
+    </svg>
+  ),
   Settings: () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3"/>
@@ -93,25 +100,49 @@ const Icons = {
 };
 
 const MENU_ITEMS = [
+  { id: 'sep-op', type: 'separator', label: 'Operación' },
+  { id: 'orders',      label: 'Pedidos',      Icon: Icons.Orders },
+  { id: 'kitchen',     label: 'Vista Cocina', Icon: Icons.Kitchen },
   { id: 'sep-menu', type: 'separator', label: 'Carta' },
   { id: 'products',   label: 'Productos',   Icon: Icons.Products },
   { id: 'categories', label: 'Categorías',  Icon: Icons.Categories },
   { id: 'allergens',  label: 'Dietas y Alérgenos', Icon: Icons.Allergens },
   { id: 'sep-prod', type: 'separator', label: 'Producción' },
-  { id: 'modifiers', label: 'Inventario',      Icon: Icons.Modifiers },
   { id: 'recipes',   label: 'Recetas',      Icon: Icons.Recipes },
+  { id: 'modifiers', label: 'Inventario',      Icon: Icons.Modifiers },
   { id: 'sep-biz', type: 'separator', label: 'Negocio' },
   { id: 'tables',    label: 'Mesas (QR)',   Icon: Icons.Tables },
   { id: 'experiences', label: 'Experiencias', Icon: Icons.Experiences, disabled: true },
   { id: 'branding',    label: 'Branding y Diseño', Icon: Icons.Branding },
-  { id: 'orders',      label: 'Pedidos',      Icon: Icons.Orders },
   { id: 'dashboard',   label: 'Dashboard',    Icon: Icons.Dashboard,    disabled: true },
   { id: 'settings',    label: 'Ajustes Generales', Icon: Icons.Settings },
 ];
 
 export default function AdminLayout() {
-  const [currentPage, setCurrentPage] = useState('products');
+  const [currentPage, setCurrentPage] = useState('orders'); // Cambiado a orders por defecto
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      const { count } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['new', 'preparing']);
+      
+      setPendingOrdersCount(count || 0);
+    };
+
+    fetchPendingCount();
+
+    const channel = supabase.channel('layout_orders')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchPendingCount();
+      })
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, []);
 
   const currentItem = MENU_ITEMS.find(i => i.id === currentPage);
 
@@ -177,8 +208,13 @@ export default function AdminLayout() {
                     <Icon />
                   </span>
                   {!isCollapsed && (
-                    <span className="flex-1 text-left truncate">
-                      {item.label}
+                    <span className="flex-1 text-left truncate flex items-center justify-between pr-1">
+                      <span>{item.label}</span>
+                      {item.id === 'kitchen' && pendingOrdersCount > 0 && (
+                        <span className="bg-red-500/20 text-red-500 border border-red-500/30 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-md animate-pulse">
+                          {pendingOrdersCount}
+                        </span>
+                      )}
                       {item.disabled && (
                         <span className="ml-2 text-[9px] font-semibold text-white/20 align-middle">soon</span>
                       )}
@@ -248,6 +284,7 @@ export default function AdminLayout() {
           { currentPage === 'modifiers'   && <AdminModifiers /> }
           { currentPage === 'tables'      && <AdminTables /> }
           { currentPage === 'orders'      && <AdminOrders /> }
+          { currentPage === 'kitchen'     && <AdminKitchen /> }
           { currentPage === 'branding'    && <AdminBranding /> }
           { currentPage === 'settings'    && <AdminSettings /> }
           {currentPage === 'dashboard'   && (
