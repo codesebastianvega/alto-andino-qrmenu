@@ -12,6 +12,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
     category_id: '', stock_status: 'in', image_url: '',
     tags: [], is_active: true, is_addon: false,
     variants: [], modifier_groups: [], config_options: {}, recipe_id: null, packaging_fee: '',
+    is_upsell: false, requires_kitchen: true,
   });
   const [targetMargin, setTargetMargin] = useState(35);
   const [manageGroups, setManageGroups] = useState(false);
@@ -29,6 +30,8 @@ export default function ProductForm({ product, categories, recipes = [], allerge
         variants: product.variants || [], modifier_groups: product.modifier_groups || [],
         config_options: product.config_options || {}, recipe_id: product.recipe_id || null,
         packaging_fee: product.packaging_fee || '',
+        is_upsell: product.is_upsell ?? false,
+        requires_kitchen: product.requires_kitchen ?? true,
       });
     }
   }, [product]);
@@ -197,6 +200,34 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                       </div>
                     </button>
                   </FormField>
+                </div>
+                <div className="md:col-span-1">
+                  <FormField label="¿Sugerido para Upselling?">
+                    <button type="button" onClick={() => setFormData(prev => ({ ...prev, is_upsell: !prev.is_upsell }))}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${formData.is_upsell ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-5 rounded-full relative transition-all ${formData.is_upsell ? 'bg-amber-500' : 'bg-gray-300'}`}>
+                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${formData.is_upsell ? 'left-4' : 'left-0.5'}`} />
+                        </div>
+                        <span>{formData.is_upsell ? 'Sí' : 'No'}</span>
+                      </div>
+                    </button>
+                  </FormField>
+                  <p className="text-[11px] text-gray-400 mt-1 leading-tight">Si está activo, se sugerirá este producto en el carrito (Ej. bebidas, postres).</p>
+                </div>
+                <div className="md:col-span-1">
+                  <FormField label="¿Requiere preparación en cocina?">
+                    <button type="button" onClick={() => setFormData(prev => ({ ...prev, requires_kitchen: !prev.requires_kitchen }))}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${formData.requires_kitchen ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-5 rounded-full relative transition-all ${formData.requires_kitchen ? 'bg-blue-500' : 'bg-gray-300'}`}>
+                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${formData.requires_kitchen ? 'left-4' : 'left-0.5'}`} />
+                        </div>
+                        <span>{formData.requires_kitchen ? 'Sí' : 'No'}</span>
+                      </div>
+                    </button>
+                  </FormField>
+                  <p className="text-[11px] text-gray-400 mt-1 leading-tight">Manda pedido a cocina. Apágalo para productos ya listos (Ej. gaseosas, chips).</p>
                 </div>
                 <div className="md:col-span-2">
                   <FormField label="Modo 'Arma tu propio' (DIY)">

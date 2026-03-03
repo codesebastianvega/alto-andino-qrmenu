@@ -102,6 +102,8 @@ export const MenuDataProvider = ({ children }) => {
             variants: product.variants || [],
             modifierGroups: product.modifier_groups || [],
             configOptions: product.config_options || {},
+            is_upsell: product.is_upsell || false,
+            requires_kitchen: product.requires_kitchen ?? true,
             categorySlug: catSlug,          // expose slug for QuickView fallback
             _supabase: product
           });

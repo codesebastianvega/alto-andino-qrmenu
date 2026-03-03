@@ -17,7 +17,7 @@ import PromoBannerCarousel from "./components/PromoBannerCarousel";
 const GuideModal = lazy(() => import("./components/GuideModal"));
 const DietaryGuide = lazy(() => import("./components/DietaryGuide"));
 const FloatingCartBar = lazy(() => import("./components/FloatingCartBar"));
-const CartDrawer = lazy(() => import("./components/CartDrawer"));
+const CartModal = lazy(() => import("./components/CartModal"));
 const QrPoster = lazy(() => import("./components/QrPoster"));
 const StockAdmin = lazy(() => import("./components/StockAdmin"));
 const OrderStatus = lazy(() => import("./pages/OrderStatus"));
@@ -217,7 +217,7 @@ export default function App() {
           <FloatingCartBar items={cart.items} total={cart.total} onOpen={() => setOpen(true)} />
         </Suspense>
         <Suspense fallback={<div />}>
-          <CartDrawer open={open} onClose={() => setOpen(false)} />
+          <CartModal open={open} onClose={() => setOpen(false)} />
         </Suspense>
 
         <Suspense fallback={<div />}>

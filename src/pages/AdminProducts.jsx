@@ -333,7 +333,11 @@ export default function AdminProducts() {
                         )}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-900 leading-tight">{product.name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-semibold text-gray-900 leading-tight">{product.name}</p>
+                          {product.is_upsell && <span title="Sugerido para Upsell" className="text-xs">✨</span>}
+                          {!product.requires_kitchen && <span title="No requiere cocina" className="text-xs">❄️</span>}
+                        </div>
                         {product.description && (
                           <p className="text-[12px] text-gray-400 font-medium truncate max-w-[180px] mt-0.5">
                             {product.description}
