@@ -12,8 +12,6 @@ import Footer from "./components/Footer";
 import ProductLists from "./components/ProductLists";
 import SearchBar from "./components/SearchBar";
 import HeroHeadline from "./components/HeroHeadline";
-import PromoBannerCarousel from "./components/PromoBannerCarousel";
-// Componentes con carga diferida
 const GuideModal = lazy(() => import("./components/GuideModal"));
 const DietaryGuide = lazy(() => import("./components/DietaryGuide"));
 const FloatingCartBar = lazy(() => import("./components/FloatingCartBar"));
@@ -200,7 +198,6 @@ export default function App() {
               <SearchBar value={query} onQueryChange={setQuery} />
             </div>
           </div>
-          <PromoBannerCarousel />
           <ProductLists
             query={query}
             selectedCategory={selectedCategory}

@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../config/supabase';
 import { Icon } from '@iconify-icon/react';
 import { translateGroup } from '../utils/formatters';
+import { useMenuData } from '../context/MenuDataContext';
+import ExperiencesSection from '../components/ExperiencesSection';
+import PromoBannerCarousel from '../components/PromoBannerCarousel';
 
 const STATUS_STEPS = {
   cancelled: { label: 'Cancelado', icon: 'heroicons:x-circle', color: 'text-red-500', bg: 'bg-red-50' },
@@ -17,6 +20,8 @@ export default function OrderStatus({ orderId }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  const { banners, experiences } = useMenuData();
 
   useEffect(() => {
     fetchOrder();
@@ -215,6 +220,17 @@ export default function OrderStatus({ orderId }) {
             <span className="text-gray-500 font-medium">Total Pagado</span>
             <span className="text-2xl font-black text-[#2f4131]">${order.total_amount.toLocaleString()}</span>
           </div>
+        </div>
+
+        {/* Feed Original (Mientras Esperas) */}
+        <div className="mt-8">
+          <h3 className="font-bold text-gray-900 mb-4 px-2 tracking-tight">Cosas Interesantes Mientras Esperas</h3>
+          {(banners?.length > 0 || experiences?.length > 0) && (
+            <div className="space-y-4">
+              {banners?.length > 0 && <PromoBannerCarousel />}
+              {experiences?.length > 0 && <ExperiencesSection />}
+            </div>
+          )}
         </div>
 
       </div>

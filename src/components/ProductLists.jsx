@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useCallback, useState, useRef } from "react";
+import React, { useMemo, useEffect, useCallback, useState, useRef } from "react";
 import { FixedSizeList } from "react-window";
 import { useSwipeable } from "react-swipeable";
 import { useCart } from "../context/CartContext";
@@ -33,14 +33,19 @@ import AAImage from "./ui/AAImage";
 import { veggieBreakfast, veggieMains } from "../data/menuItems";
 import { CATEGORIES_LIST, TABS_ITEMS } from "../config/categories.veggie";
 import CategoryBanner from "./CategoryBanner";
+import ExperiencesSection from "./ExperiencesSection";
+import PromoBannerCarousel from "./PromoBannerCarousel";
 
 export default function ProductLists({
   query,
   selectedCategory,
   onCategorySelect,
   featureTabs = false,
+  renderAfter,
+  countValue,
+  variant = "standard", // standard, simple-list, grid, wide-grid
 }) {
-  const { categories: dbCategories, getProductsByCategory, loading: menuLoading } = useMenuData();
+  const { categories: dbCategories, getProductsByCategory, banners, experiences, loading: menuLoading } = useMenuData();
   const [counts, setCounts] = useState({});
   const manualRef = useRef(false);
   const scrollerRef = useRef(null);
@@ -50,17 +55,31 @@ export default function ProductLists({
   const [diyProduct, setDiyProduct] = useState(null);
 
   const categories = useMemo(() => {
-    return dbCategories.map(dbCat => {
+    const list = dbCategories.map(dbCat => {
       const config = CATEGORIES_LIST.find(c => c.id === dbCat.slug) || {};
       return {
         ...dbCat,
+        slug: dbCat.slug,
         id: dbCat.slug,
         label: dbCat.name,
         targetId: config.targetId || `section-${dbCat.slug}`,
         tintClass: config.tintClass || "bg-white"
       };
     });
-  }, [dbCategories]);
+
+    if (banners?.length > 0 || experiences?.length > 0) {
+      list.unshift({
+        id: 'experiencias',
+        slug: 'experiencias',
+        name: '✨ Novedades',
+        label: '✨ Novedades',
+        targetId: 'section-experiencias',
+        tintClass: 'bg-[#2f4131]/5'
+      });
+    }
+
+    return list;
+  }, [dbCategories, banners, experiences]);
 
   const onQuickView = useCallback((p) => {
     if (!p) return;
@@ -193,14 +212,53 @@ export default function ProductLists({
  
   const sections = useMemo(() => {
     return categories.map(cat => {
-      const items = getProductsByCategory(cat.slug).filter(it => 
+      const allItems = getProductsByCategory(cat.slug);
+      const items = allItems.filter(it => 
         matchesQuery({ title: it.name, description: it.desc }, query)
       );
+
+      const config = cat.visibility_config || {};
+      const definedSubs = config.subcategories || [];
+
+      // Logic to build groups if subcategories are defined
+      let categoryGroups = null;
+      if (definedSubs.length > 0) {
+        const grouped = {};
+        items.forEach(p => {
+          const sub = p.subcategory || 'Otros';
+          if (!grouped[sub]) grouped[sub] = [];
+          grouped[sub].push(p);
+        });
+
+        // Order them: first those in definedSubs, then 'Otros', then any others
+        const subsToRender = definedSubs.filter(s => grouped[s]);
+        
+        if (grouped['Otros'] && !subsToRender.includes('Otros')) {
+          subsToRender.push('Otros');
+        }
+
+        Object.keys(grouped).forEach(k => {
+          if (!subsToRender.includes(k)) subsToRender.push(k);
+        });
+
+        categoryGroups = subsToRender.map(title => ({
+          title,
+          items: grouped[title]
+        }));
+      }
 
       // Component mapping based on slug
       let element = null;
 
       switch(cat.slug) {
+        case 'experiencias':
+          element = (
+            <div id="experiencias" className="pt-2">
+               {banners?.length > 0 && <PromoBannerCarousel />}
+               {experiences?.length > 0 && <ExperiencesSection />}
+            </div>
+          );
+          break;
         case 'desayunos':
           element = (
             <ProductSection
@@ -208,6 +266,8 @@ export default function ProductLists({
               title={cat.name}
               query={query}
               items={items}
+              groups={categoryGroups}
+              variant={config.section_type}
               onCount={(n) => setCount("desayunos", n)}
               onQuickView={onQuickView}
             />
@@ -220,17 +280,21 @@ export default function ProductLists({
                 query={query}
                 onCount={(n) => setCount("bowls", n)}
                 onQuickView={onQuickView}
+                variant={config.section_type}
               />
             </Section>
           );
           break;
         case 'platos':
+          // Platos has its own complex grouping logic for now, 
+          // but we can pass categoryGroups if it exists to override or augment
           element = (
             <ProductSection
               id="platos"
               title={cat.name}
               query={query}
-              groups={mainGroups}
+              groups={categoryGroups || mainGroups}
+              variant={config.section_type}
               onCount={(n) => setCount("platos", n)}
               onQuickView={onQuickView}
             />
@@ -242,6 +306,7 @@ export default function ProductLists({
               query={query}
               onCount={(n) => setCount("sandwiches", n)}
               onQuickView={onQuickView}
+              variant={config.section_type}
             />
           );
           break;
@@ -251,6 +316,7 @@ export default function ProductLists({
               query={query}
               onCount={(n) => setCount("smoothies", n)}
               onQuickView={onQuickView}
+              variant={config.section_type}
             />
           );
           break;
@@ -260,6 +326,7 @@ export default function ProductLists({
               query={query}
               onCount={(n) => setCount("cafe", n)}
               onQuickView={onQuickView}
+              variant={config.section_type}
             />
           );
           break;
@@ -269,6 +336,7 @@ export default function ProductLists({
               query={query}
               onCount={(n) => setCount("bebidasfrias", n)}
               onQuickView={onQuickView}
+              variant={config.section_type}
             />
           );
           break;
@@ -279,6 +347,7 @@ export default function ProductLists({
                 cumbre={dessertsCumbre}
                 base={dessertsBase}
                 onQuickView={onQuickView}
+                variant={config.section_type}
               />
             </Section>
           );
@@ -291,6 +360,8 @@ export default function ProductLists({
               title={cat.name}
               query={query}
               items={items}
+              groups={categoryGroups}
+              variant={config.section_type}
               onCount={(n) => setCount(cat.slug, n)}
               onQuickView={onQuickView}
             />
@@ -315,7 +386,8 @@ export default function ProductLists({
     dessertsCumbre,
     dessertsBase,
     counts,
-    onQuickView
+    onQuickView,
+    variant
   ]);
   const renderPanel = (s, inTodos = false) => {
     const category = categories.find(c => c.id === s.id);
@@ -496,12 +568,19 @@ export default function ProductLists({
         <p className="px-4 text-sm text-neutral-600">No hay resultados para “{query}”.</p>
        )}
       <div ref={scrollerRef} {..._safeSwipeHandlers} className={stackClass}>
-         {sections.map((s) => {
-           if (featureTabs && selectedCategory !== "todos" && s.id !== selectedCategory) {
-             return null;
-           }
-           return renderPanel(s, selectedCategory === "todos");
-         })}
+          {sections.map((s, idx) => {
+            if (featureTabs && selectedCategory !== "todos" && s.id !== selectedCategory) {
+              return null;
+            }
+            
+            const panels = [renderPanel(s, selectedCategory === "todos")];
+            
+            return (
+              <React.Fragment key={s.id}>
+                {panels}
+              </React.Fragment>
+            );
+          })}
        </div>
        <ProductQuickView
          open={quickOpen}
@@ -519,10 +598,41 @@ export default function ProductLists({
    );
  }
  
- function Desserts({ cumbre = [], base = [], onQuickView }) {
+ function Desserts({ cumbre = [], base = [], onQuickView, variant = "standard" }) {
    const { addItem } = useCart();
    if (!cumbre.length && !base.length) return null;
  
+   const renderProducts = (arr, keySeed = 0) => {
+    let gridClasses = "grid gap-3 sm:gap-4";
+    let cardVariant = "standard";
+
+    if (variant === "grid") {
+      gridClasses += " grid-cols-2 lg:grid-cols-3";
+    } else if (variant === "wide-grid") {
+      gridClasses += " grid-cols-1 sm:grid-cols-2";
+      cardVariant = "wide";
+    } else if (variant === "simple-list") {
+      gridClasses += " grid-cols-1";
+      cardVariant = "compact";
+    } else {
+      gridClasses += " grid-cols-1 sm:grid-cols-2";
+    }
+
+    return (
+      <div className={gridClasses}>
+        {arr.map((item, i) => (
+          <ProductCard
+            key={item?.id || `${keySeed}-${i}`}
+            item={item}
+            variant={cardVariant}
+            onAdd={(payload) => addItem(payload)}
+            onQuickView={onQuickView}
+          />
+        ))}
+      </div>
+    );
+  };
+
    return (
      <div className="space-y-4">
        {cumbre.length > 0 && (
@@ -614,15 +724,8 @@ export default function ProductLists({
          </div>
        )}
        {base.length > 0 && (
-         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 mt-6">
-           {base.map((p) => (
-             <ProductCard 
-               key={p.id} 
-               item={p} 
-               onQuickView={onQuickView} 
-               onAdd={(payload) => addItem(payload)}
-             />
-           ))}
+         <div className="mt-6">
+           {renderProducts(base, 0)}
          </div>
        )}
       </div>
