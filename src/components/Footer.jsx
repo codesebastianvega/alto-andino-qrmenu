@@ -30,12 +30,8 @@ export default function Footer({ hasCartBar }) {
           
           {/* Brand */}
           <div className="sm:col-span-2">
-            <div className="flex items-center gap-2 mb-4 md:mb-5">
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full flex items-center justify-center">
-                <Leaf size={16} className="text-[#1A2421] md:hidden" />
-                <Leaf size={20} className="text-[#1A2421] hidden md:block" />
-              </div>
-              <span className="text-xl md:text-2xl font-extrabold tracking-tight">Alto Andino</span>
+            <div className="flex items-center justify-start mb-4 md:mb-5">
+              <img src="/logoalto.png" alt="Alto Andino Logo" className="h-10 md:h-12 object-contain filter brightness-0 invert" />
             </div>
             <p className="text-white/50 font-medium text-xs md:text-sm max-w-sm leading-relaxed mb-4 md:mb-6">
               Elevando la experiencia de la comida saludable. Raíces locales, nutrición consciente y un espacio para respirar en la ciudad.

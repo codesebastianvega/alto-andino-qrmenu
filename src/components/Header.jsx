@@ -68,13 +68,9 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
         {/* Logo + Nav */}
         <div className="flex items-center gap-3 md:gap-6">
           <a href="#inicio" className="flex items-center gap-2 group">
-            <div className="w-7 h-7 md:w-8 md:h-8 bg-[#1A2421] rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Leaf size={13} className="text-[#E6B05C] md:hidden" />
-              <Leaf size={15} className="text-[#E6B05C] hidden md:block" />
+            <div className="flex items-center justify-center">
+              <img src="/logoalto.png" alt="Alto Andino Logo" className="h-8 md:h-10 object-contain group-hover:scale-105 transition-transform" />
             </div>
-            <span className="text-base md:text-xl font-bold tracking-tight text-[#1A1A1A]">
-              Alto Andino
-            </span>
           </a>
 
           {/* Desktop Nav Links */}

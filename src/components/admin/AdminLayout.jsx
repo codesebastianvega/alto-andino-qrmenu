@@ -223,8 +223,8 @@ export default function AdminLayout() {
         <div className="flex flex-col h-full">
           {/* Logo Section */}
           <div className={`flex items-center h-20 px-5 gap-3 shrink-0 ${isCollapsed ? 'justify-center px-0' : ''}`}>
-             <div className="w-9 h-9 bg-gradient-to-br from-[#4a6741] to-[#2f4131] rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-black/40">
-                <span className="text-lg font-black text-white italic">AA</span>
+             <div className="w-10 h-10 flex items-center justify-center shrink-0 drop-shadow-md">
+               <img src="/logoalto.png" alt="AA" className="w-full h-full object-contain filter brightness-0 invert" />
              </div>
              {!isCollapsed && (
                <div>
