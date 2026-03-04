@@ -1,21 +1,37 @@
 import { useEffect, useState, useRef } from "react";
 import { formatCOP } from "@/utils/money";
 import { Icon } from "@iconify-icon/react";
+import MiniCartWindow from "./MiniCartWindow";
 
 export default function FloatingCartBar({ items, total, onOpen }) {
   const [animateTotal, setAnimateTotal] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [showMiniCart, setShowMiniCart] = useState(false);
+  const containerRef = useRef(null);
   const prevTotal = useRef(total);
   const cartCount = items?.length || 0;
+
+  // Handle click outside to close mini cart
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setShowMiniCart(false);
+      }
+    };
+    if (showMiniCart) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showMiniCart]);
 
   // Slide-up entrance when items appear
   useEffect(() => {
     if (cartCount > 0) {
-      // Small delay so the animation is perceptible
       const t = setTimeout(() => setVisible(true), 60);
       return () => clearTimeout(t);
     } else {
       setVisible(false);
+      setShowMiniCart(false);
     }
   }, [cartCount]);
 
@@ -31,15 +47,40 @@ export default function FloatingCartBar({ items, total, onOpen }) {
 
   if (cartCount === 0) return null;
 
+  const handleClick = () => {
+    const isDesktop = window.innerWidth >= 768;
+    if (isDesktop) {
+      setShowMiniCart(!showMiniCart);
+    } else {
+      onOpen();
+    }
+  };
+
+  const handleCheckout = () => {
+    setShowMiniCart(false);
+    onOpen();
+  };
+
   return (
     <div
+      ref={containerRef}
       data-aa-cartbar
-      className="fixed right-5 bottom-[96px] md:bottom-8 z-[70] pointer-events-none flex"
+      className="fixed right-5 bottom-[96px] md:bottom-8 z-[70] pointer-events-none flex flex-col items-end"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px))" }}
     >
+      {/* Desktop Persistent Mini Window */}
+      <div className="hidden md:block relative w-full">
+        <MiniCartWindow 
+          items={items} 
+          total={total} 
+          onCheckout={handleCheckout} 
+        />
+      </div>
+
+      {/* Mobile Floating Chip */}
       <button
-        onClick={onOpen}
-        className={`pointer-events-auto inline-flex items-center gap-4 rounded-full bg-[#1A1A1A]/90 backdrop-blur-md border border-white/10 px-6 py-3.5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A1A1A] ${
+        onClick={handleClick}
+        className={`md:hidden pointer-events-auto inline-flex items-center gap-4 rounded-full bg-[#1A1A1A]/90 backdrop-blur-md border border-white/10 px-6 py-3.5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A1A1A] ${
           visible
             ? "translate-y-0 opacity-100 scale-100"
             : "translate-y-8 opacity-0 scale-95"
