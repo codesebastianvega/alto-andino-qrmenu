@@ -26,6 +26,7 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
     { id: 'inicio', label: 'Inicio', hash: '#inicio' },
     { id: 'menu', label: 'Menú', hash: '#menu' },
     { id: 'experiencias', label: 'Experiencias', hash: '#experiencias' },
+    { id: 'perfil', label: 'Perfil', hash: '#perfil' },
   ];
 
   // Determine which tab is active
