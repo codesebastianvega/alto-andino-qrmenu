@@ -43,6 +43,7 @@ export default function ProductLists({
   renderAfter,
   countValue,
   variant = "standard", // standard, simple-list, grid, wide-grid
+  hideNav = false
 }) {
   const { categories: dbCategories, getProductsByCategory, banners, experiences, loading: menuLoading } = useMenuData();
   const [counts, setCounts] = useState({});
@@ -534,49 +535,21 @@ export default function ProductLists({
 
   return (
     <>
-      {!featureTabs && <CategoryHeader />}
-      <CategoryNav
-        categories={[{ id: "todos", label: "Todos" }, ...categories]}
-        activeId={selectedCategory}
-        onSelect={(cat) => handleManualSelect(cat)}
-        variant="bar"
-      />
+      {!hideNav && !featureTabs && <CategoryHeader />}
+      {!hideNav && (
+        <CategoryNav
+          categories={[{ id: "todos", label: "Todos" }, ...categories]}
+          activeId={selectedCategory}
+          onSelect={(cat) => handleManualSelect(cat)}
+          variant="bar"
+        />
+      )}
        {query && !Object.values(counts).some((n) => n > 0) && (
         <p className="px-4 text-sm text-neutral-600">No hay resultados para “{query}”.</p>
        )}
       <div ref={scrollerRef} {..._safeSwipeHandlers} className={stackClass}>
 
-          {/* ── Experiences Promotion Banner (at top) ── */}
-          {experiences?.length > 0 && selectedCategory === "todos" && (
-            <div className="mb-4 px-1">
-              <button
-                type="button"
-                onClick={() => { window.location.hash = 'experiencias'; }}
-                className="group w-full rounded-[22px] overflow-hidden relative bg-gradient-to-r from-[#2f4131] via-[#3a5240] to-[#4a6741] shadow-[0_4px_24px_rgba(47,65,49,0.2)] transition-all duration-300 hover:shadow-[0_8px_32px_rgba(47,65,49,0.3)] hover:scale-[1.01] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
-              >
-                {/* Decorative circles */}
-                <div className="absolute -right-6 -top-6 w-28 h-28 bg-white/[0.04] rounded-full" />
-                <div className="absolute -left-4 -bottom-8 w-20 h-20 bg-white/[0.03] rounded-full" />
 
-                <div className="relative flex items-center gap-4 px-5 py-4">
-                  <div className="flex-shrink-0 w-11 h-11 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/10">
-                    <Icon icon="solar:star-fall-bold" className="text-[24px] text-amber-300" />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <h3 className="text-[15px] font-bold text-white tracking-tight leading-tight">
-                      Vive nuestras experiencias
-                    </h3>
-                    <p className="text-[12px] text-white/60 mt-0.5 font-medium">
-                      Catas, talleres y eventos únicos
-                    </p>
-                  </div>
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center transition-transform duration-300 group-hover:translate-x-1">
-                    <Icon icon="solar:arrow-right-linear" className="text-[16px] text-white/80" />
-                  </div>
-                </div>
-              </button>
-            </div>
-          )}
 
           {sections.map((s, idx) => {
             if (featureTabs && selectedCategory !== "todos" && s.id !== selectedCategory) {

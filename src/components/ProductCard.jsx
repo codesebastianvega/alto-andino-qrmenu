@@ -75,9 +75,9 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
   return (
     <article
       className={`group relative flex overflow-hidden transition-all duration-300 ${
-        isOut ? "opacity-70 grayscale" : "hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1"
-      } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 rounded-[28px] bg-white text-neutral-900 shadow-[0_4px_20px_rgb(0,0,0,0.04)] ring-1 ring-black/[0.03] ${
-        isCompact ? "p-2 flex-row" : "p-0 flex-col"
+        isOut ? "opacity-70 grayscale" : "hover:shadow-xl hover:-translate-y-1"
+      } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 rounded-2xl bg-white text-neutral-900 border border-black/5 ${
+        isCompact ? "p-1.5 flex-row" : "p-1 md:p-2.5 flex-col"
       } ${
         isHero ? "lg:col-span-2 lg:flex-row" : ""
       }`}
@@ -88,9 +88,9 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
     >
       {imageSrc ? (
         <div className={`overflow-hidden ${
-          isCompact ? "h-20 w-20 rounded-[20px] flex-shrink-0" 
-          : isHero ? "w-full aspect-square lg:w-1/2 lg:aspect-auto lg:h-auto rounded-t-[28px] lg:rounded-t-none lg:rounded-l-[28px]" 
-          : "w-full aspect-square rounded-t-[28px]"
+          isCompact ? "h-20 w-20 rounded-xl flex-shrink-0" 
+          : isHero ? "w-full aspect-[4/3] lg:w-1/2 lg:aspect-auto lg:h-auto rounded-xl lg:rounded-l-xl" 
+          : "w-full aspect-[4/3] rounded-xl"
         }`}>
           <AAImage
             src={imageSrc}
@@ -105,8 +105,8 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
       ) : (
         !isCompact && (
           <div className={`flex items-center justify-center bg-gradient-to-br from-neutral-50 to-neutral-100 ${
-            isHero ? "w-full aspect-[4/3] lg:w-1/2 lg:aspect-auto lg:h-auto rounded-t-[28px] lg:rounded-t-none lg:rounded-l-[28px]" 
-            : "w-full aspect-[4/3] rounded-t-[28px]"
+            isHero ? "w-full aspect-[4/3] lg:w-1/2 lg:aspect-auto lg:h-auto rounded-xl lg:rounded-l-xl" 
+            : "w-full aspect-[4/3] rounded-xl"
           }`}>
             <div className="text-center text-neutral-300">
               <svg className="w-10 h-10 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1">
@@ -118,9 +118,9 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
         )
       )}
 
-      <div className={`flex flex-1 flex-col ${isCompact ? "ml-3 py-1" : "p-4 pb-5"}`}>
+      <div className={`flex flex-1 flex-col ${isCompact ? "ml-3 py-1" : "px-2 pb-2 pt-3 md:px-3 md:pb-3 md:pt-4"}`}>
         <div className="flex items-start justify-between gap-2">
-          <h3 className={`font-bold text-neutral-900 line-clamp-2 tracking-tight ${isCompact ? "text-sm" : "text-[16px] leading-[1.15]"}`}>
+          <h3 className={`font-bold text-neutral-900 line-clamp-2 tracking-tight ${isCompact ? "text-sm" : "text-[15px] md:text-base leading-[1.15]"}`}>
             {item.name}
           </h3>
           {productAllergens.length > 0 && !isCompact && (
@@ -148,7 +148,7 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
 
         {/* CONTENEDOR DE PRECIO Y BOTON */}
         <div className="mt-auto pt-4 flex items-center justify-between gap-2">
-          <div className={`font-semibold tracking-tight text-neutral-900 ${isCompact ? "text-[14px]" : "text-[16px]"}`}>
+          <div className={`font-extrabold tracking-tight text-neutral-900 ${isCompact ? "text-[14px]" : "text-[16px] md:text-lg"}`}>
             {typeof item.price === "number" ? formatCOP(item.price) : item.price}
           </div>
           
@@ -157,8 +157,8 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
             aria-label={`Agregar ${item.name || "producto"}`}
             onClick={handleAdd}
             disabled={isOut}
-            className={`flex items-center justify-center rounded-full bg-[#2f4131] text-white shadow-md shadow-[#2f4131]/20 transition-all duration-200 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 ${
-              isCompact ? "h-8 w-8 text-lg" : "h-10 w-10 text-[22px] font-light leading-none"
+            className={`flex items-center justify-center rounded-full bg-[#E6B05C] text-[#1A1A1A] font-bold shadow-md shadow-[#E6B05C]/30 transition-all duration-200 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 hover:scale-110 ${
+              isCompact ? "h-7 w-7 md:h-8 md:w-8 text-[18px]" : "h-9 w-9 md:h-10 md:w-10 text-[20px] md:text-[22px] leading-none"
             }`}
           >
             <span style={{ transform: "translateY(-1px)" }}>+</span>

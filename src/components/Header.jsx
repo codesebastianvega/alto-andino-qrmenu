@@ -1,21 +1,25 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Icon } from "@iconify-icon/react";
 import { motion } from "framer-motion";
 import { getTableId } from "@/utils/table";
-
+import { Leaf, ShoppingBag, Search, User } from "lucide-react";
 
 export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, currentHash = '' }) {
-  const [table, setTable] = React.useState("");
-  const [activeOrderId, setActiveOrderId] = React.useState(null);
+  const [table, setTable] = useState("");
+  const [activeOrderId, setActiveOrderId] = useState(null);
+  const [isScrolled, setIsScrolled] = useState(false);
 
-  React.useEffect(() => { 
-    try { 
-      const t = getTableId(); 
-      if (t) setTable(t); 
-      
+  useEffect(() => {
+    try {
+      const t = getTableId();
+      if (t) setTable(t);
       const orderId = localStorage.getItem("aa_active_order");
       if (orderId) setActiveOrderId(orderId);
-    } catch {} 
+    } catch {}
+
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const navLinks = [
@@ -24,105 +28,139 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
     { id: 'experiencias', label: 'Experiencias', hash: '#experiencias' },
   ];
 
-  const activeTabId = navLinks.find(t => currentHash === t.hash || (t.id === 'menu' && (currentHash === '' || currentHash === '#')) )?.id || 'menu';
+  // Determine which tab is active
+  const getActiveTab = () => {
+    if (currentHash === '#menu') return 'menu';
+    if (currentHash === '#experiencias') return 'experiencias';
+    if (currentHash === '#perfil') return 'perfil';
+    if (!currentHash || currentHash === '' || currentHash === '#' || currentHash === '#inicio') return 'inicio';
+    return 'inicio';
+  };
+  const activeTabId = getActiveTab();
 
   return (
-    <motion.header
-      role="banner"
-      initial={{ y: -40, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      className="sticky top-0 z-50 h-[64px] w-full border-b border-black/10 bg-[#243326] text-white shadow-sm"
-      style={{ paddingTop: "env(safe-area-inset-top)" }}
-    >
-      <div className="mx-auto flex h-full max-w-5xl xl:max-w-6xl items-center justify-between gap-3 px-4 md:px-6">
-        <div className="flex items-center gap-6 xl:gap-8">
-          <h1 className="select-none text-[18px] font-semibold tracking-tight text-white md:text-xl">
-            Alto Andino
-          </h1>
-          
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1">
+    <>
+      <style>{`
+        .header-glass {
+          background: rgba(255, 255, 255, 0.85);
+          backdrop-filter: blur(20px) saturate(180%);
+          -webkit-backdrop-filter: blur(20px) saturate(180%);
+          border: 1px solid rgba(255, 255, 255, 0.6);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        }
+        .header-glass-scrolled {
+          background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(24px) saturate(200%);
+          -webkit-backdrop-filter: blur(24px) saturate(200%);
+          border: 1px solid rgba(255, 255, 255, 0.9);
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+        }
+      `}</style>
+
+      <nav
+        className={`fixed z-50 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex justify-between items-center ${
+          isScrolled
+            ? 'top-2 md:top-3 left-1/2 -translate-x-1/2 w-[94%] md:w-[92%] max-w-4xl header-glass-scrolled rounded-full py-2 px-4 md:py-2.5 md:px-6'
+            : 'top-3 md:top-5 left-1/2 -translate-x-1/2 w-[96%] md:w-[95%] max-w-7xl header-glass rounded-full py-2.5 px-4 md:py-3 md:px-8'
+        }`}
+      >
+        {/* Logo + Nav */}
+        <div className="flex items-center gap-3 md:gap-6">
+          <a href="#inicio" className="flex items-center gap-2 group">
+            <div className="w-7 h-7 md:w-8 md:h-8 bg-[#1A2421] rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Leaf size={13} className="text-[#E6B05C] md:hidden" />
+              <Leaf size={15} className="text-[#E6B05C] hidden md:block" />
+            </div>
+            <span className="text-base md:text-xl font-bold tracking-tight text-[#1A1A1A]">
+              Alto Andino
+            </span>
+          </a>
+
+          {/* Desktop Nav Links */}
+          <div className="hidden md:flex items-center gap-1 ml-4">
             {navLinks.map((link) => (
               <a
                 key={link.id}
                 href={link.hash}
-                className={`px-3 py-1.5 rounded-full text-[14px] font-medium transition-colors ${
-                  activeTabId === link.id 
-                    ? 'bg-white/15 text-white' 
-                    : 'text-white/70 hover:text-white hover:bg-white/5'
+                className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all duration-300 ${
+                  activeTabId === link.id
+                    ? 'bg-[#1A2421] text-white shadow-md'
+                    : 'text-[#1A1A1A]/60 hover:text-[#1A1A1A] hover:bg-black/5'
                 }`}
               >
                 {link.label}
               </a>
             ))}
-          </nav>
+          </div>
         </div>
 
-        <div className="relative flex items-center gap-2">
+        {/* Right Actions */}
+        <div className="flex items-center gap-2 md:gap-3">
+          {/* Mesa badge */}
           {table && (
-            <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-1 text-[11px] font-semibold text-white ring-1 ring-white/25" title={`Mesa ${table}`}>
-              <Icon icon="mdi:table-chair" className="text-[14px]" />
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-[#1A2421]/10 px-3 py-1 text-[11px] font-bold text-[#1A2421]">
+              <Icon icon="mdi:table-chair" className="text-[13px]" />
               Mesa {table}
             </span>
           )}
 
+          {/* Active order button */}
           {activeOrderId && (
             <button
               type="button"
               onClick={() => window.location.href = `#order/${activeOrderId}`}
-              className="group inline-flex items-center gap-2 h-9 px-3 rounded-full bg-orange-500 hover:bg-orange-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-orange-500 hover:bg-orange-600 text-white transition-colors shadow-md shadow-orange-500/20"
             >
-              <Icon icon="heroicons:shopping-bag" className="text-white" />
-              <span className="text-[12px] font-bold text-white hidden md:inline">Mi Pedido</span>
+              <ShoppingBag size={14} />
+              <span className="text-[11px] font-bold hidden md:inline">Mi Pedido</span>
             </button>
           )}
 
+          {/* Info button */}
           <button
             type="button"
             onClick={onGuideOpen}
             aria-label="Información"
-            className="group inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
+            className="group h-7 w-7 md:h-8 md:w-8 rounded-full flex items-center justify-center hover:bg-black/5 transition-colors"
           >
             <Icon
               icon="material-symbols:info-outline"
-              className="text-[22px] text-white opacity-90 group-hover:opacity-100"
+              className="text-[18px] md:text-[20px] text-[#1A1A1A]/60 group-hover:text-[#1A1A1A]"
             />
           </button>
 
-          <a
-            href="#perfil"
-            aria-label="Perfil"
-            className={`hidden md:inline-flex group h-9 w-9 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 ${
-              activeTabId === 'perfil' ? 'bg-white/15' : 'bg-white/10 hover:bg-white/15'
-            }`}
-          >
-            <Icon
-              icon="material-symbols:person-outline"
-              className={`text-[22px] transition-opacity ${activeTabId === 'perfil' ? 'text-white opacity-100' : 'text-white opacity-90 group-hover:opacity-100'}`}
-            />
-          </a>
-
+          {/* Cart button */}
           <button
             type="button"
             onClick={onCartOpen}
             aria-label="Abrir carrito"
-            className="group relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
+            className="relative p-1.5 md:p-2 hover:bg-black/5 rounded-full transition-colors"
           >
-            <Icon
-              icon="mdi:cart-outline"
-              className="text-[22px] text-white opacity-90 group-hover:opacity-100"
-            />
+            <ShoppingBag size={18} className="text-[#1A1A1A]/70 md:hidden" />
+            <ShoppingBag size={20} className="text-[#1A1A1A]/70 hidden md:block" />
             {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white leading-tight text-center">
+              <span className="absolute top-0 right-0 w-4 h-4 bg-[#E6B05C] text-[#1A1A1A] text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white shadow-sm">
                 {cartCount}
               </span>
             )}
           </button>
+
+          {/* Sign in / Profile */}
+          <a
+            href="#perfil"
+            className={`hidden sm:flex items-center gap-2 pl-2.5 pr-4 py-1.5 rounded-full transition-all text-xs font-bold ${
+              activeTabId === 'perfil'
+                ? 'bg-[#1A2421] text-white shadow-md'
+                : 'bg-[#1A2421] text-white hover:bg-[#2a3a2c] shadow-sm'
+            }`}
+          >
+            <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
+              <User size={10} className="text-white" />
+            </div>
+            <span>Mi Cuenta</span>
+          </a>
         </div>
-      </div>
-    </motion.header>
+      </nav>
+    </>
   );
 }
-
-

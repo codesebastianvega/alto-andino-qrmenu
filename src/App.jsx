@@ -1,6 +1,7 @@
 // src/App.jsx
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import { CATEGORIES_LIST } from "./config/categories.veggie";
+import { useMenuData } from "./context/MenuDataContext";
+
 import { FEATURE_TABS, PUBLIC_URL } from "./config/featureFlags";
 
 // Admin
@@ -12,6 +13,7 @@ import Footer from "./components/Footer";
 import ProductLists from "./components/ProductLists";
 import SearchBar from "./components/SearchBar";
 import HeroHeadline from "./components/HeroHeadline";
+import MenuHero from "./components/MenuHero";
 const GuideModal = lazy(() => import("./components/GuideModal"));
 const DietaryGuide = lazy(() => import("./components/DietaryGuide"));
 const FloatingCartBar = lazy(() => import("./components/FloatingCartBar"));
@@ -48,8 +50,6 @@ import { getStockState, slugify } from "./utils/stock";
 // Póster QR
 import Toast from "./components/Toast";
 
-const CATS = ["todos", ...CATEGORIES_LIST.map((c) => c.id)];
-const isValidCat = (cat) => CATS.includes(cat);
 
 export default function App() {
   const [open, setOpen] = useState(false);
@@ -58,6 +58,9 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState("todos");
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const cart = useCart();
+  const { categories: dbCategories } = useMenuData();
+
+  const isValidCat = (cat) => cat === "todos" || dbCategories.some(c => c.slug === cat);
 
   useEffect(() => {
     const handleHashChange = () => setCurrentHash(window.location.hash);
@@ -113,10 +116,7 @@ export default function App() {
       postres: count(dessertBaseItems),
     };
 
-    result.todos = CATS.filter((c) => c !== "todos").reduce(
-      (sum, cat) => sum + (result[cat] || 0),
-      0,
-    );
+    result.todos = Object.values(result).reduce((sum, count) => sum + count, 0);
 
     return result;
   }, [
@@ -188,12 +188,18 @@ export default function App() {
   const hasFloatingCartBar = cart.items && cart.items.length > 0;
 
   // ✅ Modo menú normal
+  const isLandingView = !currentHash || currentHash === '' || currentHash === '#' || currentHash === '#inicio';
+  const isMenuView = currentHash === '#menu';
+  
+  // Detect if user is in "Ordering Mode" (QR, table in session, or explicit menu hash)
+  const isOrderingMode = isMenuView || !!sessionStorage.getItem("aa_current_mesa") || new URLSearchParams(window.location.search).get("mesa");
+
   return (
     <>
       <div className="bg-[#F5F5F7] leading-snug text-alto-text overflow-x-hidden min-h-screen">
         <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />
 
-        {currentHash === '#inicio' && (
+        {isLandingView && !isOrderingMode && (
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
             <LandingPage />
           </Suspense>
@@ -211,28 +217,28 @@ export default function App() {
           </Suspense>
         )}
 
-        {/* Menu normal por defecto o explícito */}
-        {(!currentHash || currentHash === '' || currentHash === '#' || currentHash === '#menu') && (
+        {/* Menu normal: Si estamos en modo orden o hash explícito #menu, o si NO es la vista landing */}
+        {(isOrderingMode || isMenuView || (!isLandingView && currentHash !== '#experiencias' && currentHash !== '#perfil' && currentHash !== '#admin' && !orderTrackingId)) && (
           <main
-            className={`mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl px-5 pt-5 sm:px-6 sm:pt-6 md:px-8 md:pt-8 ${
-              hasFloatingCartBar ? "pb-24" : "pb-8"
-            }`}
+            className="mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl px-5 pt-24 sm:px-6 sm:pt-24 md:px-8 md:pt-24"
           >
-            <div className="mb-6 mt-2">
-              <HeroHeadline />
-              <div className="mt-3 sm:mt-4">
-                <SearchBar value={query} onQueryChange={setQuery} />
-              </div>
-            </div>
+            <MenuHero 
+              query={query}
+              setQuery={setQuery}
+              activeCategory={selectedCategory}
+              setActiveCategory={handleCategorySelect}
+              categories={dbCategories}
+            />
             <ProductLists
               query={query}
               selectedCategory={selectedCategory}
               onCategorySelect={handleCategorySelect}
               counts={counts}
               featureTabs={FEATURE_TABS}
+              hideNav={true}
             />
 
-            <Footer />
+            <Footer hasCartBar={hasFloatingCartBar} />
           </main>
         )}
 

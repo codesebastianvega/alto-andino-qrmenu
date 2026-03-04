@@ -1,39 +1,5 @@
 import React from "react";
-
-function IconInstagram(props) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden focusable="false" {...props}>
-      <rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" strokeWidth="1.6" />
-      <circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
-      <circle cx="17.3" cy="6.7" r="1" />
-    </svg>
-  );
-}
-
-function IconWhatsApp(props) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden focusable="false" {...props}>
-      <path
-        d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.7-1.2A9 9 0 1 0 12 3Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-      <path
-        d="M8.5 9.6c.2-.5.4-.6.8-.6h.4c.2 0 .4.1.5.3l.6 1c.1.2.1.4 0 .6l-.3.5a.5.5 0 0 0 0 .5c.3.6.8 1.2 1.4 1.6.2.2.4.2.6 0l.5-.3c.2-.1.4-.1.6 0l1 .6c.2.1.3.3.3.5v.4c0 .4-.2.6-.6.8-.4.2-.9.3-1.4.3-1.8 0-4.3-1.9-5.2-3.5-.4-.6-.8-1.5-.9-2 0-.6.1-1 .3-1.4Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function IconStar(props) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden focusable="false" {...props}>
-      <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.2 1 5.9-5.2-2.7-5.2 2.7 1-5.9L3.5 9.7l5.9-.9L12 3.5Z" fill="currentColor" />
-    </svg>
-  );
-}
+import { Leaf, MapPin, Instagram, MessageCircle } from "lucide-react";
 
 function getGreetingMessage() {
   const hour = new Date().getHours();
@@ -42,94 +8,113 @@ function getGreetingMessage() {
   return "Gracias por acompañarnos esta noche 🌙";
 }
 
-export default function Footer() {
+export default function Footer({ hasCartBar }) {
   const IG_URL = import.meta.env.VITE_INSTAGRAM_URL || "https://instagram.com/altoandinozipaquira";
   const RAW_WA = (import.meta.env.VITE_WHATSAPP || "573209009972").replace(/\D/g, "");
   const WA_NUM = RAW_WA.startsWith("57") ? RAW_WA : `57${RAW_WA}`;
   const WA_LINK = `https://wa.me/${WA_NUM}`;
+  const MAPS_LINK = "https://maps.app.goo.gl/altoandinozipaquira";
   const REVIEWS_URL = "https://g.page/r/CUlqcqk_KCXBEBM/review";
-  const PUBLIC = import.meta.env.VITE_PUBLIC_URL || location.origin;
-  const QR_URL = `${PUBLIC}/?qr=1`;
-
-  const BG = "#243326";
-  const TEXT = "#FAF7F2";
-  const TEXT_SUB = "#EDE8E0";
-  const TEXT_MUTED = "#D8D2C8";
-  const BORDER = "#FAF7F2CC";
 
   return (
-    <footer
-      className="mt-10"
-      style={{ backgroundColor: BG, paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 12px)" }}
-    >
-      <div className="mx-auto max-w-3xl px-4 py-5">
-        <p className="text-center text-[13px]" style={{ color: TEXT_SUB }}>
-          ¿Te gustó la experiencia?
-        </p>
-        <p className="mt-1 text-center text-[13px]" style={{ color: TEXT }}>
-          {getGreetingMessage()}
-        </p>
-
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-          <a
-            href={IG_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-transparent px-3 text-[12px] transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
-            style={{ color: TEXT, border: `1px solid ${BORDER}` }}
-            aria-label="Abrir Instagram"
-          >
-            <IconInstagram className="h-3.5 w-3.5" />
-            <span>Instagram</span>
-          </a>
-
-          <a
-            href={WA_LINK}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-transparent px-3 text-[12px] transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
-            style={{ color: TEXT, border: `1px solid ${BORDER}` }}
-            aria-label="Abrir WhatsApp"
-          >
-            <IconWhatsApp className="h-3.5 w-3.5" />
-            <span>WhatsApp</span>
-          </a>
-
-          <a
-            href={QR_URL}
-            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-transparent px-3 text-[12px] transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
-            style={{ color: TEXT, border: `1px solid ${BORDER}` }}
-          >
-            <span>Ver póster QR</span>
-          </a>
-
-          <a
-            href={REVIEWS_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-transparent px-3 text-[12px] transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
-            style={{ color: TEXT, border: `1px solid ${BORDER}` }}
-            aria-label="Abrir reseñas"
-          >
-            <IconStar className="h-3.5 w-3.5" />
-            <span>Reseñas</span>
-          </a>
-
-          <a
-            href="#admin"
-            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-transparent px-3 text-[12px] opacity-20 hover:opacity-100 transition-all focus-visible:outline-none"
-            style={{ color: TEXT, border: `1px solid ${BORDER}` }}
-          >
-            <span>⚙️ Admin</span>
-          </a>
+    <footer className={`bg-[#1A2421] text-white pt-10 md:pt-20 px-4 md:px-6 lg:px-12 rounded-t-[2rem] md:rounded-t-[3.5rem] mt-6 md:mt-10 ${hasCartBar ? "pb-28 md:pb-32" : "pb-6 md:pb-10"}`}>
+      <div className="container mx-auto max-w-7xl">
+        
+        {/* Greeting */}
+        <div className="text-center mb-8 md:mb-16">
+          <p className="text-white/40 text-xs md:text-sm font-medium">{getGreetingMessage()}</p>
         </div>
 
-        <div className="mt-3 text-center text-[12px]" style={{ color: TEXT_SUB }}>
-          Carrera 15 # 1 – 111, San Pablo
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-12 mb-10 md:mb-16">
+          
+          {/* Brand */}
+          <div className="sm:col-span-2">
+            <div className="flex items-center gap-2 mb-4 md:mb-5">
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-full flex items-center justify-center">
+                <Leaf size={16} className="text-[#1A2421] md:hidden" />
+                <Leaf size={20} className="text-[#1A2421] hidden md:block" />
+              </div>
+              <span className="text-xl md:text-2xl font-extrabold tracking-tight">Alto Andino</span>
+            </div>
+            <p className="text-white/50 font-medium text-xs md:text-sm max-w-sm leading-relaxed mb-4 md:mb-6">
+              Elevando la experiencia de la comida saludable. Raíces locales, nutrición consciente y un espacio para respirar en la ciudad.
+            </p>
+            <div className="flex gap-2 md:gap-3">
+              <a 
+                href={IG_URL} 
+                target="_blank" 
+                rel="noreferrer"
+                aria-label="Instagram"
+                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-[#E6B05C] hover:text-[#1A1A1A] transition-all"
+              >
+                <Instagram size={18} />
+              </a>
+              <a 
+                href={WA_LINK} 
+                target="_blank" 
+                rel="noreferrer"
+                aria-label="WhatsApp"
+                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-[#25D366] hover:text-white transition-all"
+              >
+                <MessageCircle size={18} />
+              </a>
+              <a 
+                href={REVIEWS_URL} 
+                target="_blank" 
+                rel="noreferrer"
+                aria-label="Google Reviews"
+                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-[#E6B05C] hover:text-[#1A1A1A] transition-all font-bold text-xs"
+              >
+                ⭐
+              </a>
+            </div>
+          </div>
+
+          {/* Location */}
+          <div>
+            <h4 className="font-bold mb-3 md:mb-5 text-sm md:text-base">Visítanos</h4>
+            <ul className="space-y-2 md:space-y-3 text-xs md:text-sm text-white/60 font-medium">
+              <li>Carrera 15 # 1 – 111</li>
+              <li>San Pablo, Zipaquirá</li>
+              <li className="pt-1">
+                <a 
+                  href={MAPS_LINK} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="text-[#E6B05C] hover:text-white transition-colors cursor-pointer flex items-center gap-2"
+                >
+                  <MapPin size={16} /> Abrir en Maps
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Hours */}
+          <div>
+            <h4 className="font-bold mb-3 md:mb-5 text-sm md:text-base">Horarios</h4>
+            <ul className="space-y-2 md:space-y-3 text-xs md:text-sm text-white/60 font-medium">
+              <li className="flex justify-between gap-4">
+                <span>Lun - Sáb</span>
+                <span>7:00 - 21:00</span>
+              </li>
+              <li className="flex justify-between gap-4">
+                <span>Dom - Fes</span>
+                <span>8:00 - 18:00</span>
+              </li>
+            </ul>
+          </div>
         </div>
-        <p className="mt-2 text-center text-[11px]" style={{ color: TEXT_MUTED }}>
-          Diseñado por Sebas (UXIO) · GPT-5 Thinking
-        </p>
+
+        {/* Bottom Bar */}
+        <div className="border-t border-white/10 pt-6 md:pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-white/40">
+          <p>© {new Date().getFullYear()} Alto Andino Café. Todos los derechos reservados.</p>
+          <div className="flex items-center gap-6">
+            <a href="#admin" className="opacity-30 hover:opacity-100 transition-opacity">⚙️ Admin</a>
+            <span className="text-white/20">·</span>
+            <span>Diseñado por Sebas (UXIO)</span>
+          </div>
+        </div>
       </div>
     </footer>
   );

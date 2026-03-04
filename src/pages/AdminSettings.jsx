@@ -8,6 +8,7 @@ import { Icon } from '@iconify-icon/react';
 import AdminTables from './AdminTables';
 import AdminStaff from './AdminStaff';
 import AdminBranding from './AdminBranding';
+import AdminLanding from './AdminLanding';
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 2000 }),
@@ -144,6 +145,7 @@ export default function AdminSettings() {
     { id: 'tables', label: 'Mesas', icon: 'heroicons:square-3-stack-3d' },
     { id: 'staff', label: 'Personal', icon: 'heroicons:users' },
     { id: 'branding', label: 'Branding', icon: 'heroicons:paint-brush' },
+    { id: 'landing', label: 'Landing Page', icon: 'heroicons:home' },
   ];
 
   if (loadingSettings || loadingHours) return (
@@ -321,6 +323,12 @@ export default function AdminSettings() {
           {activeTab === 'branding' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <AdminBranding isEmbedded={true} />
+            </div>
+          )}
+
+          {activeTab === 'landing' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <AdminLanding />
             </div>
           )}
         </div>

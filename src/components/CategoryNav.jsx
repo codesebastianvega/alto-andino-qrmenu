@@ -27,7 +27,8 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
   return (
     <div
       ref={railRef}
-      className="scrollbar-none -mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto py-3 px-1 pb-4"
+      className="hide-scrollbar -mx-4 px-4 flex snap-x gap-2.5 overflow-x-auto py-3 pb-4"
+      style={{ scrollPaddingLeft: '1rem', scrollPaddingRight: '1rem' }}
       role="tablist"
       aria-label="Categorías"
     >
