@@ -20,6 +20,12 @@ const QrPoster = lazy(() => import("./components/QrPoster"));
 const StockAdmin = lazy(() => import("./components/StockAdmin"));
 const OrderStatus = lazy(() => import("./pages/OrderStatus"));
 
+// Hash Routing Pages
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const ExperiencesPage = lazy(() => import("./pages/ExperiencesPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+import BottomTabBar from "./components/navigation/BottomTabBar";
+
 // Carrito
 import { useCart } from "./context/CartContext";
 import {
@@ -184,30 +190,53 @@ export default function App() {
   // ✅ Modo menú normal
   return (
     <>
-      <div className="bg-alto-beige leading-snug text-alto-text overflow-x-hidden">
-        <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} />
+      <div className="bg-[#F5F5F7] leading-snug text-alto-text overflow-x-hidden min-h-screen">
+        <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />
 
-        <main
-          className={`mx-auto max-w-3xl px-5 pt-5 sm:px-6 sm:pt-6 md:px-8 md:pt-8 ${
-            hasFloatingCartBar ? "pb-24" : "pb-8"
-          }`}
-        >
-          <div className="mb-6 mt-2">
-            <HeroHeadline />
-            <div className="mt-3 sm:mt-4">
-              <SearchBar value={query} onQueryChange={setQuery} />
+        {currentHash === '#inicio' && (
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
+            <LandingPage />
+          </Suspense>
+        )}
+
+        {currentHash === '#experiencias' && (
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
+            <ExperiencesPage />
+          </Suspense>
+        )}
+
+        {currentHash === '#perfil' && (
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
+            <ProfilePage />
+          </Suspense>
+        )}
+
+        {/* Menu normal por defecto o explícito */}
+        {(!currentHash || currentHash === '' || currentHash === '#' || currentHash === '#menu') && (
+          <main
+            className={`mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl px-5 pt-5 sm:px-6 sm:pt-6 md:px-8 md:pt-8 ${
+              hasFloatingCartBar ? "pb-24" : "pb-8"
+            }`}
+          >
+            <div className="mb-6 mt-2">
+              <HeroHeadline />
+              <div className="mt-3 sm:mt-4">
+                <SearchBar value={query} onQueryChange={setQuery} />
+              </div>
             </div>
-          </div>
-          <ProductLists
-            query={query}
-            selectedCategory={selectedCategory}
-            onCategorySelect={handleCategorySelect}
-            counts={counts}
-            featureTabs={FEATURE_TABS}
-          />
+            <ProductLists
+              query={query}
+              selectedCategory={selectedCategory}
+              onCategorySelect={handleCategorySelect}
+              counts={counts}
+              featureTabs={FEATURE_TABS}
+            />
 
-          <Footer />
-        </main>
+            <Footer />
+          </main>
+        )}
+
+        <BottomTabBar currentHash={currentHash} />
 
         {/* Barra flotante y Drawer del carrito */}
         <Suspense fallback={<div />}>

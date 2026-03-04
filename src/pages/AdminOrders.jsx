@@ -265,6 +265,9 @@ export default function AdminOrders() {
       order.order_items.forEach(item => {
           message += `${item.quantity}x ${item.products.name} - $${(item.quantity * item.unit_price).toLocaleString()}\n`;
       });
+      if (order.service_fee > 0) {
+        message += `\n*Servicio: $${order.service_fee.toLocaleString()}*`;
+      }
       message += `\n*Total: $${order.total_amount.toLocaleString()}*`;
     } else {
       message = `¡Hola ${order.customer_name}! 👋\n\nTu pedido #${order.id.slice(0,4)} está listo. 🍽️\n\n${order.fulfillment_type === 'takeaway' ? 'Puedes pasar por él.' : 'Te lo llevaremos en un momento.'}`;
@@ -499,7 +502,13 @@ export default function AdminOrders() {
                     </span>
                   </div>
                 ))}
-                <div className="pt-3 border-t border-gray-200 mt-2 flex justify-between items-center">
+                {selectedOrder.service_fee > 0 && (
+                  <div className="pt-3 border-t border-gray-200 mt-2 flex justify-between items-center text-sm">
+                    <span className="font-bold text-gray-500">Servicio Voluntario</span>
+                    <span className="font-bold text-gray-700">${selectedOrder.service_fee.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className={`${selectedOrder.service_fee > 0 ? "pt-1" : "pt-3 border-t border-gray-200 mt-2"} flex justify-between items-center`}>
                   <span className="font-bold text-gray-500">Total</span>
                   <span className="text-xl font-black text-gray-900">${selectedOrder.total_amount?.toLocaleString()}</span>
                 </div>

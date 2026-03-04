@@ -635,8 +635,8 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                 )}
 
                 <FormField label="O ingresa la URL manualmente">
-                  <TextInput type="url" name="image_url" value={formData.image_url} onChange={handleChange}
-                    placeholder="https://ejemplo.com/foto.jpg" disabled={isUploading} />
+                  <TextInput type="text" name="image_url" value={formData.image_url} onChange={handleChange}
+                    placeholder="https://ejemplo.com/foto.jpg  o  /img/products/mi-foto" disabled={isUploading} />
                 </FormField>
               </div>
             </div>

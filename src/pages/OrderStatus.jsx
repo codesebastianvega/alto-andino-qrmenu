@@ -216,7 +216,13 @@ export default function OrderStatus({ orderId }) {
             ))}
           </div>
 
-          <div className="border-t border-gray-100 pt-4 flex justify-between items-center">
+          {order.service_fee > 0 && (
+            <div className="border-t border-gray-100 mt-4 pt-4 flex justify-between items-center text-sm">
+              <span className="text-gray-500 font-medium">Servicio Voluntario</span>
+              <span className="font-bold text-gray-700">${order.service_fee.toLocaleString()}</span>
+            </div>
+          )}
+          <div className={`${order.service_fee > 0 ? "mt-2 pt-2 border-t-0" : "border-t border-gray-100 pt-4"} flex justify-between items-center`}>
             <span className="text-gray-500 font-medium">Total Pagado</span>
             <span className="text-2xl font-black text-[#2f4131]">${order.total_amount.toLocaleString()}</span>
           </div>

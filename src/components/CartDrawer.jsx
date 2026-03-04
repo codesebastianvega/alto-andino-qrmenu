@@ -10,6 +10,7 @@ import AAImage from "@/components/ui/AAImage";
 import { Icon } from "@iconify-icon/react";
 import { supabase } from "@/config/supabase";
 import { translateGroup } from "@/utils/formatters";
+import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 3000 }),
@@ -122,6 +123,11 @@ export default function CartDrawer({ open, onClose }) {
   } = cart;
 
   const [confirmingClear, setConfirmingClear] = useState(false);
+  const [includeTip, setIncludeTip] = useState(true);
+  const { settings } = useRestaurantSettings();
+  const isTipEnabled = settings?.is_service_fee_enabled === true;
+  const tipPercentage = settings?.service_fee_percentage || 0;
+  
   const [lastSnapshot, setLastSnapshot] = useState(null);
   const confirmBtnRef = useRef(null);
   
@@ -140,6 +146,7 @@ export default function CartDrawer({ open, onClose }) {
   const [lastOrderId, setLastOrderId] = useState("");
 
   const packagingFeeTotal = items.reduce((acc, it) => acc + ((Number(it.packaging_fee) || 0) * (Number(it.qty) || 1)), 0);
+  const serviceFeeAmount = (isTipEnabled && includeTip) ? Math.round(total * (tipPercentage / 100)) : 0;
 
   const handleConfirmOrder = async (e) => {
     e.preventDefault();
@@ -158,7 +165,7 @@ export default function CartDrawer({ open, onClose }) {
       }
 
       // 2. Insert Order
-      const finalTotal = fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal : total;
+      const finalTotal = fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount;
 
       const { data: orderData, error: orderError } = await supabase.from('orders')
         .insert([{
@@ -167,6 +174,7 @@ export default function CartDrawer({ open, onClose }) {
           fulfillment_type: fulfillmentType,
           table_id: tableId,
           total_amount: finalTotal,
+          service_fee: serviceFeeAmount,
           customer_name: customerName,
           customer_phone: customerPhone,
           scheduled_time: scheduledTime || null
@@ -498,10 +506,32 @@ export default function CartDrawer({ open, onClose }) {
                       <span className="text-sm font-semibold text-neutral-700">{formatCOP(packagingFeeTotal)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between items-center text-sm text-neutral-400">
-                    <span>Sin costo de servicio</span>
-                    <span>-</span>
-                  </div>
+                  {isTipEnabled && (
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="flex items-center gap-2 cursor-pointer group">
+                        <div className="relative flex items-center">
+                          <input 
+                            type="checkbox" 
+                            checked={includeTip} 
+                            onChange={(e) => setIncludeTip(e.target.checked)}
+                            className="w-4 h-4 text-[#2f4131] bg-gray-100 border-gray-300 rounded focus:ring-[#2f4131] cursor-pointer"
+                          />
+                        </div>
+                        <span className="text-sm text-neutral-500 font-medium group-hover:text-neutral-700 transition-colors">
+                          Incluir propina ({tipPercentage}%)
+                        </span>
+                      </label>
+                      <span className="text-sm font-semibold text-neutral-700">
+                        {includeTip ? formatCOP(serviceFeeAmount) : '-'}
+                      </span>
+                    </div>
+                  )}
+                  {!isTipEnabled && (
+                    <div className="flex justify-between items-center text-sm text-neutral-400">
+                      <span>Sin costo de servicio</span>
+                      <span>-</span>
+                    </div>
+                  )}
               </div>
               
               <div
@@ -511,7 +541,7 @@ export default function CartDrawer({ open, onClose }) {
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-base md:text-lg font-bold text-neutral-900">Total</span>
                   <span className="text-2xl md:text-3xl font-black tracking-tight text-[#2f4131]">
-                    {formatCOP(fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal : total)}
+                    {formatCOP(fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount)}
                    </span>
                 </div>
                 

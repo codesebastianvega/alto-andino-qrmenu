@@ -18,7 +18,11 @@ export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState('general');
   const [settings, setSettings] = useState(null);
   const [loadingSettings, setLoadingSettings] = useState(false);
-  const [settingsForm, setSettingsForm] = useState({ whatsapp_number_orders: '' });
+  const [settingsForm, setSettingsForm] = useState({ 
+    whatsapp_number_orders: '',
+    is_service_fee_enabled: false,
+    service_fee_percentage: 10
+  });
   const [isSubmittingSettings, setIsSubmittingSettings] = useState(false);
 
   const [hours, setHours] = useState([]);
@@ -38,7 +42,9 @@ export default function AdminSettings() {
       if (data) {
         setSettings(data);
         setSettingsForm({
-          whatsapp_number_orders: data.whatsapp_number_orders || ''
+          whatsapp_number_orders: data.whatsapp_number_orders || '',
+          is_service_fee_enabled: data.is_service_fee_enabled ?? false,
+          service_fee_percentage: data.service_fee_percentage ?? 10
         });
       }
     } catch (err) {
@@ -74,13 +80,19 @@ export default function AdminSettings() {
         const { error } = await supabase.from('restaurant_settings')
           .update({
             whatsapp_number_orders: settingsForm.whatsapp_number_orders,
-            updated_at: new Date()
+            is_service_fee_enabled: settingsForm.is_service_fee_enabled,
+            service_fee_percentage: settingsForm.service_fee_percentage,
+            updated_at: new Date().toISOString()
           })
           .eq('id', settings.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from('restaurant_settings')
-          .insert([{ whatsapp_number_orders: settingsForm.whatsapp_number_orders }]);
+          .insert([{ 
+            whatsapp_number_orders: settingsForm.whatsapp_number_orders,
+            is_service_fee_enabled: settingsForm.is_service_fee_enabled,
+            service_fee_percentage: settingsForm.service_fee_percentage
+          }]);
         if (error) throw error;
       }
       toast.success('Configuración general guardada');
@@ -187,6 +199,38 @@ export default function AdminSettings() {
                       Asegúrate de incluir el código de país (ej. +57).
                     </p>
                   </FormField>
+
+                  <div className="pt-4 border-t border-gray-100">
+                    <h4 className="text-sm font-bold text-gray-900 mb-4">Servicio Voluntario (Propina)</h4>
+                    <div className="space-y-4 bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={settingsForm.is_service_fee_enabled}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, is_service_fee_enabled: e.target.checked })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2f4131]"></div>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-700">Activar propina voluntaria en el carrito</span>
+                      </label>
+
+                      {settingsForm.is_service_fee_enabled && (
+                        <FormField label="Porcentaje sugerido de servicio (%)">
+                          <TextInput
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={settingsForm.service_fee_percentage}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, service_fee_percentage: parseInt(e.target.value) || 0 })}
+                            placeholder="10"
+                            className="w-32"
+                          />
+                        </FormField>
+                      )}
+                    </div>
+                  </div>
 
                   <div className="pt-5 border-t border-gray-100 flex justify-end">
                     <PrimaryButton 

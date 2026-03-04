@@ -403,8 +403,8 @@ export default function AdminExperiences() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">URL Imagen</label>
-                  <input type="url" value={form.image_url} onChange={e => setForm({ ...form, image_url: e.target.value })}
-                    placeholder="https://..."
+                  <input type="text" value={form.image_url} onChange={e => setForm({ ...form, image_url: e.target.value })}
+                    placeholder="https://... o /img/mi-foto.jpg"
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#7db87a]/30 font-medium text-gray-700" />
                 </div>
               </div>

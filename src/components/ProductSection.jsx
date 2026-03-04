@@ -101,7 +101,7 @@ export default function ProductSection({
       : null;
 
   const renderProducts = (arr, keySeed = 0) => {
-    let gridClasses = "grid gap-3 sm:gap-4";
+    let gridClasses = "grid gap-4 sm:gap-5";
     let cardVariant = "standard";
 
     if (variant === "grid") {
@@ -113,18 +113,26 @@ export default function ProductSection({
       gridClasses += " grid-cols-1";
       cardVariant = "compact";
     } else {
-      gridClasses += " grid-cols-1 sm:grid-cols-2";
+      gridClasses += " grid-cols-2 lg:grid-cols-3";
     }
+
+    // Find the first item with an image for bento hero on desktop
+    const heroIdx = arr.findIndex(item => {
+      const mapped = typeof mapItem === "function" ? mapItem(item) : item;
+      return mapped?.image || mapped?.image_url;
+    });
 
     return (
       <div className={gridClasses}>
         {arr.map((item, i) => {
           const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
+          const isHero = i === heroIdx && cardVariant === "standard";
           return (
             <ProductCard
               key={safeItem?.id || `${keySeed}-${i}`}
               item={safeItem}
               variant={cardVariant}
+              isHero={isHero}
               onAdd={(payload) => addItem(payload)}
               onQuickView={onQuickView}
             />

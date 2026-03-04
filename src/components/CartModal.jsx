@@ -10,6 +10,7 @@ import AAImage from "@/components/ui/AAImage";
 import { Icon } from "@iconify-icon/react";
 import { supabase } from "@/config/supabase";
 import { translateGroup } from "@/utils/formatters";
+import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 3000 }),
@@ -87,6 +88,11 @@ export default function CartModal({ open, onClose }) {
 
   const { getAllProducts } = useMenuData();
 
+  const [includeTip, setIncludeTip] = useState(true);
+  const { settings } = useRestaurantSettings();
+  const isTipEnabled = settings?.is_service_fee_enabled === true;
+  const tipPercentage = settings?.service_fee_percentage || 0;
+
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [lastSnapshot, setLastSnapshot] = useState(null);
   const confirmBtnRef = useRef(null);
@@ -106,6 +112,7 @@ export default function CartModal({ open, onClose }) {
   const [lastOrderId, setLastOrderId] = useState("");
 
   const packagingFeeTotal = items.reduce((acc, it) => acc + ((Number(it.packaging_fee) || 0) * (Number(it.qty) || 1)), 0);
+  const serviceFeeAmount = (isTipEnabled && includeTip) ? Math.round(total * (tipPercentage / 100)) : 0;
 
   // --- UPSELLING LOGIC ---
   const upsellProducts = useMemo(() => {
@@ -158,7 +165,7 @@ export default function CartModal({ open, onClose }) {
       }
 
       // 2. Insert Order
-      const finalTotal = fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal : total;
+      const finalTotal = fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount;
 
       const { data: orderData, error: orderError } = await supabase.from('orders')
         .insert([{
@@ -167,6 +174,7 @@ export default function CartModal({ open, onClose }) {
           fulfillment_type: fulfillmentType,
           table_id: tableId,
           total_amount: finalTotal,
+          service_fee: serviceFeeAmount,
           customer_name: customerName,
           customer_phone: customerPhone,
           scheduled_time: scheduledTime || null
@@ -310,20 +318,19 @@ export default function CartModal({ open, onClose }) {
 
         {/* Modal Window */}
         <div
-          className="relative w-full max-h-[85vh] sm:max-h-[85vh] rounded-t-[28px] sm:rounded-[32px] bg-white shadow-2xl flex flex-col sm:max-w-2xl md:max-w-4xl lg:max-w-5xl transition-all overflow-hidden"
+          className="relative w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] rounded-none sm:rounded-[32px] bg-white shadow-2xl flex flex-col sm:max-w-2xl md:max-w-4xl lg:max-w-5xl transition-all overflow-hidden"
           role="dialog"
           aria-modal="true"
         >
-          {/* Handle Mobile */}
-          <div className="flex-shrink-0 pt-3 flex justify-center pb-2 sm:hidden">
-            <div className="h-1.5 w-12 rounded-full bg-neutral-300/80" />
-          </div>
 
           {/* Header */}
-          <div className="flex-shrink-0 flex items-center justify-between px-4 pb-3 pt-3 sm:px-6 sm:pt-6 sm:pb-4 border-b border-neutral-100">
+          <div 
+            className="flex-shrink-0 flex items-center justify-between px-4 pb-3 pt-4 sm:px-6 sm:pt-6 sm:pb-4 border-b border-neutral-100"
+            style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 16px)" }}
+          >
             <div className="flex items-center gap-3">
-              <div className="bg-[#2f4131]/10 p-2 rounded-full hidden sm:block">
-                <Icon icon="heroicons:shopping-cart" className="h-6 w-6 text-[#2f4131]" />
+              <div className="bg-[#2f4131]/10 p-2 rounded-full hidden sm:flex items-center justify-center">
+                <Icon icon="heroicons:shopping-cart" className="text-[24px] text-[#2f4131]" />
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900">
@@ -343,7 +350,7 @@ export default function CartModal({ open, onClose }) {
                   aria-label="Vaciar carrito"
                   title="Vaciar carrito"
                 >
-                  <Icon icon="heroicons:trash" className="h-5 w-5" />
+                  <Icon icon="heroicons:trash" className="text-[20px]" />
                 </button>
               )}
               <button
@@ -352,7 +359,7 @@ export default function CartModal({ open, onClose }) {
                 className="rounded-full bg-neutral-100 p-2 text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900 transition-colors"
                 aria-label="Cerrar modal"
               >
-                <Icon icon="heroicons:x-mark" className="h-5 w-5 sm:h-6 sm:w-6" />
+                <Icon icon="heroicons:x-mark" className="text-[20px] sm:text-[24px]" />
               </button>
             </div>
           </div>
@@ -493,6 +500,42 @@ export default function CartModal({ open, onClose }) {
                 </div>
               </div>
             )}
+
+            {/* Upselling Banner Mobile (Inside scrollable left column) */}
+            <div className="md:hidden mt-auto">
+              {upsellProducts.length > 0 && !showFulfillmentSelector && (
+                <div className="bg-amber-50/50 border-t border-amber-100/50 py-4 px-4 sm:px-6">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-sm font-bold text-[#cba258] flex items-center gap-1.5">
+                      <Icon icon="heroicons:sparkles" className="text-lg" />
+                      ¿Acompañas tu pedido con esto?
+                    </h4>
+                  </div>
+                  
+                  <div className="flex overflow-x-auto gap-3 pb-2 snap-x snap-mandatory hide-scrollbar">
+                    {upsellProducts.map(prod => (
+                      <div key={prod.id} className="bg-white rounded-2xl p-3 shadow-sm border border-amber-100/60 flex flex-col items-center flex-shrink-0 w-36 snap-start">
+                        <AAImage 
+                          src={getProductImage(prod)} 
+                          className="w-full h-20 rounded-xl object-cover bg-neutral-100 shrink-0 mb-2 border border-neutral-200/40" 
+                        />
+                        <div className="text-center w-full mb-2">
+                          <p className="text-[13px] font-bold text-neutral-900 truncate" title={prod.name}>{prod.name}</p>
+                          <p className="text-[11px] font-bold text-[#2f4131]">{formatCOP(prod.price)}</p>
+                        </div>
+                        <button 
+                          onClick={() => handleAddUpsell(prod)}
+                          className="w-full h-8 rounded-xl bg-amber-100 text-[#cba258] flex items-center justify-center text-xs font-bold shrink-0 hover:bg-[#cba258] hover:text-white transition-colors active:scale-95 gap-1"
+                        >
+                          <Icon icon="heroicons:plus" className="text-sm" /> Agregar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
           </div> {/* End Left Column */}
 
           {/* Right Column (Upselling + Footer) */}
@@ -534,41 +577,6 @@ export default function CartModal({ open, onClose }) {
                 )}
               </div>
 
-              {/* Upselling Banner Mobile (Only if open without sidebar) */}
-              <div className="md:hidden">
-                {upsellProducts.length > 0 && !showFulfillmentSelector && (
-                  <div className="bg-amber-50/50 border-t border-amber-100/50 py-4 px-4 sm:px-6">
-                    <div className="flex justify-between items-center mb-3">
-                      <h4 className="text-sm font-bold text-[#cba258] flex items-center gap-1.5">
-                        <Icon icon="heroicons:sparkles" className="text-lg" />
-                        ¿Acompañas tu pedido con esto?
-                      </h4>
-                    </div>
-                    
-                    <div className="flex overflow-x-auto gap-3 pb-2 snap-x snap-mandatory hide-scrollbar">
-                      {upsellProducts.map(prod => (
-                        <div key={prod.id} className="bg-white rounded-2xl p-3 shadow-sm border border-amber-100/60 flex flex-col items-center flex-shrink-0 w-36 snap-start">
-                          <AAImage 
-                            src={getProductImage(prod)} 
-                            className="w-full h-20 rounded-xl object-cover bg-neutral-100 shrink-0 mb-2 border border-neutral-200/40" 
-                          />
-                          <div className="text-center w-full mb-2">
-                            <p className="text-[13px] font-bold text-neutral-900 truncate" title={prod.name}>{prod.name}</p>
-                            <p className="text-[11px] font-bold text-[#2f4131]">{formatCOP(prod.price)}</p>
-                          </div>
-                          <button 
-                            onClick={() => handleAddUpsell(prod)}
-                            className="w-full h-8 rounded-xl bg-amber-100 text-[#cba258] flex items-center justify-center text-xs font-bold shrink-0 hover:bg-[#cba258] hover:text-white transition-colors active:scale-95 gap-1"
-                          >
-                            <Icon icon="heroicons:plus" className="text-sm" /> Agregar
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
               {/* Footer fijo (Receipt Style) */}
               <div className="flex-shrink-0 bg-white border-t border-neutral-100 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] transition-all">
               <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-neutral-100/60 border-dashed">
@@ -582,10 +590,32 @@ export default function CartModal({ open, onClose }) {
                       <span className="text-sm font-semibold text-neutral-700">{formatCOP(packagingFeeTotal)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between items-center text-sm text-neutral-400">
-                    <span>Sin costo de servicio</span>
-                    <span>-</span>
-                  </div>
+                  {isTipEnabled && (
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="flex items-center gap-2 cursor-pointer group">
+                        <div className="relative flex items-center">
+                          <input 
+                            type="checkbox" 
+                            checked={includeTip} 
+                            onChange={(e) => setIncludeTip(e.target.checked)}
+                            className="w-4 h-4 text-[#2f4131] bg-gray-100 border-gray-300 rounded focus:ring-[#2f4131] cursor-pointer"
+                          />
+                        </div>
+                        <span className="text-sm text-neutral-500 font-medium group-hover:text-neutral-700 transition-colors">
+                          Incluir servicio voluntario ({tipPercentage}%)
+                        </span>
+                      </label>
+                      <span className="text-sm font-semibold text-neutral-700">
+                        {includeTip ? formatCOP(serviceFeeAmount) : '-'}
+                      </span>
+                    </div>
+                  )}
+                  {!isTipEnabled && (
+                    <div className="flex justify-between items-center text-sm text-neutral-400">
+                      <span>Sin costo de servicio</span>
+                      <span>-</span>
+                    </div>
+                  )}
               </div>
               
               <div
@@ -595,7 +625,7 @@ export default function CartModal({ open, onClose }) {
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-base sm:text-lg font-bold text-neutral-900">Total</span>
                   <span className="text-2xl sm:text-3xl font-black tracking-tight text-[#2f4131]">
-                    {formatCOP(fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal : total)}
+                    {formatCOP(fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount)}
                    </span>
                 </div>
                 

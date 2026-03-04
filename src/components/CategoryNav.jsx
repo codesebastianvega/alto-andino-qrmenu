@@ -27,7 +27,7 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
   return (
     <div
       ref={railRef}
-      className="scrollbar-none -mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto py-4 px-1 pb-6"
+      className="scrollbar-none -mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto py-3 px-1 pb-4"
       role="tablist"
       aria-label="Categorías"
     >
@@ -41,31 +41,23 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
             type="button"
             onClick={() => handleSelect(cat, idx)}
             className={clsx(
-              // Base size and layout (más grandes)
-              "flex h-28 w-24 flex-shrink-0 flex-col items-center justify-center gap-1 rounded-xl p-2 text-center transition-all duration-300 ease-in-out",
-              "snap-center",
-              // Glassmorphism base style (blur removed for performance)
-              "bg-white/60 ring-1 ring-inset ring-white/30",
-              // Text style
-              "text-neutral-800",
-              // Active state
-              active && "scale-105 bg-white/80 shadow-lg shadow-[#2f4131]/40"
+              "flex flex-shrink-0 items-center gap-2 rounded-full px-4 py-2.5 transition-all duration-300 ease-out snap-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2",
+              active
+                ? "bg-[#2f4131] text-white shadow-md shadow-[#2f4131]/20 scale-100"
+                : "bg-white text-neutral-600 shadow-[0_2px_10px_rgb(0,0,0,0.03)] ring-1 ring-black/[0.04] hover:bg-neutral-50 hover:scale-[1.02]"
             )}
             role="tab"
             aria-selected={active}
           >
             <Icon
               icon={iconName}
-              className={clsx(
-                "transition-colors",
-                active ? "text-[#2f4131]" : "text-neutral-700"
-              )}
-              style={{ fontSize: 40, width: 56, height: 56 }}
+              className={clsx("transition-colors", active ? "text-white" : "text-neutral-400")}
+              style={{ fontSize: 22 }}
             />
             <span
               className={clsx(
-                "block text-[13px] font-semibold leading-tight line-clamp-2",
-                active && "text-[#2f4131]"
+                "block text-[15px] whitespace-nowrap tracking-tight",
+                active ? "font-semibold text-white" : "font-medium text-neutral-600"
               )}
             >
               {cat.label}

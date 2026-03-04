@@ -185,10 +185,10 @@ export default function AdminBranding({ isEmbedded = false }) {
 
             <FormField label="URL del Logo">
               <TextInput
-                type="url"
+                type="text"
                 value={settingsForm.logo_url}
                 onChange={(e) => setSettingsForm({ ...settingsForm, logo_url: e.target.value })}
-                placeholder="https://tudominio.com/logo.png"
+                placeholder="https://tudominio.com/logo.png  o  /img/logo.png"
               />
             </FormField>
 
