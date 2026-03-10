@@ -5,7 +5,7 @@ import { useMenuData } from '../context/MenuDataContext';
 import { 
   ArrowLeft, CheckCircle2, ChefHat, ShoppingBag, Clock, Sparkles, 
   MapPin, Tag, Copy, Leaf, Image as ImageIcon, ExternalLink, XIcon, 
-  Loader2, AlertCircle, Info, Star, Banknote, Coffee, Home 
+  Loader2, AlertCircle, Info, Star, Banknote, Coffee, Home, ChevronRight, Music, BookOpen
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
