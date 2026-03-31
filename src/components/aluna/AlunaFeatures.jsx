@@ -1,85 +1,103 @@
 import { useState, useRef } from "react";
-import { motion, useScroll, useMotionValueEvent } from "framer-motion";
+import { motion } from "framer-motion";
 
-const SERVICES = [
+const CARDS = [
   {
-    id: "01",
     title: "Menús Inteligentes",
-    desc: "Interfaces dinámicas que se adaptan al comportamiento del usuario, destacando tus platos estrella y aumentando el ticket promedio.",
-    img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=800&auto=format&fit=crop"
+    desc: "Interfaces dinámicas que se adaptan al comportamiento del usuario, destacando tus platos estrella.",
+    highlight: "Sube tu ticket 20%"
   },
   {
-    id: "02",
     title: "Pedidos Integrados",
-    desc: "Sincronización perfecta con WhatsApp y tu sistema POS. Menos errores humanos, más eficiencia en la cocina.",
-    img: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=800&auto=format&fit=crop"
+    desc: "Sincronización perfecta con WhatsApp y tu sistema POS. Menos errores humanos, más eficiencia.",
+    highlight: "Cero fricción"
   },
   {
-    id: "03",
     title: "Identidad Visual",
-    desc: "Diseño a medida que respira la atmósfera de tu local. Desde la tipografía hasta la paleta de colores, todo comunica tu esencia.",
-    img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=800&auto=format&fit=crop"
+    desc: "Diseño a medida que respira la atmósfera de tu local. Colores y tipografías que comunican tu esencia.",
+    highlight: "100% Personalizable"
+  },
+  {
+    title: "Sin Comisiones",
+    desc: "Deja de perder un gran porcentaje de tu rentabilidad. Con Aluna, cada pedido es directamente tuyo, sin intermediarios.",
+    highlight: "$0 por transacción"
+  },
+  {
+    title: "Analíticas de Negocio",
+    desc: "Conoce a tus clientes. Qué platos se venden más y a qué horas, para tomar decisiones de negocio estratégicas.",
+    highlight: "Data en tiempo real"
   }
 ];
 
 export default function AlunaFeatures() {
-  const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"]
-  });
+  const [activeSlide, setActiveSlide] = useState(0);
 
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  useMotionValueEvent(scrollYProgress, "change", (latest) => {
-    if (latest < 0.33) setActiveIndex(0);
-    else if (latest < 0.66) setActiveIndex(1);
-    else setActiveIndex(2);
-  });
+  const handleScroll = (e) => {
+    // Calculamos qué tarjeta está activa basándonos en el scroll
+    const scrollLeft = e.target.scrollLeft;
+    // El ancho de cada tarjeta más el gap (aprox)
+    const itemWidth = e.target.scrollWidth / CARDS.length;
+    const newIndex = Math.round(scrollLeft / itemWidth);
+    if (newIndex >= 0 && newIndex < CARDS.length) {
+      setActiveSlide(newIndex);
+    }
+  };
 
   return (
-    <section id="servicios" ref={containerRef} className="relative h-[300vh] bg-[#F7F7F5] px-4 md:px-6 py-12">
-      <div className="sticky top-6 h-[calc(100vh-3rem)] w-full rounded-[40px] overflow-hidden shadow-2xl bg-[#1A1A1A]">
-        {/* Background Images */}
-        {SERVICES.map((s, i) => (
-          <motion.div
-            key={s.id}
-            className="absolute inset-0"
-            initial={{ opacity: 0, scale: 1.1 }}
-            animate={{
-              opacity: activeIndex === i ? 1 : 0,
-              scale: activeIndex === i ? 1 : 1.05
-            }}
-            transition={{ duration: 0.7, ease: "easeInOut" }}
-          >
-            <img src={s.img} alt={s.title} className="absolute inset-0 w-full h-full object-cover" referrerPolicy="no-referrer" />
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"></div>
-          </motion.div>
-        ))}
+    <section id="beneficios" className="py-24 bg-white overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 mb-8 md:mb-12">
+        <h2 className="text-4xl md:text-5xl text-[#1A1A1A] max-w-2xl leading-tight mb-4" style={{ fontFamily: "'DM Serif Display', serif" }}>
+          Mucho más que un menú. El ecosistema completo para tu restaurante.
+        </h2>
+        <p className="text-gray-500 text-lg md:text-xl max-w-2xl font-light">
+          Explora los servicios y beneficios diseñados para aumentar tu rentabilidad y digitalizar tu local con elegancia.
+        </p>
+      </div>
 
-        {/* Content Overlay */}
-        <div className="absolute inset-0 flex items-center justify-center p-6">
-          <div className="relative w-full max-w-4xl mx-auto h-[300px]">
-            {SERVICES.map((s, i) => (
-              <motion.div
-                key={s.id}
-                className="absolute top-1/2 left-1/2 w-full flex flex-col items-center justify-center text-center"
-                initial={{ opacity: 0, y: "calc(-50% + 40px)", x: "-50%" }}
-                animate={{
-                  opacity: activeIndex === i ? 1 : 0,
-                  y: activeIndex === i ? "-50%" : activeIndex > i ? "calc(-50% - 40px)" : "calc(-50% + 40px)",
-                  x: "-50%",
-                  pointerEvents: activeIndex === i ? "auto" : "none"
-                }}
-                transition={{ duration: 0.5, ease: "easeInOut" }}
-              >
-                <div className="text-[#D4A853] font-serif text-2xl md:text-3xl mb-4" style={{ fontFamily: "'DM Serif Display', serif" }}>{s.id}</div>
-                <h3 className="font-serif text-4xl md:text-6xl lg:text-7xl text-white mb-6 leading-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>{s.title}</h3>
-                <p className="text-gray-300 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto">{s.desc}</p>
-              </motion.div>
-            ))}
+      {/* Horizontal Scroll Container */}
+      <div 
+        className="flex gap-4 md:gap-6 overflow-x-auto pb-8 pt-4 px-4 md:px-6 hide-scrollbar snap-x snap-mandatory scroll-smooth"
+        onScroll={handleScroll}
+      >
+        {CARDS.map((card, idx) => (
+          <div 
+            key={idx} 
+            // Altura reducida a h-[400px] md:h-[460px] para que no sean excesivamente largas
+            className="relative w-[80vw] sm:w-[300px] md:w-[340px] h-[400px] md:h-[460px] snap-center md:snap-start bg-[#F7F7F5] rounded-[40px] p-6 md:p-8 flex flex-col justify-between shrink-0 border border-black/5 hover:border-black/10 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group overflow-hidden"
+          >
+            {/* Pequeña muesca simulando la parte superior de un celular */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-4 bg-white/50 rounded-b-xl border border-t-0 border-black/5"></div>
+
+            <div className="mt-4">
+              <div className="inline-block px-4 py-2 rounded-full bg-white text-[#2D6A4F] text-xs font-bold uppercase tracking-wider mb-6 md:mb-8 shadow-sm group-hover:bg-[#2D6A4F] group-hover:text-white transition-colors duration-300">
+                {card.highlight}
+              </div>
+              <h3 className="text-2xl md:text-3xl lg:text-4xl text-[#1A1A1A] mb-3 md:mb-4 leading-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                {card.title}
+              </h3>
+              <p className="text-gray-600 leading-relaxed text-base md:text-lg">
+                {card.desc}
+              </p>
+            </div>
+            
+            {/* Pequeña línea decorativa que crece al hacer hover (simulando barra Home iOS) */}
+            <div className="w-12 group-hover:w-[60%] mx-auto transition-all duration-500 h-1 bg-[#D4A853] rounded-full" />
           </div>
-        </div>
+        ))}
+      </div>
+
+      {/* Paginación Visual */}
+      <div className="flex justify-center items-center gap-2 mt-4 md:mt-8">
+        {CARDS.map((_, idx) => (
+          <div 
+            key={`dot-${idx}`}
+            className={`h-1.5 rounded-full transition-all duration-300 ${
+              activeSlide === idx 
+                ? "w-8 bg-[#2D6A4F]" // Activo: pastilla verde oscuro
+                : "w-2 bg-gray-200"  // Inactivo: puntito gris
+            }`}
+          />
+        ))}
       </div>
     </section>
   );

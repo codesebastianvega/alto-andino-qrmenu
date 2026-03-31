@@ -1,78 +1,129 @@
-import { FadeIn } from "./animations";
+import { useState, useRef } from "react";
+import { motion, useScroll, useMotionValueEvent, useTransform } from "framer-motion";
 
 const STEPS = [
   {
-    number: "01",
-    title: "Registra tu Negocio",
-    desc: "Crea tu cuenta en menos de 2 minutos. Solo necesitas tu nombre, email y el nombre de tu restaurante.",
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
-      </svg>
-    )
+    id: "01",
+    title: "Sube tu Menú",
+    desc: "Plataforma de autogestión ultra rápida. Sube tus platos, fotos impactantes y precios en minutos. Sin depender de terceros.",
+    img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=800&auto=format&fit=crop"
   },
   {
-    number: "02",
-    title: "Configura tu Menú",
-    desc: "Sube tus productos, personaliza colores y tipografías. Tu menú digital estará listo en minutos, no semanas.",
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    )
+    id: "02",
+    title: "Personaliza tu Identidad",
+    desc: "Tu restaurante, tus reglas. Aplica tus colores, logo y tipografías para que el menú digital sea una extensión real de tu marca.",
+    img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=800&auto=format&fit=crop"
   },
   {
-    number: "03",
-    title: "Comparte tu QR",
-    desc: "Descarga e imprime tu código QR personalizado. Ponlo en cada mesa y tus comensales accederán al instante.",
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
-      </svg>
-    )
+    id: "03",
+    title: "Escanean y Compran",
+    desc: "Coloca QRs estéticos en tus mesas. Tus clientes escanean, piden sin fricción y los pedidos llegan directo a tu WhatsApp o POS.",
+    img: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=800&auto=format&fit=crop"
   }
 ];
 
 export default function AlunaHowItWorks() {
+  const containerRef = useRef(null);
+
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"]
+  });
+
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useMotionValueEvent(scrollYProgress, "change", (latest) => {
+    if (latest < 0.33) setActiveIndex(0);
+    else if (latest < 0.66) setActiveIndex(1);
+    else setActiveIndex(2);
+  });
+
+  // Ocultar el helper de scroll suavemente al llegar al último tercio
+  const promptOpacity = useTransform(scrollYProgress, [0.6, 0.7], [1, 0]);
+
   return (
-    <section className="py-24 px-6 md:px-12 lg:px-20 bg-white">
-      <div className="max-w-7xl mx-auto">
-        <FadeIn className="text-center mb-16">
-          <h2 className="text-4xl text-[#1A1A1A] mb-4" style={{ fontFamily: "'DM Serif Display', serif" }}>
-            Empieza en 3 Pasos
-          </h2>
-          <p className="text-[#6B7280] text-sm uppercase tracking-[0.2em]">
-            De cero a menú digital en minutos
-          </p>
-        </FadeIn>
+    <section id="como-funciona" ref={containerRef} className="relative h-[300vh] bg-[#F7F7F5] px-4 md:px-6 py-12">
 
-        <div className="grid md:grid-cols-3 gap-8 relative">
-          {/* Connecting line (desktop) */}
-          <div className="hidden md:block absolute top-16 left-[16.666%] right-[16.666%] h-[1px] bg-[#E5E7EB]">
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#2D6A4F]"></div>
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#2D6A4F]"></div>
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#2D6A4F]"></div>
+      {/* Sticky container */}
+      <div className="sticky top-6 h-[calc(100vh-3rem)] w-full rounded-[40px] overflow-hidden shadow-2xl bg-[#1A1A1A]">
+
+        {/* Background images */}
+        {STEPS.map((s, i) => (
+          <motion.div
+            key={`bg-${s.id}`}
+            className="absolute inset-0"
+            initial={{ opacity: 0, scale: 1.1 }}
+            animate={{
+              opacity: activeIndex === i ? 1 : 0,
+              scale: activeIndex === i ? 1 : 1.05
+            }}
+            transition={{ duration: 0.7, ease: "easeInOut" }}
+          >
+            <img
+              src={s.img}
+              alt={s.title}
+              className="absolute inset-0 w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"></div>
+          </motion.div>
+        ))}
+
+        {/* Content (texts) */}
+        <div className="absolute inset-0 flex items-center justify-center p-6">
+          <div className="relative w-full max-w-4xl mx-auto h-[300px]">
+            {STEPS.map((s, i) => (
+              <motion.div
+                key={`content-${s.id}`}
+                className="absolute top-1/2 left-1/2 w-full flex flex-col items-center justify-center text-center"
+                initial={{ opacity: 0, y: "calc(-50% + 40px)", x: "-50%" }}
+                animate={{
+                  opacity: activeIndex === i ? 1 : 0,
+                  y: activeIndex === i ? "-50%" : activeIndex > i ? "calc(-50% - 40px)" : "calc(-50% + 40px)",
+                  x: "-50%",
+                  pointerEvents: activeIndex === i ? "auto" : "none"
+                }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+              >
+                <div className="text-[#D4A853] text-2xl md:text-3xl mb-4" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                  {s.id}
+                </div>
+                <h3 className="text-4xl md:text-5xl lg:text-7xl text-white mb-6 leading-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                  {s.title}
+                </h3>
+                <p className="text-gray-300 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto">
+                  {s.desc}
+                </p>
+              </motion.div>
+            ))}
           </div>
-
-          {STEPS.map((step, i) => (
-            <FadeIn key={step.number} delay={i * 0.15} className="text-center">
-              <div className="w-16 h-16 rounded-full bg-[#F7F7F5] flex items-center justify-center text-[#2D6A4F] mx-auto mb-6">
-                {step.icon}
-              </div>
-              <div className="text-xs font-bold text-[#2D6A4F] uppercase tracking-widest mb-2">
-                Paso {step.number}
-              </div>
-              <h3 className="text-xl font-semibold text-[#1A1A1A] mb-3">
-                {step.title}
-              </h3>
-              <p className="text-sm text-[#6B7280] leading-relaxed max-w-xs mx-auto">
-                {step.desc}
-              </p>
-            </FadeIn>
-          ))}
         </div>
+
+        {/* Progress Bar */}
+        <div className="absolute top-0 left-0 w-full h-1 bg-white/10 z-20">
+          <motion.div 
+            className="h-full bg-[#D4A853]"
+            style={{ scaleX: scrollYProgress, transformOrigin: 'left' }}
+          />
+        </div>
+
+        {/* Scroll Helper Prompt */}
+        <motion.div 
+          className="absolute bottom-6 md:bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 z-20"
+          style={{ opacity: promptOpacity, pointerEvents: 'none' }}
+        >
+          <span className="text-white/60 text-xs md:text-sm font-medium uppercase tracking-[0.2em]">
+            Sigue bajando
+          </span>
+          <motion.div 
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            className="w-5 h-8 md:w-6 md:h-10 border-2 border-white/30 rounded-full flex justify-center pt-1 md:pt-1.5"
+          >
+            <div className="w-1 h-2 bg-[#D4A853] rounded-full" />
+          </motion.div>
+        </motion.div>
+
       </div>
     </section>
   );

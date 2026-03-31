@@ -2,7 +2,6 @@ import AlunaNavbar from "../components/aluna/AlunaNavbar";
 import AlunaHero from "../components/aluna/AlunaHero";
 import AlunaAbout from "../components/aluna/AlunaAbout";
 import AlunaFeatures from "../components/aluna/AlunaFeatures";
-import AlunaBenefits from "../components/aluna/AlunaBenefits";
 import AlunaHowItWorks from "../components/aluna/AlunaHowItWorks";
 import AlunaPortfolio from "../components/aluna/AlunaPortfolio";
 import AlunaPricing from "../components/aluna/AlunaPricing";
@@ -15,9 +14,8 @@ export default function AlunaLanding() {
       <AlunaNavbar />
       <AlunaHero />
       <AlunaAbout />
-      <AlunaFeatures />
-      <AlunaBenefits />
       <AlunaHowItWorks />
+      <AlunaFeatures />
       <AlunaPortfolio />
       <AlunaPricing />
       <AlunaContact />
