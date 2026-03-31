@@ -230,30 +230,32 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
         </motion.div>
 
         {/* 💊 CATEGORY PILLS */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
-          className="w-full flex items-center justify-start md:justify-center gap-3 overflow-x-auto hide-scrollbar pb-4 pt-2 -mx-4 px-4 md:mx-0 md:px-0"
-        >
-          {[{slug: 'todos', label: 'Todos', icon: '✨'}, ...categories].map((cat, idx) => {
-            const catId = cat.slug || cat.id;
-            const catLabel = cat.label || cat.name || catId;
-            const ui = CATEGORY_UI[catId] || { icon: cat.icon || '🍽️', label: catLabel };
-            return (
-              <div 
-                key={idx}
-                onClick={() => setActiveCategory(catId)}
-                className={`shrink-0 flex items-center gap-2.5 px-4 py-2 rounded-full cursor-pointer transition-all duration-300 border ${
-                  activeCategory === catId 
-                    ? 'bg-white border-transparent shadow-[0_8px_20px_rgba(0,0,0,0.06)] scale-105' 
-                    : 'bg-transparent border-black/5 hover:border-black/15 opacity-80'
-                }`}
-              >
-                <span className="text-xl bg-[#F4F0EA] w-8 h-8 rounded-full flex items-center justify-center">{ui.icon}</span>
-                <span className="text-sm font-bold text-[#1A1A1A] pr-1">{ui.label}</span>
-              </div>
-            );
-          })}
-        </motion.div>
+        <div className="sticky top-0 z-50 w-[100vw] sm:w-[calc(100vw-2rem)] md:w-full -ml-5 sm:ml-0 overflow-visible mt-2">
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
+            className="w-full flex items-center justify-start md:justify-center gap-3 overflow-x-auto hide-scrollbar pb-4 pt-3 px-5 sm:px-0 bg-[#F5F5F7]/95 backdrop-blur-md border-b border-black/5"
+          >
+            {[{slug: 'todos', label: 'Todos', icon: '✨'}, ...categories].map((cat, idx) => {
+              const catId = cat.slug || cat.id;
+              const catLabel = cat.label || cat.name || catId;
+              const ui = CATEGORY_UI[catId] || { icon: cat.icon || '🍽️', label: catLabel };
+              return (
+                <div 
+                  key={idx}
+                  onClick={() => setActiveCategory(catId)}
+                  className={`shrink-0 flex items-center gap-2.5 px-4 py-2 rounded-full cursor-pointer transition-all duration-300 border ${
+                    activeCategory === catId 
+                      ? 'bg-white border-transparent shadow-[0_4px_12px_rgba(0,0,0,0.06)] scale-105' 
+                      : 'bg-white/50 border-black/5 hover:border-black/15 hover:bg-white opacity-90'
+                  }`}
+                >
+                  <span className="text-xl bg-white w-8 h-8 rounded-full flex items-center justify-center shadow-sm">{ui.icon}</span>
+                  <span className="text-sm font-bold text-[#1A1A1A] pr-1">{ui.label}</span>
+                </div>
+              );
+            })}
+          </motion.div>
+        </div>
 
         {/* 🎟️ BANNER DE EXPERIENCIAS */}
         <motion.div 

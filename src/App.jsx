@@ -140,6 +140,13 @@ export default function App() {
     return params.get("qr") === "1";
   })();
 
+  // ✅ Modo demo (?demo=1) – se oculta header, footer, bottom bar
+  const isDemo = (() => {
+    if (typeof window === "undefined") return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("demo") === "1";
+  })();
+
   if (isQr) {
     const publicUrl = PUBLIC_URL || window.location.origin;
     return (
@@ -196,8 +203,8 @@ export default function App() {
 
   return (
     <>
-      <div className="bg-[#F5F5F7] leading-snug text-alto-text overflow-x-hidden min-h-screen">
-        <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />
+      <div className="bg-[#F5F5F7] leading-snug text-alto-text min-h-screen">
+        {!isDemo && <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />}
 
         {isLandingView && !isOrderingMode && (
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
@@ -220,7 +227,7 @@ export default function App() {
         {/* Menu normal: Si estamos en modo orden o hash explícito #menu, o si NO es la vista landing */}
         {(isOrderingMode || isMenuView || (!isLandingView && currentHash !== '#experiencias' && currentHash !== '#perfil' && currentHash !== '#admin' && !orderTrackingId)) && (
           <main
-            className="mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl px-5 pt-24 sm:px-6 sm:pt-24 md:px-8 md:pt-24"
+            className={`mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl px-5 ${isDemo ? 'pt-4 pb-20 sm:px-6 md:px-8' : 'pt-24 sm:px-6 sm:pt-24 md:px-8 md:pt-24'}`}
           >
             <MenuHero 
               query={query}
@@ -238,11 +245,11 @@ export default function App() {
               hideNav={true}
             />
 
-            <Footer hasCartBar={hasFloatingCartBar} />
+            {!isDemo && <Footer hasCartBar={hasFloatingCartBar} />}
           </main>
         )}
 
-        <BottomTabBar currentHash={currentHash} />
+        {!isDemo && <BottomTabBar currentHash={currentHash} />}
 
         {/* Barra flotante y Drawer del carrito */}
         <Suspense fallback={<div />}>

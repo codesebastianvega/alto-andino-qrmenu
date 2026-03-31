@@ -25,7 +25,7 @@ export default function AlunaHero() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent"></div>
 
         {/* Contenido (Grid de 2 columnas) */}
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 lg:px-20 py-24 grid md:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 lg:px-20 py-12 md:py-20 grid md:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
 
           {/* Columna Izquierda */}
           <FadeIn direction="right">
@@ -54,8 +54,8 @@ export default function AlunaHero() {
                     Agendar una Demostración
                   </a>
                 </MagneticButton>
-                <a href="#portafolio" className="bg-transparent border border-white/30 text-white px-8 py-4 rounded-full text-sm font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2">
-                  Ver Portafolio
+                <a href="/#menu" className="bg-transparent border border-white/30 text-white px-8 py-4 rounded-full text-sm font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2">
+                  Ver Demo
                 </a>
               </div>
             </div>
