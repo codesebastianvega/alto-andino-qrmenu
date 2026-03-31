@@ -73,6 +73,15 @@ body {
   display: none; /* Chrome/Safari */
 }
 
+/* Oculta scrollbar manteniendo scroll funcional (variante) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 .card {
   @apply rounded-2xl border border-alto-greige bg-alto-warmwhite shadow-card;
 }

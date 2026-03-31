@@ -1,117 +1,64 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-
-const NAV_ITEMS = [
-  { label: "Inicio", href: "#" },
-  { label: "Servicios", href: "#servicios" },
-  { label: "Portafolio", href: "#portafolio" },
-  { label: "Planes", href: "#planes" },
-  { label: "Contacto", href: "#contacto" },
-];
 
 export default function AlunaNavbar() {
-  const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [visible, setVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 50);
-    window.addEventListener("scroll", handleScroll);
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      // Hide navbar when scrolling down past 400px, show when scrolling up
+      if (currentY > 400 && currentY > lastScrollY) {
+        setVisible(false);
+      } else {
+        setVisible(true);
+      }
+      setLastScrollY(currentY);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [lastScrollY]);
 
   return (
-    <>
-      {/* Desktop Top Navbar */}
-      <motion.nav
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className={`fixed top-0 left-0 right-0 z-[200] transition-all duration-500 ${
-          scrolled
-            ? "bg-white/80 backdrop-blur-xl shadow-sm border-b border-[#E5E7EB]"
-            : "bg-transparent"
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-20 h-20 flex items-center justify-between">
-          <a
-            href="#"
-            className={`text-2xl tracking-tight transition-colors ${scrolled ? "text-[#1A1A1A]" : "text-white"}`}
-            style={{ fontFamily: "'DM Serif Display', serif" }}
-          >
-            Aluna
-          </a>
+    <nav
+      className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#1A1A1A]/90 backdrop-blur-md border border-white/10 rounded-full p-2 flex items-center shadow-2xl w-[95%] max-w-fit transition-all duration-500 ${
+        visible ? "translate-y-0 opacity-100" : "translate-y-24 opacity-0 pointer-events-none"
+      }`}
+    >
+      {/* Logo (hidden on mobile) */}
+      <a href="#" className="text-xl tracking-tight text-white px-4 hidden md:block" style={{ fontFamily: "'DM Serif Display', serif" }}>
+        Aluna
+      </a>
 
-          {/* Desktop links */}
-          <div className="hidden md:flex items-center gap-10">
-            {NAV_ITEMS.map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                className={`text-sm font-medium transition-colors ${
-                  scrolled ? "text-[#6B7280] hover:text-[#1A1A1A]" : "text-gray-400 hover:text-white"
-                }`}
-              >
-                {item.label}
-              </a>
-            ))}
-            <a
-              href="#contacto"
-              className="px-6 py-2.5 bg-[#1A1A1A] text-white rounded-full text-sm font-semibold hover:bg-[#2D6A4F] transition-colors"
-            >
-              Empezar
-            </a>
-          </div>
+      {/* Separator */}
+      <div className="w-[1px] h-6 bg-white/20 mx-2 hidden md:block"></div>
 
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className={`md:hidden flex flex-col gap-1.5 z-[210] ${mobileOpen ? "relative" : ""}`}
-          >
-            <motion.span
-              animate={mobileOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }}
-              className={`block w-6 h-0.5 transition-colors ${mobileOpen ? "bg-white" : scrolled ? "bg-[#1A1A1A]" : "bg-white"}`}
-            />
-            <motion.span
-              animate={mobileOpen ? { opacity: 0 } : { opacity: 1 }}
-              className={`block w-6 h-0.5 transition-colors ${scrolled ? "bg-[#1A1A1A]" : "bg-white"}`}
-            />
-            <motion.span
-              animate={mobileOpen ? { rotate: -45, y: -6 } : { rotate: 0, y: 0 }}
-              className={`block w-6 h-0.5 transition-colors ${mobileOpen ? "bg-white" : scrolled ? "bg-[#1A1A1A]" : "bg-white"}`}
-            />
-          </button>
-        </div>
-      </motion.nav>
+      {/* Nav links */}
+      <div className="flex items-center gap-1 sm:gap-2 px-2 overflow-x-auto scrollbar-hide">
+        <a href="#nosotros" className="text-xs sm:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 px-3 py-2 rounded-full transition-all whitespace-nowrap">
+          Nosotros
+        </a>
+        <a href="#servicios" className="text-xs sm:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 px-3 py-2 rounded-full transition-all whitespace-nowrap">
+          Servicios
+        </a>
+        <a href="#beneficios" className="text-xs sm:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 px-3 py-2 rounded-full transition-all whitespace-nowrap">
+          Beneficios
+        </a>
+        <a href="#portafolio" className="text-xs sm:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 px-3 py-2 rounded-full transition-all whitespace-nowrap">
+          Portafolio
+        </a>
+        <a href="#planes" className="text-xs sm:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 px-3 py-2 rounded-full transition-all whitespace-nowrap">
+          Planes
+        </a>
+      </div>
 
-      {/* Mobile Fullscreen Menu */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 bg-[#1A1A1A] z-[195] flex items-center justify-center"
-          >
-            <nav className="flex flex-col items-center gap-8">
-              {NAV_ITEMS.map((item, i) => (
-                <motion.a
-                  key={item.label}
-                  href={item.href}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  onClick={() => setMobileOpen(false)}
-                  className="text-3xl text-white font-light hover:text-[#D4A853] transition-colors"
-                  style={{ fontFamily: "'DM Serif Display', serif" }}
-                >
-                  {item.label}
-                </motion.a>
-              ))}
-            </nav>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+      {/* Separator */}
+      <div className="w-[1px] h-6 bg-white/20 mx-2"></div>
+
+      {/* CTA */}
+      <a href="#contacto" className="bg-white text-[#1A1A1A] px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-semibold hover:bg-gray-100 transition-all whitespace-nowrap">
+        Comenzar
+      </a>
+    </nav>
   );
 }
