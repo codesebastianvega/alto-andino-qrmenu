@@ -1,5 +1,6 @@
 import React from "react";
 import { Leaf, MapPin, Instagram, MessageCircle } from "lucide-react";
+import { useMenuData } from "../context/MenuDataContext";
 
 function getGreetingMessage() {
   const hour = new Date().getHours();
@@ -9,6 +10,12 @@ function getGreetingMessage() {
 }
 
 export default function Footer({ hasCartBar }) {
+  const { restaurantSettings } = useMenuData();
+  const logoUrl = (restaurantSettings?.logo_url && restaurantSettings.logo_url !== '') 
+    ? restaurantSettings.logo_url 
+    : "/logoalto.png";
+  const footerBg = restaurantSettings?.theme_footer_bg || "#1A2421";
+
   const IG_URL = import.meta.env.VITE_INSTAGRAM_URL || "https://instagram.com/altoandinozipaquira";
   const RAW_WA = (import.meta.env.VITE_WHATSAPP || "573209009972").replace(/\D/g, "");
   const WA_NUM = RAW_WA.startsWith("57") ? RAW_WA : `57${RAW_WA}`;
@@ -17,7 +24,10 @@ export default function Footer({ hasCartBar }) {
   const REVIEWS_URL = "https://g.page/r/CUlqcqk_KCXBEBM/review";
 
   return (
-    <footer className={`bg-[#1A2421] text-white pt-10 md:pt-20 px-4 md:px-6 lg:px-12 rounded-t-[2rem] md:rounded-t-[3.5rem] mt-6 md:mt-10 ${hasCartBar ? "pb-28 md:pb-32" : "pb-6 md:pb-10"}`}>
+    <footer 
+      style={{ backgroundColor: footerBg }}
+      className={`text-white pt-10 md:pt-20 px-4 md:px-6 lg:px-12 rounded-t-[2rem] md:rounded-t-[3.5rem] mt-6 md:mt-10 ${hasCartBar ? "pb-28 md:pb-32" : "pb-6 md:pb-10"}`}
+    >
       <div className="container mx-auto max-w-7xl">
         
         {/* Greeting */}
@@ -31,7 +41,7 @@ export default function Footer({ hasCartBar }) {
           {/* Brand */}
           <div className="sm:col-span-2">
             <div className="flex items-center justify-start mb-4 md:mb-5">
-              <img src="/logoalto.png" alt="Alto Andino Logo" className="h-10 md:h-12 object-contain filter brightness-0 invert" />
+              <img src={logoUrl} alt="Logo" className="h-10 md:h-12 object-contain filter brightness-0 invert" />
             </div>
             <p className="text-white/50 font-medium text-xs md:text-sm max-w-sm leading-relaxed mb-4 md:mb-6">
               Elevando la experiencia de la comida saludable. Raíces locales, nutrición consciente y un espacio para respirar en la ciudad.

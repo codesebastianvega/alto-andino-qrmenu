@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { formatCOP } from "@/utils/money";
 import { slugify } from "@/utils/stock";
 import { getProductImage } from "@/utils/images";
@@ -76,7 +76,7 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
     <article
       className={`group relative flex overflow-hidden transition-all duration-300 ${
         isOut ? "opacity-70 grayscale" : "hover:shadow-xl hover:-translate-y-1"
-      } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 rounded-2xl bg-white text-neutral-900 border border-black/5 ${
+      } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 rounded-2xl bg-white text-neutral-900 border border-black/5 ${
         isCompact ? "p-1.5 flex-row" : "p-1 md:p-2.5 flex-col"
       } ${
         isHero ? "lg:col-span-2 lg:flex-row" : ""
@@ -157,7 +157,7 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
             aria-label={`Agregar ${item.name || "producto"}`}
             onClick={handleAdd}
             disabled={isOut}
-            className={`flex items-center justify-center rounded-full bg-[#E6B05C] text-[#1A1A1A] font-bold shadow-md shadow-[#E6B05C]/30 transition-all duration-200 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 hover:scale-110 ${
+            className={`flex items-center justify-center rounded-full bg-brand-secondary text-white font-bold shadow-md shadow-brand-secondary/30 transition-all duration-200 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 hover:scale-110 ${
               isCompact ? "h-7 w-7 md:h-8 md:w-8 text-[18px]" : "h-9 w-9 md:h-10 md:w-10 text-[20px] md:text-[22px] leading-none"
             }`}
           >

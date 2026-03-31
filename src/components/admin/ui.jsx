@@ -22,12 +22,13 @@ export function PageHeader({ badge, title, subtitle, children }) {
 }
 
 /** Primary action button */
-export function PrimaryButton({ onClick, children, type = 'button', className = '' }) {
+export function PrimaryButton({ onClick, children, type = 'button', className = '', disabled = false }) {
   return (
     <button
       type={type}
       onClick={onClick}
-      className={`px-5 py-2.5 bg-[#2f4131] text-white rounded-xl text-sm font-semibold hover:bg-[#243420] active:scale-[0.98] transition-all ${className}`}
+      disabled={disabled}
+      className={`px-5 py-2.5 bg-[#2f4131] text-white rounded-xl text-sm font-semibold hover:bg-[#243420] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
     >
       {children}
     </button>

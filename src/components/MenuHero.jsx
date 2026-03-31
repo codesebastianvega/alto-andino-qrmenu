@@ -27,6 +27,21 @@ function getTimeContext() {
 export default function MenuHero({ query, setQuery, activeCategory, setActiveCategory, categories = [] }) {
   const { time, label: greeting, Icon: TimeIcon } = getTimeContext();
   const [user] = useState({ name: 'Invitado', isLogged: false }); // User state mock
+  const [homeSettings, setHomeSettings] = useState(null);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const { data, error } = await supabase.from('home_settings').select('*').single();
+        if (!error && data) {
+          setHomeSettings(data);
+        }
+      } catch (err) {
+        console.error('Error fetching settings:', err);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   // --- RECOMENDACIÓN INSTANTÁNEA ---
   const candidates = useMemo(() => {
@@ -42,10 +57,11 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
         id: p.id || p.productId || (p.key ? `sandwich:${p.key}` : slugify(p.name)),
         name: p.name,
         price: p.price,
-        img: p.image || p.imageUrl || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=400",
+        img: p.image_url || p.image || p.imageUrl,
         desc: p.desc || p.subtitle || ""
       }))
       .filter((p) => {
+        if (!p.img) return false;
         const st = getStockState(p.id);
         return st === "in" || st === "low";
       });
@@ -61,17 +77,15 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
     return () => clearInterval(id);
   }, [candidates.length]);
 
-  const instantProduct = candidates.length ? candidates[recIndex] : {
-    name: "Poke Andino",
-    price: "$34.000",
-    img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=400"
-  };
+  const instantProduct = candidates.length ? candidates[recIndex] : null;
 
   // --- ESTADOS IA ---
   const [aiRecommendation, setAiRecommendation] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [showAiSuggestion, setShowAiSuggestion] = useState(false);
 
   const handleAiSurprise = async () => {
+    if (!instantProduct) return;
     setIsAiLoading(true);
     try {
       const prompt = `Eres la IA de Alto Andino. Son las ${new Date().getHours()}:00. Recomienda de forma MUY breve (1 sola frase, máximo 15 palabras) el plato: "${instantProduct.name}". Tono: premium y persuasivo.`;
@@ -80,9 +94,11 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
       });
       if (error) throw error;
       setAiRecommendation(data.reply);
+      setShowAiSuggestion(true);
     } catch (err) {
       console.error(err);
       setAiRecommendation(`Anímate a probar ${instantProduct.name}, te sorprenderá.`);
+      setShowAiSuggestion(true);
     } finally {
       setIsAiLoading(false);
     }
@@ -141,7 +157,7 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
                   >
                     ✨ {aiRecommendation}
                   </motion.p>
-                ) : (
+                ) : instantProduct ? (
                   <motion.div key="btn" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3">
                     <p className="text-xs font-medium text-[#1A1A1A]/40 hidden sm:block">¿Indeciso? Deja que nuestra IA elija por ti.</p>
                     <button 
@@ -153,27 +169,38 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
                       SUGERIR PLATO
                     </button>
                   </motion.div>
+                ) : (
+                  <motion.div key="fallback" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <p className="text-xs font-medium text-[#1A1A1A]/40">Descubre nuestros mejores platos. ¡Explora el menú!</p>
+                  </motion.div>
                 )}
               </AnimatePresence>
             </div>
           </div>
 
           {/* Lado Derecho: Producto Instantáneo */}
-          <div className="w-full md:w-2/5 flex justify-end">
-            <div 
-              onClick={handleQuickView}
-              className="bg-white p-2 rounded-xl shadow-sm border border-black/5 flex items-center gap-3 w-full sm:w-auto hover:shadow-md transition-shadow cursor-pointer group"
-            >
-              <img src={instantProduct.img} alt={instantProduct.name} className="w-12 h-12 rounded-lg object-cover group-hover:scale-105 transition-transform" />
-              <div className="pr-4 flex-1">
-                <p className="text-[10px] uppercase font-bold text-[#4A7856] tracking-wider mb-0.5">Sugerencia</p>
-                <p className="text-xs font-extrabold text-[#1A1A1A] leading-none line-clamp-1 truncate block">{instantProduct.name}</p>
-                <p className="text-[10px] font-bold text-[#1A1A1A]/40 mt-1">{typeof instantProduct.price === 'number' ? `$${instantProduct.price.toLocaleString()}` : instantProduct.price}</p>
-              </div>
-              <div className="w-6 h-6 shrink-0 rounded-full bg-black/5 flex items-center justify-center text-[#1A1A1A] mr-2 group-hover:bg-[#E6B05C] group-hover:text-white transition-colors">
-                <Plus size={12} strokeWidth={3} />
-              </div>
-            </div>
+          <div className="w-full md:w-2/5 flex justify-end min-h-[64px]">
+            <AnimatePresence>
+              {showAiSuggestion && instantProduct && (
+                <motion.div 
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  onClick={handleQuickView}
+                  className="bg-white p-2 rounded-xl shadow-sm border border-black/5 flex items-center gap-3 w-full sm:w-auto hover:shadow-md transition-shadow cursor-pointer group"
+                >
+                  <img src={instantProduct.img} alt={instantProduct.name} className="w-12 h-12 rounded-lg object-cover group-hover:scale-105 transition-transform" />
+                  <div className="pr-4 flex-1">
+                    <p className="text-[10px] uppercase font-bold text-[#4A7856] tracking-wider mb-0.5">Sugerencia</p>
+                    <p className="text-xs font-extrabold text-[#1A1A1A] leading-none line-clamp-1 truncate block">{instantProduct.name}</p>
+                    <p className="text-[10px] font-bold text-[#1A1A1A]/40 mt-1">{typeof instantProduct.price === 'number' ? `$${instantProduct.price.toLocaleString()}` : instantProduct.price}</p>
+                  </div>
+                  <div className="w-6 h-6 shrink-0 rounded-full bg-black/5 flex items-center justify-center text-[#1A1A1A] mr-2 group-hover:bg-[#E6B05C] group-hover:text-white transition-colors">
+                    <Plus size={12} strokeWidth={3} />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
 
@@ -235,7 +262,7 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
           className="w-full mt-4 rounded-[1.5rem] overflow-hidden relative cursor-pointer group h-28 md:h-32 shadow-sm border border-black/5"
         >
           <img 
-            src="https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?auto=format&fit=crop&q=80&w=1200" 
+            src={homeSettings?.menu_banner_img || "https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?auto=format&fit=crop&q=80&w=1200"} 
             alt="Experiencias" 
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
           />
@@ -245,11 +272,16 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
             <div className="flex flex-col justify-center">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="bg-[#E6B05C] text-[#1A1A1A] text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full">
-                  Exclusivo
+                  {homeSettings?.menu_banner_tag || 'Exclusivo'}
                 </span>
-                <span className="text-white/60 text-[10px] font-bold">Talleres & Catas</span>
+                <span className="text-white/60 text-[10px] font-bold">
+                  {homeSettings?.menu_banner_subtitle || 'Talleres & Catas'}
+                </span>
               </div>
-              <h3 className="font-extrabold text-white text-lg md:text-xl leading-tight">Vive la experiencia<br/>Alto Andino</h3>
+              <h3 
+                className="font-extrabold text-white text-lg md:text-xl leading-tight"
+                dangerouslySetInnerHTML={{ __html: homeSettings?.menu_banner_title?.replace(/\n/g, '<br/>') || 'Vive la experiencia<br/>Alto Andino' }}
+              />
             </div>
 
             <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/20 group-hover:bg-white group-hover:text-[#1A2421] group-hover:scale-110 transition-all">

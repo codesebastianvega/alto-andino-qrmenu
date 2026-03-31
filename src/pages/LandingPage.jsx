@@ -17,6 +17,7 @@ import {
   Leaf
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useMenuData } from '../context/MenuDataContext';
 
 // =========================================================================
 // 🎛️ FALLBACK DATA (se usa si Supabase no tiene datos todavía)
@@ -45,60 +46,91 @@ const LandingPage = () => {
   const [activeCategory, setActiveCategory] = useState('');
   const [heroDishIndex, setHeroDishIndex] = useState(0);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [loading, setLoading] = useState(true);
+  const [localLoading, setLocalLoading] = useState(true);
   
-  // --- ESTADO PARA LA DATA DE SUPABASE ---
+  const { 
+    categories: menuCategories, 
+    allCategories,
+    getProductsByCategory, 
+    homeSettings, 
+    restaurantSettings,
+    loading: menuLoading 
+  } = useMenuData();
+
   const [config, setConfig] = useState({
     heroDishes: [],
     featuredItems: [],
     reviews: [],
     conciergePrompt: '',
-    eventPlannerPrompt: ''
+    conciergeImg: '',
+    conciergeBgColor: '#1A2421',
+    heroH1: 'Descubre tus\nplatos favoritos',
+    heroSubtitle: 'Ingredientes locales, nutrición premium y el toque artesanal de nuestra cocina andina, directo a tu mesa.',
+    heroEmojis: ['🥑', '🌿']
   });
 
   useEffect(() => {
-    fetchLandingSettings();
-  }, []);
+    if (menuLoading) return;
 
-  const fetchLandingSettings = async () => {
-    try {
-      const { data, error } = await supabase.from('home_settings').select('*').limit(1).single();
-      if (error && error.code !== 'PGRST116') throw error;
-      
-      const heroDishes = (data?.hero_images && data.hero_images.length > 0) ? data.hero_images : FALLBACK_HERO_DISHES;
-      const featuredItems = (data?.featured_items && data.featured_items.length > 0) ? data.featured_items : FALLBACK_FEATURED;
-      const reviews = (data?.reviews && data.reviews.length > 0) ? data.reviews : FALLBACK_REVIEWS;
+    let heroDishes = [];
+    if (allCategories && allCategories.length > 0) {
+      heroDishes = allCategories
+        .filter(cat => cat.visibility_config?.show_in_hero)
+        .map(cat => {
+          const vc = cat.visibility_config || {};
+          const products = getProductsByCategory(cat.slug) || [];
+          const featuredProduct = products.find(p => p.id === vc.hero_featured_product_id) || products[0];
+          
+          // Only include if featured product has a real image
+          const img = featuredProduct?.image;
+          if (!img) return null;
 
-      const newConfig = {
-        heroDishes,
-        featuredItems,
-        reviews,
-        conciergePrompt: data?.concierge_prompt_template || '',
-        eventPlannerPrompt: data?.event_planner_prompt_template || ''
-      };
-      setConfig(newConfig);
-
-      // Seleccionar un plato aleatorio
-      if (newConfig.heroDishes.length > 0) {
-        const randomIndex = Math.floor(Math.random() * newConfig.heroDishes.length);
-        setHeroDishIndex(randomIndex);
-        setActiveCategory(newConfig.heroDishes[randomIndex].category);
-      }
-    } catch (err) {
-      console.error('Error fetching landing settings:', err);
-      // Usar fallbacks en caso de error total
-      setConfig(prev => ({
-        ...prev,
-        heroDishes: FALLBACK_HERO_DISHES,
-        featuredItems: FALLBACK_FEATURED,
-        reviews: FALLBACK_REVIEWS
-      }));
-      setHeroDishIndex(0);
-      setActiveCategory(FALLBACK_HERO_DISHES[0].category);
-    } finally {
-      setLoading(false);
+          return {
+            category: cat.name,
+            icon: cat.icon || '🍽️',
+            price: featuredProduct?.price ? `$${(featuredProduct.price / 1000).toFixed(0)}k` : '',
+            name: featuredProduct?.name || cat.name,
+            rating: vc.hero_rating || "5.0",
+            prepTime: vc.hero_prep_time || "10-15 mins",
+            img
+          };
+        })
+        .filter(Boolean);
     }
-  };
+
+    if (heroDishes.length === 0) {
+      heroDishes = FALLBACK_HERO_DISHES;
+    }
+
+    const featuredItems = (homeSettings?.featured_items && homeSettings.featured_items.length > 0) ? homeSettings.featured_items : FALLBACK_FEATURED;
+    const reviews = (homeSettings?.reviews && homeSettings.reviews.length > 0) ? homeSettings.reviews : FALLBACK_REVIEWS;
+
+    const emojisConfig = homeSettings?.hero_emojis 
+      ? homeSettings.hero_emojis.split(',').map(e => e.trim()) 
+      : ['🥑', '🌿'];
+
+    const newConfig = {
+      heroDishes,
+      featuredItems,
+      reviews,
+      conciergePrompt: homeSettings?.concierge_prompt_template || '',
+      conciergeImg: homeSettings?.concierge_img || '',
+      conciergeBgColor: homeSettings?.concierge_bg_color || restaurantSettings?.theme_footer_bg || '#1A2421',
+      heroH1: homeSettings?.hero_h1 || 'Descubre tus\nplatos favoritos',
+      heroSubtitle: homeSettings?.hero_subtitle || 'Ingredientes locales, nutrición premium y el toque artesanal de nuestra cocina andina, directo a tu mesa.',
+      heroEmojis: emojisConfig.length > 0 ? emojisConfig : ['🥑', '🌿']
+    };
+    
+    setConfig(newConfig);
+
+    if (heroDishes.length > 0 && !activeCategory) {
+      const randomIndex = Math.floor(Math.random() * heroDishes.length);
+      setHeroDishIndex(randomIndex);
+      setActiveCategory(heroDishes[randomIndex].category);
+    }
+    
+    setLocalLoading(false);
+  }, [menuLoading, allCategories, homeSettings]);
 
   // Función para capturar el movimiento del mouse para el efecto Parallax
   const handleMouseMove = (e) => {
@@ -124,11 +156,6 @@ const LandingPage = () => {
   const [conciergeResponse, setConciergeResponse] = useState('');
   const [isConciergeLoading, setIsConciergeLoading] = useState(false);
 
-  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-  const [eventQuery, setEventQuery] = useState('');
-  const [eventResponse, setEventResponse] = useState('');
-  const [isEventLoading, setIsEventLoading] = useState(false);
-
   const handleConcierge = async () => {
     if (!conciergeQuery) return;
     setIsConciergeLoading(true);
@@ -149,32 +176,7 @@ const LandingPage = () => {
     }
   };
 
-  const handleEventPlanner = async () => {
-    if (!eventQuery) return;
-    setIsEventLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('gemini-chat', {
-        body: { 
-          prompt: config.eventPlannerPrompt.replace('{{query}}', eventQuery),
-          context: "Alto Andino specializes in high-end events, healthy bowls, and craft coffee."
-        }
-      });
-      if (error) throw error;
-      setEventResponse(data.reply);
-    } catch (err) {
-      console.error(err);
-      setEventResponse("Hubo un error al diseñar tu evento, pero no te preocupes, ¡contáctanos y lo planeamos juntos!");
-    } finally {
-      setIsEventLoading(false);
-    }
-  };
-
-  const categories = [
-    { name: 'Pokes', icon: '🍲', price: '$34k' },
-    { name: 'Bowls', icon: '🥗', price: '$28k' },
-    { name: 'Café', icon: '☕', price: '$8k' },
-    { name: 'Postres', icon: '🍰', price: '$15k' }
-  ];
+  const h1Lines = config.heroH1.split('\n');
 
   const titleVariants = {
     hidden: { opacity: 0, y: 30 },
@@ -185,17 +187,17 @@ const LandingPage = () => {
     })
   };
 
-  if (loading) {
+  if (localLoading || menuLoading) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA] flex flex-col items-center justify-center gap-4">
-        <Loader2 className="w-12 h-12 text-[#2f4131] animate-spin" />
-        <p className="text-[#2f4131] font-bold uppercase tracking-widest text-xs italic">Cargando Experiencia Alto Andino...</p>
+      <div className="min-h-screen bg-brand-bg flex flex-col items-center justify-center gap-4">
+        <Loader2 className="w-12 h-12 text-brand-primary animate-spin" />
+        <p className="text-brand-primary font-bold uppercase tracking-widest text-xs italic">Cargando Experiencia Alto Andino...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-[#1A1A1A] font-sans overflow-x-hidden selection:bg-[#E6B05C] selection:text-white">
+    <div className="min-h-screen bg-brand-bg text-brand-text font-sans overflow-x-hidden selection:bg-brand-secondary selection:text-white">
       <style>
         {`
           @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
@@ -225,12 +227,13 @@ const LandingPage = () => {
         className="relative min-h-screen flex items-center pt-16 md:pt-20 overflow-hidden"
         onMouseMove={handleMouseMove}
       >
-        <div className="absolute top-4 right-4 bottom-4 w-full md:w-[45%] bg-[#1A2421] rounded-[3rem] z-0 hidden md:block overflow-hidden shadow-2xl">
-           <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-[#E6B05C]/15 rounded-full blur-[80px]" />
+
+        <div className="absolute top-4 right-4 bottom-4 w-full md:w-[45%] bg-brand-primary rounded-[3rem] z-0 hidden md:block overflow-hidden shadow-2xl">
+           <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-brand-secondary/15 rounded-full blur-[80px]" />
            <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-white/5 rounded-full blur-[60px]" />
         </div>
-        <div className="absolute top-0 right-0 w-full h-[40%] bg-[#1A2421] rounded-b-[2rem] md:rounded-b-[3rem] z-0 md:hidden overflow-hidden">
-           <div className="absolute top-[-20%] right-[-10%] w-[300px] h-[300px] bg-[#E6B05C]/15 rounded-full blur-[50px]" />
+        <div className="absolute top-0 right-0 w-full h-[40%] bg-brand-primary rounded-b-[2rem] md:rounded-b-[3rem] z-0 md:hidden overflow-hidden">
+           <div className="absolute top-[-20%] right-[-10%] w-[300px] h-[300px] bg-brand-secondary/15 rounded-full blur-[50px]" />
         </div>
 
         <div className="container mx-auto px-4 md:px-6 lg:px-12 relative z-10 flex flex-col md:flex-row items-center h-full gap-6 md:gap-12">
@@ -239,47 +242,47 @@ const LandingPage = () => {
             <div className="max-w-md lg:max-w-lg">
               <h1 className="text-4xl md:text-5xl lg:text-7xl font-extrabold leading-[1.1] tracking-tight mb-4 md:mb-6 flex flex-col">
                 <motion.span custom={1} variants={titleVariants} initial="hidden" animate="visible">
-                  Descubre tus
+                  {h1Lines[0] || 'Descubre tus'}
                 </motion.span>
-                <motion.span custom={2} variants={titleVariants} initial="hidden" animate="visible" className="text-transparent bg-clip-text bg-gradient-to-r from-[#1A1A1A] to-[#6b6b6b] md:from-[#1A1A1A] md:to-[#1A1A1A] mt-1">
-                  platos favoritos
+                <motion.span custom={2} variants={titleVariants} initial="hidden" animate="visible" className="text-transparent bg-clip-text bg-gradient-to-r from-brand-text to-brand-text/60 md:from-brand-text md:to-brand-text mt-1">
+                  {h1Lines.length > 1 ? h1Lines.slice(1).join('\n') : 'platos favoritos'}
                 </motion.span>
               </h1>
               
               <motion.p 
                 custom={3} variants={titleVariants} initial="hidden" animate="visible"
-                className="text-[#1A1A1A]/50 font-medium text-[13px] md:text-base max-w-md mb-6 md:mb-8 leading-relaxed"
+                className="text-brand-text/50 font-medium text-[13px] md:text-base max-w-md mb-6 md:mb-8 leading-relaxed whitespace-pre-line"
               >
-                Ingredientes locales, nutrición premium y el toque artesanal de nuestra cocina andina, directo a tu mesa.
+                {config.heroSubtitle}
               </motion.p>
-
+              
               {/* Categories Slider */}
               <motion.div 
                 custom={4} variants={titleVariants} initial="hidden" animate="visible"
                 className="flex items-center gap-3 md:gap-4 mb-6 md:mb-10 overflow-x-auto hide-scrollbar pb-3 -mx-4 px-4 md:-mx-0 md:px-0"
               >
-                {categories.map((cat, idx) => (
+                {config.heroDishes.map((cat, idx) => (
                   <div 
                     key={idx}
-                    onClick={() => handleCategoryClick(cat.name)}
+                    onClick={() => handleCategoryClick(cat.category)}
                     className={`shrink-0 flex items-center gap-2 md:gap-3 px-3 md:px-4 py-1.5 md:py-2 rounded-full cursor-pointer transition-all duration-300 border ${
-                      activeCategory === cat.name 
+                      activeCategory === cat.category 
                         ? 'bg-white border-transparent shadow-[0_8px_20px_rgba(0,0,0,0.08)] scale-105' 
                         : 'bg-transparent border-black/10 hover:border-black/30 opacity-70'
                     }`}
                   >
-                    <span className="text-lg md:text-xl bg-[#F4F0EA] w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center">{cat.icon}</span>
+                    <span className="text-lg md:text-xl bg-brand-bg w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center">{cat.icon}</span>
                     <div className="flex flex-col">
-                      <span className="text-sm font-bold">{cat.name}</span>
-                      <span className="text-[10px] text-black/50 font-semibold">{cat.price}</span>
+                      <span className="text-sm font-bold">{cat.category}</span>
+                      {cat.price && <span className="text-[10px] text-black/50 font-semibold">{cat.price}</span>}
                     </div>
                   </div>
                 ))}
               </motion.div>
 
               <motion.div custom={5} variants={titleVariants} initial="hidden" animate="visible" className="flex items-center gap-6">
-                <a href="#menu" className="bg-[#1A1A1A] hover:bg-[#2a2a2a] text-white pl-2 pr-8 py-2 rounded-full flex items-center gap-4 transition-transform hover:scale-105 active:scale-95 shadow-xl">
-                  <div className="bg-[#E6B05C] w-10 h-10 rounded-full flex items-center justify-center text-black">
+                <a href="#menu" className="bg-brand-primary hover:opacity-90 text-white pl-2 pr-8 py-2 rounded-full flex items-center gap-4 transition-transform hover:scale-105 active:scale-95 shadow-xl">
+                  <div className="bg-brand-secondary w-10 h-10 rounded-full flex items-center justify-center text-white">
                     <ShoppingBag size={18} strokeWidth={2.5} />
                   </div>
                   <span className="font-bold text-sm">Ordenar Ahora</span>
@@ -309,10 +312,10 @@ const LandingPage = () => {
                     className="w-full h-full object-cover rounded-full shadow-[0_20px_40px_rgba(0,0,0,0.4)] md:shadow-[0_40px_80px_rgba(0,0,0,0.5)] border-[8px] md:border-[12px] border-white/10"
                   />
                   
-                  <div className="absolute bottom-2 left-0 md:bottom-28 md:left-4 lg:bottom-32 lg:-left-12 glass-panel bg-white/90 px-4 py-3 md:px-6 md:py-4 rounded-xl md:rounded-2xl flex flex-col gap-1 shadow-2xl backdrop-blur-xl border border-white/80 z-20">
+                  <div className="absolute bottom-2 left-0 md:bottom-28 md:left-4 lg:bottom-32 lg:-left-12 glass-panel bg-brand-card/90 px-4 py-3 md:px-6 md:py-4 rounded-xl md:rounded-2xl flex flex-col gap-1 shadow-2xl backdrop-blur-xl border border-white/80 z-20">
                     <div className="flex items-center gap-3 mb-1">
-                      <span className="text-sm md:text-base font-extrabold text-[#1A1A1A]">{currentHeroDish?.name}</span>
-                      <div className="flex items-center gap-1 text-[#E6B05C] bg-[#E6B05C]/10 px-2 py-0.5 rounded-full">
+                      <span className="text-sm md:text-base font-extrabold text-brand-text">{currentHeroDish?.name}</span>
+                      <div className="flex items-center gap-1 text-brand-secondary bg-brand-secondary/10 px-2 py-0.5 rounded-full">
                         <Star size={12} fill="currentColor" />
                         <span className="text-[10px] font-bold">{currentHeroDish?.rating}</span>
                       </div>
@@ -326,33 +329,32 @@ const LandingPage = () => {
               </AnimatePresence>
             </motion.div>
 
-            <motion.div
-              animate={{ x: mousePosition.x * 1.5, y: mousePosition.y * 1.5 }}
-              transition={{ type: "spring", stiffness: 100, damping: 30 }}
-              className="absolute top-16 right-10 md:top-32 md:right-32 z-10"
-            >
-              <motion.div
-                animate={{ y: [0, 15, 0], rotate: [0, 10, 0] }}
-                transition={{ repeat: Infinity, duration: 5, ease: "easeInOut", delay: 1 }}
-                className="w-12 h-12 md:w-16 md:h-16 glass-panel rounded-full shadow-2xl flex items-center justify-center text-2xl md:text-3xl border border-white/60 bg-white/40 backdrop-blur-lg"
-              >
-                🥑
-              </motion.div>
-            </motion.div>
-            
-            <motion.div
-              animate={{ x: mousePosition.x * 2, y: mousePosition.y * 2 }}
-              transition={{ type: "spring", stiffness: 100, damping: 30 }}
-              className="absolute top-1/2 -left-4 md:left-4 lg:-left-12 z-10"
-            >
-              <motion.div
-                animate={{ y: [0, -15, 0], rotate: [0, -10, 0] }}
-                transition={{ repeat: Infinity, duration: 6, ease: "easeInOut", delay: 2 }}
-                className="w-10 h-10 md:w-14 md:h-14 glass-panel rounded-full shadow-2xl flex items-center justify-center text-xl md:text-2xl border border-white/60 bg-white/40 backdrop-blur-lg"
-              >
-                🌿
-              </motion.div>
-            </motion.div>
+            {(() => {
+              const positions = [
+                { cls: 'top-16 right-10 md:top-32 md:right-32', size: 'w-12 h-12 md:w-16 md:h-16 text-2xl md:text-3xl', parallax: 1.5, y: [0, 15, 0], rot: [0, 10, 0], dur: 5, delay: 1 },
+                { cls: 'top-1/2 -left-4 md:left-4 lg:-left-12', size: 'w-10 h-10 md:w-14 md:h-14 text-xl md:text-2xl', parallax: 2, y: [0, -15, 0], rot: [0, -10, 0], dur: 6, delay: 2 },
+                { cls: 'bottom-24 right-6 md:bottom-32 md:right-20', size: 'w-10 h-10 md:w-14 md:h-14 text-xl md:text-2xl', parallax: 1.8, y: [0, 12, 0], rot: [0, -8, 0], dur: 7, delay: 0.5 },
+                { cls: 'top-8 left-1/3 md:top-16 md:left-1/4', size: 'w-9 h-9 md:w-12 md:h-12 text-lg md:text-xl', parallax: 1.2, y: [0, -10, 0], rot: [0, 12, 0], dur: 5.5, delay: 3 },
+              ];
+              return config.heroEmojis.map((em, i) => {
+                const pos = positions[i % positions.length];
+                return (
+                  <motion.div key={i}
+                    animate={{ x: mousePosition.x * pos.parallax, y: mousePosition.y * pos.parallax }}
+                    transition={{ type: "spring", stiffness: 100, damping: 30 }}
+                    className={`absolute ${pos.cls} z-10`}
+                  >
+                    <motion.div
+                      animate={{ y: pos.y, rotate: pos.rot }}
+                      transition={{ repeat: Infinity, duration: pos.dur, ease: "easeInOut", delay: pos.delay }}
+                      className={`${pos.size} glass-panel rounded-full shadow-2xl flex items-center justify-center border border-white/60 bg-white/40 backdrop-blur-lg`}
+                    >
+                      {em}
+                    </motion.div>
+                  </motion.div>
+                );
+              });
+            })()}
           </div>
         </div>
       </section>
@@ -361,21 +363,22 @@ const LandingPage = () => {
       <section className="py-12 md:py-24 px-4 md:px-6 lg:px-12 bg-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-br from-[#1A2421]/5 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
         <div className="container mx-auto max-w-6xl">
-          <div className="bg-[#1A2421] rounded-2xl md:rounded-[2.5rem] p-5 md:p-16 relative overflow-hidden shadow-2xl">
+          <div className="rounded-2xl md:rounded-[2.5rem] p-5 md:p-16 relative overflow-hidden shadow-2xl" style={{ backgroundColor: config.conciergeBgColor }}>
             <div className="absolute top-0 right-0 w-64 h-64 bg-[#E6B05C]/20 rounded-full blur-[80px]" />
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#4A7856]/20 rounded-full blur-[80px]" />
             
             <div className="relative z-10 grid md:grid-cols-2 gap-6 md:gap-12 items-center">
               <div>
                 <div className="inline-flex items-center gap-2 bg-white/10 px-3 py-1.5 md:px-4 md:py-2 rounded-full backdrop-blur-md border border-white/10 mb-4 md:mb-6">
-                  <Sparkles size={14} className="text-[#E6B05C]" />
+                  <Sparkles size={14} className="text-brand-secondary" />
                   <span className="text-[10px] font-bold text-white uppercase tracking-widest">Powered by Gemini AI</span>
                 </div>
-                <h2 className="text-2xl md:text-5xl font-extrabold text-white mb-3 md:mb-4 leading-tight">
-                  Taste the Best <br/>that <span className="text-[#E6B05C]">Surprise you</span>
-                </h2>
-                <p className="text-white/50 text-xs md:text-base font-medium mb-5 md:mb-8 leading-relaxed max-w-sm">
-                  Nuestro Conserje Gastronómico analiza tu antojo y encuentra el plato perfecto en nuestro menú.
+                <h2 
+                  className="text-2xl md:text-5xl font-extrabold text-white mb-3 md:mb-4 leading-tight whitespace-pre-line"
+                  dangerouslySetInnerHTML={{ __html: homeSettings?.concierge_h1?.replace(/\n/g, '<br/>') || `Taste the Best <br/>that <span className="text-brand-secondary">Surprise you</span>` }}
+                />
+                <p className="text-white/50 text-xs md:text-base font-medium mb-5 md:mb-8 leading-relaxed max-w-sm whitespace-pre-line">
+                  {homeSettings?.concierge_subtitle || 'Nuestro Conserje Gastronómico analiza tu antojo y encuentra el plato perfecto en nuestro menú.'}
                 </p>
 
                 <div className="glass-dark p-2 rounded-2xl flex flex-col sm:flex-row gap-2 shadow-2xl">
@@ -390,14 +393,19 @@ const LandingPage = () => {
                   <button 
                     onClick={handleConcierge}
                     disabled={isConciergeLoading || !conciergeQuery}
-                    className="bg-[#E6B05C] text-[#1A1A1A] px-6 py-3 rounded-xl text-sm font-bold hover:bg-white transition-colors disabled:opacity-50 flex items-center justify-center min-w-[120px]"
+                    className="bg-brand-secondary text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-white hover:text-brand-primary transition-colors disabled:opacity-50 flex items-center justify-center min-w-[120px]"
                   >
                     {isConciergeLoading ? <Loader2 size={16} className="animate-spin" /> : 'Descubrir'}
                   </button>
                 </div>
               </div>
 
-              <div className="h-full flex items-center justify-center">
+              <div className="h-full flex items-center justify-center relative">
+                {config.conciergeImg && !conciergeResponse && (
+                  <div className="absolute inset-0 opacity-20 pointer-events-none">
+                    <img src={config.conciergeImg} alt="Concierge" className="w-full h-full object-cover rounded-2xl md:rounded-[2rem]" />
+                  </div>
+                )}
                 <AnimatePresence mode="wait">
                   {conciergeResponse ? (
                     <motion.div 
@@ -405,15 +413,19 @@ const LandingPage = () => {
                       initial={{ opacity: 0, scale: 0.9, y: 20 }} 
                       animate={{ opacity: 1, scale: 1, y: 0 }} 
                       exit={{ opacity: 0, scale: 0.9, y: -20 }}
-                      className="glass-dark w-full p-5 md:p-8 rounded-2xl md:rounded-[2rem] relative"
+                      className="glass-dark w-full p-5 md:p-8 rounded-2xl md:rounded-[2rem] relative z-10"
                     >
-                      <div className="absolute -top-6 -left-6 w-12 h-12 bg-[#E6B05C] rounded-full flex items-center justify-center shadow-lg text-[#1A1A1A]">
-                        <Sparkles size={20} />
+                      <div className="absolute -top-6 -left-6 w-12 h-12 bg-brand-secondary rounded-full flex items-center justify-center shadow-lg text-white">
+                        {config.conciergeImg ? (
+                          <img src={config.conciergeImg} alt="Concierge avatar" className="w-full h-full object-cover rounded-full" />
+                        ) : (
+                          <Sparkles size={20} />
+                        )}
                       </div>
                       <p className="text-white text-sm md:text-lg font-medium leading-relaxed italic">
                         "{conciergeResponse}"
                       </p>
-                      <a href="#menu" className="mt-6 text-[11px] font-bold text-[#E6B05C] uppercase tracking-wider hover:text-white transition-colors flex items-center gap-2">
+                      <a href="#menu" className="mt-6 text-[11px] font-bold text-brand-secondary uppercase tracking-wider hover:text-white transition-colors flex items-center gap-2">
                         Ver este plato en el menú <ArrowRight size={14} />
                       </a>
                     </motion.div>
@@ -421,7 +433,7 @@ const LandingPage = () => {
                     <motion.div 
                       key="empty"
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                      className="w-full h-36 md:h-48 border-2 border-dashed border-white/10 rounded-2xl md:rounded-[2rem] flex items-center justify-center text-white/20 p-5 md:p-8 text-center"
+                      className="w-full h-36 md:h-48 border-2 border-dashed border-white/10 rounded-2xl md:rounded-[2rem] flex items-center justify-center text-white/20 p-5 md:p-8 text-center relative z-10"
                     >
                       <span className="font-medium">Haz una petición para ver la magia.</span>
                     </motion.div>
@@ -438,7 +450,9 @@ const LandingPage = () => {
         <div className="container mx-auto">
           <div className="flex justify-between items-end mb-6 md:mb-12">
             <div>
-              <h2 className="text-2xl md:text-3xl font-extrabold mb-1 md:mb-2 text-[#1A1A1A]">Must Try</h2>
+              <h2 className="text-2xl md:text-3xl font-extrabold mb-1 md:mb-2 text-brand-text">
+                {homeSettings?.featured_items_title || 'Must Try'}
+              </h2>
               <p className="text-black/50 font-medium text-sm">Los favoritos de nuestra comunidad.</p>
             </div>
           </div>
@@ -453,7 +467,7 @@ const LandingPage = () => {
                   <h4 className="font-bold text-lg mb-1">{item.name}</h4>
                   <div className="flex justify-between items-center mt-4">
                     <span className="font-extrabold text-lg md:text-xl">{item.price}</span>
-                    <a href="#menu" className="w-8 h-8 rounded-full bg-[#E6B05C] text-black flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-[#E6B05C]/30">
+                    <a href="#menu" className="w-8 h-8 rounded-full bg-brand-secondary text-white flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-brand-secondary/30">
                       <ShoppingBag size={14} />
                     </a>
                   </div>
@@ -464,107 +478,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* AI Event Planner */}
-      <section className="py-12 md:py-24 px-4 md:px-6 lg:px-12 bg-white">
-        <div className="container mx-auto max-w-5xl">
-          <div className="bg-[#1A2421] text-white rounded-2xl md:rounded-[3.5rem] p-6 md:p-20 flex flex-col md:flex-row gap-6 md:gap-12 items-center relative overflow-hidden">
-             <div className="absolute top-0 right-0 w-96 h-96 bg-[#E6B05C]/10 rounded-full blur-[100px]" />
-             
-             <div className="flex-1 z-10">
-               <h2 className="text-2xl md:text-5xl font-extrabold mb-4 md:mb-6 leading-tight">Curador de <br/>Experiencias AI</h2>
-               <p className="text-white/50 text-sm md:text-base mb-6 md:mb-10 leading-relaxed">
-                 Describe el evento perfecto. Nuestro asistente inteligente diseñará un concepto de comida y espacio exclusivo para ti.
-               </p>
-               <button 
-                 onClick={() => setIsEventModalOpen(true)}
-                 className="bg-[#E6B05C] text-[#1A1A1A] px-8 md:px-10 py-3 md:py-4 rounded-full font-bold text-sm hover:bg-white transition-all shadow-xl"
-               >
-                 Diseñar mi evento
-               </button>
-             </div>
-             
-             <div className="flex-1 w-full h-[200px] md:h-[400px] relative rounded-2xl md:rounded-[2.5rem] overflow-hidden shadow-2xl z-10">
-               <img src="https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?auto=format&fit=crop&q=80&w=800" className="w-full h-full object-cover" alt="Experiencia" />
-             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Reviews */}
-      <section className="py-12 md:py-24 px-4 md:px-6 lg:px-12 bg-[#FAFAFA]">
-        <div className="container mx-auto max-w-6xl">
-          <h2 className="text-2xl md:text-4xl font-extrabold mb-6 md:mb-12 text-center">Voces de la Comunidad</h2>
-          <div className="grid md:grid-cols-3 gap-4 md:gap-8">
-            {config.reviews.map((review, idx) => (
-              <div key={idx} className="bg-white p-5 md:p-8 rounded-2xl md:rounded-[2rem] shadow-sm border border-black/5">
-                <div className="flex gap-1 text-[#E6B05C] mb-4 md:mb-6">
-                  {[...Array(review.rating || 5)].map((_, i) => <Star key={i} size={14} fill="currentColor" />)}
-                </div>
-                <p className="text-black/70 font-medium text-[13px] md:text-sm leading-relaxed mb-5 md:mb-8">"{review.text}"</p>
-                <div className="flex items-center gap-3 md:gap-4">
-                  <img src={review.img} alt={review.name} className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover shadow-md" />
-                  <div>
-                    <h4 className="font-bold text-sm text-[#1A1A1A]">{review.name}</h4>
-                    <p className="text-[10px] uppercase tracking-widest text-black/40 font-bold">{review.role}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* AI Event Modal */}
-      <AnimatePresence>
-        {isEventModalOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              className="bg-white w-full max-w-lg rounded-[2.5rem] p-10 shadow-2xl relative"
-            >
-              <button onClick={() => setIsEventModalOpen(false)} className="absolute top-6 right-6 p-2 bg-black/5 rounded-full hover:bg-black/10 transition-colors">
-                <X size={20} />
-              </button>
-              
-              <div className="w-16 h-16 bg-[#E6B05C]/20 text-[#E6B05C] rounded-full flex items-center justify-center mb-8">
-                <Sparkles size={32} />
-              </div>
-              
-              <h3 className="text-3xl font-extrabold mb-4">Tu Evento Premium</h3>
-              <p className="text-black/50 text-sm mb-8 font-medium italic">
-                "¿Qué tienes en mente? Una cena romántica, un brunch de negocios o una celebración grupal..."
-              </p>
-
-              <textarea 
-                value={eventQuery}
-                onChange={(e) => setEventQuery(e.target.value)}
-                placeholder="Describe tu idea aquí..."
-                className="w-full bg-[#FAFAFA] border border-black/10 rounded-2xl p-6 text-sm focus:outline-none focus:border-[#E6B05C] transition-colors resize-none h-32 mb-8 font-medium"
-              />
-
-              <button 
-                onClick={handleEventPlanner}
-                disabled={isEventLoading || !eventQuery}
-                className="w-full bg-[#1A1A1A] text-white py-5 rounded-full font-bold text-sm hover:bg-[#2a2a2a] transition-all disabled:opacity-50 flex justify-center shadow-xl"
-              >
-                {isEventLoading ? <Loader2 size={18} className="animate-spin" /> : "Generar Propuesta"}
-              </button>
-
-              {eventResponse && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                  className="mt-8 p-6 bg-[#F4F0EA] rounded-2xl border border-[#E6B05C]/20"
-                >
-                  <p className="text-sm font-semibold leading-relaxed text-[#1A1A1A]">{eventResponse}</p>
-                </motion.div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Footer */}
       <Footer />

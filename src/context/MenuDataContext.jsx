@@ -5,11 +5,14 @@ const MenuDataContext = createContext({});
 
 export const MenuDataProvider = ({ children }) => {
   const [categories, setCategories] = useState([]);
+  const [allCategories, setAllCategories] = useState([]);
   const [productsByCategory, setProductsByCategory] = useState({});
   const [modifiers, setModifiers] = useState({});
   const [experiences, setExperiences] = useState([]);
   const [banners, setBanners] = useState([]);
   const [allergens, setAllergens] = useState([]);
+  const [homeSettings, setHomeSettings] = useState(null);
+  const [restaurantSettings, setRestaurantSettings] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -119,6 +122,45 @@ export const MenuDataProvider = ({ children }) => {
         if (bnrsError) console.warn('Error fetching banners:', bnrsError);
         setBanners(bnrs || []);
 
+        // Fetch home settings
+        const { data: hSettings, error: hSettingsError } = await supabase
+          .from('home_settings')
+          .select('*')
+          .limit(1)
+          .single();
+        
+        if (hSettingsError && hSettingsError.code !== 'PGRST116') {
+            console.warn('Error fetching home settings:', hSettingsError);
+        }
+        setHomeSettings(hSettings || null);
+
+        // Fetch restaurant settings (Branding)
+        const { data: rSettings, error: rSettingsError } = await supabase
+          .from('restaurant_settings')
+          .select('*')
+          .limit(1)
+          .single();
+        
+        if (rSettingsError && rSettingsError.code !== 'PGRST116') {
+            console.warn('Error fetching restaurant settings:', rSettingsError);
+        }
+        setRestaurantSettings(rSettings || null);
+
+        // --- Suscripción en tiempo real para Branding (opcional) ---
+        const brandingSubscription = supabase
+          .channel('branding-changes')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'restaurant_settings' },
+            (payload) => {
+              console.log('🔔 Branding changed:', payload);
+              if (payload.new) {
+                setRestaurantSettings(payload.new);
+              }
+            }
+          )
+          .subscribe();
+
         // Fetch all products with their category info
         const { data: products, error: prodError } = await supabase
           .from('products')
@@ -163,6 +205,7 @@ export const MenuDataProvider = ({ children }) => {
           });
         });
 
+        setAllCategories(cats);
         setCategories(activeCats);
         setProductsByCategory(grouped);
         
@@ -184,6 +227,36 @@ export const MenuDataProvider = ({ children }) => {
     fetchMenuData();
   }, []);
 
+  // Inject CSS Variables for Dynamic Theming
+  useEffect(() => {
+    if (!restaurantSettings) return;
+
+    const root = document.documentElement;
+    const colors = {
+      '--color-brand-primary': restaurantSettings.primary_color || '#2f4131',
+      '--color-brand-secondary': restaurantSettings.theme_secondary || '#7db87a',
+      '--color-brand-bg': restaurantSettings.theme_background || '#f9f8f6',
+      '--color-brand-card': restaurantSettings.theme_card_bg || '#ffffff',
+      '--color-brand-text': restaurantSettings.theme_text || '#2c3e2d',
+      '--color-brand-footer': restaurantSettings.theme_footer_bg || '#2f4131',
+    };
+
+    Object.entries(colors).forEach(([variable, value]) => {
+      root.style.setProperty(variable, value);
+    });
+
+    // Dynamic favicon injection
+    const faviconUrl = restaurantSettings.favicon_url || '/logoalto.png';
+    let link = document.querySelector("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.type = 'image/png';
+    link.href = faviconUrl;
+  }, [restaurantSettings]);
+
   const getProductsByCategory = (slug) => {
     return productsByCategory[slug] || [];
   };
@@ -199,7 +272,8 @@ export const MenuDataProvider = ({ children }) => {
   return (
     <MenuDataContext.Provider 
       value={{ 
-        categories, 
+        categories,
+        allCategories,
         productsByCategory,
         getProductsByCategory,
         getAllProducts,
@@ -208,6 +282,8 @@ export const MenuDataProvider = ({ children }) => {
         experiences,
         banners,
         allergens,
+        homeSettings,
+        restaurantSettings,
         loading 
       }}
     >

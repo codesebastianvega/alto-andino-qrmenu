@@ -10,10 +10,10 @@ export function Chip({ active, onClick, children, className = "", shape = "pill"
       className={cx(
         "border px-3 py-1 text-sm transition",
         active
-          ? "border-alto-primary bg-alto-primary text-white shadow"
+          ? "border-brand-primary bg-brand-primary text-white shadow"
           : "border-neutral-300 bg-white text-neutral-800 hover:border-neutral-400",
         rounded,
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2",
         className
       )}
     >
@@ -30,7 +30,7 @@ export function Button({ variant = "primary", className = "", type = "button", .
       {...props}
       className={
         base +
-        " focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 " +
+        " focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 " +
         className
       }
     />
@@ -54,9 +54,9 @@ export function AddButton({
       aria-label={hideText ? "Agregar" : undefined}
       className={cx(
         "inline-flex select-none items-center justify-center gap-2 rounded-full font-semibold shadow-sm transition",
-        "bg-[#2f4131] text-white hover:bg-[#243326]",
+        "bg-brand-primary text-white hover:opacity-90",
         "border border-black/10",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2",
         "h-9 w-auto min-w-[90px] px-3 sm:h-8",
         "active:translate-y-[1px]",
         "disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-500",
@@ -81,7 +81,7 @@ export function AddButton({
 
 // FAB circular “+” (usado en cada card)
 export function AddIconButton({ className = "", disabled = false, variant = "solid", ...props }) {
-  const baseColor = variant === "light" ? "bg-white text-[#2f4131]" : "bg-[#2f4131] text-white";
+  const baseColor = variant === "light" ? "bg-white text-brand-primary" : "bg-brand-primary text-white";
   return (
     <button
       type="button"
@@ -91,7 +91,7 @@ export function AddIconButton({ className = "", disabled = false, variant = "sol
         "grid place-items-center rounded-full shadow-sm ring-1 ring-black/5",
         "h-9 w-9 sm:h-8 sm:w-8",
         "transition will-change-transform hover:scale-105 active:scale-95",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2",
         disabled && "cursor-not-allowed opacity-40",
         baseColor,
         className

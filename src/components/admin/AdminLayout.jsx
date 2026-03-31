@@ -14,6 +14,8 @@ import AdminKitchen from '../../pages/AdminKitchen';
 import AdminDashboard from '../../pages/AdminDashboard';
 import AdminStaff from '../../pages/AdminStaff';
 import AdminPinLogin from './AdminPinLogin';
+import AdminWebContent from '../../pages/AdminWebContent';
+import { useMenuData } from '../../context/MenuDataContext';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
 const Icons = {
@@ -108,13 +110,22 @@ const Icons = {
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
     </svg>
   ),
+  Web: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+      <circle cx="12" cy="12" r="10" />
+    </svg>
+  ),
 };
 
 const CARTA_ITEMS = [
   { id: 'products',   label: 'Productos',   Icon: Icons.Products, roles: ['admin'] },
   { id: 'categories', label: 'Categorías',  Icon: Icons.Categories, roles: ['admin'] },
-  { id: 'experiences', label: 'Experiencias', Icon: Icons.Experiences, roles: ['admin'] },
   { id: 'allergens',  label: 'Dietas y Alérgenos', Icon: Icons.Allergens, roles: ['admin'] },
+];
+
+const WEB_ITEMS = [
+  { id: 'web', label: 'Gestión Web', Icon: Icons.Web, roles: ['admin'] },
 ];
 
 const PROD_ITEMS = [
@@ -125,19 +136,39 @@ const PROD_ITEMS = [
 const ADJUST_ITEMS = [
   { id: 'settings',    label: 'Ajustes Generales', Icon: Icons.Settings, roles: ['admin'] },
 ];
-
 export default function AdminLayout() {
+  // Read page from URL or default to orders
+  const getInitialPage = () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('admin_page') || 'orders';
+  };
+
   const [user, setUser] = useState(null);
-  const [currentPage, setCurrentPage] = useState('orders'); // Cambiado a orders por defecto
+  const [currentPage, setCurrentPage] = useState(getInitialPage); 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const { restaurantSettings } = useMenuData();
+
+  const logoUrl = (restaurantSettings?.logo_url && restaurantSettings.logo_url !== '') 
+    ? restaurantSettings.logo_url 
+    : "/logoalto.png";
+  const restaurantName = restaurantSettings?.business_name || "Alto Andino";
+
+  // Sync page state with URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('admin_page') !== currentPage) {
+      params.set('admin_page', currentPage);
+      window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}${window.location.hash}`);
+    }
+  }, [currentPage]);
 
   // Auto-redirect if user's role doesn't have access to "orders"
   useEffect(() => {
-    if (user && user.role === 'kitchen') {
+    if (user && user.role === 'kitchen' && currentPage !== 'kitchen') {
       setCurrentPage('kitchen');
     }
-  }, [user]);
+  }, [user, currentPage]);
 
   useEffect(() => {
     const fetchPendingCount = async () => {
@@ -190,7 +221,7 @@ export default function AdminLayout() {
                     : 'text-white/40 hover:text-white/80 hover:bg-white/5'
                 }`}
               >
-                <span className={`shrink-0 ${isActive ? 'text-[#7db87a]' : ''}`}>
+                <span className={`shrink-0 ${isActive ? 'text-brand-secondary' : ''}`}>
                   <Icon />
                 </span>
                 {!collapsed && <span>{item.label}</span>}
@@ -202,7 +233,7 @@ export default function AdminLayout() {
     );
   };
 
-  const currentItemLabel = [...CARTA_ITEMS, ...PROD_ITEMS, ...ADJUST_ITEMS, 
+  const currentItemLabel = [...WEB_ITEMS, ...CARTA_ITEMS, ...PROD_ITEMS, ...ADJUST_ITEMS, 
     {id: 'dashboard', label: 'Dashboard'}, 
     {id: 'orders', label: 'Pedidos'}, 
     {id: 'kitchen', label: 'Cocina'}
@@ -224,11 +255,11 @@ export default function AdminLayout() {
           {/* Logo Section */}
           <div className={`flex items-center h-20 px-5 gap-3 shrink-0 ${isCollapsed ? 'justify-center px-0' : ''}`}>
              <div className="w-10 h-10 flex items-center justify-center shrink-0 drop-shadow-md">
-               <img src="/logoalto.png" alt="AA" className="w-full h-full object-contain filter brightness-0 invert" />
+               <img src={logoUrl} alt="Logo" className="w-full h-full object-contain filter brightness-0 invert" />
              </div>
              {!isCollapsed && (
                <div>
-                 <p className="text-[14px] font-black text-white tracking-tight uppercase italic">Alto Andino</p>
+                 <p className="text-[14px] font-black text-white tracking-tight uppercase italic">{restaurantName}</p>
                  <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
                     <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">{user.role}</p>
@@ -247,12 +278,12 @@ export default function AdminLayout() {
                  onClick={() => setCurrentPage('dashboard')}
                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
                    currentPage === 'dashboard' 
-                    ? 'bg-gradient-to-r from-[#2f4131] to-[#1a251b] border-white/10 ring-1 ring-white/10 shadow-lg shadow-black/40' 
+                    ? 'bg-gradient-to-r from-brand-primary/80 to-brand-primary border-white/10 ring-1 ring-white/10 shadow-lg shadow-black/40' 
                     : 'bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/10'
                  }`}
                >
                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'dashboard' ? 'bg-[#7db87a]/20 text-[#7db87a]' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'dashboard' ? 'bg-brand-secondary/20 text-brand-secondary' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
                        <Icons.Dashboard />
                     </div>
                     {!isCollapsed && (
@@ -322,6 +353,7 @@ export default function AdminLayout() {
             {/* SECCIONES ESTANDAR */}
             <div className="h-px bg-white/5 mx-6 my-2" />
             
+            <NavSection title="Web y Páginas" items={WEB_ITEMS} current={currentPage} onSelect={setCurrentPage} collapsed={isCollapsed} />
             <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={setCurrentPage} collapsed={isCollapsed} />
             <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={setCurrentPage} collapsed={isCollapsed} />
             <NavSection title="Configuración" items={ADJUST_ITEMS} current={currentPage} onSelect={setCurrentPage} collapsed={isCollapsed} />
@@ -383,10 +415,10 @@ export default function AdminLayout() {
 
         {/* Content */}
         <div className="flex-1">
+          {currentPage === 'web'         && <AdminWebContent />}
           {currentPage === 'products'    && <AdminProducts />}
           {currentPage === 'categories'  && <AdminCategories />}
           {currentPage === 'allergens'   && <AdminAllergens />}
-          { currentPage === 'experiences' && <AdminExperiences /> }
           { currentPage === 'recipes'     && <AdminRecipes /> }
           { currentPage === 'modifiers'   && <AdminModifiers /> }
           { currentPage === 'tables'      && <AdminTables /> }

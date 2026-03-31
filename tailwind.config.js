@@ -4,6 +4,14 @@ export default {
   theme: {
     extend: {
       colors: {
+        brand: {
+          primary: 'var(--color-brand-primary)',
+          secondary: 'var(--color-brand-secondary)',
+          bg: 'var(--color-brand-bg)',
+          card: 'var(--color-brand-card)',
+          text: 'var(--color-brand-text)',
+          footer: 'var(--color-brand-footer)',
+        },
         alto: {
           primary: "#2E7D5B",
           primaryDark: "#1F6245",

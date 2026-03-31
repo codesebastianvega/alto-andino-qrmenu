@@ -1,8 +1,11 @@
 // src/components/QrPoster.jsx
 import QRCode from "react-qr-code";
 import AAImage from "@/components/ui/AAImage";
+import { useMenuData } from "../context/MenuDataContext";
 
 export default function QrPoster({ url }) {
+  const { restaurantSettings } = useMenuData();
+  const logoUrl = restaurantSettings?.logo_url || "/logoalto.png";
   // Lee ?t= de la URL para “Mesa”
   const params =
     typeof window !== "undefined"
@@ -37,10 +40,10 @@ export default function QrPoster({ url }) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-alto-beige p-6 text-alto-text print:bg-white">
+    <div className="flex min-h-screen items-center justify-center bg-brand-bg p-6 text-brand-text print:bg-white">
       <div className="w-full max-w-md rounded-3xl border bg-white p-6 text-center shadow-xl print:border-0 print:shadow-none">
         <AAImage
-          src="/logoalto.png"
+          src={logoUrl}
           alt="Alto Andino"
           className="mx-auto mb-3 h-20 w-20 object-contain"
           priority

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Loader2, Upload, Pencil, Trash2 } from 'lucide-react';
 import { supabase } from '../config/supabase';
 import { toast as toastFn } from '../components/Toast';
 import { PageHeader, PrimaryButton, FormField, TextInput } from '../components/admin/ui';
@@ -11,8 +12,20 @@ const toast = {
 export default function AdminBranding({ isEmbedded = false }) {
   const [settings, setSettings] = useState(null);
   const [loadingSettings, setLoadingSettings] = useState(false);
-  const [settingsForm, setSettingsForm] = useState({ business_name: '', primary_color: '#7db87a', logo_url: '' });
+  const [settingsForm, setSettingsForm] = useState({ 
+    business_name: '', 
+    primary_color: '#7db87a', 
+    logo_url: '',
+    theme_secondary: '#E6B05C',
+    theme_background: '#FAFAFA',
+    theme_card_bg: '#FFFFFF',
+    theme_text: '#1A1A1A',
+    theme_footer_bg: '#1A2421',
+    favicon_url: ''
+  });
   const [isSubmittingSettings, setIsSubmittingSettings] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
 
   const [banners, setBanners] = useState([]);
   const [loadingBanners, setLoadingBanners] = useState(false);
@@ -35,7 +48,13 @@ export default function AdminBranding({ isEmbedded = false }) {
         setSettingsForm({
           business_name: data.business_name || '',
           primary_color: data.primary_color || '#7db87a',
-          logo_url: data.logo_url || ''
+          logo_url: data.logo_url || '',
+          theme_secondary: data.theme_secondary || '#E6B05C',
+          theme_background: data.theme_background || '#FAFAFA',
+          theme_card_bg: data.theme_card_bg || '#FFFFFF',
+          theme_text: data.theme_text || '#1A1A1A',
+          theme_footer_bg: data.theme_footer_bg || '#1A2421',
+          favicon_url: data.favicon_url || ''
         });
       }
     } catch (err) {
@@ -67,28 +86,119 @@ export default function AdminBranding({ isEmbedded = false }) {
     e.preventDefault();
     setIsSubmittingSettings(true);
     try {
+      const payload = {
+        business_name: settingsForm.business_name,
+        primary_color: settingsForm.primary_color,
+        logo_url: settingsForm.logo_url,
+        theme_secondary: settingsForm.theme_secondary,
+        theme_background: settingsForm.theme_background,
+        theme_card_bg: settingsForm.theme_card_bg,
+        theme_text: settingsForm.theme_text,
+        theme_footer_bg: settingsForm.theme_footer_bg,
+        favicon_url: settingsForm.favicon_url,
+        updated_at: new Date()
+      };
+
+      let result;
       if (settings?.id) {
-        const { error } = await supabase.from('restaurant_settings')
-          .update({
-            business_name: settingsForm.business_name,
-            primary_color: settingsForm.primary_color,
-            logo_url: settingsForm.logo_url,
-            updated_at: new Date()
-          })
-          .eq('id', settings.id);
-        if (error) throw error;
+        result = await supabase.from('restaurant_settings')
+          .update(payload)
+          .eq('id', settings.id)
+          .select()
+          .single();
       } else {
-        const { error } = await supabase.from('restaurant_settings')
-          .insert([settingsForm]);
-        if (error) throw error;
+        result = await supabase.from('restaurant_settings')
+          .insert([{ ...settingsForm }])
+          .select()
+          .single();
       }
-      toast.success('Branding guardado. Recarga la app para ver los cambios completos.');
-      fetchSettings();
+
+      if (result.error) throw result.error;
+
+      // Update local state directly from the returned data — no re-fetch needed
+      if (result.data) {
+        setSettings(result.data);
+        setSettingsForm({
+          business_name: result.data.business_name || '',
+          primary_color: result.data.primary_color || '#7db87a',
+          logo_url: result.data.logo_url || '',
+          theme_secondary: result.data.theme_secondary || '#E6B05C',
+          theme_background: result.data.theme_background || '#FAFAFA',
+          theme_card_bg: result.data.theme_card_bg || '#FFFFFF',
+          theme_text: result.data.theme_text || '#1A1A1A',
+          theme_footer_bg: result.data.theme_footer_bg || '#1A2421',
+          favicon_url: result.data.favicon_url || ''
+        });
+      }
+
+      toast.success('¡Branding guardado correctamente!');
     } catch (err) {
-      console.error(err);
-      toast.error('Error guardando configuración de branding');
+      console.error('Error saving branding:', err);
+      toast.error('Error guardando configuración de branding: ' + (err.message || 'desconocido'));
     } finally {
       setIsSubmittingSettings(false);
+    }
+  };
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingLogo(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `logo_${Date.now()}.${fileExt}`;
+      const filePath = `landing_images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('products')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicData } = supabase.storage
+        .from('products')
+        .getPublicUrl(filePath);
+
+      setSettingsForm(prev => ({ ...prev, logo_url: publicData.publicUrl }));
+      toast.success('Logo subido correctamente');
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      toast.error('Error subiendo logo');
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleFaviconUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingFavicon(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `favicon_${Date.now()}.${fileExt}`;
+      const filePath = `landing_images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('products')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicData } = supabase.storage
+        .from('products')
+        .getPublicUrl(filePath);
+
+      setSettingsForm(prev => ({ ...prev, favicon_url: publicData.publicUrl }));
+      toast.success('Favicon subido correctamente');
+    } catch (error) {
+      console.error('Error uploading favicon:', error);
+      toast.error('Error subiendo favicon');
+    } finally {
+      setUploadingFavicon(false);
+      e.target.value = '';
     }
   };
 
@@ -102,15 +212,16 @@ export default function AdminBranding({ isEmbedded = false }) {
         savePayload.product_id = null;
       }
 
+      let result;
       if (currentBanner.id) {
-        ({ error } = await supabase.from('promo_banners').update({
+        result = await supabase.from('promo_banners').update({
           ...savePayload,
           updated_at: new Date()
-        }).eq('id', currentBanner.id));
+        }).eq('id', currentBanner.id);
       } else {
-        ({ error } = await supabase.from('promo_banners').insert([savePayload]));
+        result = await supabase.from('promo_banners').insert([savePayload]);
       }
-      if (error) throw error;
+      if (result.error) throw result.error;
       toast.success(currentBanner.id ? 'Banner actualizado' : 'Banner creado');
       setShowBannerForm(false);
       fetchBanners();
@@ -145,7 +256,7 @@ export default function AdminBranding({ isEmbedded = false }) {
         <PageHeader
           badge="Negocio"
           title="Branding y Diseño"
-          subtitle="Personaliza la identidad visual y los banners del menú digital."
+          subtitle="Personaliza la identidad visual del menú digital."
         />
       )}
 
@@ -183,13 +294,158 @@ export default function AdminBranding({ isEmbedded = false }) {
               </div>
             </FormField>
 
+            <FormField label="Color Secundario (Destacados)">
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={settingsForm.theme_secondary}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, theme_secondary: e.target.value })}
+                  className="h-11 w-12 border border-gray-200 rounded-xl cursor-pointer p-1"
+                />
+                <TextInput
+                  value={settingsForm.theme_secondary}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, theme_secondary: e.target.value })}
+                  placeholder="#E6B05C"
+                  className="font-mono text-xs"
+                />
+              </div>
+            </FormField>
+
+            <FormField label="Color de Fondo Web">
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={settingsForm.theme_background}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, theme_background: e.target.value })}
+                  className="h-11 w-12 border border-gray-200 rounded-xl cursor-pointer p-1"
+                />
+                <TextInput
+                  value={settingsForm.theme_background}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, theme_background: e.target.value })}
+                  placeholder="#FAFAFA"
+                  className="font-mono text-xs"
+                />
+              </div>
+            </FormField>
+
+            <FormField label="Color de Tarjetas / Contenedores">
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={settingsForm.theme_card_bg}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, theme_card_bg: e.target.value })}
+                  className="h-11 w-12 border border-gray-200 rounded-xl cursor-pointer p-1"
+                />
+                <TextInput
+                  value={settingsForm.theme_card_bg}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, theme_card_bg: e.target.value })}
+                  placeholder="#FFFFFF"
+                  className="font-mono text-xs"
+                />
+              </div>
+            </FormField>
+
+            <FormField label="Color de Texto Principal">
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={settingsForm.theme_text}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, theme_text: e.target.value })}
+                  className="h-11 w-12 border border-gray-200 rounded-xl cursor-pointer p-1"
+                />
+                <TextInput
+                  value={settingsForm.theme_text}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, theme_text: e.target.value })}
+                  placeholder="#1A1A1A"
+                  className="font-mono text-xs"
+                />
+              </div>
+            </FormField>
+
+            <FormField label="Color de Footer">
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={settingsForm.theme_footer_bg}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, theme_footer_bg: e.target.value })}
+                  className="h-11 w-12 border border-gray-200 rounded-xl cursor-pointer p-1"
+                />
+                <TextInput
+                  value={settingsForm.theme_footer_bg}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, theme_footer_bg: e.target.value })}
+                  placeholder="#1A2421"
+                  className="font-mono text-xs"
+                />
+              </div>
+            </FormField>
+
             <FormField label="URL del Logo">
-              <TextInput
-                type="text"
-                value={settingsForm.logo_url}
-                onChange={(e) => setSettingsForm({ ...settingsForm, logo_url: e.target.value })}
-                placeholder="https://tudominio.com/logo.png  o  /img/logo.png"
-              />
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <TextInput
+                    type="text"
+                    value={settingsForm.logo_url}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, logo_url: e.target.value })}
+                    placeholder="https://tudominio.com/logo.png o /img/logo.png"
+                  />
+                  <label className={`shrink-0 cursor-pointer flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${uploadingLogo ? 'bg-gray-100 text-gray-400' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>
+                    {uploadingLogo ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
+                    <span>Subir Logo</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleLogoUpload}
+                      disabled={uploadingLogo}
+                    />
+                  </label>
+                </div>
+                {settingsForm.logo_url && (
+                  <div className="w-fit max-w-[200px] h-20 rounded-xl overflow-hidden border border-gray-200 relative bg-gray-50 flex items-center justify-center p-2">
+                     <img src={settingsForm.logo_url} alt="Logo preview" className="max-w-full max-h-full object-contain" />
+                  </div>
+                )}
+              </div>
+            </FormField>
+
+            <FormField label="Favicon (ícono de pestaña)">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <TextInput
+                    type="text"
+                    value={settingsForm.favicon_url}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, favicon_url: e.target.value })}
+                    placeholder="https://tudominio.com/favicon.png o /favicon.png"
+                  />
+                  <label className={`shrink-0 cursor-pointer flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${uploadingFavicon ? 'bg-gray-100 text-gray-400' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>
+                    {uploadingFavicon ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
+                    <span>Subir Favicon</span>
+                    <input 
+                      type="file" 
+                      accept="image/png,image/x-icon,image/svg+xml,image/ico" 
+                      className="hidden" 
+                      onChange={handleFaviconUpload}
+                      disabled={uploadingFavicon}
+                    />
+                  </label>
+                </div>
+                {settingsForm.favicon_url && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200 relative bg-gray-50 flex items-center justify-center p-1">
+                      <img src={settingsForm.favicon_url} alt="Favicon preview" className="max-w-full max-h-full object-contain" />
+                    </div>
+                    <span className="text-xs text-gray-400">Vista previa del favicon</span>
+                  </div>
+                )}
+              </div>
             </FormField>
 
             <div className="pt-5 border-t border-gray-100 flex justify-end">
@@ -201,167 +457,6 @@ export default function AdminBranding({ isEmbedded = false }) {
               </PrimaryButton>
             </div>
           </form>
-        </div>
-
-        {/* Banners CRUD */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-          <div className="px-8 py-5 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-            <div>
-              <h3 className="text-base font-semibold text-gray-900">Banners Promocionales</h3>
-              <p className="text-[13px] text-gray-500 mt-0.5">Gestiona los banners que aparecen en el Hero del menú.</p>
-            </div>
-            {!showBannerForm && (
-              <PrimaryButton 
-                onClick={() => {
-                  setCurrentBanner({ title: '', subtitle: '', image_url: '', cta_text: '', cta_link: '', is_active: true, type: 'info', bg_color: '#2f4131', product_id: '' });
-                  setShowBannerForm(true);
-                }}
-                className="py-1.5 px-4 text-xs"
-              >
-                Nuevo Banner
-              </PrimaryButton>
-            )}
-          </div>
-
-          <div className="p-8">
-            {showBannerForm ? (
-              <form onSubmit={handleSaveBanner} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField label="Título">
-                    <TextInput 
-                      value={currentBanner.title} 
-                      onChange={e => setCurrentBanner({...currentBanner, title: e.target.value})}
-                      required
-                    />
-                  </FormField>
-                  <FormField label="Subtítulo">
-                    <TextInput 
-                      value={currentBanner.subtitle} 
-                      onChange={e => setCurrentBanner({...currentBanner, subtitle: e.target.value})}
-                    />
-                  </FormField>
-                  <FormField label="URL Imagen">
-                    <TextInput 
-                      value={currentBanner.image_url} 
-                      onChange={e => setCurrentBanner({...currentBanner, image_url: e.target.value})}
-                      required
-                    />
-                  </FormField>
-                  <FormField label="Texto CTA (Botón)">
-                    <TextInput 
-                      value={currentBanner.cta_text} 
-                      onChange={e => setCurrentBanner({...currentBanner, cta_text: e.target.value})}
-                      placeholder="Ej. Ver Menú"
-                    />
-                  </FormField>
-                  <FormField label="Tipo de Banner">
-                    <select
-                      value={currentBanner.type || 'info'}
-                      onChange={e => setCurrentBanner({...currentBanner, type: e.target.value})}
-                      className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                    >
-                      <option value="info">Informativo</option>
-                      <option value="product">Producto (Destacado)</option>
-                    </select>
-                  </FormField>
-                  
-                  {currentBanner.type === 'product' && (
-                    <FormField label="ID del Producto (Supabase UUID)">
-                      <TextInput 
-                        value={currentBanner.product_id || ''} 
-                        onChange={e => setCurrentBanner({...currentBanner, product_id: e.target.value})}
-                        placeholder="Ej. 123e4567-e89b-12d3..."
-                      />
-                    </FormField>
-                  )}
-
-                  <FormField label="Link CTA">
-                    <TextInput 
-                      value={currentBanner.cta_link} 
-                      onChange={e => setCurrentBanner({...currentBanner, cta_link: e.target.value})}
-                      placeholder="Ej. /categoria/algo o 'modal:petfriendly'"
-                    />
-                  </FormField>
-
-                  <FormField label="Color de Fondo">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        value={currentBanner.bg_color || '#2f4131'}
-                        onChange={(e) => setCurrentBanner({ ...currentBanner, bg_color: e.target.value })}
-                        className="h-11 w-12 border border-gray-200 rounded-xl cursor-pointer p-1"
-                      />
-                      <TextInput
-                        value={currentBanner.bg_color || '#2f4131'}
-                        onChange={(e) => setCurrentBanner({ ...currentBanner, bg_color: e.target.value })}
-                        placeholder="#2f4131"
-                        className="font-mono text-xs"
-                      />
-                    </div>
-                  </FormField>
-                  <div className="flex items-center gap-4 pt-8">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={currentBanner.is_active} 
-                        onChange={e => setCurrentBanner({...currentBanner, is_active: e.target.checked})}
-                        className="rounded border-gray-300 text-black focus:ring-black"
-                      />
-                      <span className="text-sm font-medium text-gray-700">Banner Activo</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
-                  <button 
-                    type="button"
-                    onClick={() => setShowBannerForm(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900"
-                  >
-                    Cancelar
-                  </button>
-                  <PrimaryButton type="submit" disabled={isSubmittingBanner}>
-                    {isSubmittingBanner ? 'Guardando...' : currentBanner.id ? 'Actualizar' : 'Crear'}
-                  </PrimaryButton>
-                </div>
-              </form>
-            ) : (
-              <div className="space-y-4">
-                {banners.length === 0 ? (
-                  <div className="text-center py-10 text-gray-400 italic text-sm">
-                    No hay banners configurados.
-                  </div>
-                ) : (
-                  banners.map(banner => (
-                    <div key={banner.id} className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 bg-gray-50/30">
-                      <img src={banner.image_url} className="w-24 h-16 object-cover rounded-xl shadow-sm" alt="" />
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-gray-900 truncate">{banner.title}</h4>
-                        <p className="text-xs text-gray-500 truncate">{banner.subtitle}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => {
-                            setCurrentBanner(banner);
-                            setShowBannerForm(true);
-                          }}
-                          className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                        >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteBanner(banner.id)}
-                          className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                        >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>

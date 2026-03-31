@@ -3,11 +3,17 @@ import { Icon } from "@iconify-icon/react";
 import { motion } from "framer-motion";
 import { getTableId } from "@/utils/table";
 import { Leaf, ShoppingBag, Search, User } from "lucide-react";
+import { useMenuData } from "../context/MenuDataContext";
 
 export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, currentHash = '' }) {
   const [table, setTable] = useState("");
   const [activeOrderId, setActiveOrderId] = useState(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  const { restaurantSettings } = useMenuData();
+
+  const logoUrl = (restaurantSettings?.logo_url && restaurantSettings.logo_url !== '') 
+    ? restaurantSettings.logo_url 
+    : "/logoalto.png";
 
   useEffect(() => {
     try {
@@ -69,7 +75,7 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
         <div className="flex items-center gap-3 md:gap-6">
           <a href="#inicio" className="flex items-center gap-2 group">
             <div className="flex items-center justify-center">
-              <img src="/logoalto.png" alt="Alto Andino Logo" className="h-8 md:h-10 object-contain group-hover:scale-105 transition-transform" />
+              <img src={logoUrl} alt="Logo" className="h-8 md:h-10 object-contain group-hover:scale-105 transition-transform" />
             </div>
           </a>
 
@@ -81,8 +87,8 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
                 href={link.hash}
                 className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all duration-300 ${
                   activeTabId === link.id
-                    ? 'bg-[#1A2421] text-white shadow-md'
-                    : 'text-[#1A1A1A]/60 hover:text-[#1A1A1A] hover:bg-black/5'
+                    ? 'bg-brand-primary text-white shadow-md'
+                    : 'text-brand-primary/60 hover:text-brand-primary hover:bg-black/5'
                 }`}
               >
                 {link.label}
@@ -95,7 +101,7 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
         <div className="flex items-center gap-2 md:gap-3">
           {/* Mesa badge */}
           {table && (
-            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-[#1A2421]/10 px-3 py-1 text-[11px] font-bold text-[#1A2421]">
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-brand-primary/10 px-3 py-1 text-[11px] font-bold text-brand-primary">
               <Icon icon="mdi:table-chair" className="text-[13px]" />
               Mesa {table}
             </span>
@@ -147,8 +153,8 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
             href="#perfil"
             className={`hidden sm:flex items-center gap-2 pl-2.5 pr-4 py-1.5 rounded-full transition-all text-xs font-bold ${
               activeTabId === 'perfil'
-                ? 'bg-[#1A2421] text-white shadow-md'
-                : 'bg-[#1A2421] text-white hover:bg-[#2a3a2c] shadow-sm'
+                ? 'bg-brand-primary text-white shadow-md'
+                : 'bg-brand-primary text-white hover:opacity-90 shadow-sm'
             }`}
           >
             <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">

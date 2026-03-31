@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '../../config/supabase';
 import { Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButton } from './ui';
 
 export default function CategoryForm({ category, onSave, onCancel }) {
@@ -6,8 +7,17 @@ export default function CategoryForm({ category, onSave, onCancel }) {
     name: '', slug: '', icon: '🍽️', sort_order: 0, is_active: true,
     banner_image_url: '', banner_title: '', banner_description: '', accent_color: '#2f4131',
     available_from: '', available_to: '',
-    visibility_config: { days: [0,1,2,3,4,5,6], subcategories: [], section_type: 'standard' }
+    visibility_config: { 
+      days: [0,1,2,3,4,5,6], 
+      subcategories: [], 
+      section_type: 'standard',
+      show_in_hero: false,
+      hero_featured_product_id: '',
+      hero_rating: '5.0',
+      hero_prep_time: '15 mins'
+    }
   });
+  const [categoryProducts, setCategoryProducts] = useState([]);
 
   useEffect(() => {
     if (category) {
@@ -17,8 +27,26 @@ export default function CategoryForm({ category, onSave, onCancel }) {
         banner_image_url: category.banner_image_url || '', banner_title: category.banner_title || '',
         banner_description: category.banner_description || '', accent_color: category.accent_color || '#2f4131',
         available_from: category.available_from || '', available_to: category.available_to || '',
-        visibility_config: category.visibility_config || { days: [0,1,2,3,4,5,6], subcategories: [], section_type: 'standard' }
+        visibility_config: category.visibility_config || { 
+          days: [0,1,2,3,4,5,6], 
+          subcategories: [], 
+          section_type: 'standard',
+          show_in_hero: false,
+          hero_featured_product_id: '',
+          hero_rating: '5.0',
+          hero_prep_time: '15 mins'
+        }
       });
+      
+      if (category.id) {
+        // Fetch products for this category to allow setting the hero featured product
+        supabase.from('products')
+          .select('id, name')
+          .eq('category_id', category.id)
+          .then(({ data }) => {
+            if (data) setCategoryProducts(data);
+          });
+      }
     }
   }, [category]);
 
@@ -219,7 +247,63 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                 <option value="grid">Cuadrícula (2 columnas)</option>
                 <option value="wide-grid">Cuadrícula Amplia (Fotos grandes)</option>
               </select>
-            </FormField> 
+            </FormField>
+            
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#2f4131] pb-1 border-b border-[#2f4131]/20 mt-6 pt-2">
+              Configuración Home Hero
+            </p>
+            <div className="p-4 bg-blue-50/50 border border-blue-100/50 rounded-2xl space-y-4">
+              <div className="flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-gray-100 shadow-sm">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Mostrar en Hero</p>
+                  <p className="text-[11px] text-gray-500 font-medium">Aparecerá en el slider principal.</p>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setFormData(p => ({ ...p, visibility_config: { ...p.visibility_config, show_in_hero: !p.visibility_config?.show_in_hero } }))}
+                  className={`w-9 h-[22px] rounded-full relative transition-all shadow-inner ${formData.visibility_config?.show_in_hero ? 'bg-[#2f4131]' : 'bg-gray-200'}`}
+                >
+                  <div className={`absolute top-[3px] w-4 h-4 bg-white rounded-full shadow-sm transition-all ${formData.visibility_config?.show_in_hero ? 'left-[18px]' : 'left-[3px]'}`} />
+                </button>
+              </div>
+              
+              {formData.visibility_config?.show_in_hero && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                  <FormField label="Producto Estrella (Se usará su Foto y Precio)">
+                    <select 
+                      value={formData.visibility_config?.hero_featured_product_id || ''}
+                      onChange={(e) => setFormData(p => ({ ...p, visibility_config: { ...p.visibility_config, hero_featured_product_id: e.target.value } }))}
+                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none"
+                    >
+                      <option value="">Selecciona un producto...</option>
+                      {categoryProducts.map(prod => (
+                        <option key={prod.id} value={prod.id}>{prod.name}</option>
+                      ))}
+                    </select>
+                    {(!categoryProducts || categoryProducts.length === 0) && (
+                      <p className="text-[11px] text-orange-500 mt-1 italic">Guarda la categoría y añádele productos primero.</p>
+                    )}
+                  </FormField>
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField label="Rating Visual">
+                      <TextInput 
+                        placeholder="Ej. 4.9" 
+                        value={formData.visibility_config?.hero_rating || ''} 
+                        onChange={(e) => setFormData(p => ({ ...p, visibility_config: { ...p.visibility_config, hero_rating: e.target.value } }))} 
+                      />
+                    </FormField>
+                    <FormField label="Tiempo Prep.">
+                      <TextInput 
+                        placeholder="Ej. 15 mins" 
+                        value={formData.visibility_config?.hero_prep_time || ''} 
+                        onChange={(e) => setFormData(p => ({ ...p, visibility_config: { ...p.visibility_config, hero_prep_time: e.target.value } }))} 
+                      />
+                    </FormField>
+                  </div>
+                </div>
+              )}
+            </div>
+            
           </div>
 
           {/* Active toggle */}
