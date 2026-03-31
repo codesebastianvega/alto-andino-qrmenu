@@ -5,6 +5,7 @@ import AlunaFeatures from "../components/aluna/AlunaFeatures";
 import AlunaHowItWorks from "../components/aluna/AlunaHowItWorks";
 import AlunaPortfolio from "../components/aluna/AlunaPortfolio";
 import AlunaPricing from "../components/aluna/AlunaPricing";
+import AlunaFAQ from "../components/aluna/AlunaFAQ";
 import AlunaContact from "../components/aluna/AlunaContact";
 import AlunaFooter from "../components/aluna/AlunaFooter";
 
@@ -18,6 +19,7 @@ export default function AlunaLanding() {
       <AlunaFeatures />
       <AlunaPortfolio />
       <AlunaPricing />
+      <AlunaFAQ />
       <AlunaContact />
       <AlunaFooter />
     </div>
