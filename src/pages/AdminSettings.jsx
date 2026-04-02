@@ -14,7 +14,7 @@ const toast = {
 };
 
 export default function AdminSettings() {
-  const { isFeatureLocked, activePlan } = useAuth();
+  const { isFeatureLocked, activePlan, activeBrand } = useAuth();
   const [activeTab, setActiveTab] = useState('general');
   const [settings, setSettings] = useState(null);
   const [loadingSettings, setLoadingSettings] = useState(false);
@@ -30,14 +30,23 @@ export default function AdminSettings() {
   const [isSubmittingHours, setIsSubmittingHours] = useState(false);
 
   useEffect(() => {
-    fetchSettings();
-    fetchHours();
-  }, []);
+    if (activeBrand?.id) {
+      fetchSettings();
+      fetchHours();
+    }
+  }, [activeBrand?.id]);
 
   const fetchSettings = async () => {
+    if (!activeBrand?.id) return;
     setLoadingSettings(true);
     try {
-      const { data, error } = await supabase.from('restaurant_settings').select('*').limit(1).single();
+      const { data, error } = await supabase
+        .from('restaurant_settings')
+        .select('*')
+        .eq('brand_id', activeBrand.id)
+        .limit(1)
+        .single();
+      
       if (error && error.code !== 'PGRST116') throw error;
       if (data) {
         setSettings(data);
@@ -56,11 +65,13 @@ export default function AdminSettings() {
   };
 
   const fetchHours = async () => {
+    if (!activeBrand?.id) return;
     setLoadingHours(true);
     try {
       const { data, error } = await supabase
         .from('business_hours')
         .select('*')
+        .eq('brand_id', activeBrand.id)
         .order('day_of_week', { ascending: true });
       if (error) throw error;
       setHours(data || []);
@@ -80,7 +91,8 @@ export default function AdminSettings() {
         whatsapp_number_orders: settingsForm.whatsapp_number_orders,
         is_service_fee_enabled: settingsForm.is_service_fee_enabled,
         service_fee_percentage: settingsForm.service_fee_percentage,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        brand_id: activeBrand.id
       };
 
       if (settings?.id) {
@@ -114,13 +126,15 @@ export default function AdminSettings() {
     try {
       const { error } = await supabase.from('business_hours').upsert(
         hours.map(h => ({
+          id: h.id, // Include ID for existing rows
+          brand_id: activeBrand.id,
           day_of_week: h.day_of_week,
           open_time: h.open_time,
           close_time: h.close_time,
           is_closed: h.is_closed,
           updated_at: new Date()
         })),
-        { onConflict: 'day_of_week' }
+        { onConflict: 'brand_id, day_of_week' }
       );
       if (error) throw error;
       toast.success('Horarios actualizados');

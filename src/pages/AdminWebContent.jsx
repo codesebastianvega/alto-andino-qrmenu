@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
+import { useAuth } from '../hooks/useAuth';
 import { toast as toastFn } from '../components/Toast';
 import { PrimaryButton, FormField, TextInput } from '../components/admin/ui';
 import { Icon } from '@iconify-icon/react';
@@ -11,6 +12,7 @@ const toast = {
 };
 
 export default function AdminWebContent() {
+  const { activeBrand } = useAuth();
   const getInitialTab = () => {
     const params = new URLSearchParams(window.location.search);
     return params.get('tab') || 'inicio';
@@ -60,14 +62,22 @@ export default function AdminWebContent() {
   const [dismissedHeroInfo, setDismissedHeroInfo] = useState(false);
 
   useEffect(() => {
-    fetchHomeSettings();
-    fetchProducts();
-  }, []);
+    if (activeBrand?.id) {
+      fetchHomeSettings();
+      fetchProducts();
+    }
+  }, [activeBrand?.id]);
 
   const fetchHomeSettings = async () => {
+    if (!activeBrand?.id) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.from('home_settings').select('*').limit(1).single();
+      const { data, error } = await supabase
+        .from('home_settings')
+        .select('*')
+        .eq('brand_id', activeBrand.id)
+        .limit(1)
+        .single();
       if (error && error.code !== 'PGRST116') throw error;
       if (data) {
         setData(prev => ({ ...prev, ...data }));
@@ -82,10 +92,12 @@ export default function AdminWebContent() {
 
   const [allProducts, setAllProducts] = useState([]);
   const fetchProducts = async () => {
+    if (!activeBrand?.id) return;
     try {
       const { data: products } = await supabase
         .from('products')
         .select('id, name, image_url, price, category_id, categories(name)')
+        .eq('brand_id', activeBrand.id)
         .eq('is_active', true)
         .order('name');
       setAllProducts(products || []);
@@ -125,7 +137,10 @@ export default function AdminWebContent() {
         updated_at: new Date().toISOString()
       };
       const { error } = await supabase.from('home_settings')
-        .update(payload)
+        .update({
+          ...payload,
+          brand_id: activeBrand.id
+        })
         .eq('id', data.id);
       if (error) throw error;
       toast.success('Ajustes web guardados');
