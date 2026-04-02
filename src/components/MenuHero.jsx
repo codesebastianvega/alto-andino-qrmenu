@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getStockState, slugify } from '../utils/stock';
 import * as menu from '../data/menuItems';
 import { supabase } from '../config/supabase';
+import { useMenuData } from '../context/MenuDataContext';
+import { useAuth } from '../context/AuthContext';
 
 const CATEGORY_UI = {
   todos: { icon: '✨', label: 'Todos' },
@@ -27,21 +29,12 @@ function getTimeContext() {
 export default function MenuHero({ query, setQuery, activeCategory, setActiveCategory, categories = [] }) {
   const { time, label: greeting, Icon: TimeIcon } = getTimeContext();
   const [user] = useState({ name: 'Invitado', isLogged: false }); // User state mock
-  const [homeSettings, setHomeSettings] = useState(null);
+  const { homeSettings, restaurantSettings } = useMenuData();
+  const { activeBrand } = useAuth();
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const { data, error } = await supabase.from('home_settings').select('*').single();
-        if (!error && data) {
-          setHomeSettings(data);
-        }
-      } catch (err) {
-        console.error('Error fetching settings:', err);
-      }
-    };
-    fetchSettings();
-  }, []);
+  const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
+
+
 
   // --- RECOMENDACIÓN INSTANTÁNEA ---
   const candidates = useMemo(() => {
@@ -88,9 +81,9 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
     if (!instantProduct) return;
     setIsAiLoading(true);
     try {
-      const prompt = `Eres la IA de Alto Andino. Son las ${new Date().getHours()}:00. Recomienda de forma MUY breve (1 sola frase, máximo 15 palabras) el plato: "${instantProduct.name}". Tono: premium y persuasivo.`;
+      const prompt = `Eres la IA de ${brandName}. Son las ${new Date().getHours()}:00. Recomienda de forma MUY breve (1 sola frase, máximo 15 palabras) el plato: "${instantProduct.name}". Tono: premium y persuasivo.`;
       const { data, error } = await supabase.functions.invoke('gemini-chat', {
-        body: { prompt, context: "Experiencia gastronómica premium Alto Andino." }
+        body: { prompt, context: `Experiencia gastronómica premium ${brandName}.` }
       });
       if (error) throw error;
       setAiRecommendation(data.reply);
@@ -282,7 +275,7 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
               </div>
               <h3 
                 className="font-extrabold text-white text-lg md:text-xl leading-tight"
-                dangerouslySetInnerHTML={{ __html: homeSettings?.menu_banner_title?.replace(/\n/g, '<br/>') || 'Vive la experiencia<br/>Alto Andino' }}
+                dangerouslySetInnerHTML={{ __html: homeSettings?.menu_banner_title?.replace(/\n/g, '<br/>') || `Vive la experiencia<br/>${brandName}` }}
               />
             </div>
 

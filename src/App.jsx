@@ -1,6 +1,7 @@
 // src/App.jsx
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useMenuData } from "./context/MenuDataContext";
+import { Loader2 } from "lucide-react";
 
 import { FEATURE_TABS, PUBLIC_URL } from "./config/featureFlags";
 
@@ -28,6 +29,8 @@ const ExperiencesPage = lazy(() => import("./pages/ExperiencesPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/auth/RegisterPage"));
+const AdminOnboarding = lazy(() => import("./pages/AdminOnboarding"));
+import { useAuth } from "./context/AuthContext";
 import BottomTabBar from "./components/navigation/BottomTabBar";
 
 // Carrito
@@ -56,11 +59,25 @@ import Toast from "./components/Toast";
 export default function App() {
   const [open, setOpen] = useState(false);
   const [openGuide, setOpenGuide] = useState(false);
-  const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("todos");
   const [currentHash, setCurrentHash] = useState(window.location.hash);
+  const { activeBrand, profile } = useAuth();
+  const [query, setQuery] = useState("");
   const cart = useCart();
-  const { categories: dbCategories } = useMenuData();
+  const { categories: dbCategories, restaurantSettings } = useMenuData();
+
+  useEffect(() => {
+    const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
+    document.title = brandName;
+
+    // Update favicon
+    const faviconUrl = restaurantSettings?.favicon_url || "/favicon.ico";
+    const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+    link.type = 'image/x-icon';
+    link.rel = 'shortcut icon';
+    link.href = faviconUrl;
+    document.getElementsByTagName('head')[0].appendChild(link);
+  }, [restaurantSettings, activeBrand]);
 
   const isValidCat = (cat) => cat === "todos" || dbCategories.some(c => c.slug === cat);
 
@@ -158,8 +175,20 @@ export default function App() {
     );
   }
 
-  // Check for admin routes: #admin (new panel) or ?admin=1 (old stock admin)
+  // Check for admin routes: #admin (new panel) or #admin/onboarding
   const isNewAdminPanel = currentHash === '#admin';
+  const isOnboardingView = currentHash === '#admin/onboarding';
+
+  // Redirection Logic for Onboarding
+  useEffect(() => {
+    // Only redirect if explicitly false, not null or loading
+    if (isNewAdminPanel && activeBrand && activeBrand.onboarding_completed === false) {
+      window.location.hash = '#admin/onboarding';
+    }
+    if (isOnboardingView && activeBrand && activeBrand.onboarding_completed === true) {
+      window.location.hash = '#admin';
+    }
+  }, [isNewAdminPanel, isOnboardingView, activeBrand]);
   
   // Detect hash routing for order tracking #order/UUID
   const orderTrackingId = currentHash.startsWith('#order/') ? currentHash.replace('#order/', '') : null;
@@ -169,6 +198,14 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     return params.get("admin") === "1";
   })();
+
+  if (isOnboardingView) {
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
+        <AdminOnboarding />
+      </Suspense>
+    );
+  }
 
   if (isNewAdminPanel) {
     return <AdminLayout />;
@@ -206,7 +243,12 @@ export default function App() {
 
   return (
     <>
-      <div className="bg-[#F5F5F7] leading-snug text-alto-text min-h-screen">
+      <div 
+        className="leading-snug text-alto-text min-h-screen transition-colors duration-500"
+        style={{ 
+          backgroundColor: restaurantSettings?.theme_background || "#F5F5F7"
+        }}
+      >
         {!isDemo && !isAuthView && <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />}
 
         {isLandingView && !isOrderingMode && (

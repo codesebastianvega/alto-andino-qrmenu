@@ -49,7 +49,7 @@ export const breakfastItems = [
   },
   {
     id: "des-changua-2",
-    name: "Changua Alto Andino",
+    name: "Changua Especial",
     price: 12000,
     desc: "Nuestra versión especial de changua: leche caliente con huevo escalfado, trozos de almojábana, queso fresco y cilantro, para un sabor único. 🥚🥛🌾",
   },
@@ -58,7 +58,7 @@ export const breakfastItems = [
 export const mainDishes = [
   {
     id: "main-salmon",
-    name: "Salmon Andino 200 gr",
+    name: "Salmon Especial 200 gr",
     price: 47000,
     desc: "En sarten de hierro, salsa miel-mostaza y oregano con guarnicion de pure de ahuyama y ensalada de granos calientes.",
     group: "especiales",
@@ -106,7 +106,7 @@ export const mainDishes = [
   },
   {
     id: "main-burger",
-    name: "Burger Andina",
+    name: "Burger Especial",
     price: 26000,
     desc: "",
     group: "en_preparacion",
@@ -219,7 +219,7 @@ export const sandwichItems = [
 export const sandwichTraditionals = [
   {
     id: "sandwich:tradicional-multigranos",
-    name: "Multigranos Andino",
+    name: "Multigranos Especial",
     desc: "Tres panes tajados multigranos, lechuga, tomate, salsas y jamon de pollo con queso mozzarella.",
     price: 8000,
   },

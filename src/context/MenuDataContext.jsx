@@ -14,6 +14,8 @@ export const MenuDataProvider = ({ children }) => {
   const [allergens, setAllergens] = useState([]);
   const [homeSettings, setHomeSettings] = useState(null);
   const [restaurantSettings, setRestaurantSettings] = useState(null);
+  const [brand, setBrand] = useState(null);
+  const [planFeatures, setPlanFeatures] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Get active brand from AuthContext (single source of truth)
@@ -33,6 +35,8 @@ export const MenuDataProvider = ({ children }) => {
     setAllergens([]);
     setHomeSettings(null);
     setRestaurantSettings(null);
+    setBrand(null);
+    setPlanFeatures([]);
 
     try {
       // Helper to add brand filter when needed
@@ -107,6 +111,26 @@ export const MenuDataProvider = ({ children }) => {
         supabase.from('restaurant_settings').select('*').limit(1)
       );
       setRestaurantSettings(rSettings?.[0] || null);
+
+      // Fetch Brand and Plan Features
+      if (brandId) {
+        const { data: brandData } = await supabase
+          .from('brands')
+          .select('*, plans(*)')
+          .eq('id', brandId)
+          .single();
+        
+        if (brandData) {
+          setBrand(brandData);
+          if (brandData.plan_id) {
+            const { data: features } = await supabase
+              .from('plan_features')
+              .select('*')
+              .eq('plan_id', brandData.plan_id);
+            setPlanFeatures(features || []);
+          }
+        }
+      }
 
       // Fetch products
       const { data: products, error: prodError } = await brandFilter(
@@ -210,9 +234,12 @@ export const MenuDataProvider = ({ children }) => {
         allergens,
         homeSettings,
         restaurantSettings,
+        brand,
+        planFeatures,
         loading,
         activeBrandId,
         refetchMenuData: () => fetchMenuData(activeBrandId),
+        hasFeature: (key) => planFeatures?.find(f => f.feature_key === key)?.is_included ?? false,
       }}
     >
       {children}

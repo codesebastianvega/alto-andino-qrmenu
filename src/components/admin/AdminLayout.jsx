@@ -17,6 +17,7 @@ import AdminStaff from '../../pages/AdminStaff';
 import AdminPinLogin from './AdminPinLogin';
 import AdminWebContent from '../../pages/AdminWebContent';
 import BrandSwitcher from './BrandSwitcher';
+import LockOverlay from './LockOverlay';
 import { useMenuData } from '../../context/MenuDataContext';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
@@ -127,15 +128,16 @@ const CARTA_ITEMS = [
 ];
 
 const WEB_ITEMS = [
-  { id: 'web', label: 'Gestión Web', Icon: Icons.Web, roles: ['admin'] },
+  { id: 'web', label: 'Gestión Web', Icon: Icons.Web, roles: ['admin'], feature: 'landing_page' },
 ];
 
 const PROD_ITEMS = [
-  { id: 'recipes',   label: 'Recetas',      Icon: Icons.Recipes, roles: ['admin', 'kitchen'] },
+  { id: 'recipes',   label: 'Recetas',      Icon: Icons.Recipes, roles: ['admin', 'kitchen'], feature: 'inventory' },
   { id: 'modifiers', label: 'Inventario',      Icon: Icons.Modifiers, roles: ['admin', 'kitchen'] },
 ];
 
 const ADJUST_ITEMS = [
+  { id: 'sedes',       label: 'Sedes / Locales', Icon: Icons.Home, roles: ['admin'], feature: 'multi_location' },
   { id: 'settings',    label: 'Ajustes Generales', Icon: Icons.Settings, roles: ['admin'] },
 ];
 export default function AdminLayout() {
@@ -145,13 +147,24 @@ export default function AdminLayout() {
     return params.get('admin_page') || 'orders';
   };
 
-  const { user: authUser, profile, loading: authLoading } = useAuth();
+  const { user: authUser, profile, loading: authLoading, isFeatureLocked, activeBrand, activePlan } = useAuth();
   const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState(getInitialPage); 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
-  const { activeBrand } = useAuth();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [lockedFeatureName, setLockedFeatureName] = useState('');
+  
   const { restaurantSettings } = useMenuData();
+
+  const handleSelectPage = (pageId, label, featureKey) => {
+    if (featureKey && isFeatureLocked(featureKey)) {
+      setLockedFeatureName(label);
+      setShowUpgradeModal(true);
+      return;
+    }
+    setCurrentPage(pageId);
+  };
 
   const logoUrl = activeBrand?.logo_url || restaurantSettings?.logo_url || "/logoalto.png";
   const restaurantName = activeBrand?.name || restaurantSettings?.business_name || "Mi Negocio";
@@ -235,24 +248,42 @@ export default function AdminLayout() {
         )}
         <div className="space-y-0.5 px-2">
           {allowed.map((item) => {
-            const Icon = Icons[item.id.charAt(0).toUpperCase() + item.id.slice(1)];
+            const Icon = Icons[item.id.charAt(0).toUpperCase() + item.id.slice(1)] || item.Icon;
             const isActive = current === item.id;
+            const isLocked = item.feature && isFeatureLocked(item.feature);
+            
             return (
               <button
                 key={item.id}
-                onClick={() => onSelect(item.id)}
-                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+                onClick={() => onSelect(item.id, item.label, item.feature)}
+                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 relative ${
                   collapsed ? 'justify-center px-0' : ''
                 } ${
                   isActive
                     ? 'bg-white/10 text-white shadow-sm shadow-black/20'
                     : 'text-white/40 hover:text-white/80 hover:bg-white/5'
-                }`}
+                } ${isLocked ? 'opacity-60 grayscale-[0.5]' : ''}`}
               >
                 <span className={`shrink-0 ${isActive ? 'text-brand-secondary' : ''}`}>
                   <Icon />
                 </span>
-                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && (
+                  <span className="flex-1 flex items-center justify-between">
+                    {item.label}
+                    {isLocked && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-amber-500/80">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                      </svg>
+                    )}
+                  </span>
+                )}
+                {collapsed && isLocked && (
+                    <div className="absolute top-1 right-1">
+                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                      </svg>
+                    </div>
+                )}
               </button>
             );
           })}
@@ -308,20 +339,27 @@ export default function AdminLayout() {
                
                {/* Dashboard Card */}
                <button 
-                 onClick={() => setCurrentPage('dashboard')}
+                 onClick={() => handleSelectPage('dashboard', 'Dashboard', 'basic_analytics')}
                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
                    currentPage === 'dashboard' 
                     ? 'bg-gradient-to-r from-brand-primary/80 to-brand-primary border-white/10 ring-1 ring-white/10 shadow-lg shadow-black/40' 
                     : 'bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/10'
-                 }`}
+                 } ${isFeatureLocked('basic_analytics') ? 'opacity-60 grayscale-[0.3]' : ''}`}
                >
                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'dashboard' ? 'bg-brand-secondary/20 text-brand-secondary' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
                        <Icons.Dashboard />
                     </div>
                     {!isCollapsed && (
-                      <div className="text-left">
-                        <p className={`text-[13px] font-bold leading-none ${currentPage === 'dashboard' ? 'text-white' : 'text-white/60'}`}>Dashboard</p>
+                      <div className="text-left flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className={`text-[13px] font-bold leading-none ${currentPage === 'dashboard' ? 'text-white' : 'text-white/60'}`}>Dashboard</p>
+                          {isFeatureLocked('basic_analytics') && (
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                          )}
+                        </div>
                         <p className="text-[9px] text-white/30 font-medium mt-1">Métricas y Resumen</p>
                       </div>
                     )}
@@ -330,20 +368,27 @@ export default function AdminLayout() {
 
                {/* Pedidos Card */}
                <button 
-                 onClick={() => setCurrentPage('orders')}
+                 onClick={() => handleSelectPage('orders', 'Pedidos', 'table_management')}
                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
                    currentPage === 'orders' 
                     ? 'bg-gradient-to-r from-blue-900/40 to-blue-950/40 border-blue-500/20 ring-1 ring-blue-500/20 shadow-lg shadow-blue-950/40' 
                     : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                 }`}
+                 } ${isFeatureLocked('table_management') ? 'opacity-60 grayscale-[0.3]' : ''}`}
                >
                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'orders' ? 'bg-blue-400/20 text-blue-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
                        <Icons.Orders />
                     </div>
                     {!isCollapsed && (
-                      <div className="text-left">
-                        <p className={`text-[13px] font-bold leading-none ${currentPage === 'orders' ? 'text-white' : 'text-white/60'}`}>Pedidos</p>
+                      <div className="text-left flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className={`text-[13px] font-bold leading-none ${currentPage === 'orders' ? 'text-white' : 'text-white/60'}`}>Pedidos</p>
+                          {isFeatureLocked('table_management') && (
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                          )}
+                        </div>
                         <p className="text-[9px] text-white/30 font-medium mt-1">Gestión Activa</p>
                       </div>
                     )}
@@ -352,27 +397,34 @@ export default function AdminLayout() {
 
                {/* Cocina Card */}
                <button 
-                 onClick={() => setCurrentPage('kitchen')}
+                 onClick={() => handleSelectPage('kitchen', 'Cocina', 'kitchen_display')}
                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
                    currentPage === 'kitchen' 
                     ? 'bg-gradient-to-r from-orange-900/40 to-orange-950/40 border-orange-500/20 ring-1 ring-orange-500/20 shadow-lg shadow-orange-950/40' 
                     : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                 }`}
+                 } ${isFeatureLocked('kitchen_display') ? 'opacity-60' : ''}`}
                >
                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'kitchen' ? 'bg-orange-400/20 text-orange-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
                        <div className="relative">
                           <Icons.Kitchen />
-                          {pendingOrdersCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-ping" />}
+                          {!isFeatureLocked('kitchen_display') && pendingOrdersCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-ping" />}
                        </div>
                     </div>
                     {!isCollapsed && (
                       <div className="text-left flex-1 flex justify-between items-center pr-1">
                         <div>
-                          <p className={`text-[13px] font-bold leading-none ${currentPage === 'kitchen' ? 'text-white' : 'text-white/60'}`}>Cocina</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className={`text-[13px] font-bold leading-none ${currentPage === 'kitchen' ? 'text-white' : 'text-white/60'}`}>Cocina</p>
+                            {isFeatureLocked('kitchen_display') && (
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                              </svg>
+                            )}
+                          </div>
                           <p className="text-[9px] text-white/30 font-medium mt-1">Monitor de Producción</p>
                         </div>
-                        {pendingOrdersCount > 0 && (
+                        {pendingOrdersCount > 0 && !isFeatureLocked('kitchen_display') && (
                           <span className="bg-orange-500 text-white text-[10px] font-black h-5 px-1.5 flex items-center justify-center rounded-md">
                             {pendingOrdersCount}
                           </span>
@@ -386,21 +438,21 @@ export default function AdminLayout() {
             {/* SECCIONES ESTANDAR */}
             <div className="h-px bg-white/5 mx-6 my-2" />
             
-            <NavSection title="Web y Páginas" items={WEB_ITEMS} current={currentPage} onSelect={setCurrentPage} collapsed={isCollapsed} />
-            <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={setCurrentPage} collapsed={isCollapsed} />
-            <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={setCurrentPage} collapsed={isCollapsed} />
-            <NavSection title="Configuración" items={ADJUST_ITEMS} current={currentPage} onSelect={setCurrentPage} collapsed={isCollapsed} />
+            <NavSection title="Web y Páginas" items={WEB_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+            <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+            <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+            <NavSection title="Configuración" items={ADJUST_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
           </div>
 
           {/* User Section / Collapse toggle */}
           <div className="mt-auto border-t border-white/5 bg-black/10">
-             <button
+             <a
                href="/"
                className={`flex items-center gap-2.5 px-5 py-3 text-[13px] font-medium text-white/40 hover:text-white/70 hover:bg-white/5 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
              >
                 <Icons.Home />
                 {!isCollapsed && <span>Ver Menú Público</span>}
-             </button>
+             </a>
              <button
                onClick={() => setIsCollapsed(!isCollapsed)}
                className="w-full h-12 flex items-center px-5 gap-3 text-white/30 hover:text-white/60 transition-colors border-t border-white/5"
@@ -421,8 +473,14 @@ export default function AdminLayout() {
         }`}
       >
         <header className="h-16 bg-white border-b border-gray-200/60 sticky top-0 z-40 flex items-center justify-between px-8 shadow-sm shadow-black/[0.02]">
-          <div className="flex items-center gap-3">
-             <h2 className="text-[15px] font-black text-gray-900 tracking-tight uppercase italic">{currentItemLabel}</h2>
+          <div className="flex items-center gap-4">
+             <h2 className="text-[15px] font-black text-gray-900 tracking-tight uppercase italic border-r border-gray-200 pr-4">{currentItemLabel}</h2>
+             {activePlan && (
+               <div className="flex items-center gap-2 px-2.5 py-1 bg-brand-primary/5 border border-brand-primary/10 rounded-full">
+                  <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
+                  <span className="text-[10px] font-bold text-brand-primary uppercase tracking-wider">Plan {activePlan.name}</span>
+               </div>
+             )}
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
@@ -453,7 +511,7 @@ export default function AdminLayout() {
         </header>
 
         {/* Content */}
-        <div className="flex-1">
+        <div className="flex-1 relative">
           {currentPage === 'web'         && <AdminWebContent />}
           {currentPage === 'products'    && <AdminProducts />}
           {currentPage === 'categories'  && <AdminCategories />}
@@ -467,6 +525,14 @@ export default function AdminLayout() {
           { currentPage === 'settings'    && <AdminSettings /> }
           { currentPage === 'staff'       && <AdminStaff /> }
           { currentPage === 'dashboard'   && <AdminDashboard /> }
+
+          {/* Feature Lock Overlay */}
+          <LockOverlay 
+            isVisible={showUpgradeModal}
+            onClose={() => setShowUpgradeModal(false)}
+            featureName={lockedFeatureName}
+            planNeeded={lockedFeatureName === 'Gestión Web' || lockedFeatureName === 'Dashboard' ? 'Esencial' : 'Profesional'}
+          />
         </div>
       </main>
     </div>

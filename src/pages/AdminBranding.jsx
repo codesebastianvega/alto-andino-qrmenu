@@ -272,7 +272,7 @@ export default function AdminBranding({ isEmbedded = false }) {
               <TextInput
                 value={settingsForm.business_name}
                 onChange={(e) => setSettingsForm({ ...settingsForm, business_name: e.target.value })}
-                placeholder="Ej. Alto Andino"
+                placeholder="Ej. Mi Restaurante"
                 required
               />
             </FormField>

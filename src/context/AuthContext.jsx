@@ -12,6 +12,32 @@ export const AuthProvider = ({ children }) => {
   // The brand currently being managed in the admin panel
   // Stored in localStorage so it persists across refreshes
   const [activeBrand, setActiveBrandState] = useState(null);
+  const [activeBrandFeatures, setActiveBrandFeatures] = useState([]);
+  const [activePlan, setActivePlan]                   = useState(null);
+
+  const fetchBrandFeatures = useCallback(async (brandId, planId) => {
+    if (!brandId || !planId) return;
+    try {
+      // 1. Fetch Plan details
+      const { data: plan } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('id', planId)
+        .single();
+      
+      setActivePlan(plan);
+
+      // 2. Fetch Features for this plan
+      const { data: features } = await supabase
+        .from('plan_features')
+        .select('*')
+        .eq('plan_id', planId);
+      
+      setActiveBrandFeatures(features || []);
+    } catch (err) {
+      console.error('Error fetching brand features:', err);
+    }
+  }, []);
 
   const fetchProfile = useCallback(async (userId) => {
     try {
@@ -36,7 +62,7 @@ export const AuthProvider = ({ children }) => {
       // Fetch all brands this user owns (owner_id = user.id)
       const { data: brands } = await supabase
         .from('brands')
-        .select('id, name, slug, logo_url, business_type, plan_id')
+        .select('id, name, slug, logo_url, business_type, plan_id, onboarding_completed')
         .eq('owner_id', userId)
         .eq('is_active', true)
         .order('name');
@@ -50,11 +76,13 @@ export const AuthProvider = ({ children }) => {
 
       if (savedBrand) {
         setActiveBrandState(savedBrand);
+        fetchBrandFeatures(savedBrand.id, savedBrand.plan_id);
       } else if (userBrands.length > 0) {
         // Default: the brand matching the profile's brand_id
         const profileBrand = userBrands.find(b => b.id === data.brand_id) || userBrands[0];
         setActiveBrandState(profileBrand);
         localStorage.setItem('aa_active_brand_id', profileBrand.id);
+        fetchBrandFeatures(profileBrand.id, profileBrand.plan_id);
       }
 
     } catch (err) {
@@ -62,7 +90,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchBrandFeatures]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -79,6 +107,8 @@ export const AuthProvider = ({ children }) => {
         setProfile(null);
         setOwnedBrands([]);
         setActiveBrandState(null);
+        setActiveBrandFeatures([]);
+        setActivePlan(null);
         setLoading(false);
       }
     });
@@ -90,7 +120,17 @@ export const AuthProvider = ({ children }) => {
   const switchBrand = useCallback((brand) => {
     setActiveBrandState(brand);
     localStorage.setItem('aa_active_brand_id', brand.id);
-  }, []);
+    fetchBrandFeatures(brand.id, brand.plan_id);
+  }, [fetchBrandFeatures]);
+
+  // Feature Gating Helpers
+  const hasFeature = (featureKey) => {
+    if (!activeBrandFeatures) return false;
+    const feat = activeBrandFeatures.find(f => f.feature_key === featureKey);
+    return feat?.is_included || false;
+  };
+
+  const isFeatureLocked = (featureKey) => !hasFeature(featureKey);
 
   const signIn  = (data) => supabase.auth.signInWithPassword(data);
   const signUp  = (data) => supabase.auth.signUp(data);
@@ -105,8 +145,12 @@ export const AuthProvider = ({ children }) => {
       profile,
       loading,
       ownedBrands,
-      activeBrand,   // the brand currently being managed in admin
-      switchBrand,   // (brand) => void
+      activeBrand,
+      activePlan,
+      activeBrandFeatures,
+      hasFeature,
+      isFeatureLocked,
+      switchBrand,
       signIn,
       signUp,
       signOut,

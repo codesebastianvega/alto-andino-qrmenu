@@ -15,7 +15,10 @@ export default function OrderStatus({ orderId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  const { experiences } = useMenuData();
+  const { experiences, restaurantSettings } = useMenuData();
+  const { activeBrand } = useAuth();
+
+  const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
 
   // --- ESTADO IA (Dato Curioso) ---
   const [aiTrivia, setAiTrivia] = useState('');
@@ -135,7 +138,7 @@ export default function OrderStatus({ orderId }) {
       const randomItem = orderItems[Math.floor(Math.random() * orderItems.length)];
       const itemName = randomItem?.product?.name || "Café";
       
-      const prompt = `Eres la IA interactiva de un restaurante andino llamado Alto Andino. El cliente acaba de pedir un "${itemName}". Genera un (1) dato curioso, elegante y muy breve (máximo 15 palabras) sobre este producto o sus ingredientes. Hazlo sonar sofisticado.`;
+      const prompt = `Eres la IA interactiva de un restaurante llamado ${brandName}. El cliente acaba de pedir un "${itemName}". Genera un (1) dato curioso, elegante y muy breve (máximo 15 palabras) sobre este producto o sus ingredientes. Hazlo sonar sofisticado.`;
       
       const response = await callGemini(prompt);
       
@@ -422,7 +425,7 @@ export default function OrderStatus({ orderId }) {
         ========================================= */}
         <div className="mb-6 flex flex-wrap items-center gap-2 px-2">
           <Sparkles size={16} className="text-[#E6B05C]" />
-          <h3 className="text-sm font-extrabold uppercase tracking-widest text-[#1A1A1A]">Cosas interesantes mientras esperas</h3>
+          <h3 className="text-sm font-extrabold uppercase tracking-widest text-[#1A1A1A]">Descubre {brandName} mientras esperas</h3>
         </div>
 
         {/* Grid de Contenido */}
@@ -455,7 +458,7 @@ export default function OrderStatus({ orderId }) {
             <img 
               src={experiences?.[0]?.image_url || "https://images.unsplash.com/photo-1541167760496-16295cb7c726?auto=format&fit=crop&q=80&w=600"} 
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
-              alt="Experiencias Alto Andino"
+              alt={`Experiencias ${brandName}`}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#1A2421]/90 via-[#1A2421]/30 to-transparent" />
             
@@ -483,7 +486,7 @@ export default function OrderStatus({ orderId }) {
                 <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0">
                   <Info size={12} className="text-[#E6B05C]" />
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">El Dato Andino</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Sabía que...</span>
               </div>
               {isAiLoading ? (
                 <div className="flex items-center gap-2 text-white/50 py-2 mt-auto mb-2"><Loader2 size={16} className="animate-spin" /></div>
@@ -502,7 +505,7 @@ export default function OrderStatus({ orderId }) {
               <Music size={20} />
             </div>
             <div>
-              <h4 className="font-extrabold text-[#1A1A1A] text-lg leading-tight mb-1">Vibe Andino</h4>
+              <h4 className="font-extrabold text-[#1A1A1A] text-lg leading-tight mb-1">{brandName} Vibe</h4>
               <p className="text-xs font-medium text-black/50 flex items-center justify-between group-hover:text-[#1A1A1A] transition-colors">
                 Escucha nuestra playlist <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
               </p>

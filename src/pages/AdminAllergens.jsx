@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
+import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
 import {
   PageHeader, PrimaryButton, SecondaryButton, Badge,
@@ -12,6 +13,7 @@ const toast = {
 };
 
 export default function AdminAllergens() {
+  const { activeBrand } = useAuth();
   const [allergens, setAllergens] = useState([]);
   const [loadingAllergens, setLoadingAllergens] = useState(false);
   
@@ -27,9 +29,11 @@ export default function AdminAllergens() {
   const fetchAllergens = async () => {
     setLoadingAllergens(true);
     try {
+      if (!activeBrand) return;
       const { data, error } = await supabase
         .from('allergens')
         .select('*')
+        .eq('brand_id', activeBrand.id)
         .order('name');
       if (error) throw error;
       setAllergens(data || []);
@@ -69,7 +73,11 @@ export default function AdminAllergens() {
       } else {
         const { error } = await supabase
           .from('allergens')
-          .insert([{ name: allergenForm.name, emoji: allergenForm.emoji }]);
+          .insert([{ 
+            name: allergenForm.name, 
+            emoji: allergenForm.emoji,
+            brand_id: activeBrand.id 
+          }]);
         if (error) throw error;
         toast.success('Alérgeno creado');
       }

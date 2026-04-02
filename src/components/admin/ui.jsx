@@ -176,3 +176,32 @@ export function ModalHeader({ title, subtitle, onClose }) {
     </div>
   );
 }
+
+/** 
+ * Overlay for locked features 
+ * Prevents interaction and shows upgrade message
+ */
+export function LockOverlay({ featureName }) {
+  return (
+    <div className="absolute inset-0 z-[60] backdrop-blur-[2px] bg-white/40 flex items-center justify-center p-8 text-center animate-in fade-in duration-500">
+      <div className="bg-white/90 backdrop-blur-md rounded-[2rem] p-10 max-w-md border border-amber-200/50 shadow-2xl shadow-amber-900/10 flex flex-col items-center">
+        <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mb-6 ring-8 ring-amber-50/50">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-600">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">Módulo No Disponible</h3>
+        <p className="text-sm text-gray-600 leading-relaxed mb-8">
+          El módulo de <span className="font-bold text-gray-900">{featureName}</span> no está incluido en tu plan actual. Actualiza tu suscripción para desbloquear esta funcionalidad.
+        </p>
+        <button 
+          onClick={() => window.open('https://aluna.app/precios', '_blank')}
+          className="w-full py-3.5 bg-amber-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-amber-600/20 hover:bg-amber-700 hover:shadow-xl transition-all active:scale-[0.98]"
+        >
+          Ver Planes y Precios
+        </button>
+      </div>
+    </div>
+  );
+}

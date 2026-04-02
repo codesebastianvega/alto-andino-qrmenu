@@ -5,6 +5,8 @@ import { useCart } from "../context/CartContext";
 import { getStockState, slugify } from "../utils/stock";
 import * as menu from "../data/menuItems";
 import AAImage from "./ui/AAImage";
+import { useMenuData } from "../context/MenuDataContext";
+import { useAuth } from "../context/AuthContext";
 
 // Frases por momento del día (enfocadas en producto)
 const templates = {
@@ -46,21 +48,29 @@ const preferredTime = {
   postres: "tarde",
 };
 
-function getTimeContext() {
+function getTimeContext(city = "") {
   const hour = new Date().getHours();
   const currentTime = hour >= 5 && hour < 12 ? "manana" : hour >= 12 && hour < 18 ? "tarde" : "noche";
   const emojiMap = { manana: "☀️", tarde: "🌤️", noche: "🌙" };
+  
+  const locationSuffix = city ? ` en ${city}` : "";
   const labelMap = {
-    manana: "Buenos días en Zipaquirá",
-    tarde: "Buenas tardes desde Zipaquirá",
-    noche: "Buenas noches en Zipaquirá",
+    manana: `Buenos días${locationSuffix}`,
+    tarde: `Buenas tardes${locationSuffix}`,
+    noche: `Buenas noches${locationSuffix}`,
   };
   return { emoji: emojiMap[currentTime], label: labelMap[currentTime], time: currentTime, hour };
 }
 
 export default function HeroHeadline() {
   const cart = useCart();
-  const { emoji, label, time, hour } = getTimeContext();
+  const { restaurantSettings } = useMenuData();
+  const { activeBrand } = useAuth();
+  
+  const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
+  const brandCity = activeBrand?.city || "";
+
+  const { emoji, label, time, hour } = getTimeContext(brandCity);
 
   // Selección de producto recomendado con stock disponible
   const pools = {
@@ -123,7 +133,7 @@ export default function HeroHeadline() {
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="relative z-10 rounded text-[22px] font-semibold leading-tight tracking-tight md:text-3xl"
       >
-        <span className="sr-only">Alto Andino</span>
+        <span className="sr-only">{brandName}</span>
         <span className="bg-gradient-to-r from-[#203628] to-[#5f8a74] bg-clip-text text-transparent">Comer sano</span>{" "}
         nunca fue tan fácil
       </motion.h1>

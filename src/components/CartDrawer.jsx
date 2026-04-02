@@ -11,6 +11,8 @@ import { Icon } from "@iconify-icon/react";
 import { supabase } from "@/config/supabase";
 import { translateGroup } from "@/utils/formatters";
 import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";
+import { useAuth } from "@/context/AuthContext";
+import { useMenuData } from "@/context/MenuDataContext";
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 3000 }),
@@ -42,9 +44,9 @@ const getTable = () => {
 
 // Using shared translateGroup from utils/formatters.js
 
-const buildWaText = ({ items = [], total = 0, note = "" }) => {
+const buildWaText = ({ items = [], total = 0, note = "", brandName = "Aluna" }) => {
   const mesa = getTable();
-  const lines = ["*Pedido Alto Andino*"];
+  const lines = [`*Pedido ${brandName}*`];
   if (mesa) lines.push(`Mesa: ${mesa}`);
   items.forEach((it, idx) => {
     const unit = getItemUnit(it);
@@ -106,6 +108,11 @@ const renderOptionsPills = (opts) => {
 
 export default function CartDrawer({ open, onClose }) {
   const cart = useCart?.() || {};
+  const { restaurantSettings } = useMenuData();
+  const { activeBrand } = useAuth();
+  
+  const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
+
   const {
     items = [],
     total = 0,

@@ -18,12 +18,13 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMenuData } from '../context/MenuDataContext';
+import { useAuth } from '../context/AuthContext';
 
 // =========================================================================
 // 🎛️ FALLBACK DATA (se usa si Supabase no tiene datos todavía)
 // =========================================================================
 const FALLBACK_HERO_DISHES = [
-  { category: "Pokes", name: "Poke Andino", rating: "4.9", prepTime: "10-15 mins", img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=1200" },
+  { category: "Pokes", name: "Poke Especial", rating: "4.9", prepTime: "10-15 mins", img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=1200" },
   { category: "Bowls", name: "Sunrise Bowl", rating: "4.8", prepTime: "5-10 mins", img: "https://images.unsplash.com/photo-1494390248081-4e521a5940db?auto=format&fit=crop&q=80&w=1200" },
   { category: "Café", name: "Filtrado de Origen", rating: "4.9", prepTime: "5 mins", img: "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&q=80&w=1200" },
   { category: "Postres", name: "Tarta de Higo", rating: "4.7", prepTime: "15 mins", img: "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&q=80&w=1200" }
@@ -56,6 +57,10 @@ const LandingPage = () => {
     restaurantSettings,
     loading: menuLoading 
   } = useMenuData();
+  const { activeBrand } = useAuth();
+  
+  const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
+  const brandCity = activeBrand?.city || "";
 
   const [config, setConfig] = useState({
     heroDishes: [],
@@ -65,7 +70,7 @@ const LandingPage = () => {
     conciergeImg: '',
     conciergeBgColor: '#1A2421',
     heroH1: 'Descubre tus\nplatos favoritos',
-    heroSubtitle: 'Ingredientes locales, nutrición premium y el toque artesanal de nuestra cocina andina, directo a tu mesa.',
+    heroSubtitle: `Ingredientes locales, nutrición premium y el toque artesanal de nuestra cocina${brandCity ? ` en ${brandCity}` : ''}, directo a tu mesa.`,
     heroEmojis: ['🥑', '🌿']
   });
 
@@ -117,7 +122,7 @@ const LandingPage = () => {
       conciergeImg: homeSettings?.concierge_img || '',
       conciergeBgColor: homeSettings?.concierge_bg_color || restaurantSettings?.theme_footer_bg || '#1A2421',
       heroH1: homeSettings?.hero_h1 || 'Descubre tus\nplatos favoritos',
-      heroSubtitle: homeSettings?.hero_subtitle || 'Ingredientes locales, nutrición premium y el toque artesanal de nuestra cocina andina, directo a tu mesa.',
+      heroSubtitle: homeSettings?.hero_subtitle || `Ingredientes locales, nutrición premium y el toque artesanal de nuestra cocina${brandCity ? ` en ${brandCity}` : ''}, directo a tu mesa.`,
       heroEmojis: emojisConfig.length > 0 ? emojisConfig : ['🥑', '🌿']
     };
     
@@ -163,7 +168,7 @@ const LandingPage = () => {
       const { data, error } = await supabase.functions.invoke('gemini-chat', {
         body: { 
           prompt: config.conciergePrompt.replace('{{query}}', conciergeQuery),
-          context: "Menu features pokes, bowls, coffee and desserts. Premium andine ingredients."
+          context: `Menú de ${brandName}. Ingredientes premium y locales.`
         }
       });
       if (error) throw error;
@@ -191,7 +196,7 @@ const LandingPage = () => {
     return (
       <div className="min-h-screen bg-brand-bg flex flex-col items-center justify-center gap-4">
         <Loader2 className="w-12 h-12 text-brand-primary animate-spin" />
-        <p className="text-brand-primary font-bold uppercase tracking-widest text-xs italic">Cargando Experiencia Alto Andino...</p>
+        <p className="text-brand-primary font-bold uppercase tracking-widest text-xs italic">Cargando Experiencia {brandName}...</p>
       </div>
     );
   }

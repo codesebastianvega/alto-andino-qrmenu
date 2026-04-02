@@ -26,6 +26,9 @@ import {
   Coffee
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useMenuData } from '../context/MenuDataContext';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../config/supabase';
 
 export default function ProfilePage() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -79,42 +82,30 @@ export default function ProfilePage() {
     { type: 'Experiencia', title: 'Cata de Cafés de Origen', date: '8 Mar 2026', time: '10:00 AM', guests: 2, status: 'Confirmada' }
   ];
 
-  // --- ESTADOS IA (Perfil de Paladar) ---
-  const [aiPalate, setAiPalate] = useState('');
-  const [isAiLoading, setIsAiLoading] = useState(false);
+  const { restaurantSettings } = useMenuData();
+  const { activeBrand } = useAuth();
+  
+  const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
 
   useEffect(() => {
     generatePalateProfile();
   }, []);
 
-  const callGemini = async (prompt) => {
-    const apiKey = ""; 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-    if(!apiKey) return "Amante de los sabores andinos."; // fallback if no key
-    const payload = { contents: [{ parts: [{ text: prompt }] }] };
-    for (let i = 0; i < 3; i++) {
-       try {
-         const response = await fetch(url, {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify(payload)
-         });
-         if (!response.ok) throw new Error();
-         const data = await response.json();
-         return data.candidates?.[0]?.content?.parts?.[0]?.text || "Amante de los sabores andinos.";
-       } catch (error) {
-         if (i === 2) return "Explorador gastronómico con debilidad por lo saludable.";
-         await new Promise(r => setTimeout(r, 1000));
-       }
-    }
-  };
-
   const generatePalateProfile = async () => {
     setIsAiLoading(true);
-    const prompt = `Eres la IA de Alto Andino. Genera un "Perfil de Paladar" divertido y elegante de 1 sola línea (máx 15 palabras) para el cliente ${user.name}. Ej: "Tu paladar exige frescura premium y notas intensas."`;
-    const response = await callGemini(prompt);
-    setAiPalate(response);
-    setIsAiLoading(false);
+    try {
+      const prompt = `Eres la IA de ${brandName}. Genera un "Perfil de Paladar" divertido y elegante de 1 sola línea (máx 15 palabras) para el cliente ${user.name}. Ej: "Tu paladar exige frescura premium y notas intensas."`;
+      const { data, error } = await supabase.functions.invoke('gemini-chat', {
+        body: { prompt, context: `Experiencia gastronómica en ${brandName}.` }
+      });
+      if (error) throw error;
+      setAiPalate(data.reply);
+    } catch (err) {
+      console.error(err);
+      setAiPalate("Explorador gastronómico con debilidad por lo saludable.");
+    } finally {
+      setIsAiLoading(false);
+    }
   };
 
   const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
@@ -414,7 +405,7 @@ export default function ProfilePage() {
 
           {/* LISTA DE COMUNIDAD (Solo aparece una vez) */}
           <motion.div variants={itemVariants} className="w-full">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-[#1A1A1A]/40 mb-3 px-2">Comunidad Alto Andino</h3>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-[#1A1A1A]/40 mb-3 px-2">Comunidad {brandName}</h3>
             <div className="bg-white rounded-[1.5rem] shadow-sm border border-black/5 overflow-hidden flex flex-col">
               <div className="flex items-center justify-between p-4 hover:bg-black/[0.02] transition-colors cursor-pointer group border-b border-black/5">
                 <div className="flex items-center gap-3">

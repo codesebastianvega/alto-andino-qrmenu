@@ -4,16 +4,17 @@ import { motion } from "framer-motion";
 import { getTableId } from "@/utils/table";
 import { Leaf, ShoppingBag, Search, User } from "lucide-react";
 import { useMenuData } from "../context/MenuDataContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, currentHash = '' }) {
   const [table, setTable] = useState("");
   const [activeOrderId, setActiveOrderId] = useState(null);
   const [isScrolled, setIsScrolled] = useState(false);
-  const { restaurantSettings } = useMenuData();
+  const { restaurantSettings, activeBrandId } = useMenuData();
+  const { activeBrand } = useAuth();
 
-  const logoUrl = (restaurantSettings?.logo_url && restaurantSettings.logo_url !== '') 
-    ? restaurantSettings.logo_url 
-    : "/logoalto.png";
+  const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
+  const logoUrl = restaurantSettings?.logo_url;
 
   useEffect(() => {
     try {
@@ -75,7 +76,13 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
         <div className="flex items-center gap-3 md:gap-6">
           <a href="#inicio" className="flex items-center gap-2 group">
             <div className="flex items-center justify-center">
-              <img src={logoUrl} alt="Logo" className="h-8 md:h-10 object-contain group-hover:scale-105 transition-transform" />
+              {restaurantSettings?.logo_url ? (
+                <img src={logoUrl} alt={brandName} className="h-8 md:h-10 object-contain group-hover:scale-105 transition-transform" />
+              ) : (
+                <span className="text-xl font-black tracking-tighter text-brand-primary group-hover:scale-105 transition-transform inline-block">
+                  {brandName}
+                </span>
+              )}
             </div>
           </a>
 

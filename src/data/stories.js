@@ -58,7 +58,7 @@ export const productStories = {
   // Noticias generales del local
   news: {
     ctaLabel: "Noticias",
-    title: "Noticias Alto Andino",
+    title: "Noticias del Local",
     sections: [
       {
         heading: "Nueva carta",
@@ -76,7 +76,7 @@ export const productStories = {
   // Recetas o tips
   recipes: {
     ctaLabel: "Recetas",
-    title: "Recetas Alto Andino",
+    title: "Nuestras Recetas",
     sections: [
       {
         heading: "Vinagreta de la casa",

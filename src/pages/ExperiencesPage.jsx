@@ -3,6 +3,7 @@ import { Sparkles, Loader2, X, ArrowUpRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../config/supabase';
 import { useMenuData } from '../context/MenuDataContext';
+import { useAuth } from '../context/AuthContext';
 
 const ExperiencesSection = lazy(() => import('../components/ExperiencesSection'));
 
@@ -13,6 +14,9 @@ export default function ExperiencesPage() {
   const [isEventLoading, setIsEventLoading] = useState(false);
   
   const { homeSettings, restaurantSettings, loading: menuLoading } = useMenuData();
+  const { activeBrand } = useAuth();
+  
+  const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
 
   // Variantes de animación
   const fadeUp = {
@@ -31,7 +35,7 @@ export default function ExperiencesPage() {
         .select('ai_event_prompt')
         .single();
         
-      const systemPrompt = settings?.ai_event_prompt || "Eres el 'Curador de Experiencias' de Alto Andino. Crea una propuesta de evento breve y moderna. Incluye: Nombre del evento y concepto de comida/espacio en 3 líneas máximo.";
+      const systemPrompt = settings?.ai_event_prompt || `Eres el 'Curador de Experiencias' de ${brandName}. Crea una propuesta de evento breve y moderna. Incluye: Nombre del evento y concepto de comida/espacio en 3 líneas máximo.`;
       
       const { data, error } = await supabase.functions.invoke('gemini-chat', {
         body: {
@@ -58,7 +62,7 @@ export default function ExperiencesPage() {
         <div className="absolute inset-0 z-0">
           <img 
             src={homeSettings?.experiences_img || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=2000"} 
-            alt="Experiencias Alto Andino" 
+            alt={`Experiencias ${brandName}`} 
             className="w-full h-full object-cover object-center"
           />
           {/* Gradient Overlay for text readability */}
@@ -76,7 +80,7 @@ export default function ExperiencesPage() {
               dangerouslySetInnerHTML={{ __html: homeSettings?.experiences_h1?.replace(/\n/g, '<br/>') || `Vive momentos <br />\n<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-secondary to-brand-secondary/70">inolvidables</span>` }}
             />
             <p className="text-white/70 font-medium text-sm md:text-base leading-relaxed max-w-lg mx-auto whitespace-pre-line">
-              {homeSettings?.experiences_subtitle || 'Eventos únicos, catas de café de especialidad y talleres interactivos. Descubre la esencia de Alto Andino.'}
+              {homeSettings?.experiences_subtitle || `Eventos únicos, catas de café de especialidad y talleres interactivos. Descubre la esencia de ${brandName}.`}
             </p>
           </motion.div>
         </div>

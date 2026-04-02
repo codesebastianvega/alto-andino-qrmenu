@@ -494,7 +494,7 @@ export default function AdminWebContent() {
                     <TextInput 
                       value={data.menu_banner_title || ''} 
                       onChange={(e) => setData({ ...data, menu_banner_title: e.target.value })} 
-                      placeholder="Ej. Menú Alto Andino" 
+                      placeholder="Ej. Menú Principal" 
                     />
                   </FormField>
                   <FormField label="Texto del Tag (Chip)">
