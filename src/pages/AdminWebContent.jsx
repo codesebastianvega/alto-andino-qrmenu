@@ -299,21 +299,28 @@ export default function AdminWebContent() {
                 })()}
               </FormField>
               
-              {!dismissedHeroInfo && (
-                <div className="p-3 bg-blue-50 text-blue-800 rounded-xl border border-blue-100 flex gap-2 items-center text-xs">
-                  <Icon icon="heroicons:information-circle" className="text-base shrink-0" />
-                  <p className="flex-1">
-                    <strong>Platos Estrella dinámicos:</strong> Ve a <strong>Categorías</strong> para elegir qué aparece en el Hero.
-                  </p>
-                  <button 
-                    type="button" 
-                    onClick={() => setDismissedHeroInfo(true)} 
-                    className="text-blue-400 hover:text-blue-700 shrink-0 p-0.5"
-                  >
-                    <Icon icon="heroicons:x-mark" className="text-sm" />
-                  </button>
+              <div className="p-4 bg-[#7db87a]/10 border border-[#7db87a]/20 rounded-2xl flex gap-3 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#7db87a]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+                <div className="w-10 h-10 rounded-xl bg-[#2f4131] flex items-center justify-center shrink-0 shadow-lg shadow-[#2f4131]/20">
+                  <Icon icon="heroicons:sparkles" className="text-white text-xl" />
                 </div>
-              )}
+                <div className="relative z-10">
+                  <h4 className="text-[13px] font-black text-[#2f4131] uppercase tracking-tight italic flex items-center gap-2">
+                    Gestión del Slider Principal
+                  </h4>
+                  <p className="text-[11px] text-gray-600 mt-1 font-medium leading-relaxed">
+                    Para elegir qué platos aparecen en el carrusel de la página de inicio, ve a la sección de 
+                    <button 
+                      onClick={() => window.location.search = '?admin_page=categories'}
+                      className="text-[#2f4131] font-bold border-b border-[#2f4131]/20 hover:border-[#2f4131] transition-all px-0.5 mx-0.5 bg-white/50 rounded"
+                    >
+                      Categorías
+                    </button>
+                    y activa la opción <strong>"Configuración Home Hero"</strong> en cada una. 
+                    ¡Asegúrate de que tengan un Producto Estrella seleccionado!
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}

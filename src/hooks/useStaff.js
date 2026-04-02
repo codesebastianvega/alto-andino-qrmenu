@@ -1,21 +1,34 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
+import { useAuth } from '../context/AuthContext';
 
 export function useStaff() {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { activeBrand } = useAuth();
+  const activeBrandId = activeBrand?.id;
 
   useEffect(() => {
-    fetchStaff();
-  }, []);
+    if (activeBrandId) {
+      fetchStaff();
+    } else {
+      setLoading(false);
+    }
+  }, [activeBrandId]);
 
   async function fetchStaff() {
     try {
       setLoading(true);
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from('staff')
-        .select('*')
+        .select('*');
+
+      if (activeBrandId) {
+        query = query.eq('brand_id', activeBrandId);
+      }
+
+      const { data, error: fetchError } = await query
         .order('name');
 
       if (fetchError) throw fetchError;
@@ -33,7 +46,7 @@ export function useStaff() {
     try {
       const { data, error } = await supabase
         .from('staff')
-        .insert([staffData])
+        .insert([{ ...staffData, brand_id: activeBrandId }])
         .select()
         .single();
       

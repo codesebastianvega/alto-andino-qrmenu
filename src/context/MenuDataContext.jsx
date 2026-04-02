@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../config/supabase';
+import { useAuth } from './AuthContext';
 
 const MenuDataContext = createContext({});
 
@@ -15,222 +16,163 @@ export const MenuDataProvider = ({ children }) => {
   const [restaurantSettings, setRestaurantSettings] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Get active brand from AuthContext (single source of truth)
+  const { activeBrand, loading: authLoading } = useAuth();
+  const activeBrandId = activeBrand?.id ?? null;
+
+  // Fetch menu data for a given brand
+  const fetchMenuData = useCallback(async (brandId) => {
+    setLoading(true);
+    // Clear old state immediately to avoid "ghost" data from other brands
+    setCategories([]);
+    setAllCategories([]);
+    setProductsByCategory({});
+    setModifiers({});
+    setExperiences([]);
+    setBanners([]);
+    setAllergens([]);
+    setHomeSettings(null);
+    setRestaurantSettings(null);
+
+    try {
+      // Helper to add brand filter when needed
+      // When brandId is known, filter explicitly — this handles multi-tenancy for admin panel
+      const brandFilter = (query) => brandId ? query.eq('brand_id', brandId) : query;
+
+      // Fetch categories
+      const { data: cats, error: catError } = await brandFilter(
+        supabase.from('categories').select('*').eq('is_active', true).order('sort_order', { ascending: true })
+      );
+      if (catError) throw catError;
+
+      // Filter categories by dayparting
+      const activeCats = (cats || []).filter(cat => {
+        if (cat.is_active === false) return false;
+        const now = new Date();
+        const currentDay = now.getDay();
+        const config = cat.visibility_config || {};
+        const allowedDays = config.days || [0,1,2,3,4,5,6];
+        if (!allowedDays.includes(currentDay)) return false;
+        if (!cat.available_from && !cat.available_to) return true;
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const parseTime = (t) => { if (!t) return null; const [h,m] = t.split(':').map(Number); return h*60+m; };
+        const from = parseTime(cat.available_from);
+        const to = parseTime(cat.available_to);
+        if (from !== null && to !== null) {
+          return from < to ? (currentMinutes >= from && currentMinutes <= to) : (currentMinutes >= from || currentMinutes <= to);
+        }
+        if (from !== null) return currentMinutes >= from;
+        if (to !== null) return currentMinutes <= to;
+        return true;
+      });
+
+      // Fetch modifiers
+      const { data: mods } = await brandFilter(
+        supabase.from('ingredients').select('*, ingredient_categories(name)').eq('is_active', true).eq('is_modifier', true)
+      );
+      const modGroups = {};
+      (mods || []).forEach(m => {
+        const groupName = m.ingredient_categories?.name || m.category || 'adiciones';
+        if (!modGroups[groupName]) modGroups[groupName] = [];
+        modGroups[groupName].push({ ...m, price: m.selling_price || 0, group: groupName });
+      });
+      setModifiers(modGroups);
+
+      // Fetch experiences
+      const { data: exp } = await brandFilter(
+        supabase.from('experiences').select('*').eq('is_active', true).order('created_at', { ascending: false })
+      );
+      setExperiences(exp || []);
+
+      // Fetch allergens
+      const { data: allgs } = await brandFilter(
+        supabase.from('allergens').select('*').order('name')
+      );
+      setAllergens(allgs || []);
+
+      // Fetch banners
+      const { data: bnrs } = await brandFilter(
+        supabase.from('promo_banners').select('*').eq('is_active', true).order('sort_order', { ascending: true })
+      );
+      setBanners(bnrs || []);
+
+      // Fetch home_settings
+      const { data: hSettings } = await brandFilter(
+        supabase.from('home_settings').select('*').limit(1)
+      );
+      setHomeSettings(hSettings?.[0] || null);
+
+      // Fetch restaurant_settings (branding)
+      const { data: rSettings } = await brandFilter(
+        supabase.from('restaurant_settings').select('*').limit(1)
+      );
+      setRestaurantSettings(rSettings?.[0] || null);
+
+      // Fetch products
+      const { data: products, error: prodError } = await brandFilter(
+        supabase.from('products').select('*, categories:category_id (slug)').eq('is_active', true).order('sort_order', { ascending: true })
+      );
+      if (prodError) throw prodError;
+
+      const grouped = {};
+      (products || []).forEach(product => {
+        if (product.is_addon === true) return;
+        const catSlug = product.categories?.slug || 'otros';
+        if (!grouped[catSlug]) grouped[catSlug] = [];
+        grouped[catSlug].push({
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          desc: product.description || '',
+          tags: product.tags || [],
+          stock_status: product.stock_status || 'in',
+          image: product.image_url,
+          variants: product.variants || [],
+          modifierGroups: product.modifier_groups || [],
+          configOptions: product.config_options || {},
+          is_upsell: product.is_upsell || false,
+          requires_kitchen: product.requires_kitchen ?? true,
+          subcategory: product.subcategory,
+          categorySlug: catSlug,
+          _supabase: product
+        });
+      });
+
+      setAllCategories(cats || []);
+      setCategories(activeCats);
+      setProductsByCategory(grouped);
+
+      console.log('✅ MenuData cargado para brand:', brandId || 'anónimo', {
+        cats: cats?.length || 0,
+        products: products?.length || 0,
+      });
+
+    } catch (err) {
+      console.error('Error fetching menu data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Trigger fetch when activeBrand changes (from AuthContext brand switcher)
   useEffect(() => {
-    const fetchMenuData = async () => {
-      try {
-        // Fetch categories
-        const { data: cats, error: catError } = await supabase
-          .from('categories')
-          .select('*')
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true });
+    if (authLoading) return; // wait for auth to fully resolve
+    fetchMenuData(activeBrandId);
+  }, [activeBrandId, authLoading, fetchMenuData]);
 
-        if (catError) throw catError;
-
-        // Filter categories based on dayparting (time schedule) and days of week
-        const activeCats = cats.filter(cat => {
-          // 1. Basic active toggle
-          if (cat.is_active === false) return false;
-
-          const now = new Date();
-          const currentDay = now.getDay(); // 0 is Sunday, 6 is Saturday
-          
-          // 2. Filter by Day of Week
-          const config = cat.visibility_config || {};
-          const allowedDays = config.days || [0,1,2,3,4,5,6];
-          if (!allowedDays.includes(currentDay)) return false;
-
-          // 3. Filter by Time
-          if (!cat.available_from && !cat.available_to) return true;
-          
-          const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-          const parseTime = (timeStr) => {
-            if (!timeStr) return null;
-            const [h, m] = timeStr.split(':').map(Number);
-            return h * 60 + m;
-          };
-
-          const fromMinutes = parseTime(cat.available_from);
-          const toMinutes = parseTime(cat.available_to);
-
-          if (fromMinutes !== null && toMinutes !== null) {
-            if (fromMinutes < toMinutes) {
-              return currentMinutes >= fromMinutes && currentMinutes <= toMinutes;
-            } else {
-              // Day overlap, e.g., 18:00 to 02:00
-              return currentMinutes >= fromMinutes || currentMinutes <= toMinutes;
-            }
-          } else if (fromMinutes !== null) {
-            return currentMinutes >= fromMinutes;
-          } else if (toMinutes !== null) {
-            return currentMinutes <= toMinutes;
-          }
-          return true;
-        });
-
-        // Fetch modifiers from ingredients table with their category names
-        const { data: mods, error: modError } = await supabase
-          .from('ingredients')
-          .select('*, ingredient_categories(name)')
-          .eq('is_active', true)
-          .eq('is_modifier', true);
-        
-        if (modError) console.warn('Error fetching modifiers:', modError);
-
-        // Group modifiers by category
-        const modGroups = {};
-        if (mods) {
-          mods.forEach(m => {
-            const groupName = m.ingredient_categories?.name || m.category || 'adiciones';
-            if (!modGroups[groupName]) modGroups[groupName] = [];
-            modGroups[groupName].push({
-              ...m,
-              price: m.selling_price || 0,
-              group: groupName
-            });
-          });
-        }
-        setModifiers(modGroups);
-
-        // Fetch experiences
-        const { data: exp, error: expError } = await supabase
-          .from('experiences')
-          .select('*')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false });
-        
-        if (expError) console.warn('Error fetching experiences (table might not exist yet):', expError);
-        setExperiences(exp || []);
-
-        // Fetch allergens
-        const { data: allgs, error: allgError } = await supabase
-          .from('allergens')
-          .select('*')
-          .order('name');
-        
-        if (allgError) console.warn('Error fetching allergens:', allgError);
-        setAllergens(allgs || []);
-
-        // Fetch banners
-        const { data: bnrs, error: bnrsError } = await supabase
-          .from('promo_banners')
-          .select('*')
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true });
-        
-        if (bnrsError) console.warn('Error fetching banners:', bnrsError);
-        setBanners(bnrs || []);
-
-        // Fetch home settings
-        const { data: hSettings, error: hSettingsError } = await supabase
-          .from('home_settings')
-          .select('*')
-          .limit(1)
-          .single();
-        
-        if (hSettingsError && hSettingsError.code !== 'PGRST116') {
-            console.warn('Error fetching home settings:', hSettingsError);
-        }
-        setHomeSettings(hSettings || null);
-
-        // Fetch restaurant settings (Branding)
-        const { data: rSettings, error: rSettingsError } = await supabase
-          .from('restaurant_settings')
-          .select('*')
-          .limit(1)
-          .single();
-        
-        if (rSettingsError && rSettingsError.code !== 'PGRST116') {
-            console.warn('Error fetching restaurant settings:', rSettingsError);
-        }
-        setRestaurantSettings(rSettings || null);
-
-        // --- Suscripción en tiempo real para Branding (opcional) ---
-        const brandingSubscription = supabase
-          .channel('branding-changes')
-          .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'restaurant_settings' },
-            (payload) => {
-              console.log('🔔 Branding changed:', payload);
-              if (payload.new) {
-                setRestaurantSettings(payload.new);
-              }
-            }
-          )
-          .subscribe();
-
-        // Fetch all products with their category info
-        const { data: products, error: prodError } = await supabase
-          .from('products')
-          .select(`
-            *,
-            categories:category_id (slug)
-          `)
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true });
-
-        if (prodError) throw prodError;
-
-        // Group products by category slug
-        const grouped = {};
-        products.forEach(product => {
-          // Filter out items that are strictly addons from the main menu lists
-          if (product.is_addon === true) return;
-
-          // With the join above, product.categories should be { slug: '...' }
-          const cat = product.categories; 
-          const catSlug = cat?.slug || 'otros';
-          
-          if (!grouped[catSlug]) grouped[catSlug] = [];
-          
-          // Map to app format
-          grouped[catSlug].push({
-            id: product.id,
-            name: product.name,
-            price: product.price,
-            desc: product.description || '',
-            tags: product.tags || [],
-            stock_status: product.stock_status || 'in',
-            image: product.image_url,
-            variants: product.variants || [],
-            modifierGroups: product.modifier_groups || [],
-            configOptions: product.config_options || {},
-            is_upsell: product.is_upsell || false,
-            requires_kitchen: product.requires_kitchen ?? true,
-            subcategory: product.subcategory,
-            categorySlug: catSlug,          // expose slug for QuickView fallback
-            _supabase: product
-          });
-        });
-
-        setAllCategories(cats);
-        setCategories(activeCats);
-        setProductsByCategory(grouped);
-        
-        // Debug
-        console.log('✅ Datos cargados:', {
-          cats: cats.length,
-          mods: mods?.length || 0,
-          products: products.length,
-          experiences: exp?.length || 0,
-          allergens: allgs?.length || 0
-        });
-      } catch (err) {
-        console.error('Error fetching menu data:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMenuData();
+  // Real-time branding updates
+  useEffect(() => {
+    const channel = supabase.channel('branding-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_settings' }, (payload) => {
+        if (payload.new) setRestaurantSettings(payload.new);
+      })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
   }, []);
 
   // Inject CSS Variables for Dynamic Theming
   useEffect(() => {
     if (!restaurantSettings) return;
-
     const root = document.documentElement;
     const colors = {
       '--color-brand-primary': restaurantSettings.primary_color || '#2f4131',
@@ -240,38 +182,22 @@ export const MenuDataProvider = ({ children }) => {
       '--color-brand-text': restaurantSettings.theme_text || '#2c3e2d',
       '--color-brand-footer': restaurantSettings.theme_footer_bg || '#2f4131',
     };
+    Object.entries(colors).forEach(([k, v]) => root.style.setProperty(k, v));
 
-    Object.entries(colors).forEach(([variable, value]) => {
-      root.style.setProperty(variable, value);
-    });
-
-    // Dynamic favicon injection
     const faviconUrl = restaurantSettings.favicon_url || '/logoalto.png';
     let link = document.querySelector("link[rel~='icon']");
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'icon';
-      document.head.appendChild(link);
-    }
+    if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
     link.type = 'image/png';
     link.href = faviconUrl;
   }, [restaurantSettings]);
 
-  const getProductsByCategory = (slug) => {
-    return productsByCategory[slug] || [];
-  };
-
-  const getModifiers = (group) => {
-    return modifiers[group] || [];
-  };
-
-  const getAllProducts = () => {
-    return Object.values(productsByCategory).flat();
-  };
+  const getProductsByCategory = (slug) => productsByCategory[slug] || [];
+  const getModifiers = (group) => modifiers[group] || [];
+  const getAllProducts = () => Object.values(productsByCategory).flat();
 
   return (
-    <MenuDataContext.Provider 
-      value={{ 
+    <MenuDataContext.Provider
+      value={{
         categories,
         allCategories,
         productsByCategory,
@@ -284,7 +210,9 @@ export const MenuDataProvider = ({ children }) => {
         allergens,
         homeSettings,
         restaurantSettings,
-        loading 
+        loading,
+        activeBrandId,
+        refetchMenuData: () => fetchMenuData(activeBrandId),
       }}
     >
       {children}
@@ -292,6 +220,4 @@ export const MenuDataProvider = ({ children }) => {
   );
 };
 
-export const useMenuData = () => {
-  return useContext(MenuDataContext);
-};
+export const useMenuData = () => useContext(MenuDataContext);

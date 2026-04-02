@@ -1,17 +1,26 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../config/supabase';
+import { useAuth } from '../context/AuthContext';
 import { toast } from '../components/Toast';
 
 export function useAdminIngredients() {
   const [ingredients, setIngredients] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { activeBrand } = useAuth();
+  const activeBrandId = activeBrand?.id;
 
   const fetchIngredients = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('ingredients')
-        .select('*')
+        .select('*');
+
+      if (activeBrandId) {
+        query = query.eq('brand_id', activeBrandId);
+      }
+
+      const { data, error } = await query
         .order('name');
 
       if (error) throw error;
@@ -22,7 +31,15 @@ export function useAdminIngredients() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeBrandId]);
+
+  useEffect(() => {
+    if (activeBrandId) {
+      fetchIngredients();
+    } else {
+      setLoading(false);
+    }
+  }, [activeBrandId, fetchIngredients]);
 
   const createIngredient = async (ingredientData) => {
     try {
@@ -48,6 +65,7 @@ export function useAdminIngredients() {
         is_active: ingredientData.is_active ?? true,
         stock_current: parseFloat(ingredientData.stock_current) || 0,
         stock_min: parseFloat(ingredientData.stock_min) || 0,
+        brand_id: activeBrandId,
       };
 
       const { data, error } = await supabase
@@ -94,6 +112,7 @@ export function useAdminIngredients() {
         is_active: ingredientData.is_active ?? true,
         stock_current: parseFloat(ingredientData.stock_current) || 0,
         stock_min: parseFloat(ingredientData.stock_min) || 0,
+        brand_id: activeBrandId,
       };
 
       const { data, error } = await supabase

@@ -26,6 +26,8 @@ const OrderStatus = lazy(() => import("./pages/OrderStatus"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const ExperiencesPage = lazy(() => import("./pages/ExperiencesPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
+const RegisterPage = lazy(() => import("./pages/auth/RegisterPage"));
 import BottomTabBar from "./components/navigation/BottomTabBar";
 
 // Carrito
@@ -197,6 +199,7 @@ export default function App() {
   // ✅ Modo menú normal
   const isLandingView = !currentHash || currentHash === '' || currentHash === '#' || currentHash === '#inicio';
   const isMenuView = currentHash === '#menu';
+  const isAuthView = currentHash === '#login' || currentHash === '#registro';
   
   // Detect if user is in "Ordering Mode" (QR, table in session, or explicit menu hash)
   const isOrderingMode = isMenuView || !!sessionStorage.getItem("aa_current_mesa") || new URLSearchParams(window.location.search).get("mesa");
@@ -204,7 +207,7 @@ export default function App() {
   return (
     <>
       <div className="bg-[#F5F5F7] leading-snug text-alto-text min-h-screen">
-        {!isDemo && <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />}
+        {!isDemo && !isAuthView && <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />}
 
         {isLandingView && !isOrderingMode && (
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
@@ -224,8 +227,20 @@ export default function App() {
           </Suspense>
         )}
 
+        {currentHash === '#login' && (
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
+            <LoginPage />
+          </Suspense>
+        )}
+
+        {currentHash === '#registro' && (
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
+            <RegisterPage />
+          </Suspense>
+        )}
+
         {/* Menu normal: Si estamos en modo orden o hash explícito #menu, o si NO es la vista landing */}
-        {(isOrderingMode || isMenuView || (!isLandingView && currentHash !== '#experiencias' && currentHash !== '#perfil' && currentHash !== '#admin' && !orderTrackingId)) && (
+        {(isOrderingMode || isMenuView || (!isLandingView && currentHash !== '#experiencias' && currentHash !== '#perfil' && currentHash !== '#admin' && currentHash !== '#login' && currentHash !== '#registro' && !orderTrackingId)) && (
           <main
             className={`mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl px-5 ${isDemo ? 'pt-4 pb-20 sm:px-6 md:px-8' : 'pt-24 sm:px-6 sm:pt-24 md:px-8 md:pt-24'}`}
           >
@@ -249,7 +264,7 @@ export default function App() {
           </main>
         )}
 
-        {!isDemo && <BottomTabBar currentHash={currentHash} />}
+        {!isDemo && !isAuthView && <BottomTabBar currentHash={currentHash} />}
 
         {/* Barra flotante y Drawer del carrito */}
         <Suspense fallback={<div />}>

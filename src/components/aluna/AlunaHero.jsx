@@ -50,8 +50,8 @@ export default function AlunaHero() {
               {/* Botones */}
               <div className="flex flex-col sm:flex-row gap-4">
                 <MagneticButton>
-                  <a href="#contacto" className="bg-white text-[#1A1A1A] px-8 py-4 rounded-full text-sm font-semibold hover:bg-gray-100 transition-all flex items-center justify-center gap-2 shadow-xl">
-                    Agendar una Demostración
+                  <a href="#registro" className="bg-white text-[#1A1A1A] px-8 py-4 rounded-full text-sm font-semibold hover:bg-gray-100 transition-all flex items-center justify-center gap-2 shadow-xl">
+                    Comienza Hoy
                   </a>
                 </MagneticButton>
                 <a href="/#menu" className="bg-transparent border border-white/30 text-white px-8 py-4 rounded-full text-sm font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2">

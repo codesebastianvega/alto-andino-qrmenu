@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../config/supabase';
+import { useAuth } from '../../context/AuthContext';
 import AdminProducts from '../../pages/AdminProducts';
 import AdminCategories from '../../pages/AdminCategories';
 import AdminModifiers from '../../pages/AdminModifiers';
@@ -15,6 +16,7 @@ import AdminDashboard from '../../pages/AdminDashboard';
 import AdminStaff from '../../pages/AdminStaff';
 import AdminPinLogin from './AdminPinLogin';
 import AdminWebContent from '../../pages/AdminWebContent';
+import BrandSwitcher from './BrandSwitcher';
 import { useMenuData } from '../../context/MenuDataContext';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
@@ -143,16 +145,42 @@ export default function AdminLayout() {
     return params.get('admin_page') || 'orders';
   };
 
+  const { user: authUser, profile, loading: authLoading } = useAuth();
   const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState(getInitialPage); 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const { activeBrand } = useAuth();
   const { restaurantSettings } = useMenuData();
 
-  const logoUrl = (restaurantSettings?.logo_url && restaurantSettings.logo_url !== '') 
-    ? restaurantSettings.logo_url 
-    : "/logoalto.png";
-  const restaurantName = restaurantSettings?.business_name || "Alto Andino";
+  const logoUrl = activeBrand?.logo_url || restaurantSettings?.logo_url || "/logoalto.png";
+  const restaurantName = activeBrand?.name || restaurantSettings?.business_name || "Mi Negocio";
+
+  // If there's an authenticated Supabase session with owner/superadmin role,
+  // auto-login them without requiring PIN
+  useEffect(() => {
+    if (authLoading) return;
+    if (authUser && profile && (profile.role === 'owner' || profile.role === 'superadmin' || profile.role === 'admin')) {
+      // Already authenticated — set as admin user, skip PIN screen
+      setUser({
+        id: authUser.id,
+        name: profile.full_name || authUser.email || 'Admin',
+        role: 'admin',
+        auth_session: true, // flag to signal this is a Supabase auth session, not PIN
+      });
+    } else if (!authUser) {
+      // Check sessionStorage for PIN-based login (staff without Supabase account)
+      const savedSession = sessionStorage.getItem('aa_admin_session');
+      if (savedSession) {
+        try {
+          const savedUser = JSON.parse(savedSession);
+          setUser(savedUser);
+        } catch (e) {
+          sessionStorage.removeItem('aa_admin_session');
+        }
+      }
+    }
+  }, [authUser, profile, authLoading]);
 
   // Sync page state with URL
   useEffect(() => {
@@ -239,7 +267,17 @@ export default function AdminLayout() {
     {id: 'kitchen', label: 'Cocina'}
   ].find(i => i.id === currentPage)?.label || 'Panel';
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0F170F]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#7db87a]"></div>
+      </div>
+    );
+  }
+
   if (!user) {
+    // Only show PIN login for staff (no active Supabase session)
+    // Owners/admins with Supabase auth are auto-logged in via the useEffect above
     return <AdminPinLogin onLogin={setUser} />;
   }
 
@@ -254,16 +292,11 @@ export default function AdminLayout() {
         <div className="flex flex-col h-full">
           {/* Logo Section */}
           <div className={`flex items-center h-20 px-5 gap-3 shrink-0 ${isCollapsed ? 'justify-center px-0' : ''}`}>
-             <div className="w-10 h-10 flex items-center justify-center shrink-0 drop-shadow-md">
-               <img src={logoUrl} alt="Logo" className="w-full h-full object-contain filter brightness-0 invert" />
-             </div>
-             {!isCollapsed && (
-               <div>
-                 <p className="text-[14px] font-black text-white tracking-tight uppercase italic">{restaurantName}</p>
-                 <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-                    <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">{user.role}</p>
-                 </div>
+             {!isCollapsed ? (
+               <BrandSwitcher />
+             ) : (
+               <div className="w-10 h-10 flex items-center justify-center shrink-0 drop-shadow-md">
+                 <img src={logoUrl} alt="Logo" className="w-full h-full object-contain filter brightness-0 invert" />
                </div>
              )}
           </div>
@@ -397,9 +430,15 @@ export default function AdminLayout() {
               <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">{user.role}</div>
             </div>
             <button 
-              onClick={() => {
+              onClick={async () => {
                 sessionStorage.removeItem('aa_admin_session');
-                setUser(null);
+                if (user.auth_session) {
+                  await supabase.auth.signOut();
+                  window.location.hash = '';
+                  window.location.reload();
+                } else {
+                  setUser(null);
+                }
               }}
               className="w-8 h-8 rounded-full bg-[#1C2B1E] flex items-center justify-center hover:bg-red-600 transition-colors cursor-pointer"
               title="Cerrar sesión"

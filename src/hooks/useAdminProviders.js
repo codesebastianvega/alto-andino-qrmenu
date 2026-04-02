@@ -1,16 +1,25 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../config/supabase';
+import { useAuth } from '../context/AuthContext';
 
 export function useAdminProviders() {
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { activeBrand } = useAuth();
+  const activeBrandId = activeBrand?.id;
 
   const fetchProviders = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('providers')
-        .select('*')
+        .select('*');
+
+      if (activeBrandId) {
+        query = query.eq('brand_id', activeBrandId);
+      }
+
+      const { data, error } = await query
         .order('name');
 
       if (error) throw error;
@@ -20,17 +29,21 @@ export function useAdminProviders() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeBrandId]);
 
   useEffect(() => {
-    fetchProviders();
-  }, [fetchProviders]);
+    if (activeBrandId) {
+      fetchProviders();
+    } else {
+      setLoading(false);
+    }
+  }, [activeBrandId, fetchProviders]);
 
   const createProvider = async (providerData) => {
     try {
       const { data, error } = await supabase
         .from('providers')
-        .insert([providerData])
+        .insert([{ ...providerData, brand_id: activeBrandId }])
         .select()
         .single();
 

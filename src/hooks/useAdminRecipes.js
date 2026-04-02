@@ -1,15 +1,18 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../config/supabase';
+import { useAuth } from '../context/AuthContext';
 import { toast } from '../components/Toast';
 
 export function useAdminRecipes() {
   const [recipes, setRecipes] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { activeBrand } = useAuth();
+  const activeBrandId = activeBrand?.id;
 
   const fetchRecipes = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('recipes')
         .select(`
           *,
@@ -18,7 +21,13 @@ export function useAdminRecipes() {
             quantity,
             ingredients (name, unit_cost, usage_unit)
           )
-        `)
+        `);
+
+      if (activeBrandId) {
+        query = query.eq('brand_id', activeBrandId);
+      }
+
+      const { data, error } = await query
         .order('name');
       
       if (error) throw error;
@@ -29,7 +38,15 @@ export function useAdminRecipes() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeBrandId]);
+
+  useEffect(() => {
+    if (activeBrandId) {
+      fetchRecipes();
+    } else {
+      setLoading(false);
+    }
+  }, [activeBrandId, fetchRecipes]);
 
   return {
     recipes,

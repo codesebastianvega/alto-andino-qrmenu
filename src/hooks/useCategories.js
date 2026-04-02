@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
+import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
 
 // Toast wrapper
@@ -12,16 +13,24 @@ export const useCategories = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { activeBrand } = useAuth();
+  const activeBrandId = activeBrand?.id;
 
   const fetchCategories = async () => {
     try {
       setLoading(true);
       console.log('Fetching categories...');
       
-      const { data, error } = await supabase
+      
+      let query = supabase
         .from('categories')
-        .select('*')
-        .order('sort_order', { ascending: true });
+        .select('*');
+
+      if (activeBrandId) {
+        query = query.eq('brand_id', activeBrandId);
+      }
+        
+      const { data, error } = await query.order('sort_order', { ascending: true });
 
       if (error) {
         console.error('Categories error:', error);
@@ -40,15 +49,19 @@ export const useCategories = () => {
   };
 
   useEffect(() => {
-    fetchCategories();
-  }, []);
+    if (activeBrandId) {
+      fetchCategories();
+    } else {
+      setLoading(false);
+    }
+  }, [activeBrandId]);
 
   // Create new category
   const createCategory = async (categoryData) => {
     try {
       const { data, error } = await supabase
         .from('categories')
-        .insert([categoryData])
+        .insert([{ ...categoryData, brand_id: activeBrandId }])
         .select()
         .single();
 

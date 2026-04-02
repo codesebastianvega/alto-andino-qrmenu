@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../config/supabase';
 import { Icon } from '@iconify-icon/react';
 import { toast } from '../components/Toast';
+import { useAuth } from '../context/AuthContext';
 import { useStaff } from '../hooks/useStaff';
 
 const ORDER_STATUSES = [
@@ -116,6 +117,9 @@ export default function AdminOrders() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
 
+  const { activeBrand } = useAuth();
+  const activeBrandId = activeBrand?.id;
+
   const { staffList } = useStaff();
   const waiters = useMemo(() => staffList.filter(s => s.role === 'waiter' || s.role === 'admin'), [staffList]);
 
@@ -137,9 +141,13 @@ export default function AdminOrders() {
   };
 
   const fetchOrders = useCallback(async () => {
+    if (!activeBrandId) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('orders')
         .select(`
           *,
@@ -148,7 +156,13 @@ export default function AdminOrders() {
             id, quantity, unit_price, modifiers, notes,
             products ( id, name, category_id )
           )
-        `)
+        `);
+
+      if (activeBrandId) {
+        query = query.eq('brand_id', activeBrandId);
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -159,26 +173,48 @@ export default function AdminOrders() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeBrandId]);
 
   useEffect(() => {
+    if (!activeBrandId) {
+      setLoading(false);
+      return;
+    }
+
     fetchOrders();
 
     const channel = supabase
-      .channel('schema-db-changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+      .channel(`admin-orders-${activeBrandId}`)
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'orders',
+        filter: `brand_id=eq.${activeBrandId}`
+      }, (payload) => {
         setOrders(prev => [payload.new, ...prev]);
         playNotificationSound();
         toast('Nuevo pedido recibido!', { icon: '🔔' });
         fetchOrders(); // Full fetch to get associations
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'orders',
+        filter: `brand_id=eq.${activeBrandId}`
+      }, (payload) => {
         setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o));
         if (selectedOrder?.id === payload.new.id) {
             setSelectedOrder(prev => ({ ...prev, ...payload.new }));
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, () => {
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'order_items' 
+        // Note: order_items usually don't have brand_id directly, 
+        // so we'd need to fetch or filter in JS if multi-tenancy is strict.
+        // For now, we fetchOrders which is scoped by brand_id.
+      }, () => {
         fetchOrders();
       })
       .subscribe();
@@ -186,7 +222,7 @@ export default function AdminOrders() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchOrders, selectedOrder?.id]);
+  }, [activeBrandId, fetchOrders, selectedOrder?.id]);
 
   const updateOrderStatus = async (orderId, newStatus, extraPayload = {}) => {
     try {

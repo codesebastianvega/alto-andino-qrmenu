@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
+import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
 
 const toast = {
@@ -11,16 +12,24 @@ export const useAdminProducts = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { activeBrand } = useAuth();
+  const activeBrandId = activeBrand?.id;
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('products')
         .select(`
           *,
           category:categories(name, slug)
-        `)
+        `);
+
+      if (activeBrandId) {
+        query = query.eq('brand_id', activeBrandId);
+      }
+
+      const { data, error } = await query
         .order('sort_order', { ascending: true })
         .order('name');
       
@@ -35,8 +44,12 @@ export const useAdminProducts = () => {
   };
 
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    if (activeBrandId) {
+      fetchProducts();
+    } else {
+      setLoading(false);
+    }
+  }, [activeBrandId]);
 
   const createProduct = async (productData) => {
     try {
@@ -61,7 +74,8 @@ export const useAdminProducts = () => {
         is_upsell: productData.is_upsell || false,
         requires_kitchen: productData.requires_kitchen ?? true,
         packaging_fee: parseFloat(productData.packaging_fee) || 0,
-        subcategory: productData.subcategory || null
+        subcategory: productData.subcategory || null,
+        brand_id: activeBrandId
       };
 
       const { data, error } = await supabase
@@ -106,7 +120,8 @@ export const useAdminProducts = () => {
         is_upsell: productData.is_upsell || false,
         requires_kitchen: productData.requires_kitchen ?? true,
         packaging_fee: parseFloat(productData.packaging_fee) || 0,
-        subcategory: productData.subcategory || null
+        subcategory: productData.subcategory || null,
+        brand_id: activeBrandId
       };
 
       const { data, error } = await supabase

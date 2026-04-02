@@ -56,9 +56,14 @@ export default function AlunaNavbar() {
       <div className="w-[1px] h-6 bg-white/20 mx-2"></div>
 
       {/* CTA */}
-      <a href="#contacto" className="bg-white text-[#1A1A1A] px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-semibold hover:bg-gray-100 transition-all whitespace-nowrap">
-        Comenzar
-      </a>
+      <div className="flex items-center gap-1 sm:gap-2">
+        <a href="#login" className="text-gray-300 hover:text-white px-2 sm:px-3 py-2 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap">
+          Entrar
+        </a>
+        <a href="#registro" className="bg-white text-[#1A1A1A] px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-semibold hover:bg-gray-100 transition-all whitespace-nowrap">
+          Comenzar
+        </a>
+      </div>
     </nav>
   );
 }

@@ -1,27 +1,42 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../config/supabase';
+import { useAuth } from '../context/AuthContext';
 
 export function useExperiences() {
   const [experiences, setExperiences] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { activeBrand } = useAuth();
+  const activeBrandId = activeBrand?.id;
 
   const fetchExperiences = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from('experiences')
-      .select('*')
+      .select('*');
+
+    if (activeBrandId) {
+      query = query.eq('brand_id', activeBrandId);
+    }
+
+    const { data, error } = await query
       .order('created_at', { ascending: false });
     if (!error) setExperiences(data || []);
     setLoading(false);
     return { data, error };
-  }, []);
+  }, [activeBrandId]);
 
-  useEffect(() => { fetchExperiences(); }, [fetchExperiences]);
+  useEffect(() => { 
+    if (activeBrandId) {
+      fetchExperiences(); 
+    } else {
+      setLoading(false);
+    }
+  }, [activeBrandId, fetchExperiences]);
 
   const createExperience = async (experienceData) => {
     const { data, error } = await supabase
       .from('experiences')
-      .insert([experienceData])
+      .insert([{ ...experienceData, brand_id: activeBrandId }])
       .select()
       .single();
     if (!error) setExperiences(prev => [data, ...prev]);
@@ -60,12 +75,18 @@ export function useExperiences() {
   };
 
   const fetchAllBookings = async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from('experience_bookings')
       .select(`
         *,
         experiences:experience_id(title)
-      `)
+      `);
+
+    if (activeBrandId) {
+      query = query.eq('brand_id', activeBrandId);
+    }
+
+    const { data, error } = await query
       .order('created_at', { ascending: false });
     return { data: data || [], error };
   };
@@ -73,7 +94,7 @@ export function useExperiences() {
   const createBooking = async (bookingData) => {
     const { data, error } = await supabase
       .from('experience_bookings')
-      .insert([bookingData])
+      .insert([{ ...bookingData, brand_id: activeBrandId }])
       .select()
       .single();
     return { data, error };

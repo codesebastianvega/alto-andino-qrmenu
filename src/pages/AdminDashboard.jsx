@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../config/supabase';
+import { useAuth } from '../context/AuthContext';
 import { Icon } from '@iconify-icon/react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -12,15 +13,25 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('7d'); // 'today', '7d', '30d', 'all'
+  const { activeBrand } = useAuth();
+  const activeBrandId = activeBrand?.id;
 
   useEffect(() => {
     async function fetchDashboardData() {
+      if (!activeBrandId) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         let query = supabase.from('orders').select(`
           id, total_amount, status, created_at, delivered_at, fulfillment_type,
           order_items ( quantity, unit_price, products ( name, category_id ) )
         `).order('created_at', { ascending: true });
+
+        if (activeBrandId) {
+          query = query.eq('brand_id', activeBrandId);
+        }
 
         // Aplicar filtro de fecha en JS o en DB. Mejor DB para rendimiento si hay muchos.
         if (dateRange !== 'all') {
@@ -41,7 +52,7 @@ export default function AdminDashboard() {
       }
     }
     fetchDashboardData();
-  }, [dateRange]);
+  }, [dateRange, activeBrandId]);
 
   const stats = useMemo(() => {
     if (!orders.length) return { revenue: 0, avgTicket: 0, orderCount: 0, avgTime: 0, itemsCount: 0 };
