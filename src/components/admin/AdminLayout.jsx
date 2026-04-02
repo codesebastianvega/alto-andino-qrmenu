@@ -14,6 +14,7 @@ import AdminOrders from '../../pages/AdminOrders';
 import AdminKitchen from '../../pages/AdminKitchen';
 import AdminDashboard from '../../pages/AdminDashboard';
 import AdminStaff from '../../pages/AdminStaff';
+import AdminSedes from '../../pages/AdminSedes';
 import AdminPinLogin from './AdminPinLogin';
 import AdminWebContent from '../../pages/AdminWebContent';
 import BrandSwitcher from './BrandSwitcher';
@@ -124,6 +125,7 @@ const Icons = {
 const CARTA_ITEMS = [
   { id: 'products',   label: 'Productos',   Icon: Icons.Products, roles: ['admin'] },
   { id: 'categories', label: 'Categorías',  Icon: Icons.Categories, roles: ['admin'] },
+  { id: 'tables',     label: 'Mesas y QRs', Icon: Icons.Tables, roles: ['admin'] },
   { id: 'allergens',  label: 'Dietas y Alérgenos', Icon: Icons.Allergens, roles: ['admin'] },
 ];
 
@@ -137,7 +139,7 @@ const PROD_ITEMS = [
 ];
 
 const ADJUST_ITEMS = [
-  { id: 'sedes',       label: 'Sedes / Locales', Icon: Icons.Home, roles: ['admin'], feature: 'multi_location' },
+  { id: 'branding',    label: 'Identidad Visual', Icon: Icons.Branding, roles: ['admin'] },
   { id: 'settings',    label: 'Ajustes Generales', Icon: Icons.Settings, roles: ['admin'] },
 ];
 export default function AdminLayout() {
@@ -163,6 +165,7 @@ export default function AdminLayout() {
       setShowUpgradeModal(true);
       return;
     }
+    setShowUpgradeModal(false);
     setCurrentPage(pageId);
   };
 
@@ -338,62 +341,66 @@ export default function AdminLayout() {
                {!isCollapsed && <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em] ml-1 mb-2 block">Operaciones</span>}
                
                {/* Dashboard Card */}
-               <button 
-                 onClick={() => handleSelectPage('dashboard', 'Dashboard', 'basic_analytics')}
-                 className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
-                   currentPage === 'dashboard' 
-                    ? 'bg-gradient-to-r from-brand-primary/80 to-brand-primary border-white/10 ring-1 ring-white/10 shadow-lg shadow-black/40' 
-                    : 'bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/10'
-                 } ${isFeatureLocked('basic_analytics') ? 'opacity-60 grayscale-[0.3]' : ''}`}
-               >
-                 <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'dashboard' ? 'bg-brand-secondary/20 text-brand-secondary' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
-                       <Icons.Dashboard />
-                    </div>
-                    {!isCollapsed && (
-                      <div className="text-left flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <p className={`text-[13px] font-bold leading-none ${currentPage === 'dashboard' ? 'text-white' : 'text-white/60'}`}>Dashboard</p>
-                          {isFeatureLocked('basic_analytics') && (
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
-                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                            </svg>
-                          )}
-                        </div>
-                        <p className="text-[9px] text-white/30 font-medium mt-1">Métricas y Resumen</p>
+               {true && (
+                 <button 
+                   onClick={() => handleSelectPage('dashboard', 'Dashboard', 'basic_analytics')}
+                   className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
+                     currentPage === 'dashboard' 
+                      ? 'bg-gradient-to-r from-brand-primary/80 to-brand-primary border-white/10 ring-1 ring-white/10 shadow-lg shadow-black/40' 
+                      : 'bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/10'
+                   } ${isFeatureLocked('basic_analytics') ? 'opacity-60 grayscale-[0.3]' : ''}`}
+                 >
+                   <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'dashboard' ? 'bg-brand-secondary/20 text-brand-secondary' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
+                         <Icons.Dashboard />
                       </div>
-                    )}
-                 </div>
-               </button>
+                      {!isCollapsed && (
+                        <div className="text-left flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <p className={`text-[13px] font-bold leading-none ${currentPage === 'dashboard' ? 'text-white' : 'text-white/60'}`}>Dashboard</p>
+                            {isFeatureLocked('basic_analytics') && (
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                              </svg>
+                            )}
+                          </div>
+                          <p className="text-[9px] text-white/30 font-medium mt-1">Métricas y Resumen</p>
+                        </div>
+                      )}
+                   </div>
+                 </button>
+               )}
 
                {/* Pedidos Card */}
-               <button 
-                 onClick={() => handleSelectPage('orders', 'Pedidos', 'table_management')}
-                 className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
-                   currentPage === 'orders' 
-                    ? 'bg-gradient-to-r from-blue-900/40 to-blue-950/40 border-blue-500/20 ring-1 ring-blue-500/20 shadow-lg shadow-blue-950/40' 
-                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                 } ${isFeatureLocked('table_management') ? 'opacity-60 grayscale-[0.3]' : ''}`}
-               >
-                 <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'orders' ? 'bg-blue-400/20 text-blue-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
-                       <Icons.Orders />
-                    </div>
-                    {!isCollapsed && (
-                      <div className="text-left flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <p className={`text-[13px] font-bold leading-none ${currentPage === 'orders' ? 'text-white' : 'text-white/60'}`}>Pedidos</p>
-                          {isFeatureLocked('table_management') && (
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
-                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                            </svg>
-                          )}
-                        </div>
-                        <p className="text-[9px] text-white/30 font-medium mt-1">Gestión Activa</p>
+               {true && (
+                 <button 
+                   onClick={() => handleSelectPage('orders', 'Pedidos', 'table_management')}
+                   className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
+                     currentPage === 'orders' 
+                      ? 'bg-gradient-to-r from-blue-900/40 to-blue-950/40 border-blue-500/20 ring-1 ring-blue-500/20 shadow-lg shadow-blue-950/40' 
+                      : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
+                   } ${isFeatureLocked('table_management') ? 'opacity-60 grayscale-[0.3]' : ''}`}
+                 >
+                   <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'orders' ? 'bg-blue-400/20 text-blue-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
+                         <Icons.Orders />
                       </div>
-                    )}
-                 </div>
-               </button>
+                      {!isCollapsed && (
+                        <div className="text-left flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <p className={`text-[13px] font-bold leading-none ${currentPage === 'orders' ? 'text-white' : 'text-white/60'}`}>Pedidos</p>
+                            {isFeatureLocked('table_management') && (
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                              </svg>
+                            )}
+                          </div>
+                          <p className="text-[9px] text-white/30 font-medium mt-1">Gestión Activa</p>
+                        </div>
+                      )}
+                   </div>
+                 </button>
+               )}
 
                {/* Cocina Card */}
                <button 
@@ -524,6 +531,7 @@ export default function AdminLayout() {
           { currentPage === 'branding'    && <AdminBranding /> }
           { currentPage === 'settings'    && <AdminSettings /> }
           { currentPage === 'staff'       && <AdminStaff /> }
+          { currentPage === 'sedes'       && <AdminSedes /> }
           { currentPage === 'dashboard'   && <AdminDashboard /> }
 
           {/* Feature Lock Overlay */}
@@ -531,7 +539,11 @@ export default function AdminLayout() {
             isVisible={showUpgradeModal}
             onClose={() => setShowUpgradeModal(false)}
             featureName={lockedFeatureName}
-            planNeeded={lockedFeatureName === 'Gestión Web' || lockedFeatureName === 'Dashboard' ? 'Esencial' : 'Profesional'}
+            planNeeded={
+              lockedFeatureName === 'Identidad Visual' ? 'Emprendedor' : 
+              (lockedFeatureName === 'Gestión Web' || lockedFeatureName === 'Dashboard' || lockedFeatureName === 'Personal / Staff') ? 'Esencial' : 
+              'Profesional'
+            }
           />
         </div>
       </main>

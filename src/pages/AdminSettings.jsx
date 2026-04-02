@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../config/supabase';
-import { toast as toastFn } from '../components/Toast';
-import { PageHeader, PrimaryButton, FormField, TextInput } from '../components/admin/ui';
-import { Icon } from '@iconify-icon/react';
-
-// Import sub-pages to use as tabs
-import AdminTables from './AdminTables';
+import React, { useState, useEffect } from 'react';
 import AdminStaff from './AdminStaff';
+import AdminSedes from './AdminSedes';
+import { supabase } from '../config/supabase';
+import { useAuth } from '../context/AuthContext';
+import { toast as toastFn } from '../components/Toast';
+import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton } from '../components/admin/ui';
+import { Icon } from '@iconify/react';
+import { Loader2, Check } from 'lucide-react';
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 2000 }),
@@ -14,6 +14,7 @@ const toast = {
 };
 
 export default function AdminSettings() {
+  const { isFeatureLocked } = useAuth();
   const [activeTab, setActiveTab] = useState('general');
   const [settings, setSettings] = useState(null);
   const [loadingSettings, setLoadingSettings] = useState(false);
@@ -139,9 +140,9 @@ export default function AdminSettings() {
   };
 
   const TABS = [
-    { id: 'general', label: 'General', icon: 'heroicons:cog-6-tooth' },
-    { id: 'tables', label: 'Mesas', icon: 'heroicons:square-3-stack-3d' },
-    { id: 'staff', label: 'Personal', icon: 'heroicons:users' },
+    { id: 'general', label: 'Operación', icon: 'heroicons:cog-6-tooth' },
+    { id: 'sedes', label: 'Sedes y Locales', icon: 'heroicons:building-storefront', feature: 'multi_location' },
+    { id: 'staff', label: 'Personal / Staff', icon: 'heroicons:users', feature: 'staff' },
   ];
 
   if (loadingSettings || loadingHours) return (
@@ -158,21 +159,29 @@ export default function AdminSettings() {
         />
 
         {/* Tab Navigation */}
-        <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-gray-200 w-fit shadow-sm">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold transition-all ${
-                activeTab === tab.id
-                  ? 'bg-[#2f4131] text-white shadow-md shadow-[#2f4131]/20'
-                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <Icon icon={tab.icon} className="text-lg" />
-              {tab.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-1 bg-white p-1.5 rounded-2xl border border-gray-200 w-fit shadow-sm overflow-x-auto">
+          {TABS.map((tab) => {
+            const isLocked = tab.feature && isFeatureLocked(tab.feature);
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold transition-all whitespace-nowrap relative ${
+                  activeTab === tab.id
+                    ? 'bg-[#2f4131] text-white shadow-md shadow-[#2f4131]/20'
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <Icon icon={tab.icon} className={`text-lg ${isLocked && activeTab !== tab.id ? 'opacity-40' : ''}`} />
+                {tab.label}
+                {isLocked && (
+                  <div className="ml-1.5 w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center border border-amber-200">
+                    <Icon icon="heroicons:lock-closed" className="text-[10px] text-amber-600" />
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Tab Content */}
@@ -304,16 +313,56 @@ export default function AdminSettings() {
             </div>
           )}
 
-          {activeTab === 'tables' && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <AdminTables isEmbedded={true} />
+          {activeTab === 'sedes' && (
+            <div className="relative">
+              <AdminSedes isEmbedded={true} />
+              {isFeatureLocked('multi_location') && (
+                <div className="absolute inset-x-0 -top-12 -bottom-12 bg-white/60 backdrop-blur-[8px] z-50 rounded-[3rem] flex flex-col items-center justify-center p-12 text-center ring-1 ring-black/[0.03] shadow-2xl">
+                   <div className="w-20 h-20 rounded-3xl bg-white flex items-center justify-center text-amber-500 mb-6 border border-gray-100 shadow-xl relative animate-bounce-slow">
+                      <Icon icon="heroicons:lock-closed" className="text-4xl" />
+                      <div className="absolute -top-2 -right-2 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-amber-500/20 uppercase tracking-tighter">Pro</div>
+                   </div>
+                   <h3 className="text-2xl font-black text-gray-900 mb-3 tracking-tight">Sedes y Expansión</h3>
+                   <p className="text-sm text-gray-500 max-w-[340px] mb-8 font-medium leading-relaxed">
+                     Lleva tu negocio al siguiente nivel. Gestiona múltiples ubicaciones desde un solo panel.
+                   </p>
+                   <button 
+                     onClick={() => window.open('https://wa.me/something', '_blank')}
+                     className="bg-[#2f4131] text-white font-bold py-4 px-10 rounded-2xl shadow-2xl shadow-[#2f4131]/30 hover:scale-[1.02] active:scale-95 transition-all text-[15px] flex items-center gap-2"
+                   >
+                     <Icon icon="heroicons:sparkles" className="text-lg" />
+                     Actualizar a Plan Pro
+                   </button>
+                   <p className="mt-6 text-[11px] text-gray-400 font-bold uppercase tracking-widest italic">Activa el crecimiento de tu marca</p>
+                </div>
+              )}
             </div>
           )}
 
           {activeTab === 'staff' && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <AdminStaff isEmbedded={true} />
-            </div>
+             <div className="relative">
+               <AdminStaff isEmbedded={true} />
+               {isFeatureLocked('staff') && (
+                 <div className="absolute inset-x-0 -top-12 -bottom-12 bg-white/60 backdrop-blur-[8px] z-50 rounded-[3rem] flex flex-col items-center justify-center p-12 text-center ring-1 ring-black/[0.03] shadow-2xl">
+                    <div className="w-20 h-20 rounded-3xl bg-white flex items-center justify-center text-[#2f4131] mb-6 border border-gray-100 shadow-xl relative animate-pulse-slow">
+                       <Icon icon="heroicons:users" className="text-4xl" />
+                       <div className="absolute -top-2 -right-2 bg-[#2f4131] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-[#2f4131]/20 uppercase tracking-tighter italic">Esencial</div>
+                    </div>
+                    <h3 className="text-2xl font-black text-gray-900 mb-3 tracking-tight">Personal & Colaboradores</h3>
+                    <p className="text-sm text-gray-500 max-w-[340px] mb-8 font-medium leading-relaxed">
+                      Sincroniza a tu equipo. Añade meseros y personal de cocina con accesos controlados por PIN.
+                    </p>
+                    <button 
+                      onClick={() => window.open('https://wa.me/something', '_blank')}
+                      className="bg-gray-900 text-white font-bold py-4 px-10 rounded-2xl shadow-2xl shadow-black/20 hover:scale-[1.02] active:scale-95 transition-all text-[15px] flex items-center gap-2"
+                    >
+                      <Icon icon="heroicons:sparkles" className="text-lg" />
+                      Desbloquear Staff
+                    </button>
+                    <p className="mt-6 text-[11px] text-gray-400 font-bold uppercase tracking-widest italic">Optimiza la operación de tu equipo</p>
+                 </div>
+               )}
+             </div>
           )}
         </div>
       </div>

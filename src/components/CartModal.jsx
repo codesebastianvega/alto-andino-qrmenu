@@ -86,7 +86,7 @@ export default function CartModal({ open, onClose }) {
     updateItemNote: updateItemNoteCtx,
   } = cart;
 
-  const { getAllProducts } = useMenuData();
+  const { getAllProducts, hasFeature } = useMenuData();
 
   const [includeTip, setIncludeTip] = useState(true);
   const { settings } = useRestaurantSettings();
@@ -229,6 +229,36 @@ export default function CartModal({ open, onClose }) {
       localStorage.setItem("aa_last_order", JSON.stringify(snapshot));
       localStorage.setItem("aa_active_order", orderData.id);
       setLastOrderId(orderData.id);
+
+      // --- WHATSAPP REDIRECTION (Emprendedor Plan) ---
+      if (hasFeature('whatsapp_orders')) {
+        const whatsappNumber = settings?.whatsapp_number_orders || "";
+        if (whatsappNumber) {
+          const cleanNumber = whatsappNumber.replace(/\D/g, "");
+          const orderItemsText = items.map(it => `- ${it.qty}x ${it.name} (${formatCOP(getItemUnit(it) * it.qty)})`).join("\n");
+          
+          let fulfillmentLabel = "Mesa";
+          if (fulfillmentType === 'takeaway') fulfillmentLabel = "Para Llevar";
+          if (fulfillmentType === 'delivery') fulfillmentLabel = "Domicilio";
+          if (fulfillmentType === 'scheduled') fulfillmentLabel = "Programado";
+
+          const message = `*Nuevo Pedido #${orderData.id.slice(0, 4).toUpperCase()}*\n\n` +
+            `*Cliente:* ${customerName || 'Cliente'}\n` +
+            `*Tipo:* ${fulfillmentLabel}\n` +
+            (fulfillmentType === 'dine_in' ? `*Mesa:* ${getTable()}\n` : "") +
+            `*Teléfono:* ${customerPhone || 'N/A'}\n\n` +
+            `*Pedido:*\n${orderItemsText}\n\n` +
+            (note ? `*Notas:* ${note}\n\n` : "") +
+            `*Subtotal:* ${formatCOP(total)}\n` +
+            (serviceFeeAmount > 0 ? `*Servicio (${tipPercentage}%):* ${formatCOP(serviceFeeAmount)}\n` : "") +
+            `*Total:* ${formatCOP(finalTotal)}\n\n` +
+            `_Enviado desde el Menú Digital_`;
+
+          const encodedMessage = encodeURIComponent(message);
+          window.open(`https://wa.me/${cleanNumber}?text=${encodedMessage}`, "_blank");
+        }
+      }
+      // -----------------------------------------------
 
       setShowSuccess(true);
       

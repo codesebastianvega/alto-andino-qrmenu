@@ -118,6 +118,10 @@ export const AuthProvider = ({ children }) => {
 
   // Switch the active brand being managed
   const switchBrand = useCallback((brand) => {
+    // Clear current state immediately to prevent "feature leaks" during brand switch
+    setActivePlan(null);
+    setActiveBrandFeatures([]);
+    
     setActiveBrandState(brand);
     localStorage.setItem('aa_active_brand_id', brand.id);
     fetchBrandFeatures(brand.id, brand.plan_id);
