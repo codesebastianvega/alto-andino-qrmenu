@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
 import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton } from '../components/admin/ui';
 import { Icon } from '@iconify/react';
-import { Loader2, Check } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 2000 }),
@@ -14,7 +14,7 @@ const toast = {
 };
 
 export default function AdminSettings() {
-  const { isFeatureLocked } = useAuth();
+  const { isFeatureLocked, activePlan } = useAuth();
   const [activeTab, setActiveTab] = useState('general');
   const [settings, setSettings] = useState(null);
   const [loadingSettings, setLoadingSettings] = useState(false);
@@ -38,7 +38,7 @@ export default function AdminSettings() {
     setLoadingSettings(true);
     try {
       const { data, error } = await supabase.from('restaurant_settings').select('*').limit(1).single();
-      if (error && error.code !== 'PGRST116') throw error; // ignore no rows
+      if (error && error.code !== 'PGRST116') throw error;
       if (data) {
         setSettings(data);
         setSettingsForm({
@@ -76,26 +76,24 @@ export default function AdminSettings() {
     e.preventDefault();
     setIsSubmittingSettings(true);
     try {
+      const payload = {
+        whatsapp_number_orders: settingsForm.whatsapp_number_orders,
+        is_service_fee_enabled: settingsForm.is_service_fee_enabled,
+        service_fee_percentage: settingsForm.service_fee_percentage,
+        updated_at: new Date().toISOString()
+      };
+
       if (settings?.id) {
         const { error } = await supabase.from('restaurant_settings')
-          .update({
-            whatsapp_number_orders: settingsForm.whatsapp_number_orders,
-            is_service_fee_enabled: settingsForm.is_service_fee_enabled,
-            service_fee_percentage: settingsForm.service_fee_percentage,
-            updated_at: new Date().toISOString()
-          })
+          .update(payload)
           .eq('id', settings.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from('restaurant_settings')
-          .insert([{ 
-            whatsapp_number_orders: settingsForm.whatsapp_number_orders,
-            is_service_fee_enabled: settingsForm.is_service_fee_enabled,
-            service_fee_percentage: settingsForm.service_fee_percentage
-          }]);
+          .insert([payload]);
         if (error) throw error;
       }
-      toast.success('Configuración general guardada');
+      toast.success('Configuración guardada');
       fetchSettings();
     } catch (err) {
       console.error(err);
@@ -125,7 +123,7 @@ export default function AdminSettings() {
         { onConflict: 'day_of_week' }
       );
       if (error) throw error;
-      toast.success('Horarios guardados correctamente');
+      toast.success('Horarios actualizados');
     } catch (err) {
       console.error(err);
       toast.error('Error guardando horarios');
@@ -134,15 +132,12 @@ export default function AdminSettings() {
     }
   };
 
-  const getDayName = (day) => {
-    const names = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    return names[day];
-  };
+  const getDayName = (day) => ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][day];
 
   const TABS = [
-    { id: 'general', label: 'Operación', icon: 'heroicons:cog-6-tooth' },
-    { id: 'sedes', label: 'Sedes y Locales', icon: 'heroicons:building-storefront', feature: 'multi_location' },
-    { id: 'staff', label: 'Personal / Staff', icon: 'heroicons:users', feature: 'staff' },
+    { id: 'general', label: 'Operación', icon: 'solar:settings-minimalistic-linear' },
+    { id: 'sedes', label: 'Sedes y Locales', icon: 'solar:shop-2-linear', feature: 'multi_location' },
+    { id: 'staff', label: 'Personal / Staff', icon: 'solar:users-group-rounded-linear', feature: 'staff' },
   ];
 
   if (loadingSettings || loadingHours) return (
@@ -151,11 +146,11 @@ export default function AdminSettings() {
 
   return (
     <div className="min-h-screen bg-[#F4F4F2]">
-      <div className="p-8 max-w-7xl mx-auto space-y-8">
+      <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8">
         <PageHeader
           badge="Configuración"
           title="Ajustes del Sistema"
-          subtitle="Gestiona mesas, personal, apariencia y parámetros operativos."
+          subtitle="Gestiona la operación, sedes y personal de tu marca."
         />
 
         {/* Tab Navigation */}
@@ -188,11 +183,10 @@ export default function AdminSettings() {
         <div className="mt-8">
           {activeTab === 'general' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              {/* Pedidos */}
               <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm h-fit">
                 <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
                   <h3 className="text-base font-black text-gray-900 uppercase tracking-tight italic">Configuración de Pedidos</h3>
-                  <p className="text-[12px] text-gray-500 mt-1 font-medium">Controla a dónde llegan los pedidos de tus clientes.</p>
+                  <p className="text-[12px] text-gray-500 mt-1 font-medium">Control operativo de recepción de pedidos.</p>
                 </div>
 
                 <form onSubmit={handleSaveSettings} className="p-8 space-y-7">
@@ -202,9 +196,7 @@ export default function AdminSettings() {
                       onChange={(e) => setSettingsForm({ ...settingsForm, whatsapp_number_orders: e.target.value })}
                       placeholder="Ej. +573001234567"
                     />
-                    <p className="text-[10px] text-gray-400 mt-2 font-medium">
-                      Asegúrate de incluir el código de país (ej. +57).
-                    </p>
+                    <p className="text-[10px] text-gray-400 mt-2 font-medium italic">Incluye el código de país (ej. +57).</p>
                   </FormField>
 
                   <div className="pt-4 border-t border-gray-100">
@@ -220,18 +212,17 @@ export default function AdminSettings() {
                           />
                           <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2f4131]"></div>
                         </div>
-                        <span className="text-sm font-semibold text-gray-700">Activar propina voluntaria en el carrito</span>
+                        <span className="text-sm font-semibold text-gray-700">Activar sugerencia de propina</span>
                       </label>
 
                       {settingsForm.is_service_fee_enabled && (
-                        <FormField label="Porcentaje sugerido de servicio (%)">
+                        <FormField label="Porcentaje (%)">
                           <TextInput
                             type="number"
                             min="0"
                             max="100"
                             value={settingsForm.service_fee_percentage}
                             onChange={(e) => setSettingsForm({ ...settingsForm, service_fee_percentage: parseInt(e.target.value) || 0 })}
-                            placeholder="10"
                             className="w-32"
                           />
                         </FormField>
@@ -240,67 +231,50 @@ export default function AdminSettings() {
                   </div>
 
                   <div className="pt-5 border-t border-gray-100 flex justify-end">
-                    <PrimaryButton 
-                      type="submit" 
-                      disabled={isSubmittingSettings}
-                      className="rounded-xl px-8"
-                    >
+                    <PrimaryButton type="submit" disabled={isSubmittingSettings} className="rounded-xl px-8 shadow-lg shadow-[#2f4131]/10">
                       {isSubmittingSettings ? 'Guardando...' : 'Guardar Ajustes'}
                     </PrimaryButton>
                   </div>
                 </form>
               </div>
 
-              {/* Horarios */}
               <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
                 <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
                   <div>
-                    <h3 className="text-base font-black text-gray-900 uppercase tracking-tight italic">Horarios de Atención</h3>
-                    <p className="text-[12px] text-gray-500 mt-1 font-medium">Define tus horas de servicio al público.</p>
+                    <h3 className="text-base font-black text-gray-900 uppercase tracking-tight italic">Horarios</h3>
+                    <p className="text-[12px] text-gray-500 mt-1 font-medium">Define tus horas de servicio.</p>
                   </div>
-                  <PrimaryButton 
-                    onClick={handleSaveHours}
-                    disabled={isSubmittingHours}
-                    className="py-1.5 px-4 text-[11px] rounded-lg"
-                  >
-                    {isSubmittingHours ? 'Guardando...' : 'Guardar Horarios'}
+                  <PrimaryButton onClick={handleSaveHours} disabled={isSubmittingHours} className="py-1.5 px-4 text-[11px] rounded-lg">
+                    {isSubmittingHours ? 'Guardando...' : 'Guardar'}
                   </PrimaryButton>
                 </div>
 
                 <div className="p-8">
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {hours.map((h, index) => (
-                      <div key={h.day_of_week} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${h.is_closed ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-white border-gray-200 shadow-sm hover:border-[#7db87a]/30'}`}>
-                        <div className="w-24 font-bold text-gray-700 text-[13px] uppercase tracking-wide">
+                      <div key={h.day_of_week} className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${h.is_closed ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-white border-gray-200'}`}>
+                        <div className="w-20 font-bold text-gray-700 text-[12px] uppercase tracking-wide italic">
                           {getDayName(h.day_of_week)}
                         </div>
-                        
-                        <div className="flex items-center gap-6">
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1.5">
                             <input 
-                              type="time" 
-                              value={h.open_time || '08:00'} 
+                              type="time" value={h.open_time || '08:00'} 
                               onChange={(e) => handleUpdateHour(index, 'open_time', e.target.value)}
                               disabled={h.is_closed}
-                              className="bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-gray-700 focus:ring-2 focus:ring-[#7db87a]/20 outline-none disabled:opacity-30"
+                              className="bg-gray-50 border border-gray-100 rounded-lg px-2 py-1 text-[11px] font-bold text-gray-700 focus:ring-1 focus:ring-[#2f4131]/20 outline-none disabled:opacity-30"
                             />
                             <span className="text-gray-300 font-bold">-</span>
                             <input 
-                              type="time" 
-                              value={h.close_time || '22:00'} 
+                              type="time" value={h.close_time || '22:00'} 
                               onChange={(e) => handleUpdateHour(index, 'close_time', e.target.value)}
                               disabled={h.is_closed}
-                              className="bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-gray-700 focus:ring-2 focus:ring-[#7db87a]/20 outline-none disabled:opacity-30"
+                              className="bg-gray-50 border border-gray-100 rounded-lg px-2 py-1 text-[11px] font-bold text-gray-700 focus:ring-1 focus:ring-[#2f4131]/20 outline-none disabled:opacity-30"
                             />
                           </div>
-
                           <button 
                             onClick={() => handleUpdateHour(index, 'is_closed', !h.is_closed)}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${
-                              h.is_closed 
-                                ? 'bg-red-50 border-red-100 text-red-600 font-black' 
-                                : 'bg-green-50 border-green-100 text-green-600 font-black'
-                            } text-[10px] uppercase tracking-wider`}
+                            className={`px-3 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest ${h.is_closed ? 'bg-red-50 border-red-100 text-red-600' : 'bg-green-50 border-green-100 text-green-600'}`}
                           >
                             {h.is_closed ? 'Cerrado' : 'Abierto'}
                           </button>
@@ -313,56 +287,40 @@ export default function AdminSettings() {
             </div>
           )}
 
-          {activeTab === 'sedes' && (
+          {(activeTab === 'sedes' || activeTab === 'staff') && (
             <div className="relative">
-              <AdminSedes isEmbedded={true} />
-              {isFeatureLocked('multi_location') && (
-                <div className="absolute inset-x-0 -top-12 -bottom-12 bg-white/60 backdrop-blur-[8px] z-50 rounded-[3rem] flex flex-col items-center justify-center p-12 text-center ring-1 ring-black/[0.03] shadow-2xl">
-                   <div className="w-20 h-20 rounded-3xl bg-white flex items-center justify-center text-amber-500 mb-6 border border-gray-100 shadow-xl relative animate-bounce-slow">
-                      <Icon icon="heroicons:lock-closed" className="text-4xl" />
-                      <div className="absolute -top-2 -right-2 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-amber-500/20 uppercase tracking-tighter">Pro</div>
+              <div className={isFeatureLocked(activeTab === 'sedes' ? 'multi_location' : 'staff') ? 'blur-sm pointer-events-none grayscale-[0.5] opacity-40' : ''}>
+                {activeTab === 'sedes' ? <AdminSedes isEmbedded={true} /> : <AdminStaff isEmbedded={true} />}
+              </div>
+              
+              {isFeatureLocked(activeTab === 'sedes' ? 'multi_location' : 'staff') && (
+                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-12 text-center">
+                   <div className="bg-white/80 backdrop-blur-md p-10 rounded-[3rem] border border-white shadow-2xl flex flex-col items-center max-w-md ring-1 ring-black/[0.03]">
+                      <div className="w-20 h-20 rounded-3xl bg-white flex items-center justify-center text-amber-500 mb-6 border border-gray-100 shadow-xl relative scale-110">
+                         <Icon icon="heroicons:lock-closed" className="text-4xl" />
+                         <div className="absolute -top-2 -right-2 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg uppercase tracking-tighter">
+                           {activeTab === 'sedes' ? 'Pro' : 'Esencial'}
+                         </div>
+                      </div>
+                      <h3 className="text-2xl font-black text-gray-900 mb-3 tracking-tight">
+                        Módulo Bloqueado
+                      </h3>
+                      <p className="text-sm text-gray-500 mb-8 font-medium leading-relaxed italic">
+                        {activeTab === 'sedes' 
+                          ? 'La gestión multi-sede requiere el Plan Profesional para escalar tu operación.'
+                          : 'Añade meseros y personal de cocina con accesos controlados (requiere Plan Esencial).'}
+                      </p>
+                      <button 
+                        onClick={() => window.open('https://wa.me/something', '_blank')}
+                        className="bg-[#2f4131] text-white font-bold py-4 px-10 rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all text-[15px] flex items-center gap-2"
+                      >
+                        <Icon icon="heroicons:rocket-launch" className="text-lg" />
+                        Ver Planes de Mejora
+                      </button>
                    </div>
-                   <h3 className="text-2xl font-black text-gray-900 mb-3 tracking-tight">Sedes y Expansión</h3>
-                   <p className="text-sm text-gray-500 max-w-[340px] mb-8 font-medium leading-relaxed">
-                     Lleva tu negocio al siguiente nivel. Gestiona múltiples ubicaciones desde un solo panel.
-                   </p>
-                   <button 
-                     onClick={() => window.open('https://wa.me/something', '_blank')}
-                     className="bg-[#2f4131] text-white font-bold py-4 px-10 rounded-2xl shadow-2xl shadow-[#2f4131]/30 hover:scale-[1.02] active:scale-95 transition-all text-[15px] flex items-center gap-2"
-                   >
-                     <Icon icon="heroicons:sparkles" className="text-lg" />
-                     Actualizar a Plan Pro
-                   </button>
-                   <p className="mt-6 text-[11px] text-gray-400 font-bold uppercase tracking-widest italic">Activa el crecimiento de tu marca</p>
                 </div>
               )}
             </div>
-          )}
-
-          {activeTab === 'staff' && (
-             <div className="relative">
-               <AdminStaff isEmbedded={true} />
-               {isFeatureLocked('staff') && (
-                 <div className="absolute inset-x-0 -top-12 -bottom-12 bg-white/60 backdrop-blur-[8px] z-50 rounded-[3rem] flex flex-col items-center justify-center p-12 text-center ring-1 ring-black/[0.03] shadow-2xl">
-                    <div className="w-20 h-20 rounded-3xl bg-white flex items-center justify-center text-[#2f4131] mb-6 border border-gray-100 shadow-xl relative animate-pulse-slow">
-                       <Icon icon="heroicons:users" className="text-4xl" />
-                       <div className="absolute -top-2 -right-2 bg-[#2f4131] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-[#2f4131]/20 uppercase tracking-tighter italic">Esencial</div>
-                    </div>
-                    <h3 className="text-2xl font-black text-gray-900 mb-3 tracking-tight">Personal & Colaboradores</h3>
-                    <p className="text-sm text-gray-500 max-w-[340px] mb-8 font-medium leading-relaxed">
-                      Sincroniza a tu equipo. Añade meseros y personal de cocina con accesos controlados por PIN.
-                    </p>
-                    <button 
-                      onClick={() => window.open('https://wa.me/something', '_blank')}
-                      className="bg-gray-900 text-white font-bold py-4 px-10 rounded-2xl shadow-2xl shadow-black/20 hover:scale-[1.02] active:scale-95 transition-all text-[15px] flex items-center gap-2"
-                    >
-                      <Icon icon="heroicons:sparkles" className="text-lg" />
-                      Desbloquear Staff
-                    </button>
-                    <p className="mt-6 text-[11px] text-gray-400 font-bold uppercase tracking-widest italic">Optimiza la operación de tu equipo</p>
-                 </div>
-               )}
-             </div>
           )}
         </div>
       </div>

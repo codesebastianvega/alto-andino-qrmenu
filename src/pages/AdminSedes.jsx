@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { PageHeader, PrimaryButton, FormField, TextInput } from '../components/admin/ui';
-import { Icon } from '@iconify-icon/react';
-import { toast as toastFn } from '../components/Toast';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
+import { useAuth } from '../context/AuthContext';
+import { toast as toastFn } from '../components/Toast';
+import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton } from '../components/admin/ui';
+import { Icon } from '@iconify/react';
+import { Loader2, MapPin, Phone, Building2, ExternalLink, Trash2, CheckCircle2 } from 'lucide-react';
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 2000 }),
@@ -11,234 +12,327 @@ const toast = {
 };
 
 export default function AdminSedes({ isEmbedded = false }) {
-  const { ownedBrands, activeBrand, switchBrand, activePlan } = useAuth();
+  const { activeBrand, isFeatureLocked } = useAuth();
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Sede Details form state
-  const [sedeForm, setSedeForm] = useState({
+  const [editingLocation, setEditingLocation] = useState(null);
+
+  const [form, setForm] = useState({
+    name: '',
     address: '',
     phone: '',
-    google_maps_url: '',
-    description: ''
+    maps_url: '',
+    is_main: false,
+    is_active: true
   });
 
-  // Sync form with active brand data
   useEffect(() => {
-    if (activeBrand) {
-      setSedeForm({
-        address: activeBrand.address || '',
-        phone: activeBrand.phone || '',
-        google_maps_url: activeBrand.google_maps_url || '',
-        description: activeBrand.description || ''
-      });
+    if (activeBrand?.id) {
+      fetchLocations();
     }
-  }, [activeBrand]);
+  }, [activeBrand?.id]);
 
-  const handleSaveSedeInfo = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const fetchLocations = async () => {
+    setLoading(true);
     try {
-      const { error } = await supabase
-        .from('brands')
-        .update({
-          address: sedeForm.address,
-          phone: sedeForm.phone,
-          google_maps_url: sedeForm.google_maps_url,
-          description: sedeForm.description,
-          updated_at: new Date()
-        })
-        .eq('id', activeBrand.id);
+      const { data, error } = await supabase
+        .from('locations')
+        .select('*')
+        .eq('brand_id', activeBrand.id)
+        .order('is_main', { ascending: false })
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
-      toast.success('Información de la sede actualizada');
+      setLocations(data || []);
     } catch (err) {
       console.error(err);
-      toast.error('Error al guardar información');
+      toast.error('Error al cargar sedes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenModal = (loc = null) => {
+    if (loc) {
+      setEditingLocation(loc);
+      setForm({
+        name: loc.name || '',
+        address: loc.address || '',
+        phone: loc.phone || '',
+        maps_url: loc.maps_url || '',
+        is_main: loc.is_main || false,
+        is_active: loc.is_active ?? true
+      });
+    } else {
+      setEditingLocation(null);
+      setForm({
+        name: '',
+        address: '',
+        phone: '',
+        maps_url: '',
+        is_main: locations.length === 0,
+        is_active: true
+      });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!activeBrand?.id) return;
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ...form,
+        brand_id: activeBrand.id,
+        updated_at: new Date()
+      };
+
+      if (editingLocation) {
+        const { error } = await supabase
+          .from('locations')
+          .update(payload)
+          .eq('id', editingLocation.id);
+        if (error) throw error;
+        toast.success('Sede actualizada');
+      } else {
+        const { error } = await supabase
+          .from('locations')
+          .insert([payload]);
+        if (error) throw error;
+        toast.success('Sede creada correctamente');
+      }
+
+      setIsModalOpen(false);
+      fetchLocations();
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al guardar sede');
     } finally {
       setIsSubmitting(false);
     }
   };
-  
-  // Feature gating logic for adding new sedes
-  const canAddSede = activePlan?.name !== 'Emprendedor';
 
-  const handleAddSede = () => {
-    if (!canAddSede) {
-      toast.error('Tu plan actual no permite múltiples sedes. ¡Actualiza para expandir tu negocio!');
-      return;
+  const handleDelete = async (id) => {
+    if (!confirm('¿Estás seguro de eliminar esta sede?')) return;
+    try {
+      const { error } = await supabase.from('locations').delete().eq('id', id);
+      if (error) throw error;
+      toast.success('Sede eliminada');
+      fetchLocations();
+    } catch (err) {
+      console.error(err);
+      toast.error('No se pudo eliminar la sede');
     }
-    // Implementation for adding a sede would go here
-    toast.success('Funcionalidad de nueva sede próximamente');
   };
 
+  const isMultiLocationLocked = isFeatureLocked('multi_location');
+  const canAddMore = !isMultiLocationLocked || locations.length === 0;
+
+  if (loading && locations.length === 0) return (
+    <div className="flex items-center justify-center h-64 text-gray-400 text-sm font-medium">
+      <Loader2 className="w-5 h-5 animate-spin mr-2" /> Cargando sedes...
+    </div>
+  );
+
   return (
-    <div className={isEmbedded ? "space-y-10" : "p-8 max-w-7xl mx-auto space-y-10"}>
+    <div className={isEmbedded ? "" : "p-4 sm:p-8 max-w-7xl mx-auto space-y-8"}>
       {!isEmbedded && (
         <PageHeader
           badge="Administración"
           title="Sedes y Locales"
-          subtitle="Gestiona los diferentes puntos de venta de tu negocio."
-        />
+          subtitle="Gestiona las ubicaciones físicas de tu negocio."
+        >
+          <PrimaryButton onClick={() => handleOpenModal()} disabled={!canAddMore}>
+            <Icon icon="solar:add-circle-linear" className="w-4 h-4 mr-2" />
+            Nueva Sede
+          </PrimaryButton>
+        </PageHeader>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left: Active Sede Info Form */}
-        <div className="lg:col-span-12 xl:col-span-8 space-y-8">
-           <section className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-8 py-6 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
-                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#2f4131]/10 flex items-center justify-center text-[#2f4131]">
-                       <Icon icon="heroicons:home-modern" className="text-xl" />
-                    </div>
-                    <div>
-                       <h3 className="text-lg font-bold text-gray-900 leading-tight">Información de esta Sede</h3>
-                       <p className="text-xs text-gray-500 font-medium tracking-wide uppercase mt-0.5">Datos públicos para tus clientes</p>
-                    </div>
-                 </div>
-                 <PrimaryButton 
-                   onClick={handleSaveSedeInfo} 
-                   disabled={isSubmitting}
-                   className="py-1.5 px-4 text-xs rounded-lg"
-                 >
-                   {isSubmitting ? 'Guardando...' : 'Guardar Info'}
-                 </PrimaryButton>
-              </div>
-
-              <div className="p-8">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField label="Dirección Física">
-                       <TextInput 
-                          value={sedeForm.address}
-                          onChange={(e) => setSedeForm({...sedeForm, address: e.target.value})}
-                          placeholder="Ej. Calle 123 #45-67, Ciudad"
-                       />
-                    </FormField>
-                    <FormField label="Teléfono de Contacto">
-                       <TextInput 
-                          value={sedeForm.phone}
-                          onChange={(e) => setSedeForm({...sedeForm, phone: e.target.value})}
-                          placeholder="Ej. +57 300 000 0000"
-                       />
-                    </FormField>
-                    <div className="md:col-span-2">
-                       <FormField label="Enlace de Google Maps (URL)">
-                          <TextInput 
-                             value={sedeForm.google_maps_url}
-                             onChange={(e) => setSedeForm({...sedeForm, google_maps_url: e.target.value})}
-                             placeholder="https://goo.gl/maps/..."
-                          />
-                       </FormField>
-                    </div>
-                    <div className="md:col-span-2">
-                       <FormField label="Breve Descripción / Bio">
-                          <textarea 
-                             value={sedeForm.description}
-                             onChange={(e) => setSedeForm({...sedeForm, description: e.target.value})}
-                             className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-medium focus:ring-2 focus:ring-[#2f4131]/10 outline-none transition-all placeholder:text-gray-300 min-h-[100px]"
-                             placeholder="Cuéntale a tus clientes algo especial sobre este local..."
-                          />
-                       </FormField>
-                    </div>
-                 </div>
-              </div>
-           </section>
-
-           <div className="space-y-6">
-             <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest pl-4">Cambiar entre sedes</h4>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Current Sede Card */}
-        {ownedBrands.map((brand) => (
-          <div 
-            key={brand.id}
-            className={`group relative bg-white rounded-3xl border-2 transition-all p-6 ${
-              activeBrand?.id === brand.id 
-                ? 'border-[#2f4131] shadow-xl shadow-[#2f4131]/10 bg-gradient-to-br from-white to-[#F4F4F2]' 
-                : 'border-transparent shadow-sm hover:shadow-md hover:border-gray-200'
-            }`}
+      {isEmbedded && (
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-base font-black text-gray-900 uppercase tracking-tight italic">Tus Locales</h3>
+            <p className="text-[12px] text-gray-500 font-medium">Listado de sedes activas para el menú digital.</p>
+          </div>
+          <PrimaryButton 
+            onClick={() => handleOpenModal()} 
+            disabled={!canAddMore}
+            className="py-2 px-4 shadow-sm"
           >
-            {activeBrand?.id === brand.id && (
-              <div className="absolute top-4 right-4 bg-[#2f4131] text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
-                Activa
+            <Icon icon="solar:add-circle-linear" className="w-4 h-4 mr-2" />
+            Añadir Sede
+          </PrimaryButton>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {locations.map((loc) => (
+          <div key={loc.id} className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all group overflow-hidden flex flex-col">
+            <div className="p-6 flex-1 space-y-4">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-[#2f4131]/10 flex items-center justify-center text-[#2f4131]">
+                    <Building2 size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 leading-tight">{loc.name}</h4>
+                    {loc.is_main && (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-[#2f4131] bg-[#2f4131]/5 px-2 py-0.5 rounded-full mt-1 border border-[#2f4131]/10 tracking-widest italic">
+                        <Icon icon="heroicons:check-badge" className="text-[10px]" /> Principal
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => handleOpenModal(loc)} className="p-2 hover:bg-gray-50 rounded-xl text-gray-400 hover:text-gray-900 transition-colors">
+                    <Icon icon="solar:pen-new-square-linear" width="18" />
+                  </button>
+                  <button onClick={() => handleDelete(loc.id)} className="p-2 hover:bg-red-50 rounded-xl text-gray-400 hover:text-red-500 transition-colors">
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
-            )}
-            
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center p-2 overflow-hidden shrink-0 shadow-inner">
-                {brand.logo_url ? (
-                  <img src={brand.logo_url} alt={brand.name} className="w-full h-full object-contain" />
-                ) : (
-                  <Icon icon="heroicons:building-storefront" className="text-2xl text-gray-300" />
+
+              <div className="space-y-2.5 pt-2">
+                <div className="flex items-start gap-3">
+                  <MapPin size={14} className="text-gray-300 mt-0.5 shrink-0" />
+                  <p className="text-xs text-gray-500 font-medium leading-relaxed">{loc.address || 'Sin dirección registrada'}</p>
+                </div>
+                {loc.phone && (
+                  <div className="flex items-center gap-3">
+                    <Phone size={14} className="text-gray-300 shrink-0" />
+                    <p className="text-xs text-gray-500 font-medium">{loc.phone}</p>
+                  </div>
                 )}
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-black text-gray-900 uppercase tracking-tight italic truncate">
-                  {brand.name}
-                </h3>
-                <p className="text-[11px] text-gray-400 font-medium truncate uppercase tracking-widest">
-                  {brand.slug}
-                </p>
-              </div>
             </div>
 
-            <div className="space-y-3 mb-6">
-              <div className="flex items-center gap-2 text-[12px] text-gray-500 font-medium">
-                <Icon icon="heroicons:map-pin" className="text-gray-300" />
-                <span className="truncate italic">Ubicación configurada</span>
-              </div>
-              <div className="flex items-center gap-2 text-[12px] text-gray-500 font-medium">
-                <Icon icon="heroicons:qr-code" className="text-gray-300" />
-                <span>QR Menú Activo</span>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              {activeBrand?.id !== brand.id ? (
-                <button 
-                  onClick={() => switchBrand(brand)}
-                  className="flex-1 bg-white border border-gray-200 text-gray-700 font-bold text-xs py-2.5 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
-                >
-                  Gestionar sede
-                </button>
-              ) : (
-                <button 
-                  disabled
-                  className="flex-1 bg-[#2f4131]/10 text-[#2f4131] font-bold text-xs py-2.5 rounded-xl cursor-default"
-                >
-                  Sede en curso
-                </button>
-              )}
+            <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+               <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${loc.is_active ? 'bg-green-500' : 'bg-gray-300'}`} />
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{loc.is_active ? 'Activa' : 'Inactiva'}</span>
+               </div>
+               {loc.maps_url && (
+                  <a 
+                    href={loc.maps_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-bold text-[#2f4131] flex items-center gap-1 hover:underline tracking-widest italic"
+                  >
+                    VER EN MAPA <ExternalLink size={10} />
+                  </a>
+               )}
             </div>
           </div>
         ))}
 
-        {/* Add Sede Placeholder / Upsell */}
-        <div 
-          onClick={handleAddSede}
-          className={`group flex flex-col items-center justify-center border-2 border-dashed rounded-3xl p-8 cursor-pointer transition-all ${
-            canAddSede 
-              ? 'border-gray-200 hover:border-[#2f4131]/30 hover:bg-white' 
-              : 'border-gray-100 bg-gray-50/50 opacity-60 grayscale'
-          }`}
-        >
-          <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-4 transition-all ${
-            canAddSede ? 'bg-gray-50 text-gray-400 group-hover:bg-[#2f4131] group-hover:text-white' : 'bg-gray-100 text-gray-300'
-          }`}>
-            <Icon icon={canAddSede ? "heroicons:plus" : "heroicons:lock-closed"} className="text-2xl" />
-          </div>
-          <p className={`text-sm font-bold tracking-tight uppercase italic ${canAddSede ? 'text-gray-500 group-hover:text-gray-900' : 'text-gray-400'}`}>
-            {canAddSede ? 'Agregar Nueva Sede' : 'Expande tu negocio'}
-          </p>
-          {!canAddSede && (
-            <p className="text-[10px] text-amber-600 font-black uppercase mt-2 text-center max-w-[140px] leading-tight">
-              Disponible en Plan Profesional
-            </p>
-          )}
-        </div>
+        {locations.length === 0 && (
+          <div className="col-span-full bg-white rounded-3xl border-2 border-dashed border-gray-100 p-12 flex flex-col items-center justify-center text-center opacity-60">
+             <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-4">
+                <Icon icon="solar:map-point-remove-linear" className="text-gray-300" width="32" />
              </div>
+             <h4 className="text-sm font-bold text-gray-400 uppercase tracking-widest">No hay sedes registradas</h4>
+             <p className="text-xs text-gray-400 mt-2 max-w-[200px]">Comienza añadiendo la ubicación principal de tu negocio.</p>
           </div>
-        </div>
+        )}
       </div>
+
+      {/* Modal: Add/Edit Location */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] animate-in fade-in duration-200">
+           <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="px-8 py-6 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center">
+                 <div>
+                    <h3 className="text-xl font-black text-gray-900 tracking-tight">{editingLocation ? 'Editar Sede' : 'Nueva Sede'}</h3>
+                    <p className="text-xs text-gray-500 font-medium">Información de contacto y ubicación.</p>
+                 </div>
+                 <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 rounded-full hover:bg-white flex items-center justify-center text-gray-400 transition-all shadow-sm">
+                    <Icon icon="solar:close-circle-linear" width="24" />
+                 </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField label="Nombre de la Sede">
+                       <TextInput 
+                          value={form.name} 
+                          onChange={(e) => setForm({...form, name: e.target.value})} 
+                          placeholder="Ej. Sede Central"
+                          required
+                       />
+                    </FormField>
+                    <FormField label="Teléfono (Opcional)">
+                       <TextInput 
+                          value={form.phone} 
+                          onChange={(e) => setForm({...form, phone: e.target.value})} 
+                          placeholder="Ej. +57 321..."
+                       />
+                    </FormField>
+                 </div>
+
+                 <FormField label="Dirección Física">
+                    <TextInput 
+                       value={form.address} 
+                       onChange={(e) => setForm({...form, address: e.target.value})} 
+                       placeholder="Ej. Calle 10 #20-30"
+                    />
+                 </FormField>
+
+                 <FormField label="URL Google Maps (Opcional)">
+                    <TextInput 
+                       value={form.maps_url} 
+                       onChange={(e) => setForm({...form, maps_url: e.target.value})} 
+                       placeholder="https://maps.app.goo.gl/..."
+                       className="font-mono text-[11px]"
+                    />
+                 </FormField>
+
+                 <div className="flex flex-col sm:flex-row gap-4 pt-2">
+                    <label className="flex-1 flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 cursor-pointer hover:bg-gray-100 transition-all group">
+                       <input 
+                         type="checkbox" 
+                         checked={form.is_main} 
+                         onChange={(e) => setForm({...form, is_main: e.target.checked})} 
+                         className="w-5 h-5 rounded-lg border-gray-300 text-[#2f4131] focus:ring-[#2f4131]"
+                       />
+                       <div className="flex flex-col">
+                          <span className="text-[11px] font-black uppercase text-gray-600 tracking-wider">Sede Principal</span>
+                          <span className="text-[9px] text-gray-400 font-bold uppercase">Por defecto</span>
+                       </div>
+                    </label>
+
+                    <label className="flex-1 flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 cursor-pointer hover:bg-gray-100 transition-all group">
+                       <input 
+                         type="checkbox" 
+                         checked={form.is_active} 
+                         onChange={(e) => setForm({...form, is_active: e.target.checked})} 
+                         className="w-5 h-5 rounded-lg border-gray-300 text-[#2f4131] focus:ring-[#2f4131]"
+                       />
+                       <div className="flex flex-col">
+                          <span className="text-[11px] font-black uppercase text-gray-600 tracking-wider">Sede Activa</span>
+                          <span className="text-[9px] text-gray-400 font-bold uppercase">Visible</span>
+                       </div>
+                    </label>
+                 </div>
+
+                 <div className="pt-6 border-t border-gray-100 flex gap-3">
+                    <SecondaryButton type="button" onClick={() => setIsModalOpen(false)} className="flex-1 rounded-2xl py-3 border-gray-200">
+                       Cancelar
+                    </SecondaryButton>
+                    <PrimaryButton type="submit" disabled={isSubmitting} className="flex-[2] rounded-2xl py-3 shadow-xl">
+                       {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Icon icon="solar:check-read-linear" className="w-4 h-4 mr-2" />}
+                       {editingLocation ? 'Guardar Cambios' : 'Crear Sede'}
+                    </PrimaryButton>
+                 </div>
+              </form>
+           </div>
+        </div>
+      )}
     </div>
   );
 }
