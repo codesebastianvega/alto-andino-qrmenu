@@ -22,9 +22,9 @@ export default function InteractivePhone() {
           title="Menú Real Alto Andino"
           className="border-none absolute left-0"
           style={{ 
-            top: '32px',
+            top: '0px',
             width: '390px', 
-            height: '770px', 
+            height: '811px', 
             transform: 'scale(0.7846)', 
             transformOrigin: 'top left',
             pointerEvents: 'auto' 
