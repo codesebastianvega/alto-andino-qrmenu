@@ -55,7 +55,8 @@ export default function AdminWebContent() {
     menu_banner_title: '',
     menu_banner_subtitle: '',
     menu_banner_tag: '',
-    menu_banner_img: ''
+    menu_banner_img: '',
+    welcome_bg_img: ''
   });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
@@ -134,6 +135,7 @@ export default function AdminWebContent() {
         menu_banner_subtitle: data.menu_banner_subtitle || null,
         menu_banner_tag: data.menu_banner_tag || null,
         menu_banner_img: data.menu_banner_img || null,
+        welcome_bg_img: data.welcome_bg_img || null,
         updated_at: new Date().toISOString()
       };
       const { error } = await supabase.from('home_settings')
@@ -314,6 +316,37 @@ export default function AdminWebContent() {
                   );
                 })()}
               </FormField>
+
+              <div className="pt-4 border-t border-gray-100">
+                <FormField label="Fondo Welcome Ritual (Bienvenida)" subtitle="Imagen a pantalla completa que ve el cliente al entrar.">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
+                      <TextInput 
+                        value={data.welcome_bg_img || ''} 
+                        onChange={(e) => setData({ ...data, welcome_bg_img: e.target.value })} 
+                        placeholder="https://... o sube una imagen" 
+                        type="url"
+                      />
+                      <label className={`shrink-0 cursor-pointer flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${uploadingImage ? 'bg-gray-100 text-gray-400' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>
+                        <Icon icon={uploadingImage ? "heroicons:arrow-path" : "heroicons:arrow-up-tray"} className={uploadingImage ? "animate-spin" : ""} />
+                        <span>Subir Fondo</span>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          className="hidden" 
+                          onChange={(e) => handleImageUpload(e, 'welcome_bg_img')}
+                          disabled={uploadingImage}
+                        />
+                      </label>
+                    </div>
+                    {data.welcome_bg_img && (
+                      <div className="w-full h-32 rounded-xl overflow-hidden border border-gray-200 relative">
+                         <img src={data.welcome_bg_img} alt="Welcome background preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+                </FormField>
+              </div>
               
               <div className="p-4 bg-[#7db87a]/10 border border-[#7db87a]/20 rounded-2xl flex gap-3 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#7db87a]/5 rounded-full -mr-16 -mt-16 blur-2xl" />
@@ -340,6 +373,7 @@ export default function AdminWebContent() {
             </div>
           </div>
         )}
+
 
         {/* CONTINUACIÓN TABS INICIO: COMUNIDAD */}
         {activeTab === 'inicio' && (

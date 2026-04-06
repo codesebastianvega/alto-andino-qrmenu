@@ -1,9 +1,12 @@
-// src/App.jsx
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useParams, Navigate } from "react-router-dom";
 import { useMenuData } from "./context/MenuDataContext";
 import { useBrand } from "./context/BrandContext";
 import { Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+
+// --- COMPONENTES ---
+import BrandWelcome from "./components/BrandWelcome";
 
 import { FEATURE_TABS, PUBLIC_URL } from "./config/featureFlags";
 
@@ -68,7 +71,7 @@ export default function App() {
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [query, setQuery] = useState("");
   const cart = useCart();
-  const { categories: dbCategories, restaurantSettings, loading: menuLoading } = useMenuData();
+  const { categories: dbCategories, restaurantSettings, homeSettings, loading: menuLoading } = useMenuData();
 
   useEffect(() => {
     const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
@@ -107,9 +110,54 @@ export default function App() {
     }
   }, []);
 
+  // ✅ View Detection & UI States
+  const searchParams = useMemo(() => new URLSearchParams(window.location.search), [window.location.search]);
+  
+  const isQr = searchParams.get("qr") === "1";
+  const isDemo = searchParams.get("demo") === "1";
+  const isOldStockAdmin = searchParams.get("admin") === "1";
+  
+  const isNewAdminPanel = currentHash === '#admin';
+  const isOnboardingView = currentHash === '#admin/onboarding';
+  const orderTrackingId = currentHash.startsWith('#order/') ? currentHash.replace('#order/', '') : null;
+  
+  const isLandingView = !currentHash || currentHash === '' || currentHash === '#' || currentHash === '#inicio';
+  const isMenuView = currentHash === '#menu';
+  const isAuthView = currentHash === '#login' || currentHash === '#registro';
+  const isOrderingMode = isMenuView || !!sessionStorage.getItem("aa_current_mesa") || searchParams.get("mesa");
+
+  // ✅ Welcome Experience State
+  const [showWelcome, setShowWelcome] = useState(false);
+
   useEffect(() => {
-    if (!isValidCat(selectedCategory)) setSelectedCategory("todos");
-  }, [selectedCategory]);
+    // Solo mostrar bienvenida en la vista de Marca, no en Admin u Onboarding
+    const isPublicMenu = !isNewAdminPanel && !isOnboardingView && !orderTrackingId && !isQr;
+    
+    if (isPublicMenu && activeBrand && !loadingBrand) {
+      setShowWelcome(true);
+    }
+  }, [brand_slug, isNewAdminPanel, isOnboardingView, orderTrackingId, activeBrand, loadingBrand, isQr]);
+
+  const handleStartExperience = () => {
+    setShowWelcome(false);
+  };
+
+  // ✅ Bloquear scroll cuando la bienvenida está activa
+  useEffect(() => {
+    if (showWelcome) {
+      document.documentElement.classList.add('no-scroll');
+      document.body.classList.add('no-scroll');
+    } else {
+      document.documentElement.classList.remove('no-scroll');
+      document.body.classList.remove('no-scroll');
+    }
+    return () => {
+      document.documentElement.classList.remove('no-scroll');
+      document.body.classList.remove('no-scroll');
+    };
+  }, [showWelcome]);
+
+
 
   useEffect(() => {
     if (!FEATURE_TABS) return;
@@ -162,33 +210,6 @@ export default function App() {
     dessertBaseItems,
   ]);
 
-  // ✅ Modo póster QR (?qr=1) – se muestra SOLO el QR
-  const isQr = (() => {
-    if (typeof window === "undefined") return false;
-    const params = new URLSearchParams(window.location.search);
-    return params.get("qr") === "1";
-  })();
-
-  // ✅ Modo demo (?demo=1) – se oculta header, footer, bottom bar
-  const isDemo = (() => {
-    if (typeof window === "undefined") return false;
-    const params = new URLSearchParams(window.location.search);
-    return params.get("demo") === "1";
-  })();
-
-  if (isQr) {
-    const publicUrl = PUBLIC_URL || window.location.origin;
-    return (
-      <Suspense fallback={<div />}>
-        <QrPoster url={publicUrl} />
-      </Suspense>
-    );
-  }
-
-  // Check for admin routes: #admin (new panel) or #admin/onboarding
-  const isNewAdminPanel = currentHash === '#admin';
-  const isOnboardingView = currentHash === '#admin/onboarding';
-
   // Redirection Logic for Onboarding
   useEffect(() => {
     // Only redirect if explicitly false, not null or loading
@@ -199,15 +220,7 @@ export default function App() {
       window.location.hash = '#admin';
     }
   }, [isNewAdminPanel, isOnboardingView, activeBrand]);
-  
-  // Detect hash routing for order tracking #order/UUID
-  const orderTrackingId = currentHash.startsWith('#order/') ? currentHash.replace('#order/', '') : null;
 
-  const isOldStockAdmin = (() => {
-    if (typeof window === "undefined") return false;
-    const params = new URLSearchParams(window.location.search);
-    return params.get("admin") === "1";
-  })();
 
   if (loadingBrand || (brand_slug && menuLoading)) {
     return (
@@ -258,22 +271,36 @@ export default function App() {
   const hasFloatingCartBar = cart.items && cart.items.length > 0;
 
   // ✅ Modo menú normal
-  const isLandingView = !currentHash || currentHash === '' || currentHash === '#' || currentHash === '#inicio';
-  const isMenuView = currentHash === '#menu';
-  const isAuthView = currentHash === '#login' || currentHash === '#registro';
-  
-  // Detect if user is in "Ordering Mode" (QR, table in session, or explicit menu hash)
-  const isOrderingMode = isMenuView || !!sessionStorage.getItem("aa_current_mesa") || new URLSearchParams(window.location.search).get("mesa");
+  if (isQr) {
+    const publicUrl = PUBLIC_URL || window.location.origin;
+    return (
+      <Suspense fallback={<div />}>
+        <QrPoster url={publicUrl} />
+      </Suspense>
+    );
+  }
 
   return (
-    <>
-      <div 
-        className="leading-snug text-alto-text min-h-screen transition-colors duration-500"
-        style={{ 
-          backgroundColor: restaurantSettings?.theme_background || "#F5F5F7"
-        }}
-      >
-        {!isDemo && !isAuthView && <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />}
+    <div 
+      className="leading-snug text-alto-text min-h-screen transition-colors duration-500"
+      style={{ 
+        backgroundColor: restaurantSettings?.theme_background || "#F5F5F7"
+      }}
+    >
+      <AnimatePresence>
+        {showWelcome && (
+          <BrandWelcome 
+            brandName={activeBrand?.name}
+            logoUrl={restaurantSettings?.logo_url}
+            bgUrl={homeSettings?.welcome_bg_img}
+            mesa={new URLSearchParams(window.location.search).get('mesa')}
+            onStart={handleStartExperience}
+          />
+        )}
+      </AnimatePresence>
+
+      {!isDemo && !isAuthView && <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />}
+
 
         {isLandingView && !isOrderingMode && (
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
@@ -348,7 +375,6 @@ export default function App() {
           </GuideModal>
         </Suspense>
         <Toast />
-      </div>
-    </>
+    </div>
   );
 }
