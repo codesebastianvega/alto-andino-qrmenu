@@ -88,23 +88,19 @@ export default function AdminSettings() {
     setIsSubmittingSettings(true);
     try {
       const payload = {
+        brand_id: activeBrand.id,
         whatsapp_number_orders: settingsForm.whatsapp_number_orders,
         is_service_fee_enabled: settingsForm.is_service_fee_enabled,
         service_fee_percentage: settingsForm.service_fee_percentage,
-        updated_at: new Date().toISOString(),
-        brand_id: activeBrand.id
+        updated_at: new Date().toISOString()
       };
 
-      if (settings?.id) {
-        const { error } = await supabase.from('restaurant_settings')
-          .update(payload)
-          .eq('id', settings.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('restaurant_settings')
-          .insert([payload]);
-        if (error) throw error;
-      }
+      const { error } = await supabase
+        .from('restaurant_settings')
+        .upsert(payload, { onConflict: 'brand_id' });
+
+      if (error) throw error;
+      
       toast.success('Configuración guardada');
       fetchSettings();
     } catch (err) {
@@ -325,7 +321,7 @@ export default function AdminSettings() {
                           : 'Añade meseros y personal de cocina con accesos controlados (requiere Plan Esencial).'}
                       </p>
                       <button 
-                        onClick={() => window.open('https://wa.me/something', '_blank')}
+                        onClick={() => window.open('https://wa.me/573214815152?text=Hola!%20Deseo%20mejorar%20mi%20plan%20en%20Aluna', '_blank')}
                         className="bg-[#2f4131] text-white font-bold py-4 px-10 rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all text-[15px] flex items-center gap-2"
                       >
                         <Icon icon="heroicons:rocket-launch" className="text-lg" />

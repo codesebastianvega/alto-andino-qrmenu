@@ -30,11 +30,9 @@ const BUSINESS_TYPES = [
 export default function RegisterPage() {
   const { signUp } = useAuth();
 
-  // Read plan from URL hash query (?plan=profesional)
+  // Read plan from URL search query (?plan=profesional)
   const getPlanFromUrl = () => {
-    const hash = window.location.hash; // e.g. "#registro?plan=profesional"
-    const queryStr = hash.includes('?') ? hash.split('?')[1] : '';
-    const params = new URLSearchParams(queryStr);
+    const params = new URLSearchParams(window.location.search);
     return params.get('plan') || 'emprendedor';
   };
 
@@ -164,7 +162,7 @@ export default function RegisterPage() {
               Revisa tu correo para verificar tu cuenta, luego podrás acceder a tu panel de administración.
             </p>
             <a
-              href="#login"
+              href="/login"
               className="w-full inline-flex justify-center rounded-full py-3 px-6 bg-white text-[#1A1A1A] text-sm font-semibold hover:bg-gray-100 transition-colors"
             >
               Ir a Iniciar Sesión →
@@ -187,7 +185,7 @@ export default function RegisterPage() {
           <h2 className="mt-4 text-2xl font-bold text-white">Crea tu cuenta</h2>
           <p className="mt-1 text-sm text-gray-500">
             ¿Ya tienes cuenta?{' '}
-            <a href="#login" className="text-[#7db87a] hover:underline">Inicia sesión</a>
+            <a href="/login" className="text-[#7db87a] hover:underline">Inicia sesión</a>
           </p>
         </div>
 

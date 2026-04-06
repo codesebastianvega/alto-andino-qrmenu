@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
 import { PrimaryButton, FormField, TextInput } from '../components/admin/ui';
 import { Icon } from '@iconify-icon/react';
@@ -137,11 +137,12 @@ export default function AdminWebContent() {
         updated_at: new Date().toISOString()
       };
       const { error } = await supabase.from('home_settings')
-        .update({
+        .upsert({
           ...payload,
           brand_id: activeBrand.id
-        })
-        .eq('id', data.id);
+        }, { 
+          onConflict: 'brand_id' 
+        });
       if (error) throw error;
       toast.success('Ajustes web guardados');
       setSaved(true);

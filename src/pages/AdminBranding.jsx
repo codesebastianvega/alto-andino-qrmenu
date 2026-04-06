@@ -110,22 +110,14 @@ export default function AdminBranding({ isEmbedded = false }) {
         updated_at: new Date()
       };
 
-      let result;
-      if (settings?.id) {
-        result = await supabase.from('restaurant_settings')
-          .update(payload)
-          .eq('id', settings.id)
-          .select()
-          .single();
-      } else {
-        result = await supabase.from('restaurant_settings')
-          .insert([payload])
-          .select()
-          .single();
-      }
+      const { data, error } = await supabase
+        .from('restaurant_settings')
+        .upsert(payload, { onConflict: 'brand_id' })
+        .select()
+        .single();
 
-      if (result.error) throw result.error;
-      if (result.data) setSettings(result.data);
+      if (error) throw error;
+      if (data) setSettings(data);
 
       toast.success('¡Branding guardado correctamente!');
     } catch (err) {

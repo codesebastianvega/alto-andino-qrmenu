@@ -55,7 +55,8 @@ export function useIngredientCategories() {
       const { error } = await supabase
         .from('ingredient_categories')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('brand_id', activeBrandId);
 
       if (error) throw error;
       toast('Categoría eliminada');
@@ -73,6 +74,7 @@ export function useIngredientCategories() {
         .from('ingredient_categories')
         .update({ name })
         .eq('id', id)
+        .eq('brand_id', activeBrandId)
         .select()
         .single();
 

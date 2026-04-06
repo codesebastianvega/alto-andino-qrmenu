@@ -35,6 +35,8 @@ export default function ProfilePage() {
   
   // Controlador de los modales (bottom sheets)
   const [activeModal, setActiveModal] = useState(null); 
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiPalate, setAiPalate] = useState("");
   
   // =========================================================================
   // 🧑‍💻 HELPER LÓGICO: ESTADOS DE USUARIO Y FIDELIDAD

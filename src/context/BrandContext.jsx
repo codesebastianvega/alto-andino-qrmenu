@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 
 const BrandContext = createContext({});
@@ -7,58 +8,49 @@ export const BrandProvider = ({ children }) => {
   const [brand, setBrand] = useState(null);
   const [features, setFeatures] = useState([]);
   const [loadingBrand, setLoadingBrand] = useState(true);
+  const { brand_slug } = useParams();
 
-  useEffect(() => {
-    // 1. Obtener el slug desde la URL (o contexto global, pero aquí vemos como lo extraemos)
-    // Para rutas tipo /:slug/menu, pero usando react-router sería `useParams`
-    // Dado que la app usa Hash por ahora o dominios personalizados, intentemos sacarlo de los datos configurados, 
-    // o podemos simplemente depender de "la sesión de owner" cuando se edita un brand en el Admin.
-
-    // Por ahora, asumamos que si el usuario tiene una sesión, y es Owner, cargamos 'su' brand.
-    // Si la visita es de un comensal, la vista la resuleve LandingPage o la ruta, PERO 
-    // necesitamos una forma limpia.
-    // Vamos a escuchar a la sesión de Supabase local o lo que se defina.
-    
-    // Dejamos un hook temporal para resolver esto de manera general.
-    resolveCurrentBrand();
-  }, []);
-
-  const resolveCurrentBrand = async () => {
+  const resolveCurrentBrand = useCallback(async () => {
     try {
       setLoadingBrand(true);
-      // a) Intenta buscar un id de negocio en sesión
-      // (si es que la URL ya resolvió o estamos logueados)
-      const { data: { session } } = await supabase.auth.getSession();
-      
       let targetBrandId = null;
 
-      if (session?.user) {
-        // Obtenemos el perfil para saber de qué negocio es dueño o staff
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('brand_id, role')
-          .eq('id', session.user.id)
-          .single();
-          
-        if (profile?.brand_id) {
-          targetBrandId = profile.brand_id;
+      // 1. PRIORIDAD: Si hay un slug en la URL, resolvemos por slug
+      if (brand_slug) {
+        const { data: brandBySlug, error: slugError } = await supabase
+          .from('brands')
+          .select('id')
+          .eq('slug', brand_slug)
+          .eq('is_active', true)
+          .maybeSingle();
+        
+        if (brandBySlug) {
+          targetBrandId = brandBySlug.id;
+        } else {
+          console.warn(`No se encontró marca activa para el slug: ${brand_slug}`);
         }
       }
 
-      // Si no pudimos determinarlo, dejamos el por defecto de Alto Andino 
-      // (para que no se caiga la app vieja)
+      // 2. FALLBACK ADMIN: Si no hay slug pero hay sesión (panel admin), usamos el brand del perfil
       if (!targetBrandId) {
-        // En producción intentarías cogerlo de la URL o el dominio.
-        const { data: defaultBrand } = await supabase
-          .from('brands')
-          .select('id')
-          .eq('slug', 'alto-andino')
-          .single();
-        targetBrandId = defaultBrand?.id;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('brand_id')
+            .eq('id', session.user.id)
+            .maybeSingle();
+            
+          if (profile?.brand_id) {
+            targetBrandId = profile.brand_id;
+          }
+        }
       }
 
+      // 3. ULTIMO RECURSO: Mantener compatibilidad si nada anterior funcionó (opcional)
+      // if (!targetBrandId) targetBrandId = 'ID_HARDCODED_DEFAULT';
+
       if (targetBrandId) {
-        // Cargar detalles del brand
         const { data: brandData, error } = await supabase
           .from('brands')
           .select('*, plans(id, name)')
@@ -68,7 +60,6 @@ export const BrandProvider = ({ children }) => {
         if (!error && brandData) {
           setBrand(brandData);
 
-          // Cargar las features asignadas a su plan
           if (brandData.plan_id) {
             const { data: featuresData } = await supabase
               .from('plan_features')
@@ -79,13 +70,20 @@ export const BrandProvider = ({ children }) => {
             setFeatures(featuresData || []);
           }
         }
+      } else {
+        setBrand(null);
+        setFeatures([]);
       }
     } catch (error) {
       console.error('Error resolving brand:', error);
     } finally {
       setLoadingBrand(false);
     }
-  };
+  }, [brand_slug]);
+
+  useEffect(() => {
+    resolveCurrentBrand();
+  }, [resolveCurrentBrand]);
 
   const hasFeature = (featureKey) => {
     if (!features || features.length === 0) return false;
@@ -96,7 +94,8 @@ export const BrandProvider = ({ children }) => {
     brand,
     features,
     loadingBrand,
-    hasFeature
+    hasFeature,
+    refreshBrand: resolveCurrentBrand
   };
 
   return <BrandContext.Provider value={value}>{children}</BrandContext.Provider>;
@@ -105,3 +104,4 @@ export const BrandProvider = ({ children }) => {
 export const useBrand = () => {
   return useContext(BrandContext);
 };
+

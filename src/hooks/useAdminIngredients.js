@@ -119,6 +119,7 @@ export function useAdminIngredients() {
         .from('ingredients')
         .update(cleanData)
         .eq('id', id)
+        .eq('brand_id', activeBrandId)
         .select()
         .single();
 
@@ -141,7 +142,8 @@ export function useAdminIngredients() {
       const { error } = await supabase
         .from('ingredients')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('brand_id', activeBrandId);
 
       if (error) throw error;
       toast('Insumo eliminado');

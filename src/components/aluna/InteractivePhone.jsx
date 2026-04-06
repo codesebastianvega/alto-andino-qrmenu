@@ -18,7 +18,7 @@ export default function InteractivePhone() {
       {/* Iframe del Menú Real de Alto Andino */}
       <div className="w-full h-full relative z-10 bg-[#F5F5F7]">
         <iframe
-          src="/?demo=1#menu"
+          src="/alto-andino/?demo=1#menu"
           title="Menú Real Alto Andino"
           className="border-none absolute left-0"
           style={{ 

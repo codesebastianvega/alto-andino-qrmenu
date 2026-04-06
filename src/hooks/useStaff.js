@@ -64,6 +64,7 @@ export function useStaff() {
         .from('staff')
         .update(updates)
         .eq('id', id)
+        .eq('brand_id', activeBrandId)
         .select()
         .single();
       
@@ -80,7 +81,8 @@ export function useStaff() {
       const { error } = await supabase
         .from('staff')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('brand_id', activeBrandId);
       
       if (error) throw error;
       setStaffList(prev => prev.filter(s => s.id !== id));

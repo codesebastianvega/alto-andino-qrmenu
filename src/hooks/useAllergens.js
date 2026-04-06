@@ -5,11 +5,22 @@ export function useAllergens() {
   const [allergens, setAllergens] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const { activeBrand } = useAuth();
+  const activeBrandId = activeBrand?.id;
+
   useEffect(() => {
     async function fetchAllergens() {
+      if (!activeBrandId) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
-        const { data, error } = await supabase.from('allergens').select('*').order('name');
+        const { data, error } = await supabase
+          .from('allergens')
+          .select('*')
+          .eq('brand_id', activeBrandId)
+          .order('name');
         if (error) throw error;
         setAllergens(data || []);
       } catch (err) {
@@ -19,7 +30,7 @@ export function useAllergens() {
       }
     }
     fetchAllergens();
-  }, []);
+  }, [activeBrandId]);
 
   return { allergens, loading };
 }

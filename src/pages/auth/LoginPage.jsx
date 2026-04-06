@@ -21,17 +21,19 @@ export default function LoginPage() {
       if (signInError) throw signInError;
       
       if (data?.user) {
-        // Redirect to admin — AdminLayout will handle the role check
-        // If the user is a superadmin, they'll be redirected from there
-        const { data: profile } = await supabase
+        // Redirigir según el rol y la marca asociada
+        const { data: profileData } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, brand:brands(slug)')
           .eq('id', data.user.id)
           .maybeSingle();
 
-        if (profile?.role === 'superadmin') {
+        if (profileData?.role === 'superadmin') {
           window.location.href = '/superadmin';
+        } else if (profileData?.brand?.slug) {
+          window.location.href = `/${profileData.brand.slug}/#admin`;
         } else {
+          // Fallback por si no tiene marca (no debería pasar para un owner)
           window.location.hash = '#admin';
         }
       }
@@ -54,11 +56,12 @@ export default function LoginPage() {
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           O{' '}
-          <a href="#registro" className="font-medium text-blue-600 hover:text-blue-500">
+          <a href="/registro" className="font-medium text-blue-600 hover:text-blue-500">
             registra tu negocio en Aluna
           </a>
         </p>
       </div>
+
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">

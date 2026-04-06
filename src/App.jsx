@@ -1,6 +1,8 @@
 // src/App.jsx
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { useParams, Navigate } from "react-router-dom";
 import { useMenuData } from "./context/MenuDataContext";
+import { useBrand } from "./context/BrandContext";
 import { Loader2 } from "lucide-react";
 
 import { FEATURE_TABS, PUBLIC_URL } from "./config/featureFlags";
@@ -27,8 +29,6 @@ const OrderStatus = lazy(() => import("./pages/OrderStatus"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const ExperiencesPage = lazy(() => import("./pages/ExperiencesPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
-const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
-const RegisterPage = lazy(() => import("./pages/auth/RegisterPage"));
 const AdminOnboarding = lazy(() => import("./pages/AdminOnboarding"));
 import { useAuth } from "./context/AuthContext";
 import BottomTabBar from "./components/navigation/BottomTabBar";
@@ -57,14 +57,18 @@ import Toast from "./components/Toast";
 
 
 export default function App() {
+  const { brand_slug } = useParams();
+  const { brand: activeBrandFromContext, loadingBrand } = useBrand();
+  const { activeBrand: activeBrandFromAuth, profile } = useAuth();
+  const activeBrand = activeBrandFromContext || activeBrandFromAuth;
+  
   const [open, setOpen] = useState(false);
   const [openGuide, setOpenGuide] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("todos");
   const [currentHash, setCurrentHash] = useState(window.location.hash);
-  const { activeBrand, profile } = useAuth();
   const [query, setQuery] = useState("");
   const cart = useCart();
-  const { categories: dbCategories, restaurantSettings } = useMenuData();
+  const { categories: dbCategories, restaurantSettings, loading: menuLoading } = useMenuData();
 
   useEffect(() => {
     const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
@@ -110,7 +114,13 @@ export default function App() {
   useEffect(() => {
     if (!FEATURE_TABS) return;
     const url = new URL(window.location.href);
-    url.searchParams.set("cat", selectedCategory);
+    
+    if (selectedCategory === "todos") {
+      url.searchParams.delete("cat");
+    } else {
+      url.searchParams.set("cat", selectedCategory);
+    }
+    
     window.history.replaceState(null, "", url);
   }, [FEATURE_TABS, selectedCategory]);
 
@@ -199,6 +209,20 @@ export default function App() {
     return params.get("admin") === "1";
   })();
 
+  if (loadingBrand || (brand_slug && menuLoading)) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-4">
+        <Loader2 className="w-12 h-12 text-brand-primary animate-spin" />
+        <p className="text-brand-text/50 font-medium animate-pulse text-sm">Preparando experiencia...</p>
+      </div>
+    );
+  }
+
+  // Si se especificó un slug pero no se encontró la marca
+  if (brand_slug && !activeBrand && !loadingBrand) {
+    return <Navigate to="/" replace />;
+  }
+
   if (isOnboardingView) {
     return (
       <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
@@ -282,7 +306,7 @@ export default function App() {
         )}
 
         {/* Menu normal: Si estamos en modo orden o hash explícito #menu, o si NO es la vista landing */}
-        {(isOrderingMode || isMenuView || (!isLandingView && currentHash !== '#experiencias' && currentHash !== '#perfil' && currentHash !== '#admin' && currentHash !== '#login' && currentHash !== '#registro' && !orderTrackingId)) && (
+        {(isOrderingMode || isMenuView || (!isLandingView && currentHash !== '#experiencias' && currentHash !== '#perfil' && currentHash !== '#admin' && !orderTrackingId)) && (
           <main
             className={`mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl px-5 ${isDemo ? 'pt-4 pb-20 sm:px-6 md:px-8' : 'pt-24 sm:px-6 sm:pt-24 md:px-8 md:pt-24'}`}
           >
@@ -306,7 +330,7 @@ export default function App() {
           </main>
         )}
 
-        {!isDemo && !isAuthView && <BottomTabBar currentHash={currentHash} />}
+        {!isDemo && <BottomTabBar currentHash={currentHash} />}
 
         {/* Barra flotante y Drawer del carrito */}
         <Suspense fallback={<div />}>

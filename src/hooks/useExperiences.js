@@ -48,6 +48,7 @@ export function useExperiences() {
       .from('experiences')
       .update(updates)
       .eq('id', id)
+      .eq('brand_id', activeBrandId)
       .select()
       .single();
     if (!error) setExperiences(prev => prev.map(e => e.id === id ? data : e));
@@ -55,7 +56,7 @@ export function useExperiences() {
   };
 
   const deleteExperience = async (id) => {
-    const { error } = await supabase.from('experiences').delete().eq('id', id);
+    const { error } = await supabase.from('experiences').delete().eq('id', id).eq('brand_id', activeBrandId);
     if (!error) setExperiences(prev => prev.filter(e => e.id !== id));
     return { error };
   };
@@ -105,6 +106,7 @@ export function useExperiences() {
       .from('experience_bookings')
       .update(updates)
       .eq('id', id)
+      .eq('brand_id', activeBrandId)
       .select()
       .single();
     return { data, error };

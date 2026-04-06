@@ -84,6 +84,7 @@ export const useCategories = () => {
         .from('categories')
         .update(updates)
         .eq('id', id)
+        .eq('brand_id', activeBrandId)
         .select()
         .single();
 
@@ -107,7 +108,8 @@ export const useCategories = () => {
       const { error } = await supabase
         .from('categories')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('brand_id', activeBrandId);
 
       if (error) throw error;
 
@@ -135,7 +137,7 @@ export const useCategories = () => {
       // Execute updates in parallel
       await Promise.all(
         updates.map(u => 
-          supabase.from('categories').update({ sort_order: u.sort_order }).eq('id', u.id)
+          supabase.from('categories').update({ sort_order: u.sort_order }).eq('id', u.id).eq('brand_id', activeBrandId)
         )
       );
 

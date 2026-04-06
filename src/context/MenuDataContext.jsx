@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from './AuthContext';
+import { useBrand } from './BrandContext';
 
 const MenuDataContext = createContext({});
 
@@ -18,9 +19,9 @@ export const MenuDataProvider = ({ children }) => {
   const [planFeatures, setPlanFeatures] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Get active brand from AuthContext (single source of truth)
-  const { activeBrand, loading: authLoading } = useAuth();
-  const activeBrandId = activeBrand?.id ?? null;
+  // Get brand information from BrandContext (which resolves slug/session)
+  const { brand: currentBrand, loadingBrand } = useBrand();
+  const activeBrandId = currentBrand?.id ?? null;
 
   // Fetch menu data for a given brand
   const fetchMenuData = useCallback(async (brandId) => {
@@ -178,11 +179,11 @@ export const MenuDataProvider = ({ children }) => {
     }
   }, []);
 
-  // Trigger fetch when activeBrand changes (from AuthContext brand switcher)
+  // Trigger fetch when brand changes (resolved from URL slug or session)
   useEffect(() => {
-    if (authLoading) return; // wait for auth to fully resolve
+    if (loadingBrand) return; 
     fetchMenuData(activeBrandId);
-  }, [activeBrandId, authLoading, fetchMenuData]);
+  }, [activeBrandId, loadingBrand, fetchMenuData]);
 
   // Real-time branding updates
   useEffect(() => {

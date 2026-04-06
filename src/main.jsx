@@ -1,7 +1,7 @@
 // src/main.jsx
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import App from "./App.jsx";
 import "./styles.css";
 import "./index.css";
@@ -21,15 +21,17 @@ const SuperAdminBrands = React.lazy(() => import("./pages/superadmin/SuperAdminB
 const SuperAdminBrandDetail = React.lazy(() => import("./pages/superadmin/SuperAdminBrandDetail.jsx"));
 const SuperAdminPlans = React.lazy(() => import("./pages/superadmin/SuperAdminPlans.jsx"));
 const SuperAdminSettings = React.lazy(() => import("./pages/superadmin/SuperAdminSettings.jsx"));
+const LoginPage = React.lazy(() => import("./pages/auth/LoginPage.jsx"));
+const RegisterPage = React.lazy(() => import("./pages/auth/RegisterPage.jsx"));
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ErrorBoundary>
       <BrowserRouter>
         <Routes>
-          {/* Aluna platform landing page */}
+          {/* Aluna platform landing page at root */}
           <Route
-            path="/aluna"
+            path="/"
             element={
               <React.Suspense fallback={
                 <div className="min-h-screen flex items-center justify-center bg-white">
@@ -41,42 +43,46 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             }
           />
 
+          {/* Global Auth Routes */}
+          <Route
+            path="/login"
+            element={
+              <AuthProvider>
+                <React.Suspense fallback={<div />}>
+                  <LoginPage />
+                </React.Suspense>
+              </AuthProvider>
+            }
+          />
+          <Route
+            path="/registro"
+            element={
+              <AuthProvider>
+                <React.Suspense fallback={<div />}>
+                  <RegisterPage />
+                </React.Suspense>
+              </AuthProvider>
+            }
+          />
+
           {/* Superadmin Routes */}
-          <Route path="/superadmin" element={
-            <React.Suspense fallback={<div className="p-8">Cargando...</div>}>
-              <SuperAdminLayout />
-            </React.Suspense>
+          <Route path="/superadmin/*" element={
+            <AuthProvider>
+              <React.Suspense fallback={<div className="p-8 italic">Cargando panel de control...</div>}>
+                <SuperAdminLayout />
+              </React.Suspense>
+            </AuthProvider>
           }>
-            <Route index element={
-              <React.Suspense fallback={<div className="p-8">Cargando...</div>}>
-                <SuperAdminMetrics />
-              </React.Suspense>
-            } />
-            <Route path="brands" element={
-              <React.Suspense fallback={<div className="p-8">Cargando...</div>}>
-                <SuperAdminBrands />
-              </React.Suspense>
-            } />
-            <Route path="brands/:id" element={
-              <React.Suspense fallback={<div className="p-8">Cargando...</div>}>
-                <SuperAdminBrandDetail />
-              </React.Suspense>
-            } />
-            <Route path="plans" element={
-              <React.Suspense fallback={<div className="p-8">Cargando...</div>}>
-                <SuperAdminPlans />
-              </React.Suspense>
-            } />
-            <Route path="settings" element={
-              <React.Suspense fallback={<div className="p-8">Cargando...</div>}>
-                <SuperAdminSettings />
-              </React.Suspense>
-            } />
+            <Route index element={<SuperAdminMetrics />} />
+            <Route path="brands" element={<SuperAdminBrands />} />
+            <Route path="brands/:id" element={<SuperAdminBrandDetail />} />
+            <Route path="plans" element={<SuperAdminPlans />} />
+            <Route path="settings" element={<SuperAdminSettings />} />
           </Route>
 
-          {/* Everything else: existing app (hash routing) */}
+          {/* Brand Experience: This route captures the brand slug and everything after */}
           <Route
-            path="/*"
+            path="/:brand_slug/*"
             element={
               <AuthProvider>
                 <BrandProvider>
@@ -89,8 +95,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               </AuthProvider>
             }
           />
+
+          {/* Compatibility: If a hash is used at root without slug (old style), redirect or handler can be added here */}
+          <Route path="/aluna" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </ErrorBoundary>
+
   </React.StrictMode>,
 );

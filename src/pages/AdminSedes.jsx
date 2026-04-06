@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../config/supabase';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLocations } from '../hooks/useLocations';
 import { toast as toastFn } from '../components/Toast';
 import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton } from '../components/admin/ui';
 import { Icon } from '@iconify/react';
-import { Loader2, MapPin, Phone, Building2, ExternalLink, Trash2, CheckCircle2 } from 'lucide-react';
+import { Loader2, MapPin, Phone, Building2, ExternalLink, Trash2 } from 'lucide-react';
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 2000 }),
@@ -12,9 +12,8 @@ const toast = {
 };
 
 export default function AdminSedes({ isEmbedded = false }) {
-  const { activeBrand, isFeatureLocked } = useAuth();
-  const [locations, setLocations] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const { isFeatureLocked } = useAuth();
+  const { locations, loading, createLocation, updateLocation, deleteLocation } = useLocations();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
@@ -27,32 +26,6 @@ export default function AdminSedes({ isEmbedded = false }) {
     is_main: false,
     is_active: true
   });
-
-  useEffect(() => {
-    if (activeBrand?.id) {
-      fetchLocations();
-    }
-  }, [activeBrand?.id]);
-
-  const fetchLocations = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('locations')
-        .select('*')
-        .eq('brand_id', activeBrand.id)
-        .order('is_main', { ascending: false })
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setLocations(data || []);
-    } catch (err) {
-      console.error(err);
-      toast.error('Error al cargar sedes');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleOpenModal = (loc = null) => {
     if (loc) {
@@ -81,33 +54,19 @@ export default function AdminSedes({ isEmbedded = false }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!activeBrand?.id) return;
-
     setIsSubmitting(true);
     try {
-      const payload = {
-        ...form,
-        brand_id: activeBrand.id,
-        updated_at: new Date()
-      };
-
+      let res;
       if (editingLocation) {
-        const { error } = await supabase
-          .from('locations')
-          .update(payload)
-          .eq('id', editingLocation.id);
-        if (error) throw error;
+        res = await updateLocation(editingLocation.id, form);
+        if (res.error) throw res.error;
         toast.success('Sede actualizada');
       } else {
-        const { error } = await supabase
-          .from('locations')
-          .insert([payload]);
-        if (error) throw error;
+        res = await createLocation(form);
+        if (res.error) throw res.error;
         toast.success('Sede creada correctamente');
       }
-
       setIsModalOpen(false);
-      fetchLocations();
     } catch (err) {
       console.error(err);
       toast.error('Error al guardar sede');
@@ -119,10 +78,9 @@ export default function AdminSedes({ isEmbedded = false }) {
   const handleDelete = async (id) => {
     if (!confirm('¿Estás seguro de eliminar esta sede?')) return;
     try {
-      const { error } = await supabase.from('locations').delete().eq('id', id);
+      const { error } = await deleteLocation(id);
       if (error) throw error;
       toast.success('Sede eliminada');
-      fetchLocations();
     } catch (err) {
       console.error(err);
       toast.error('No se pudo eliminar la sede');
@@ -242,7 +200,6 @@ export default function AdminSedes({ isEmbedded = false }) {
         )}
       </div>
 
-      {/* Modal: Add/Edit Location */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] animate-in fade-in duration-200">
            <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">

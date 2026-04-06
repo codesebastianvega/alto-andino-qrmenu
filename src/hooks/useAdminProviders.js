@@ -62,6 +62,7 @@ export function useAdminProviders() {
         .from('providers')
         .update(providerData)
         .eq('id', id)
+        .eq('brand_id', activeBrandId)
         .select()
         .single();
 
@@ -79,7 +80,8 @@ export function useAdminProviders() {
       const { error } = await supabase
         .from('providers')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('brand_id', activeBrandId);
 
       if (error) throw error;
       fetchProviders();

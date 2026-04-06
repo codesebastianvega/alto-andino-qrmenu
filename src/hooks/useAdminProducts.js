@@ -128,6 +128,7 @@ export const useAdminProducts = () => {
         .from('products')
         .update(cleanData)
         .eq('id', id)
+        .eq('brand_id', activeBrandId)
         .select()
         .single();
 
@@ -151,7 +152,8 @@ export const useAdminProducts = () => {
       const { error } = await supabase
         .from('products')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('brand_id', activeBrandId);
 
       if (error) throw error;
       
@@ -173,7 +175,8 @@ export const useAdminProducts = () => {
       const { error } = await supabase
         .from('products')
         .update({ is_active: !currentStatus })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('brand_id', activeBrandId);
 
       if (error) throw error;
       await fetchProducts();
@@ -191,7 +194,8 @@ export const useAdminProducts = () => {
       const { error } = await supabase
         .from('products')
         .update({ stock_status: next })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('brand_id', activeBrandId);
       if (error) throw error;
       await fetchProducts();
       return true;
@@ -216,7 +220,7 @@ export const useAdminProducts = () => {
 
       // Batch update in DB
       const updates = orderedProducts.map((p, i) =>
-        supabase.from('products').update({ sort_order: i }).eq('id', p.id)
+        supabase.from('products').update({ sort_order: i }).eq('id', p.id).eq('brand_id', activeBrandId)
       );
       const results = await Promise.all(updates);
       const failed = results.find(r => r.error);
