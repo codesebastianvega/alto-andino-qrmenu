@@ -547,7 +547,7 @@ export default function ProductLists({
        {query && !Object.values(counts).some((n) => n > 0) && (
         <p className="px-4 text-sm text-neutral-600">No hay resultados para “{query}”.</p>
        )}
-      <div ref={scrollerRef} {..._safeSwipeHandlers} className={stackClass}>
+      <div ref={scrollerRef} {..._safeSwipeHandlers} className={`${stackClass} hide-scrollbar scrollbar-hide`}>
 
 
 

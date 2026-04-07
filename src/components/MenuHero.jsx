@@ -223,10 +223,10 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
         </motion.div>
 
         {/* 💊 CATEGORY PILLS */}
-        <div className="sticky top-0 z-50 w-[100vw] sm:w-[calc(100vw-2rem)] md:w-full -ml-5 sm:ml-0 overflow-visible mt-2">
+        <div className="relative sticky top-0 z-50 w-full overflow-visible">
           <motion.div 
             initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
-            className="w-full flex items-center justify-start md:justify-center gap-3 overflow-x-auto hide-scrollbar pb-4 pt-3 px-5 sm:px-0 bg-[#F5F5F7]/95 backdrop-blur-md border-b border-black/5"
+            className="w-full flex items-center justify-start md:justify-center gap-3 overflow-x-auto hide-scrollbar scrollbar-hide pb-2 pt-2 px-4 bg-transparent"
           >
             {[{slug: 'todos', label: 'Todos', icon: '✨'}, ...categories].map((cat, idx) => {
               const catId = cat.slug || cat.id;
@@ -238,8 +238,8 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
                   onClick={() => setActiveCategory(catId)}
                   className={`shrink-0 flex items-center gap-2.5 px-4 py-2 rounded-full cursor-pointer transition-all duration-300 border ${
                     activeCategory === catId 
-                      ? 'bg-white border-transparent shadow-[0_4px_12px_rgba(0,0,0,0.06)] scale-105' 
-                      : 'bg-white/50 border-black/5 hover:border-black/15 hover:bg-white opacity-90'
+                      ? 'bg-white border-transparent shadow-[0_4px_12px_rgba(0,0,0,0.06)]' 
+                      : 'bg-white/80 border-transparent hover:bg-white opacity-90'
                   }`}
                 >
                   <span className="text-xl bg-white w-8 h-8 rounded-full flex items-center justify-center shadow-sm">{ui.icon}</span>
@@ -250,11 +250,11 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
           </motion.div>
         </div>
 
-        {/* 🎟️ BANNER DE EXPERIENCIAS */}
+        {/* 🎟️ BANNER DE EXPERIENCIAS - DISEÑO LIMPIO SIN BORDES GRISES */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }}
           onClick={() => window.location.hash = '#experiencias'}
-          className="w-full mt-4 rounded-[1.5rem] overflow-hidden relative cursor-pointer group h-28 md:h-32 shadow-sm border border-black/5"
+          className="w-full mt-2 rounded-[1.5rem] overflow-hidden relative cursor-pointer group h-28 md:h-32 shadow-sm"
         >
           <img 
             src={homeSettings?.menu_banner_img || "https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?auto=format&fit=crop&q=80&w=1200"} 
