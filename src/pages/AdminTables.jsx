@@ -144,22 +144,21 @@ export default function AdminTables({ isEmbedded = false }) {
   );
 
   return (
-    <div className={isEmbedded ? "" : "p-8 max-w-7xl mx-auto"}>
+    <div className={isEmbedded ? "" : "p-8 max-w-7xl mx-auto space-y-6"}>
       {!isEmbedded && (
-        <PageHeader
-          badge="Negocio"
-          title="Gestión de Mesas"
-          subtitle="Define las mesas físicas del local para tomar pedidos a ellas y generar códigos QR."
-        >
-          <PrimaryButton onClick={openCreate}>+ Nueva mesa</PrimaryButton>
-        </PageHeader>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm mb-6">
+          <div>
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">Negocio / Mesas</h3>
+            <p className="text-xs text-gray-500 font-medium">Gestiona los códigos QR y ubicaciones físicas.</p>
+          </div>
+          <PrimaryButton onClick={openCreate} className="w-full sm:w-auto">+ Nueva Mesa</PrimaryButton>
+        </div>
       )}
 
       {isEmbedded && (
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200/50">
            <div>
-              <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight italic">Listado de Mesas</h2>
-              <p className="text-xs text-gray-500 font-medium">Gestiona los QR para cada ubicación física.</p>
+              <h2 className="text-sm font-bold text-gray-900 uppercase tracking-tight italic">Listado de Mesas</h2>
            </div>
            <PrimaryButton onClick={openCreate} className="px-6 py-2 text-xs rounded-xl">+ Nueva mesa</PrimaryButton>
         </div>

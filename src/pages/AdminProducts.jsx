@@ -218,37 +218,40 @@ export default function AdminProducts() {
             NORMAL MODE UI
      ═══════════════════════════════════════ */
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <PageHeader
-        badge="Carta"
-        title="Productos"
-        subtitle={`${filtered.length} de ${products.filter(p => !p.is_addon).length} productos`}
-      >
-        <div className="flex gap-2">
-          {catFilter !== 'all' && (
-            <button onClick={enterReorderMode}
-              className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all flex items-center gap-2">
-              <DragHandle />
-              Ordenar
-            </button>
-          )}
-          <PrimaryButton onClick={handleCreate}>+ Nuevo producto</PrimaryButton>
-        </div>
-      </PageHeader>
-
-      {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-        <div className="md:col-span-2">
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
+      {/* Search & Actions Bar */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+        <div className="flex-1 w-full max-w-xl group relative">
           <SearchInput
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por nombre…"
+            placeholder="Buscar por nombre, descripción o categoría..."
           />
         </div>
-        <SelectInput value={catFilter} onChange={e => setCatFilter(e.target.value)}>
-          <option value="all">Todas las categorías</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </SelectInput>
+        
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+          <div className="w-full sm:w-48">
+            <SelectInput value={catFilter} onChange={e => setCatFilter(e.target.value)}>
+              <option value="all">Todas las categorías</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </SelectInput>
+          </div>
+          
+          <div className="flex items-center gap-2 w-full sm:w-auto ml-auto lg:ml-0">
+             {catFilter !== 'all' && (
+              <button 
+                onClick={enterReorderMode}
+                className="flex-1 sm:flex-initial px-4 py-2.5 text-[13px] font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-all flex items-center justify-center gap-2"
+              >
+                <DragHandle />
+                Ordenar
+              </button>
+            )}
+            <PrimaryButton onClick={handleCreate} className="flex-1 sm:flex-initial">
+              + Nuevo Producto
+            </PrimaryButton>
+          </div>
+        </div>
       </div>
 
       {/* Hint: select category to reorder */}

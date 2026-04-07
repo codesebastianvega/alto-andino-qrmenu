@@ -110,14 +110,11 @@ export default function AdminAllergens() {
   );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <PageHeader
-        badge="Carta"
-        title="Dietas y Alérgenos"
-        subtitle="Configura las etiquetas que aparecerán en los productos."
-      >
-        <PrimaryButton onClick={openCreate}>+ Nueva etiqueta</PrimaryButton>
-      </PageHeader>
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
+      {/* Action Bar */}
+      <div className="flex justify-end bg-white p-5 rounded-2xl border border-gray-100 shadow-sm mb-6">
+        <PrimaryButton onClick={openCreate}>+ Nueva Etiqueta</PrimaryButton>
+      </div>
 
       <TableContainer>
         <table className="w-full min-w-[600px] border-collapse">

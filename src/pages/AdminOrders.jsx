@@ -314,18 +314,14 @@ export default function AdminOrders() {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto min-h-screen bg-gray-50/30">
-       <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-gray-900 border-l-4 border-[#2f4131] pl-4">PEDIDOS</h1>
-          <p className="text-gray-500 mt-1 font-medium pl-4">Gestión en tiempo real</p>
-        </div>
-        <div className="flex items-center gap-3">
-           <button onClick={fetchOrders} className="p-3 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 text-gray-600 transition-colors shadow-sm">
-              <Icon icon="heroicons:arrow-path" className="text-xl" />
-           </button>
-        </div>
-      </header>
+    <div className="p-4 md:p-8 max-w-[1600px] mx-auto min-h-screen">
+       {/* Actions Bar */}
+       <div className="flex justify-end mb-6">
+          <button onClick={fetchOrders} className="p-3 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 text-gray-600 transition-colors shadow-sm flex items-center gap-2 font-bold text-sm">
+             <Icon icon="heroicons:arrow-path" className="text-xl" />
+             Actualizar
+          </button>
+       </div>
        
        <DailyStats orders={orders} />
 

@@ -25,12 +25,8 @@ export default function AdminModifiers() {
   const [activeTab, setActiveTab] = useState('inventario');
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <PageHeader
-        badge="Producción"
-        title="Inventario de Insumos"
-        subtitle="Costos unitarios, stock y materias primas."
-      />
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
+      {/* Tabs area starts directly */}
 
       {/* Sub-tabs */}
       <div className="flex gap-1 mb-6 border-b border-gray-200">

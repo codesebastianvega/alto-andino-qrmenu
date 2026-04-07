@@ -50,17 +50,13 @@ export default function AdminCategories() {
   );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <PageHeader
-        badge="Carta"
-        title="Categorías"
-        subtitle={`${categories.length} categorías del menú`}
-      >
-        <PrimaryButton onClick={handleCreate}>+ Nueva categoría</PrimaryButton>
-      </PageHeader>
-
-      <div className="mb-5 max-w-sm">
-        <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar categoría…" />
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
+      {/* Action Bar */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+        <div className="flex-1 w-full max-w-sm">
+          <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar categoría…" />
+        </div>
+        <PrimaryButton onClick={handleCreate} className="w-full sm:w-auto">+ Nueva Categoría</PrimaryButton>
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>

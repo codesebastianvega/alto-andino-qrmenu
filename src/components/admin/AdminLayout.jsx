@@ -481,8 +481,8 @@ export default function AdminLayout() {
         }`}
       >
         <header className="h-16 bg-white border-b border-gray-200/60 sticky top-0 z-40 flex items-center justify-between px-8 shadow-sm shadow-black/[0.02]">
-          <div className="flex items-center gap-4">
-             <h2 className="text-[15px] font-black text-gray-900 tracking-tight uppercase italic border-r border-gray-200 pr-4">{currentItemLabel}</h2>
+          <div className="flex items-center gap-5">
+             <h2 className="text-lg font-bold text-gray-900 tracking-tight pr-4">{currentItemLabel}</h2>
              {activePlan && (
                <div className="flex items-center gap-2 px-2.5 py-1 bg-brand-primary/5 border border-brand-primary/10 rounded-full">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
