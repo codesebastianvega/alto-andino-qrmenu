@@ -68,7 +68,7 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
       return;
     }
 
-    onAdd?.({ productId, name: item.name, price: item.price, qty: 1, packaging_fee: item.packaging_fee });
+    onAdd?.({ productId, name: item.name, price: item.price, qty: 1, packaging_fee: item.packaging_fee, image_url: item.image_url || item.image });
   };
 
   // VARIANTES DE DISEÑO

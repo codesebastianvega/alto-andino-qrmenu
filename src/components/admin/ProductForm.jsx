@@ -17,7 +17,19 @@ export default function ProductForm({ product, categories, recipes = [], allerge
   const [targetMargin, setTargetMargin] = useState(35);
   const [manageGroups, setManageGroups] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Reset image error state whenever the URL changes
+  useEffect(() => {
+    setImgError(false);
+  }, [formData.image_url]);
+
+  // Detect if the user pasted an Unsplash *page* URL instead of a direct image URL
+  const isUnsplashPageLink = (url) => {
+    if (!url) return false;
+    return /unsplash\.com\/(photos|es\/fotos)\//i.test(url) && !/images\.unsplash\.com/i.test(url);
+  };
 
   useEffect(() => {
     if (product) {
@@ -606,10 +618,53 @@ export default function ProductForm({ product, categories, recipes = [], allerge
             {/* Image */}
             <div className="border border-gray-100 rounded-2xl p-5">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-3">Imagen</p>
+              
+              {/* Preview area */}
               {formData.image_url && (
-                <div className="aspect-video rounded-xl overflow-hidden bg-gray-100 mb-3">
-                  <img src={formData.image_url} alt="Preview" className="w-full h-full object-cover"
-                    onError={e => { e.target.style.display = 'none'; }} />
+                <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-100 mb-3">
+                  {!imgError ? (
+                    <img
+                      src={formData.image_url}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                      onError={() => setImgError(true)}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                      <svg className="w-8 h-8 text-red-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                      </svg>
+                      <p className="text-[12px] font-semibold text-red-400">No se pudo cargar la imagen</p>
+                      <p className="text-[11px] text-gray-400 mt-1">Verifica que la URL sea de una imagen directa (.jpg, .png, .webp)</p>
+                    </div>
+                  )}
+                  {/* Clear image button */}
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, image_url: '' }))}
+                    className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg transition-all"
+                    title="Quitar imagen"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+              )}
+
+              {/* Unsplash page link warning */}
+              {isUnsplashPageLink(formData.image_url) && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl mb-3">
+                  <svg className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                  </svg>
+                  <div>
+                    <p className="text-[12px] font-semibold text-amber-700">Este es un link de página, no de imagen</p>
+                    <p className="text-[11px] text-amber-600 mt-0.5 leading-relaxed">
+                      En Unsplash, haz clic derecho sobre la foto → "Copiar dirección de imagen". 
+                      El link debe comenzar con <code className="bg-amber-100 px-1 rounded text-[10px]">https://images.unsplash.com/...</code>
+                    </p>
+                  </div>
                 </div>
               )}
               
@@ -636,8 +691,17 @@ export default function ProductForm({ product, categories, recipes = [], allerge
 
                 <FormField label="O ingresa la URL manualmente">
                   <TextInput type="text" name="image_url" value={formData.image_url} onChange={handleChange}
-                    placeholder="https://ejemplo.com/foto.jpg  o  /img/products/mi-foto" disabled={isUploading} />
+                    placeholder="https://images.unsplash.com/…  o  /img/products/mi-foto.jpg" disabled={isUploading} />
                 </FormField>
+                
+                {formData.image_url && !imgError && !isUnsplashPageLink(formData.image_url) && (
+                  <p className="text-[11px] text-green-600 font-medium flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                    Imagen cargada correctamente
+                  </p>
+                )}
               </div>
             </div>
 

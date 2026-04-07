@@ -134,21 +134,41 @@ export default function App() {
   const isAuthView = currentHash === '#login' || currentHash === '#registro';
   const isOrderingMode = isMenuView || !!sessionStorage.getItem("aa_current_mesa") || searchParams.get("mesa");
 
-  // ✅ Welcome Experience State
-  const [showWelcome, setShowWelcome] = useState(false);
+  // ✅ Welcome Experience State — solo 1 vez cada 24h por marca
+  const WELCOME_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 horas
+
+  const [showWelcome, setShowWelcome] = useState(() => {
+    // Check on mount if we should show welcome
+    const key = `aluna_welcome_${brand_slug}`;
+    const lastSeen = localStorage.getItem(key);
+    if (lastSeen && Date.now() - Number(lastSeen) < 24 * 60 * 60 * 1000) {
+      return false; // Seen within last 24h
+    }
+    return false; // Default false, useEffect will decide
+  });
 
   useEffect(() => {
-    // Only show welcome if explicitly in the public menu (not in admin or other views)
     const isPublicMenu = !isNewAdminPanel && !isOnboardingView && !orderTrackingId && !isQr;
     
     if (isPublicMenu && activeBrand && !loadingBrand) {
-      setShowWelcome(true);
+      const key = `aluna_welcome_${activeBrand.slug || brand_slug}`;
+      const lastSeen = localStorage.getItem(key);
+      const seenRecently = lastSeen && (Date.now() - Number(lastSeen) < WELCOME_COOLDOWN_MS);
+      
+      if (!seenRecently) {
+        setShowWelcome(true);
+      } else {
+        setShowWelcome(false);
+      }
     } else {
       setShowWelcome(false);
     }
   }, [brand_slug, isNewAdminPanel, isOnboardingView, orderTrackingId, activeBrand, loadingBrand, isQr]);
 
   const handleStartExperience = () => {
+    // Guardar timestamp en localStorage para no volver a mostrar en 24h
+    const key = `aluna_welcome_${activeBrand?.slug || brand_slug}`;
+    localStorage.setItem(key, String(Date.now()));
     setShowWelcome(false);
   };
 

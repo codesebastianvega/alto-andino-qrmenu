@@ -87,6 +87,7 @@ export default function CartModal({ open, onClose }) {
   } = cart;
 
   const { getAllProducts, hasFeature } = useMenuData();
+  const allDBProducts = useMemo(() => getAllProducts(), [getAllProducts]);
 
   const [includeTip, setIncludeTip] = useState(true);
   const { settings } = useRestaurantSettings();
@@ -141,6 +142,7 @@ export default function CartModal({ open, onClose }) {
       name: product.name,
       price: product.price,
       image: product.image,
+      image_url: product.image_url || product.image,
       packaging_fee: product.packaging_fee || 0,
       qty: 1,
       options: {}
@@ -404,15 +406,25 @@ export default function CartModal({ open, onClose }) {
                   const unit = getItemUnit(it);
                   const qty = Number(it.qty || 1);
                   const lineTotal = unit * qty;
+                  // Resolve image: try item first, then look up from DB products
+                  const dbProduct = allDBProducts.find(p => p.id === (it.productId || it.id));
+                  const itemForImage = { ...it, image_url: it.image_url || it.image || dbProduct?.image_url };
+                  const imageSrc = getProductImage(itemForImage);
                   return (
                     <div key={idx} className="group relative border-b border-neutral-100/80 bg-white p-4 sm:px-6 sm:py-4 transition-colors hover:bg-white/90">
                       <div className="flex items-start gap-4 sm:gap-5">
-                        <AAImage
-                          src={getProductImage(it)}
-                          alt=""
-                          aria-hidden="true"
-                          className="h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 rounded-2xl object-cover shadow-sm bg-neutral-100 border border-neutral-200/50"
-                        />
+                        {imageSrc ? (
+                          <AAImage
+                            src={imageSrc}
+                            alt=""
+                            aria-hidden="true"
+                            className="h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 rounded-2xl object-cover shadow-sm bg-neutral-100 border border-neutral-200/50"
+                          />
+                        ) : (
+                          <div className="h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 rounded-2xl bg-neutral-100 border border-neutral-200/50 flex items-center justify-center">
+                            <Icon icon="heroicons:photo" className="w-6 h-6 text-neutral-300" />
+                          </div>
+                        )}
 
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-3">
