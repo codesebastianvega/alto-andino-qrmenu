@@ -5,15 +5,12 @@ import { Utensils, ArrowRight, Sparkles } from 'lucide-react';
 export default function BrandWelcome({ brandName, logoUrl, bgUrl, mesa, onStart }) {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
       exit={{ y: "-100%" }}
       transition={{ duration: 0.9, ease: [0.76, 0, 0.24, 1] }}
       className="fixed inset-0 z-[110] flex flex-col items-center justify-center overflow-hidden bg-black"
     >
       {/* Background Image with Overlay */}
       <motion.div 
-        initial={{ scale: 1.1 }}
         animate={{ scale: 1 }}
         transition={{ duration: 10, ease: "linear" }}
         className="absolute inset-0 z-0"

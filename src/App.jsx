@@ -127,7 +127,7 @@ export default function App() {
   const isOrderingMode = isMenuView || !!sessionStorage.getItem("aa_current_mesa") || searchParams.get("mesa");
 
   // ✅ Welcome Experience State
-  const [showWelcome, setShowWelcome] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
 
   useEffect(() => {
     // Solo mostrar bienvenida en la vista de Marca, no en Admin u Onboarding
