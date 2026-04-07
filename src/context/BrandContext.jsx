@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 
 const BrandContext = createContext({});
@@ -9,15 +9,42 @@ export const BrandProvider = ({ children }) => {
   const [features, setFeatures] = useState([]);
   const [loadingBrand, setLoadingBrand] = useState(true);
   const { brand_slug } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const resolveCurrentBrand = useCallback(async () => {
     try {
       setLoadingBrand(true);
       let targetBrandId = null;
 
-      // 1. PRIORIDAD: Si hay un slug en la URL, resolvemos por slug
-      if (brand_slug) {
-        const { data: brandBySlug, error: slugError } = await supabase
+      // 1. PRIORIDAD ADMIN: Si estamos en modo administración (#admin o #admin/onboarding), el brand viene del perfil
+      const is_admin_view = location.hash.includes('#admin');
+      
+      if (is_admin_view) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('brand_id, brand:brands(slug)')
+            .eq('id', session.user.id)
+            .maybeSingle();
+            
+          if (profile?.brand_id) {
+            targetBrandId = profile.brand_id;
+            
+            // Sincronizar URL si el slug no coincide con el brand real del admin
+            if (brand_slug && profile.brand?.slug && brand_slug !== profile.brand.slug) {
+              console.log(`Sincronizando slug URL: ${brand_slug} -> ${profile.brand.slug}`);
+              const newPath = `/${profile.brand.slug}/${location.search}${location.hash}`;
+              navigate(newPath, { replace: true });
+            }
+          }
+        }
+      }
+
+      // 2. FALLBACK PUBLICO: Si hay un slug en la URL (y no estamos en admin o falló el admin), resolvemos por slug
+      if (!targetBrandId && brand_slug) {
+        const { data: brandBySlug } = await supabase
           .from('brands')
           .select('id')
           .eq('slug', brand_slug)
@@ -26,24 +53,6 @@ export const BrandProvider = ({ children }) => {
         
         if (brandBySlug) {
           targetBrandId = brandBySlug.id;
-        } else {
-          console.warn(`No se encontró marca activa para el slug: ${brand_slug}`);
-        }
-      }
-
-      // 2. FALLBACK ADMIN: Si no hay slug pero hay sesión (panel admin), usamos el brand del perfil
-      if (!targetBrandId) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('brand_id')
-            .eq('id', session.user.id)
-            .maybeSingle();
-            
-          if (profile?.brand_id) {
-            targetBrandId = profile.brand_id;
-          }
         }
       }
 
@@ -79,7 +88,7 @@ export const BrandProvider = ({ children }) => {
     } finally {
       setLoadingBrand(false);
     }
-  }, [brand_slug]);
+  }, [brand_slug, location.hash, location.search, navigate]);
 
   useEffect(() => {
     resolveCurrentBrand();

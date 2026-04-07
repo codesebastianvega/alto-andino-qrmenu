@@ -63,7 +63,10 @@ export default function App() {
   const { brand_slug } = useParams();
   const { brand: activeBrandFromContext, loadingBrand } = useBrand();
   const { activeBrand: activeBrandFromAuth, profile } = useAuth();
-  const activeBrand = activeBrandFromContext || activeBrandFromAuth;
+  
+  // En el panel de admin, priorizamos SIEMPRE la marca de la sesión activa
+  const isNewAdminPanel = window.location.hash.startsWith('#admin');
+  const activeBrand = isNewAdminPanel ? (activeBrandFromAuth || activeBrandFromContext) : (activeBrandFromContext || activeBrandFromAuth);
   
   const [open, setOpen] = useState(false);
   const [openGuide, setOpenGuide] = useState(false);
@@ -74,7 +77,12 @@ export default function App() {
   const { categories: dbCategories, restaurantSettings, homeSettings, loading: menuLoading } = useMenuData();
 
   useEffect(() => {
-    const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
+    // En el panel de admin, priorizamos el nombre de la marca de la sesión
+    // En el menú público, priorizamos la configuración de branding de la base de datos
+    const brandName = isNewAdminPanel 
+      ? (activeBrand?.name || "Administración")
+      : (restaurantSettings?.business_name || activeBrand?.name || "Aluna");
+      
     document.title = brandName;
 
     // Update favicon
@@ -117,7 +125,7 @@ export default function App() {
   const isDemo = searchParams.get("demo") === "1";
   const isOldStockAdmin = searchParams.get("admin") === "1";
   
-  const isNewAdminPanel = currentHash === '#admin';
+  // (isNewAdminPanel already declared above)
   const isOnboardingView = currentHash === '#admin/onboarding';
   const orderTrackingId = currentHash.startsWith('#order/') ? currentHash.replace('#order/', '') : null;
   
@@ -127,14 +135,16 @@ export default function App() {
   const isOrderingMode = isMenuView || !!sessionStorage.getItem("aa_current_mesa") || searchParams.get("mesa");
 
   // ✅ Welcome Experience State
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
-    // Solo mostrar bienvenida en la vista de Marca, no en Admin u Onboarding
+    // Only show welcome if explicitly in the public menu (not in admin or other views)
     const isPublicMenu = !isNewAdminPanel && !isOnboardingView && !orderTrackingId && !isQr;
     
     if (isPublicMenu && activeBrand && !loadingBrand) {
       setShowWelcome(true);
+    } else {
+      setShowWelcome(false);
     }
   }, [brand_slug, isNewAdminPanel, isOnboardingView, orderTrackingId, activeBrand, loadingBrand, isQr]);
 
@@ -163,6 +173,11 @@ export default function App() {
     if (!FEATURE_TABS) return;
     const url = new URL(window.location.href);
     
+    // Ensure slug in URL matches intended brand
+    if (activeBrand?.slug) {
+      url.pathname = `/${activeBrand.slug}/`;
+    }
+
     if (selectedCategory === "todos") {
       url.searchParams.delete("cat");
     } else {
@@ -170,7 +185,7 @@ export default function App() {
     }
     
     window.history.replaceState(null, "", url);
-  }, [FEATURE_TABS, selectedCategory]);
+  }, [FEATURE_TABS, selectedCategory, activeBrand, isNewAdminPanel]);
 
   const counts = useMemo(() => {
     const count = (items = []) =>

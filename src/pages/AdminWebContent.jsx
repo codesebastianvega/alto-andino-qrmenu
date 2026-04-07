@@ -28,9 +28,10 @@ export default function AdminWebContent() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('tab') !== activeTab) {
       params.set('tab', activeTab);
-      window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}${window.location.hash}`);
+      const targetPath = activeBrand?.slug ? `/${activeBrand.slug}/` : window.location.pathname;
+      window.history.replaceState(null, '', `${targetPath}?${params.toString()}${window.location.hash}`);
     }
-  }, [activeTab]);
+  }, [activeTab, activeBrand]);
   const [data, setData] = useState({
     hero_h1: '',
     hero_subtitle: '',

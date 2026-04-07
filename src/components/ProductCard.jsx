@@ -33,8 +33,11 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
     id: isOut ? undefined : productId,
     title: item.name,
     name: item.name,
-    subtitle: item.desc,
+    subtitle: item.desc || item.description,
+    description: item.description || item.desc,
     price: item.price,
+    image: item.image || item.image_url,
+    image_url: item.image_url || item.image,
   };
 
   const imageSrc = getProductImage(product);

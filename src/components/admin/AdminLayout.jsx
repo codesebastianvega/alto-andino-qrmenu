@@ -203,9 +203,10 @@ export default function AdminLayout() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('admin_page') !== currentPage) {
       params.set('admin_page', currentPage);
-      window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}${window.location.hash}`);
+      const targetPath = activeBrand?.slug ? `/${activeBrand.slug}/` : window.location.pathname;
+      window.history.replaceState(null, '', `${targetPath}?${params.toString()}${window.location.hash}`);
     }
-  }, [currentPage]);
+  }, [currentPage, activeBrand]);
 
   // Auto-redirect if user's role doesn't have access to "orders"
   useEffect(() => {

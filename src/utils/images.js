@@ -130,9 +130,9 @@ export function getProductImage(product) {
   if (!product) return null;
 
   // 1) Si la base de datos provee una URL de imagen, usarla directo
-  // Nota: MenuDataContext mapea product.image_url a product.image
-  const directUrl = product.image_url || product.image;
-  if (directUrl) return directUrl;
+  // Nota: MenuDataContext mapea product.image_url a product.image y product.image_url
+  const directUrl = product.image_url || product.image || product.imageUrl;
+  if (directUrl && typeof directUrl === 'string' && directUrl.trim() !== '') return directUrl;
 
   // 2) Intentar buscar en el mapa usando el slug del nombre (sirve para BD con UUIDs)
   const slugKey = product.name ? slugify(product.name) : null;
@@ -142,6 +142,5 @@ export function getProductImage(product) {
   const idKey = product.id || product.productId;
   if (idKey && IMAGE_MAP[idKey]) return IMAGE_MAP[idKey];
 
-  // No adivinamos rutas por defecto para evitar console.error(404)
   return null;
 }

@@ -747,12 +747,16 @@ function ProductRow({ item, onQuickView, style, index }) {
   );
   const unavailable = outFromStock || isUnavailable(item);
   const product = {
+    ...item,
     productId: item.id,
     id: unavailable ? undefined : item.id,
     title: item.name,
     name: item.name,
-    subtitle: item.desc,
+    subtitle: item.desc || item.description,
+    description: item.description || item.desc,
     price: item.price,
+    image: item.image || item.image_url,
+    image_url: item.image_url || item.image,
   };
   const [imgLoaded, setImgLoaded] = useState(false);
   const imgSrc = getProductImage(product);
