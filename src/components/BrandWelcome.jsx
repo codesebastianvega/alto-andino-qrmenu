@@ -7,8 +7,9 @@ export default function BrandWelcome({ brandName, logoUrl, bgUrl, mesa, onStart 
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden bg-black"
+      exit={{ y: "-100%" }}
+      transition={{ duration: 0.9, ease: [0.76, 0, 0.24, 1] }}
+      className="fixed inset-0 z-[110] flex flex-col items-center justify-center overflow-hidden bg-black"
     >
       {/* Background Image with Overlay */}
       <motion.div 
