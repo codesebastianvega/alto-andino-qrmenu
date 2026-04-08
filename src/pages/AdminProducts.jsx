@@ -325,20 +325,13 @@ export default function AdminProducts() {
                   {/* Producto */}
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
-                        {product.image_url ? (
-                          <>
-                            <img
-                              src={product.image_url}
-                              alt={product.name}
-                              className="w-full h-full object-cover"
-                              onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                            />
-                            <span className="text-base hidden items-center justify-center w-full h-full">🍽</span>
-                          </>
-                        ) : (
-                          <span className="text-base">🍽</span>
-                        )}
+                      <div className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
+                        <AAImage
+                          src={product.image_url}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                          fallback={<span className="text-base">🍽</span>}
+                        />
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
@@ -398,28 +391,30 @@ export default function AdminProducts() {
                     )}
                   </td>
 
-                  {/* Extras */}
-                  <td className="px-5 py-3.5">
-                    {(product.modifier_groups || []).length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {(product.modifier_groups || []).slice(0, 2).map(g => {
-                          const groupData = modifierGroups.find(mg => mg.id === g);
-                          const name = groupData ? groupData.name : g;
-                          return (
-                            <span key={g}
-                              className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-50 text-violet-700 border border-violet-100 capitalize">
-                              {name.replace(/-/g, ' ')}
+                    <td className="px-5 py-3.5">
+                      {(product.modifier_groups || []).length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {(product.modifier_groups || []).slice(0, 3).map(g => {
+                            const groupData = modifierGroups.find(mg => mg.id === g);
+                            if (!groupData) return null; // No mostrar UUIDs si no hay data
+                            
+                            return (
+                              <span key={g}
+                                className="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-bold bg-violet-50 text-violet-700 border border-violet-100 capitalize shadow-sm">
+                                {groupData.name.replace(/-/g, ' ')}
+                              </span>
+                            );
+                          })}
+                          {(product.modifier_groups || []).length > 3 && (
+                            <span className="text-[10px] text-violet-400 font-bold self-center">
+                              +{(product.modifier_groups || []).length - 3}
                             </span>
-                          );
-                        })}
-                        {(product.modifier_groups || []).length > 2 && (
-                          <span className="text-[10px] text-violet-400 font-semibold">+{(product.modifier_groups || []).length - 2}</span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-[12px] text-gray-300 font-medium">—</span>
-                    )}
-                  </td>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[12px] text-gray-300 font-medium">—</span>
+                      )}
+                    </td>
 
                   {/* Estado */}
                   <td className="px-5 py-3.5">

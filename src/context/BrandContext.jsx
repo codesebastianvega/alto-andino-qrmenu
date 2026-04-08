@@ -17,6 +17,7 @@ export const BrandProvider = ({ children }) => {
       setLoadingBrand(true);
       // 1. Resolvemos por slug de URL si está presente
       let brandBySlug = null;
+      let targetBrandId = null;
       if (brand_slug) {
         const { data } = await supabase
           .from('brands')

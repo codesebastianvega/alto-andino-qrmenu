@@ -17,7 +17,8 @@ export default function AAImage({
   const [loaded, setLoaded] = React.useState(false);
   const [failed, setFailed] = React.useState(false);
 
-  if (!src || failed) return null;
+  if ((!src || failed) && !rest.fallback) return null;
+  if (failed && rest.fallback) return rest.fallback;
 
   const handleLoad = (e) => {
     setLoaded(true);

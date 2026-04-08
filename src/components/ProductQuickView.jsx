@@ -203,11 +203,12 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   const basePrice = Number(product.price || 0);
   const finalPrice = basePrice + extraPrice;
   const isOutOfStock = product.stock_status === "out";
-  const canAdd = !!id && Number.isFinite(basePrice) && basePrice > 0 && !isOutOfStock;
-
   const missingRequired = groups
     .filter((g) => (selections[g.name] || []).length < g.min)
     .map((g) => g.name);
+
+  // canAdd strictly checks if it's possible to add (base valid + no missing required)
+  const canAdd = !!id && Number.isFinite(basePrice) && basePrice > 0 && !isOutOfStock && missingRequired.length === 0;
 
   const handleSelection = (groupName, itemId) => {
     const group = groups.find(g => g.name === groupName);
@@ -305,6 +306,12 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                 alt={title || "Producto"}
                 className="w-full h-full object-cover"
                 style={stagger(0)}
+                fallback={
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-100 text-neutral-300">
+                    <span className="text-6xl mb-2">🍽</span>
+                    <span className="text-xs font-semibold uppercase tracking-widest opacity-50">Sin imagen</span>
+                  </div>
+                }
               />
               {/* Desktop subtle gradient overlay */}
               <div className="hidden md:block absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-black/10 pointer-events-none mix-blend-multiply" />
@@ -313,8 +320,8 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
             </div>
 
             {/* Right Column: Content */}
-            <div className="flex-1 flex flex-col overflow-hidden w-full md:w-7/12 lg:w-1/2 bg-white relative">
-              <div ref={scrollContainerRef} className="flex-1 p-6 md:p-8 xl:p-10 overflow-y-auto pb-32 md:pb-32">
+            <div className="flex-1 flex flex-col h-full overflow-hidden w-full md:w-7/12 lg:w-1/2 bg-white relative">
+              <div ref={scrollContainerRef} className="flex-1 p-6 md:p-8 overflow-y-auto">
                 {/* Title & Subtitle */}
                 <h2 className="text-2xl md:text-3xl font-extrabold text-neutral-900 leading-tight tracking-tight" style={stagger(1)}>
                   {title}
@@ -341,7 +348,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                 )}
 
                 {/* Modifier groups */}
-                <div className="mt-8 space-y-8">
+                <div className="mt-5 space-y-6">
                   {groups.map((group, gi) => {
                     const groupSel = selections[group.name];
                     const isRequired = group.type === "required";
@@ -392,6 +399,27 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                               ? "border-amber-300 bg-amber-50 hover:bg-amber-100"
                               : "border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50";
 
+                            const ModifierMedia = ({ item }) => {
+                              const [imageError, setImageError] = useState(false);
+
+                              if (item.image_url && !imageError) {
+                                return (
+                                  <img 
+                                    src={item.image_url} 
+                                    alt={item.name} 
+                                    className="w-full h-full object-cover rounded-xl"
+                                    onError={() => setImageError(true)}
+                                  />
+                                );
+                              }
+
+                              if (item.emoji) {
+                                return <span className="text-2xl leading-none filter drop-shadow-sm">{item.emoji}</span>;
+                              }
+
+                              return null;
+                            };
+
                             const Icon = () => {
                               if (group.max === 1) {
                                 return (
@@ -422,11 +450,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                                 <div className="flex items-center gap-3">
                                   {item.image_url || item.emoji ? (
                                     <div className={`relative flex items-center justify-center w-10 h-10 rounded-xl bg-white border shadow-sm shrink-0 transition-all ${isSelected ? 'border-[#2f4131] scale-105 ring-1 ring-[#2f4131]/50' : 'border-neutral-100'}`}>
-                                      {item.image_url ? (
-                                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-xl" />
-                                      ) : (
-                                        <span className="text-2xl leading-none filter drop-shadow-sm">{item.emoji}</span>
-                                      )}
+                                      <ModifierMedia item={item} />
                                       {isSelected && (
                                         <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#2f4131] rounded-full border-2 border-white flex items-center justify-center shadow-sm">
                                           <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -461,9 +485,9 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                   })}
                 </div>
               </div>
-
+              
               {/* Fixed Footer for Price and Button */}
-              <div className="absolute bottom-0 left-0 w-full bg-white border-t border-neutral-100 shadow-[0_-20px_40px_rgba(0,0,0,0.06)] p-5 md:p-6 md:px-8" style={stagger(4 + groups.length)}>
+              <div className="flex-shrink-0 bg-white border-t border-neutral-100 shadow-[0_-10px_30px_rgba(0,0,0,0.04)] p-5 md:px-8 z-10" style={stagger(4 + groups.length)}>
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-1">Total a pagar</p>
@@ -481,14 +505,14 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                   type="button"
                   onClick={handleAdd}
                   disabled={!canAdd}
-                  className="w-full h-14 rounded-2xl bg-[#2f4131] text-white font-bold text-lg shadow-[0_8px_16px_rgba(47,65,49,0.2)] transition-all hover:bg-[#243326] hover:-translate-y-0.5 hover:shadow-[0_12px_20px_rgba(47,65,49,0.3)] active:scale-[0.98] disabled:bg-neutral-200 disabled:text-neutral-400 disabled:shadow-none disabled:active:scale-100 disabled:translate-y-0 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative overflow-hidden group"
+                  className="w-full h-14 rounded-2xl bg-[#2f4131] text-white font-bold text-lg shadow-[0_8px_16px_rgba(47,65,49,0.2)] transition-all hover:bg-[#243326] hover:-translate-y-0.5 hover:shadow-[0_12px_20px_rgba(47,65,49,0.3)] active:scale-[0.98] disabled:opacity-50 disabled:bg-[#2f4131] disabled:text-white/70 disabled:shadow-none disabled:active:scale-100 disabled:translate-y-0 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative overflow-hidden group"
                 >
                   <span className="relative z-10">
                     {isOutOfStock
                       ? "Agotado"
-                      : canAdd
-                      ? "Agregar al pedido"
-                      : "No disponible"}
+                      : missingRequired.length > 0
+                      ? `Faltan ${missingRequired.length} ${missingRequired.length === 1 ? 'opción' : 'opciones'}`
+                      : "Agregar al pedido"}
                   </span>
                   {canAdd && (
                     <div className="absolute inset-0 h-full w-full block bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />

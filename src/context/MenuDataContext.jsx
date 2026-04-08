@@ -75,7 +75,7 @@ export const MenuDataProvider = ({ children }) => {
 
       // Fetch modifiers (NEW logic)
       const { data: mods } = await brandFilter(
-        supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(*)')
+        supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(id, group_id, name, price, sort_order, created_at, nested_group_id, image_url, emoji, ingredient_id)')
       );
       const modGroups = {};
       (mods || []).forEach(group => {
@@ -85,6 +85,8 @@ export const MenuDataProvider = ({ children }) => {
           id: opt.id,
           name: opt.name,
           price: opt.price || 0,
+          emoji: opt.emoji,
+          image_url: opt.image_url,
           group: groupName,
           groupId: group.id,
           ingredient_id: opt.ingredient_id
