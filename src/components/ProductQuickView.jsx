@@ -420,8 +420,26 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                                 className={`${baseClasses} ${stateClasses}`}
                               >
                                 <div className="flex items-center gap-3">
-                                  <Icon />
-                                  <span className={`text-[13px] font-medium ${isSelected ? 'text-[#2f4131]' : 'text-neutral-700'}`}>
+                                  {item.image_url || item.emoji ? (
+                                    <div className={`relative flex items-center justify-center w-10 h-10 rounded-xl bg-white border shadow-sm shrink-0 transition-all ${isSelected ? 'border-[#2f4131] scale-105 ring-1 ring-[#2f4131]/50' : 'border-neutral-100'}`}>
+                                      {item.image_url ? (
+                                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-xl" />
+                                      ) : (
+                                        <span className="text-2xl leading-none filter drop-shadow-sm">{item.emoji}</span>
+                                      )}
+                                      {isSelected && (
+                                        <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#2f4131] rounded-full border-2 border-white flex items-center justify-center shadow-sm">
+                                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                          </svg>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <Icon />
+                                  )}
+
+                                  <span className={`text-[13px] font-medium ${isSelected ? 'text-[#2f4131] font-bold' : 'text-neutral-700'}`}>
                                     {item.name}
                                   </span>
                                 </div>
