@@ -4,6 +4,7 @@ import { useAdminIngredients } from '../hooks/useAdminIngredients';
 import { useIngredientCategories } from '../hooks/useIngredientCategories';
 import { PageHeader, PrimaryButton, SecondaryButton, Modal, ModalHeader, FormField, TextInput } from '../components/admin/ui';
 import { Icon } from '@iconify-icon/react';
+import EmojiPicker from 'emoji-picker-react';
 
 export default function AdminModifierGroups() {
   const { modifierGroups, fetchModifierGroups, createGroup, updateGroup, deleteGroup, createOption, updateOption, deleteOption } = useAdminModifierGroups();
@@ -19,6 +20,7 @@ export default function AdminModifierGroups() {
   const [activeGroupId, setActiveGroupId] = useState(null);
   const [editingOption, setEditingOption] = useState(null);
   const [optionForm, setOptionForm] = useState({ name: '', price: '', ingredient_id: '', nested_group_id: '', emoji: '', image_url: '' });
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [filterCategory, setFilterCategory] = useState('');
   
   const [expandedGroups, setExpandedGroups] = useState({});
@@ -304,14 +306,37 @@ export default function AdminModifierGroups() {
             </FormField>
 
             <div className="grid grid-cols-4 gap-3">
-              <div className="col-span-1">
+              <div className="col-span-1 relative">
                 <FormField label="Emoji">
-                  <TextInput value={optionForm.emoji} onChange={e => setOptionForm({...optionForm, emoji: e.target.value})} placeholder="🍔" />
-                  <div className="flex flex-wrap gap-1 mt-1.5 h-12 overflow-y-auto w-full hide-scrollbar">
-                    {['🍔','🍟','🍕','🌭','🥪','🌮','🌯','🥗','🥩','🍗','🥓','🥚','🧀','🍤','🍜','🍲','🍝','🍣','🍱','🍚','🥟','🥤','🍺','🥂','🍷','☕','🍰','🍦','🌶️','🍅','🧅','🍄','🥑','🥑','🌽','🥕','🥦','🥒','🍆','🍉','🍊','🍓','🍇','🍎'].map(em => (
-                      <button type="button" key={em} onClick={() => setOptionForm({...optionForm, emoji: em})} className="text-sm hover:scale-125 transition-transform">{em}</button>
-                    ))}
+                  <div 
+                    className={`flex items-center justify-center h-12 w-full border-2 border-dashed rounded-2xl cursor-pointer transition-colors text-2xl ${
+                      emojiPickerOpen ? 'border-[#2f4131] bg-neutral-50' : 'border-neutral-200 hover:border-[#2f4131] hover:bg-neutral-50'
+                    }`}
+                    onClick={() => setEmojiPickerOpen(p => !p)}
+                  >
+                    {optionForm.emoji || <span className="text-sm text-neutral-400 font-bold">Icono</span>}
                   </div>
+                  {emojiPickerOpen && (
+                    <div className="absolute top-full left-0 z-50 mt-2 shadow-2xl rounded-2xl overflow-hidden border border-neutral-100">
+                      <div className="bg-white p-2 border-b border-neutral-100 flex justify-between items-center">
+                        <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Elige tu Emoji</span>
+                        <button type="button" onClick={() => setEmojiPickerOpen(false)} className="text-neutral-400 hover:text-black">
+                           <Icon icon="heroicons:x-mark" className="text-xl" />
+                        </button>
+                      </div>
+                      <EmojiPicker 
+                        onEmojiClick={(pickerOut) => {
+                          setOptionForm({...optionForm, emoji: pickerOut.emoji});
+                          setEmojiPickerOpen(false);
+                        }}
+                        autoFocusSearch={false}
+                        searchDisabled={false}
+                        skinTonesDisabled={true}
+                        width={300}
+                        height={350}
+                      />
+                    </div>
+                  )}
                 </FormField>
               </div>
               <div className="col-span-3">

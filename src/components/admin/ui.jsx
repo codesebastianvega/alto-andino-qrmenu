@@ -150,7 +150,7 @@ export function Modal({ children, onClose, wide = false }) {
       className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6 overflow-y-auto"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div className={`bg-white rounded-2xl w-full shadow-2xl overflow-hidden my-auto transition-all ${wide ? 'max-w-4xl' : 'max-w-lg'} animate-in fade-in zoom-in-95 duration-200`}>
+      <div className={`bg-white rounded-2xl w-full shadow-2xl my-auto transition-all ${wide ? 'max-w-4xl' : 'max-w-xl'} animate-in fade-in zoom-in-95 duration-200`}>
         {children}
       </div>
     </div>

@@ -3,9 +3,10 @@ import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
 import {
-  PageHeader, PrimaryButton, SecondaryButton, Badge,
   TableContainer, Th, Modal, ModalHeader, FormField, TextInput
 } from '../components/admin/ui';
+import { Icon } from '@iconify-icon/react';
+import EmojiPicker from 'emoji-picker-react';
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 2000 }),
@@ -21,6 +22,7 @@ export default function AdminAllergens() {
   const [editingAllergen, setEditingAllergen] = useState(null);
   const [allergenForm, setAllergenForm] = useState({ name: '', emoji: '' });
   const [isSubmittingAllergen, setIsSubmittingAllergen] = useState(false);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
 
   useEffect(() => {
     fetchAllergens();
@@ -180,17 +182,40 @@ export default function AdminAllergens() {
 
               <FormField>
                 <label className="block text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">Emoji (Icono)</label>
-                <div className="flex gap-3 items-center">
-                  <div className="text-3xl bg-gray-50 border border-gray-200 w-12 h-12 rounded-xl flex items-center justify-center shrink-0">
-                    {allergenForm.emoji || '🌱'}
+                <div className="relative">
+                  <div 
+                    className={`flex gap-3 px-3 items-center h-12 w-full border-2 border-dashed rounded-2xl cursor-pointer transition-colors ${
+                      emojiPickerOpen ? 'border-[#2f4131] bg-neutral-50' : 'border-neutral-200 hover:border-[#2f4131] hover:bg-neutral-50'
+                    }`}
+                    onClick={() => setEmojiPickerOpen(p => !p)}
+                  >
+                    <div className="text-2xl flex items-center justify-center shrink-0">
+                      {allergenForm.emoji || '🌱'}
+                    </div>
+                    <span className="text-sm font-semibold text-neutral-400">Clic para cambiar icono</span>
                   </div>
-                  <TextInput
-                    value={allergenForm.emoji}
-                    onChange={(e) => setAllergenForm({ ...allergenForm, emoji: e.target.value })}
-                    placeholder="Ej. 🌱"
-                    maxLength={5}
-                    required
-                  />
+                  
+                  {emojiPickerOpen && (
+                    <div className="absolute bottom-full mb-2 left-0 z-50 shadow-2xl rounded-2xl overflow-hidden border border-neutral-100">
+                      <div className="bg-white p-2 border-b border-neutral-100 flex justify-between items-center">
+                        <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Elige tu Emoji</span>
+                        <button type="button" onClick={() => setEmojiPickerOpen(false)} className="text-neutral-400 hover:text-black">
+                           <Icon icon="heroicons:x-mark" className="text-xl" />
+                        </button>
+                      </div>
+                      <EmojiPicker 
+                        onEmojiClick={(pickerOut) => {
+                          setAllergenForm({...allergenForm, emoji: pickerOut.emoji});
+                          setEmojiPickerOpen(false);
+                        }}
+                        autoFocusSearch={false}
+                        searchDisabled={false}
+                        skinTonesDisabled={true}
+                        width={300}
+                        height={350}
+                      />
+                    </div>
+                  )}
                 </div>
               </FormField>
             </div>
