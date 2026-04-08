@@ -299,7 +299,6 @@ function InsumosTab() {
               <Th>Insumo</Th>
               <Th>Status / Categoría</Th>
               <Th>Costo/unidad</Th>
-              <Th>Precio venta</Th>
               <Th>Stock</Th>
               <Th right>Acciones</Th>
             </tr>
@@ -452,18 +451,6 @@ function InsumosTab() {
                         </span>
                         <span className="text-[11px] text-gray-400 font-medium ml-1">/{item.usage_unit || 'u'}</span>
                       </>
-                    )}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    {item.is_modifier ? (
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900 tabular-nums">
-                          ${(item.selling_price || 0).toLocaleString()}
-                        </p>
-                        <Badge variant="blue">Extra vendible</Badge>
-                      </div>
-                    ) : (
-                      <span className="text-[12px] text-gray-300 font-medium">Uso interno</span>
                     )}
                   </td>
                   <td className="px-5 py-3.5">

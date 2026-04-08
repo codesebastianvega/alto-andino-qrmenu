@@ -15,49 +15,47 @@ export const BrandProvider = ({ children }) => {
   const resolveCurrentBrand = useCallback(async () => {
     try {
       setLoadingBrand(true);
-      let targetBrandId = null;
+      // 1. Resolvemos por slug de URL si está presente
+      let brandBySlug = null;
+      if (brand_slug) {
+        const { data } = await supabase
+          .from('brands')
+          .select('id, slug, name')
+          .eq('slug', brand_slug)
+          .maybeSingle();
+        brandBySlug = data;
+      }
 
-      // 1. PRIORIDAD ADMIN: Si estamos en modo administración (#admin o #admin/onboarding), el brand viene del perfil
+      // 2. Modo Admin: Verificamos perfil
       const is_admin_view = location.hash.includes('#admin');
-      
       if (is_admin_view) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('brand_id, brand:brands(slug)')
+            .select('brand_id, brand:brands(id, slug, name)')
             .eq('id', session.user.id)
             .maybeSingle();
             
           if (profile?.brand_id) {
-            targetBrandId = profile.brand_id;
-            
-            // Sincronizar URL si el slug no coincide con el brand real del admin
-            if (brand_slug && profile.brand?.slug && brand_slug !== profile.brand.slug) {
-              console.log(`Sincronizando slug URL: ${brand_slug} -> ${profile.brand.slug}`);
-              const newPath = `/${profile.brand.slug}/${location.search}${location.hash}`;
-              navigate(newPath, { replace: true });
+            // Sincronización: Si el slug URL no coincide con el perfil, redirigimos
+            if (brandBySlug && brandBySlug.id !== profile.brand_id) {
+              console.warn(`Mismatch: URL=${brand_slug} Profile=${profile.brand?.slug}. Redirigiendo...`);
+              if (profile.brand?.slug) {
+                const newPath = `/${profile.brand.slug}/${location.search}${location.hash}`;
+                navigate(newPath, { replace: true });
+                return; // Evitar carga doble
+              }
             }
+            targetBrandId = profile.brand_id;
           }
         }
       }
 
-      // 2. FALLBACK PUBLICO: Si hay un slug en la URL (y no estamos en admin o falló el admin), resolvemos por slug
-      if (!targetBrandId && brand_slug) {
-        const { data: brandBySlug } = await supabase
-          .from('brands')
-          .select('id')
-          .eq('slug', brand_slug)
-          .eq('is_active', true)
-          .maybeSingle();
-        
-        if (brandBySlug) {
-          targetBrandId = brandBySlug.id;
-        }
+      // 3. Fallback Público
+      if (!targetBrandId && brandBySlug) {
+        targetBrandId = brandBySlug.id;
       }
-
-      // 3. ULTIMO RECURSO: Mantener compatibilidad si nada anterior funcionó (opcional)
-      // if (!targetBrandId) targetBrandId = 'ID_HARDCODED_DEFAULT';
 
       if (targetBrandId) {
         const { data: brandData, error } = await supabase

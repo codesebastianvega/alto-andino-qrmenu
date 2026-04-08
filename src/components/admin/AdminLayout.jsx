@@ -9,6 +9,7 @@ import AdminRecipes from '../../pages/AdminRecipes';
 import AdminBranding from '../../pages/AdminBranding';
 import AdminSettings from '../../pages/AdminSettings';
 import AdminAllergens from '../../pages/AdminAllergens';
+import AdminModifierGroups from '../../pages/AdminModifierGroups';
 import AdminTables from '../../pages/AdminTables';
 import AdminOrders from '../../pages/AdminOrders';
 import AdminKitchen from '../../pages/AdminKitchen';
@@ -125,6 +126,7 @@ const Icons = {
 const CARTA_ITEMS = [
   { id: 'products',   label: 'Productos',   Icon: Icons.Products, roles: ['admin'] },
   { id: 'categories', label: 'Categorías',  Icon: Icons.Categories, roles: ['admin'] },
+  { id: 'modifier_groups', label: 'Extras y Opciones', Icon: Icons.Modifiers, roles: ['admin'] },
   { id: 'tables',     label: 'Mesas y QRs', Icon: Icons.Tables, roles: ['admin'] },
   { id: 'allergens',  label: 'Dietas y Alérgenos', Icon: Icons.Allergens, roles: ['admin'] },
 ];
@@ -135,7 +137,7 @@ const WEB_ITEMS = [
 
 const PROD_ITEMS = [
   { id: 'recipes',   label: 'Recetas',      Icon: Icons.Recipes, roles: ['admin', 'kitchen'], feature: 'inventory' },
-  { id: 'modifiers', label: 'Inventario',      Icon: Icons.Modifiers, roles: ['admin', 'kitchen'] },
+  { id: 'inventory', label: 'Inventario',      Icon: Icons.Modifiers, roles: ['admin', 'kitchen'] },
 ];
 
 const ADJUST_ITEMS = [
@@ -525,7 +527,8 @@ export default function AdminLayout() {
           {currentPage === 'categories'  && <AdminCategories />}
           {currentPage === 'allergens'   && <AdminAllergens />}
           { currentPage === 'recipes'     && <AdminRecipes /> }
-          { currentPage === 'modifiers'   && <AdminModifiers /> }
+          { currentPage === 'modifier_groups' && <AdminModifierGroups /> }
+          { currentPage === 'inventory'   && <AdminModifiers /> }
           { currentPage === 'tables'      && <AdminTables /> }
           { currentPage === 'orders'      && <AdminOrders /> }
           { currentPage === 'kitchen'     && <AdminKitchen /> }

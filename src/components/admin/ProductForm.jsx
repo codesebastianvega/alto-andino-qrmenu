@@ -1,11 +1,42 @@
 import { useState, useEffect, useRef } from 'react';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useMenuData } from '../../context/MenuDataContext';
 import { supabase } from '../../config/supabase';
 import { Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButton } from './ui';
+import { Icon } from '@iconify-icon/react';
 
 export default function ProductForm({ product, categories, recipes = [], allergens = [], onSave, onCancel }) {
-  const { modifiers: modifierGroupsData } = useMenuData();
-  const availableGroups = Object.keys(modifierGroupsData || {});
+  const { rawModifierGroups = [] } = useMenuData();
+  const mainGroups = rawModifierGroups.filter(g => !g.is_submodifier);
+  const subGroups = rawModifierGroups.filter(g => g.is_submodifier);
+
+  const getSubGroupsForGroup = (group) => {
+    const opts = group.modifier_options || group.options || [];
+    if (opts.length === 0) return [];
+    const nestedIds = opts.map(o => o.nested_group_id).filter(Boolean);
+    return subGroups.filter(sg => nestedIds.includes(sg.id));
+  };
+
+  const getOrphanSubGroups = () => {
+    const associatedIds = new Set();
+    mainGroups.forEach(g => {
+      const opts = g.modifier_options || g.options || [];
+      opts.forEach(o => {
+        if (o.nested_group_id) associatedIds.add(o.nested_group_id);
+      });
+    });
+    return subGroups.filter(sg => !associatedIds.has(sg.id));
+  };
+
+  const orphanSubGroups = getOrphanSubGroups();
+
+  const onDragEnd = (result) => {
+    if (!result.destination) return;
+    const items = Array.from(formData.modifier_groups || []);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    setFormData(prev => ({ ...prev, modifier_groups: items }));
+  };
 
   const [formData, setFormData] = useState({
     name: '', description: '', price: '', cost: '',
@@ -54,20 +85,14 @@ export default function ProductForm({ product, categories, recipes = [], allerge
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  const toggleModifierGroup = (group) => {
+  const toggleModifierGroup = (groupId) => {
     setFormData(prev => {
       const current = prev.modifier_groups || [];
-      const isIn = current.includes(group);
-      const newGroups = isIn ? current.filter(g => g !== group) : [...current, group];
-      // When adding, default to optional; when removing, clean up config
-      const prevConfig = prev.config_options?.modifier_config || {};
-      const newConfig = { ...prevConfig };
-      if (!isIn) newConfig[group] = 'optional';
-      else delete newConfig[group];
+      const isIn = current.includes(groupId);
+      const newGroups = isIn ? current.filter(id => id !== groupId) : [...current, groupId];
       return {
         ...prev,
         modifier_groups: newGroups,
-        config_options: { ...prev.config_options, modifier_config: newConfig },
       };
     });
   };
@@ -82,15 +107,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
     });
   };
 
-  const setModifierConfig = (group, config) => {
-    setFormData(prev => ({
-      ...prev,
-      config_options: {
-        ...prev.config_options,
-        modifier_config: { ...(prev.config_options?.modifier_config || {}), [group]: config },
-      },
-    }));
-  };
+
 
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -150,8 +167,8 @@ export default function ProductForm({ product, categories, recipes = [], allerge
   const linkedRecipe = recipes.find(r => r.id === formData.recipe_id);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-[100] p-4 overflow-y-auto backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-5xl my-8 overflow-hidden shadow-2xl">
+    <div className="fixed inset-0 bg-black/60 flex items-start justify-center z-[100] p-4 overflow-y-auto backdrop-blur-sm">
+      <div className="bg-white rounded-[2rem] w-full max-w-6xl my-8 overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
 
         {/* ── Header */}
         <div className="flex items-start justify-between px-8 py-6 border-b border-gray-100">
@@ -176,8 +193,8 @@ export default function ProductForm({ product, categories, recipes = [], allerge
             {/* Basic Info */}
             <section className="border border-gray-100 rounded-2xl p-6 space-y-4">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Información general</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-3">
                   <FormField label="Nombre público">
                     <TextInput required name="name" value={formData.name} onChange={handleChange} placeholder="Ej. Bowl de Acai Amazónico" />
                   </FormField>
@@ -199,7 +216,8 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                 <FormField label="Costo Empaque (Llevar)">
                   <TextInput type="number" name="packaging_fee" value={formData.packaging_fee} onChange={handleChange} placeholder="Ej. 1500" />
                 </FormField>
-                <FormField label="Subcategoría (Opcional)">
+                <div className="md:col-span-3">
+                  <FormField label="Subcategoría (Opcional)">
                   {(() => {
                     // Extract subcategories if they exist for the selected category
   const subcategories = (() => {
@@ -234,16 +252,16 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                       />
                     );
                   })()}
-                </FormField>
-                <div className="hidden md:block"></div>
-                <div className="md:col-span-2">
+                  </FormField>
+                </div>
+                <div className="md:col-span-3">
                   <FormField label="Descripción">
                     <textarea name="description" value={formData.description} onChange={handleChange} rows={3}
                       placeholder="Describe los sabores, texturas y por qué deberían pedirlo…"
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-[#2f4131] outline-none resize-none" />
                   </FormField>
                 </div>
-                <div className="md:col-span-2">
+                <div className="md:col-span-3">
                   <FormField label="Visibilidad en menú">
                     <button type="button" onClick={() => setFormData(prev => ({ ...prev, is_active: !prev.is_active }))}
                       className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${formData.is_active ? 'bg-green-50 border-green-200 text-green-800' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
@@ -284,7 +302,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                   </FormField>
                   <p className="text-[11px] text-gray-400 mt-1 leading-tight">Manda pedido a cocina. Apágalo para productos ya listos (Ej. gaseosas, chips).</p>
                 </div>
-                <div className="md:col-span-2">
+                <div className="md:col-span-3">
                   <FormField label="Modo 'Arma tu propio' (DIY)">
                     <button type="button" onClick={() => setFormData(prev => ({ 
                       ...prev, 
@@ -301,6 +319,137 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                       </div>
                     </button>
                   </FormField>
+                </div>
+
+
+                {/* Modifier Groups UI Revamp */}
+                <div className="md:col-span-full mt-4 pt-4 border-t border-gray-100">
+                  <div className="mb-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Personalizaciones / Extras</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">Asigna grupos de opciones principales a este producto. Seleccionalos abajo y arrástralos aquí para ordenarlos.</p>
+                  </div>
+
+                  {/* Drag and drop for selected items */}
+                  {(formData.modifier_groups || []).length > 0 && (
+                    <div className="mb-6 p-4 rounded-2xl bg-violet-50/50 border border-violet-100">
+                      <p className="text-[11px] font-bold text-violet-800 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <Icon icon="heroicons:bars-arrow-down" className="text-sm" /> 
+                        Modificadores Activos (Arrastra para ordenar)
+                      </p>
+                      <DragDropContext onDragEnd={onDragEnd}>
+                        <Droppable droppableId="selected-modifiers">
+                          {(provided) => (
+                            <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
+                              {(formData.modifier_groups || []).map((id, index) => {
+                                const g = rawModifierGroups.find(x => x.id === id);
+                                if (!g) return null;
+                                return (
+                                  <Draggable key={id} draggableId={id} index={index}>
+                                    {(provided) => (
+                                      <div
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        {...provided.dragHandleProps}
+                                        className="flex items-center justify-between bg-white px-4 py-2.5 rounded-xl border border-violet-200 shadow-sm transition-shadow hover:shadow-md"
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <Icon icon="heroicons:bars-2" className="text-violet-300 cursor-grab" />
+                                          <span className="text-sm font-semibold text-violet-900">{g.name}</span>
+                                          {g.is_submodifier && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">Sub</span>}
+                                        </div>
+                                        <button type="button" onClick={() => toggleModifierGroup(id)} className="text-violet-300 hover:text-red-500 transition-colors p-1">
+                                          <Icon icon="heroicons:x-mark" className="text-lg" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                );
+                              })}
+                              {provided.placeholder}
+                            </div>
+                          )}
+                        </Droppable>
+                      </DragDropContext>
+                    </div>
+                  )}
+
+                  {rawModifierGroups.length > 0 ? (
+                    <>
+                      {/* Main Groups */}
+                      {mainGroups.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-xs font-semibold text-gray-700 mb-2">Modificadores Principales</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
+                            {mainGroups.map(group => {
+                              const isSelected = (formData.modifier_groups || []).includes(group.id);
+                              const associatedSubGroups = getSubGroupsForGroup(group);
+                              
+                              return (
+                                <div key={group.id} className="flex flex-col gap-2">
+                                  <button type="button" onClick={() => toggleModifierGroup(group.id)}
+                                    className={`p-3 rounded-xl border-2 text-left transition-all ${
+                                      isSelected ? 'border-violet-400 bg-violet-50 text-violet-900' : 'border-gray-100 text-gray-500 hover:border-gray-200 bg-gray-50'
+                                    }`}>
+                                    <div className="flex items-center gap-2">
+                                      <span className={`w-3 h-3 rounded-full border-2 flex-shrink-0 ${isSelected ? 'bg-violet-600 border-violet-600' : 'border-gray-300'}`} />
+                                      <span className="text-sm font-semibold truncate capitalize">{group.name}</span>
+                                    </div>
+                                  </button>
+
+                                  {isSelected && associatedSubGroups.length > 0 && (
+                                    <div className="pl-4 border-l-2 border-violet-100 flex flex-col gap-1.5 ml-1.5 mt-1">
+                                      {associatedSubGroups.map(sg => {
+                                        const isSubSelected = (formData.modifier_groups || []).includes(sg.id);
+                                        return (
+                                          <button key={sg.id} type="button" onClick={() => toggleModifierGroup(sg.id)}
+                                            className={`px-3 py-1.5 text-left rounded-lg border text-[11px] font-semibold transition-all ${
+                                              isSubSelected ? 'border-violet-300 bg-violet-100 text-violet-800' : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
+                                            }`}>
+                                            {isSubSelected && '✓ '} Sub: {sg.name}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Orphan Sub Groups */}
+                      {orphanSubGroups.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <p className="text-xs font-semibold text-gray-400 mb-2">Otros Sub-modificadores</p>
+                          <p className="text-[10px] text-gray-400 mb-3 leading-tight">Sub-modificadores que no están linkeados a ninguna opción principal actualmente.</p>
+                          <div className="flex flex-wrap gap-2">
+                            {orphanSubGroups.map(group => {
+                              const isSelected = (formData.modifier_groups || []).includes(group.id);
+                              return (
+                                <button key={group.id} type="button" onClick={() => toggleModifierGroup(group.id)}
+                                  className={`px-3 py-1.5 rounded-lg border text-[11px] font-semibold transition-all ${
+                                    isSelected ? 'border-violet-300 bg-violet-50 text-violet-700' : 'border-gray-200 bg-white text-gray-400 hover:bg-gray-50'
+                                  }`}>
+                                  {isSelected && '✓ '} {group.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-6 text-center">
+                      <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Icon icon="heroicons:squares-plus" className="text-gray-400 text-xl" />
+                      </div>
+                      <p className="text-sm font-semibold text-gray-500 mb-1">No hay grupos de modificadores</p>
+                      <p className="text-[10px] text-gray-400 max-w-[200px] mx-auto leading-tight">
+                        Crea grupos en la sección <span className="font-bold">Extras y Opciones</span> para poder asignarlos a tus productos.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Dietary Tags & Allergens */}
@@ -405,142 +554,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
               </div>
             </section>
 
-            {/* Modifier Groups */}
-            {availableGroups.length > 0 && (
-              <section className="border border-gray-100 rounded-2xl p-6">
-                <div className="flex items-start justify-between mb-1">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Personalizaciones / Extras</p>
-                    <p className="text-[11px] text-gray-300 mt-0.5">Asigna grupos de opciones al producto</p>
-                  </div>
-                  <button type="button" onClick={() => setManageGroups(v => !v)}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-violet-100 bg-violet-50 text-violet-600 hover:bg-violet-100 transition-all text-[11px] font-semibold">
-                    ⚙ {manageGroups ? 'Cerrar' : 'Gestionar grupos'}
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {availableGroups.map(group => {
-                    const isSelected = (formData.modifier_groups || []).includes(group);
-                    const modType = formData.config_options?.modifier_config?.[group] || 'optional';
-                    const groupItems = modifierGroupsData[group] || [];
-                    const previewItems = groupItems.slice(0, 3);
-                    return (
-                      <div key={group}
-                        className={`rounded-xl border-2 transition-all duration-150 overflow-hidden ${
-                          isSelected ? 'border-violet-200 bg-violet-50' : 'border-gray-100 bg-gray-50 opacity-60'
-                        }`}>
-                        {/* Card header — click to toggle */}
-                        <button type="button" onClick={() => toggleModifierGroup(group)}
-                          className="w-full p-3 text-left flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className={`w-3 h-3 rounded-full border-2 flex-shrink-0 ${
-                                isSelected ? 'bg-violet-600 border-violet-600' : 'border-gray-300'
-                              }`} />
-                              <span className={`text-[13px] font-semibold truncate capitalize ${
-                                isSelected ? 'text-violet-900' : 'text-gray-400'
-                              }`}>{group.replace(/-/g, ' ')}</span>
-                            </div>
-                            {/* Items preview */}
-                            {groupItems.length > 0 && (
-                              <p className={`text-[11px] mt-1 ml-5 truncate ${
-                                isSelected ? 'text-violet-500' : 'text-gray-300'
-                              }`}>
-                                {previewItems.map(i => i.name).join(' · ')}
-                                {groupItems.length > 3 ? ` +${groupItems.length - 3}` : ''}
-                              </p>
-                            )}
-                          </div>
-                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 mt-0.5 ${
-                            isSelected ? 'bg-violet-100 text-violet-600' : 'bg-gray-100 text-gray-300'
-                          }`}>{groupItems.length}</span>
-                        </button>
-                        {/* Required/Optional toggle — only when selected */}
-                        {isSelected && (
-                          <div className="border-t border-violet-100 p-3 bg-white/50 space-y-3">
-                            <div className="flex gap-1 bg-gray-100/50 p-1 rounded-xl">
-                              {['optional', 'required', 'custom'].map(t => {
-                                const currentConfig = modType; 
-                                const isCurrent = (typeof currentConfig === 'string' && currentConfig === t) || (typeof currentConfig === 'object' && t === 'custom');
-                                return (
-                                <button key={t} type="button"
-                                  onClick={() => {
-                                    if (t === 'custom') setModifierConfig(group, { type: 'custom', min: 1, max: 2 });
-                                    else setModifierConfig(group, t);
-                                  }}
-                                  className={`flex-1 text-[10px] font-semibold py-1.5 rounded-lg transition-colors ${
-                                    isCurrent
-                                      ? 'bg-violet-600 text-white shadow-sm'
-                                      : 'text-gray-500 hover:bg-violet-50'
-                                  }`}>
-                                  {t === 'required' ? 'Único' : t === 'optional' ? 'Múltiple' : 'Personalizado'}
-                                </button>
-                                );
-                              })}
-                            </div>
-                            
-                            {typeof modType === 'object' && (
-                              <div className="flex items-center gap-3 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                                <label className="flex-1 flex items-center justify-between text-[11px] font-semibold text-gray-600">
-                                  <span>Mín. a elegir:</span>
-                                  <input type="number" min="0" 
-                                    value={modType.min ?? 1}
-                                    onChange={e => setModifierConfig(group, { ...modType, min: parseInt(e.target.value) || 0 })}
-                                    className="w-12 px-2 py-1 text-center text-[12px] font-bold bg-white border border-gray-200 rounded focus:ring-1 focus:ring-violet-500 outline-none" />
-                                </label>
-                                <div className="w-px h-6 bg-gray-200" />
-                                <label className="flex-1 flex items-center justify-between text-[11px] font-semibold text-gray-600">
-                                  <span>Límite (Max):</span>
-                                  <input type="number" min="0" 
-                                    value={modType.max ?? 2}
-                                    onChange={e => setModifierConfig(group, { ...modType, max: parseInt(e.target.value) || 0 })}
-                                    className="w-12 px-2 py-1 text-center text-[12px] font-bold bg-white border border-gray-200 rounded focus:ring-1 focus:ring-violet-500 outline-none" />
-                                </label>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
 
-                {/* Groups management drawer */}
-                {manageGroups && (
-                  <div className="mt-4 border border-violet-100 rounded-xl overflow-hidden">
-                    <div className="px-4 py-2.5 bg-violet-50 border-b border-violet-100 flex items-center justify-between">
-                      <p className="text-[11px] font-semibold text-violet-700 uppercase tracking-wider">Grupos disponibles</p>
-                      <p className="text-[10px] text-violet-400">Los grupos se crean desde Insumos → Categorías</p>
-                    </div>
-                    <div className="divide-y divide-gray-50">
-                      {availableGroups.map(group => {
-                        const items = modifierGroupsData[group] || [];
-                        return (
-                          <div key={group} className="px-4 py-2.5 flex items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[12px] font-semibold text-gray-700 capitalize">{group.replace(/-/g, ' ')}</p>
-                              {items.length > 0 ? (
-                                <p className="text-[11px] text-gray-400 mt-0.5 truncate">
-                                  {items.map(i => i.name).join(' · ')}
-                                </p>
-                              ) : (
-                                <p className="text-[11px] text-gray-300 mt-0.5">Sin ítems aún</p>
-                              )}
-                            </div>
-                            <span className="text-[10px] font-semibold bg-violet-50 text-violet-600 px-2 py-0.5 rounded-full shrink-0 mt-0.5">
-                              {items.length} ítem{items.length !== 1 ? 's' : ''}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-100">
-                      <p className="text-[10px] text-gray-400">Para agregar ítems a un grupo, ve a <strong>Insumos → Categorías</strong> y edita la categoría correspondiente</p>
-                    </div>
-                  </div>
-                )}
-              </section>
-            )}
 
           </div>
 

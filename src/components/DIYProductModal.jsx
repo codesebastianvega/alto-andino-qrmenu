@@ -22,6 +22,9 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
       : (modifierGroupsData[groupName] || []);
 
   const modalRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+  const prevGroupsLength = useRef(0);
+  const lastActionWasSelect = useRef(false);
 
   // Selections per group: required → string id, optional → array of ids
   const [selections, setSelections] = useState({});
@@ -39,6 +42,13 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
   const subtitle = product?.subtitle;
   const image = product ? getProductImage(product) : null;
   const assignedGroups = product?.modifierGroups || product?.modifier_groups || [];
+  const rawModifierGroups = menuData?.rawModifierGroups || [];
+
+  // Helper: resolve a group key (UUID or name) to its display name
+  const resolveGroupName = (key) => {
+    const found = rawModifierGroups.find(g => g.id === key || g.name === key);
+    return found?.name || key;
+  };
 
   const modifierConfig =
     product?.configOptions?.modifier_config ||
@@ -46,27 +56,125 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
     {};
 
   const groups = useMemo(() => {
-    return assignedGroups
-      .map((groupName) => {
-        const config = modifierConfig[groupName] || 'optional';
-        let min = 0; let max = 999;
-        if (config === 'required') { min = 1; max = 1; }
-        else if (config === 'optional') { min = 0; max = 999; }
-        else if (typeof config === 'object') { min = config.min || 0; max = config.max || 999; }
-        
-        return {
-          name: groupName,
-          type: config,
+    let result = [];
+    const addedIds = new Set();
+    const triggeredMap = {}; // group.id -> array of triggered sub_group_ids
+
+    // 1. Determine all triggered sub-groups based on current selections
+    Object.entries(selections).forEach(([selGroupName, selIds]) => {
+      const g = rawModifierGroups.find(x => x.name === selGroupName || x.id === selGroupName);
+      if (!g) return;
+      const opts = g.modifier_options || g.options || [];
+      selIds.forEach(id => {
+        const opt = opts.find(o => o.id === id);
+        if (opt && opt.nested_group_id) {
+          if (!triggeredMap[g.id]) triggeredMap[g.id] = [];
+          triggeredMap[g.id].push(opt.nested_group_id);
+        }
+      });
+    });
+
+    // Helper to add a group and its triggered sub-groups recursively
+    const addGroup = (groupKey) => {
+      if (addedIds.has(groupKey)) return;
+      
+      const groupMeta = rawModifierGroups.find(g => g.id === groupKey || g.name === groupKey);
+      if (!groupMeta) return;
+
+      // If it's a submodifier, it MUST be triggered to be shown
+      const isTriggered = Object.values(triggeredMap).flat().includes(groupMeta.id);
+      if (groupMeta.is_submodifier && !isTriggered) return;
+
+      addedIds.add(groupKey);
+      addedIds.add(groupMeta.id);
+      addedIds.add(groupMeta.name);
+
+      const displayName = groupMeta.name;
+      const config = modifierConfig[groupKey] || modifierConfig[displayName];
+      let min = groupMeta?.min_select ?? 0;
+      let max = groupMeta?.max_select ?? 999;
+      let isRequired = groupMeta?.is_required ?? false;
+
+      if (config === 'required') { min = 1; max = 1; isRequired = true; }
+      else if (config === 'optional') { min = 0; max = 999; isRequired = false; }
+      else if (typeof config === 'object') { min = config.min || 0; max = config.max || 999; isRequired = min > 0; }
+      
+      const items = getModifiers(groupKey);
+      if (items.length > 0) {
+        result.push({
+          key: groupKey,
+          name: displayName,
+          type: config || (isRequired ? 'required' : 'optional'),
           min,
           max,
-          isRequired: min > 0,
-          items: getModifiers(groupName),
-        };
-      })
-      .filter((g) => g.items.length > 0);
-  }, [assignedGroups.join(","), JSON.stringify(modifierConfig), modifierGroupsData]);
+          isRequired,
+          items,
+          is_submodifier: groupMeta.is_submodifier // pass down the flag
+        });
 
-  const currentGroup = groups[currentStep];
+        // Insert triggered sub-groups immediately after 
+        if (triggeredMap[groupMeta.id]) {
+          triggeredMap[groupMeta.id].forEach(subGroupId => addGroup(subGroupId));
+        }
+      }
+    };
+
+    assignedGroups.forEach(addGroup);
+
+    return result;
+  }, [assignedGroups.join(","), JSON.stringify(modifierConfig), modifierGroupsData, rawModifierGroups, selections]);
+
+  // Group into steps: each main group starts a step, followed by its active sub-groups
+  const steps = useMemo(() => {
+    const res = [];
+    groups.forEach(g => {
+      if (!g.is_submodifier || res.length === 0) {
+        res.push([g]);
+      } else {
+        res[res.length - 1].push(g);
+      }
+    });
+    return res;
+  }, [groups]);
+
+  const currentStepGroups = steps[currentStep] || [];
+
+  useEffect(() => {
+    if (currentStepGroups.length > prevGroupsLength.current) {
+      // Allow DOM to render the new group before scrolling
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTo({
+            top: scrollContainerRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      }, 150);
+    }
+    prevGroupsLength.current = currentStepGroups.length;
+  }, [currentStepGroups.length]);
+
+  // Safe Auto-Advance Logic
+  useEffect(() => {
+    if (currentStepGroups.length > 0 && lastActionWasSelect.current) {
+      const isStepValid = currentStepGroups.every(g => (selections[g.name] || []).length >= g.min);
+      
+      // Auto-advance only if EVERY group in this step has reached its maximum allowed selections.
+      // E.g. max=1 -> auto advances when 1 is selected. max=3 -> auto advances when 3 are selected.
+      const maxReached = currentStepGroups.every(g => {
+         const selCount = (selections[g.name] || []).length;
+         return selCount === g.max;
+      });
+
+      if (isStepValid && maxReached && currentStep < steps.length - 1) {
+        lastActionWasSelect.current = false;
+        const timer = setTimeout(() => {
+           setCurrentStep(s => s + 1);
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [selections, currentStepGroups, currentStep, steps.length]);
 
   const extraPrice = useMemo(() => {
     let total = 0;
@@ -89,9 +197,11 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
 
   // Validation logic
   const isCurrentStepValid = () => {
-    if (!currentGroup) return false;
-    const selCount = (selections[currentGroup.name] || []).length;
-    return selCount >= currentGroup.min;
+    if (currentStepGroups.length === 0) return false;
+    return currentStepGroups.every(g => {
+      const selCount = (selections[g.name] || []).length;
+      return selCount >= g.min;
+    });
   };
 
   const missingRequired = groups
@@ -108,9 +218,11 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
 
       if (isSelected) {
         // Deselect
+        lastActionWasSelect.current = false;
         return { ...prev, [groupName]: current.filter(x => x !== itemId) };
       } else {
         // Select
+        lastActionWasSelect.current = true;
         if (group.max === 1) {
           // Replace selection
           return { ...prev, [groupName]: [itemId] };
@@ -124,19 +236,14 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
         }
       }
     });
-
-    // Auto-advance if max is reached AND it's a single selection
-    if (group.max === 1 && currentStep < groups.length - 1) {
-       setTimeout(() => setCurrentStep(s => s + 1), 300);
-    }
   };
 
   const handleNext = () => {
     if (!isCurrentStepValid()) {
-      toast(`Por favor selecciona una opción para continuar.`);
+      toast(`Por favor selecciona las opciones requeridas para continuar.`);
       return;
     }
-    if (currentStep < groups.length - 1) {
+    if (currentStep < steps.length - 1) {
       setCurrentStep(s => s + 1);
     } else {
       handleAdd();
@@ -215,15 +322,16 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
               {/* Stepper Header */}
               <div className="bg-white border-b border-neutral-100 p-4 md:px-8 shadow-sm relative z-10">
                 <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
-                  {groups.map((g, idx) => {
-                    const selCount = (selections[g.name] || []).length;
-                    const isDone = selCount >= g.min;
-                    const isMissingRequired = selCount < g.min;
+                  {steps.map((stepArr, idx) => {
+                    // A step is valid/done if ALL groups inside it meet their min requirement
+                    const isDone = stepArr.every(g => (selections[g.name] || []).length >= g.min);
+                    const isMissingRequired = !isDone;
                     const isActive = currentStep === idx;
+                    const mainGroup = stepArr[0];
                     
                     return (
                       <button
-                        key={g.name}
+                        key={mainGroup.name}
                         onClick={() => setCurrentStep(idx)}
                         className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-xs font-bold transition-all ${
                           isActive
@@ -236,7 +344,7 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                         <span className={`flex items-center justify-center w-4 h-4 rounded-full text-[9px] ${isActive ? 'bg-white/20' : 'bg-black/5'}`}>
                           {idx + 1}
                         </span>
-                        <span className="capitalize">{g.name.replace(/-/g, " ")}</span>
+                        <span className="capitalize">{mainGroup.name.replace(/-/g, " ")}</span>
                         {isDone && !isMissingRequired && !isActive && <Icon icon="heroicons:check" className="text-sm" />}
                       </button>
                     );
@@ -245,26 +353,31 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
               </div>
 
               {/* Main Selection Area */}
-              <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 pb-24 md:pb-28">
-                {currentGroup && (
-                  <div className="animate-[fadeUp_0.3s_ease-out]">
+              <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 md:p-8 space-y-12 pb-24 md:pb-28">
+                {currentStepGroups.map((group, groupIdx) => (
+                  <div key={`${group.name}-${groupIdx}`} className="animate-fadeUp opacity-0" style={{ animationDelay: `${groupIdx * 60}ms` }}>
                     <div className="mb-6">
-                      <h3 className="text-2xl font-black text-neutral-900 capitalize">
-                        {currentGroup.name.replace(/-/g, " ")}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-2xl font-black text-neutral-900 capitalize">
+                          {group.name.replace(/-/g, " ")}
+                        </h3>
+                        {group.is_submodifier && (
+                          <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">Extra</span>
+                        )}
+                      </div>
                       <p className="text-base text-neutral-500 mt-1">
-                        {currentGroup.min > 0 && currentGroup.min === currentGroup.max 
-                          ? `Selecciona ${currentGroup.min} opción ${currentGroup.min > 1 ? 'obligatorias' : 'obligatoria'}.`
-                          : currentGroup.min > 0 
-                            ? `Selecciona al menos ${currentGroup.min} opción${currentGroup.min > 1 ? 'es' : ''} (máx. ${currentGroup.max}).`
-                            : `Agrega hasta ${currentGroup.max === 999 ? 'las opciones que desees' : currentGroup.max + ' opciones'} (opcional).`
+                        {group.min > 0 && group.min === group.max 
+                          ? `Selecciona ${group.min} opción ${group.min > 1 ? 'obligatorias' : 'obligatoria'}.`
+                          : group.min > 0 
+                            ? `Selecciona al menos ${group.min} opción${group.min > 1 ? 'es' : ''} (máx. ${group.max}).`
+                            : `Agrega hasta ${group.max === 999 ? 'las opciones que desees' : group.max + ' opciones'} (opcional).`
                         }
                       </p>
                     </div>
 
                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                      {currentGroup.items.map((item) => {
-                        const groupSel = selections[currentGroup.name] || [];
+                      {group.items.map((item) => {
+                        const groupSel = selections[group.name] || [];
                         const isSelected = groupSel.includes(item.id);
                         
                         const itemPrice = item.selling_price || item.price || 0;
@@ -272,7 +385,7 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                         return (
                           <button
                             key={item.id}
-                            onClick={() => handleSelection(currentGroup.name, item.id)}
+                            onClick={() => handleSelection(group.name, item.id)}
                             className={`relative flex flex-col h-full bg-white rounded-2xl overflow-hidden border-2 text-left transition-all duration-200 active:scale-95 ${
                               isSelected 
                                 ? 'border-[#2f4131] shadow-[0_4px_12px_rgba(47,65,49,0.15)] ring-1 ring-[#2f4131]' 
@@ -286,13 +399,19 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                               </div>
                             )}
 
-                            {/* Item Image area placeholder - Fallback to colored box if no image system for now */}
-                            <div className={`h-24 md:h-28 w-full flex items-center justify-center bg-gradient-to-br ${
+                            {/* Item Image area */}
+                            <div className={`h-24 md:h-28 w-full flex items-center justify-center bg-gradient-to-br transition-all duration-300 ${
                                 isSelected ? 'from-[#2f4131]/10 to-transparent' : 'from-neutral-50 to-neutral-100'
                               }`}
                             >
-                               {/* In the future: AAImage for item.image_url */}
-                               <span className="text-4xl opacity-20 filter grayscale blur-[1px]">🍲</span>
+                               {item.image_url ? (
+                                 <>
+                                   <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'inline-block'; }} />
+                                   <span className="hidden text-4xl filter drop-shadow-sm">{item.emoji || '🍲'}</span>
+                                 </>
+                               ) : (
+                                 <span className="text-4xl filter drop-shadow-sm">{item.emoji || '🍲'}</span>
+                               )}
                             </div>
 
                             {/* Item Details */}
@@ -311,7 +430,7 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                       })}
                     </div>
                   </div>
-                )}
+                ))}
               </div>
 
               {/* Bottom Navigation Bar */}
@@ -332,13 +451,13 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                     onClick={handleNext}
                     className={`flex-1 flex items-center justify-center h-12 md:h-14 rounded-2xl text-white font-bold text-lg transition-all shadow-lg ${
                       isCurrentStepValid() 
-                        ? currentStep === groups.length - 1
+                        ? currentStep === steps.length - 1
                           ? 'bg-[#cba258] hover:bg-[#b88c42] shadow-[0_8px_20px_rgba(203,162,88,0.3)] hover:-translate-y-0.5' 
                           : 'bg-[#2f4131] hover:bg-[#202c21] shadow-[0_8px_20px_rgba(47,65,49,0.3)] hover:-translate-y-0.5'
                         : 'bg-neutral-300 shadow-none cursor-not-allowed text-neutral-500'
                     }`}
                   >
-                    {currentStep === groups.length - 1 ? (
+                    {currentStep === steps.length - 1 ? (
                       <span className="flex items-center gap-2">
                         Agregar al Pedido <Icon icon="heroicons:check" className="text-xl" />
                       </span>

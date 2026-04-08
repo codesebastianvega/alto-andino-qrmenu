@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAdminProducts } from '../hooks/useAdminProducts';
 import { useCategories } from '../hooks/useCategories';
 import { useAdminRecipes } from '../hooks/useAdminRecipes';
+import { useAdminModifierGroups } from '../hooks/useAdminModifierGroups';
 import { useAllergens } from '../hooks/useAllergens';
 import { formatCOP } from '../utils/money';
 import ProductForm from '../components/admin/ProductForm';
@@ -29,6 +30,7 @@ export default function AdminProducts() {
   const { products, loading: loadingProd, createProduct, updateProduct, deleteProduct, toggleActive, toggleStock, reorderProducts } = useAdminProducts();
   const { categories, loading: loadingCats } = useCategories();
   const { recipes, fetchRecipes } = useAdminRecipes();
+  const { modifierGroups, fetchModifierGroups } = useAdminModifierGroups();
   const { allergens, loading: loadingAllergens } = useAllergens();
 
   const [search, setSearch] = useState('');
@@ -45,7 +47,10 @@ export default function AdminProducts() {
   const dragItem = useRef(null);
   const dragOverItem = useRef(null);
 
-  useEffect(() => { fetchRecipes(); }, [fetchRecipes]);
+  useEffect(() => { 
+    fetchRecipes(); 
+    fetchModifierGroups();
+  }, [fetchRecipes, fetchModifierGroups]);
 
   // When entering reorder mode, populate orderedList from filtered products
   const enterReorderMode = useCallback(() => {
@@ -397,12 +402,16 @@ export default function AdminProducts() {
                   <td className="px-5 py-3.5">
                     {(product.modifier_groups || []).length > 0 ? (
                       <div className="flex flex-wrap gap-1">
-                        {(product.modifier_groups || []).slice(0, 2).map(g => (
-                          <span key={g}
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-50 text-violet-700 border border-violet-100 capitalize">
-                            {g.replace(/-/g, ' ')}
-                          </span>
-                        ))}
+                        {(product.modifier_groups || []).slice(0, 2).map(g => {
+                          const groupData = modifierGroups.find(mg => mg.id === g);
+                          const name = groupData ? groupData.name : g;
+                          return (
+                            <span key={g}
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-50 text-violet-700 border border-violet-100 capitalize">
+                              {name.replace(/-/g, ' ')}
+                            </span>
+                          );
+                        })}
                         {(product.modifier_groups || []).length > 2 && (
                           <span className="text-[10px] text-violet-400 font-semibold">+{(product.modifier_groups || []).length - 2}</span>
                         )}

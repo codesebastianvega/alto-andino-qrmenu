@@ -10,6 +10,7 @@ export const MenuDataProvider = ({ children }) => {
   const [allCategories, setAllCategories] = useState([]);
   const [productsByCategory, setProductsByCategory] = useState({});
   const [modifiers, setModifiers] = useState({});
+  const [rawModifierGroups, setRawModifierGroups] = useState([]);
   const [experiences, setExperiences] = useState([]);
   const [banners, setBanners] = useState([]);
   const [allergens, setAllergens] = useState([]);
@@ -31,6 +32,7 @@ export const MenuDataProvider = ({ children }) => {
     setAllCategories([]);
     setProductsByCategory({});
     setModifiers({});
+    setRawModifierGroups([]);
     setExperiences([]);
     setBanners([]);
     setAllergens([]);
@@ -71,17 +73,28 @@ export const MenuDataProvider = ({ children }) => {
         return true;
       });
 
-      // Fetch modifiers
+      // Fetch modifiers (NEW logic)
       const { data: mods } = await brandFilter(
-        supabase.from('ingredients').select('*, ingredient_categories(name)').eq('is_active', true).eq('is_modifier', true)
+        supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(*)')
       );
       const modGroups = {};
-      (mods || []).forEach(m => {
-        const groupName = m.ingredient_categories?.name || m.category || 'adiciones';
-        if (!modGroups[groupName]) modGroups[groupName] = [];
-        modGroups[groupName].push({ ...m, price: m.selling_price || 0, group: groupName });
+      (mods || []).forEach(group => {
+        const groupName = group.name;
+        const options = (group.modifier_options || []).map(opt => ({
+          ...opt,
+          id: opt.id,
+          name: opt.name,
+          price: opt.price || 0,
+          group: groupName,
+          groupId: group.id,
+          ingredient_id: opt.ingredient_id
+        })).sort((a, b) => a.sort_order - b.sort_order);
+        // Index by BOTH name and UUID so lookups work with either format
+        modGroups[groupName] = options;
+        modGroups[group.id] = options;
       });
       setModifiers(modGroups);
+      setRawModifierGroups(mods || []);
 
       // Fetch experiences
       const { data: exp } = await brandFilter(
@@ -232,6 +245,7 @@ export const MenuDataProvider = ({ children }) => {
         getAllProducts,
         getModifiers,
         modifiers,
+        rawModifierGroups,
         experiences,
         banners,
         allergens,

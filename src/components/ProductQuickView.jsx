@@ -25,6 +25,8 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
 
   const modalRef = useRef(null);
   const lastFocused = useRef(null);
+  const scrollContainerRef = useRef(null);
+  const prevGroupsLength = useRef(0);
 
   // Selections per group: required → string id, optional → array of ids
   const [selections, setSelections] = useState({});
@@ -75,13 +77,21 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   }).filter(Boolean);
 
   const assignedGroups = product?.modifierGroups || product?.modifier_groups || [];
+  const rawModifierGroups = menuData?.rawModifierGroups || [];
   // categorySlug is set by MenuDataContext when mapping products
   const isCafe = product?.categorySlug === 'cafe';
 
+  // Helper: resolve a group key (UUID or name) to its display name
+  const resolveGroupName = (key) => {
+    const found = rawModifierGroups.find(g => g.id === key || g.name === key);
+    return found?.name || key;
+  };
+
   // Fallback: if a café product has no modifier groups in DB yet,
-  // inject 'milk-options' automatically (covers products not yet updated in admin)
+  // inject milk-options UUID automatically (covers products not yet updated in admin)
+  const MILK_OPTIONS_ID = '1ec830c8-301a-4d98-a25f-bf34f0e4febe';
   const effectiveGroups = (assignedGroups.length === 0 && isCafe)
-    ? ['milk-options']
+    ? [MILK_OPTIONS_ID]
     : assignedGroups;
 
   const modifierConfig =
@@ -90,26 +100,89 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
     {};
 
   const groups = useMemo(() => {
-    return effectiveGroups
-      .map((groupName) => {
-        const config = modifierConfig[groupName] || (groupName === 'milk-options' || groupName === 'sandwich-bread' ? 'required' : 'optional');
-        let min = 0; let max = 999;
-        if (config === 'required') { min = 1; max = 1; }
-        else if (config === 'optional') { min = 0; max = 999; }
-        else if (typeof config === 'object') { min = config.min || 0; max = config.max || 999; }
-        
-        return {
-          name: groupName,
-          type: config,
+    let result = [];
+    const addedIds = new Set();
+    const triggeredMap = {}; // group.id -> array of triggered sub_group_ids
+
+    // 1. Determine all triggered sub-groups based on current selections
+    Object.entries(selections).forEach(([selGroupName, selIds]) => {
+      const g = rawModifierGroups.find(x => x.name === selGroupName || x.id === selGroupName);
+      if (!g) return;
+      const opts = g.modifier_options || g.options || [];
+      selIds.forEach(id => {
+        const opt = opts.find(o => o.id === id);
+        if (opt && opt.nested_group_id) {
+          if (!triggeredMap[g.id]) triggeredMap[g.id] = [];
+          triggeredMap[g.id].push(opt.nested_group_id);
+        }
+      });
+    });
+
+    // Helper to add a group and its triggered sub-groups recursively
+    const addGroup = (groupKey) => {
+      if (addedIds.has(groupKey)) return;
+      
+      const groupMeta = rawModifierGroups.find(g => g.id === groupKey || g.name === groupKey);
+      if (!groupMeta) return;
+
+      // If it's a submodifier, it MUST be triggered to be shown
+      const isTriggered = Object.values(triggeredMap).flat().includes(groupMeta.id);
+      if (groupMeta.is_submodifier && !isTriggered) return;
+
+      addedIds.add(groupKey);
+      addedIds.add(groupMeta.id);
+      addedIds.add(groupMeta.name);
+
+      const displayName = groupMeta.name;
+      const config = modifierConfig[groupKey] || modifierConfig[displayName];
+      let min = groupMeta?.min_select ?? 0;
+      let max = groupMeta?.max_select ?? 999;
+      let isRequired = groupMeta?.is_required ?? false;
+
+      // Override with product-level config if present
+      if (config === 'required') { min = 1; max = 1; isRequired = true; }
+      else if (config === 'optional') { min = 0; max = 999; isRequired = false; }
+      else if (typeof config === 'object') { min = config.min || 0; max = config.max || 999; isRequired = min > 0; }
+      
+      const items = getModifiers(groupKey);
+      if (items.length > 0) {
+        result.push({
+          key: groupKey,
+          name: displayName,
+          type: config || (isRequired ? 'required' : 'optional'),
           min,
           max,
-          isRequired: min > 0,
-          items: getModifiers(groupName),
-        };
-      })
-      .filter((g) => g.items.length > 0);
+          isRequired,
+          items,
+        });
+
+        // Insert triggered sub-groups immediately after 
+        if (triggeredMap[groupMeta.id]) {
+          triggeredMap[groupMeta.id].forEach(subGroupId => addGroup(subGroupId));
+        }
+      }
+    };
+
+    effectiveGroups.forEach(addGroup);
+
+    return result;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveGroups.join(","), JSON.stringify(modifierConfig), modifierGroupsData]);
+  }, [effectiveGroups.join(","), JSON.stringify(modifierConfig), modifierGroupsData, rawModifierGroups, selections]);
+
+  useEffect(() => {
+    if (groups.length > prevGroupsLength.current) {
+      // Allow DOM to render the new group before scrolling
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTo({
+            top: scrollContainerRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      }, 150);
+    }
+    prevGroupsLength.current = groups.length;
+  }, [groups.length]);
 
   const extraPrice = useMemo(() => {
     let total = 0;
@@ -241,7 +314,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
 
             {/* Right Column: Content */}
             <div className="flex-1 flex flex-col overflow-hidden w-full md:w-7/12 lg:w-1/2 bg-white relative">
-              <div className="flex-1 p-6 md:p-8 xl:p-10 overflow-y-auto pb-32 md:pb-32">
+              <div ref={scrollContainerRef} className="flex-1 p-6 md:p-8 xl:p-10 overflow-y-auto pb-32 md:pb-32">
                 {/* Title & Subtitle */}
                 <h2 className="text-2xl md:text-3xl font-extrabold text-neutral-900 leading-tight tracking-tight" style={stagger(1)}>
                   {title}
