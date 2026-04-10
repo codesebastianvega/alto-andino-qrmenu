@@ -88,6 +88,7 @@ export function usePlan() {
     planName: plan?.name || 'Emprendedor',
     planSlug: plan?.slug || 'emprendedor',
     maxProducts: plan?.max_products ?? null,
+    maxCategories: plan?.max_categories ?? null,
     maxAdmins: plan?.max_admins ?? 1,
   };
 }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
 import { translateGroup } from '../utils/formatters';
 import { useMenuData } from '../context/MenuDataContext';
+import { useAuth } from '../context/AuthContext';
 import { 
   ArrowLeft, CheckCircle2, ChefHat, ShoppingBag, Clock, Sparkles, 
   MapPin, Tag, Copy, Leaf, Image as ImageIcon, ExternalLink, XIcon, 
@@ -218,8 +219,8 @@ export default function OrderStatus({ orderId }) {
   const fulfillmentText = order.fulfillment_type === 'dine_in' ? 'Consumo en local' : 
                           order.fulfillment_type === 'takeaway' ? 'Para llevar' : 'Domicilio';
   
-  const whatsappNumber = "573138830171"; // Reemplaza con número real del local
-  const wppMessage = encodeURIComponent(`Hola! Acabo de hacer el pedido #${order.id.slice(0,4).toUpperCase()}. Envío mi comprobante de pago.`);
+  const whatsappNumber = (restaurantSettings?.whatsapp_number_orders || "573138830171").replace(/[\s+]/g, '');
+  const wppMessage = encodeURIComponent(`¡Hola! 👋 Envío el comprobante de pago de mi pedido #${order.id.slice(0,4).toUpperCase()} en ${brandName}. ✨`);
 
   // Semillas estimadas
   const earnedSeeds = Math.floor(order.total_amount / 100);
@@ -413,7 +414,7 @@ export default function OrderStatus({ orderId }) {
 
           <div className="flex justify-between items-center pt-4 border-t border-black/5">
             <div className="flex flex-col">
-              <span className="font-bold text-sm text-black/60">Total Pagado</span>
+              <span className="font-bold text-sm text-black/60">Total del Pedido</span>
               {order.service_fee > 0 && <span className="text-[10px] font-medium text-black/40">Incluye propina ${(order.service_fee).toLocaleString()}</span>}
             </div>
             <span className="font-extrabold text-xl">${(order.total_amount || 0).toLocaleString()}</span>

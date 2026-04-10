@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Icon } from '@iconify-icon/react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-  BarChart, Bar, PieChart, Pie, Cell, Legend
+  BarChart, Bar, PieChart, Pie, Cell, Legend, AreaChart, Area
 } from 'recharts';
 
 const COLORS = ['#2f4131', '#7db87a', '#EAB308', '#F97316', '#3B82F6', '#8B5CF6'];
@@ -25,7 +25,8 @@ export default function AdminDashboard() {
       setLoading(true);
       try {
         let query = supabase.from('orders').select(`
-          id, total_amount, status, created_at, delivered_at, fulfillment_type,
+          id, total_amount, status, created_at, delivered_at, fulfillment_type, table_id, payment_method,
+          restaurant_tables ( table_number ),
           order_items ( quantity, unit_price, products ( name, category_id ) )
         `).order('created_at', { ascending: true });
 
@@ -100,6 +101,40 @@ export default function AdminDashboard() {
     return Object.values(trend);
   }, [orders]);
 
+  const hourlyStats = useMemo(() => {
+    // Fill from 7 AM to 11 PM
+    const stats = Array.from({ length: 17 }, (_, i) => ({
+      hour: i + 7,
+      label: `${(i + 7).toString().padStart(2, '0')}:00`,
+      ventas: 0,
+      pedidos: 0
+    }));
+
+    orders.filter(o => o.status === 'delivered').forEach(o => {
+      const h = new Date(o.created_at).getHours();
+      if (h >= 7 && h <= 23) {
+        const entry = stats.find(s => s.hour === h);
+        if (entry) {
+          entry.ventas += Number(o.total_amount);
+          entry.pedidos += 1;
+        }
+      }
+    });
+
+    return stats;
+  }, [orders]);
+
+  const tableStats = useMemo(() => {
+    const stats = {};
+    orders.filter(o => o.status === 'delivered' && o.fulfillment_type === 'dine_in').forEach(o => {
+      const name = o.restaurant_tables?.table_number || 'Sin asignar';
+      if (!stats[name]) stats[name] = { name, ingresos: 0, pedidos: 0 };
+      stats[name].ingresos += Number(o.total_amount);
+      stats[name].pedidos += 1;
+    });
+    return Object.values(stats).sort((a, b) => b.ingresos - a.ingresos);
+  }, [orders]);
+
   const topProducts = useMemo(() => {
     const productStats = {};
     orders.filter(o => o.status === 'delivered').forEach(o => {
@@ -121,6 +156,17 @@ export default function AdminDashboard() {
       else if (o.fulfillment_type === 'delivery') counts['Domicilio']++;
     });
     return Object.keys(counts).map(name => ({ name, value: counts[name] })).filter(c => c.value > 0);
+  }, [orders]);
+
+  const paymentStats = useMemo(() => {
+    const stats = {};
+    orders.filter(o => o.status === 'delivered').forEach(o => {
+      const method = o.payment_method || 'Pendiente';
+      const label = method === 'cash' ? 'Efectivo' : method === 'card' ? 'Tarjeta' : method.charAt(0).toUpperCase() + method.slice(1);
+      if (!stats[label]) stats[label] = { name: label, value: 0 };
+      stats[label].value += Number(o.total_amount);
+    });
+    return Object.values(stats);
   }, [orders]);
 
   const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
@@ -224,7 +270,7 @@ export default function AdminDashboard() {
                 <Icon icon="heroicons:chart-bar" className="text-[#7db87a]" />
                 EVOLUCIÓN DE INGRESOS
               </h3>
-              <div className="h-[300px] w-full">
+              <div className="h-[300px] w-full min-h-[300px] relative">
                 {salesTrend.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={salesTrend}>
@@ -247,10 +293,45 @@ export default function AdminDashboard() {
 
             <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
               <h3 className="font-black text-gray-900 mb-6 flex items-center gap-2">
+                <Icon icon="heroicons:credit-card" className="text-emerald-500" />
+                MÉTODOS DE PAGO
+              </h3>
+              <div className="h-[250px] w-full min-h-[250px] relative">
+                {paymentStats.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={paymentStats}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {paymentStats.map((entry, index) => (
+                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip 
+                        formatter={(val) => [formatCurrency(val), 'Ingresos']}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }}/>
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-gray-400">Sin datos</div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+              <h3 className="font-black text-gray-900 mb-6 flex items-center gap-2">
                 <Icon icon="heroicons:pie-chart" className="text-[#EAB308]" />
                 ORIGEN DE VENTAS
               </h3>
-              <div className="h-[250px] w-full">
+              <div className="h-[250px] w-full min-h-[250px] relative">
                 {origins.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -264,18 +345,77 @@ export default function AdminDashboard() {
                         dataKey="value"
                       >
                         {origins.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell key={`cell-${index}`} fill={['#8B5CF6', '#F97316', '#3B82F6'][index % 3]} />
                         ))}
                       </Pie>
                       <RechartsTooltip 
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                         itemStyle={{ fontWeight: 'bold' }}
                       />
-                      <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold', padding: '10px 0 0' }}/>
+                      <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }}/>
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
                   <div className="h-full flex items-center justify-center text-gray-400 font-medium">No hay datos</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Charts Row Pro */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+              <h3 className="font-black text-gray-900 mb-6 flex items-center gap-2 uppercase tracking-tight italic">
+                <Icon icon="heroicons:clock" className="text-orange-500" />
+                Picos de Demanda (Por Hora)
+              </h3>
+              <div className="h-[300px] w-full min-h-[300px] relative">
+                {hourlyStats.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={hourlyStats}>
+                      <defs>
+                        <linearGradient id="colorVentas" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#7db87a" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#7db87a" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                      <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 600 }} />
+                      <YAxis tickFormatter={(v) => `$${v/1000}k`} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 600 }} />
+                      <RechartsTooltip 
+                        formatter={(val) => [formatCurrency(val), 'Ventas']}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Area type="monotone" dataKey="ventas" stroke="#7db87a" fillOpacity={1} fill="url(#colorVentas)" strokeWidth={3} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-gray-400">Sin datos</div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+              <h3 className="font-black text-gray-900 mb-6 flex items-center gap-2 uppercase tracking-tight italic">
+                <Icon icon="heroicons:table-cells" className="text-blue-500" />
+                Ventas por Mesa (Productividad)
+              </h3>
+              <div className="h-[300px] w-full min-h-[300px] relative">
+                {tableStats.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={tableStats} margin={{ left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#4b5563', fontWeight: 700 }} />
+                      <YAxis tickFormatter={(v) => `$${v/1000}k`} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} />
+                      <RechartsTooltip 
+                        formatter={(val) => [formatCurrency(val), 'Ingresos']}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Bar dataKey="ingresos" fill="#2f4131" radius={[8, 8, 0, 0]} barSize={40} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-gray-400">Sin pedidos en mesa</div>
                 )}
               </div>
             </div>
@@ -287,7 +427,7 @@ export default function AdminDashboard() {
               <Icon icon="heroicons:star" className="text-[#3B82F6]" />
               TOP 5 PLATOS MÁS VENDIDOS
             </h3>
-            <div className="h-[300px] w-full">
+            <div className="h-[300px] w-full min-h-[300px] relative">
               {topProducts.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={topProducts} layout="vertical" margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>

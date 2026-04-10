@@ -14,6 +14,7 @@ import AdminTables from '../../pages/AdminTables';
 import AdminOrders from '../../pages/AdminOrders';
 import AdminKitchen from '../../pages/AdminKitchen';
 import AdminDashboard from '../../pages/AdminDashboard';
+import AdminWaiter from '../../pages/AdminWaiter';
 import AdminStaff from '../../pages/AdminStaff';
 import AdminSedes from '../../pages/AdminSedes';
 import AdminPinLogin from './AdminPinLogin';
@@ -119,6 +120,11 @@ const Icons = {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
       <circle cx="12" cy="12" r="10" />
+    </svg>
+  ),
+  Waiter: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 13.8V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-2.2"/><path d="M2 13h4"/><path d="M2 18h4"/><path d="M2 8h4"/><path d="M18 13h4"/><path d="M18 18h4"/><path d="M18 8h4"/>
     </svg>
   ),
 };
@@ -443,6 +449,28 @@ export default function AdminLayout() {
                     )}
                  </div>
                </button>
+
+               {/* Toma de Pedidos (POS) Card */}
+               <button 
+                 onClick={() => handleSelectPage('waiter', 'Toma de Pedidos')}
+                 className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
+                   currentPage === 'waiter' 
+                    ? 'bg-gradient-to-r from-emerald-900/40 to-emerald-950/40 border-emerald-500/20 ring-1 ring-emerald-500/20 shadow-lg shadow-emerald-950/40' 
+                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
+                 }`}
+               >
+                 <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'waiter' ? 'bg-emerald-400/20 text-emerald-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
+                       <Icons.Waiter />
+                    </div>
+                    {!isCollapsed && (
+                      <div className="text-left flex-1">
+                        <p className={`text-[13px] font-bold leading-none ${currentPage === 'waiter' ? 'text-white' : 'text-white/60'}`}>Toma de Pedidos</p>
+                        <p className="text-[9px] text-white/30 font-medium mt-1">POS / Modo Mesero</p>
+                      </div>
+                    )}
+                 </div>
+               </button>
             </div>
 
             {/* SECCIONES ESTANDAR */}
@@ -537,6 +565,7 @@ export default function AdminLayout() {
           { currentPage === 'staff'       && <AdminStaff /> }
           { currentPage === 'sedes'       && <AdminSedes /> }
           { currentPage === 'dashboard'   && <AdminDashboard /> }
+          { currentPage === 'waiter'      && <AdminWaiter /> }
 
           {/* Feature Lock Overlay */}
           <LockOverlay 

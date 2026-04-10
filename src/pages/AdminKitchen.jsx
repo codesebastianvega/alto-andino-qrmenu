@@ -126,21 +126,36 @@ export default function AdminKitchen() {
               {/* Card Header */}
               <div className="p-3 pb-2 flex justify-between items-start bg-black/20 border-b border-white/5">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg font-black tracking-tighter text-white">#{order.id.slice(0, 4).toUpperCase()}</span>
+                  <div className="flex items-center gap-3 mb-1">
+                    <span className="text-4xl font-black tracking-tighter text-white bg-white/5 px-2 py-0.5 rounded-lg border border-white/10 shadow-inner">
+                      #{order.id.slice(0, 4).toUpperCase()}
+                    </span>
                     {order.fulfillment_type !== 'dine_in' && (
-                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${
+                        <span className={`text-[11px] font-black px-2 py-1 rounded border shadow-sm ${
                             order.fulfillment_type === 'takeaway' 
                             ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' 
                             : 'bg-purple-500/10 text-purple-400 border-purple-500/30'
                         }`}>
-                            {order.fulfillment_type === 'takeaway' ? 'LLEVAR' : 'DOMI'}
+                            {order.fulfillment_type === 'takeaway' ? 'PARA LLEVAR' : 'DOMICILIO'}
                         </span>
                     )}
                   </div>
-                  <p className="text-gray-400 font-bold text-xs uppercase tracking-wide">
-                    {order.fulfillment_type === 'dine_in' ? `Mesa ${order.restaurant_tables?.table_number || '?'}` : order.customer_name || 'PARA LLEVAR'}
-                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    {order.fulfillment_type === 'dine_in' ? (
+                      <div className="flex items-center gap-3">
+                        <span className="text-3xl font-black text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-xl border border-emerald-500/30 shadow-lg shadow-emerald-900/20">
+                          T{order.restaurant_tables?.table_number || '?'}
+                        </span>
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{order.customer_name || 'En Mesa'}</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col">
+                        <span className="text-gray-300 font-black text-base uppercase tracking-tight">
+                          {order.customer_name || (order.fulfillment_type === 'takeaway' ? 'CLIENTE PARA LLEVAR' : 'DOMICILIO')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <KitchenTimer createdAt={order.created_at} />
               </div>
@@ -424,7 +439,7 @@ export default function AdminKitchen() {
         </>
       )}
 
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 8px;
         }

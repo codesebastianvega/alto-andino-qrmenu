@@ -116,6 +116,7 @@ export default function AdminOrders() {
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cash'); // Para marcar como pagado
 
   const { activeBrand } = useAuth();
   const activeBrandId = activeBrand?.id;
@@ -254,6 +255,38 @@ export default function AdminOrders() {
     }
   };
 
+  const applyDiscount = async (orderId, percentage) => {
+    try {
+      setUpdatingStatus(orderId);
+      
+      // Calculate based on items total (before service fee or with current total?)
+      // Usually discount applies to the food.
+      const itemsTotal = selectedOrder.order_items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+      const discountAmount = Math.round(itemsTotal * (percentage / 100));
+      const newTotal = Math.max(0, (itemsTotal + (Number(selectedOrder.service_fee) || 0)) - discountAmount);
+
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          discount_amount: discountAmount,
+          discount_reason: percentage === 100 ? 'Amigo VIP' : `Descuento ${percentage}%`,
+          total_amount: newTotal 
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+      toast('Descuento aplicado ✨');
+      
+      const updates = { discount_amount: discountAmount, total_amount: newTotal, discount_reason: percentage === 100 ? 'Amigo VIP' : `Descuento ${percentage}%` };
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o));
+      setSelectedOrder(prev => ({ ...prev, ...updates }));
+    } catch (err) {
+      toast.error('Error al aplicar descuento');
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
   const cancelOrder = (orderId) => {
     if (!cancellationReason.trim()) {
       toast.error("Por favor ingresa un motivo");
@@ -312,11 +345,61 @@ export default function AdminOrders() {
     const url = `https://wa.me/57${phone}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
+  
+  const exportLeads = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('customer_name, customer_phone')
+        .eq('brand_id', activeBrandId)
+        .not('customer_phone', 'is', null);
+
+      if (error) throw error;
+
+      // Remove duplicates
+      const uniqueLeads = Array.from(new Set(data.map(o => JSON.stringify({
+        Nombre: o.customer_name?.trim() || 'Desconocido',
+        Celular: o.customer_phone?.replace(/\D/g, '') || ''
+      })))).map(s => JSON.parse(s)).filter(l => l.Celular);
+
+      if (uniqueLeads.length === 0) {
+        toast.error('No hay leads para exportar');
+        return;
+      }
+
+      // Create CSV
+      const headers = ['Nombre', 'Celular'];
+      const csvContent = [
+        headers.join(','),
+        ...uniqueLeads.map(l => `${l.Nombre},${l.Celular}`)
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `clientes_${activeBrand?.name || 'leads'}_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast('Exportación completada! ✨', { icon: '📊' });
+    } catch (err) {
+      toast.error('Error al exportar');
+    }
+  };
 
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto min-h-screen">
        {/* Actions Bar */}
-       <div className="flex justify-end mb-6">
+       <div className="flex justify-end mb-6 gap-3">
+          <button 
+            onClick={exportLeads} 
+            className="px-4 py-2 bg-amber-50 border border-amber-200 rounded-2xl hover:bg-amber-100 text-amber-700 transition-colors shadow-sm flex items-center gap-2 font-bold text-sm"
+          >
+             <Icon icon="heroicons:arrow-down-tray" className="text-xl" />
+             Exportar Leads
+          </button>
           <button onClick={fetchOrders} className="p-3 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 text-gray-600 transition-colors shadow-sm flex items-center gap-2 font-bold text-sm">
              <Icon icon="heroicons:arrow-path" className="text-xl" />
              Actualizar
@@ -363,7 +446,14 @@ export default function AdminOrders() {
                       >
                         <div className="flex justify-between items-start mb-3">
                           <div>
-                            <span className="text-xl font-black text-gray-900 group-hover:text-[#2f4131]">#{order.id.slice(0, 4).toUpperCase()}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl font-black text-gray-900 group-hover:text-[#2f4131]">#{order.id.slice(0, 4).toUpperCase()}</span>
+                              {order.fulfillment_type === 'dine_in' && (
+                                <span className="text-lg font-black text-emerald-600 bg-emerald-50 px-2 rounded-lg border border-emerald-100 animate-pulse-slow">
+                                  T{order.restaurant_tables?.table_number || '?'}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs font-bold text-gray-400 uppercase mt-0.5">{order.customer_name || 'Sin nombre'}</p>
                           </div>
                           <OrderTimer createdAt={order.created_at} status={order.status} />
@@ -540,103 +630,193 @@ export default function AdminOrders() {
                     <span className="font-bold text-gray-700">${selectedOrder.service_fee.toLocaleString()}</span>
                   </div>
                 )}
-                <div className={`${selectedOrder.service_fee > 0 ? "pt-1" : "pt-3 border-t border-gray-200 mt-2"} flex justify-between items-center`}>
+                {selectedOrder.discount_amount > 0 && (
+                   <div className="pt-1 flex justify-between items-center text-sm text-red-600 font-bold">
+                     <span>Descuento ({selectedOrder.discount_reason || 'Amigos'})</span>
+                     <span>-${selectedOrder.discount_amount.toLocaleString()}</span>
+                   </div>
+                )}
+                <div className={`${(selectedOrder.service_fee > 0 || selectedOrder.discount_amount > 0) ? "pt-1 border-t border-gray-200 mt-1" : "pt-3 border-t border-gray-200 mt-2"} flex justify-between items-center`}>
                   <span className="font-bold text-gray-500">Total</span>
                   <span className="text-xl font-black text-gray-900">${selectedOrder.total_amount?.toLocaleString()}</span>
                 </div>
               </div>
+
+              {/* Info de Pago */}
+              {selectedOrder.payment_status === 'paid' && (
+                <div className="mt-4 flex items-center gap-2 text-xs font-bold text-emerald-600 bg-emerald-50 p-3 rounded-2xl border border-emerald-100 italic">
+                  <Icon icon="heroicons:check-badge" className="text-lg" />
+                  Pagado con {selectedOrder.payment_method === 'cash' ? 'Efectivo' : selectedOrder.payment_method === 'card' ? 'Tarjeta' : selectedOrder.payment_method?.toUpperCase()}
+                </div>
+              )}
+
+              {/* Sección de Descuentos VIP */}
+              {selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
+                <div className="mt-6 p-4 bg-emerald-50 rounded-3xl border border-emerald-100">
+                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <Icon icon="heroicons:sparkles" />
+                    APLICAR DESCUENTO VIP / AMIGOS
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {[10, 20, 50, 100].map(pct => (
+                      <button
+                        key={pct}
+                        onClick={() => applyDiscount(selectedOrder.id, pct)}
+                        disabled={updatingStatus === selectedOrder.id}
+                        className="px-4 py-2 bg-white border border-emerald-200 rounded-xl text-xs font-black text-emerald-700 hover:bg-emerald-100 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                      >
+                        {pct === 100 ? 'AMIGO (100%)' : `${pct}%`}
+                      </button>
+                    ))}
+                    {selectedOrder.discount_amount > 0 && (
+                      <button
+                        onClick={() => applyDiscount(selectedOrder.id, 0)}
+                        className="px-4 py-2 bg-red-50 text-red-600 text-[10px] font-black rounded-xl hover:bg-red-100 transition-colors uppercase"
+                      >
+                        Quitar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Footer Actions */}
-            <div className="p-6 bg-gray-50 border-t border-gray-100 flex flex-col gap-3">
-              <div className="flex gap-3 w-full">
+            <div className="p-6 bg-gray-50 border-t border-gray-100 flex flex-col gap-4">
+              {/* Secondary/Utility Actions Row */}
+              <div className="flex items-center gap-2">
                 <button 
                   onClick={() => shareToWhatsApp(selectedOrder, 'summary')}
                   title="Compartir Resumen"
-                  className="p-3 bg-white border border-gray-200 rounded-2xl text-green-600 hover:bg-green-50 transition-colors shadow-sm disabled:opacity-50"
+                  className="h-12 w-12 flex items-center justify-center bg-white border border-gray-200 rounded-2xl text-green-600 hover:bg-green-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
                   disabled={updatingStatus === selectedOrder.id}
                 >
-                  <Icon icon="logos:whatsapp-icon" className="text-2xl" />
+                  <Icon icon="logos:whatsapp-icon" className="text-xl" />
                 </button>
                 
                 {selectedOrder.status !== 'cancelled' && selectedOrder.customer_phone && (
                   <button 
                     onClick={() => shareToWhatsApp(selectedOrder, 'ready')}
-                    className="p-3 bg-green-50 border border-green-200 rounded-2xl text-green-700 font-bold hover:bg-green-100 transition-colors flex items-center justify-center gap-2 flex-grow max-w-[200px]"
-                    title="Avisar que está listo"
+                    className="h-12 flex-1 bg-green-50 border border-green-200 rounded-2xl text-green-700 font-bold hover:bg-green-100 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
                   >
-                    Avisar Listo <Icon icon="logos:whatsapp-icon" className="text-xl" />
+                    <span className="text-xs uppercase tracking-tight">Notificar Listo</span>
+                    <Icon icon="logos:whatsapp-icon" className="text-lg" />
                   </button>
                 )}
 
                 {selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
                   <button 
                     onClick={() => setIsCancelling(!isCancelling)}
-                    className={`p-3 border font-bold rounded-2xl transition-colors flex items-center gap-2 ${isCancelling ? 'bg-red-500 text-white border-red-500' : 'bg-white border-red-200 text-red-600 hover:bg-red-50'}`}
+                    title={isCancelling ? "Cerrar cancelación" : "Cancelar pedido"}
+                    className={`h-12 w-12 flex items-center justify-center border font-bold rounded-2xl transition-all shadow-sm active:scale-95 ${
+                      isCancelling 
+                        ? 'bg-red-500 text-white border-red-500 hover:bg-red-600' 
+                        : 'bg-white border-red-100 text-red-500 hover:bg-red-50'
+                    }`}
                   >
-                    <Icon icon={isCancelling ? "heroicons:arrow-path" : "heroicons:x-mark"} className="text-xl" />
+                    <Icon icon={isCancelling ? "heroicons:arrow-path" : "heroicons:trash"} className="text-xl" />
                   </button>
                 )}
+              </div>
 
-                <div className="flex-1 flex flex-col gap-2">
-                  {isCancelling ? (
-                    <div className="flex gap-2 w-full">
-                      <input 
-                        type="text"
-                        placeholder="Motivo de cancelación..."
-                        value={cancellationReason}
-                        onChange={(e) => setCancellationReason(e.target.value)}
-                        className="flex-1 p-3 bg-red-50 border border-red-100 rounded-2xl outline-none focus:ring-1 focus:ring-red-400 font-medium"
-                        autoFocus
-                      />
+              {/* Principal Status Section */}
+              <div className="w-full">
+                {isCancelling ? (
+                  <div className="flex gap-2 animate-in slide-in-from-top-2 duration-200 w-full">
+                    <input 
+                      type="text"
+                      placeholder="Escribe el motivo..."
+                      value={cancellationReason}
+                      onChange={(e) => setCancellationReason(e.target.value)}
+                      className="flex-1 h-12 px-4 bg-white border-2 border-red-100 rounded-2xl outline-none focus:border-red-400 font-medium text-sm transition-all"
+                      autoFocus
+                    />
+                    <button 
+                      onClick={() => cancelOrder(selectedOrder.id)}
+                      disabled={!cancellationReason.trim()}
+                      className="bg-red-600 hover:bg-red-700 text-white px-6 rounded-2xl font-bold shadow-lg shadow-red-200 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      Confirmar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-full">
+                    {selectedOrder.status === 'waiting_payment' && (
+                      <div className="flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-300">
+                        <div className="p-4 bg-white rounded-[2rem] border border-orange-100 shadow-sm relative overflow-hidden">
+                           <div className="absolute top-0 left-0 w-1 h-full bg-orange-400"></div>
+                           <p className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] mb-3 px-1 text-center">Seleccionar Método de Pago</p>
+                           <div className="grid grid-cols-2 gap-2">
+                              {[
+                                { id: 'cash', label: 'Efectivo', icon: 'heroicons:banknotes' },
+                                { id: 'card', label: 'Tarjeta', icon: 'heroicons:credit-card' },
+                                { id: 'nequi', label: 'Nequi', icon: 'heroicons:qr-code' },
+                                { id: 'transfer', label: 'Transferencia', icon: 'heroicons:paper-airplane' }
+                              ].map(m => (
+                                <button
+                                  key={m.id}
+                                  onClick={() => setSelectedPaymentMethod(m.id)}
+                                  className={`flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all ${
+                                    selectedPaymentMethod === m.id 
+                                      ? 'bg-orange-500 border-orange-500 text-white shadow-md scale-[1.02]' 
+                                      : 'bg-orange-50/30 border-orange-50 text-orange-400 hover:border-orange-100'
+                                  }`}
+                                >
+                                  <Icon icon={m.icon} className="text-lg" />
+                                  <span className="text-[10px] font-black uppercase tracking-wider">{m.label}</span>
+                                </button>
+                              ))}
+                           </div>
+                        </div>
+                        <button 
+                          onClick={() => updateOrderStatus(selectedOrder.id, 'new', { payment_status: 'paid', payment_method: selectedPaymentMethod })} 
+                          disabled={updatingStatus === selectedOrder.id}
+                          className="h-16 w-full bg-neutral-900 hover:bg-black text-white font-black rounded-[1.5rem] transition-all flex items-center justify-center gap-3 shadow-xl active:scale-[0.98] disabled:opacity-50"
+                        >
+                          {updatingStatus === selectedOrder.id 
+                            ? <Icon icon="line-md:loading-loop" className="text-2xl" /> 
+                            : <>MARCAR COMO PAGADO <Icon icon="heroicons:bolt-20-solid" className="text-orange-400 text-xl" /></>}
+                        </button>
+                      </div>
+                    )}
+
+                    {selectedOrder.status === 'new' && (
                       <button 
-                        onClick={() => cancelOrder(selectedOrder.id)}
-                        className="bg-red-600 text-white px-6 rounded-2xl font-bold shadow-lg shadow-red-100"
+                        onClick={() => updateOrderStatus(selectedOrder.id, 'preparing')} 
+                        disabled={updatingStatus === selectedOrder.id}
+                        className="h-14 w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-black rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-yellow-100 disabled:opacity-50 active:scale-[0.98]"
                       >
-                        Confirmar
+                        {updatingStatus === selectedOrder.id 
+                          ? <Icon icon="line-md:loading-loop" className="text-xl" /> 
+                          : <>ENVIAR A COCINA <Icon icon="heroicons:fire-20-solid" className="text-xl" /></>}
                       </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2 w-full">
-                      {selectedOrder.status === 'waiting_payment' && (
-                        <button 
-                          onClick={() => updateOrderStatus(selectedOrder.id, 'new', { payment_status: 'paid' })} 
-                          disabled={updatingStatus === selectedOrder.id}
-                          className="flex-1 bg-orange-400 hover:bg-orange-500 text-orange-900 font-bold py-3 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-100 disabled:opacity-50"
-                        >
-                          {updatingStatus === selectedOrder.id ? <Icon icon="line-md:loading-loop" className="text-xl" /> : <>Marcar Pagado <Icon icon="heroicons:banknotes" /></>}
-                        </button>
-                      )}
-                      {selectedOrder.status === 'new' && (
-                        <button 
-                          onClick={() => updateOrderStatus(selectedOrder.id, 'preparing')} 
-                          disabled={updatingStatus === selectedOrder.id}
-                          className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold py-3 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-yellow-100 disabled:opacity-50"
-                        >
-                          {updatingStatus === selectedOrder.id ? <Icon icon="line-md:loading-loop" className="text-xl" /> : <>Enviar a Cocina <Icon icon="heroicons:fire" /></>}
-                        </button>
-                      )}
-                      {selectedOrder.status === 'preparing' && (
-                        <button 
-                          onClick={() => updateOrderStatus(selectedOrder.id, 'ready')} 
-                          disabled={updatingStatus === selectedOrder.id}
-                          className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-green-200 disabled:opacity-50"
-                        >
-                          {updatingStatus === selectedOrder.id ? <Icon icon="line-md:loading-loop" className="text-xl" /> : <>Marcar Listo <Icon icon="heroicons:check-badge" /></>}
-                        </button>
-                      )}
-                      {selectedOrder.status === 'ready' && (
-                        <button 
-                          onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')} 
-                          disabled={updatingStatus === selectedOrder.id}
-                          className="flex-1 bg-gray-900 hover:bg-black text-white font-bold py-3 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                          {updatingStatus === selectedOrder.id ? <Icon icon="line-md:loading-loop" className="text-xl" /> : <>Entregar <Icon icon="heroicons:truck" /></>}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
+                    )}
+
+                    {selectedOrder.status === 'preparing' && (
+                      <button 
+                        onClick={() => updateOrderStatus(selectedOrder.id, 'ready')} 
+                        disabled={updatingStatus === selectedOrder.id}
+                        className="h-14 w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 disabled:opacity-50 active:scale-[0.98]"
+                      >
+                        {updatingStatus === selectedOrder.id 
+                          ? <Icon icon="line-md:loading-loop" className="text-xl" /> 
+                          : <>MARCAR COMO LISTO <Icon icon="heroicons:check-badge-20-solid" className="text-xl" /></>}
+                      </button>
+                    )}
+
+                    {selectedOrder.status === 'ready' && (
+                      <button 
+                        onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')} 
+                        disabled={updatingStatus === selectedOrder.id}
+                        className="h-14 w-full bg-neutral-900 hover:bg-black text-white font-black rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 active:scale-[0.98]"
+                      >
+                        {updatingStatus === selectedOrder.id 
+                          ? <Icon icon="line-md:loading-loop" className="text-xl" /> 
+                          : <>ENTREGAR PEDIDO <Icon icon="heroicons:truck-20-solid" className="text-xl" /></>}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

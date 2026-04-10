@@ -104,27 +104,39 @@ export default function AdminSedes({ isEmbedded = false }) {
           title="Sedes y Locales"
           subtitle="Gestiona las ubicaciones físicas de tu negocio."
         >
-          <PrimaryButton onClick={() => handleOpenModal()} disabled={!canAddMore}>
-            <Icon icon="solar:add-circle-linear" className="w-4 h-4 mr-2" />
-            Nueva Sede
-          </PrimaryButton>
+          <div className="flex flex-col items-end gap-2">
+            <PrimaryButton onClick={() => handleOpenModal()} disabled={!canAddMore}>
+              <Icon icon="solar:add-circle-linear" className="w-4 h-4 mr-2" />
+              Nueva Sede
+            </PrimaryButton>
+            {!canAddMore && (
+              <p className="text-[10px] font-bold text-orange-600 bg-orange-50 px-3 py-1 rounded-lg border border-orange-100 flex items-center gap-1.5 uppercase tracking-widest italic animate-pulse">
+                <Icon icon="heroicons:information-circle" /> Tu plan solo permite 1 sede. Mejorar plan
+              </p>
+            )}
+          </div>
         </PageHeader>
       )}
 
       {isEmbedded && (
         <div className="flex items-center justify-between mb-6">
-          <div>
+          <div className="flex-1">
             <h3 className="text-base font-black text-gray-900 uppercase tracking-tight italic">Tus Locales</h3>
             <p className="text-[12px] text-gray-500 font-medium">Listado de sedes activas para el menú digital.</p>
           </div>
-          <PrimaryButton 
-            onClick={() => handleOpenModal()} 
-            disabled={!canAddMore}
-            className="py-2 px-4 shadow-sm"
-          >
-            <Icon icon="solar:add-circle-linear" className="w-4 h-4 mr-2" />
-            Añadir Sede
-          </PrimaryButton>
+          <div className="flex flex-col items-end gap-2">
+            <PrimaryButton 
+              onClick={() => handleOpenModal()} 
+              disabled={!canAddMore}
+              className="py-2 px-4 shadow-sm"
+            >
+              <Icon icon="solar:add-circle-linear" className="w-4 h-4 mr-2" />
+              Añadir Sede
+            </PrimaryButton>
+            {!canAddMore && (
+              <span className="text-[9px] font-black text-orange-500 uppercase tracking-tighter italic">Mejorar plan para más sedes</span>
+            )}
+          </div>
         </div>
       )}
 

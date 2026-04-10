@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useCategories } from '../hooks/useCategories';
+import { usePlan } from '../hooks/usePlan';
 import CategoryForm from '../components/admin/CategoryForm';
 import {
   PageHeader, PrimaryButton, Badge,
@@ -9,6 +10,7 @@ import {
 
 export default function AdminCategories() {
   const { categories, loading, error, createCategory, updateCategory, deleteCategory, updateCategoryOrders } = useCategories();
+  const { withinLimit, maxCategories } = usePlan();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -44,6 +46,8 @@ export default function AdminCategories() {
     <div className="p-8 text-red-500 text-sm font-medium">Error cargando categorías: {error}</div>
   );
 
+  const isAtLimit = !withinLimit('max_categories', categories.length);
+
   const filtered = categories.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     (c.slug || '').toLowerCase().includes(search.toLowerCase())
@@ -56,7 +60,21 @@ export default function AdminCategories() {
         <div className="flex-1 w-full max-w-sm">
           <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar categoría…" />
         </div>
-        <PrimaryButton onClick={handleCreate} className="w-full sm:w-auto">+ Nueva Categoría</PrimaryButton>
+        
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+          {maxCategories && (
+            <div className="text-[11px] font-black uppercase tracking-widest px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-xl text-gray-500 italic">
+              Categorías: <span className={isAtLimit ? 'text-orange-600' : 'text-gray-900'}>{categories.length} / {maxCategories}</span>
+            </div>
+          )}
+          <PrimaryButton 
+            onClick={handleCreate} 
+            disabled={isAtLimit}
+            className="w-full sm:w-auto"
+          >
+            {isAtLimit ? 'Límite alcanzado' : '+ Nueva Categoría'}
+          </PrimaryButton>
+        </div>
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>

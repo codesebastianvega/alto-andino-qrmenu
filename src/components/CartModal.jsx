@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
+import { useParams } from "react-router-dom";
 import { useCart, getItemUnit } from "@/context/CartContext";
 import { useMenuData } from "@/context/MenuDataContext";
 import Portal from "./Portal";
@@ -8,6 +9,7 @@ import { MILK_OPTIONS } from "@/config/milkOptions";
 import { formatCOP } from "@/utils/money";
 import AAImage from "@/components/ui/AAImage";
 import { Icon } from "@iconify-icon/react";
+import QRCode from "react-qr-code";
 import { supabase } from "@/config/supabase";
 import { translateGroup } from "@/utils/formatters";
 import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";
@@ -86,7 +88,8 @@ export default function CartModal({ open, onClose }) {
     updateItemNote: updateItemNoteCtx,
   } = cart;
 
-  const { getAllProducts, hasFeature } = useMenuData();
+  const { brandSlug } = useParams();
+  const { getAllProducts, hasFeature, activeBrandId } = useMenuData();
   const allDBProducts = useMemo(() => getAllProducts(), [getAllProducts]);
 
   const [includeTip, setIncludeTip] = useState(true);
@@ -106,11 +109,28 @@ export default function CartModal({ open, onClose }) {
   const initialMesa = getTable();
   const [fulfillmentType, setFulfillmentType] = useState(initialMesa ? 'dine_in' : 'takeaway');
   const [scheduledTime, setScheduledTime] = useState("");
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
+  const isPOSMode = sessionStorage.getItem("aa_pos_mode") === "true";
+  const manualType = sessionStorage.getItem("aa_manual_type");
+
+  const [customerName, setCustomerName] = useState(isPOSMode ? "Mostrador" : "");
+  const [customerPhone, setCustomerPhone] = useState(isPOSMode ? "0000000" : "");
   const [showFulfillmentSelector, setShowFulfillmentSelector] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState("");
+  const [isPaid, setIsPaid] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("cash");
+
+  const isLeadRequired = !isPOSMode && (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' || fulfillmentType === 'scheduled');
+  const isLeadValid = !isLeadRequired || (customerName?.trim() && customerPhone?.trim());
+
+  // Si estamos en POS y es manual (Takeaway/Delivery), forzamos el tipo
+  useEffect(() => {
+    if (isPOSMode && manualType) {
+      setFulfillmentType(manualType);
+    } else if (initialMesa) {
+      setFulfillmentType('dine_in');
+    }
+  }, [isPOSMode, manualType, initialMesa]);
 
   const packagingFeeTotal = items.reduce((acc, it) => acc + ((Number(it.packaging_fee) || 0) * (Number(it.qty) || 1)), 0);
   const serviceFeeAmount = (isTipEnabled && includeTip) ? Math.round(total * (tipPercentage / 100)) : 0;
@@ -153,33 +173,48 @@ export default function CartModal({ open, onClose }) {
 
   const handleConfirmOrder = async (e) => {
     e.preventDefault();
-    if (!items.length) return;
-    
     setIsSubmitting(true);
     try {
+      // Validate lead info for POS (Defaults are handled in state initialization)
+      // Removed manual validation that required name/phone for POS takeaway/delivery
+
       const mesa = getTable();
       
       let tableId = null;
       if (fulfillmentType === 'dine_in' && mesa) {
         const { data: tableData } = await supabase.from('restaurant_tables')
-          .select('id').eq('table_number', mesa).single();
+          .select('id')
+          .eq('table_number', mesa)
+          .eq('brand_id', activeBrandId)
+          .single();
          if (tableData) tableId = tableData.id;
       }
 
       // 2. Insert Order
       const finalTotal = fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount;
 
+      // Update status logic for POS: If unpaid, go to waiting_payment
+      let orderStatus = 'new';
+      if (isPOSMode) {
+        orderStatus = isPaid ? 'new' : 'waiting_payment';
+      } else {
+        orderStatus = fulfillmentType === 'dine_in' ? 'new' : 'waiting_payment';
+      }
+
       const { data: orderData, error: orderError } = await supabase.from('orders')
         .insert([{
-          status: fulfillmentType === 'dine_in' ? 'new' : 'waiting_payment',
-          origin: fulfillmentType === 'dine_in' ? 'table' : 'qr',
+          status: orderStatus,
+          origin: fulfillmentType === 'dine_in' ? 'table' : 'takeaway',
           fulfillment_type: fulfillmentType,
           table_id: tableId,
+          brand_id: activeBrandId,
           total_amount: finalTotal,
           service_fee: serviceFeeAmount,
           customer_name: customerName,
           customer_phone: customerPhone,
-          scheduled_time: scheduledTime || null
+          scheduled_time: scheduledTime || null,
+          payment_status: isPaid ? 'paid' : 'pending',
+          payment_method: isPaid ? paymentMethod : null
         }])
         .select()
         .single();
@@ -233,35 +268,17 @@ export default function CartModal({ open, onClose }) {
       setLastOrderId(orderData.id);
 
       // --- WHATSAPP REDIRECTION (Emprendedor Plan) ---
-      if (hasFeature('whatsapp_orders')) {
-        const whatsappNumber = settings?.whatsapp_number_orders || "";
-        if (whatsappNumber) {
-          const cleanNumber = whatsappNumber.replace(/\D/g, "");
-          const orderItemsText = items.map(it => `- ${it.qty}x ${it.name} (${formatCOP(getItemUnit(it) * it.qty)})`).join("\n");
-          
-          let fulfillmentLabel = "Mesa";
-          if (fulfillmentType === 'takeaway') fulfillmentLabel = "Para Llevar";
-          if (fulfillmentType === 'delivery') fulfillmentLabel = "Domicilio";
-          if (fulfillmentType === 'scheduled') fulfillmentLabel = "Programado";
-
-          const message = `*Nuevo Pedido #${orderData.id.slice(0, 4).toUpperCase()}*\n\n` +
-            `*Cliente:* ${customerName || 'Cliente'}\n` +
-            `*Tipo:* ${fulfillmentLabel}\n` +
-            (fulfillmentType === 'dine_in' ? `*Mesa:* ${getTable()}\n` : "") +
-            `*Teléfono:* ${customerPhone || 'N/A'}\n\n` +
-            `*Pedido:*\n${orderItemsText}\n\n` +
-            (note ? `*Notas:* ${note}\n\n` : "") +
-            `*Subtotal:* ${formatCOP(total)}\n` +
-            (serviceFeeAmount > 0 ? `*Servicio (${tipPercentage}%):* ${formatCOP(serviceFeeAmount)}\n` : "") +
-            `*Total:* ${formatCOP(finalTotal)}\n\n` +
-            `_Enviado desde el Menú Digital_`;
-
-          const encodedMessage = encodeURIComponent(message);
-          window.open(`https://wa.me/${cleanNumber}?text=${encodedMessage}`, "_blank");
-        }
+      // SKIP in POS mode to avoid interrupting staff workflow
+      /* REDIRECTION DISABLED AS REQUESTED
+      if (hasFeature('whatsapp_orders') && !isPOSMode) {
+        // ... (existing WhatsApp logic)
       }
+      */
       // -----------------------------------------------
 
+      if (typeof clearCart === 'function') {
+        clearCart();
+      }
       setShowSuccess(true);
       
     } catch (err) {
@@ -274,6 +291,15 @@ export default function CartModal({ open, onClose }) {
 
   const setItemNote =
     setItemNoteCtx || updateItemNoteCtx || ((index, value) => updateItem?.(index, { note: value }));
+
+  const resetStates = () => {
+    setCustomerName(isPOSMode ? "Mostrador" : "");
+    setCustomerPhone(isPOSMode ? "0000000" : "");
+    setScheduledTime("");
+    setIsPaid(false);
+    setPaymentMethod("cash");
+    setShowFulfillmentSelector(false);
+  };
 
   const handleDecrement = (item, idx) => {
     if (item.qty <= 1) removeItem?.(item);
@@ -340,7 +366,8 @@ export default function CartModal({ open, onClose }) {
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4">
+      <>
+        <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4">
         {/* Overlay */}
         <div
           className="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm transition-opacity"
@@ -350,7 +377,7 @@ export default function CartModal({ open, onClose }) {
 
         {/* Modal Window */}
         <div
-          className="relative w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] rounded-none sm:rounded-[32px] bg-white shadow-2xl flex flex-col sm:max-w-2xl md:max-w-4xl lg:max-w-5xl transition-all overflow-hidden"
+          className={`relative w-full h-[100dvh] sm:h-auto ${showSuccess ? 'sm:min-h-[750px]' : 'sm:max-h-[85vh]'} rounded-none sm:rounded-[32px] bg-white shadow-2xl flex flex-col sm:max-w-2xl md:max-w-4xl lg:max-w-5xl transition-all overflow-hidden`}
           role="dialog"
           aria-modal="true"
         >
@@ -577,15 +604,14 @@ export default function CartModal({ open, onClose }) {
                 </div>
               )}
             </div>
-
-          </div> {/* End Left Column */}
-
-          {/* Right Column (Upselling + Footer) */}
+          </div>
+          
+          {/* Right Column (Upselling + Footer) - Visible only on Desktop */}
           {items.length > 0 && (
-            <div className="w-full md:w-[380px] lg:w-[420px] flex-shrink-0 flex flex-col bg-neutral-50 md:border-l border-neutral-200 z-10 relative">
+            <div className="hidden md:flex w-full md:w-[380px] lg:w-[420px] flex-shrink-0 flex flex-col bg-neutral-50 md:border-l border-neutral-200 z-10 relative">
               
               {/* Upselling Banner (Scrollable) */}
-              <div className="flex-1 overflow-y-auto hidden md:block">
+              <div className="flex-1 overflow-y-auto">
                 {upsellProducts.length > 0 && !showFulfillmentSelector && (
                   <div className="bg-amber-50/40 py-5 px-4 sm:px-6">
                     <div className="flex justify-between items-center mb-4">
@@ -621,7 +647,7 @@ export default function CartModal({ open, onClose }) {
 
               {/* Footer fijo (Receipt Style) */}
               <div className="flex-shrink-0 bg-white border-t border-neutral-100 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] transition-all">
-              <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-neutral-100/60 border-dashed">
+                <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-neutral-100/60 border-dashed">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-sm text-neutral-500 font-medium">Subtotal</span>
                     <span className="text-sm font-semibold text-neutral-700">{formatCOP(total)}</span>
@@ -658,163 +684,312 @@ export default function CartModal({ open, onClose }) {
                       <span>-</span>
                     </div>
                   )}
-              </div>
-              
-              <div
-                className="px-4 pt-3 pb-3 sm:px-6 sm:pt-4 sm:pb-4"
-                style={{ paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 16px)" }}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-base sm:text-lg font-bold text-neutral-900">Total</span>
-                  <span className="text-2xl sm:text-3xl font-black tracking-tight text-[#2f4131]">
-                    {formatCOP(fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount)}
-                   </span>
                 </div>
                 
-                <div className="flex flex-col gap-2.5">
-                  {!showFulfillmentSelector ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowFulfillmentSelector(true)}
-                      disabled={!items.length}
-                      className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] hover:bg-[#202c21] text-white shadow-[#2f4131]/20 hover:-translate-y-0.5 transition-all active:scale-[0.98]"
-                    >
-                      Siguiente: Tipo de Pedido
-                      <Icon icon="heroicons:arrow-right" className="text-xl" />
-                    </button>
-                  ) : (
-                    <div className="flex flex-col gap-3 animate-in slide-in-from-bottom-4 duration-300">
-                      {/* Fulfillment Picker */}
-                      <div className="grid grid-cols-2 gap-2">
-                        {[
-                          { id: 'dine_in', label: 'En Mesa', icon: 'heroicons:map-pin' },
-                          { id: 'takeaway', label: 'Para Llevar', icon: 'heroicons:shopping-bag' },
-                          { id: 'delivery', label: 'Domicilio', icon: 'heroicons:truck' },
-                          { id: 'scheduled', label: 'Programado', icon: 'heroicons:calendar' }
-                        ].map(opt => (
+                <div
+                  className="px-4 pt-3 pb-3 sm:px-6 sm:pt-4 sm:pb-4"
+                  style={{ paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 16px)" }}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-base sm:text-lg font-bold text-neutral-900">Total</span>
+                    <span className="text-2xl sm:text-3xl font-black tracking-tight text-[#2f4131]">
+                      {formatCOP(fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex flex-col gap-2.5">
+                    {!showFulfillmentSelector && !initialMesa && !isPOSMode ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowFulfillmentSelector(true)}
+                        disabled={!items.length}
+                        className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] hover:bg-[#202c21] text-white shadow-[#2f4131]/20 hover:-translate-y-0.5 transition-all active:scale-[0.98]"
+                      >
+                        Siguiente: Tipo de Pedido
+                        <Icon icon="heroicons:arrow-right" className="text-xl" />
+                      </button>
+                    ) : !showFulfillmentSelector && (initialMesa || isPOSMode) ? (
+                      <button
+                        type="button"
+                        onClick={handleConfirmOrder}
+                        disabled={isSubmitting || !items.length || !isLeadValid}
+                        className={`flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg transition-all active:scale-[0.98] ${
+                          !isLeadValid || isSubmitting
+                          ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
+                          : "bg-[#2f4131] hover:bg-[#202c21] text-white shadow-[#2f4131]/20 hover:-translate-y-0.5"
+                        }`}
+                      >
+                        {isSubmitting ? (
+                          <Icon icon="line-md:loading-loop" className="text-xl" />
+                        ) : (
+                          <>
+                            <Icon icon="heroicons:sparkles" className="text-xl" />
+                            {isPOSMode ? "Confirmar y Comandar" : "Confirmar Pedido"}
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="flex flex-col gap-3 animate-in slide-in-from-bottom-4 duration-300">
+                        {/* Fulfillment Picker */}
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { id: 'dine_in', label: 'En Mesa', icon: 'heroicons:map-pin' },
+                            { id: 'takeaway', label: 'Para Llevar', icon: 'heroicons:shopping-bag' },
+                            { id: 'delivery', label: 'Domicilio', icon: 'heroicons:truck' },
+                            { id: 'scheduled', label: 'Programado', icon: 'heroicons:calendar' }
+                          ].map(opt => (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => setFulfillmentType(opt.id)}
+                              className={`flex flex-col items-center justify-center py-2.5 rounded-xl border-2 transition-all gap-1 ${
+                                fulfillmentType === opt.id 
+                                  ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-sm scale-[1.02]" 
+                                  : "border-neutral-100 bg-neutral-50 text-neutral-500 grayscale opacity-70"
+                              }`}
+                            >
+                              <Icon icon={opt.icon} className="text-xl" />
+                              <span className="text-[10px] font-bold uppercase">{opt.label}</span>
+                            </button>
+                          ))}
+                        </div>
+
+                        {fulfillmentType === 'scheduled' && (
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest px-1">Fecha y Hora</label>
+                            <input 
+                              type="datetime-local" 
+                              value={scheduledTime}
+                              onChange={e => setScheduledTime(e.target.value)}
+                              className="w-full h-11 px-4 rounded-xl border border-neutral-200 text-sm font-medium focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131] transition-all bg-white"
+                            />
+                          </div>
+                        )}
+
+                        {/* Unified Customer Leads Section */}
+                        {isLeadRequired && (
+                          <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 shadow-sm animate-in slide-in-from-top-2 space-y-3">
+                            <div className="flex items-center justify-between px-1">
+                              <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Datos de Contacto</label>
+                              <span className="text-[10px] font-bold text-amber-500 bg-white px-2 py-0.5 rounded-full border border-amber-100">REQUERIDO</span>
+                            </div>
+                            <div className="grid grid-cols-1 gap-2">
+                               <div className="flex items-center gap-2 bg-white px-3 h-11 rounded-xl border border-amber-200 focus-within:ring-2 focus-within:ring-amber-200/50 transition-all">
+                                  <Icon icon="heroicons:user" className="text-amber-400" />
+                                  <input 
+                                    type="text" 
+                                    placeholder="Nombre Completo"
+                                    value={customerName || ""}
+                                    onChange={e => setCustomerName(e.target.value)}
+                                    className="flex-1 h-full text-sm font-semibold text-neutral-800 placeholder:text-neutral-300 outline-none bg-transparent"
+                                  />
+                               </div>
+                               <div className="flex items-center gap-2 bg-white px-3 h-11 rounded-xl border border-amber-200 focus-within:ring-2 focus-within:ring-amber-200/50 transition-all">
+                                  <Icon icon="heroicons:phone" className="text-amber-400" />
+                                  <input 
+                                    type="tel" 
+                                    placeholder="Celular / WhatsApp"
+                                    value={customerPhone || ""}
+                                    onChange={e => setCustomerPhone(e.target.value)}
+                                    className="flex-1 h-full text-sm font-semibold text-neutral-800 placeholder:text-neutral-300 outline-none bg-transparent"
+                                  />
+                               </div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {isPOSMode && (
+                          <div className="flex flex-col gap-3 p-4 bg-neutral-50 rounded-2xl border border-neutral-200">
+                            <div className="flex items-center justify-between">
+                              <label htmlFor="paid-toggle" className={`text-xs font-black cursor-pointer transition-colors uppercase tracking-widest ${isPaid ? 'text-emerald-600' : 'text-neutral-500'}`}>
+                                {isPaid ? "PAGO RECIBIDO" : "PENDIENTE DE PAGO"}
+                              </label>
+                              <div className="relative inline-flex items-center cursor-pointer">
+                                <input 
+                                  id="paid-toggle"
+                                  type="checkbox"
+                                  checked={isPaid}
+                                  onChange={(e) => setIsPaid(e.target.checked)}
+                                  className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                              </div>
+                            </div>
+
+                            {isPaid && (
+                              <div className="pt-3 border-t border-neutral-200 animate-in fade-in slide-in-from-top-2">
+                                <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Método de Pago</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {[
+                                    { id: 'cash', label: 'Efectivo', icon: 'heroicons:banknotes' },
+                                    { id: 'card', label: 'Tarjeta', icon: 'heroicons:credit-card' },
+                                    { id: 'nequi', label: 'Nequi', icon: 'heroicons:qr-code' },
+                                    { id: 'transfer', label: 'Transferencia', icon: 'heroicons:paper-airplane' }
+                                  ].map(method => (
+                                    <button
+                                      key={method.id}
+                                      type="button"
+                                      onClick={() => setPaymentMethod(method.id)}
+                                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all ${
+                                        paymentMethod === method.id 
+                                          ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm' 
+                                          : 'bg-white border-neutral-200 text-neutral-500 hover:border-neutral-300'
+                                      }`}
+                                    >
+                                      <Icon icon={method.icon} className="text-sm" />
+                                      {method.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex gap-2">
                           <button
-                            key={opt.id}
                             type="button"
-                            onClick={() => setFulfillmentType(opt.id)}
-                            className={`flex flex-col items-center justify-center py-2.5 rounded-xl border-2 transition-all gap-1 ${
-                              fulfillmentType === opt.id 
-                                ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-sm scale-[1.02]" 
-                                : "border-neutral-100 bg-neutral-50 text-neutral-500 grayscale opacity-70"
+                            onClick={() => setShowFulfillmentSelector(false)}
+                            className="w-12 h-14 flex items-center justify-center rounded-2xl bg-neutral-100 text-neutral-500 hover:bg-neutral-200 transition-colors"
+                          >
+                            <Icon icon="heroicons:arrow-left" className="text-xl" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleConfirmOrder}
+                            disabled={isSubmitting || !isLeadValid}
+                            className={`flex-1 h-14 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 ${
+                              !isLeadValid || isSubmitting
+                              ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
+                              : "bg-[#2f4131] text-white shadow-[#2f4131]/20"
                             }`}
                           >
-                            <Icon icon={opt.icon} className="text-xl" />
-                            <span className="text-[10px] font-bold uppercase">{opt.label}</span>
+                            {isSubmitting ? (
+                              <Icon icon="line-md:loading-loop" className="text-xl" />
+                            ) : (
+                              <>
+                                <Icon icon="heroicons:sparkles" className="text-xl" />
+                                {isPOSMode ? "Confirmar y Comandar" : "Confirmar Pedido"}
+                              </>
+                            )}
                           </button>
-                        ))}
-                      </div>
-
-                      {/* Dynamic Inputs based on selection */}
-                      {fulfillmentType === 'scheduled' && (
-                        <input 
-                          type="datetime-local" 
-                          value={scheduledTime}
-                          onChange={e => setScheduledTime(e.target.value)}
-                          className="w-full h-11 px-4 rounded-xl border border-neutral-200 text-sm font-medium focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131] transition-all"
-                        />
-                      )}
-
-                      {(fulfillmentType === 'delivery' || fulfillmentType === 'takeaway' || fulfillmentType === 'scheduled') && (
-                        <div className="flex gap-2">
-                           <input 
-                            type="text" 
-                            placeholder="Nombre"
-                            value={customerName}
-                            onChange={e => setCustomerName(e.target.value)}
-                            className="flex-1 h-11 px-4 rounded-xl border border-neutral-200 text-sm font-medium focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131]"
-                          />
-                          <input 
-                            type="tel" 
-                            placeholder="Teléfono"
-                            value={customerPhone}
-                            onChange={e => setCustomerPhone(e.target.value)}
-                            className="w-1/3 h-11 px-4 rounded-xl border border-neutral-200 text-sm font-medium focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131]"
-                          />
                         </div>
-                      )}
-
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setShowFulfillmentSelector(false)}
-                          className="w-12 h-14 flex items-center justify-center rounded-2xl bg-neutral-100 text-neutral-500 hover:bg-neutral-200 transition-colors"
-                        >
-                          <Icon icon="heroicons:arrow-left" className="text-xl" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleConfirmOrder}
-                          disabled={isSubmitting}
-                          className="flex-1 h-14 bg-[#2f4131] text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-[#2f4131]/20 active:scale-95 transition-all"
-                        >
-                          {isSubmitting ? (
-                            <Icon icon="line-md:loading-loop" className="text-xl" />
-                          ) : (
-                            <>
-                              <Icon icon="heroicons:sparkles" className="text-xl" />
-                              Confirmar Pedido
-                            </>
-                          )}
-                        </button>
                       </div>
-                    </div>
-                  )}
-                  
-                  {!showFulfillmentSelector && (
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="flex h-12 w-full items-center justify-center rounded-xl text-sm font-bold text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
-                    >
-                      Seguir pidiendo
-                    </button>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
-             </div>
             </div>
           )}
-          </div> {/* End Body Container */}
+          </div>
           
           {/* Full-drawer Success View */}
           {showSuccess && (
-            <div className="absolute inset-0 z-[200] bg-white flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-300 rounded-t-[28px] sm:rounded-[32px]">
-              <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 scale-animation">
-                <Icon icon="heroicons:check-badge" className="text-5xl text-green-600" />
-              </div>
-              <h3 className="text-3xl font-black text-gray-900 mb-3">¡Pedido Recibido!</h3>
-              <p className="text-gray-500 mb-8 max-w-[280px]">
-                Tu pedido <span className="font-bold text-gray-900">#{lastOrderId?.slice(0, 4).toUpperCase()}</span> ha sido registrado. {fulfillmentType === 'dine_in' ? 'En breve lo pasaremos a cocina para prepararlo.' : 'Por favor completa el pago para iniciar la preparación.'}
-              </p>
-              
-              <button
-                type="button"
-                onClick={() => {
-                  window.location.href = `#order/${lastOrderId}`;
-                  onClose();
-                  setShowSuccess(false);
-                  clearCart?.();
-                }}
-                className="w-full h-14 bg-orange-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-orange-100 mb-4 hover:bg-orange-600 transition-colors flex items-center justify-center gap-2"
-              >
-                Seguir Mi Pedido <Icon icon="heroicons:arrow-right" />
-              </button>
+            <div className="absolute inset-0 z-[200] bg-white flex flex-col items-center justify-start sm:justify-center p-8 text-center animate-in fade-in zoom-in duration-300 rounded-t-[28px] sm:rounded-[32px] overflow-y-auto overflow-x-hidden min-h-[500px]">
+                <div className="flex flex-col items-center justify-center py-6 sm:py-10 px-6 text-center space-y-6 sm:space-y-8 animate-in fade-in zoom-in duration-300 w-full max-w-md mx-auto">
+                    <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 shadow-sm shadow-emerald-100/50">
+                      <Icon icon="solar:check-circle-bold" className="text-6xl" />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <h2 className="text-3xl sm:text-4xl font-black text-gray-900 leading-tight">
+                        {isPOSMode ? "¡Pedido Comandado!" : "¡Pedido Recibido!"}
+                      </h2>
+                      <p className="text-gray-500 font-medium text-lg">
+                        Tu pedido <span className="text-gray-900 font-black text-xl">#{lastOrderId ? lastOrderId.slice(-4).toUpperCase() : ""}</span> ha sido registrado.
+                      </p>
+                    </div>
+                      
+                    {/* Mesa o Cliente info */}
+                    {(fulfillmentType === 'dine_in' && getTable()) && (
+                      <div className="mt-4 inline-flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Mesa</span>
+                        <span className="text-lg font-black text-brand-primary">{getTable()}</span>
+                      </div>
+                    )}
+                    {isPOSMode && (
+                      <div className="mt-8 p-6 sm:p-10 bg-white border border-gray-100 rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center gap-6 animate-in slide-in-from-bottom-6 delay-150 duration-700 w-full">
+                        <div className="flex flex-col items-center gap-1.5">
+                          <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.25em]">QR Seguimiento Cliente</p>
+                          <p className="text-sm font-medium text-gray-400">Escanea para seguir el estado en tiempo real</p>
+                        </div>
+                        <div className="p-8 bg-white rounded-[2.5rem] ring-[12px] ring-gray-50/50 flex items-center justify-center shadow-inner">
+                          <div className="relative">
+                            <QRCode 
+                              value={`${window.location.origin}/${brandSlug}/#order/${lastOrderId}`}
+                              size={220}
+                              level="H"
+                              style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  setShowSuccess(false);
-                  clearCart?.();
-                  onClose();
-                }}
-                className="w-full h-14 bg-[#2f4131] text-white rounded-2xl font-bold text-lg mb-4 hover:bg-[#202c21] transition-colors"
-              >
-                Cerrar Menú
-              </button>
+                    {!isPOSMode && fulfillmentType !== 'dine_in' && (
+                      <p className="text-sm text-gray-400 mt-4 leading-relaxed">
+                        Por favor completa el pago para <br/> iniciar la preparación.
+                      </p>
+                    )}
+                </div>
+
+                <div className="w-full space-y-3">
+                  {isPOSMode ? (
+                    <>
+                      <button
+                        onClick={() => {
+                          clearCart();
+                          resetStates();
+                          sessionStorage.removeItem("aa_current_mesa");
+                          sessionStorage.removeItem("aa_pos_mode");
+                          sessionStorage.removeItem("aa_manual_type");
+                          const targetUrl = `/${brandSlug}/?admin_page=waiter#admin`;
+                          window.location.href = targetUrl;
+                        }}
+                        className="w-full bg-gray-900 text-white py-5 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-black/10 hover:bg-black"
+                      >
+                        <Icon icon="solar:hamburger-menu-bold" className="text-xl" />
+                        Ir al Mapa de Mesas
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          clearCart();
+                          resetStates();
+                          setShowSuccess(false);
+                          onClose();
+                        }}
+                        className="w-full bg-white text-gray-900 border-2 border-gray-100 py-5 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95 hover:bg-gray-50 hover:border-gray-200"
+                      >
+                        <Icon icon="solar:camera-add-bold" className="text-xl" />
+                        Tomar Nuevo Pedido
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          window.location.href = `#order/${lastOrderId}`;
+                          setShowSuccess(false);
+                        }}
+                        className="w-full bg-brand-primary text-white py-5 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-brand-primary/20"
+                      >
+                        Seguir Mi Pedido
+                        <Icon icon="solar:arrow-right-line-duotone" />
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          setShowSuccess(false);
+                          onClose();
+                        }}
+                        className="w-full py-4 text-gray-400 font-bold hover:text-gray-600 transition-colors"
+                      >
+                        Cerrar Menú
+                      </button>
+                    </>
+                  )}
+                </div>
             </div>
           )}
         </div>
@@ -823,11 +998,7 @@ export default function CartModal({ open, onClose }) {
       {/* Diálogo de Confirmación */}
       {confirmingClear && (
         <Portal>
-          <div className="fixed inset-0 z-[120] flex items-center justify-center px-4">
-            <div
-              className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
-              onClick={() => setConfirmingClear(false)}
-            />
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <div
               role="dialog"
               aria-modal="true"
@@ -864,6 +1035,7 @@ export default function CartModal({ open, onClose }) {
           </div>
         </Portal>
       )}
+      </>
     </Portal>
   );
 }

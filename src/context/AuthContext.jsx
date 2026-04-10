@@ -117,15 +117,29 @@ export const AuthProvider = ({ children }) => {
   }, [fetchProfile]);
 
   // Switch the active brand being managed
-  const switchBrand = useCallback((brand) => {
+  const switchBrand = useCallback(async (brand) => {
     // Clear current state immediately to prevent "feature leaks" during brand switch
     setActivePlan(null);
     setActiveBrandFeatures([]);
     
+    // 1. Persist to DB so BrandContext redirect doesn't bounce us back
+    if (user) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ brand_id: brand.id })
+        .eq('id', user.id);
+      
+      if (!error) {
+        // Update local profile state as well
+        setProfile(prev => ({ ...prev, brand_id: brand.id }));
+      }
+    }
+
+    // 2. Local State
     setActiveBrandState(brand);
     localStorage.setItem('aa_active_brand_id', brand.id);
     fetchBrandFeatures(brand.id, brand.plan_id);
-  }, [fetchBrandFeatures]);
+  }, [user, fetchBrandFeatures]);
 
   // Feature Gating Helpers
   const hasFeature = (featureKey) => {

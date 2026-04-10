@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import QRCode from "react-qr-code";
 import { supabase } from '../config/supabase';
+import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
 import {
   PageHeader, PrimaryButton, SecondaryButton, Badge,
@@ -13,6 +14,7 @@ const toast = {
 };
 
 export default function AdminTables({ isEmbedded = false }) {
+  const { profile } = useAuth();
   const [tables, setTables] = useState([]);
   const [loadingTables, setLoadingTables] = useState(false);
   
@@ -25,13 +27,20 @@ export default function AdminTables({ isEmbedded = false }) {
   const [qrTable, setQrTable] = useState(null);
 
   useEffect(() => {
-    fetchTables();
-  }, []);
+    if (profile?.brand_id) {
+      fetchTables();
+    }
+  }, [profile?.brand_id]);
 
   const fetchTables = async () => {
     setLoadingTables(true);
     try {
-      const { data, error } = await supabase.from('restaurant_tables').select('*').order('table_number');
+      const { data, error } = await supabase
+        .from('restaurant_tables')
+        .select('*')
+        .eq('brand_id', profile.brand_id)
+        .order('table_number');
+      
       if (error) throw error;
       setTables(data || []);
     } catch (err) {
@@ -68,7 +77,10 @@ export default function AdminTables({ isEmbedded = false }) {
         toast.success('Mesa actualizada');
       } else {
         const { error } = await supabase.from('restaurant_tables')
-          .insert([{ table_number: tableForm.table_number }]);
+          .insert([{ 
+            table_number: tableForm.table_number,
+            brand_id: profile.brand_id
+          }]);
         if (error) throw error;
         toast.success('Mesa creada');
       }

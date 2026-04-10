@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAdminProducts } from '../hooks/useAdminProducts';
 import { useCategories } from '../hooks/useCategories';
+import { useAuth } from '../context/AuthContext';
+import { usePlan } from '../hooks/usePlan';
 import { useAdminRecipes } from '../hooks/useAdminRecipes';
 import { useAdminModifierGroups } from '../hooks/useAdminModifierGroups';
 import { useAllergens } from '../hooks/useAllergens';
 import { formatCOP } from '../utils/money';
 import ProductForm from '../components/admin/ProductForm';
+import AAImage from '../components/ui/AAImage';
 import {
   PageHeader, PrimaryButton, Badge,
   TableContainer, Th, SearchInput, SelectInput
@@ -29,6 +32,8 @@ const DragHandle = () => (
 export default function AdminProducts() {
   const { products, loading: loadingProd, createProduct, updateProduct, deleteProduct, toggleActive, toggleStock, reorderProducts } = useAdminProducts();
   const { categories, loading: loadingCats } = useCategories();
+  const { activePlan } = useAuth();
+  const { withinLimit } = usePlan();
   const { recipes, fetchRecipes } = useAdminRecipes();
   const { modifierGroups, fetchModifierGroups } = useAdminModifierGroups();
   const { allergens, loading: loadingAllergens } = useAllergens();
@@ -46,6 +51,9 @@ export default function AdminProducts() {
   const [overIdx, setOverIdx] = useState(null);
   const dragItem = useRef(null);
   const dragOverItem = useRef(null);
+
+  // Derived plan values from activePlan (more reliable sync)
+  const maxProducts = activePlan?.max_products ?? null;
 
   useEffect(() => { 
     fetchRecipes(); 
@@ -107,6 +115,8 @@ export default function AdminProducts() {
       </div>
     );
   }
+
+  const isAtLimit = !withinLimit('max_products', products.length);
 
   const filtered = products.filter(p => {
     if (p.is_addon) return false;
@@ -223,9 +233,33 @@ export default function AdminProducts() {
             NORMAL MODE UI
      ═══════════════════════════════════════ */
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
-      {/* Search & Actions Bar */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6">
+      <PageHeader
+        badge="Administración"
+        title="Productos"
+        subtitle="Gestiona el catálogo de tu menú digital."
+      >
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+          {maxProducts !== null && maxProducts !== undefined && (
+            <div className="text-[11px] font-black uppercase tracking-widest px-4 py-2 bg-white border border-gray-100 rounded-2xl text-gray-500 shadow-sm italic flex flex-col items-center sm:items-end">
+              <span className="text-[9px] text-gray-400">Cupo de Catálogo</span>
+              <span className={isAtLimit ? 'text-orange-600' : 'text-gray-900'}>
+                {products.length} / {maxProducts} PRODUCTOS
+              </span>
+            </div>
+          )}
+          <PrimaryButton 
+            onClick={handleCreate} 
+            disabled={isAtLimit}
+            className="w-full sm:w-auto py-3 px-6 shadow-xl"
+          >
+            {isAtLimit ? 'Límite alcanzado' : '+ Nuevo Producto'}
+          </PrimaryButton>
+        </div>
+      </PageHeader>
+
+      {/* Action Bar */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm">
         <div className="flex-1 w-full max-w-xl group relative">
           <SearchInput
             value={search}
@@ -252,9 +286,6 @@ export default function AdminProducts() {
                 Ordenar
               </button>
             )}
-            <PrimaryButton onClick={handleCreate} className="flex-1 sm:flex-initial">
-              + Nuevo Producto
-            </PrimaryButton>
           </div>
         </div>
       </div>
