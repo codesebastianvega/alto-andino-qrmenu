@@ -13,6 +13,8 @@ import QRCode from "react-qr-code";
 import { supabase } from "@/config/supabase";
 import { translateGroup } from "@/utils/formatters";
 import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 3000 }),
@@ -90,6 +92,9 @@ export default function CartModal({ open, onClose }) {
 
   const { brandSlug } = useParams();
   const { getAllProducts, hasFeature, activeBrandId } = useMenuData();
+  const { paymentMethods, loading: loadingPayments } = usePaymentMethods(activeBrandId);
+  const activeMethods = useMemo(() => paymentMethods.filter(m => m.is_active), [paymentMethods]);
+  
   const allDBProducts = useMemo(() => getAllProducts(), [getAllProducts]);
 
   const [includeTip, setIncludeTip] = useState(true);
@@ -118,7 +123,7 @@ export default function CartModal({ open, onClose }) {
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState("");
   const [isPaid, setIsPaid] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [paymentMethod, setPaymentMethod] = useState("");
 
   const isLeadRequired = !isPOSMode && (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' || fulfillmentType === 'scheduled');
   const isLeadValid = !isLeadRequired || (customerName?.trim() && customerPhone?.trim());
@@ -131,6 +136,12 @@ export default function CartModal({ open, onClose }) {
       setFulfillmentType('dine_in');
     }
   }, [isPOSMode, manualType, initialMesa]);
+
+  useEffect(() => {
+    if (activeMethods.length > 0 && !paymentMethod) {
+      setPaymentMethod(activeMethods[0].id);
+    }
+  }, [activeMethods, paymentMethod]);
 
   const packagingFeeTotal = items.reduce((acc, it) => acc + ((Number(it.packaging_fee) || 0) * (Number(it.qty) || 1)), 0);
   const serviceFeeAmount = (isTipEnabled && includeTip) ? Math.round(total * (tipPercentage / 100)) : 0;
@@ -227,12 +238,34 @@ export default function CartModal({ open, onClose }) {
       
       const orderItemsToInsert = items.map(it => {
         // Encontrar el producto original para ver si requiere cocina
-        const dbProd = allDBProducts.find(p => p.id === (it.productId || it.id));
+        const pid = it.productId || it.id;
+        
+        // UUID Validation & Recovery
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        let validatedPid = pid;
+
+        if (!uuidRegex.test(pid)) {
+          console.warn(`Invalid UUID detected for item: ${it.name}. Attempting recovery...`);
+          // Try to find the correct UUID by name from database items
+          const dbMatch = allDBProducts.find(p => 
+            p.name.toLowerCase() === it.name.toLowerCase() || 
+            (it.name.includes("Cumbre") && p.name.includes("Cumbre"))
+          );
+          
+          if (dbMatch && uuidRegex.test(dbMatch.id)) {
+            validatedPid = dbMatch.id;
+            console.log(`Recovered UUID for ${it.name}: ${validatedPid}`);
+          } else {
+            console.error(`Could not recover valid UUID for ${it.name}. Database submission may fail.`);
+          }
+        }
+
+        const dbProd = allDBProducts.find(p => p.id === validatedPid);
         const requiresKitchen = dbProd ? (dbProd.requires_kitchen ?? true) : true;
         
         return {
           order_id: orderData.id,
-          product_id: it.productId || it.id, 
+          product_id: validatedPid, 
           quantity: it.qty || 1,
           unit_price: getItemUnit(it),
           modifiers: it.options || {},
@@ -820,26 +853,27 @@ export default function CartModal({ open, onClose }) {
                               <div className="pt-3 border-t border-neutral-200 animate-in fade-in slide-in-from-top-2">
                                 <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Método de Pago</p>
                                 <div className="grid grid-cols-2 gap-2">
-                                  {[
-                                    { id: 'cash', label: 'Efectivo', icon: 'heroicons:banknotes' },
-                                    { id: 'card', label: 'Tarjeta', icon: 'heroicons:credit-card' },
-                                    { id: 'nequi', label: 'Nequi', icon: 'heroicons:qr-code' },
-                                    { id: 'transfer', label: 'Transferencia', icon: 'heroicons:paper-airplane' }
-                                  ].map(method => (
-                                    <button
-                                      key={method.id}
-                                      type="button"
-                                      onClick={() => setPaymentMethod(method.id)}
-                                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all ${
-                                        paymentMethod === method.id 
-                                          ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm' 
-                                          : 'bg-white border-neutral-200 text-neutral-500 hover:border-neutral-300'
-                                      }`}
-                                    >
-                                      <Icon icon={method.icon} className="text-sm" />
-                                      {method.label}
-                                    </button>
-                                  ))}
+                                  {activeMethods.length > 0 ? (
+                                    activeMethods.map(method => (
+                                      <button
+                                        key={method.id}
+                                        type="button"
+                                        onClick={() => setPaymentMethod(method.id)}
+                                        className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all ${
+                                          paymentMethod === method.id 
+                                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm' 
+                                            : 'bg-white border-neutral-200 text-neutral-500 hover:border-neutral-300'
+                                        }`}
+                                      >
+                                        <Icon icon={method.icon || 'heroicons:banknotes'} className="text-sm" />
+                                        {method.name}
+                                      </button>
+                                    ))
+                                  ) : (
+                                    <div className="col-span-2 py-2 text-center text-[10px] text-neutral-400 bg-neutral-50 rounded-lg border border-dashed border-neutral-200 uppercase font-black">
+                                      Sin métodos de pago
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             )}

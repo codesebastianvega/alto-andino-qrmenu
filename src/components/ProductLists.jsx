@@ -585,8 +585,12 @@ export default function ProductLists({
  }
  
  function Desserts({ cumbre = [], base = [], onQuickView, variant = "standard" }) {
-   const { addItem } = useCart();
-   if (!cumbre.length && !base.length) return null;
+  const { addItem } = useCart();
+  const { getAllProducts } = useMenuData();
+  const allDBProducts = getAllProducts();
+  const cumbreDB = allDBProducts.find(p => p.name.includes("Cumbre"));
+  const cumbreUUID = cumbreDB?.id || "cumbre";
+  if (!cumbre.length && !base.length) return null;
  
    const renderProducts = (arr, keySeed = 0) => {
     let gridClasses = "grid gap-4 sm:gap-5";
@@ -635,7 +639,7 @@ export default function ProductLists({
                const disabled = st === "out";
                const price = cumbrePrices[s.id];
                const product = {
-                 productId: "cumbre",
+                 productId: cumbreUUID,
                  id: disabled ? undefined : id,
                  title: "Cumbre Andino",
                  name: "Cumbre Andino",
@@ -691,7 +695,7 @@ export default function ProductLists({
                              return;
                            }
                            addItem({
-                             productId: "cumbre",
+                             productId: cumbreUUID,
                              name: "Cumbre Andino",
                              price,
                              options: { Sabor: s.label },

@@ -4,6 +4,7 @@ import { Icon } from '@iconify-icon/react';
 import { toast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { useStaff } from '../hooks/useStaff';
+import { usePaymentMethods } from '../hooks/usePaymentMethods';
 
 const ORDER_STATUSES = [
   { id: 'waiting_payment', label: 'Falta Pago', color: 'text-orange-600', icon: 'heroicons:banknotes' },
@@ -123,6 +124,17 @@ export default function AdminOrders() {
 
   const { staffList } = useStaff();
   const waiters = useMemo(() => staffList.filter(s => s.role === 'waiter' || s.role === 'admin'), [staffList]);
+
+  const { paymentMethods, loading: loadingPayments } = usePaymentMethods(activeBrandId);
+  const activeMethods = useMemo(() => paymentMethods.filter(m => m.is_active), [paymentMethods]);
+
+  // Set default payment method when methods are loaded
+  useEffect(() => {
+    if (activeMethods.length > 0 && selectedPaymentMethod === 'cash') {
+      const exists = activeMethods.find(m => m.id === 'cash');
+      if (!exists) setSelectedPaymentMethod(activeMethods[0].id);
+    }
+  }, [activeMethods]);
 
   const assignWaiter = async (orderId, waiterId) => {
     try {
@@ -390,7 +402,7 @@ export default function AdminOrders() {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto min-h-screen">
+    <div className="p-4 md:p-8 max-w-[1700px] mx-auto min-h-screen">
        {/* Actions Bar */}
        <div className="flex justify-end mb-6 gap-3">
           <button 
@@ -413,7 +425,7 @@ export default function AdminOrders() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div>
         </div>
       ) : (
-        <div className="overflow-x-auto pb-4">
+        <div className="overflow-x-auto pb-4 custom-scrollbar">
           <div className="flex gap-6 min-w-max items-start">
             {ORDER_STATUSES.map(statusCol => {
               const colOrders = statusCol.id !== 'delivered' && statusCol.id !== 'cancelled'
@@ -449,7 +461,7 @@ export default function AdminOrders() {
                             <div className="flex items-center gap-2">
                               <span className="text-xl font-black text-gray-900 group-hover:text-[#2f4131]">#{order.id.slice(0, 4).toUpperCase()}</span>
                               {order.fulfillment_type === 'dine_in' && (
-                                <span className="text-lg font-black text-emerald-600 bg-emerald-50 px-2 rounded-lg border border-emerald-100 animate-pulse-slow">
+                                <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
                                   T{order.restaurant_tables?.table_number || '?'}
                                 </span>
                               )}
@@ -503,10 +515,14 @@ export default function AdminOrders() {
         </div>
       )}
 
-      {/* Modal Detalle Pedido */}
+      {/* Modal Detalle Pedido Rediseñado */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div 
+            className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
+            onClick={() => setSelectedOrder(null)}
+          ></div>
+          <div className="bg-gray-50/50 w-full max-w-7xl max-h-[90vh] rounded-[2.5rem] shadow-2xl overflow-hidden relative border border-white/20 backdrop-blur-xl flex flex-col">
             {/* Header Modal */}
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <div className="flex items-center gap-4">
@@ -520,7 +536,7 @@ export default function AdminOrders() {
                       {getFulfillmentLabel(selectedOrder.fulfillment_type).text}
                     </span>
                     <span className="text-xs font-bold text-gray-400">
-                      {new Date(selectedOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      Recibido a las {new Date(selectedOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                 </div>
@@ -533,291 +549,318 @@ export default function AdminOrders() {
               </button>
             </div>
 
-            {/* Content Scrollable */}
-            <div className="flex-1 overflow-y-auto p-6 bg-white custom-scrollbar">
-              <div className="mb-6 grid grid-cols-2 gap-3">
-                <div className="bg-gray-50/80 p-4 rounded-3xl border border-gray-100">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Cliente</p>
-                  <p className="font-bold text-gray-800 text-sm flex items-center gap-2">
-                    <Icon icon="heroicons:user" className="text-gray-400" />
-                    {selectedOrder.customer_name || 'Anónimo'}
-                  </p>
-                  {selectedOrder.customer_phone && (
-                    <p className="text-xs text-gray-500 flex items-center gap-2 mt-1">
-                       <Icon icon="heroicons:phone" className="text-gray-400" />
-                       {selectedOrder.customer_phone}
-                    </p>
+            <div className="flex-1 overflow-y-auto p-6 bg-white custom-scrollbar pb-32">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr,340px] gap-8">
+                
+                {/* Columna Izquierda: Consumo */}
+                <div className="space-y-6">
+                  {/* Alertas de Estado */}
+                  {(selectedOrder.status === 'delivered' || selectedOrder.status === 'cancelled') && (
+                    <div className="flex flex-col gap-3">
+                      {selectedOrder.status === 'delivered' && (
+                        <div className="flex items-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm bg-green-50 text-green-700 border border-green-100">
+                          <Icon icon="heroicons:check-circle" className="text-lg" />
+                          Pedido Entregado a las {new Date(selectedOrder.delivered_at).toLocaleTimeString()}
+                        </div>
+                      )}
+                      {selectedOrder.status === 'cancelled' && (
+                        <div className="flex flex-col gap-2 px-4 py-3 rounded-2xl font-bold text-sm bg-red-50 text-red-700 border border-red-100">
+                          <div className="flex items-center gap-2 font-black uppercase text-xs">
+                            <Icon icon="heroicons:x-circle" className="text-lg" />
+                            Pedido Cancelado
+                          </div>
+                          {selectedOrder.cancellation_reason && (
+                            <p className="text-xs font-medium opacity-80">Motivo: {selectedOrder.cancellation_reason}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="bg-gray-50/50 rounded-[2rem] p-6 border border-gray-100">
+                    <h3 className="font-black text-gray-400 mb-6 uppercase tracking-widest text-[10px] flex items-center gap-2">
+                       <Icon icon="heroicons:shopping-cart" className="text-lg" />
+                       Detalle del Pedido
+                    </h3>
+                    <div className="space-y-4">
+                      {selectedOrder.order_items?.map(item => (
+                        <div key={item.id} className="flex gap-4 group">
+                          <span className="font-black text-xl text-[#2f4131] w-8">{item.quantity}x</span>
+                          <div className="flex flex-col flex-1">
+                            <span className="font-bold text-gray-900 group-hover:text-emerald-700 transition-colors uppercase text-sm tracking-tight">{item.products?.name}</span>
+                            {item.modifiers && Object.keys(item.modifiers).length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {Object.entries(item.modifiers).map(([k, v]) => (
+                                  <span key={k} className="text-[10px] bg-white border border-gray-200 text-gray-500 px-2 py-0.5 rounded-lg font-bold">
+                                    {translateGroup(k)}: {Array.isArray(v) ? v.join(", ") : v}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {item.notes && (
+                              <div className="mt-2 text-[11px] text-amber-700 bg-amber-50 px-3 py-1.5 rounded-xl italic font-medium border border-amber-100">
+                                <Icon icon="heroicons:chat-bubble-bottom-center-text" className="mr-1 inline" />
+                                "{item.notes}"
+                              </div>
+                            )}
+                          </div>
+                          <span className="font-bold text-gray-800">
+                            ${(item.quantity * item.unit_price).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                      
+                      <div className="mt-8 pt-6 border-t border-gray-200/60 space-y-3">
+                         <div className="flex justify-between items-center text-sm font-bold text-gray-500">
+                           <span>Subtotal</span>
+                           <span>${selectedOrder.order_items?.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toLocaleString()}</span>
+                         </div>
+                         
+                         {selectedOrder.service_fee > 0 && (
+                            <div className="flex justify-between items-center text-sm font-bold text-emerald-600">
+                              <span className="flex items-center gap-1">
+                                <Icon icon="heroicons:heart" />
+                                Servicio Voluntario
+                              </span>
+                              <span>${selectedOrder.service_fee.toLocaleString()}</span>
+                            </div>
+                         )}
+
+                         {selectedOrder.discount_amount > 0 && (
+                           <div className="flex justify-between items-center text-sm font-bold text-red-600">
+                             <span className="flex items-center gap-1">
+                               <Icon icon="heroicons:tag" />
+                               Descuento ({selectedOrder.discount_reason})
+                             </span>
+                             <span>-${selectedOrder.discount_amount.toLocaleString()}</span>
+                           </div>
+                         )}
+
+                         <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                            <span className="text-base font-black text-gray-900">TOTAL</span>
+                            <span className="text-3xl font-black text-[#2f4131] tracking-tighter">
+                              ${selectedOrder.total_amount?.toLocaleString()}
+                            </span>
+                         </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Columna Derecha: Sidebar Admin */}
+                <div className="space-y-6">
+                  {/* Contexto: Cliente y Ubicación */}
+                  <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm space-y-5">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Información General</p>
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 border border-gray-100">
+                        <Icon icon="heroicons:user" className="text-xl" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase leading-none mb-1">Cliente</p>
+                        <p className="font-bold text-gray-800 text-sm leading-none">{selectedOrder.customer_name || 'Sin nombre'}</p>
+                      </div>
+                    </div>
+
+                    {selectedOrder.customer_phone && (
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 border border-gray-100">
+                          <Icon icon="heroicons:phone" className="text-xl" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-gray-400 uppercase leading-none mb-1">Celular</p>
+                          <p className="font-bold text-gray-800 text-sm leading-none">{selectedOrder.customer_phone}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
+                        <Icon icon="heroicons:map-pin" className="text-xl" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-emerald-600 uppercase leading-none mb-1">Ubicación</p>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-3 py-1 rounded-lg text-sm font-black ${
+                            selectedOrder.fulfillment_type === 'dine_in' 
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                              : 'bg-blue-100 text-blue-800 border border-blue-200'
+                          }`}>
+                            {selectedOrder.fulfillment_type === 'dine_in' 
+                              ? `MESA ${selectedOrder.restaurant_tables?.table_number || '?'}`
+                              : getFulfillmentLabel(selectedOrder.fulfillment_type).text}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Asignación de Mesero */}
+                  <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Mesero Asignado</p>
+                    <select 
+                      value={selectedOrder.waiter_id || ''}
+                      onChange={(e) => assignWaiter(selectedOrder.id, e.target.value)}
+                      className="w-full p-3 rounded-2xl border border-gray-100 text-sm font-bold text-gray-700 bg-gray-50 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
+                    >
+                      <option value="">No asignado</option>
+                      {waiters.map(w => (
+                        <option key={w.id} value={w.id}>{w.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Selección de Pago (Solo si falta pago) */}
+                  {selectedOrder.status === 'waiting_payment' && (
+                    <div className="bg-white p-6 rounded-[2rem] border border-emerald-100 shadow-sm bg-emerald-50/30">
+                      <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Icon icon="heroicons:banknotes" />
+                        Método de Pago
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                         {activeMethods.length > 0 ? activeMethods.map(method => (
+                            <button 
+                              key={method.id}
+                              onClick={() => setSelectedPaymentMethod(method.id)}
+                              className={`p-4 rounded-2xl border text-sm font-black transition-all flex flex-col items-center gap-2 ${
+                                selectedPaymentMethod === method.id 
+                                 ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg scale-[1.02]' 
+                                 : 'bg-white border-gray-100 text-gray-600 hover:border-emerald-200 hover:bg-emerald-50/50'
+                              }`}
+                            >
+                              <Icon icon={method.icon || (method.name?.toLowerCase().includes('efectivo') ? 'heroicons:banknotes' : 'heroicons:credit-card')} className="text-xl" />
+                              <span className="uppercase tracking-tight">{method.name || 'SIN NOMBRE'}</span>
+                            </button>
+                         )) : (
+                           <button 
+                             onClick={() => setSelectedPaymentMethod('cash')}
+                             className="col-span-2 p-3 rounded-2xl border bg-emerald-600 border-emerald-600 text-white text-xs font-black"
+                           >
+                             EFECTIVO
+                           </button>
+                         )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Descuentos VIP */}
+                  {selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
+                    <div className="bg-gray-900 p-6 rounded-[2rem] shadow-xl">
+                      <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Icon icon="heroicons:sparkles" />
+                        CORTESÍA / VIP
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[10, 20, 50, 100].map(pct => (
+                          <button
+                            key={pct}
+                            onClick={async () => {
+                              await applyDiscount(selectedOrder.id, pct);
+                              // Auto move to 'new' if it was waiting_payment
+                              if (selectedOrder.status === 'waiting_payment') {
+                                await updateOrderStatus(selectedOrder.id, "new", { 
+                                  payment_status: "paid", 
+                                  payment_method: selectedPaymentMethod || 'cash' 
+                                });
+                              }
+                            } }
+                            disabled={updatingStatus === selectedOrder.id}
+                            className="py-2.5 bg-gray-800 hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-all border border-gray-700 active:scale-95 disabled:opacity-50"
+                          >
+                            {pct}% {pct === 100 && 'OFF'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
-                <div className="bg-gray-50/80 p-4 rounded-3xl border border-gray-100">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Ubicación</p>
-                  <p className="font-bold text-gray-800 text-sm flex items-center gap-2">
-                    <Icon icon="heroicons:map-pin" className="text-gray-400" />
-                    {selectedOrder.fulfillment_type === 'dine_in' 
-                      ? `Mesa ${selectedOrder.restaurant_tables?.table_number || '?'}`
-                      : getFulfillmentLabel(selectedOrder.fulfillment_type).text}
-                  </p>
-                </div>
-
-                <div className="bg-blue-50/50 p-4 rounded-3xl border border-blue-100 col-span-2 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Mesero Asignado</p>
-                    <div className="font-bold text-gray-800 text-sm flex items-center gap-2">
-                       <Icon icon="heroicons:user-circle" className="text-blue-500 text-lg" />
-                       <select 
-                         value={selectedOrder.waiter_id || ''}
-                         onChange={(e) => assignWaiter(selectedOrder.id, e.target.value)}
-                         className="bg-transparent border-none outline-none font-bold text-gray-800 cursor-pointer hover:bg-white rounded px-1 -ml-1"
-                       >
-                         <option value="">Sin asignar</option>
-                         {waiters.map(w => (
-                           <option key={w.id} value={w.id}>{w.name}</option>
-                         ))}
-                       </select>
-                    </div>
-                  </div>
-                </div>
-
-                {selectedOrder.status === 'delivered' && (
-                   <div className="col-span-2 flex items-center gap-2 px-3 py-2 rounded-xl font-bold text-sm bg-green-100 text-green-800 w-full">
-                      <Icon icon="heroicons:check-circle" />
-                      Pedido Entregado a las {new Date(selectedOrder.delivered_at).toLocaleTimeString()}
-                   </div>
-                )}
-                {selectedOrder.status === 'cancelled' && (
-                   <div className="col-span-2 flex flex-col gap-1 px-3 py-2 rounded-xl font-bold text-sm bg-red-100 text-red-800 w-full">
-                      <div className="flex items-center gap-2 text-red-900 border-b border-red-200 pb-1 mb-1">
-                        <Icon icon="heroicons:x-circle" />
-                        Pedido Cancelado (Por: {selectedOrder.cancelled_by === 'customer' ? 'Cliente' : 'Restaurante'})
-                      </div>
-                      {selectedOrder.cancellation_reason && (
-                        <p className="text-xs font-normal">Motivo: {selectedOrder.cancellation_reason}</p>
-                      )}
-                   </div>
-                )}
               </div>
-
-              <h3 className="font-bold text-gray-900 mb-3 uppercase tracking-wider text-xs">Resumen del Pedido</h3>
-              <div className="space-y-4 bg-gray-50 rounded-2xl p-4">
-                {selectedOrder.order_items?.map(item => (
-                  <div key={item.id} className="flex gap-3">
-                    <span className="font-black text-lg text-[#2f4131] w-8">{item.quantity}x</span>
-                    <div className="flex flex-col flex-1">
-                      <span className="font-bold text-gray-900">{item.products?.name}</span>
-                      {item.modifiers && Object.keys(item.modifiers).length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {Object.entries(item.modifiers).map(([k, v]) => (
-                            <span key={k} className="text-[10px] bg-white border border-gray-200 text-gray-600 px-1.5 py-0.5 rounded-md font-medium">
-                              {translateGroup(k)}: {Array.isArray(v) ? v.join(", ") : v}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {item.notes && (
-                        <div className="mt-2 text-xs text-orange-700 bg-orange-100/50 px-2 py-1 rounded-lg italic">
-                          "{item.notes}"
-                        </div>
-                      )}
-                    </div>
-                    <span className="font-bold text-gray-600 text-sm">
-                      ${(item.quantity * item.unit_price).toLocaleString()}
-                    </span>
-                  </div>
-                ))}
-                {selectedOrder.service_fee > 0 && (
-                  <div className="pt-3 border-t border-gray-200 mt-2 flex justify-between items-center text-sm">
-                    <span className="font-bold text-gray-500">Servicio Voluntario</span>
-                    <span className="font-bold text-gray-700">${selectedOrder.service_fee.toLocaleString()}</span>
-                  </div>
-                )}
-                {selectedOrder.discount_amount > 0 && (
-                   <div className="pt-1 flex justify-between items-center text-sm text-red-600 font-bold">
-                     <span>Descuento ({selectedOrder.discount_reason || 'Amigos'})</span>
-                     <span>-${selectedOrder.discount_amount.toLocaleString()}</span>
-                   </div>
-                )}
-                <div className={`${(selectedOrder.service_fee > 0 || selectedOrder.discount_amount > 0) ? "pt-1 border-t border-gray-200 mt-1" : "pt-3 border-t border-gray-200 mt-2"} flex justify-between items-center`}>
-                  <span className="font-bold text-gray-500">Total</span>
-                  <span className="text-xl font-black text-gray-900">${selectedOrder.total_amount?.toLocaleString()}</span>
-                </div>
-              </div>
-
-              {/* Info de Pago */}
-              {selectedOrder.payment_status === 'paid' && (
-                <div className="mt-4 flex items-center gap-2 text-xs font-bold text-emerald-600 bg-emerald-50 p-3 rounded-2xl border border-emerald-100 italic">
-                  <Icon icon="heroicons:check-badge" className="text-lg" />
-                  Pagado con {selectedOrder.payment_method === 'cash' ? 'Efectivo' : selectedOrder.payment_method === 'card' ? 'Tarjeta' : selectedOrder.payment_method?.toUpperCase()}
-                </div>
-              )}
-
-              {/* Sección de Descuentos VIP */}
-              {selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
-                <div className="mt-6 p-4 bg-emerald-50 rounded-3xl border border-emerald-100">
-                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <Icon icon="heroicons:sparkles" />
-                    APLICAR DESCUENTO VIP / AMIGOS
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {[10, 20, 50, 100].map(pct => (
-                      <button
-                        key={pct}
-                        onClick={() => applyDiscount(selectedOrder.id, pct)}
-                        disabled={updatingStatus === selectedOrder.id}
-                        className="px-4 py-2 bg-white border border-emerald-200 rounded-xl text-xs font-black text-emerald-700 hover:bg-emerald-100 transition-all shadow-sm active:scale-95 disabled:opacity-50"
-                      >
-                        {pct === 100 ? 'AMIGO (100%)' : `${pct}%`}
-                      </button>
-                    ))}
-                    {selectedOrder.discount_amount > 0 && (
-                      <button
-                        onClick={() => applyDiscount(selectedOrder.id, 0)}
-                        className="px-4 py-2 bg-red-50 text-red-600 text-[10px] font-black rounded-xl hover:bg-red-100 transition-colors uppercase"
-                      >
-                        Quitar
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Footer Actions */}
-            <div className="p-6 bg-gray-50 border-t border-gray-100 flex flex-col gap-4">
-              {/* Secondary/Utility Actions Row */}
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => shareToWhatsApp(selectedOrder, 'summary')}
-                  title="Compartir Resumen"
-                  className="h-12 w-12 flex items-center justify-center bg-white border border-gray-200 rounded-2xl text-green-600 hover:bg-green-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
-                  disabled={updatingStatus === selectedOrder.id}
-                >
-                  <Icon icon="logos:whatsapp-icon" className="text-xl" />
-                </button>
-                
-                {selectedOrder.status !== 'cancelled' && selectedOrder.customer_phone && (
-                  <button 
-                    onClick={() => shareToWhatsApp(selectedOrder, 'ready')}
-                    className="h-12 flex-1 bg-green-50 border border-green-200 rounded-2xl text-green-700 font-bold hover:bg-green-100 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
-                  >
-                    <span className="text-xs uppercase tracking-tight">Notificar Listo</span>
-                    <Icon icon="logos:whatsapp-icon" className="text-lg" />
-                  </button>
-                )}
+            {/* Footer Fijo del Modal */}
+            <div className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-gray-100 flex flex-col md:flex-row gap-4 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-10">
+               
+               <div className="flex-1 flex gap-2">
+                 <button 
+                   onClick={() => shareToWhatsApp(selectedOrder, 'summary')}
+                   className="flex-1 md:flex-none px-6 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+                 >
+                   <Icon icon="logos:whatsapp-icon" />
+                   RESUMEN
+                 </button>
 
-                {selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
-                  <button 
-                    onClick={() => setIsCancelling(!isCancelling)}
-                    title={isCancelling ? "Cerrar cancelación" : "Cancelar pedido"}
-                    className={`h-12 w-12 flex items-center justify-center border font-bold rounded-2xl transition-all shadow-sm active:scale-95 ${
-                      isCancelling 
-                        ? 'bg-red-500 text-white border-red-500 hover:bg-red-600' 
-                        : 'bg-white border-red-100 text-red-500 hover:bg-red-50'
-                    }`}
-                  >
-                    <Icon icon={isCancelling ? "heroicons:arrow-path" : "heroicons:trash"} className="text-xl" />
-                  </button>
-                )}
-              </div>
+                 {!isCancelling ? (
+                   <button 
+                     onClick={() => setIsCancelling(true)}
+                     className="flex-1 md:flex-none px-6 py-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+                   >
+                     <Icon icon="heroicons:trash" />
+                     CANCELAR
+                   </button>
+                 ) : (
+                   <div className="flex-1 flex gap-2 items-center bg-red-50 p-2 rounded-2xl border border-red-100 animate-in fade-in slide-in-from-bottom-2">
+                     <input 
+                       type="text" 
+                       placeholder="Motivo..."
+                       value={cancellationReason}
+                       onChange={(e) => setCancellationReason(e.target.value)}
+                       className="flex-1 bg-white border-none text-xs font-bold p-2.5 rounded-xl focus:ring-1 focus:ring-red-300"
+                     />
+                     <button onClick={() => cancelOrder(selectedOrder.id)} className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-black">CONFIRMAR</button>
+                     <button onClick={() => setIsCancelling(false)} className="p-2 text-gray-400"><Icon icon="heroicons:x-mark" /></button>
+                   </div>
+                 )}
+               </div>
 
-              {/* Principal Status Section */}
-              <div className="w-full">
-                {isCancelling ? (
-                  <div className="flex gap-2 animate-in slide-in-from-top-2 duration-200 w-full">
-                    <input 
-                      type="text"
-                      placeholder="Escribe el motivo..."
-                      value={cancellationReason}
-                      onChange={(e) => setCancellationReason(e.target.value)}
-                      className="flex-1 h-12 px-4 bg-white border-2 border-red-100 rounded-2xl outline-none focus:border-red-400 font-medium text-sm transition-all"
-                      autoFocus
-                    />
+               <div className="flex-[1.5]">
+                 {selectedOrder.status === 'waiting_payment' && (
                     <button 
-                      onClick={() => cancelOrder(selectedOrder.id)}
-                      disabled={!cancellationReason.trim()}
-                      className="bg-red-600 hover:bg-red-700 text-white px-6 rounded-2xl font-bold shadow-lg shadow-red-200 transition-all active:scale-95 disabled:opacity-50"
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'new', { 
+                        payment_status: 'paid', 
+                        payment_method: selectedPaymentMethod 
+                      })}
+                      disabled={updatingStatus === selectedOrder.id}
+                      className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-base shadow-lg shadow-emerald-200 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50"
                     >
-                      Confirmar
+                      <Icon icon="heroicons:banknotes" className="text-2xl" />
+                      MARCAR COMO PAGADO
                     </button>
-                  </div>
-                ) : (
-                  <div className="w-full">
-                    {selectedOrder.status === 'waiting_payment' && (
-                      <div className="flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-300">
-                        <div className="p-4 bg-white rounded-[2rem] border border-orange-100 shadow-sm relative overflow-hidden">
-                           <div className="absolute top-0 left-0 w-1 h-full bg-orange-400"></div>
-                           <p className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] mb-3 px-1 text-center">Seleccionar Método de Pago</p>
-                           <div className="grid grid-cols-2 gap-2">
-                              {[
-                                { id: 'cash', label: 'Efectivo', icon: 'heroicons:banknotes' },
-                                { id: 'card', label: 'Tarjeta', icon: 'heroicons:credit-card' },
-                                { id: 'nequi', label: 'Nequi', icon: 'heroicons:qr-code' },
-                                { id: 'transfer', label: 'Transferencia', icon: 'heroicons:paper-airplane' }
-                              ].map(m => (
-                                <button
-                                  key={m.id}
-                                  onClick={() => setSelectedPaymentMethod(m.id)}
-                                  className={`flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all ${
-                                    selectedPaymentMethod === m.id 
-                                      ? 'bg-orange-500 border-orange-500 text-white shadow-md scale-[1.02]' 
-                                      : 'bg-orange-50/30 border-orange-50 text-orange-400 hover:border-orange-100'
-                                  }`}
-                                >
-                                  <Icon icon={m.icon} className="text-lg" />
-                                  <span className="text-[10px] font-black uppercase tracking-wider">{m.label}</span>
-                                </button>
-                              ))}
-                           </div>
-                        </div>
-                        <button 
-                          onClick={() => updateOrderStatus(selectedOrder.id, 'new', { payment_status: 'paid', payment_method: selectedPaymentMethod })} 
-                          disabled={updatingStatus === selectedOrder.id}
-                          className="h-16 w-full bg-neutral-900 hover:bg-black text-white font-black rounded-[1.5rem] transition-all flex items-center justify-center gap-3 shadow-xl active:scale-[0.98] disabled:opacity-50"
-                        >
-                          {updatingStatus === selectedOrder.id 
-                            ? <Icon icon="line-md:loading-loop" className="text-2xl" /> 
-                            : <>MARCAR COMO PAGADO <Icon icon="heroicons:bolt-20-solid" className="text-orange-400 text-xl" /></>}
-                        </button>
-                      </div>
-                    )}
+                 )}
 
-                    {selectedOrder.status === 'new' && (
-                      <button 
-                        onClick={() => updateOrderStatus(selectedOrder.id, 'preparing')} 
-                        disabled={updatingStatus === selectedOrder.id}
-                        className="h-14 w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-950 font-black rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-yellow-100 disabled:opacity-50 active:scale-[0.98]"
-                      >
-                        {updatingStatus === selectedOrder.id 
-                          ? <Icon icon="line-md:loading-loop" className="text-xl" /> 
-                          : <>ENVIAR A COCINA <Icon icon="heroicons:fire-20-solid" className="text-xl" /></>}
-                      </button>
-                    )}
+                 {selectedOrder.status === 'new' && (
+                    <button 
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'preparing')}
+                      disabled={updatingStatus === selectedOrder.id}
+                      className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-base shadow-lg shadow-blue-200 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      <Icon icon="heroicons:fire" className="text-2xl" />
+                      ENVIAR A COCINA
+                    </button>
+                 )}
 
-                    {selectedOrder.status === 'preparing' && (
-                      <button 
-                        onClick={() => updateOrderStatus(selectedOrder.id, 'ready')} 
-                        disabled={updatingStatus === selectedOrder.id}
-                        className="h-14 w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 disabled:opacity-50 active:scale-[0.98]"
-                      >
-                        {updatingStatus === selectedOrder.id 
-                          ? <Icon icon="line-md:loading-loop" className="text-xl" /> 
-                          : <>MARCAR COMO LISTO <Icon icon="heroicons:check-badge-20-solid" className="text-xl" /></>}
-                      </button>
-                    )}
+                 {selectedOrder.status === 'preparing' && (
+                    <button 
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'ready')}
+                      disabled={updatingStatus === selectedOrder.id}
+                      className="w-full py-4 bg-yellow-500 hover:bg-yellow-600 text-white rounded-2xl font-black text-base shadow-lg shadow-yellow-100 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      <Icon icon="heroicons:check-badge" className="text-2xl" />
+                      LISTO PARA ENTREGA
+                    </button>
+                 )}
 
-                    {selectedOrder.status === 'ready' && (
-                      <button 
-                        onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')} 
-                        disabled={updatingStatus === selectedOrder.id}
-                        className="h-14 w-full bg-neutral-900 hover:bg-black text-white font-black rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 active:scale-[0.98]"
-                      >
-                        {updatingStatus === selectedOrder.id 
-                          ? <Icon icon="line-md:loading-loop" className="text-xl" /> 
-                          : <>ENTREGAR PEDIDO <Icon icon="heroicons:truck-20-solid" className="text-xl" /></>}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
+                 {selectedOrder.status === 'ready' && (
+                    <button 
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
+                      disabled={updatingStatus === selectedOrder.id}
+                      className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-base shadow-lg shadow-emerald-200 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      <Icon icon="heroicons:truck" className="text-2xl" />
+                      MARCAR ENTREGADO
+                    </button>
+                 )}
+               </div>
             </div>
           </div>
         </div>

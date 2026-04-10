@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminStaff from './AdminStaff';
 import AdminSedes from './AdminSedes';
+import AdminPaymentMethods from './AdminPaymentMethods';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
@@ -148,6 +149,7 @@ export default function AdminSettings() {
     { id: 'general', label: 'Operación', icon: 'solar:settings-minimalistic-linear' },
     { id: 'sedes', label: 'Sedes y Locales', icon: 'solar:shop-2-linear', feature: 'multi_location' },
     { id: 'staff', label: 'Personal / Staff', icon: 'solar:users-group-rounded-linear', feature: 'staff' },
+    { id: 'payments', label: 'Medios de Pago', icon: 'solar:card-2-linear' },
   ];
 
   if (loadingSettings || loadingHours) return (
@@ -330,6 +332,12 @@ export default function AdminSettings() {
                    </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'payments' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+               <AdminPaymentMethods />
             </div>
           )}
         </div>
