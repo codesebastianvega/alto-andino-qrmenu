@@ -126,8 +126,8 @@ export default function AdminKitchen() {
               {/* Card Header */}
               <div className="p-3 pb-2 flex justify-between items-start bg-black/20 border-b border-white/5">
                 <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className="text-4xl font-black tracking-tighter text-white bg-white/5 px-2 py-0.5 rounded-lg border border-white/10 shadow-inner">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-2xl font-black tracking-tighter text-white/90 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10 shadow-sm font-mono">
                       #{order.id.slice(0, 4).toUpperCase()}
                     </span>
                     {order.fulfillment_type !== 'dine_in' && (
@@ -142,11 +142,11 @@ export default function AdminKitchen() {
                   </div>
                   <div className="flex items-center gap-2 mt-1">
                     {order.fulfillment_type === 'dine_in' ? (
-                      <div className="flex items-center gap-3">
-                        <span className="text-3xl font-black text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-xl border border-emerald-500/30 shadow-lg shadow-emerald-900/20">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl font-black text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30 shadow-sm">
                           T{order.restaurant_tables?.table_number || '?'}
                         </span>
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{order.customer_name || 'En Mesa'}</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{order.customer_name || 'En Mesa'}</span>
                       </div>
                     ) : (
                       <div className="flex flex-col">
@@ -188,11 +188,11 @@ export default function AdminKitchen() {
 
                       {/* Notes - STRUCTURED */}
                       {item.notes && (
-                        <div className="mt-3 bg-red-950/30 border-l-2 border-red-500/50 p-2.5 rounded-r-lg">
-                          <p className="text-red-400 font-black text-[9px] uppercase mb-0.5 flex items-center gap-1">
+                        <div className="mt-2 bg-red-950/20 border-l-2 border-red-500/40 p-2 rounded-r-md">
+                          <p className="text-red-400/80 font-black text-[8px] uppercase mb-0.5 flex items-center gap-1">
                             <Icon icon="heroicons:exclamation-triangle" /> NOTA:
                           </p>
-                          <p className="text-white/80 font-bold text-sm italic">"{item.notes}"</p>
+                          <p className="text-white/70 font-bold text-xs italic leading-tight">"{item.notes}"</p>
                         </div>
                       )}
                     </div>
