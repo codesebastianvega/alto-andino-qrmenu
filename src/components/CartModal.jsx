@@ -204,12 +204,13 @@ export default function CartModal({ open, onClose }) {
       // 2. Insert Order
       const finalTotal = fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount;
 
-      // Update status logic for POS: If unpaid, go to waiting_payment
+      // Status logic: Dine-in and Takeaway go straight to kitchen ('new').
+      // Only Delivery needs to wait for payment confirmation ('waiting_payment') unless already paid.
       let orderStatus = 'new';
-      if (isPOSMode) {
-        orderStatus = isPaid ? 'new' : 'waiting_payment';
+      if (fulfillmentType === 'delivery' && !isPaid) {
+        orderStatus = 'waiting_payment';
       } else {
-        orderStatus = fulfillmentType === 'dine_in' ? 'new' : 'waiting_payment';
+        orderStatus = 'new';
       }
 
       const { data: orderData, error: orderError } = await supabase.from('orders')

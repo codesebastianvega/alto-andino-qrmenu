@@ -428,15 +428,31 @@ export default function AdminOrders() {
         <div className="overflow-x-auto pb-4 custom-scrollbar">
           <div className="flex gap-6 min-w-max items-start">
             {ORDER_STATUSES.map(statusCol => {
+              const fTypeWeights = { 'dine_in': 1, 'takeaway': 2, 'delivery': 3 };
+              
+              const sortOrders = (a, b, ascending = true) => {
+                const weightA = fTypeWeights[a.fulfillment_type] || 99;
+                const weightB = fTypeWeights[b.fulfillment_type] || 99;
+                
+                if (weightA !== weightB) {
+                  return weightA - weightB; // Priority by type
+                }
+                
+                // Then by date
+                const dateA = new Date(a.created_at);
+                const dateB = new Date(b.created_at);
+                return ascending ? dateA - dateB : dateB - dateA;
+              };
+
               const colOrders = statusCol.id !== 'delivered' && statusCol.id !== 'cancelled'
-                 ? orders.filter(o => o.status === statusCol.id).sort((a,b) => new Date(a.created_at) - new Date(b.created_at))
+                 ? orders.filter(o => o.status === statusCol.id).sort((a,b) => sortOrders(a, b, true))
                  : orders.filter(o => {
                     if (o.status !== statusCol.id) return false;
                     const today = new Date();
                     today.setHours(0,0,0,0);
                     const orderDate = new Date(o.updated_at || o.created_at);
                     return orderDate >= today;
-                   }).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+                   }).sort((a,b) => sortOrders(a, b, false));
 
               return (
                 <div key={statusCol.id} className="flex flex-col gap-4 bg-gray-50/50 rounded-2xl p-4 border border-gray-100 w-[300px] min-h-[500px] flex-shrink-0">
@@ -454,21 +470,43 @@ export default function AdminOrders() {
                       <div 
                         key={order.id} 
                         onClick={() => { setSelectedOrder(order); setIsCancelling(false); }}
-                        className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer group relative overflow-hidden active:scale-[0.98]"
+                        className={`bg-white p-4 rounded-2xl shadow-sm border transition-all cursor-pointer group relative overflow-hidden active:scale-[0.98] ${
+                          order.fulfillment_type === 'dine_in' 
+                          ? 'border-emerald-100 hover:border-emerald-300 hover:shadow-md ring-1 ring-emerald-50/50' 
+                          : 'border-gray-100 hover:shadow-md hover:border-emerald-200'
+                        }`}
                       >
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl font-black text-gray-900 group-hover:text-[#2f4131]">#{order.id.slice(0, 4).toUpperCase()}</span>
-                              {order.fulfillment_type === 'dine_in' && (
-                                <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                                  T{order.restaurant_tables?.table_number || '?'}
-                                </span>
-                              )}
+                        {order.fulfillment_type === 'dine_in' && (
+                          <div className="absolute top-0 right-0 w-16 h-16 pointer-events-none overflow-hidden">
+                            <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[8px] font-black py-0.5 px-6 rotate-45 translate-x-4 translate-y-2 uppercase shadow-sm">
+                              MESA
                             </div>
-                            <p className="text-xs font-bold text-gray-400 uppercase mt-0.5">{order.customer_name || 'Sin nombre'}</p>
                           </div>
-                          <OrderTimer createdAt={order.created_at} status={order.status} />
+                        )}
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1 min-w-0 mr-2">
+                             <div className="flex flex-col">
+                                <span className={`text-lg font-black leading-tight truncate group-hover:text-emerald-800 ${
+                                  order.fulfillment_type === 'dine_in' ? 'text-emerald-900' : 'text-gray-900'
+                                }`}>
+                                  {order.fulfillment_type === 'dine_in' 
+                                    ? `Mesa ${order.restaurant_tables?.table_number || '?'}` 
+                                    : (order.customer_name || 'Sin nombre')}
+                                </span>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-[10px] font-bold text-gray-400 font-mono tracking-wider">#{order.id.slice(0, 4).toUpperCase()}</span>
+                                  {order.fulfillment_type === 'dine_in' && order.customer_name && (
+                                    <span className="text-[10px] text-gray-400 font-medium truncate">• {order.customer_name}</span>
+                                  )}
+                                  {order.fulfillment_type !== 'dine_in' && !order.customer_name && (
+                                    <span className="text-[10px] text-gray-300 italic">Cliente incógnito</span>
+                                  )}
+                                </div>
+                             </div>
+                          </div>
+                          <div className="flex-shrink-0">
+                            <OrderTimer createdAt={order.created_at} status={order.status} />
+                          </div>
                         </div>
 
                         <div className="flex items-center gap-2 mb-3">
