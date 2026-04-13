@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
 import AdminProducts from '../../pages/AdminProducts';
@@ -357,43 +358,147 @@ export default function AdminLayout() {
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar pt-2 px-4 space-y-6">
-            {/* 1. SECCION ESTRATEGIA (Analytics Card) */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                {!isCollapsed && <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Estrategia</span>}
-                <div className="h-px flex-1 bg-white/5 ml-3" />
-              </div>
+              {/* 1. SECCION ESTRATEGIA (Aura Insight Glass Card) */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  {!isCollapsed && <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Estrategia</span>}
+                  <div className="h-px flex-1 bg-white/5 ml-3" />
+                </div>
 
-              <button 
-                onClick={() => handleSelectPage('analytics', 'Centro de Inteligencia', 'advanced_analytics')}
-                className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
-                  currentPage === 'analytics' 
-                  ? 'bg-gradient-to-r from-brand-primary/80 to-brand-primary border-white/10 ring-1 ring-white/10 shadow-lg shadow-black/40' 
-                  : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                } ${isFeatureLocked('advanced_analytics') && !isCollapsed ? 'opacity-90' : ''}`}
-              >
-                <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'analytics' ? 'bg-white/20 text-white' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
-                    <Icons.Strategy />
+                <motion.button 
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleSelectPage('analytics', 'Centro de Inteligencia', 'advanced_analytics')}
+                  className={`w-full group relative overflow-hidden transition-all duration-500 ${isCollapsed ? 'h-14' : 'h-24'} rounded-2xl border flex items-center ${
+                    currentPage === 'analytics' 
+                    ? 'bg-white/[0.12] border-brand-primary shadow-[0_20px_40px_rgba(125,184,122,0.25)] ring-1 ring-brand-primary/30' 
+                    : 'bg-white/[0.03] backdrop-blur-3xl border-white/10 hover:bg-white/[0.08] hover:border-white/25 hover:shadow-[0_15px_30px_rgba(0,0,0,0.2)]'
+                  } ${isFeatureLocked('advanced_analytics') && !isCollapsed ? 'opacity-90' : ''}`}
+                >
+                  {/* --- VISION PRO LAYERS --- */}
+                  
+                  {/* 1. Interactive Aura Base */}
+                  <div className="absolute inset-0 opacity-40 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+                    <motion.div 
+                      animate={{ 
+                        scale: [1, 1.2, 1],
+                        opacity: [0.3, 0.6, 0.3],
+                        x: [0, 10, 0],
+                        y: [0, -5, 0]
+                      }}
+                      transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                      className="absolute -top-1/2 -left-1/4 w-full h-[200%] bg-[radial-gradient(circle_at_center,_rgba(125,184,122,0.15)_0%,_transparent_70%)] blur-3xl"
+                    />
                   </div>
-                  {!isCollapsed && (
-                    <div className="text-left flex-1 flex justify-between items-center">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <p className={`text-[13px] font-bold leading-none ${currentPage === 'analytics' ? 'text-white' : 'text-white/60'}`}>Inteligencia</p>
-                          {isFeatureLocked('advanced_analytics') && (
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
-                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                            </svg>
-                          )}
-                        </div>
-                        <p className="text-[9px] text-white/30 font-medium mt-1">Métricas y Rendimiento</p>
+
+                  {/* 2. Glass Shimmer Effect */}
+                  <motion.div 
+                    initial={{ x: '-100%' }}
+                    animate={{ x: '200%' }}
+                    transition={{ duration: 3, repeat: Infinity, repeatDelay: 5, ease: "easeInOut" }}
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.05] to-transparent skew-x-[-20deg] pointer-events-none"
+                  />
+
+                  {/* 3. Dynamic Sparkline (Vision Pro Pulse) */}
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20">
+                    <svg width="100%" height="100%" viewBox="0 0 120 40" preserveAspectRatio="none" className="filter blur-[1px]">
+                      <motion.path
+                        d="M0 35 Q 20 38, 40 25 T 80 28 T 120 18"
+                        fill="none"
+                        stroke="currentColor"
+                        className="text-brand-primary"
+                        strokeWidth="1.5"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: 1 }}
+                        transition={{ 
+                          pathLength: { duration: 6, repeat: Infinity, ease: "linear" },
+                          opacity: { duration: 3, repeat: Infinity, repeatType: "reverse" }
+                        }}
+                      />
+                      <motion.path
+                        d="M0 35 Q 20 38, 40 25 T 80 28 T 120 18"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="0.5"
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ duration: 6, repeat: Infinity, ease: "linear", delay: 0.1 }}
+                      />
+                    </svg>
+                  </div>
+
+                  {/* 4. Active State Glowing Trace */}
+                  <AnimatePresence>
+                    {currentPage === 'analytics' && (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-transparent via-brand-primary to-transparent shadow-[0_-4px_10px_rgba(125,184,122,0.5)]"
+                      />
+                    )}
+                  </AnimatePresence>
+
+                  {/* CONTENT REACHING */}
+                  <div className={`relative z-10 flex items-center w-full ${isCollapsed ? 'justify-center' : 'px-5 gap-4'}`}>
+                    {/* Icon Container with Depth */}
+                    <div className="relative group/icon">
+                      <motion.div 
+                        animate={currentPage === 'analytics' ? { scale: [1, 1.15, 1], rotate: [0, 5, 0, -5, 0] } : {}}
+                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                        className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-500 relative ${
+                          currentPage === 'analytics' 
+                          ? 'bg-gradient-to-br from-brand-primary to-emerald-600 text-white shadow-[0_0_25px_rgba(125,184,122,0.5)]' 
+                          : 'bg-white/10 text-white/50 group-hover:bg-brand-primary group-hover:text-white group-hover:shadow-[0_0_20px_rgba(125,184,122,0.3)]'
+                        }`}
+                      >
+                        <Icons.Strategy />
+                        {/* Magnetic Pulse Ring */}
+                        <div className={`absolute inset-0 rounded-2xl border border-white/30 scale-100 opacity-0 group-hover/icon:scale-150 group-hover/icon:opacity-100 transition-all duration-700`} />
+                      </motion.div>
+                      
+                      {/* Intelligence Alert Dot */}
+                      <div className="absolute -top-1 -right-1 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-primary shadow-[0_0_10px_rgba(125,184,122,1)] border border-white/20"></span>
                       </div>
                     </div>
-                  )}
-                </div>
-              </button>
-            </div>
+
+                    {!isCollapsed && (
+                      <div className="text-left flex-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <p className={`text-[15px] font-bold leading-none tracking-tight transition-colors duration-300 ${
+                              currentPage === 'analytics' ? 'text-white' : 'text-white/80 group-hover:text-white'
+                            }`}>
+                              Inteligencia
+                            </p>
+                            {isFeatureLocked('advanced_analytics') && (
+                              <div className="flex items-center justify-center bg-amber-500/10 p-0.5 rounded border border-amber-500/20">
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
+                                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <div className="flex -space-x-1">
+                            {[1, 2, 3].map(i => (
+                              <div key={i} className={`w-2.5 h-1 rounded-full ${i === 1 ? 'bg-brand-primary' : 'bg-white/10'}`} />
+                            ))}
+                          </div>
+                          <p className={`text-[10px] font-medium transition-colors duration-300 ${
+                            currentPage === 'analytics' ? 'text-white/60' : 'text-white/30 group-hover:text-white/50'
+                          }`}>
+                            Centro de Decisiones
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </motion.button>
+              </div>
 
             {/* 2. SECCION OPERACION (Operation Cards) */}
             <div className="space-y-3">

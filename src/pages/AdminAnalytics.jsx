@@ -59,10 +59,9 @@ const TabButton = ({ active, onClick, icon: Icon, label }) => (
 
 export default function AdminAnalytics() {
   const [activeTab, setActiveTab] = useState('resumen');
-  const [orders, setOrders] = useState([]);
-  const [leads, setLeads] = useState([]);
-  const [analyticsEvents, setAnalyticsEvents] = useState([]);
+  const [data, setData] = useState({ orders: [], leads: [], events: [] });
   const [loading, setLoading] = useState(true);
+  const [isReady, setIsReady] = useState(false);
   const [dateRange, setDateRange] = useState('7d');
   const { activeBrand } = useAuth();
   const activeBrandId = activeBrand?.id;
@@ -80,60 +79,45 @@ export default function AdminAnalytics() {
     }
     setLoading(true);
     try {
-      // Fetch Orders with items and tables
-      let ordersQuery = supabase.from('orders').select(`
-        id, total_amount, status, created_at, delivered_at, fulfillment_type, payment_method,
-        restaurant_tables ( table_number ),
-        order_items ( quantity, unit_price, products ( name, category_id ) )
-      `).order('created_at', { ascending: false });
+      const d = new Date();
+      if (dateRange === 'today') d.setHours(0,0,0,0);
+      else if (dateRange === '7d') d.setDate(d.getDate() - 7);
+      else if (dateRange === '30d') d.setDate(d.getDate() - 30);
 
-      if (activeBrandId) ordersQuery = ordersQuery.eq('brand_id', activeBrandId);
+      const [ordersRes, leadsRes, eventsRes] = await Promise.all([
+        supabase.from('orders').select(`
+          id, total_amount, status, created_at, delivered_at, fulfillment_type, payment_method,
+          restaurant_tables ( table_number ),
+          order_items ( quantity, unit_price, products ( name, category_id ) )
+        `).eq('brand_id', activeBrandId)
+          .gte('created_at', dateRange !== 'all' ? d.toISOString() : '1970-01-01')
+          .order('created_at', { ascending: false }),
+        
+        supabase.from('leads').select('*').order('created_at', { ascending: false }),
+        
+        supabase.from('analytics_events').select('*')
+          .eq('metadata->>brandId', activeBrandId)
+          .gte('created_at', dateRange !== 'all' ? d.toISOString() : '1970-01-01')
+          .order('created_at', { ascending: false })
+      ]);
 
-      if (dateRange !== 'all') {
-        const d = new Date();
-        if (dateRange === 'today') d.setHours(0,0,0,0);
-        if (dateRange === '7d') d.setDate(d.getDate() - 7);
-        if (dateRange === '30d') d.setDate(d.getDate() - 30);
-        ordersQuery = ordersQuery.gte('created_at', d.toISOString());
-      }
-
-      const { data: oData, error: oError } = await ordersQuery;
-      if (oError) throw oError;
-      setOrders(oData || []);
-
-      // Fetch Leads
-      const { data: lData, error: lError } = await supabase
-        .from('leads')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (lError) throw lError;
-      setLeads(lData || []);
-
-      // Fetch Analytics Events
-      let eventsQuery = supabase.from('analytics_events').select('*').order('created_at', { ascending: false });
-      if (activeBrandId) eventsQuery = eventsQuery.eq('metadata->>brandId', activeBrandId);
-      
-      if (dateRange !== 'all') {
-        const d = new Date();
-        if (dateRange === 'today') d.setHours(0,0,0,0);
-        if (dateRange === '7d') d.setDate(d.getDate() - 7);
-        if (dateRange === '30d') d.setDate(d.getDate() - 30);
-        eventsQuery = eventsQuery.gte('created_at', d.toISOString());
-      }
-      
-      const { data: eData, error: eError } = await eventsQuery;
-      if (eError) throw eError;
-      setAnalyticsEvents(eData || []);
+      setData({
+        orders: ordersRes.data || [],
+        leads: leadsRes.data || [],
+        events: eventsRes.data || []
+      });
 
     } catch (err) {
       console.error('Error fetching intelligence data:', err);
     } finally {
       setLoading(false);
+      // Small delay to let the DOM settle before measuring charts
+      setTimeout(() => setIsReady(true), 200);
     }
   };
 
   useEffect(() => {
+    setIsReady(false);
     fetchData();
   }, [dateRange, activeBrandId]);
 
@@ -165,6 +149,7 @@ export default function AdminAnalytics() {
   };
 
   const stats = useMemo(() => {
+    const { orders, leads } = data;
     const delivered = orders.filter(o => o.status === 'delivered');
     const revenue = delivered.reduce((sum, o) => sum + Number(o.total_amount), 0);
     const avgTicket = delivered.length ? revenue / delivered.length : 0;
@@ -189,18 +174,18 @@ export default function AdminAnalytics() {
       avgTime: timeCount ? Math.round(totalMins / timeCount) : 0,
       newLeads: leads.filter(l => l.status === 'new').length
     };
-  }, [orders, leads]);
+  }, [data]);
 
   const salesTrend = useMemo(() => {
     const trend = {};
-    [...orders].reverse().filter(o => o.status === 'delivered').forEach(o => {
+    [...data.orders].reverse().filter(o => o.status === 'delivered').forEach(o => {
       const date = new Date(o.created_at).toLocaleDateString('es-CO', { month: 'short', day: 'numeric' });
       if (!trend[date]) trend[date] = { date, ventas: 0, pedidos: 0 };
       trend[date].ventas += Number(o.total_amount);
       trend[date].pedidos += 1;
     });
     return Object.values(trend);
-  }, [orders]);
+  }, [data.orders]);
 
   const hourlyStats = useMemo(() => {
     const statsArr = Array.from({ length: 24 }, (_, i) => ({
@@ -209,18 +194,18 @@ export default function AdminAnalytics() {
       ventas: 0
     }));
 
-    orders.filter(o => o.status === 'delivered').forEach(o => {
+    data.orders.filter(o => o.status === 'delivered').forEach(o => {
       const h = new Date(o.created_at).getHours();
       const entry = statsArr.find(s => s.hour === h);
       if (entry) entry.ventas += Number(o.total_amount);
     });
 
     return statsArr.filter(s => s.hour >= 8 && s.hour <= 23); // Typical hours
-  }, [orders]);
+  }, [data.orders]);
 
   const topProducts = useMemo(() => {
     const productStats = {};
-    orders.filter(o => o.status === 'delivered').forEach(o => {
+    data.orders.filter(o => o.status === 'delivered').forEach(o => {
       o.order_items?.forEach(item => {
         const name = item.products?.name || 'Desconocido';
         if (!productStats[name]) productStats[name] = { name, cantidad: 0, ingresos: 0 };
@@ -229,7 +214,7 @@ export default function AdminAnalytics() {
       });
     });
     return Object.values(productStats).sort((a,b) => b.cantidad - a.cantidad).slice(0, 5);
-  }, [orders]);
+  }, [data.orders]);
 
   const channelStats = useMemo(() => {
     const channels = {
@@ -239,7 +224,7 @@ export default function AdminAnalytics() {
       'Programado': { name: 'Programado', value: 0, color: '#8B5CF6' }
     };
 
-    orders.forEach(o => {
+    data.orders.forEach(o => {
       const type = o.fulfillment_type || 'takeaway';
       let label = 'Para Llevar';
       if (type === 'dine_in') label = 'En Mesa';
@@ -250,11 +235,11 @@ export default function AdminAnalytics() {
     });
 
     return Object.values(channels).filter(c => c.value > 0);
-  }, [orders]);
+  }, [data.orders]);
 
   const tableStats = useMemo(() => {
     const tableCounts = {};
-    orders.forEach(o => {
+    data.orders.forEach(o => {
       const tNum = o.restaurant_tables?.table_number;
       if (tNum) {
         if (!tableCounts[tNum]) tableCounts[tNum] = { name: `Mesa ${tNum}`, pedidos: 0, ingresos: 0 };
@@ -263,11 +248,11 @@ export default function AdminAnalytics() {
       }
     });
     return Object.values(tableCounts).sort((a,b) => b.pedidos - a.pedidos).slice(0, 5);
-  }, [orders]);
+  }, [data.orders]);
 
   const paymentStats = useMemo(() => {
     const stats = {};
-    orders.filter(o => o.status === 'delivered').forEach(o => {
+    data.orders.filter(o => o.status === 'delivered').forEach(o => {
       const method = o.payment_method || 'Sin especificar';
       const label = method === 'cash' ? 'Efectivo' : method === 'card' ? 'Tarjeta' : method;
       if (!stats[label]) stats[label] = { name: label, value: 0, count: 0 };
@@ -275,7 +260,7 @@ export default function AdminAnalytics() {
       stats[label].count += 1;
     });
     return Object.values(stats);
-  }, [orders]);
+  }, [data.orders]);
 
   const peakHour = useMemo(() => {
     const max = [...hourlyStats].sort((a,b) => b.ventas - a.ventas)[0];
@@ -283,9 +268,9 @@ export default function AdminAnalytics() {
   }, [hourlyStats]);
 
   const analyticsSummary = useMemo(() => {
-    const visits = analyticsEvents.filter(e => e.event_name === 'menu_visit').length;
-    const scans = analyticsEvents.filter(e => e.event_name === 'qr_scan').length;
-    const ordersCount = orders.length;
+    const visits = data.events.filter(e => e.event_name === 'menu_visit').length;
+    const scans = data.events.filter(e => e.event_name === 'qr_scan').length;
+    const ordersCount = data.orders.length;
     const conversion = visits ? ((ordersCount / visits) * 100).toFixed(1) : 0;
     
     return {
@@ -294,7 +279,7 @@ export default function AdminAnalytics() {
       ordersCount,
       conversion
     };
-  }, [analyticsEvents, orders]);
+  }, [data.events, data.orders]);
 
   const RenderResumen = () => (
     <div className="space-y-8 animate-fadeUp">
@@ -354,9 +339,10 @@ export default function AdminAnalytics() {
 
         <GlassCard className="col-span-1 lg:col-span-2 p-8 overflow-hidden h-full">
           <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-6">Actividad de hoy (Pulso de Ventas)</h3>
-          <div className="h-[140px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={hourlyStats}>
+          <div className="h-[140px] w-full relative">
+            {isReady && (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+                <AreaChart data={hourlyStats}>
                 <defs>
                   <linearGradient id="colorVentasP" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10B981" stopOpacity={0.2}/>
@@ -378,6 +364,7 @@ export default function AdminAnalytics() {
                 />
               </AreaChart>
             </ResponsiveContainer>
+            )}
           </div>
         </GlassCard>
 
@@ -408,9 +395,10 @@ export default function AdminAnalytics() {
             <ShoppingCart className="w-5 h-5 text-emerald-500" />
             Ventas por Canal
           </h3>
-          <div className="h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+          <div className="h-[350px] w-full relative">
+            {isReady && (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+                <PieChart>
                 <Pie
                   data={channelStats}
                   cx="50%"
@@ -428,6 +416,7 @@ export default function AdminAnalytics() {
                 <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
               </PieChart>
             </ResponsiveContainer>
+            )}
           </div>
         </GlassCard>
 
@@ -436,9 +425,10 @@ export default function AdminAnalytics() {
             <Package className="w-5 h-5 text-emerald-500" />
             Top 5 Productos Estrella
           </h3>
-          <div className="h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topProducts} layout="vertical" margin={{ left: 20 }}>
+          <div className="h-[350px] w-full relative">
+            {isReady && (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+                <BarChart data={topProducts} layout="vertical" margin={{ left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
                 <XAxis type="number" hide />
                 <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 'bold', fill: '#4B5563' }} width={120} />
@@ -448,6 +438,7 @@ export default function AdminAnalytics() {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            )}
           </div>
         </GlassCard>
       </div>
@@ -477,9 +468,10 @@ export default function AdminAnalytics() {
             <DollarSign className="w-5 h-5 text-emerald-500" />
             Distribución por Método de Pago
           </h3>
-          <div className="h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+          <div className="h-[350px] w-full relative">
+            {isReady && (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+                <PieChart>
                 <Pie
                   data={paymentStats}
                   cx="50%"
@@ -497,6 +489,7 @@ export default function AdminAnalytics() {
                 <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
               </PieChart>
             </ResponsiveContainer>
+            )}
           </div>
         </GlassCard>
 
@@ -505,9 +498,10 @@ export default function AdminAnalytics() {
             <Store className="w-5 h-5 text-emerald-500" />
             Uso de Mesas (Más Populares)
           </h3>
-          <div className="h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={tableStats} layout="vertical" margin={{ left: 20 }}>
+          <div className="h-[350px] w-full relative">
+            {isReady && (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+                <BarChart data={tableStats} layout="vertical" margin={{ left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
                 <XAxis type="number" hide />
                 <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 'bold', fill: '#4B5563' }} width={120} />
@@ -517,6 +511,7 @@ export default function AdminAnalytics() {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            )}
           </div>
         </GlassCard>
       </div>
@@ -548,7 +543,7 @@ export default function AdminAnalytics() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 font-medium text-gray-600">
-              {orders.map((o) => (
+              {data.orders.map((o) => (
                 <tr key={o.id} className="hover:bg-emerald-500/5 transition-colors group">
                   <td className="px-8 py-4 font-mono text-[10px] text-gray-400 group-hover:text-emerald-600">#{o.id.slice(0,8)}</td>
                   <td className="px-8 py-4">
@@ -589,13 +584,13 @@ export default function AdminAnalytics() {
   const RenderProspectos = () => (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fadeUp">
       <div className="lg:col-span-2 space-y-4">
-        {leads.length === 0 ? (
+        {data.leads.length === 0 ? (
           <GlassCard className="p-20 text-center">
             <Users className="w-16 h-16 text-gray-100 mx-auto mb-6" />
             <h3 className="text-xl font-black text-gray-300">SIN PROSPECTOS ACTIVOS</h3>
             <p className="text-sm text-gray-400 font-medium">Los leads de la landing aparecerán aquí.</p>
           </GlassCard>
-        ) : leads.map((lead) => (
+        ) : data.leads.map((lead) => (
           <GlassCard key={lead.id} className="p-6 flex items-start justify-between group">
             <div className="flex gap-5">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center text-xl font-black shadow-lg shadow-purple-200">
