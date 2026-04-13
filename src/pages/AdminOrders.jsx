@@ -5,6 +5,7 @@ import { toast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { useStaff } from '../hooks/useStaff';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
+import PaymentPOSModal from '../components/admin/PaymentPOSModal';
 
 const ORDER_STATUSES = [
   { id: 'waiting_payment', label: 'Falta Pago', color: 'text-orange-600', icon: 'heroicons:banknotes' },
@@ -119,6 +120,7 @@ export default function AdminOrders() {
   const [cancellationReason, setCancellationReason] = useState("");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null); // Para marcar como pagado
   const [restaurantSettings, setRestaurantSettings] = useState(null);
+  const [isPOSModalOpen, setIsPOSModalOpen] = useState(false);
 
   const { activeBrand } = useAuth();
   const activeBrandId = activeBrand?.id;
@@ -184,7 +186,7 @@ export default function AdminOrders() {
           *,
           restaurant_tables ( id, table_number ),
           order_items (
-            id, quantity, unit_price, modifiers, notes,
+            id, quantity, unit_price, modifiers, notes, is_paid,
             products ( id, name, category_id )
           )
         `);
@@ -543,25 +545,33 @@ export default function AdminOrders() {
                           )}
                         </div>
                         
-                        {/* Indicador de Pago Faltante si aplica */}
-                        {order?.payment_status !== 'paid' && 
-                         order?.status !== 'cancelled' && 
-                         (restaurantSettings?.payment_requirement_stage === 'pre_preparation' || 
-                          restaurantSettings?.payment_requirement_stage === 'pre_delivery') && (
-                          <div className={`mb-3 flex items-center gap-2 px-3 py-2 rounded-xl animate-pulse ${
-                            restaurantSettings?.payment_requirement_stage === 'pre_preparation' && order?.status === 'new'
-                              ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                              : 'bg-amber-50 border-amber-100 text-amber-700'
+                        {/* Indicador de Pago / Balancé */}
+                        {order?.payment_status !== 'paid' && order?.status !== 'cancelled' && (
+                          <div className={`mb-3 flex flex-col gap-1.5 px-3 py-2 rounded-xl border ${
+                            (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && order?.status === 'new') ||
+                            (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && order?.status === 'ready')
+                              ? 'bg-emerald-50 border-emerald-100 text-emerald-700 animate-pulse'
+                              : 'bg-gray-50 border-gray-100 text-gray-500'
                           }`}>
-                            <Icon icon="heroicons:banknotes" className="text-lg" />
-                            <span className="text-[10px] font-black uppercase tracking-wider">
-                              {restaurantSettings?.payment_requirement_stage === 'pre_preparation' && order?.status === 'new' 
-                                ? 'Pago para Cocina' 
-                                : 'Pago para Entrega'}
-                            </span>
-                            <span className="ml-auto text-[10px] font-black bg-white/50 px-2 py-0.5 rounded-full">
-                              ${Number(order?.total_amount || 0).toLocaleString()}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <Icon icon="heroicons:banknotes" className="text-lg" />
+                              <span className="text-[10px] font-black uppercase tracking-wider">
+                                {order?.paid_amount > 0 ? 'Falta Saldo' : 'Pago Pendiente'}
+                              </span>
+                              <span className="ml-auto text-[10px] font-black">
+                                {order?.paid_amount > 0 
+                                  ? `$${(order.total_amount - order.paid_amount).toLocaleString()} falta` 
+                                  : `$${Number(order?.total_amount || 0).toLocaleString()}`}
+                              </span>
+                            </div>
+                            {order?.paid_amount > 0 && (
+                              <div className="w-full bg-gray-200 h-1 rounded-full overflow-hidden">
+                                <div 
+                                  className="bg-emerald-500 h-full transition-all" 
+                                  style={{ width: `${(order.paid_amount / order.total_amount) * 100}%` }}
+                                />
+                              </div>
+                            )}
                           </div>
                         )}
                         
@@ -789,73 +799,34 @@ export default function AdminOrders() {
                     </select>
                   </div>
 
-                  {/* Selección de Pago (Solo si falta pago) */}
-                  {selectedOrder.status === 'waiting_payment' && (
-                    <div className="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/30 p-8 rounded-[2.5rem] border border-emerald-100 shadow-xl shadow-emerald-900/5 relative overflow-hidden group">
-                      {/* Decorative elements */}
-                      <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-100/30 rounded-full blur-3xl group-hover:bg-emerald-200/40 transition-colors duration-700" />
-                      <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-emerald-100/20 rounded-full blur-3xl" />
-                      
-                      <div className="relative">
-                        <div className="flex items-center justify-between mb-6">
-                          <p className="text-[11px] font-black text-emerald-700 uppercase tracking-[0.2em] flex items-center gap-2.5">
-                            <span className="w-6 h-6 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-200">
-                              <Icon icon="heroicons:banknotes" className="text-sm" />
-                            </span>
-                            Método de Pago
-                          </p>
-                          <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full border border-emerald-200 uppercase tracking-wider animate-pulse">
-                            Pendiente
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                           {activeMethods.length > 0 ? activeMethods.map(method => (
-                              <button 
-                                key={method.id}
-                                onClick={() => setSelectedPaymentMethod(method.id)}
-                                className={`group/btn p-5 rounded-[1.75rem] border-2 transition-all duration-300 flex flex-col items-center gap-3 relative overflow-hidden ${
-                                  selectedPaymentMethod === method.id 
-                                   ? 'bg-emerald-600 border-emerald-600 text-white shadow-2xl shadow-emerald-200 scale-[1.02] -translate-y-1' 
-                                   : 'bg-white border-gray-100 text-gray-500 hover:border-emerald-200 hover:bg-emerald-50/50 hover:shadow-lg hover:-translate-y-0.5'
-                                }`}
-                              >
-                                {selectedPaymentMethod === method.id && (
-                                  <div className="absolute top-2 right-2 w-5 h-5 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm animate-in zoom-in duration-300">
-                                    <Icon icon="heroicons:check-16-solid" className="text-white text-xs" />
-                                  </div>
-                                )}
-                                
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${
-                                  selectedPaymentMethod === method.id 
-                                    ? 'bg-white/20 text-white rotate-12 scale-110' 
-                                    : 'bg-emerald-50 text-emerald-600 group-hover/btn:scale-110 group-hover/btn:rotate-6'
-                                }`}>
-                                  <Icon icon={method.icon || (method.name?.toLowerCase().includes('efectivo') ? 'heroicons:banknotes' : 'heroicons:credit-card')} className="text-2xl" />
-                                </div>
-                                
-                                <span className={`text-xs font-black uppercase tracking-widest ${
-                                  selectedPaymentMethod === method.id ? 'text-white' : 'text-gray-700'
-                                }`}>
-                                  {method.name || 'SIN NOMBRE'}
-                                </span>
-                              </button>
-                           )) : (
-                             <div className="col-span-2 p-10 rounded-[2rem] border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-4 bg-gray-50/50">
-                               <Icon icon="solar:card-search-bold" className="text-4xl text-gray-300" />
-                               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">No hay métodos activos</p>
-                               <button 
-                                 onClick={() => window.location.href = '/admin/settings/payments'}
-                                 className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-[10px] font-black hover:bg-gray-50 transition-colors"
-                               >
-                                 CONFIGURAR AHORA
-                               </button>
-                             </div>
-                           )}
-                        </div>
-                      </div>
+                  {/* Resumen de Pago */}
+                  <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm space-y-4">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Estado Financiero</p>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-500">Monto Total</span>
+                      <span className="text-sm font-black text-gray-900">${selectedOrder.total_amount.toLocaleString()}</span>
                     </div>
-                  )}
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-500">Pagado</span>
+                      <span className="text-sm font-black text-emerald-600">${(selectedOrder.paid_amount || 0).toLocaleString()}</span>
+                    </div>
+
+                    <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
+                      <span className="text-xs font-black text-gray-900">PENDIENTE</span>
+                      <span className={`text-lg font-black ${selectedOrder.payment_status === 'paid' ? 'text-emerald-600' : 'text-orange-600'}`}>
+                        ${Math.max(0, selectedOrder.total_amount - (selectedOrder.paid_amount || 0)).toLocaleString()}
+                      </span>
+                    </div>
+
+                    {selectedOrder.payment_status === 'paid' && (
+                      <div className="flex items-center gap-2 justify-center py-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100 mt-2">
+                        <Icon icon="heroicons:check-circle" className="text-lg" />
+                        <span className="text-[10px] font-black uppercase tracking-wider">Completamente Pagado</span>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Descuentos VIP */}
                   {selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
@@ -929,13 +900,10 @@ export default function AdminOrders() {
                 </div>
 
                 <div className="flex-[1.5]">
-                  {/* BOTÓN: MARCAR COMO PAGADO (Solo si no está pagado) */}
+                  {/* BOTÓN: POS MODAL (Reemplaza Mark as Paid) */}
                   {selectedOrder.payment_status !== 'paid' && (
                     <button 
-                      onClick={() => updateOrderStatus(selectedOrder.id, selectedOrder.status === 'waiting_payment' ? 'new' : selectedOrder.status, { 
-                        payment_status: 'paid', 
-                        payment_method: selectedPaymentMethod 
-                      })}
+                      onClick={() => setIsPOSModalOpen(true)}
                       disabled={updatingStatus === selectedOrder.id}
                       className={`w-full py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 mb-3 border-2 ${
                         (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.status === 'new') || 
@@ -945,7 +913,7 @@ export default function AdminOrders() {
                       }`}
                     >
                       <Icon icon="solar:round-transfer-horizontal-bold" className="text-2xl" />
-                      MARCAR COMO PAGADO
+                      COBRAR / DESGLOSAR PAGO
                     </button>
                   )}
 
@@ -1006,6 +974,20 @@ export default function AdminOrders() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* POS Payment Modal */}
+      {isPOSModalOpen && selectedOrder && (
+        <PaymentPOSModal 
+          order={selectedOrder}
+          paymentMethods={activeMethods}
+          onClose={() => setIsPOSModalOpen(false)}
+          onSuccess={() => {
+            fetchOrders();
+            // Optional: if it was waiting payment and now is fully paid, update status to new
+            // This is actually handled by the trigger, but we reload to reflect it
+          }}
+        />
       )}
     </div>
   );
