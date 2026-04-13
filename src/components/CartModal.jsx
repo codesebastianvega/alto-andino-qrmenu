@@ -15,8 +15,6 @@ import { translateGroup } from "@/utils/formatters";
 import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 
-import { usePaymentMethods } from "@/hooks/usePaymentMethods";
-
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 3000 }),

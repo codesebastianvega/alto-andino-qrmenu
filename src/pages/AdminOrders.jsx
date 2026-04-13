@@ -117,7 +117,7 @@ export default function AdminOrders() {
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cash'); // Para marcar como pagado
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null); // Para marcar como pagado
   const [restaurantSettings, setRestaurantSettings] = useState(null);
 
   const { activeBrand } = useAuth();
@@ -131,11 +131,14 @@ export default function AdminOrders() {
 
   // Set default payment method when methods are loaded
   useEffect(() => {
-    if (activeMethods.length > 0 && selectedPaymentMethod === 'cash') {
-      const exists = activeMethods.find(m => m.id === 'cash');
-      if (!exists) setSelectedPaymentMethod(activeMethods[0].id);
+    if (activeMethods.length > 0) {
+      // Si no hay seleccionado o el seleccionado ya no existe/está inactivo
+      const currentExists = activeMethods.find(m => m.id === selectedPaymentMethod);
+      if (!selectedPaymentMethod || !currentExists) {
+        setSelectedPaymentMethod(activeMethods[0].id);
+      }
     }
-  }, [activeMethods]);
+  }, [activeMethods, selectedPaymentMethod]);
 
   // Fetch Restaurant Settings
   useEffect(() => {
@@ -483,10 +486,10 @@ export default function AdminOrders() {
                     const fl = getFulfillmentLabel(order.fulfillment_type);
                     return (
                       <div 
-                        key={order.id} 
+                        key={order?.id} 
                         onClick={() => { setSelectedOrder(order); setIsCancelling(false); }}
                         className={`bg-white p-4 rounded-2xl shadow-sm border transition-all cursor-pointer group relative overflow-hidden active:scale-[0.98] ${
-                          order.fulfillment_type === 'dine_in' 
+                          order?.fulfillment_type === 'dine_in' 
                           ? 'border-emerald-100 hover:border-emerald-300 hover:shadow-md ring-1 ring-emerald-50/50' 
                           : 'border-gray-100 hover:shadow-md hover:border-emerald-200'
                         }`}
@@ -502,18 +505,18 @@ export default function AdminOrders() {
                           <div className="flex-1 min-w-0 mr-2">
                              <div className="flex flex-col">
                                 <span className={`text-lg font-black leading-tight truncate group-hover:text-emerald-800 ${
-                                  order.fulfillment_type === 'dine_in' ? 'text-emerald-900' : 'text-gray-900'
+                                  order?.fulfillment_type === 'dine_in' ? 'text-emerald-900' : 'text-gray-900'
                                 }`}>
-                                  {order.fulfillment_type === 'dine_in' 
-                                    ? `Mesa ${order.restaurant_tables?.table_number || '?'}` 
-                                    : (order.customer_name || 'Sin nombre')}
+                                  {order?.fulfillment_type === 'dine_in' 
+                                    ? `Mesa ${order?.restaurant_tables?.table_number || '?'}` 
+                                    : (order?.customer_name || 'Sin nombre')}
                                 </span>
                                 <div className="flex items-center gap-2 mt-0.5">
-                                  <span className="text-[10px] font-bold text-gray-400 font-mono tracking-wider">#{order.id.slice(0, 4).toUpperCase()}</span>
-                                  {order.fulfillment_type === 'dine_in' && order.customer_name && (
-                                    <span className="text-[10px] text-gray-400 font-medium truncate">• {order.customer_name}</span>
+                                  <span className="text-[10px] font-bold text-gray-400 font-mono tracking-wider">#{order?.id?.slice(0, 4).toUpperCase()}</span>
+                                  {order?.fulfillment_type === 'dine_in' && order?.customer_name && (
+                                    <span className="text-[10px] text-gray-400 font-medium truncate">• {order?.customer_name}</span>
                                   )}
-                                  {order.fulfillment_type !== 'dine_in' && !order.customer_name && (
+                                  {order?.fulfillment_type !== 'dine_in' && !order?.customer_name && (
                                     <span className="text-[10px] text-gray-300 italic">Cliente incógnito</span>
                                   )}
                                 </div>
@@ -530,34 +533,34 @@ export default function AdminOrders() {
                             {fl.text}
                           </span>
                           <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded-lg">
-                            {order.order_items?.length || 0} ítems
+                            {order?.order_items?.length || 0} ítems
                           </span>
-                          {order.waiter_id && (
+                          {order?.waiter_id && (
                             <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-1 rounded-lg flex items-center gap-1">
                               <Icon icon="heroicons:user-circle" />
-                              {waiters.find(w => w.id === order.waiter_id)?.name?.split(' ')[0] || 'Mesero'}
+                              {waiters.find(w => w.id === order?.waiter_id)?.name?.split(' ')[0] || 'Mesero'}
                             </span>
                           )}
                         </div>
                         
                         {/* Indicador de Pago Faltante si aplica */}
-                        {selectedOrder.payment_status !== 'paid' && 
-                         selectedOrder.status !== 'cancelled' && 
+                        {order?.payment_status !== 'paid' && 
+                         order?.status !== 'cancelled' && 
                          (restaurantSettings?.payment_requirement_stage === 'pre_preparation' || 
                           restaurantSettings?.payment_requirement_stage === 'pre_delivery') && (
                           <div className={`mb-3 flex items-center gap-2 px-3 py-2 rounded-xl animate-pulse ${
-                            restaurantSettings?.payment_requirement_stage === 'pre_preparation' && order.status === 'new'
+                            restaurantSettings?.payment_requirement_stage === 'pre_preparation' && order?.status === 'new'
                               ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
                               : 'bg-amber-50 border-amber-100 text-amber-700'
                           }`}>
                             <Icon icon="heroicons:banknotes" className="text-lg" />
                             <span className="text-[10px] font-black uppercase tracking-wider">
-                              {restaurantSettings?.payment_requirement_stage === 'pre_preparation' && order.status === 'new' 
+                              {restaurantSettings?.payment_requirement_stage === 'pre_preparation' && order?.status === 'new' 
                                 ? 'Pago para Cocina' 
                                 : 'Pago para Entrega'}
                             </span>
                             <span className="ml-auto text-[10px] font-black bg-white/50 px-2 py-0.5 rounded-full">
-                              ${Number(order.total_amount).toLocaleString()}
+                              ${Number(order?.total_amount || 0).toLocaleString()}
                             </span>
                           </div>
                         )}
@@ -788,33 +791,68 @@ export default function AdminOrders() {
 
                   {/* Selección de Pago (Solo si falta pago) */}
                   {selectedOrder.status === 'waiting_payment' && (
-                    <div className="bg-white p-6 rounded-[2rem] border border-emerald-100 shadow-sm bg-emerald-50/30">
-                      <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <Icon icon="heroicons:banknotes" />
-                        Método de Pago
-                      </p>
-                      <div className="grid grid-cols-2 gap-2">
-                         {activeMethods.length > 0 ? activeMethods.map(method => (
-                            <button 
-                              key={method.id}
-                              onClick={() => setSelectedPaymentMethod(method.id)}
-                              className={`p-4 rounded-2xl border text-sm font-black transition-all flex flex-col items-center gap-2 ${
-                                selectedPaymentMethod === method.id 
-                                 ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg scale-[1.02]' 
-                                 : 'bg-white border-gray-100 text-gray-600 hover:border-emerald-200 hover:bg-emerald-50/50'
-                              }`}
-                            >
-                              <Icon icon={method.icon || (method.name?.toLowerCase().includes('efectivo') ? 'heroicons:banknotes' : 'heroicons:credit-card')} className="text-xl" />
-                              <span className="uppercase tracking-tight">{method.name || 'SIN NOMBRE'}</span>
-                            </button>
-                         )) : (
-                           <button 
-                             onClick={() => setSelectedPaymentMethod('cash')}
-                             className="col-span-2 p-3 rounded-2xl border bg-emerald-600 border-emerald-600 text-white text-xs font-black"
-                           >
-                             EFECTIVO
-                           </button>
-                         )}
+                    <div className="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/30 p-8 rounded-[2.5rem] border border-emerald-100 shadow-xl shadow-emerald-900/5 relative overflow-hidden group">
+                      {/* Decorative elements */}
+                      <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-100/30 rounded-full blur-3xl group-hover:bg-emerald-200/40 transition-colors duration-700" />
+                      <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-emerald-100/20 rounded-full blur-3xl" />
+                      
+                      <div className="relative">
+                        <div className="flex items-center justify-between mb-6">
+                          <p className="text-[11px] font-black text-emerald-700 uppercase tracking-[0.2em] flex items-center gap-2.5">
+                            <span className="w-6 h-6 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-200">
+                              <Icon icon="heroicons:banknotes" className="text-sm" />
+                            </span>
+                            Método de Pago
+                          </p>
+                          <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full border border-emerald-200 uppercase tracking-wider animate-pulse">
+                            Pendiente
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                           {activeMethods.length > 0 ? activeMethods.map(method => (
+                              <button 
+                                key={method.id}
+                                onClick={() => setSelectedPaymentMethod(method.id)}
+                                className={`group/btn p-5 rounded-[1.75rem] border-2 transition-all duration-300 flex flex-col items-center gap-3 relative overflow-hidden ${
+                                  selectedPaymentMethod === method.id 
+                                   ? 'bg-emerald-600 border-emerald-600 text-white shadow-2xl shadow-emerald-200 scale-[1.02] -translate-y-1' 
+                                   : 'bg-white border-gray-100 text-gray-500 hover:border-emerald-200 hover:bg-emerald-50/50 hover:shadow-lg hover:-translate-y-0.5'
+                                }`}
+                              >
+                                {selectedPaymentMethod === method.id && (
+                                  <div className="absolute top-2 right-2 w-5 h-5 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm animate-in zoom-in duration-300">
+                                    <Icon icon="heroicons:check-16-solid" className="text-white text-xs" />
+                                  </div>
+                                )}
+                                
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${
+                                  selectedPaymentMethod === method.id 
+                                    ? 'bg-white/20 text-white rotate-12 scale-110' 
+                                    : 'bg-emerald-50 text-emerald-600 group-hover/btn:scale-110 group-hover/btn:rotate-6'
+                                }`}>
+                                  <Icon icon={method.icon || (method.name?.toLowerCase().includes('efectivo') ? 'heroicons:banknotes' : 'heroicons:credit-card')} className="text-2xl" />
+                                </div>
+                                
+                                <span className={`text-xs font-black uppercase tracking-widest ${
+                                  selectedPaymentMethod === method.id ? 'text-white' : 'text-gray-700'
+                                }`}>
+                                  {method.name || 'SIN NOMBRE'}
+                                </span>
+                              </button>
+                           )) : (
+                             <div className="col-span-2 p-10 rounded-[2rem] border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-4 bg-gray-50/50">
+                               <Icon icon="solar:card-search-bold" className="text-4xl text-gray-300" />
+                               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">No hay métodos activos</p>
+                               <button 
+                                 onClick={() => window.location.href = '/admin/settings/payments'}
+                                 className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-[10px] font-black hover:bg-gray-50 transition-colors"
+                               >
+                                 CONFIGURAR AHORA
+                               </button>
+                             </div>
+                           )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -836,7 +874,7 @@ export default function AdminOrders() {
                               if (selectedOrder.status === 'waiting_payment') {
                                 await updateOrderStatus(selectedOrder.id, "new", { 
                                   payment_status: "paid", 
-                                  payment_method: selectedPaymentMethod || 'cash' 
+                                  payment_method: selectedPaymentMethod 
                                 });
                               }
                             } }
@@ -899,14 +937,14 @@ export default function AdminOrders() {
                         payment_method: selectedPaymentMethod 
                       })}
                       disabled={updatingStatus === selectedOrder.id}
-                      className={`w-full py-4 rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 mb-2 ${
+                      className={`w-full py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 mb-3 border-2 ${
                         (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.status === 'new') || 
                         (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.status === 'ready')
-                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'
-                          : 'bg-white border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50'
+                          ? 'bg-emerald-600 border-emerald-600 text-white shadow-emerald-200/50 hover:bg-emerald-700 hover:-translate-y-0.5'
+                          : 'bg-white border-emerald-600 text-emerald-600 hover:bg-emerald-50 shadow-emerald-100/50 hover:-translate-y-0.5'
                       }`}
                     >
-                      <Icon icon="heroicons:banknotes" className="text-2xl" />
+                      <Icon icon="solar:round-transfer-horizontal-bold" className="text-2xl" />
                       MARCAR COMO PAGADO
                     </button>
                   )}
@@ -919,27 +957,27 @@ export default function AdminOrders() {
                         updatingStatus === selectedOrder.id || 
                         (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid')
                       }
-                      className={`w-full py-4 text-white rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
+                      className={`w-full py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
                         restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid'
-                          ? 'bg-gray-300 shadow-none cursor-not-allowed grayscale'
-                          : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+                          ? 'bg-neutral-200 text-neutral-400 border-2 border-neutral-100 shadow-none cursor-not-allowed grayscale'
+                          : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200/50 hover:-translate-y-0.5 border-2 border-blue-600'
                       }`}
                     >
-                      <Icon icon="heroicons:fire" className="text-2xl" />
+                      <Icon icon="solar:fire-bold" className="text-2xl" />
                       {restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid' 
                         ? 'PAGO REQUERIDO PARA COCINA' 
                         : 'ENVIAR A COCINA'}
                     </button>
                   )}
 
-                  {/* BOTÓN: LISTO PARA ENTREGA (No depende de pago en este paso) */}
+                  {/* BOTÓN: LISTO PARA ENTREGA */}
                   {selectedOrder.status === 'preparing' && (
                     <button 
                       onClick={() => updateOrderStatus(selectedOrder.id, 'ready')}
                       disabled={updatingStatus === selectedOrder.id}
-                      className="w-full py-4 bg-yellow-500 hover:bg-yellow-600 text-white rounded-2xl font-black text-base shadow-lg shadow-yellow-100 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50"
+                      className="w-full py-4.5 bg-amber-500 hover:bg-amber-600 text-white rounded-[2rem] font-black text-base shadow-2xl shadow-amber-200/50 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 border-2 border-amber-500 hover:-translate-y-0.5"
                     >
-                      <Icon icon="heroicons:check-badge" className="text-2xl" />
+                      <Icon icon="solar:check-circle-bold" className="text-2xl" />
                       LISTO PARA ENTREGA
                     </button>
                   )}
@@ -952,19 +990,19 @@ export default function AdminOrders() {
                         updatingStatus === selectedOrder.id || 
                         (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid')
                       }
-                      className={`w-full py-4 text-white rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
+                      className={`w-full py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
                         restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
-                          ? 'bg-gray-300 shadow-none cursor-not-allowed grayscale'
-                          : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
+                          ? 'bg-neutral-200 text-neutral-400 border-2 border-neutral-100 shadow-none cursor-not-allowed grayscale'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200/50 hover:-translate-y-0.5 border-2 border-emerald-600'
                       }`}
                     >
-                      <Icon icon="heroicons:truck" className="text-2xl" />
-                      {restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid' 
-                        ? 'PAGO REQUERIDO PARA ENTREGAR' 
-                        : 'MARCAR ENTREGADO'}
+                      <Icon icon="solar:box-minimalistic-bold" className="text-2xl" />
+                      {restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
+                        ? 'PAGO REQUERIDO PARA ENTREGA'
+                        : 'MARCAR COMO ENTREGADO'}
                     </button>
                   )}
-              </div>
+                </div>
             </div>
           </div>
         </div>
