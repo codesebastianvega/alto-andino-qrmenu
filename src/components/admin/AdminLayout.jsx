@@ -136,9 +136,7 @@ const Icons = {
 };
 
 const OPERACION_ITEMS = [
-  { id: 'orders',    label: 'Pedidos',         Icon: Icons.Orders, roles: ['admin', 'waiter'] },
-  { id: 'kitchen',   label: 'Cocina',          Icon: Icons.Kitchen, roles: ['admin', 'kitchen'], feature: 'kitchen_display' },
-  { id: 'waiter',    label: 'Toma de Pedidos', Icon: Icons.Waiter, roles: ['admin', 'waiter'] },
+  // No items here, they are rendered as cards
 ];
 
 const CARTA_ITEMS = [
@@ -162,7 +160,7 @@ const ADMIN_ITEMS = [
 ];
 
 const ESTRATEGIA_ITEMS = [
-  { id: 'analytics', label: 'Centro de Inteligencia', Icon: Icons.Strategy, roles: ['admin'], feature: 'advanced_analytics' },
+  // No items here, rendered as card
 ];
 
 const WEB_ITEMS = [
@@ -358,12 +356,141 @@ export default function AdminLayout() {
              )}
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar pt-2">
-            <NavSection title="Estrategia" items={ESTRATEGIA_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
-            <NavSection title="Operación" items={OPERACION_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+          <div className="flex-1 overflow-y-auto custom-scrollbar pt-2 px-4 space-y-6">
+            {/* 1. SECCION ESTRATEGIA (Analytics Card) */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                {!isCollapsed && <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Estrategia</span>}
+                <div className="h-px flex-1 bg-white/5 ml-3" />
+              </div>
+
+              <button 
+                onClick={() => handleSelectPage('analytics', 'Centro de Inteligencia', 'advanced_analytics')}
+                className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
+                  currentPage === 'analytics' 
+                  ? 'bg-gradient-to-r from-brand-primary/80 to-brand-primary border-white/10 ring-1 ring-white/10 shadow-lg shadow-black/40' 
+                  : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
+                } ${isFeatureLocked('advanced_analytics') && !isCollapsed ? 'opacity-90' : ''}`}
+              >
+                <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'analytics' ? 'bg-white/20 text-white' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
+                    <Icons.Strategy />
+                  </div>
+                  {!isCollapsed && (
+                    <div className="text-left flex-1 flex justify-between items-center">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className={`text-[13px] font-bold leading-none ${currentPage === 'analytics' ? 'text-white' : 'text-white/60'}`}>Inteligencia</p>
+                          {isFeatureLocked('advanced_analytics') && (
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                          )}
+                        </div>
+                        <p className="text-[9px] text-white/30 font-medium mt-1">Métricas y Rendimiento</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </button>
+            </div>
+
+            {/* 2. SECCION OPERACION (Operation Cards) */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                {!isCollapsed && <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Operación</span>}
+                <div className="h-px flex-1 bg-white/5 ml-3" />
+              </div>
+
+              <div className="grid grid-cols-1 gap-2">
+                {/* Pedidos Card */}
+                <button 
+                  onClick={() => handleSelectPage('orders', 'Pedidos')}
+                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
+                    currentPage === 'orders' 
+                    ? 'bg-gradient-to-r from-blue-900/40 to-blue-950/40 border-blue-500/20 ring-1 ring-blue-500/20 shadow-lg shadow-blue-950/40' 
+                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
+                  }`}
+                >
+                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'orders' ? 'bg-blue-400/20 text-blue-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
+                      <Icons.Orders />
+                    </div>
+                    {!isCollapsed && (
+                      <div className="text-left flex-1">
+                        <p className={`text-[13px] font-bold leading-none ${currentPage === 'orders' ? 'text-white' : 'text-white/60'}`}>Pedidos</p>
+                        <p className="text-[9px] text-white/30 font-medium mt-1">Gestión en Vivo</p>
+                      </div>
+                    )}
+                  </div>
+                </button>
+
+                {/* Cocina Card */}
+                <button 
+                  onClick={() => handleSelectPage('kitchen', 'Cocina', 'kitchen_display')}
+                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
+                    currentPage === 'kitchen' 
+                    ? 'bg-gradient-to-r from-orange-900/40 to-orange-950/40 border-orange-500/20 ring-1 ring-orange-500/20 shadow-lg shadow-orange-950/40' 
+                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
+                  } ${isFeatureLocked('kitchen_display') ? 'opacity-60' : ''}`}
+                >
+                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'kitchen' ? 'bg-orange-400/20 text-orange-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
+                      <div className="relative">
+                        <Icons.Kitchen />
+                        {!isFeatureLocked('kitchen_display') && pendingOrdersCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-ping" />}
+                      </div>
+                    </div>
+                    {!isCollapsed && (
+                      <div className="text-left flex-1 flex justify-between items-center pr-1">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <p className={`text-[13px] font-bold leading-none ${currentPage === 'kitchen' ? 'text-white' : 'text-white/60'}`}>Cocina</p>
+                            {isFeatureLocked('kitchen_display') && (
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                              </svg>
+                            )}
+                          </div>
+                          <p className="text-[9px] text-white/30 font-medium mt-1">Pantalla de Producción</p>
+                        </div>
+                        {pendingOrdersCount > 0 && !isFeatureLocked('kitchen_display') && (
+                          <span className="bg-orange-500 text-white text-[10px] font-black h-5 px-1.5 flex items-center justify-center rounded-md">
+                            {pendingOrdersCount}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </button>
+
+                {/* Toma de Pedidos Card */}
+                <button 
+                  onClick={() => handleSelectPage('waiter', 'Toma de Pedidos')}
+                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
+                    currentPage === 'waiter' 
+                    ? 'bg-gradient-to-r from-emerald-900/40 to-emerald-950/40 border-emerald-500/20 ring-1 ring-emerald-500/20 shadow-lg shadow-emerald-950/40' 
+                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
+                  }`}
+                >
+                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'waiter' ? 'bg-emerald-400/20 text-emerald-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
+                      <Icons.Waiter />
+                    </div>
+                    {!isCollapsed && (
+                      <div className="text-left flex-1">
+                        <p className={`text-[13px] font-bold leading-none ${currentPage === 'waiter' ? 'text-white' : 'text-white/60'}`}>Toma de Pedidos</p>
+                        <p className="text-[9px] text-white/30 font-medium mt-1">POS / Modo Mesero</p>
+                      </div>
+                    )}
+                  </div>
+                </button>
+              </div>
+            </div>
+
             <NavSection title="Administración" items={ADMIN_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
-            <NavSection title="Carta" items={CARTA_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
-            <NavSection title="Producción" items={PROD_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+            <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+            <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
             <NavSection title="Presencia Web" items={WEB_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
           </div>
 
