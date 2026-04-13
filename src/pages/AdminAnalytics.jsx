@@ -118,6 +118,11 @@ export default function AdminAnalytics() {
 
   useEffect(() => {
     setIsReady(false);
+    const timer = setTimeout(() => setIsReady(true), 400);
+    return () => clearTimeout(timer);
+  }, [activeTab, dateRange, activeBrandId]);
+
+  useEffect(() => {
     fetchData();
   }, [dateRange, activeBrandId]);
 
@@ -341,7 +346,7 @@ export default function AdminAnalytics() {
           <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-6">Actividad de hoy (Pulso de Ventas)</h3>
           <div className="h-[140px] w-full relative">
             {isReady && (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+              <ResponsiveContainer width="100%" height={140} minWidth={0} minHeight={0} debounce={50}>
                 <AreaChart data={hourlyStats}>
                 <defs>
                   <linearGradient id="colorVentasP" x1="0" y1="0" x2="0" y2="1">
@@ -397,7 +402,7 @@ export default function AdminAnalytics() {
           </h3>
           <div className="h-[350px] w-full relative">
             {isReady && (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+              <ResponsiveContainer width="100%" height={350} minWidth={0} minHeight={0} debounce={50}>
                 <PieChart>
                 <Pie
                   data={channelStats}
@@ -427,7 +432,7 @@ export default function AdminAnalytics() {
           </h3>
           <div className="h-[350px] w-full relative">
             {isReady && (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+              <ResponsiveContainer width="100%" height={350} minWidth={0} minHeight={0} debounce={50}>
                 <BarChart data={topProducts} layout="vertical" margin={{ left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
                 <XAxis type="number" hide />
@@ -470,7 +475,7 @@ export default function AdminAnalytics() {
           </h3>
           <div className="h-[350px] w-full relative">
             {isReady && (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+              <ResponsiveContainer width="100%" height={350} minWidth={0} minHeight={0} debounce={50}>
                 <PieChart>
                 <Pie
                   data={paymentStats}
@@ -500,7 +505,7 @@ export default function AdminAnalytics() {
           </h3>
           <div className="h-[350px] w-full relative">
             {isReady && (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={100}>
+              <ResponsiveContainer width="100%" height={350} minWidth={0} minHeight={0} debounce={50}>
                 <BarChart data={tableStats} layout="vertical" margin={{ left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
                 <XAxis type="number" hide />
