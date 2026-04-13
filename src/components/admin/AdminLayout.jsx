@@ -14,6 +14,7 @@ import AdminTables from '../../pages/AdminTables';
 import AdminOrders from '../../pages/AdminOrders';
 import AdminKitchen from '../../pages/AdminKitchen';
 import AdminDashboard from '../../pages/AdminDashboard';
+import AdminAnalytics from '../../pages/AdminAnalytics';
 import AdminWaiter from '../../pages/AdminWaiter';
 import AdminStaff from '../../pages/AdminStaff';
 import AdminSedes from '../../pages/AdminSedes';
@@ -127,18 +128,25 @@ const Icons = {
       <path d="M6 13.8V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-2.2"/><path d="M2 13h4"/><path d="M2 18h4"/><path d="M2 8h4"/><path d="M18 13h4"/><path d="M18 18h4"/><path d="M18 8h4"/>
     </svg>
   ),
+  Strategy: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+    </svg>
+  ),
 };
 
+const OPERACION_ITEMS = [
+  { id: 'orders',    label: 'Pedidos',         Icon: Icons.Orders, roles: ['admin', 'waiter'] },
+  { id: 'kitchen',   label: 'Cocina',          Icon: Icons.Kitchen, roles: ['admin', 'kitchen'], feature: 'kitchen_display' },
+  { id: 'waiter',    label: 'Toma de Pedidos', Icon: Icons.Waiter, roles: ['admin', 'waiter'] },
+];
+
 const CARTA_ITEMS = [
-  { id: 'products',   label: 'Productos',   Icon: Icons.Products, roles: ['admin'] },
+  { id: 'products',   label: 'Carta Principal',   Icon: Icons.Products, roles: ['admin'] },
   { id: 'categories', label: 'Categorías',  Icon: Icons.Categories, roles: ['admin'] },
   { id: 'modifier_groups', label: 'Extras y Opciones', Icon: Icons.Modifiers, roles: ['admin'] },
   { id: 'tables',     label: 'Mesas y QRs', Icon: Icons.Tables, roles: ['admin'] },
   { id: 'allergens',  label: 'Dietas y Alérgenos', Icon: Icons.Allergens, roles: ['admin'] },
-];
-
-const WEB_ITEMS = [
-  { id: 'web', label: 'Gestión Web', Icon: Icons.Web, roles: ['admin'], feature: 'landing_page' },
 ];
 
 const PROD_ITEMS = [
@@ -146,9 +154,19 @@ const PROD_ITEMS = [
   { id: 'inventory', label: 'Inventario',      Icon: Icons.Modifiers, roles: ['admin', 'kitchen'] },
 ];
 
-const ADJUST_ITEMS = [
-  { id: 'branding',    label: 'Identidad Visual', Icon: Icons.Branding, roles: ['admin'] },
-  { id: 'settings',    label: 'Ajustes Generales', Icon: Icons.Settings, roles: ['admin'] },
+const ADMIN_ITEMS = [
+  { id: 'staff',      label: 'Personal y Staff', Icon: Icons.Staff, roles: ['admin'], feature: 'staff' },
+  { id: 'sedes',      label: 'Sedes y Locales', Icon: Icons.Home, roles: ['admin'], feature: 'multi_location' },
+  { id: 'branding',   label: 'Identidad Visual', Icon: Icons.Branding, roles: ['admin'] },
+  { id: 'settings',   label: 'Ajustes de Operación', Icon: Icons.Settings, roles: ['admin'] },
+];
+
+const ESTRATEGIA_ITEMS = [
+  { id: 'analytics', label: 'Centro de Inteligencia', Icon: Icons.Strategy, roles: ['admin'], feature: 'advanced_analytics' },
+];
+
+const WEB_ITEMS = [
+  { id: 'web', label: 'Páginas y Web', Icon: Icons.Web, roles: ['admin'], feature: 'landing_page' },
 ];
 export default function AdminLayout() {
   // Read page from URL or default to orders
@@ -304,11 +322,7 @@ export default function AdminLayout() {
     );
   };
 
-  const currentItemLabel = [...WEB_ITEMS, ...CARTA_ITEMS, ...PROD_ITEMS, ...ADJUST_ITEMS, 
-    {id: 'dashboard', label: 'Dashboard'}, 
-    {id: 'orders', label: 'Pedidos'}, 
-    {id: 'kitchen', label: 'Cocina'}
-  ].find(i => i.id === currentPage)?.label || 'Panel';
+  const currentItemLabel = [...WEB_ITEMS, ...CARTA_ITEMS, ...PROD_ITEMS, ...ADMIN_ITEMS, ...OPERACION_ITEMS, ...ESTRATEGIA_ITEMS].find(i => i.id === currentPage)?.label || 'Panel';
 
   if (authLoading) {
     return (
@@ -345,141 +359,12 @@ export default function AdminLayout() {
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar pt-2">
-            {/* ── SEGMENTO ESPECIAL: OPERACIONES (TARJETAS) ── */}
-            <div className={`px-4 mb-6 space-y-3 ${isCollapsed ? 'px-2' : ''}`}>
-               {!isCollapsed && <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em] ml-1 mb-2 block">Operaciones</span>}
-               
-               {/* Dashboard Card */}
-               {true && (
-                 <button 
-                   onClick={() => handleSelectPage('dashboard', 'Dashboard', 'basic_analytics')}
-                   className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
-                     currentPage === 'dashboard' 
-                      ? 'bg-gradient-to-r from-brand-primary/80 to-brand-primary border-white/10 ring-1 ring-white/10 shadow-lg shadow-black/40' 
-                      : 'bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/10'
-                   } ${isFeatureLocked('basic_analytics') ? 'opacity-60 grayscale-[0.3]' : ''}`}
-                 >
-                   <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'dashboard' ? 'bg-brand-secondary/20 text-brand-secondary' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
-                         <Icons.Dashboard />
-                      </div>
-                      {!isCollapsed && (
-                        <div className="text-left flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <p className={`text-[13px] font-bold leading-none ${currentPage === 'dashboard' ? 'text-white' : 'text-white/60'}`}>Dashboard</p>
-                            {isFeatureLocked('basic_analytics') && (
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                              </svg>
-                            )}
-                          </div>
-                          <p className="text-[9px] text-white/30 font-medium mt-1">Métricas y Resumen</p>
-                        </div>
-                      )}
-                   </div>
-                 </button>
-               )}
-
-               {/* Pedidos Card */}
-               {true && (
-                 <button 
-                   onClick={() => handleSelectPage('orders', 'Pedidos', 'table_management')}
-                   className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
-                     currentPage === 'orders' 
-                      ? 'bg-gradient-to-r from-blue-900/40 to-blue-950/40 border-blue-500/20 ring-1 ring-blue-500/20 shadow-lg shadow-blue-950/40' 
-                      : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                   } ${isFeatureLocked('table_management') ? 'opacity-60 grayscale-[0.3]' : ''}`}
-                 >
-                   <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'orders' ? 'bg-blue-400/20 text-blue-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
-                         <Icons.Orders />
-                      </div>
-                      {!isCollapsed && (
-                        <div className="text-left flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <p className={`text-[13px] font-bold leading-none ${currentPage === 'orders' ? 'text-white' : 'text-white/60'}`}>Pedidos</p>
-                            {isFeatureLocked('table_management') && (
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                              </svg>
-                            )}
-                          </div>
-                          <p className="text-[9px] text-white/30 font-medium mt-1">Gestión Activa</p>
-                        </div>
-                      )}
-                   </div>
-                 </button>
-               )}
-
-               {/* Cocina Card */}
-               <button 
-                 onClick={() => handleSelectPage('kitchen', 'Cocina', 'kitchen_display')}
-                 className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
-                   currentPage === 'kitchen' 
-                    ? 'bg-gradient-to-r from-orange-900/40 to-orange-950/40 border-orange-500/20 ring-1 ring-orange-500/20 shadow-lg shadow-orange-950/40' 
-                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                 } ${isFeatureLocked('kitchen_display') ? 'opacity-60' : ''}`}
-               >
-                 <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'kitchen' ? 'bg-orange-400/20 text-orange-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
-                       <div className="relative">
-                          <Icons.Kitchen />
-                          {!isFeatureLocked('kitchen_display') && pendingOrdersCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-ping" />}
-                       </div>
-                    </div>
-                    {!isCollapsed && (
-                      <div className="text-left flex-1 flex justify-between items-center pr-1">
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <p className={`text-[13px] font-bold leading-none ${currentPage === 'kitchen' ? 'text-white' : 'text-white/60'}`}>Cocina</p>
-                            {isFeatureLocked('kitchen_display') && (
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                              </svg>
-                            )}
-                          </div>
-                          <p className="text-[9px] text-white/30 font-medium mt-1">Monitor de Producción</p>
-                        </div>
-                        {pendingOrdersCount > 0 && !isFeatureLocked('kitchen_display') && (
-                          <span className="bg-orange-500 text-white text-[10px] font-black h-5 px-1.5 flex items-center justify-center rounded-md">
-                            {pendingOrdersCount}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                 </div>
-               </button>
-
-               {/* Toma de Pedidos (POS) Card */}
-               <button 
-                 onClick={() => handleSelectPage('waiter', 'Toma de Pedidos')}
-                 className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
-                   currentPage === 'waiter' 
-                    ? 'bg-gradient-to-r from-emerald-900/40 to-emerald-950/40 border-emerald-500/20 ring-1 ring-emerald-500/20 shadow-lg shadow-emerald-950/40' 
-                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                 }`}
-               >
-                 <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'waiter' ? 'bg-emerald-400/20 text-emerald-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
-                       <Icons.Waiter />
-                    </div>
-                    {!isCollapsed && (
-                      <div className="text-left flex-1">
-                        <p className={`text-[13px] font-bold leading-none ${currentPage === 'waiter' ? 'text-white' : 'text-white/60'}`}>Toma de Pedidos</p>
-                        <p className="text-[9px] text-white/30 font-medium mt-1">POS / Modo Mesero</p>
-                      </div>
-                    )}
-                 </div>
-               </button>
-            </div>
-
-            {/* SECCIONES ESTANDAR */}
-            <div className="h-px bg-white/5 mx-6 my-2" />
-            
-            <NavSection title="Web y Páginas" items={WEB_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
-            <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
-            <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
-            <NavSection title="Configuración" items={ADJUST_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+            <NavSection title="Estrategia" items={ESTRATEGIA_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+            <NavSection title="Operación" items={OPERACION_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+            <NavSection title="Administración" items={ADMIN_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+            <NavSection title="Carta" items={CARTA_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+            <NavSection title="Producción" items={PROD_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+            <NavSection title="Presencia Web" items={WEB_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
           </div>
 
           {/* User Section / Collapse toggle */}
@@ -565,6 +450,7 @@ export default function AdminLayout() {
           { currentPage === 'staff'       && <AdminStaff /> }
           { currentPage === 'sedes'       && <AdminSedes /> }
           { currentPage === 'dashboard'   && <AdminDashboard /> }
+          { currentPage === 'analytics'   && <AdminAnalytics /> }
           { currentPage === 'waiter'      && <AdminWaiter /> }
 
           {/* Feature Lock Overlay */}
