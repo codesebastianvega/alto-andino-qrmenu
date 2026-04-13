@@ -188,7 +188,8 @@ export default function AdminOrders() {
           order_items (
             id, quantity, unit_price, modifiers, notes, is_paid,
             products ( id, name, category_id )
-          )
+          ),
+          order_payments (*)
         `);
 
       if (activeBrandId) {
@@ -255,7 +256,18 @@ export default function AdminOrders() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [activeBrandId, fetchOrders, selectedOrder?.id]);
+  }, [activeBrandId, fetchOrders]); // Removed selectedOrder.id as dependency to avoid re-subscribing on every selection
+
+  // NEW: Sync selectedOrder with the latest data from the orders list
+  useEffect(() => {
+    if (selectedOrder) {
+      const latest = orders.find(o => o.id === selectedOrder.id);
+      // Only update if there are changes to avoid unnecessary re-renders
+      if (latest && JSON.stringify(latest) !== JSON.stringify(selectedOrder)) {
+        setSelectedOrder(latest);
+      }
+    }
+  }, [orders, selectedOrder?.id]);
 
   const updateOrderStatus = async (orderId, newStatus, extraPayload = {}) => {
     try {
@@ -675,7 +687,15 @@ export default function AdminOrders() {
                         <div key={item.id} className="flex gap-4 group">
                           <span className="font-black text-xl text-[#2f4131] w-8">{item.quantity}x</span>
                           <div className="flex flex-col flex-1">
-                            <span className="font-bold text-gray-900 group-hover:text-emerald-700 transition-colors uppercase text-sm tracking-tight">{item.products?.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-gray-900 group-hover:text-emerald-700 transition-colors uppercase text-sm tracking-tight">{item.products?.name}</span>
+                              {item.is_paid && (
+                                <span className="bg-emerald-100 text-emerald-700 text-[8px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                  <Icon icon="heroicons:check-circle-16-solid" />
+                                  PAGADO
+                                </span>
+                              )}
+                            </div>
                             {item.modifiers && Object.keys(item.modifiers).length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1.5">
                                 {Object.entries(item.modifiers).map(([k, v]) => (
@@ -828,6 +848,33 @@ export default function AdminOrders() {
                     )}
                   </div>
 
+                  {/* Historial de Pagos */}
+                  {selectedOrder.order_payments?.length > 0 && (
+                    <div className="bg-gray-50/80 p-6 rounded-[2rem] border border-gray-100 space-y-4 animate-in slide-in-from-right-4 duration-300">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                        <Icon icon="heroicons:clipboard-document-check" className="text-sm" />
+                        Historial de Pagos
+                      </p>
+                      
+                      <div className="space-y-2">
+                        {selectedOrder.order_payments.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).map(pay => (
+                          <div key={pay.id} className="flex justify-between items-center bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] font-black text-gray-900 uppercase">{pay.payment_method_name || 'Desconocido'}</span>
+                              <span className="text-[8px] font-bold text-gray-400 uppercase">{new Date(pay.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-xs font-black text-emerald-600 block">${pay.amount.toLocaleString()}</span>
+                              {pay.change_amount > 0 && (
+                                <span className="text-[8px] font-bold text-gray-400 block italic">Cambio: ${pay.change_amount.toLocaleString()}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Descuentos VIP */}
                   {selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
                     <div className="bg-gray-900 p-6 rounded-[2rem] shadow-xl">
@@ -905,15 +952,16 @@ export default function AdminOrders() {
                     <button 
                       onClick={() => setIsPOSModalOpen(true)}
                       disabled={updatingStatus === selectedOrder.id}
-                      className={`w-full py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 mb-3 border-2 ${
+                      className={`w-full py-5 rounded-[2.5rem] font-black text-lg shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50 mb-4 border-2 group relative overflow-hidden ${
                         (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.status === 'new') || 
                         (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.status === 'ready')
                           ? 'bg-emerald-600 border-emerald-600 text-white shadow-emerald-200/50 hover:bg-emerald-700 hover:-translate-y-0.5'
                           : 'bg-white border-emerald-600 text-emerald-600 hover:bg-emerald-50 shadow-emerald-100/50 hover:-translate-y-0.5'
                       }`}
                     >
-                      <Icon icon="solar:round-transfer-horizontal-bold" className="text-2xl" />
-                      COBRAR / DESGLOSAR PAGO
+                      <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <Icon icon="solar:round-transfer-horizontal-bold" className="text-2xl group-hover:rotate-12 transition-transform" />
+                      <span className="relative">COBRAR / DESGLOSAR PAGO</span>
                     </button>
                   )}
 
@@ -982,10 +1030,9 @@ export default function AdminOrders() {
           order={selectedOrder}
           paymentMethods={activeMethods}
           onClose={() => setIsPOSModalOpen(false)}
-          onSuccess={() => {
-            fetchOrders();
-            // Optional: if it was waiting payment and now is fully paid, update status to new
-            // This is actually handled by the trigger, but we reload to reflect it
+          onSuccess={async () => {
+            await fetchOrders();
+            // The sync useEffect will take care of updating selectedOrder
           }}
         />
       )}
