@@ -118,6 +118,7 @@ export default function AdminOrders() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cash'); // Para marcar como pagado
+  const [restaurantSettings, setRestaurantSettings] = useState(null);
 
   const { activeBrand } = useAuth();
   const activeBrandId = activeBrand?.id;
@@ -135,6 +136,20 @@ export default function AdminOrders() {
       if (!exists) setSelectedPaymentMethod(activeMethods[0].id);
     }
   }, [activeMethods]);
+
+  // Fetch Restaurant Settings
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (!activeBrandId) return;
+      const { data, error } = await supabase
+        .from('restaurant_settings')
+        .select('*')
+        .eq('brand_id', activeBrandId)
+        .single();
+      if (!error && data) setRestaurantSettings(data);
+    };
+    fetchSettings();
+  }, [activeBrandId]);
 
   const assignWaiter = async (orderId, waiterId) => {
     try {
@@ -525,6 +540,28 @@ export default function AdminOrders() {
                           )}
                         </div>
                         
+                        {/* Indicador de Pago Faltante si aplica */}
+                        {selectedOrder.payment_status !== 'paid' && 
+                         selectedOrder.status !== 'cancelled' && 
+                         (restaurantSettings?.payment_requirement_stage === 'pre_preparation' || 
+                          restaurantSettings?.payment_requirement_stage === 'pre_delivery') && (
+                          <div className={`mb-3 flex items-center gap-2 px-3 py-2 rounded-xl animate-pulse ${
+                            restaurantSettings?.payment_requirement_stage === 'pre_preparation' && order.status === 'new'
+                              ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                              : 'bg-amber-50 border-amber-100 text-amber-700'
+                          }`}>
+                            <Icon icon="heroicons:banknotes" className="text-lg" />
+                            <span className="text-[10px] font-black uppercase tracking-wider">
+                              {restaurantSettings?.payment_requirement_stage === 'pre_preparation' && order.status === 'new' 
+                                ? 'Pago para Cocina' 
+                                : 'Pago para Entrega'}
+                            </span>
+                            <span className="ml-auto text-[10px] font-black bg-white/50 px-2 py-0.5 rounded-full">
+                              ${Number(order.total_amount).toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+                        
                         <div className="space-y-1">
                            {order.order_items?.slice(0, 2).map(item => (
                              <div key={item.id} className="text-xs text-gray-600 truncate flex items-center gap-1">
@@ -846,38 +883,57 @@ export default function AdminOrders() {
                        className="flex-1 bg-white border-none text-xs font-bold p-2.5 rounded-xl focus:ring-1 focus:ring-red-300"
                      />
                      <button onClick={() => cancelOrder(selectedOrder.id)} className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-black">CONFIRMAR</button>
-                     <button onClick={() => setIsCancelling(false)} className="p-2 text-gray-400"><Icon icon="heroicons:x-mark" /></button>
+                     <button onClick={() => setIsCancelling(false)} className="p-2 text-gray-400 hover:text-gray-600">
+                       <Icon icon="heroicons:x-mark" />
+                     </button>
                    </div>
                  )}
-               </div>
+                </div>
 
-               <div className="flex-[1.5]">
-                 {selectedOrder.status === 'waiting_payment' && (
+                <div className="flex-[1.5]">
+                  {/* BOTÓN: MARCAR COMO PAGADO (Solo si no está pagado) */}
+                  {selectedOrder.payment_status !== 'paid' && (
                     <button 
-                      onClick={() => updateOrderStatus(selectedOrder.id, 'new', { 
+                      onClick={() => updateOrderStatus(selectedOrder.id, selectedOrder.status === 'waiting_payment' ? 'new' : selectedOrder.status, { 
                         payment_status: 'paid', 
                         payment_method: selectedPaymentMethod 
                       })}
                       disabled={updatingStatus === selectedOrder.id}
-                      className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-base shadow-lg shadow-emerald-200 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50"
+                      className={`w-full py-4 rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 mb-2 ${
+                        (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.status === 'new') || 
+                        (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.status === 'ready')
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'
+                          : 'bg-white border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50'
+                      }`}
                     >
                       <Icon icon="heroicons:banknotes" className="text-2xl" />
                       MARCAR COMO PAGADO
                     </button>
-                 )}
+                  )}
 
-                 {selectedOrder.status === 'new' && (
+                  {/* BOTÓN: ENVIAR A COCINA */}
+                  {selectedOrder.status === 'new' && (
                     <button 
                       onClick={() => updateOrderStatus(selectedOrder.id, 'preparing')}
-                      disabled={updatingStatus === selectedOrder.id}
-                      className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-base shadow-lg shadow-blue-200 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50"
+                      disabled={
+                        updatingStatus === selectedOrder.id || 
+                        (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid')
+                      }
+                      className={`w-full py-4 text-white rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
+                        restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid'
+                          ? 'bg-gray-300 shadow-none cursor-not-allowed grayscale'
+                          : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+                      }`}
                     >
                       <Icon icon="heroicons:fire" className="text-2xl" />
-                      ENVIAR A COCINA
+                      {restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid' 
+                        ? 'PAGO REQUERIDO PARA COCINA' 
+                        : 'ENVIAR A COCINA'}
                     </button>
-                 )}
+                  )}
 
-                 {selectedOrder.status === 'preparing' && (
+                  {/* BOTÓN: LISTO PARA ENTREGA (No depende de pago en este paso) */}
+                  {selectedOrder.status === 'preparing' && (
                     <button 
                       onClick={() => updateOrderStatus(selectedOrder.id, 'ready')}
                       disabled={updatingStatus === selectedOrder.id}
@@ -886,19 +942,29 @@ export default function AdminOrders() {
                       <Icon icon="heroicons:check-badge" className="text-2xl" />
                       LISTO PARA ENTREGA
                     </button>
-                 )}
+                  )}
 
-                 {selectedOrder.status === 'ready' && (
+                  {/* BOTÓN: MARCAR ENTREGADO */}
+                  {selectedOrder.status === 'ready' && (
                     <button 
                       onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
-                      disabled={updatingStatus === selectedOrder.id}
-                      className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-base shadow-lg shadow-emerald-200 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50"
+                      disabled={
+                        updatingStatus === selectedOrder.id || 
+                        (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid')
+                      }
+                      className={`w-full py-4 text-white rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
+                        restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
+                          ? 'bg-gray-300 shadow-none cursor-not-allowed grayscale'
+                          : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
+                      }`}
                     >
                       <Icon icon="heroicons:truck" className="text-2xl" />
-                      MARCAR ENTREGADO
+                      {restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid' 
+                        ? 'PAGO REQUERIDO PARA ENTREGAR' 
+                        : 'MARCAR ENTREGADO'}
                     </button>
-                 )}
-               </div>
+                  )}
+              </div>
             </div>
           </div>
         </div>

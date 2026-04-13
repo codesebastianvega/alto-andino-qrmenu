@@ -22,7 +22,9 @@ export default function AdminSettings() {
   const [settingsForm, setSettingsForm] = useState({ 
     whatsapp_number_orders: '',
     is_service_fee_enabled: false,
-    service_fee_percentage: 10
+    service_fee_percentage: 10,
+    pay_before_service: false,
+    payment_requirement_stage: 'none'
   });
   const [isSubmittingSettings, setIsSubmittingSettings] = useState(false);
 
@@ -54,7 +56,9 @@ export default function AdminSettings() {
         setSettingsForm({
           whatsapp_number_orders: data.whatsapp_number_orders || '',
           is_service_fee_enabled: data.is_service_fee_enabled ?? false,
-          service_fee_percentage: data.service_fee_percentage ?? 10
+          service_fee_percentage: data.service_fee_percentage ?? 10,
+          pay_before_service: data.pay_before_service ?? false,
+          payment_requirement_stage: data.payment_requirement_stage || 'none'
         });
       }
     } catch (err) {
@@ -93,6 +97,8 @@ export default function AdminSettings() {
         whatsapp_number_orders: settingsForm.whatsapp_number_orders,
         is_service_fee_enabled: settingsForm.is_service_fee_enabled,
         service_fee_percentage: settingsForm.service_fee_percentage,
+        pay_before_service: settingsForm.payment_requirement_stage === 'pre_delivery',
+        payment_requirement_stage: settingsForm.payment_requirement_stage,
         updated_at: new Date().toISOString()
       };
 
@@ -239,6 +245,51 @@ export default function AdminSettings() {
                           />
                         </FormField>
                       )}
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-100">
+                    <h4 className="text-sm font-bold text-gray-900 mb-4">Requerimiento de Pago</h4>
+                    <div className="space-y-3">
+                      {[
+                        { id: 'none', label: 'Estándar (Post-pago)', desc: 'Sin restricciones. Los pedidos fluyen libremente.', icon: 'solar:bill-list-linear', color: 'gray' },
+                        { id: 'pre_preparation', label: 'Pre-pago (Al iniciar)', desc: 'Bloquea el envío a cocina hasta que se confirme el pago.', icon: 'solar:shield-check-linear', color: 'emerald' },
+                        { id: 'pre_delivery', label: 'Al Entregar (Antes de servir)', desc: 'Permite preparar, pero exige pago para marcar como entregado.', icon: 'solar:box-minimalistic-linear', color: 'amber' }
+                      ].map((option) => (
+                        <label 
+                          key={option.id}
+                          className={`flex items-start gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                            settingsForm.payment_requirement_stage === option.id 
+                              ? `bg-${option.color}-50 border-${option.color}-500 shadow-sm` 
+                              : 'bg-white border-gray-100 hover:border-gray-200'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="payment_flow"
+                            value={option.id}
+                            checked={settingsForm.payment_requirement_stage === option.id}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, payment_requirement_stage: e.target.value })}
+                            className="sr-only"
+                          />
+                          <div className={`w-10 h-10 rounded-xl bg-${option.color}-100 flex items-center justify-center text-${option.color}-600 shrink-0 shadow-sm`}>
+                            <Icon icon={option.icon} className="text-xl" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className={`text-[13px] font-black block leading-none mb-1 ${settingsForm.payment_requirement_stage === option.id ? `text-${option.color}-900` : 'text-gray-900'}`}>
+                              {option.label}
+                            </span>
+                            <p className="text-[10px] text-gray-500 font-medium leading-tight">
+                              {option.desc}
+                            </p>
+                          </div>
+                          {settingsForm.payment_requirement_stage === option.id && (
+                            <div className={`w-5 h-5 rounded-full bg-${option.color}-500 flex items-center justify-center text-white scale-110 shadow-sm`}>
+                              <Icon icon="heroicons:check-16-solid" className="text-[10px]" />
+                            </div>
+                          )}
+                        </label>
+                      ))}
                     </div>
                   </div>
 

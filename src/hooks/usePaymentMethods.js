@@ -18,7 +18,7 @@ export function usePaymentMethods(explicitBrandId = null) {
       const { data, error } = await supabase
         .from('payment_methods')
         .select('*')
-        .eq('brand_id', activeBrand.id)
+        .eq('brand_id', brandId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -29,7 +29,7 @@ export function usePaymentMethods(explicitBrandId = null) {
     } finally {
       setLoading(false);
     }
-  }, [activeBrand?.id]);
+  }, [brandId]);
 
   useEffect(() => {
     fetchPaymentMethods();
@@ -39,7 +39,7 @@ export function usePaymentMethods(explicitBrandId = null) {
     try {
       const { data, error } = await supabase
         .from('payment_methods')
-        .insert([{ ...methodData, brand_id: activeBrand.id }])
+        .insert([{ ...methodData, brand_id: brandId }])
         .select()
         .single();
 

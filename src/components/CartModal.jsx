@@ -15,6 +15,8 @@ import { translateGroup } from "@/utils/formatters";
 import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 3000 }),
@@ -117,13 +119,13 @@ export default function CartModal({ open, onClose }) {
   const isPOSMode = sessionStorage.getItem("aa_pos_mode") === "true";
   const manualType = sessionStorage.getItem("aa_manual_type");
 
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [customerName, setCustomerName] = useState(isPOSMode ? "Mostrador" : "");
   const [customerPhone, setCustomerPhone] = useState(isPOSMode ? "0000000" : "");
   const [showFulfillmentSelector, setShowFulfillmentSelector] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState("");
   const [isPaid, setIsPaid] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("");
 
   const isLeadRequired = !isPOSMode && (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' || fulfillmentType === 'scheduled');
   const isLeadValid = !isLeadRequired || (customerName?.trim() && customerPhone?.trim());

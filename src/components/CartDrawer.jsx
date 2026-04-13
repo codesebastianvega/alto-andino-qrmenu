@@ -176,8 +176,8 @@ export default function CartDrawer({ open, onClose }) {
 
       const { data: orderData, error: orderError } = await supabase.from('orders')
         .insert([{
-          status: fulfillmentType === 'dine_in' ? 'new' : 'waiting_payment',
-          origin: fulfillmentType === 'dine_in' ? 'table' : 'whatsapp',
+          status: (fulfillmentType === 'dine_in' || fulfillmentType === 'takeaway') ? 'new' : 'waiting_payment',
+          origin: fulfillmentType === 'dine_in' ? 'table' : (fulfillmentType === 'takeaway' ? 'takeaway' : 'whatsapp'),
           fulfillment_type: fulfillmentType,
           table_id: tableId,
           total_amount: finalTotal,
@@ -667,7 +667,7 @@ export default function CartDrawer({ open, onClose }) {
               </div>
               <h3 className="text-3xl font-black text-gray-900 mb-3">¡Pedido Recibido!</h3>
               <p className="text-gray-500 mb-8 max-w-[280px]">
-                Tu pedido <span className="font-bold text-gray-900">#{lastOrderId?.slice(0, 4).toUpperCase()}</span> ha sido registrado. {fulfillmentType === 'dine_in' ? 'En breve lo pasaremos a cocina para prepararlo.' : 'Por favor completa el pago para iniciar la preparación.'}
+                Tu pedido <span className="font-bold text-gray-900">#{lastOrderId?.slice(0, 4).toUpperCase()}</span> ha sido registrado. {(fulfillmentType === 'dine_in' || fulfillmentType === 'takeaway') ? 'En breve lo pasaremos a cocina para prepararlo.' : 'Por favor completa el pago para iniciar la preparación.'}
               </p>
               
               <button
