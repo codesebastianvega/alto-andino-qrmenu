@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -32,8 +33,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, Legend, AreaChart, Area,
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  ScatterChart, Scatter, ZAxis,
-  RadialBarChart, RadialBar
+  ScatterChart, Scatter, ZAxis, ReferenceLine,
+  RadialBarChart, RadialBar, Treemap
 } from 'recharts';
 
 const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1'];
@@ -61,67 +62,119 @@ const TabButton = ({ active, onClick, icon: Icon, label }) => (
   </button>
 );
 
+const HeatmapCell = React.memo(({ day, h, maxCount, onHover, onLeave, active }) => {
+  const opacity = h.count > 0 ? 0.12 + (h.count / maxCount) * 0.88 : 0.05;
+  const color = h.count > 0 ? 'bg-emerald-500' : 'bg-gray-100';
+  
+  return (
+    <div 
+      className={`flex-1 h-7 rounded-sm ${color} transition-all hover:ring-2 hover:ring-emerald-400 cursor-pointer relative group`}
+      style={{ opacity: active ? 1 : opacity, transform: active ? 'scale(1.1)' : 'scale(1)', zIndex: active ? 10 : 1 }}
+      onMouseEnter={(e) => onHover(day, h, e.clientX, e.clientY, e.currentTarget)}
+      onMouseMove={(e) => onHover(day, h, e.clientX, e.clientY, e.currentTarget)}
+      onMouseLeave={onLeave}
+    >
+      {active && (
+        <motion.div 
+          layoutId="heatmap-glow"
+          className="absolute inset-0 bg-emerald-400/20 blur-md rounded-sm"
+        />
+      )}
+    </div>
+  );
+});
+
 const WeeklyHeatmap = React.memo(({ data }) => {
   const [hover, setHover] = useState(null);
   
+  const maxCount = useMemo(() => {
+    let max = 1;
+    data.forEach(day => {
+      day.hours.forEach(h => {
+        if (h.count > max) max = h.count;
+      });
+    });
+    return max;
+  }, [data]);
+
+  const handleHover = useCallback((day, hourData, x, y) => {
+    setHover({
+      day,
+      hour: hourData.hour,
+      count: hourData.count,
+      x,
+      y
+    });
+  }, []);
+
+  const handleLeave = useCallback(() => setHover(null), []);
+
   return (
     <div className="relative">
-      <div className="flex flex-col gap-1.5 overflow-x-auto pb-4 custom-scrollbar">
+      <div className="flex flex-col gap-1.5 overflow-x-auto pt-8 pb-4 custom-scrollbar">
         {data.map((day, di) => (
           <div key={di} className="flex items-center gap-1.5 min-w-[600px]">
             <span className="w-8 text-[10px] font-black text-gray-400 uppercase">{day.day}</span>
             <div className="flex-1 flex gap-1">
-              {day.hours.map((h, hi) => {
-                const maxCount = Math.max(...data.flatMap(d => d.hours.map(h => h.count)), 1);
-                const opacity = h.count > 0 ? 0.12 + (h.count / maxCount) * 0.88 : 0.05;
-                const color = h.count > 0 ? 'bg-emerald-500' : 'bg-gray-100';
-                return (
-                  <div 
-                    key={hi} 
-                    className={`flex-1 h-7 rounded-sm ${color} transition-all hover:ring-2 hover:ring-emerald-400 cursor-none relative`}
-                    style={{ opacity }}
-                    onMouseEnter={(e) => {
-                      setHover({
-                        day: day.day,
-                        hour: h.hour,
-                        count: h.count,
-                        x: e.clientX,
-                        y: e.clientY
-                      });
-                    }}
-                    onMouseMove={(e) => {
-                      setHover(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null);
-                    }}
-                    onMouseLeave={() => setHover(null)}
-                  />
-                );
-              })}
+              {day.hours.map((h, hi) => (
+                <HeatmapCell 
+                  key={hi}
+                  day={day.day}
+                  h={h}
+                  maxCount={maxCount}
+                  onHover={handleHover}
+                  onLeave={handleLeave}
+                  active={hover?.day === day.day && hover?.hour === h.hour}
+                />
+              ))}
             </div>
           </div>
         ))}
       </div>
 
-      <AnimatePresence>
-        {hover && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            style={{ 
-              position: 'fixed', 
-              top: hover.y - 80, 
-              left: hover.x - 60,
-              pointerEvents: 'none',
-              zIndex: 100 
-            }}
-            className="bg-[#1A1A1A] text-white p-3 rounded-2xl shadow-2xl flex flex-col items-center min-w-[120px] border border-white/10"
-          >
-            <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">{hover.day} • {hover.hour}:00h</p>
-            <p className="text-sm font-black mt-1">{hover.count} <span className="text-gray-400 font-bold uppercase text-[10px]">Pedidos</span></p>
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#1A1A1A] rotate-45" />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
+          {hover && (
+            <motion.div
+              key="heatmap-tooltip"
+              initial={{ opacity: 0, scale: 0.9, y: 8 }}
+              animate={{ 
+                opacity: 1, 
+                scale: 1, 
+                y: 0,
+                left: hover.x,
+                top: hover.y
+              }}
+              exit={{ opacity: 0, scale: 0.9, y: 8 }}
+              transition={{ 
+                type: "spring", 
+                damping: 25, 
+                stiffness: 250,
+                opacity: { duration: 0.2 }
+              }}
+              style={{ 
+                position: 'fixed', 
+                pointerEvents: 'none',
+                zIndex: 999999,
+                transform: 'translate(-50%, calc(-100% - 15px))'
+              }}
+              className="bg-[#101010]/95 backdrop-blur-2xl text-white p-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col items-center min-w-[160px] border border-white/10"
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest leading-none">
+                  {hover.day} • {hover.hour}:00h
+                </p>
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-black tabular-nums">{hover.count}</span>
+                <span className="text-gray-400 font-bold uppercase text-[9px] tracking-tight">Pedidos realizados</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 });
@@ -188,6 +241,7 @@ export default function AdminAnalytics() {
       const [ordersRes, leadsRes, eventsRes, prevOrdersRes, prevLeadsRes, prevEventsRes, pmRes] = await Promise.all([
         supabase.from('orders').select(`
           id, total_amount, status, created_at, delivered_at, fulfillment_type, payment_method,
+          cancellation_reason, cancelled_by, discount_amount, discount_reason,
           restaurant_tables ( id, table_number ),
           order_items ( quantity, unit_price, products ( name, cost, margin, categories ( name ) ) )
         `).eq('brand_id', activeBrandId)
@@ -204,8 +258,11 @@ export default function AdminAnalytics() {
           .gte('created_at', start.toISOString())
           .order('created_at', { ascending: false }),
 
-        // Previous period
-        supabase.from('orders').select(`id, total_amount, status, created_at, delivered_at`)
+        // Previous period - now including items for detailed margin comparison
+        supabase.from('orders').select(`
+          id, total_amount, status, created_at, delivered_at,
+          order_items ( quantity, unit_price, products ( name, cost, margin ) )
+        `)
           .eq('brand_id', activeBrandId)
           .gte('created_at', prevStart.toISOString())
           .lt('created_at', prevEnd.toISOString()),
@@ -279,17 +336,28 @@ export default function AdminAnalytics() {
     } catch (err) {
       console.error('Error deleting lead:', err);
     }
-  };
-
-  const stats = useMemo(() => {
+  };  const biStats = useMemo(() => {
     const { orders: currentOrders, leads: currentLeads } = data;
     const { orders: prevOrders, leads: prevLeads } = prevData;
 
     const calc = (orders, leads) => {
       const delivered = orders.filter(o => o.status === 'delivered');
       const cancelled = orders.filter(o => o.status === 'cancelled');
-      const revenue = delivered.reduce((sum, o) => sum + Number(o.total_amount), 0);
-      const lostRevenue = cancelled.reduce((sum, o) => sum + Number(o.total_amount), 0);
+      
+      let revenue = 0;
+      let cost = 0;
+      let discount = 0;
+      
+      delivered.forEach(o => {
+        revenue += Number(o.total_amount || 0);
+        discount += Number(o.discount_amount || 0);
+        o.order_items?.forEach(item => {
+          cost += (Number(item.quantity) * Number(item.products?.cost || 0));
+        });
+      });
+
+      const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : 0;
+      const profit = revenue - cost;
       const avgTicket = delivered.length ? revenue / delivered.length : 0;
       
       let totalMins = 0;
@@ -305,7 +373,19 @@ export default function AdminAnalytics() {
       });
       const avgTime = timeCount ? totalMins / timeCount : 0;
 
-      return { revenue, avgTicket, orderCount: delivered.length, leadCount: leads.length, avgTime, cancelledCount: cancelled.length, lostRevenue };
+      return { 
+        revenue, 
+        profit, 
+        margin, 
+        cost, 
+        discount, 
+        avgTicket, 
+        orderCount: delivered.length, 
+        leadCount: leads.length, 
+        avgTime, 
+        cancelledCount: cancelled.length,
+        cancelledRevenue: cancelled.reduce((sum, o) => sum + Number(o.total_amount || 0), 0)
+      };
     };
 
     const current = calc(currentOrders, currentLeads);
@@ -317,21 +397,22 @@ export default function AdminAnalytics() {
     };
 
     return {
-      revenue: current.revenue,
-      avgTicket: current.avgTicket,
-      orderCount: current.orderCount,
-      newLeads: current.leadCount,
-      avgTime: current.avgTime,
-      cancelledCount: current.cancelledCount,
-      lostRevenue: current.lostRevenue,
-      revenueDiff: getDiff(current.revenue, prev.revenue),
-      ordersDiff: getDiff(current.orderCount, prev.orderCount),
-      ticketDiff: getDiff(current.avgTicket, prev.avgTicket),
-      leadsDiff: getDiff(current.leadCount, prev.leadCount),
-      avgTimeDiff: getDiff(current.avgTime, prev.avgTime),
-      cancelledDiff: getDiff(current.cancelledCount, prev.cancelledCount),
+      current,
+      prev,
+      diffs: {
+        revenue: getDiff(current.revenue, prev.revenue),
+        profit: getDiff(current.profit, prev.profit),
+        orders: getDiff(current.orderCount, prev.orderCount),
+        ticket: getDiff(current.avgTicket, prev.avgTicket),
+        leads: getDiff(current.leadCount, prev.leadCount),
+        avgTime: getDiff(current.avgTime, prev.avgTime),
+        cancelled: getDiff(current.cancelledCount, prev.cancelledCount),
+        margin: current.margin - prev.margin // Direct point difference
+      }
     };
   }, [data, prevData]);
+
+  const stats = useMemo(() => biStats.current, [biStats]);
 
   const bottleneckStats = useMemo(() => {
     const products = {};
@@ -351,22 +432,148 @@ export default function AdminAnalytics() {
       .map(p => ({ ...p, avg: Math.round(p.times.reduce((a,b) => a+b, 0) / p.times.length) }))
       .sort((a,b) => b.avg - a.avg)
       .slice(0, 3); // Top 3 slowest
-  }, [data.orders]);
-
-  const productPerformance = useMemo(() => {
+  }, [data.orders]);  const bcgData = useMemo(() => {
     const products = {};
+    let totalVolume = 0;
+
     data.orders.filter(o => o.status === 'delivered').forEach(o => {
       o.order_items?.forEach(item => {
         const p = item.products;
         if (!p) return;
-        const catName = p.categories?.name || 'Varios';
-        if (!products[p.name]) products[p.name] = { name: p.name, category: catName, units: 0, revenue: 0 };
+        if (!products[p.name]) {
+          products[p.name] = { 
+            name: p.name, 
+            units: 0, 
+            revenue: 0, 
+            cost: Number(p.cost || 0),
+            margin: 0
+          };
+        }
         products[p.name].units += item.quantity;
         products[p.name].revenue += (item.quantity * item.unit_price);
+        totalVolume += item.quantity;
       });
     });
-    return Object.values(products).sort((a,b) => b.revenue - a.revenue);
+
+    // 1% Relevance Filter
+    const relevanceThreshold = totalVolume * 0.01;
+    const filteredProducts = Object.values(products)
+      .filter(p => p.units >= relevanceThreshold)
+      .map(p => ({
+        ...p,
+        margin: p.revenue > 0 ? ((p.revenue - (p.units * p.cost)) / p.revenue) * 100 : 0
+      }));
+
+    if (filteredProducts.length === 0) return { items: [], medians: { units: 0, margin: 0 } };
+
+    // Median Calculations
+    const sortedUnits = [...filteredProducts].map(p => p.units).sort((a,b) => a-b);
+    const sortedMargins = [...filteredProducts].map(p => p.margin).sort((a,b) => a-b);
+    
+    const getMedian = (arr) => {
+      const mid = Math.floor(arr.length / 2);
+      return arr.length % 2 !== 0 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2;
+    };
+
+    const medians = {
+      units: getMedian(sortedUnits),
+      margin: getMedian(sortedMargins)
+    };
+
+    const items = filteredProducts.map(p => {
+      let category = 'Dog';
+      if (p.units >= medians.units && p.margin >= medians.margin) category = 'Star';
+      else if (p.units >= medians.units && p.margin < medians.margin) category = 'Cow';
+      else if (p.units < medians.units && p.margin >= medians.margin) category = 'Enigma';
+      
+      return { ...p, bcgCategory: category };
+    });
+
+    return { items, medians };
   }, [data.orders]);
+
+  const growthContribution = useMemo(() => {
+    const currentItems = {};
+    const prevItems = {};
+
+    data.orders.filter(o => o.status === 'delivered').forEach(o => {
+      o.order_items?.forEach(item => {
+        const name = item.products?.name;
+        if (!name) return;
+        if (!currentItems[name]) currentItems[name] = { revenue: 0, profit: 0, units: 0 };
+        const revenue = item.quantity * item.unit_price;
+        const profit = revenue - (item.quantity * Number(item.products?.cost || 0));
+        currentItems[name].revenue += revenue;
+        currentItems[name].profit += profit;
+        currentItems[name].units += item.quantity;
+      });
+    });
+
+    prevData.orders.filter(o => o.status === 'delivered').forEach(o => {
+      o.order_items?.forEach(item => {
+        const name = item.products?.name;
+        if (!name) return;
+        if (!prevItems[name]) prevItems[name] = { revenue: 0, profit: 0, units: 0 };
+        const revenue = item.quantity * item.unit_price;
+        const profit = revenue - (item.quantity * Number(item.products?.cost || 0));
+        prevItems[name].revenue += revenue;
+        prevItems[name].profit += profit;
+        prevItems[name].units += item.quantity;
+      });
+    });
+
+    const totalPrevProfit = Object.values(prevItems).reduce((sum, item) => sum + item.profit, 0) || 1;
+    const allNames = new Set([...Object.keys(currentItems), ...Object.keys(prevItems)]);
+
+    return Array.from(allNames).map(name => {
+      const curr = currentItems[name] || { revenue: 0, profit: 0, units: 0 };
+      const prev = prevItems[name] || { revenue: 0, profit: 0, units: 0 };
+      const profitDiff = curr.profit - prev.profit;
+      
+      return {
+        name,
+        profitDiff,
+        contribution: (profitDiff / totalPrevProfit) * 100,
+        revenueGrow: prev.revenue > 0 ? ((curr.revenue - prev.revenue) / prev.revenue) * 100 : 100
+      };
+    }).sort((a,b) => b.profitDiff - a.profitDiff);
+  }, [data.orders, prevData.orders]);
+
+  const leakageAudit = useMemo(() => {
+    const cancellations = data.orders
+      .filter(o => o.status === 'cancelled')
+      .map(o => ({
+        id: o.id,
+        reason: o.cancellation_reason || 'Sin motivo especificado',
+        by: o.cancelled_by || 'Sistema',
+        amount: Number(o.total_amount || 0),
+        time: o.created_at
+      }));
+
+    const discounts = data.orders
+      .filter(o => Number(o.discount_amount || 0) > 0)
+      .map(o => ({
+        id: o.id,
+        reason: o.discount_reason || 'Descuento manual',
+        amount: Number(o.discount_amount || 0),
+        time: o.created_at
+      }));
+
+    return { 
+      cancellations, 
+      discounts,
+      totalLeakage: cancellations.reduce((sum, c) => sum + c.amount, 0) + discounts.reduce((sum, d) => sum + d.amount, 0)
+    };
+  }, [data.orders]);
+
+  // Derived hooks for backward compatibility
+  const productPerformance = useMemo(() => {
+    return bcgData.items.sort((a,b) => b.revenue - a.revenue);
+  }, [bcgData.items]);
+
+  const topProducts = useMemo(() => {
+    return bcgData.items.sort((a,b) => b.units - a.units).slice(0, 5);
+  }, [bcgData.items]);
 
   const categoryStats = useMemo(() => {
     const cats = {};
@@ -379,19 +586,6 @@ export default function AdminAnalytics() {
       });
     });
     return Object.values(cats).sort((a,b) => b.value - a.value);
-  }, [data.orders]);
-
-  const topProducts = useMemo(() => {
-    const productStats = {};
-    data.orders.filter(o => o.status === 'delivered').forEach(o => {
-      o.order_items?.forEach(item => {
-        const name = item.products?.name || 'Desconocido';
-        if (!productStats[name]) productStats[name] = { name, cantidad: 0, ingresos: 0 };
-        productStats[name].cantidad += item.quantity;
-        productStats[name].ingresos += (item.quantity * item.unit_price);
-      });
-    });
-    return Object.values(productStats).sort((a,b) => b.cantidad - a.cantidad).slice(0, 5);
   }, [data.orders]);
 
   const channelStats = useMemo(() => {
@@ -867,225 +1061,359 @@ export default function AdminAnalytics() {
 
       {/* Distribution & Lists */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Payment Methods */}
+        {/* Payment Methods - Executive Stacked Bar */}
         <GlassCard className="p-8">
-          <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-8">Métodos de Pago</h3>
-          <div className="space-y-4">
+          <div className="flex justify-between items-center mb-8">
+            <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Mix de Pagos</h3>
+            <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md uppercase">Participación</span>
+          </div>
+          <div className="h-[250px] w-full">
+            {isReady && paymentStats.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart
+                  layout="vertical"
+                  data={[{ name: 'Total', ...paymentStats.reduce((acc, curr) => ({ ...acc, [curr.name]: curr.value }), {}) }]}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <XAxis type="number" hide />
+                  <YAxis type="category" dataKey="name" hide />
+                  <RechartsTooltip 
+                    cursor={{ fill: 'transparent' }}
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
+                    formatter={(value) => formatCurrency(value)}
+                  />
+                  {paymentStats.map((entry, index) => (
+                    <Bar 
+                      key={index} 
+                      dataKey={entry.name} 
+                      stackId="a" 
+                      fill={COLORS[index % COLORS.length]} 
+                      radius={index === 0 ? [4, 0, 0, 4] : index === paymentStats.length - 1 ? [0, 4, 4, 0] : [0, 0, 0, 0]}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400 text-[10px] font-bold uppercase italic">Sin datos de pago</div>
+            )}
+          </div>
+          {/* Legend */}
+          <div className="mt-4 flex flex-wrap gap-3">
              {paymentStats.map((p, i) => (
-                <div key={i}>
-                   <div className="flex justify-between items-center mb-1 text-xs">
-                      <span className="font-bold text-gray-600 uppercase tracking-tighter">{p.name}</span>
-                      <span className="font-black text-gray-900">{formatCompactCurrency(p.value)}</span>
-                   </div>
-                   <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                      <div 
-                         className="h-full bg-blue-500 rounded-full" 
-                         style={{ width: `${(p.value / stats.revenue * 100) || 0}%` }}
-                      />
-                   </div>
+                <div key={i} className="flex items-center gap-1.5">
+                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                   <span className="text-[9px] font-bold text-gray-500 uppercase">{p.name}</span>
                 </div>
              ))}
           </div>
         </GlassCard>
 
-        {/* Productos Estrella */}
+        {/* Star Products - Vertical Bar Chart (Volume) */}
         <GlassCard className="p-8">
-          <h3 className="text-sm font-black text-gray-900 mb-8 uppercase tracking-tight">Productos Estrella</h3>
-          <div className="space-y-4">
-             {topProducts.map((p, i) => (
-                <div key={i} className="flex justify-between items-center group">
-                   <div className="flex items-center gap-4">
-                      <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center font-black text-gray-400 text-xs">
-                         #{i + 1}
-                      </div>
-                      <span className="font-bold text-gray-700 uppercase tracking-tighter group-hover:text-emerald-600 transition-colors">{p.name}</span>
-                   </div>
-                   <div className="text-right">
-                      <p className="text-xs font-black text-gray-900">{p.cantidad} u.</p>
-                      <p className="text-[10px] font-bold text-gray-400">{formatCompactCurrency(p.ingresos)}</p>
-                   </div>
-                </div>
-             ))}
+          <div className="flex justify-between items-center mb-8">
+            <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Productos Estrella</h3>
+            <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md uppercase">Volumen (Unidades)</span>
+          </div>
+          <div className="h-[250px] w-full">
+            {isReady && topProducts.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={topProducts.map(p => ({ name: p.name, value: p.units }))} margin={{ top: 20, right: 0, left: 0, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 9, fontBold: '900', fill: '#9ca3af' }}
+                    interval={0}
+                    angle={-15}
+                    textAnchor="end"
+                  />
+                  <YAxis hide />
+                  <RechartsTooltip 
+                    cursor={{ fill: '#f3f4f6', opacity: 0.4 }}
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
+                    formatter={(val) => [`${val} unidades`, 'Volumen']}
+                  />
+                  <Bar 
+                    dataKey="value" 
+                    fill="#10B981" 
+                    radius={[6, 6, 0, 0]}
+                    barSize={30}
+                  >
+                    {topProducts.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400 text-[10px] font-bold uppercase italic">Sin datos de productos</div>
+            )}
           </div>
         </GlassCard>
 
-        {/* Mesas más Activas */}
+        {/* Active Tables - Radar Chart */}
         <GlassCard className="p-8">
-          <h3 className="text-sm font-black text-gray-900 mb-8 uppercase tracking-tight">Mesas más Activas</h3>
-          <div className="space-y-4">
-             {tableStats.slice(0, 5).map((t, i) => (
-                <div key={i} className="flex justify-between items-center">
-                   <div className="flex items-center gap-4">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center font-black text-emerald-600 text-[10px]">
-                         MZA
-                      </div>
-                      <span className="font-bold text-gray-700 uppercase tracking-tighter">{t.name}</span>
-                   </div>
-                   <div className="text-right">
-                      <p className="text-xs font-black text-gray-900">{formatCompactCurrency(t.ingresos)}</p>
-                      <p className="text-[10px] font-bold text-gray-400">{t.pedidos} pedidos</p>
-                   </div>
-                </div>
-             ))}
+          <div className="flex justify-between items-center mb-8">
+            <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Carga por Mesa</h3>
+            <span className="text-[10px] font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md uppercase">Hotspots</span>
+          </div>
+          <div className="h-[250px] w-full">
+            {isReady && tableStats.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={tableStats.slice(0, 6)}>
+                  <PolarGrid stroke="#f0f0f0" />
+                  <PolarAngleAxis dataKey="name" tick={{ fontSize: 9, fontBold: '900', fill: '#9ca3af' }} />
+                  <Radar
+                    name="Ingresos"
+                    dataKey="ingresos"
+                    stroke="#8B5CF6"
+                    fill="#8B5CF6"
+                    fillOpacity={0.5}
+                  />
+                  <RechartsTooltip 
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
+                    formatter={(val) => [formatCurrency(val), 'Ingresos']}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400 text-[10px] font-bold uppercase italic">Sin datos de mesas</div>
+            )}
           </div>
         </GlassCard>
       </div>
     </div>
   );
 
-  const RenderAnalitica = () => (
-    <div className="space-y-8 animate-fadeUp">
-      {/* Conversion Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { icon: Zap, label: 'Pico de Ventas', val: peakHour, color: 'text-amber-500' },
-          { icon: Trash2, label: 'Cancelados', val: stats.cancelledCount, color: 'text-rose-500' },
-          { icon: ShoppingCart, label: 'Venta Perdida', val: formatCompactCurrency(stats.lostRevenue), color: 'text-rose-500' },
-          { icon: ShoppingCart, label: 'Tasa Abandono', val: `${analyticsSummary.abandonmentRate}%`, color: 'text-rose-500' },
-        ].map((item, i) => (
-          <GlassCard key={i} className="p-6 flex items-center gap-4">
-             <div className={`w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center ${item.color}`}>
-                <item.icon size={18} />
-             </div>
-             <div>
-                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{item.label}</p>
-                <p className="text-xl font-black text-gray-900">{item.val}</p>
-             </div>
+  const RenderAnalitica = () => {
+    const topDriver = growthContribution[0] || { name: 'N/A', contribution: 0 };
+    
+    return (
+      <div className="space-y-8 animate-fadeUp">
+        {/* Actionable BI KPI Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <GlassCard className="p-6 relative overflow-hidden group">
+            <div className="flex justify-between items-start mb-4">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <DollarSign size={18} />
+              </div>
+              <DiffBadge value={biStats.diffs.profit} />
+            </div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Utilidad Neta</p>
+            <h3 className="text-2xl font-black text-gray-900 mt-1">{formatCurrency(biStats.current.profit)}</h3>
+            <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase">Post-Costos de Insumo</p>
           </GlassCard>
-        ))}
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Channel Distribution Table */}
-        <GlassCard className="overflow-hidden">
+          <GlassCard className="p-6">
+            <div className="flex justify-between items-start mb-4">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <TrendingUp size={18} />
+              </div>
+              <div className={`text-[10px] font-black flex items-center gap-1 ${biStats.diffs.margin >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                {biStats.diffs.margin >= 0 ? '+' : ''}{biStats.diffs.margin.toFixed(1)} pts
+              </div>
+            </div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Margen Real</p>
+            <h3 className="text-2xl font-black text-gray-900 mt-1">{biStats.current.margin.toFixed(1)}%</h3>
+            <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase">Eficiencia Operativa</p>
+          </GlassCard>
 
-           <div className="p-6 border-b border-gray-100 bg-gray-50/30">
-            <h3 className="font-black text-gray-900 tracking-tight text-sm uppercase">Distribución por Canal</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-white text-[9px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
-                  <th className="px-6 py-4">Canal</th>
-                  <th className="px-6 py-4">Órdenes</th>
-                  <th className="px-6 py-4">Ticket Prom.</th>
-                  <th className="px-6 py-4 text-right">Total Bruto</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50 font-bold text-gray-600">
-                {channelStats.map((c, i) => (
-                  <tr key={i} className="hover:bg-emerald-500/5 transition-colors">
-                    <td className="px-6 py-4 uppercase tracking-tighter">{c.name}</td>
-                    <td className="px-6 py-4">{data.orders.filter(o => {
-                      const type = o.fulfillment_type || 'takeaway';
-                      if (c.name === 'En Mesa') return type === 'dine_in';
-                      if (c.name === 'Para Llevar') return type === 'takeaway';
-                      if (c.name === 'Domicilio') return type === 'delivery';
-                      return type === 'scheduled';
-                    }).length} ops</td>
-                    <td className="px-6 py-4">
-                      {formatCurrency(c.value / (data.orders.filter(o => {
-                        const type = o.fulfillment_type || 'takeaway';
-                        if (c.name === 'En Mesa') return type === 'dine_in';
-                        if (c.name === 'Para Llevar') return type === 'takeaway';
-                        if (c.name === 'Domicilio') return type === 'delivery';
-                        return type === 'scheduled';
-                      }).length || 1))}
-                    </td>
-                    <td className="px-6 py-4 text-right font-black text-gray-900">{formatCurrency(c.value)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </GlassCard>
-      </div>
+          <GlassCard className="p-6">
+            <div className="flex justify-between items-start mb-4">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center">
+                <Zap size={18} />
+              </div>
+              <span className="text-[10px] font-black text-rose-500 bg-rose-50 px-2 py-0.5 rounded-md uppercase">Leakage</span>
+            </div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Fuga de Ingresos</p>
+            <h3 className="text-2xl font-black text-gray-900 mt-1">{formatCurrency(leakageAudit.totalLeakage)}</h3>
+            <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase">Canc. + Descuentos</p>
+          </GlassCard>
 
-      {/* Product Performance Table */}
-      <GlassCard className="overflow-hidden">
-        <div className="p-8 border-b border-gray-100 flex justify-between items-end">
-          <div>
-            <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Rendimiento por Producto</h3>
-            <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Desglose detallado de ventas y participación</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-gray-400 uppercase">Mostrar:</span>
-            <div className="flex bg-gray-100 rounded-lg p-1">
-              {[5, 10, 20, 'Todos'].map((num) => (
-                <button
-                  key={num}
-                  onClick={() => setProductLimit(num === 'Todos' ? 999 : num)}
-                  className={`px-3 py-1 text-[10px] font-black rounded-md transition-all ${
-                    (num === 'Todos' ? productLimit === 999 : productLimit === num) 
-                    ? 'bg-white text-gray-900 shadow-sm' 
-                    : 'text-gray-400 hover:text-gray-600'
-                  }`}
-                >
-                  {num}
-                </button>
+          <GlassCard className="p-6">
+            <div className="flex justify-between items-start mb-4">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center">
+                <Users size={18} />
+              </div>
+            </div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Top Driver Crecimiento</p>
+            <h3 className="text-lg font-black text-gray-900 mt-1 truncate">{topDriver.name}</h3>
+            <p className="text-[9px] font-bold text-emerald-500 mt-1 uppercase">+{topDriver.contribution.toFixed(1)}% Al Crecimiento</p>
+          </GlassCard>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* BCG Matrix Visualization */}
+          <GlassCard className="lg:col-span-2 p-8 h-[450px]">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Matriz de Portafolio (BCG)</h3>
+                <p className="text-[10px] font-bold text-gray-400 uppercase">Clasificación por Volumen vs Margen (Umbrales Mediana)</p>
+              </div>
+              <div className="flex gap-4">
+                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-[9px] font-black text-gray-500 uppercase">Star</span></div>
+                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500" /><span className="text-[9px] font-black text-gray-500 uppercase">Cow</span></div>
+                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500" /><span className="text-[9px] font-black text-gray-500 uppercase">Enigma</span></div>
+                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-rose-500" /><span className="text-[9px] font-black text-gray-500 uppercase">Dog</span></div>
+              </div>
+            </div>
+            <div className="h-[320px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis 
+                    type="number" 
+                    dataKey="units" 
+                    name="Volumen" 
+                    label={{ value: 'Volumen (Unidades)', position: 'insideBottom', offset: -10, fontSize: 10, fontWeight: 900 }} 
+                    tick={{ fontSize: 9, fontWeight: 900 }}
+                  />
+                  <YAxis 
+                    type="number" 
+                    dataKey="margin" 
+                    name="Margen %" 
+                    label={{ value: 'Margen %', angle: -90, position: 'insideLeft', fontSize: 10, fontWeight: 900 }} 
+                    tick={{ fontSize: 9, fontWeight: 900 }}
+                  />
+                  <ZAxis type="number" dataKey="revenue" range={[60, 400]} />
+                  <RechartsTooltip 
+                    cursor={{ strokeDasharray: '3 3' }}
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-white p-3 rounded-xl shadow-2xl border border-gray-100">
+                            <p className="text-[10px] font-black text-gray-900 uppercase mb-1">{data.name}</p>
+                            <p className="text-[9px] font-bold text-gray-500 uppercase">Cant: {data.units} un</p>
+                            <p className="text-[9px] font-bold text-emerald-600 uppercase">Margen: {data.margin.toFixed(1)}%</p>
+                            <p className="text-[9px] font-black text-indigo-600 mt-2 uppercase">{data.bcgCategory}</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <ReferenceLine x={bcgData.medians.units} stroke="#9ca3af" strokeDasharray="3 3" />
+                  <ReferenceLine y={bcgData.medians.margin} stroke="#9ca3af" strokeDasharray="3 3" />
+                  <Scatter 
+                    name="Productos" 
+                    data={bcgData.items} 
+                    fill="#10B981"
+                  >
+                    {bcgData.items.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={
+                          entry.bcgCategory === 'Star' ? '#10B981' : 
+                          entry.bcgCategory === 'Cow' ? '#3B82F6' : 
+                          entry.bcgCategory === 'Enigma' ? '#F59E0B' : '#F43F5E'
+                        } 
+                      />
+                    ))}
+                  </Scatter>
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
+          </GlassCard>
+
+          {/* Growth Contribution Column */}
+          <GlassCard className="p-8">
+            <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-2">Contribución al Crecimiento</h3>
+            <p className="text-[10px] font-bold text-gray-400 uppercase mb-6">¿Qué producto impulsó el mes?</p>
+            <div className="space-y-4">
+              {growthContribution.slice(0, 6).map((item, i) => (
+                <div key={i} className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase">
+                    <span className="text-gray-900 truncate max-w-[140px] tracking-tight">{item.name}</span>
+                    <span className={item.profitDiff >= 0 ? 'text-emerald-500' : 'text-rose-500'}>
+                      {item.profitDiff >= 0 ? '+' : ''}{formatCompactCurrency(item.profitDiff)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-gray-50 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full ${item.profitDiff >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} 
+                      style={{ width: `${Math.min(Math.abs(item.contribution) * 2, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest text-right">
+                    Contribución: {item.contribution.toFixed(1)}%
+                  </p>
+                </div>
               ))}
             </div>
-          </div>
+          </GlassCard>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50/50">
-                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Producto</th>
-                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Unidades</th>
-                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Ingresos Brutos</th>
-                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Participación (%)</th>
-                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acción</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {productPerformance.slice(0, productLimit).map((p, i) => (
-                <tr key={i} className="hover:bg-gray-50/50 transition-colors group">
-                  <td className="px-8 py-5">
-                    <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{p.name}</p>
-                    <p className="text-[9px] text-gray-400 font-bold uppercase">{p.category || 'Sin Categoría'}</p>
-                  </td>
-                  <td className="px-8 py-5 text-center">
-                    <span className="text-sm font-black text-gray-900">{p.units}</span>
-                  </td>
-                  <td className="px-8 py-5 text-center">
-                    <span className="text-sm font-black text-gray-900">{formatCompactCurrency(p.revenue)}</span>
-                  </td>
-                  <td className="px-8 py-5 min-w-[200px]">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <motion.div 
-                          initial={{ width: 0 }}
-                          animate={{ width: `${(p.revenue / stats.revenue * 100) || 0}%` }}
-                          className="h-full bg-emerald-500 rounded-full"
-                        />
-                      </div>
-                      <span className="text-[10px] font-extrabold text-gray-400 w-12 text-right">{((p.revenue / stats.revenue * 100) || 0).toFixed(1)}%</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5 text-right">
-                    <button className="p-2 text-gray-300 hover:text-gray-900 transition-colors">
-                      <ExternalLink size={14} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+        {/* Audit & Leakage Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <GlassCard className="overflow-hidden">
+            <div className="p-6 border-b border-gray-100 bg-gray-50/10 flex justify-between items-center">
+              <h3 className="font-black text-gray-900 tracking-tight text-sm uppercase">Auditoría de Fugas: Cancelaciones</h3>
+              <Trash2 className="text-rose-400" size={16} />
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-white text-[9px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                    <th className="px-6 py-4">ID / Motivo</th>
+                    <th className="px-6 py-4">Responsable</th>
+                    <th className="px-6 py-4 text-right">Monto Perdido</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 font-bold text-gray-600">
+                  {leakageAudit.cancellations.length > 0 ? leakageAudit.cancellations.slice(0, 5).map((c, i) => (
+                    <tr key={i} className="hover:bg-rose-50/30 transition-colors">
+                      <td className="px-6 py-4">
+                        <p className="text-gray-900 uppercase">#{c.id.slice(0, 8)}</p>
+                        <p className="text-[9px] text-rose-500 uppercase">{c.reason}</p>
+                      </td>
+                      <td className="px-6 py-4 uppercase text-[10px]">{c.by}</td>
+                      <td className="px-6 py-4 text-right text-rose-500 font-black">{formatCurrency(c.amount)}</td>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan="3" className="px-6 py-10 text-center italic text-gray-300">No se registran fugas por cancelación</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </GlassCard>
+
+          <GlassCard className="overflow-hidden">
+            <div className="p-6 border-b border-gray-100 bg-gray-50/10 flex justify-between items-center">
+              <h3 className="font-black text-gray-900 tracking-tight text-sm uppercase">Auditoría de Fugas: Descuentos</h3>
+              <DollarSign className="text-amber-400" size={16} />
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-white text-[9px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                    <th className="px-6 py-4">ID / Glosa</th>
+                    <th className="px-6 py-4">Fecha</th>
+                    <th className="px-6 py-4 text-right">Monto</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 font-bold text-gray-600">
+                  {leakageAudit.discounts.length > 0 ? leakageAudit.discounts.slice(0, 5).map((d, i) => (
+                    <tr key={i} className="hover:bg-amber-50/30 transition-colors">
+                      <td className="px-6 py-4">
+                        <p className="text-gray-900 uppercase">#{d.id.slice(0, 8)}</p>
+                        <p className="text-[9px] text-amber-600 uppercase">{d.reason}</p>
+                      </td>
+                      <td className="px-6 py-4 text-[10px]">{new Date(d.time).toLocaleDateString()}</td>
+                      <td className="px-6 py-4 text-right text-amber-600 font-black">{formatCurrency(d.amount)}</td>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan="3" className="px-6 py-10 text-center italic text-gray-300">No hay descuentos registrados</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </GlassCard>
         </div>
-        {productLimit < productPerformance.length && (
-          <div className="p-4 bg-gray-50/30 text-center border-t border-gray-100">
-            <button 
-              onClick={() => setProductLimit(prev => prev + 5)}
-              className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline"
-            >
-              Cargar más productos
-            </button>
-          </div>
-        )}
-      </GlassCard>
-    </div>
-  );
+      </div>
+    );
+  };
 
   const RenderOperaciones = () => (
     <div className="space-y-8 animate-fadeUp">
