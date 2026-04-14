@@ -32,7 +32,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, Legend, AreaChart, Area,
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  ScatterChart, Scatter, ZAxis
+  ScatterChart, Scatter, ZAxis,
+  RadialBarChart, RadialBar
 } from 'recharts';
 
 const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1'];
@@ -330,10 +331,10 @@ export default function AdminAnalytics() {
 
   const channelStats = useMemo(() => {
     const channels = {
-      'En Mesa': { name: 'En Mesa', value: 0, color: '#10B981' },
-      'Para Llevar': { name: 'Para Llevar', value: 0, color: '#3B82F6' },
-      'Domicilio': { name: 'Domicilio', value: 0, color: '#F59E0B' },
-      'Programado': { name: 'Programado', value: 0, color: '#8B5CF6' }
+      'En Mesa': { name: 'En Mesa', value: 0, fill: '#10B981' },
+      'Para Llevar': { name: 'Para Llevar', value: 0, fill: '#3B82F6' },
+      'Domicilio': { name: 'Domicilio', value: 0, fill: '#F59E0B' },
+      'Programado': { name: 'Programado', value: 0, fill: '#8B5CF6' }
     };
 
     data.orders.forEach(o => {
@@ -346,7 +347,8 @@ export default function AdminAnalytics() {
       if (channels[label]) channels[label].value += Number(o.total_amount);
     });
 
-    return Object.values(channels).filter(c => c.value > 0);
+    // Sort by value to have the biggest rings outside
+    return Object.values(channels).filter(c => c.value > 0).sort((a,b) => a.value - b.value);
   }, [data.orders]);
 
   const tableStats = useMemo(() => {
@@ -418,7 +420,7 @@ export default function AdminAnalytics() {
   }, [data.orders]);
 
   const dayOfWeekStats = useMemo(() => {
-    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     const stats = days.map(name => ({ name, pedidos: 0, revenue: 0, avgTicket: 0 }));
 
     data.orders.forEach(o => {
@@ -635,20 +637,144 @@ export default function AdminAnalytics() {
         </GlassCard>
       </div>
 
-      {/* High Intensity Insights */}
+      {/* High Intensity Insights - New Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Weekly Heatmap */}
-        <GlassCard className="lg:col-span-2 p-8 overflow-hidden">
+        {/* [NEW] Ciclo de Ventas Semanal (Revenue vs Avg Ticket) */}
+        <GlassCard className="lg:col-span-2 p-8">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Ciclo de Ventas Semanal</h3>
+              <p className="text-[10px] font-bold text-gray-400 uppercase">Relación Ingresos vs Ticket Promedio por día</p>
+            </div>
+            <div className="flex gap-4">
+               <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">Ingresos</span>
+               </div>
+               <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-blue-500" />
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">Ticket Prom.</span>
+               </div>
+            </div>
+          </div>
+          <div className="h-[250px] w-full">
+            {isReady && (
+              <ResponsiveContainer width="100%" height={250}>
+                <AreaChart data={dayOfWeekStats}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 'bold' }} 
+                  />
+                  <YAxis hide />
+                  <RechartsTooltip 
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
+                    formatter={(val, name) => [formatCurrency(val), name === 'revenue' ? 'Ingresos' : 'Ticket Prom.']}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke="#10B981" 
+                    strokeWidth={3} 
+                    fillOpacity={1} 
+                    fill="url(#colorRevenue)" 
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="avgTicket" 
+                    stroke="#3B82F6" 
+                    strokeWidth={2} 
+                    strokeDasharray="5 5"
+                    fill="transparent" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </GlassCard>
+
+        {/* [NEW] Mix de Canales (Radial Bar) */}
+        <GlassCard className="p-8">
+          <div className="flex justify-between items-center mb-8">
+            <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Mix de Canales</h3>
+            <div className="flex flex-col gap-1 items-end">
+               <span className="text-[10px] font-black text-emerald-600 uppercase bg-emerald-50 px-2 py-0.5 rounded-md">Ventas Reales</span>
+            </div>
+          </div>
+
+          <div className="h-[250px] w-full relative">
+            {isReady && (
+              <ResponsiveContainer width="100%" height={250}>
+                <RadialBarChart 
+                  innerRadius="30%" 
+                  outerRadius="100%" 
+                  barSize={12} 
+                  data={channelStats}
+                  startAngle={90}
+                  endAngle={450}
+                >
+                  <RadialBar
+                    minAngle={15}
+                    background={{ fill: '#f3f4f6' }}
+                    clockWise
+                    dataKey="value"
+                    cornerRadius={10}
+                  />
+                  <RechartsTooltip 
+                    cursor={{ stroke: 'transparent' }}
+                    offset={20}
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-white/20 animate-in fade-in zoom-in duration-200">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: payload[0].payload.fill }} />
+                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">{payload[0].payload.name}</p>
+                            </div>
+                            <p className="text-lg font-black text-gray-900 leading-none">{formatCurrency(payload[0].value)}</p>
+                            <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase">Total de ingresos</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                </RadialBarChart>
+              </ResponsiveContainer>
+            )}
+
+            {/* Custom Interactive Legend - No overlap with mouse */}
+            <div className="absolute bottom-0 right-0 p-2 flex flex-col gap-2">
+              {channelStats.slice().reverse().map((c, i) => (
+                <div key={i} className="flex items-center gap-2 bg-white/50 backdrop-blur-sm p-1.5 px-3 rounded-full hover:bg-white transition-all cursor-default">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.fill }} />
+                  <span className="text-[9px] font-bold text-gray-500 uppercase">{c.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </GlassCard>
+      </div>
+
+      {/* Row 3: Operational Depth */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* Weekly Heatmap - Back to Wide */}
+        <GlassCard className="lg:col-span-3 p-8 overflow-hidden">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Mapa de Calor Semanal</h3>
-              <p className="text-[10px] font-bold text-gray-400 uppercase">Intensidad de pedidos por día y hora</p>
-            </div>
-            <div className="flex gap-2">
-               {[1,2,3,4,5].map(i => <div key={i} className={`w-2 h-2 rounded-full bg-emerald-500`} style={{ opacity: i * 0.2 }} />)}
+              <p className="text-[10px] font-bold text-gray-400 uppercase">Intensidad operativa por horario</p>
             </div>
           </div>
-          <div className="flex flex-col gap-1.5 overflow-x-auto pb-4">
+          <div className="flex flex-col gap-1.5 overflow-x-auto pb-4 custom-scrollbar">
             {heatmapStats.map((day, di) => (
               <div key={di} className="flex items-center gap-1.5 min-w-[600px]">
                 <span className="w-8 text-[10px] font-black text-gray-400 uppercase">{day.day}</span>
@@ -669,84 +795,37 @@ export default function AdminAnalytics() {
                 </div>
               </div>
             ))}
-            <div className="flex items-center gap-1.5 pl-9.5 mt-2">
-               {Array.from({ length: 24 }).map((_, i) => (
-                 <span key={i} className="flex-1 text-[8px] font-bold text-gray-300 text-center">{i}h</span>
-               ))}
-            </div>
           </div>
         </GlassCard>
 
-        {/* Category Radar */}
+        {/* Mini Category Performance - Horizontal Bars (As requested/maintained) */}
         <GlassCard className="p-8">
-          <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-8">Radar de Categorías</h3>
-          <div className="h-[250px] w-full">
-            {isReady && (
-              <ResponsiveContainer width="100%" height={250}>
-                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={categoryStats.slice(0, 6)}>
-                  <PolarGrid stroke="#f0f0f0" />
-                  <PolarAngleAxis dataKey="name" tick={{ fontSize: 9, fill: '#9ca3af', fontWeight: 'bold' }} />
-                  <PolarRadiusAxis hide />
-                  <Radar
-                    name="Ventas"
-                    dataKey="value"
-                    stroke="#10B981"
-                    fill="#10B981"
-                    fillOpacity={0.5}
-                  />
-                  <RechartsTooltip />
-                </RadarChart>
-              </ResponsiveContainer>
-            )}
+          <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-8">Ranking Categorías</h3>
+          <div className="space-y-4">
+             {categoryStats.slice(0, 5).map((cat, i) => (
+                <div key={i}>
+                   <div className="flex justify-between items-center mb-1 text-[10px]">
+                      <span className="font-bold text-gray-500 uppercase tracking-tighter">{cat.name}</span>
+                      <span className="font-black text-gray-900">{formatCompactCurrency(cat.value)}</span>
+                   </div>
+                   <div className="h-1.5 w-full bg-gray-50 rounded-full overflow-hidden">
+                      <div 
+                         className="h-full bg-emerald-500 rounded-full" 
+                         style={{ width: `${(cat.value / stats.revenue * 100) || 0}%` }}
+                      />
+                   </div>
+                </div>
+             ))}
           </div>
         </GlassCard>
       </div>
 
-      {/* Performance & Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Profitability Bubble Chart */}
-        <GlassCard className="lg:col-span-2 p-8">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Rentabilidad de Productos</h3>
-              <p className="text-[10px] font-bold text-gray-400 uppercase">Volumen vs Ingresos (Tamaño = Margen)</p>
-            </div>
-            <TrendingUp className="text-emerald-500" size={20} />
-          </div>
-          <div className="h-[300px] w-full">
-            {isReady && (
-              <ResponsiveContainer width="100%" height={300}>
-                <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                  <XAxis type="number" dataKey="units" name="Unidades" unit="u" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                  <YAxis type="number" dataKey="revenue" name="Ingresos" unit="$" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                  <ZAxis type="number" dataKey="actualMargin" range={[50, 400]} name="Margen" unit="%" />
-                  <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload;
-                      return (
-                        <div className="bg-white p-4 rounded-2xl shadow-xl border-none text-xs">
-                          <p className="font-black text-gray-900 mb-2 uppercase">{data.name}</p>
-                          <div className="space-y-1 font-bold text-gray-600">
-                            <p className="flex justify-between gap-4">Vueltas: <span className="text-gray-900">{data.units}</span></p>
-                            <p className="flex justify-between gap-4">Ingresos: <span className="text-emerald-600">{formatCompactCurrency(data.revenue)}</span></p>
-                            <p className="flex justify-between gap-4">Margen Actual: <span className="text-blue-600">{data.actualMargin.toFixed(1)}%</span></p>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }} />
-                  <Scatter name="Productos" data={productProfitability.slice(0, 15)} fill="#10B981" fillOpacity={0.6} stroke="#059669" strokeWidth={2} />
-                </ScatterChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </GlassCard>
 
+      {/* Distribution & Lists */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Payment Methods */}
         <GlassCard className="p-8">
-          <h3 className="text-sm font-black text-gray-900 mb-8 uppercase tracking-tight">Métodos de Pago</h3>
+          <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-8">Métodos de Pago</h3>
           <div className="space-y-4">
              {paymentStats.map((p, i) => (
                 <div key={i}>
@@ -764,12 +843,10 @@ export default function AdminAnalytics() {
              ))}
           </div>
         </GlassCard>
-      </div>
 
-      {/* Final Rankings */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Productos Estrella */}
         <GlassCard className="p-8">
-          <h3 className="text-sm font-black text-gray-900 mb-8 uppercase tracking-tight">Productos Estrella (Volumen)</h3>
+          <h3 className="text-sm font-black text-gray-900 mb-8 uppercase tracking-tight">Productos Estrella</h3>
           <div className="space-y-4">
              {topProducts.map((p, i) => (
                 <div key={i} className="flex justify-between items-center group">
@@ -788,10 +865,11 @@ export default function AdminAnalytics() {
           </div>
         </GlassCard>
 
+        {/* Mesas más Activas */}
         <GlassCard className="p-8">
           <h3 className="text-sm font-black text-gray-900 mb-8 uppercase tracking-tight">Mesas más Activas</h3>
           <div className="space-y-4">
-             {tableStats.map((t, i) => (
+             {tableStats.slice(0, 5).map((t, i) => (
                 <div key={i} className="flex justify-between items-center">
                    <div className="flex items-center gap-4">
                       <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center font-black text-emerald-600 text-[10px]">
