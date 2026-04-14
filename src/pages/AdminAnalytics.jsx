@@ -30,7 +30,9 @@ import {
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-  BarChart, Bar, PieChart, Pie, Cell, Legend, AreaChart, Area
+  BarChart, Bar, PieChart, Pie, Cell, Legend, AreaChart, Area,
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  ScatterChart, Scatter, ZAxis
 } from 'recharts';
 
 const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1'];
@@ -121,7 +123,7 @@ export default function AdminAnalytics() {
         supabase.from('orders').select(`
           id, total_amount, status, created_at, delivered_at, fulfillment_type, payment_method,
           restaurant_tables ( id, table_number ),
-          order_items ( quantity, unit_price, products ( name, categories ( name ) ) )
+          order_items ( quantity, unit_price, products ( name, cost, margin, categories ( name ) ) )
         `).eq('brand_id', activeBrandId)
           .gte('created_at', start.toISOString())
           .order('created_at', { ascending: false }),
@@ -399,6 +401,69 @@ export default function AdminAnalytics() {
     return max?.ventas > 0 ? max.label : '--:--';
   }, [hourlyStats]);
 
+  const heatmapStats = useMemo(() => {
+    const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const matrix = Array.from({ length: 7 }, (_, d) => ({
+      day: days[d],
+      hours: Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }))
+    }));
+
+    data.orders.forEach(o => {
+      const date = new Date(o.created_at);
+      const d = date.getDay();
+      const h = date.getHours();
+      matrix[d].hours[h].count += 1;
+    });
+    return matrix;
+  }, [data.orders]);
+
+  const dayOfWeekStats = useMemo(() => {
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const stats = days.map(name => ({ name, pedidos: 0, revenue: 0, avgTicket: 0 }));
+
+    data.orders.forEach(o => {
+      const d = new Date(o.created_at).getDay();
+      stats[d].pedidos += 1;
+      stats[d].revenue += Number(o.total_amount);
+    });
+
+    return stats.map(s => ({
+      ...s,
+      avgTicket: s.pedidos > 0 ? s.revenue / s.pedidos : 0
+    }));
+  }, [data.orders]);
+
+  const productProfitability = useMemo(() => {
+    const stats = {};
+    data.orders.filter(o => o.status === 'delivered').forEach(o => {
+      o.order_items?.forEach(item => {
+        const p = item.products;
+        if (!p) return;
+        const name = p.name;
+        if (!stats[name]) {
+          stats[name] = { 
+            name, 
+            units: 0, 
+            revenue: 0, 
+            cost: Number(p.cost || 0), 
+            margin: Number(p.margin || 0),
+            totalCost: 0,
+            totalProfit: 0
+          };
+        }
+        stats[name].units += item.quantity;
+        stats[name].revenue += (item.quantity * item.unit_price);
+        stats[name].totalCost += (item.quantity * Number(p.cost || 0));
+      });
+    });
+
+    return Object.values(stats).map(s => ({
+      ...s,
+      totalProfit: s.revenue - s.totalCost,
+      actualMargin: s.revenue > 0 ? ((s.revenue - s.totalCost) / s.revenue * 100) : 0
+    })).sort((a,b) => b.revenue - a.revenue);
+  }, [data.orders]);
+
   const analyticsSummary = useMemo(() => {
     const visits = data.events.filter(e => e.event_name === 'menu_visit').length;
     const scans = data.events.filter(e => e.event_name === 'qr_scan').length;
@@ -493,7 +558,7 @@ export default function AdminAnalytics() {
           </GlassCard>
         ))}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Sales Trend - Visual AreaChart */}
         <GlassCard className="lg:col-span-2 p-8">
           <div className="flex justify-between items-center mb-8">
@@ -530,55 +595,69 @@ export default function AdminAnalytics() {
           </div>
         </GlassCard>
 
+        {/* Ticket Promedio Gauge */}
+        <GlassCard className="p-8 flex flex-col items-center justify-center">
+          <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-4 text-center">Ticket Promedio</h3>
+          <div className="h-[200px] w-full relative flex items-center justify-center">
+            {isReady && (
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { value: analyticsSummary.ticketPromedio, fill: '#10B981' },
+                      { value: (analyticsSummary.ticketPromedio * 0.5), fill: '#f3f4f6' }
+                    ]}
+                    cx="50%"
+                    cy="80%"
+                    startAngle={180}
+                    endAngle={0}
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={0}
+                    dataKey="value"
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+            <div className="absolute top-[60%] left-1/2 -translate-x-1/2 text-center">
+              <p className="text-2xl font-black text-gray-900">{formatCompactCurrency(analyticsSummary.ticketPromedio)}</p>
+              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">META: {formatCompactCurrency(analyticsSummary.ticketPromedio * 1.2)}</p>
+            </div>
+          </div>
+        </GlassCard>
+
         {/* Conversion Funnel */}
         <GlassCard className="p-8 flex flex-col">
           <div className="flex justify-between items-center mb-8">
-            <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Embudo de Conversión</h3>
+            <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Embudo</h3>
             <div className="text-right">
-              <p className="text-[9px] font-black text-rose-500 uppercase">Tasa de Abandono</p>
-              <p className="text-xs font-black text-rose-600">{analyticsSummary.abandonmentRate}%</p>
+              <p className="text-xs font-black text-rose-600">{analyticsSummary.abandonmentRate}% Escapa</p>
             </div>
           </div>
-          <div className="flex-1 space-y-6">
+          <div className="flex-1 space-y-4">
             {(() => {
               const { scans, visits, ordersCount } = analyticsSummary;
               const maxVal = Math.max(scans, visits, ordersCount, 1);
               
               const steps = [
-                { label: 'Escaneos QR', val: scans, icon: Zap, color: 'bg-amber-100 text-amber-600', 
-                  percent: (scans / maxVal) * 100,
-                  conversion: null },
-                { label: 'Vistas Menú', val: visits, icon: Monitor, color: 'bg-blue-100 text-blue-600', 
-                  percent: (visits / maxVal) * 100,
-                  conversion: scans > 0 ? (visits / scans * 100) : null },
-                { label: 'Pedidos', val: ordersCount, icon: ShoppingCart, color: 'bg-emerald-100 text-emerald-600', 
-                  percent: (ordersCount / maxVal) * 100,
-                  conversion: visits > 0 ? (ordersCount / visits * 100) : null }
+                { label: 'Escaneos', val: scans, icon: Zap, color: 'bg-amber-100 text-amber-600', percent: (scans / maxVal) * 100 },
+                { label: 'Vistas', val: visits, icon: Monitor, color: 'bg-blue-100 text-blue-600', percent: (visits / maxVal) * 100 },
+                { label: 'Pedidos', val: ordersCount, icon: ShoppingCart, color: 'bg-emerald-100 text-emerald-600', percent: (ordersCount / maxVal) * 100 }
               ];
 
               return steps.map((step, i) => (
-                <div key={i} className="relative">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-8 h-8 rounded-lg ${step.color} flex items-center justify-center`}>
-                        <step.icon size={16} />
-                      </div>
-                      <span className="text-xs font-bold text-gray-600 uppercase tracking-tighter">{step.label}</span>
-                    </div>
-                    <span className="text-sm font-black text-gray-900">{step.val}</span>
+                <div key={i}>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">{step.label}</span>
+                    <span className="text-xs font-black text-gray-900">{step.val}</span>
                   </div>
-                  <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
                     <motion.div 
                       initial={{ width: 0 }}
                       animate={{ width: `${Math.max(0, Math.min(100, step.percent))}%` }}
                       className={`h-full ${step.color.split(' ')[1].replace('text-', 'bg-')}`}
                     />
                   </div>
-                  {i > 0 && (
-                    <p className="text-[10px] font-bold text-gray-400 mt-1">
-                      Conversión: {typeof step.conversion === 'number' ? `${step.conversion.toFixed(1)}% del paso anterior` : 'Sin datos previos'}
-                    </p>
-                  )}
                 </div>
               ));
             })()}
@@ -586,97 +665,176 @@ export default function AdminAnalytics() {
         </GlassCard>
       </div>
 
-      {/* Distribution Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Revenue by Category */}
-        <GlassCard className="p-8">
+      {/* High Intensity Insights */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Weekly Heatmap */}
+        <GlassCard className="lg:col-span-2 p-8 overflow-hidden">
           <div className="flex justify-between items-center mb-8">
-            <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Ventas por Categoría</h3>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-              <span className="text-[10px] font-black text-gray-400 uppercase">Top 5</span>
+            <div>
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Mapa de Calor Semanal</h3>
+              <p className="text-[10px] font-bold text-gray-400 uppercase">Intensidad de pedidos por día y hora</p>
+            </div>
+            <div className="flex gap-2">
+               {[1,2,3,4,5].map(i => <div key={i} className={`w-2 h-2 rounded-full bg-emerald-500`} style={{ opacity: i * 0.2 }} />)}
             </div>
           </div>
-          <div className="h-[250px] w-full">
-            {isReady && (
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie 
-                    data={categoryStats.slice(0, 5)} 
-                    innerRadius={60} 
-                    outerRadius={80} 
-                    paddingAngle={5} 
-                    dataKey="value"
-                    labelLine={false}
-                  >
-                    {categoryStats.slice(0, 5).map((entry, index) => (
-                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip formatter={(val) => formatCompactCurrency(val)} />
-                  <Legend iconType="circle" />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
+          <div className="flex flex-col gap-1.5 overflow-x-auto pb-4">
+            {heatmapStats.map((day, di) => (
+              <div key={di} className="flex items-center gap-1.5 min-w-[600px]">
+                <span className="w-8 text-[10px] font-black text-gray-400 uppercase">{day.day}</span>
+                <div className="flex-1 flex gap-1">
+                  {day.hours.map((h, hi) => {
+                    const maxCount = Math.max(...heatmapStats.flatMap(d => d.hours.map(h => h.count)), 1);
+                    const opacity = h.count > 0 ? 0.1 + (h.count / maxCount) * 0.9 : 0.05;
+                    const color = h.count > 0 ? 'bg-emerald-500' : 'bg-gray-200';
+                    return (
+                      <div 
+                        key={hi} 
+                        className={`flex-1 h-6 rounded-sm ${color} transition-all hover:ring-2 hover:ring-emerald-400 cursor-help`}
+                        style={{ opacity }}
+                        title={`${day.day} ${h.hour}:00h - ${h.count} pedidos`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            <div className="flex items-center gap-1.5 pl-9.5 mt-2">
+               {Array.from({ length: 24 }).map((_, i) => (
+                 <span key={i} className="flex-1 text-[8px] font-bold text-gray-300 text-center">{i}h</span>
+               ))}
+            </div>
           </div>
         </GlassCard>
 
-        {/* Payment Methods Pie */}
+        {/* Category Radar */}
         <GlassCard className="p-8">
-          <h3 className="text-sm font-black text-gray-900 mb-8 uppercase tracking-tight">Métodos de Pago</h3>
+          <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-8">Radar de Categorías</h3>
           <div className="h-[250px] w-full">
             {isReady && (
               <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie data={paymentStats} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                    {paymentStats.map((entry, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
-                  </Pie>
-                  <RechartsTooltip formatter={(val) => formatCompactCurrency(val)} />
-                  <Legend iconType="circle" />
-                </PieChart>
+                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={categoryStats.slice(0, 6)}>
+                  <PolarGrid stroke="#f0f0f0" />
+                  <PolarAngleAxis dataKey="name" tick={{ fontSize: 9, fill: '#9ca3af', fontWeight: 'bold' }} />
+                  <PolarRadiusAxis hide />
+                  <Radar
+                    name="Ventas"
+                    dataKey="value"
+                    stroke="#10B981"
+                    fill="#10B981"
+                    fillOpacity={0.5}
+                  />
+                  <RechartsTooltip />
+                </RadarChart>
               </ResponsiveContainer>
             )}
           </div>
         </GlassCard>
       </div>
 
-      {/* Rankings Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <GlassCard className="p-8">
-          <h3 className="text-sm font-black text-gray-900 mb-8 uppercase tracking-tight">Top 5 Productos Estrella</h3>
-          <div className="h-[250px] w-full">
+      {/* Performance & Distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Profitability Bubble Chart */}
+        <GlassCard className="lg:col-span-2 p-8">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Rentabilidad de Productos</h3>
+              <p className="text-[10px] font-bold text-gray-400 uppercase">Volumen vs Ingresos (Tamaño = Margen)</p>
+            </div>
+            <TrendingUp className="text-emerald-500" size={20} />
+          </div>
+          <div className="h-[300px] w-full">
             {isReady && (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={topProducts} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
-                  <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 'bold' }} width={120} />
-                  <RechartsTooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} formatter={(val) => [val, 'Unidades']} />
-                  <Bar dataKey="cantidad" radius={[0, 10, 10, 0]} barSize={20}>
-                    {topProducts.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Bar>
-                </BarChart>
+              <ResponsiveContainer width="100%" height={300}>
+                <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis type="number" dataKey="units" name="Unidades" unit="u" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                  <YAxis type="number" dataKey="revenue" name="Ingresos" unit="$" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                  <ZAxis type="number" dataKey="actualMargin" range={[50, 400]} name="Margen" unit="%" />
+                  <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-white p-4 rounded-2xl shadow-xl border-none text-xs">
+                          <p className="font-black text-gray-900 mb-2 uppercase">{data.name}</p>
+                          <div className="space-y-1 font-bold text-gray-600">
+                            <p className="flex justify-between gap-4">Vueltas: <span className="text-gray-900">{data.units}</span></p>
+                            <p className="flex justify-between gap-4">Ingresos: <span className="text-emerald-600">{formatCompactCurrency(data.revenue)}</span></p>
+                            <p className="flex justify-between gap-4">Margen Actual: <span className="text-blue-600">{data.actualMargin.toFixed(1)}%</span></p>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }} />
+                  <Scatter name="Productos" data={productProfitability.slice(0, 15)} fill="#10B981" fillOpacity={0.6} stroke="#059669" strokeWidth={2} />
+                </ScatterChart>
               </ResponsiveContainer>
             )}
           </div>
         </GlassCard>
 
+        {/* Payment Methods */}
+        <GlassCard className="p-8">
+          <h3 className="text-sm font-black text-gray-900 mb-8 uppercase tracking-tight">Métodos de Pago</h3>
+          <div className="space-y-4">
+             {paymentStats.map((p, i) => (
+                <div key={i}>
+                   <div className="flex justify-between items-center mb-1 text-xs">
+                      <span className="font-bold text-gray-600 uppercase tracking-tighter">{p.name}</span>
+                      <span className="font-black text-gray-900">{formatCompactCurrency(p.value)}</span>
+                   </div>
+                   <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                      <div 
+                         className="h-full bg-blue-500 rounded-full" 
+                         style={{ width: `${(p.value / stats.revenue * 100) || 0}%` }}
+                      />
+                   </div>
+                </div>
+             ))}
+          </div>
+        </GlassCard>
+      </div>
+
+      {/* Final Rankings */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <GlassCard className="p-8">
+          <h3 className="text-sm font-black text-gray-900 mb-8 uppercase tracking-tight">Productos Estrella (Volumen)</h3>
+          <div className="space-y-4">
+             {topProducts.map((p, i) => (
+                <div key={i} className="flex justify-between items-center group">
+                   <div className="flex items-center gap-4">
+                      <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center font-black text-gray-400 text-xs">
+                         #{i + 1}
+                      </div>
+                      <span className="font-bold text-gray-700 uppercase tracking-tighter group-hover:text-emerald-600 transition-colors">{p.name}</span>
+                   </div>
+                   <div className="text-right">
+                      <p className="text-xs font-black text-gray-900">{p.cantidad} u.</p>
+                      <p className="text-[10px] font-bold text-gray-400">{formatCompactCurrency(p.ingresos)}</p>
+                   </div>
+                </div>
+             ))}
+          </div>
+        </GlassCard>
+
         <GlassCard className="p-8">
           <h3 className="text-sm font-black text-gray-900 mb-8 uppercase tracking-tight">Mesas más Activas</h3>
-          <div className="h-[250px] w-full">
-            {isReady && (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={tableStats} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
-                  <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 'bold' }} width={80} />
-                  <RechartsTooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} formatter={(val) => formatCompactCurrency(val)} />
-                  <Bar dataKey="ingresos" radius={[0, 10, 10, 0]} barSize={20}>
-                    {tableStats.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+          <div className="space-y-4">
+             {tableStats.map((t, i) => (
+                <div key={i} className="flex justify-between items-center">
+                   <div className="flex items-center gap-4">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center font-black text-emerald-600 text-[10px]">
+                         MZA
+                      </div>
+                      <span className="font-bold text-gray-700 uppercase tracking-tighter">{t.name}</span>
+                   </div>
+                   <div className="text-right">
+                      <p className="text-xs font-black text-gray-900">{formatCompactCurrency(t.ingresos)}</p>
+                      <p className="text-[10px] font-bold text-gray-400">{t.pedidos} pedidos</p>
+                   </div>
+                </div>
+             ))}
           </div>
         </GlassCard>
       </div>
