@@ -38,6 +38,7 @@ import {
   ScatterChart, Scatter, ZAxis, ReferenceLine,
   RadialBarChart, RadialBar, Treemap, ComposedChart
 } from 'recharts';
+import BulkCostEditor from '../components/admin/BulkCostEditor';
 
 const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1'];
 
@@ -224,14 +225,17 @@ export default function AdminAnalytics() {
   const [editingProductId, setEditingProductId] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [isSavingCost, setIsSavingCost] = useState(false);
-  const [data, setData] = useState({ orders: [], leads: [], events: [], paymentMethods: [] });
-  const [prevData, setPrevData] = useState({ orders: [], leads: [], events: [] });
-  const [productLimit, setProductLimit] = useState(5);
-  const [loading, setLoading] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const [dateRange, setDateRange] = useState('7d');
   const [activeTab, setActiveTab] = useState('resumen');
   const [paretoType, setParetoType] = useState('revenue');
+  const [advancedData, setAdvancedData] = useState({ forecasting: null, revPash: [], cohorts: {} });
+  const [integrityStats, setIntegrityStats] = useState({ missingCosts: 0, identifiedPct: 0 });
+  const [showBulkEditor, setShowBulkEditor] = useState(false);
+  const [allProducts, setAllProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState({ orders: [], leads: [], events: [], paymentMethods: [] });
+  const [prevData, setPrevData] = useState({ orders: [], leads: [], events: [] });
   const { activeBrand } = useAuth();
   const activeBrandId = activeBrand?.id;
 
@@ -283,7 +287,7 @@ export default function AdminAnalytics() {
         prevStart = new Date(0);
       }
 
-      const [ordersRes, leadsRes, eventsRes, prevOrdersRes, prevLeadsRes, prevEventsRes, pmRes] = await Promise.all([
+      const [ordersRes, leadsRes, eventsRes, prevOrdersRes, prevLeadsRes, prevEventsRes, pmRes, productsRes] = await Promise.all([
         supabase.from('orders').select(`
           id, total_amount, status, created_at, delivered_at, fulfillment_type, payment_method,
           cancellation_reason, cancelled_by, discount_amount, discount_reason,
@@ -322,7 +326,8 @@ export default function AdminAnalytics() {
           .gte('created_at', prevStart.toISOString())
           .lt('created_at', prevEnd.toISOString()),
           
-        supabase.from('payment_methods').select('id, name').eq('brand_id', activeBrandId)
+        supabase.from('payment_methods').select('id', { count: 'exact' }).eq('brand_id', activeBrandId), // wait, this was pmRes. PMs are useful but we need products.
+        supabase.from('products').select('id, name, cost, price, image_url').eq('brand_id', activeBrandId)
       ]);
 
       setData({
@@ -332,10 +337,47 @@ export default function AdminAnalytics() {
         paymentMethods: pmRes.data || []
       });
 
+      setAllProducts(productsRes.data || []); // Wait, the destructuring index is 6 for pmRes if I add one more.
+
       setPrevData({
         orders: prevOrdersRes.data || [],
         leads: prevLeadsRes.data || [],
         events: prevEventsRes.data || []
+      });
+
+      // --- Advanced Analytics RPCs ---
+      const [forecastingRes, revPashRes, cohortsRes, integrityRes] = await Promise.all([
+        supabase.rpc('analytics_forecasting', { 
+          p_brand_id: activeBrandId, 
+          p_start_date: start.toISOString(), 
+          p_end_date: (dateRange === 'all' ? new Date().toISOString() : new Date().toISOString()) 
+        }),
+        supabase.rpc('analytics_revpash', { 
+          p_brand_id: activeBrandId, 
+          p_start_date: start.toISOString(), 
+          p_end_date: new Date().toISOString() 
+        }),
+        supabase.rpc('analytics_cohorts', { 
+          p_brand_id: activeBrandId, 
+          p_start_date: start.toISOString(), 
+          p_end_date: new Date().toISOString() 
+        }),
+        supabase.from('products').select('id', { count: 'exact' }).eq('brand_id', activeBrandId).or('cost.eq.0,cost.is.null')
+      ]);
+
+      setAdvancedData({
+        forecasting: forecastingRes.data,
+        revPash: revPashRes.data || [],
+        cohorts: cohortsRes.data || {}
+      });
+
+      // Calculate identified pct
+      const totalOrders = ordersRes.data?.length || 0;
+      const identifiedOrders = ordersRes.data?.filter(o => o.customer_phone && o.customer_phone !== '').length || 0;
+
+      setIntegrityStats({
+        missingCosts: integrityRes.count || 0,
+        identifiedPct: totalOrders > 0 ? (identifiedOrders / totalOrders) * 100 : 0
       });
 
     } catch (err) {
@@ -394,6 +436,29 @@ export default function AdminAnalytics() {
     }
   };
 
+  const handleBulkSave = async (updates) => {
+    setIsSavingCost(true);
+    try {
+      const { error } = await supabase
+        .from('products')
+        .upsert(updates.map(u => ({
+          id: u.id,
+          cost: u.cost,
+          margin: u.margin
+        })));
+      
+      if (error) throw error;
+      
+      setShowBulkEditor(false);
+      await fetchData();
+    } catch (err) {
+      console.error('Error in handleBulkSave:', err);
+      alert('Error al guardar costos. Revisa la consola.');
+    } finally {
+      setIsSavingCost(false);
+    }
+  };
+
   const handleSmartExport = () => {
     window.print();
   };
@@ -411,8 +476,10 @@ export default function AdminAnalytics() {
       console.error('Error deleting lead:', err);
     }
   };  const biStats = useMemo(() => {
-    const { orders: currentOrders, leads: currentLeads } = data;
-    const { orders: prevOrders, leads: prevLeads } = prevData;
+    const currentOrders = data?.orders || [];
+    const currentLeads = data?.leads || [];
+    const prevOrders = prevData?.orders || [];
+    const prevLeads = prevData?.leads || [];
 
     const calc = (orders, leads) => {
       const delivered = orders.filter(o => o.status === 'delivered');
@@ -490,7 +557,7 @@ export default function AdminAnalytics() {
 
   const bottleneckStats = useMemo(() => {
     const products = {};
-    data.orders.filter(o => o.status === 'delivered').forEach(o => {
+    (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
       if (o.delivered_at && o.created_at) {
         const time = (new Date(o.delivered_at) - new Date(o.created_at)) / 60000;
         o.order_items?.forEach(item => {
@@ -506,11 +573,11 @@ export default function AdminAnalytics() {
       .map(p => ({ ...p, avg: Math.round(p.times.reduce((a,b) => a+b, 0) / p.times.length) }))
       .sort((a,b) => b.avg - a.avg)
       .slice(0, 3); // Top 3 slowest
-  }, [data.orders]);  const bcgData = useMemo(() => {
+  }, [data?.orders]);  const bcgData = useMemo(() => {
     const products = {};
     let totalVolume = 0;
 
-    data.orders.filter(o => o.status === 'delivered').forEach(o => {
+    (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
       o.order_items?.forEach(item => {
         const p = item.products;
         if (!p) return;
@@ -571,13 +638,13 @@ export default function AdminAnalytics() {
     ];
 
     return { items, medians, missingItems };
-  }, [data.orders]);
+  }, [data?.orders]);
 
   const growthContribution = useMemo(() => {
     const currentItems = {};
     const prevItems = {};
 
-    data.orders.filter(o => o.status === 'delivered').forEach(o => {
+    (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
       o.order_items?.forEach(item => {
         const name = item.products?.name;
         if (!name) return;
@@ -590,7 +657,7 @@ export default function AdminAnalytics() {
       });
     });
 
-    prevData.orders.filter(o => o.status === 'delivered').forEach(o => {
+    (prevData?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
       o.order_items?.forEach(item => {
         const name = item.products?.name;
         if (!name) return;
@@ -618,13 +685,13 @@ export default function AdminAnalytics() {
         revenueGrow: prev.revenue > 0 ? ((curr.revenue - prev.revenue) / prev.revenue) * 100 : 100
       };
     }).sort((a,b) => b.profitDiff - a.profitDiff);
-  }, [data.orders, prevData.orders]);
+  }, [data?.orders, prevData?.orders]);
 
   const paretoData = useMemo(() => {
     const products = {};
     let total = 0;
 
-    data.orders.filter(o => o.status === 'delivered').forEach(o => {
+    (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
       o.order_items?.forEach(item => {
         const name = item.products?.name;
         if (!name) return;
@@ -647,10 +714,10 @@ export default function AdminAnalytics() {
         cumulativePercent: total > 0 ? (cumulative / total) * 100 : 0
       };
     });
-  }, [data.orders, paretoType]);
+  }, [data?.orders, paretoType]);
 
   const leakageAudit = useMemo(() => {
-    const cancellations = data.orders
+    const cancellations = (data?.orders || [])
       .filter(o => o.status === 'cancelled')
       .map(o => ({
         id: o.id,
@@ -660,7 +727,7 @@ export default function AdminAnalytics() {
         time: o.created_at
       }));
 
-    const discounts = data.orders
+    const discounts = (data?.orders || [])
       .filter(o => Number(o.discount_amount || 0) > 0)
       .map(o => ({
         id: o.id,
@@ -674,7 +741,7 @@ export default function AdminAnalytics() {
       discounts,
       totalLeakage: cancellations.reduce((sum, c) => sum + c.amount, 0) + discounts.reduce((sum, d) => sum + d.amount, 0)
     };
-  }, [data.orders]);
+  }, [data?.orders]);
 
   // Derived hooks for backward compatibility
   const productPerformance = useMemo(() => {
@@ -687,7 +754,7 @@ export default function AdminAnalytics() {
 
   const categoryStats = useMemo(() => {
     const cats = {};
-    data.orders.filter(o => o.status === 'delivered').forEach(o => {
+    (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
       o.order_items?.forEach(item => {
         const catName = item.products?.categories?.name || 'Varios';
         if (!cats[catName]) cats[catName] = { name: catName, value: 0, units: 0 };
@@ -696,7 +763,7 @@ export default function AdminAnalytics() {
       });
     });
     return Object.values(cats).sort((a,b) => b.value - a.value);
-  }, [data.orders]);
+  }, [data?.orders]);
 
   const channelStats = useMemo(() => {
     const channels = {
@@ -706,7 +773,7 @@ export default function AdminAnalytics() {
       'Programado': { name: 'Programado', value: 0, fill: '#8B5CF6' }
     };
 
-    data.orders.forEach(o => {
+    (data?.orders || []).forEach(o => {
       const type = o.fulfillment_type || 'takeaway';
       let label = 'Para Llevar';
       if (type === 'dine_in') label = 'En Mesa';
@@ -718,11 +785,11 @@ export default function AdminAnalytics() {
 
     // Sort by value to have the biggest rings outside
     return Object.values(channels).filter(c => c.value > 0).sort((a,b) => a.value - b.value);
-  }, [data.orders]);
+  }, [data?.orders]);
 
   const tableStats = useMemo(() => {
     const tableCounts = {};
-    data.orders.filter(o => o.status === 'delivered').forEach(o => {
+    (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
       const table = o.restaurant_tables;
       if (table) {
         const label = table.name || `Mesa ${table.table_number}`;
@@ -732,11 +799,11 @@ export default function AdminAnalytics() {
       }
     });
     return Object.values(tableCounts).sort((a,b) => b.ingresos - a.ingresos).slice(0, 8);
-  }, [data.orders]);
+  }, [data?.orders]);
 
   const paymentStats = useMemo(() => {
     const stats = {};
-    data.orders.filter(o => o.status === 'delivered').forEach(o => {
+    (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
       const method = o.payment_method || 'Sin especificar';
       
       // Map labels
@@ -756,16 +823,17 @@ export default function AdminAnalytics() {
       stats[label].count += 1;
     });
     return Object.values(stats);
-  }, [data.orders, data.paymentMethods]);
+  }, [data?.orders, data?.paymentMethods]);
+
 
   const hourlyStats = useMemo(() => {
     const hours = Array.from({ length: 24 }, (_, i) => ({ label: `${i}h`, ventas: 0 }));
-    data.orders.forEach(o => {
+    (data?.orders || []).forEach(o => {
       const h = new Date(o.created_at).getHours();
       hours[h].ventas += Number(o.total_amount);
     });
     return hours;
-  }, [data.orders]);
+  }, [data?.orders]);
 
   const peakHour = useMemo(() => {
     const max = [...hourlyStats].sort((a, b) => b.ventas - a.ventas)[0];
@@ -779,20 +847,20 @@ export default function AdminAnalytics() {
       hours: Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }))
     }));
 
-    data.orders.forEach(o => {
+    (data?.orders || []).forEach(o => {
       const date = new Date(o.created_at);
       const d = date.getDay();
       const h = date.getHours();
       matrix[d].hours[h].count += 1;
     });
     return matrix;
-  }, [data.orders]);
+  }, [data?.orders]);
 
   const dayOfWeekStats = useMemo(() => {
     const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     const stats = days.map(name => ({ name, pedidos: 0, revenue: 0, avgTicket: 0 }));
 
-    data.orders.forEach(o => {
+    (data?.orders || []).forEach(o => {
       const d = new Date(o.created_at).getDay();
       stats[d].pedidos += 1;
       stats[d].revenue += Number(o.total_amount);
@@ -802,11 +870,11 @@ export default function AdminAnalytics() {
       ...s,
       avgTicket: s.pedidos > 0 ? s.revenue / s.pedidos : 0
     }));
-  }, [data.orders]);
+  }, [data?.orders]);
 
   const productProfitability = useMemo(() => {
     const stats = {};
-    data.orders.filter(o => o.status === 'delivered').forEach(o => {
+    (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
       o.order_items?.forEach(item => {
         const p = item.products;
         if (!p) return;
@@ -833,17 +901,19 @@ export default function AdminAnalytics() {
       totalProfit: s.revenue - s.totalCost,
       actualMargin: s.revenue > 0 ? ((s.revenue - s.totalCost) / s.revenue * 100) : 0
     })).sort((a,b) => b.revenue - a.revenue);
-  }, [data.orders]);
+  }, [data?.orders]);
 
   const analyticsSummary = useMemo(() => {
-    const visits = data.events.filter(e => e.event_name === 'menu_visit').length;
-    const scans = data.events.filter(e => e.event_name === 'qr_scan').length;
+    const events = data?.events || [];
+    const orders = data?.orders || [];
+    const visits = events.filter(e => e.event_name === 'menu_visit').length;
+    const scans = events.filter(e => e.event_name === 'qr_scan').length;
     
     // Calculate unique sessions
-    const uniqueSessions = new Set(data.events.map(e => e.session_id).filter(Boolean));
+    const uniqueSessions = new Set(events.map(e => e.session_id).filter(Boolean));
     const sessionCount = Math.max(uniqueSessions.size, visits, scans);
     
-    const ordersCount = data.orders.length;
+    const ordersCount = orders.length;
     
     // Conversion metrics
     const convRate = sessionCount > 0 
@@ -866,7 +936,8 @@ export default function AdminAnalytics() {
       abandonmentRate,
       ticketPromedio
     };
-  }, [data.events, data.orders, stats]);
+  }, [data?.events, data?.orders, stats]);
+
 
   const smartRecommendations = useMemo(() => {
     const recs = [];
@@ -934,7 +1005,7 @@ export default function AdminAnalytics() {
     const cats = {};
     let totalUnits = 0;
 
-    data.orders.filter(o => o.status === 'delivered').forEach(o => {
+    (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
       o.order_items?.forEach(item => {
         const catName = item.products?.categories?.name || 'Varios';
         if (!cats[catName]) cats[catName] = { name: catName, units: 0, revenue: 0 };
@@ -948,7 +1019,7 @@ export default function AdminAnalytics() {
       ...c,
       share: totalUnits > 0 ? (c.units / totalUnits) * 100 : 0
     })).sort((a,b) => b.units - a.units);
-  }, [data.orders]);
+  }, [data?.orders]);
 
   const hourlyPerformance = useMemo(() => {
     const hours = Array.from({ length: 24 }, (_, i) => ({ 
@@ -959,7 +1030,7 @@ export default function AdminAnalytics() {
       avgTicket: 0
     }));
 
-    data.orders.filter(o => o.status === 'delivered').forEach(o => {
+    (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
       const h = new Date(o.created_at).getHours();
       hours[h].orders += 1;
       hours[h].revenue += Number(o.total_amount);
@@ -969,7 +1040,7 @@ export default function AdminAnalytics() {
       ...h,
       avgTicket: h.orders > 0 ? h.revenue / h.orders : 0
     }));
-  }, [data.orders]);
+  }, [data?.orders]);
 
   const DiffBadge = ({ value }) => {
     if (value === 0) return null;
@@ -983,12 +1054,68 @@ export default function AdminAnalytics() {
     );
   };
 
+  const DataIntegrityCard = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      <GlassCard noHover className="p-6 border-l-4 border-l-orange-500 bg-orange-50/10">
+        <div className="flex items-start justify-between">
+          <div className="flex gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center shadow-sm">
+              <Database className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="text-sm font-black text-gray-900 uppercase">Integridad de Costos</h4>
+              <p className="text-[11px] font-medium text-gray-500 mt-0.5">Detectamos <strong>{integrityStats.missingCosts} productos</strong> sin costo unitario asignado.</p>
+              <div className="flex gap-2 mt-3">
+                <button 
+                  onClick={() => setShowBulkEditor(true)}
+                  className="text-[10px] font-black text-orange-600 uppercase bg-white border border-orange-100 px-3 py-1.5 rounded-lg shadow-sm hover:bg-orange-600 hover:text-white transition-all"
+                >
+                  Corregir Ahora
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="text-right">
+             <span className="text-2xl font-black text-orange-600">{integrityStats.missingCosts}</span>
+             <span className="block text-[8px] font-black text-gray-400 uppercase">Alertas</span>
+          </div>
+        </div>
+      </GlassCard>
+
+      <GlassCard noHover className="p-6 border-l-4 border-l-blue-500 bg-blue-50/10">
+        <div className="flex items-start justify-between">
+          <div className="flex gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center shadow-sm">
+              <Users className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="text-sm font-black text-gray-900 uppercase">Identidad de Clientes</h4>
+              <p className="text-[11px] font-medium text-gray-500 mt-0.5">Solo el <strong>{integrityStats.identifiedPct.toFixed(1)}%</strong> de tus pedidos tienen cliente identificado.</p>
+              <div className="mt-3 flex items-center gap-2">
+                 <div className="flex-1 h-1.5 bg-blue-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-500" style={{ width: `${integrityStats.identifiedPct}%` }} />
+                 </div>
+                 <span className="text-[10px] font-black text-blue-600">{Math.round(integrityStats.identifiedPct)}%</span>
+              </div>
+            </div>
+          </div>
+          <div className="bg-blue-600 text-white p-1 rounded-md">
+             <TrendingUp className="w-4 h-4" />
+          </div>
+        </div>
+      </GlassCard>
+    </div>
+  );
+
   const RenderResumen = () => (
     <div className="space-y-8 animate-fadeUp">
+      <DataIntegrityCard />
+      
       {/* Prime KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {[
           { label: 'Ingresos Totales', val: formatCompactCurrency(stats.revenue), diff: stats.revenueDiff, icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+          { label: 'Pronóstico Cierre', val: formatCompactCurrency(advancedData.forecasting?.projected_sales || 0), diff: advancedData.forecasting?.deviation_pct, icon: TrendingUp, color: 'text-indigo-500', bg: 'bg-indigo-50' },
           { label: 'Pedidos Totales', val: stats.orderCount, diff: stats.ordersDiff, icon: ShoppingCart, color: 'text-blue-500', bg: 'bg-blue-50' },
           { label: 'Cancelados', val: stats.cancelledCount, diff: stats.cancelledDiff, icon: Trash2, color: 'text-rose-500', bg: 'bg-rose-50' },
           { label: 'Ticket Promedio', val: formatCompactCurrency(stats.avgTicket), diff: stats.ticketDiff, icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50' },
@@ -1341,11 +1468,80 @@ export default function AdminAnalytics() {
           </div>
         </GlassCard>
       </div>
-    </div>
+
+      {/* Advanced Performance Tab Section (Merged for visibility) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+         {/* RevPASH / Hourly Efficiency */}
+         <GlassCard className="p-8">
+            <div className="flex justify-between items-center mb-8">
+               <div>
+                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Eficiencia de Slot (RevPASH)</h3>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase">Ingresos por hora del día</p>
+               </div>
+               <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black">INTELIGENCIA ACTIVA</div>
+            </div>
+            <div className="h-[300px] w-full">
+               <ResponsiveContainer width="100%" height="300">
+                  <BarChart data={advancedData.revPash}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                    <XAxis dataKey="hour_of_day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#6B7280' }} />
+                    <YAxis hide />
+                    <RechartsTooltip content={<VisionTooltip units="PASH" formatter={(val) => formatCurrency(val)} />} />
+                    <Bar dataKey="total_revenue" fill="#10B981" radius={[4, 4, 0, 0]} barSize={20} />
+                  </BarChart>
+               </ResponsiveContainer>
+            </div>
+         </GlassCard>
+
+         {/* Customer Retention / Cohorts */}
+         <GlassCard className="p-8">
+            <div className="flex justify-between items-center mb-8">
+               <div>
+                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Retención de Clientes</h3>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase">Segmentación por lealtad</p>
+               </div>
+               <Users className="w-4 h-4 text-blue-500" />
+            </div>
+            <div className="h-[300px] w-full flex items-center justify-center">
+               <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'Nuevos', value: advancedData.cohorts['Nuevo'] || 0, fill: '#3B82F6' },
+                        { name: 'Recurrentes', value: advancedData.cohorts['Recurrente'] || 0, fill: '#10B981' },
+                        { name: 'Esporádicos', value: advancedData.cohorts['Esporádico'] || 0, fill: '#F59E0B' }
+                      ]}
+                      innerRadius={80}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {Object.keys(advancedData.cohorts || {}).map((_, i) => (
+                        <Cell key={i} cornerRadius={8} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip content={<VisionTooltip units="Clientes" />} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+             </div>
+          </GlassCard>
+       </div>
+       
+       <AnimatePresence>
+         {showBulkEditor && (
+           <BulkCostEditor 
+             products={allProducts.filter(p => !p.cost || p.cost === 0)}
+             onSave={handleBulkSave}
+             onCancel={() => setShowBulkEditor(false)}
+           />
+         )}
+       </AnimatePresence>
+     </div>
   );
 
   const RenderAnalitica = () => {
-    const topDriver = growthContribution[0] || { name: 'N/A', contribution: 0 };
+    const topDriver = (growthContribution || [])[0] || { name: 'N/A', contribution: 0 };
     
     return (
       <div className="space-y-8 animate-fadeUp">
@@ -1372,7 +1568,10 @@ export default function AdminAnalytics() {
                         </div>
                         <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">{rec.desc}</p>
                         <button 
-                          onClick={() => setActiveTab('operaciones')}
+                          onClick={() => {
+                            if (rec.title === 'Integridad de Datos') setShowBulkEditor(true);
+                            else setActiveTab('operaciones');
+                          }}
                           className="mt-2 text-[9px] font-black text-indigo-600 uppercase tracking-widest hover:text-indigo-800 transition-colors flex items-center gap-1"
                         >
                           {rec.actionLabel} <ChevronRight size={10} />

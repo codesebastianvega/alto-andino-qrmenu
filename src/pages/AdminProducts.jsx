@@ -8,6 +8,7 @@ import { useAdminModifierGroups } from '../hooks/useAdminModifierGroups';
 import { useAllergens } from '../hooks/useAllergens';
 import { formatCOP } from '../utils/money';
 import ProductForm from '../components/admin/ProductForm';
+import BulkCostEditor from '../components/admin/BulkCostEditor';
 import AAImage from '../components/ui/AAImage';
 import {
   PageHeader, PrimaryButton, Badge,
@@ -30,7 +31,17 @@ const DragHandle = () => (
 );
 
 export default function AdminProducts() {
-  const { products, loading: loadingProd, createProduct, updateProduct, deleteProduct, toggleActive, toggleStock, reorderProducts } = useAdminProducts();
+  const { 
+    products, 
+    loading: loadingProd, 
+    createProduct, 
+    updateProduct, 
+    deleteProduct, 
+    toggleActive, 
+    toggleStock, 
+    reorderProducts,
+    bulkUpdateCosts 
+  } = useAdminProducts();
   const { categories, loading: loadingCats } = useCategories();
   const { activePlan } = useAuth();
   const { withinLimit } = usePlan();
@@ -43,6 +54,7 @@ export default function AdminProducts() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [isBulkEditorOpen, setIsBulkEditorOpen] = useState(false);
 
   // ─── Reorder mode state ───
   const [reorderMode, setReorderMode] = useState(false);
@@ -286,6 +298,13 @@ export default function AdminProducts() {
                 Ordenar
               </button>
             )}
+            <button 
+              onClick={() => setIsBulkEditorOpen(true)}
+              className="flex-1 sm:flex-initial px-4 py-2.5 text-[13px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Editor de Costos
+            </button>
           </div>
         </div>
       </div>
@@ -505,6 +524,17 @@ export default function AdminProducts() {
           allergens={allergens}
           onSave={handleSave}
           onCancel={() => { setIsFormOpen(false); setEditingProduct(null); }}
+        />
+      )}
+
+      {isBulkEditorOpen && (
+        <BulkCostEditor 
+          products={products.filter(p => !p.is_addon)}
+          onSave={async (updates) => {
+            const ok = await bulkUpdateCosts(updates);
+            if (ok) setIsBulkEditorOpen(false);
+          }}
+          onCancel={() => setIsBulkEditorOpen(false)}
         />
       )}
     </div>
