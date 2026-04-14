@@ -493,7 +493,6 @@ export default function AdminAnalytics() {
           </GlassCard>
         ))}
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Sales Trend - Visual AreaChart */}
         <GlassCard className="lg:col-span-2 p-8">
@@ -541,70 +540,53 @@ export default function AdminAnalytics() {
             </div>
           </div>
           <div className="flex-1 space-y-6">
-            {[
-              { label: 'Escaneos QR', val: analyticsSummary.scans, icon: Zap, color: 'bg-amber-100 text-amber-600', 
-                percent: 100,
-                conversion: 100 },
-              { label: 'Vistas Menú', val: analyticsSummary.visits, icon: Monitor, color: 'bg-blue-100 text-blue-600', 
-                percent: analyticsSummary.scans > 0 ? (analyticsSummary.visits / analyticsSummary.scans * 100) : (analyticsSummary.visits > 0 ? 100 : 0),
-                conversion: analyticsSummary.scans ? (analyticsSummary.visits / analyticsSummary.scans * 100) : (analyticsSummary.visits > 0 ? 100 : 0) },
-              { label: 'Pedidos', val: analyticsSummary.ordersCount, icon: ShoppingCart, color: 'bg-emerald-100 text-emerald-600', 
-                percent: analyticsSummary.scans > 0 ? (analyticsSummary.ordersCount / analyticsSummary.scans * 100) : (analyticsSummary.visits > 0 ? (analyticsSummary.ordersCount / analyticsSummary.visits * 100) : 0),
-                conversion: analyticsSummary.visits ? (analyticsSummary.ordersCount / analyticsSummary.visits * 100) : (analyticsSummary.ordersCount > 0 ? 100 : 0) }
-            ].map((step, i) => (
-              <div key={i} className="relative">
-                <div className="flex justify-between items-center mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-8 h-8 rounded-lg ${step.color} flex items-center justify-center`}>
-                      <step.icon size={16} />
+            {(() => {
+              const { scans, visits, ordersCount } = analyticsSummary;
+              const maxVal = Math.max(scans, visits, ordersCount, 1);
+              
+              const steps = [
+                { label: 'Escaneos QR', val: scans, icon: Zap, color: 'bg-amber-100 text-amber-600', 
+                  percent: (scans / maxVal) * 100,
+                  conversion: null },
+                { label: 'Vistas Menú', val: visits, icon: Monitor, color: 'bg-blue-100 text-blue-600', 
+                  percent: (visits / maxVal) * 100,
+                  conversion: scans > 0 ? (visits / scans * 100) : null },
+                { label: 'Pedidos', val: ordersCount, icon: ShoppingCart, color: 'bg-emerald-100 text-emerald-600', 
+                  percent: (ordersCount / maxVal) * 100,
+                  conversion: visits > 0 ? (ordersCount / visits * 100) : null }
+              ];
+
+              return steps.map((step, i) => (
+                <div key={i} className="relative">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-lg ${step.color} flex items-center justify-center`}>
+                        <step.icon size={16} />
+                      </div>
+                      <span className="text-xs font-bold text-gray-600 uppercase tracking-tighter">{step.label}</span>
                     </div>
-                    <span className="text-xs font-bold text-gray-600 uppercase tracking-tighter">{step.label}</span>
+                    <span className="text-sm font-black text-gray-900">{step.val}</span>
                   </div>
-                  <span className="text-sm font-black text-gray-900">{step.val}</span>
+                  <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.max(0, Math.min(100, step.percent))}%` }}
+                      className={`h-full ${step.color.split(' ')[1].replace('text-', 'bg-')}`}
+                    />
+                  </div>
+                  {i > 0 && (
+                    <p className="text-[10px] font-bold text-gray-400 mt-1">
+                      Conversión: {typeof step.conversion === 'number' ? `${step.conversion.toFixed(1)}% del paso anterior` : 'Sin datos previos'}
+                    </p>
+                  )}
                 </div>
-                <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(100, step.percent)}%` }}
-                    className={`h-full ${step.color.split(' ')[1].replace('text-', 'bg-')}`}
-                  />
-                </div>
-                {i > 0 && (
-                  <p className="text-[10px] font-bold text-gray-400 mt-1">
-                    Conversión: {step.conversion.toFixed(1)}% del paso anterior
-                  </p>
-                )}
-              </div>
-            ))}
+              ));
+            })()}
           </div>
         </GlassCard>
       </div>
 
-    </div>
-  );
-
-  const RenderAnalitica = () => (
-    <div className="space-y-8 animate-fadeUp">
-      {/* Conversion Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { icon: Zap, label: 'Pico de Ventas', val: peakHour, color: 'text-amber-500' },
-          { icon: Trash2, label: 'Cancelados', val: stats.cancelledCount, color: 'text-rose-500' },
-          { icon: ShoppingCart, label: 'Venta Perdida', val: formatCompactCurrency(stats.lostRevenue), color: 'text-rose-500' },
-          { icon: ShoppingCart, label: 'Tasa Abandono', val: `${analyticsSummary.abandonmentRate}%`, color: 'text-rose-500' },
-        ].map((item, i) => (
-          <GlassCard key={i} className="p-6 flex items-center gap-4">
-             <div className={`w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center ${item.color}`}>
-                <item.icon size={18} />
-             </div>
-             <div>
-                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{item.label}</p>
-                <p className="text-xl font-black text-gray-900">{item.val}</p>
-             </div>
-          </GlassCard>
-        ))}
-      </div>
-
+      {/* Distribution Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Revenue by Category */}
         <GlassCard className="p-8">
@@ -658,29 +640,29 @@ export default function AdminAnalytics() {
         </GlassCard>
       </div>
 
-      <GlassCard className="p-8">
-        <h3 className="text-sm font-black text-gray-900 mb-8 uppercase tracking-tight">Top 5 Productos Estrella</h3>
-        <div className="h-[300px] w-full">
-          {isReady && (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={topProducts} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
-                <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontBold: 'bold' }} width={120} />
-                <RechartsTooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} formatter={(val) => [val, 'Unidades']} />
-                <Bar dataKey="cantidad" radius={[0, 10, 10, 0]} barSize={20}>
-                  {topProducts.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </GlassCard>
-
+      {/* Rankings Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Top Tables by Revenue */}
         <GlassCard className="p-8">
-          <h3 className="text-sm font-black text-gray-900 mb-8 uppercase tracking-tight">Buscadas y Rentables: Mesas</h3>
+          <h3 className="text-sm font-black text-gray-900 mb-8 uppercase tracking-tight">Top 5 Productos Estrella</h3>
+          <div className="h-[250px] w-full">
+            {isReady && (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={topProducts} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 'bold' }} width={120} />
+                  <RechartsTooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} formatter={(val) => [val, 'Unidades']} />
+                  <Bar dataKey="cantidad" radius={[0, 10, 10, 0]} barSize={20}>
+                    {topProducts.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </GlassCard>
+
+        <GlassCard className="p-8">
+          <h3 className="text-sm font-black text-gray-900 mb-8 uppercase tracking-tight">Mesas más Activas</h3>
           <div className="h-[250px] w-full">
             {isReady && (
               <ResponsiveContainer width="100%" height={250}>
@@ -697,9 +679,36 @@ export default function AdminAnalytics() {
             )}
           </div>
         </GlassCard>
+      </div>
+    </div>
+  );
 
+  const RenderAnalitica = () => (
+    <div className="space-y-8 animate-fadeUp">
+      {/* Conversion Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { icon: Zap, label: 'Pico de Ventas', val: peakHour, color: 'text-amber-500' },
+          { icon: Trash2, label: 'Cancelados', val: stats.cancelledCount, color: 'text-rose-500' },
+          { icon: ShoppingCart, label: 'Venta Perdida', val: formatCompactCurrency(stats.lostRevenue), color: 'text-rose-500' },
+          { icon: ShoppingCart, label: 'Tasa Abandono', val: `${analyticsSummary.abandonmentRate}%`, color: 'text-rose-500' },
+        ].map((item, i) => (
+          <GlassCard key={i} className="p-6 flex items-center gap-4">
+             <div className={`w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center ${item.color}`}>
+                <item.icon size={18} />
+             </div>
+             <div>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{item.label}</p>
+                <p className="text-xl font-black text-gray-900">{item.val}</p>
+             </div>
+          </GlassCard>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Channel Distribution Table */}
         <GlassCard className="overflow-hidden">
+
            <div className="p-6 border-b border-gray-100 bg-gray-50/30">
             <h3 className="font-black text-gray-900 tracking-tight text-sm uppercase">Distribución por Canal</h3>
           </div>
