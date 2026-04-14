@@ -31,7 +31,11 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
   const [tenders, setTenders] = useState([]); // [{ methodId, name, amount, received, change, isCash }]
   const [currentMethod, setCurrentMethod] = useState(null);
   const [receivedAmount, setReceivedAmount] = useState('');
-  const [inputFocus, setInputFocus] = useState('received'); // 'manual_amount' or 'received'
+  const [inputFocus, setInputFocus] = useState('received'); // 'manual_amount', 'received', or 'customer_phone'
+  const [customerPhone, setCustomerPhone] = useState(order.customer_phone || '');
+  const [customerName, setCustomerName] = useState(order.customer_name || '');
+  const [loyaltyStats, setLoyaltyStats] = useState({ count: 0, medal: null });
+  const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
 
   // UI Flow
   const [isProcessing, setIsProcessing] = useState(false);
@@ -45,6 +49,51 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
       setCurrentMethod(defaultMethod);
     }
   }, [paymentMethods, currentMethod]);
+
+  // -- Search Customer Logic --
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (customerPhone.length >= 7) {
+        setIsSearchingCustomer(true);
+        try {
+          // Get most recent name
+          const { data: recentOrders } = await supabase
+            .from('orders')
+            .select('customer_name')
+            .eq('customer_phone', customerPhone)
+            .neq('customer_name', '')
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (recentOrders?.length > 0 && !customerName) {
+            setCustomerName(recentOrders[0].customer_name);
+          }
+
+          // Get total count for loyalty
+          const { count, error } = await supabase
+            .from('orders')
+            .select('id', { count: 'exact', head: true })
+            .eq('brand_id', activeBrand.id)
+            .eq('customer_phone', customerPhone)
+            .eq('status', 'delivered');
+
+          if (!error) {
+            let medal = null;
+            if (count >= 1 && count <= 3) medal = 'gold';
+            else if (count > 3) medal = 'emerald';
+            setLoyaltyStats({ count, medal });
+          }
+        } catch (err) {
+          console.error('Error searching customer:', err);
+        } finally {
+          setIsSearchingCustomer(false);
+        }
+      } else {
+        setLoyaltyStats({ count: 0, medal: null });
+      }
+    }, 600); // Debounce
+    return () => clearTimeout(timer);
+  }, [customerPhone, activeBrand.id]);
 
   // -- Calculations --
   const unpaidItems = useMemo(() => {
@@ -89,17 +138,24 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
 
   // Calculator Logic
   const isCash = currentMethod?.name?.toLowerCase().includes('efectivo');
-  const keypadTarget = (paymentMode === 'manual' && inputFocus === 'manual_amount') ? 'manual' : 'received';
+  const keypadTarget = 
+    inputFocus === 'customer_phone' ? 'phone' :
+    (paymentMode === 'manual' && inputFocus === 'manual_amount') ? 'manual' : 'received';
   
   const handleKeyPress = (key) => {
-    const setter = (keypadTarget === 'manual') ? setManualAmount : setReceivedAmount;
+    const setterMap = {
+      phone: setCustomerPhone,
+      manual: setManualAmount,
+      received: setReceivedAmount
+    };
+    const setter = setterMap[keypadTarget];
     
     if (key === 'clear') {
       setter('');
       return;
     }
     if (key === '000') {
-      setter(prev => prev + '000');
+      if (keypadTarget !== 'phone') setter(prev => prev + '000');
       return;
     }
     setter(prev => prev + key);
@@ -210,14 +266,19 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
 
     setIsProcessing(true);
     try {
-      // 0. Update Service Fee if waived
+      // 0. Update Service Fee and Customer Info
+      const updates = {
+        updated_at: new Date().toISOString(),
+        customer_phone: customerPhone,
+        customer_name: customerName || order.customer_name
+      };
+      
       if (waiveServiceFee && order.service_fee > 0) {
-        const newTotal = order.total_amount - order.service_fee;
-        await supabase.from('orders').update({
-          service_fee: 0,
-          total_amount: newTotal
-        }).eq('id', order.id);
+        updates.service_fee = 0;
+        updates.total_amount = order.total_amount - order.service_fee;
       }
+
+      await supabase.from('orders').update(updates).eq('id', order.id);
 
       // 1. Process Item Splitting
       if (paymentMode === 'items') {
@@ -325,7 +386,51 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
             </div>
             <div>
               <h2 className="text-xl font-black text-gray-900 leading-none mb-1 uppercase tracking-tight">CAJA / PUNTO DE VENTA</h2>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Pedido #{order.id.slice(0,4)} • {order.customer_name || 'MOSTRADOR'}</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Pedido #{order.id.slice(0,4)} • {customerName || order.customer_name || 'MOSTRADOR'}</p>
+            </div>
+          </div>
+
+          <div className="flex-1 max-w-sm mx-auto px-8">
+            <div 
+              onClick={() => setInputFocus('customer_phone')}
+              className={`flex items-center gap-3 px-6 py-3 rounded-2xl border-2 transition-all cursor-pointer ${
+                inputFocus === 'customer_phone' ? 'bg-white border-blue-500 shadow-lg shadow-blue-500/10' : 'bg-white border-gray-100'
+              }`}
+            >
+              <div className="shrink-0 relative">
+                <Icon 
+                   icon={loyaltyStats.medal === 'emerald' ? "solar:dialog-2-bold" : loyaltyStats.medal === 'gold' ? "solar:medal-bold" : "solar:phone-bold"} 
+                   className={`text-xl ${loyaltyStats.medal === 'emerald' ? 'text-emerald-500' : loyaltyStats.medal === 'gold' ? 'text-amber-500' : 'text-gray-300'}`} 
+                />
+                {loyaltyStats.medal && (
+                   <div className={`absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-white ${
+                     loyaltyStats.medal === 'emerald' ? 'bg-emerald-500' : 'bg-amber-500'
+                   }`} />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">IDENTIFICAR CLIENTE</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-black text-gray-900 tabular-nums">
+                    {customerPhone || '____-____'}
+                  </span>
+                  {loyaltyStats.medal === 'emerald' && (
+                    <div className="flex items-center gap-1 bg-gradient-to-r from-emerald-50 to-teal-50 px-2 py-0.5 rounded-lg border border-emerald-100 shadow-sm shadow-emerald-500/10">
+                      <Icon icon="solar:star-bold" className="text-emerald-500 text-xs" />
+                      <span className="text-[9px] font-black text-emerald-700 uppercase">VIP EMERALD</span>
+                    </div>
+                  )}
+                  {loyaltyStats.medal === 'gold' && (
+                    <div className="flex items-center gap-1 bg-gradient-to-r from-amber-50 to-orange-50 px-2 py-0.5 rounded-lg border border-amber-100 shadow-sm shadow-amber-500/10">
+                      <Icon icon="solar:medal-star-bold" className="text-amber-500 text-xs" />
+                      <span className="text-[9px] font-black text-amber-700 uppercase">CUSTOMER GOLD</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {isSearchingCustomer && (
+                <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+              )}
             </div>
           </div>
 

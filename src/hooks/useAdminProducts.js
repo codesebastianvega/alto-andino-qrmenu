@@ -236,6 +236,37 @@ export const useAdminProducts = () => {
     }
   };
 
+  const bulkUpdateCosts = async (updates) => {
+    try {
+      setLoading(true);
+      
+      // Separate calls to promise.all for batch update
+      // Supabase doesn't support batch update with different values easily in one call without RPC
+      // but we can use multiple update calls since it's a restricted number of products
+      const updatePromises = updates.map(u => 
+        supabase
+          .from('products')
+          .update({ cost: u.cost, margin: u.margin })
+          .eq('id', u.id)
+          .eq('brand_id', activeBrandId)
+      );
+
+      const results = await Promise.all(updatePromises);
+      const failed = results.find(r => r.error);
+      if (failed?.error) throw failed.error;
+
+      toast.success('Costos actualizados con éxito');
+      await fetchProducts();
+      return true;
+    } catch (err) {
+      console.error('Error bulk updating costs:', err);
+      toast.error('Error al actualizar costos');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     products,
     loading,
@@ -246,6 +277,7 @@ export const useAdminProducts = () => {
     toggleActive,
     toggleStock,
     reorderProducts,
+    bulkUpdateCosts,
     refreshProducts: fetchProducts
   };
 };
