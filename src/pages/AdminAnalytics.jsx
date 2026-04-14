@@ -560,7 +560,7 @@ export default function AdminAnalytics() {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Sales Trend - Visual AreaChart */}
-        <GlassCard className="lg:col-span-2 p-8">
+        <GlassCard className="lg:col-span-3 p-8">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Pulso de Ventas</h3>
@@ -595,36 +595,6 @@ export default function AdminAnalytics() {
           </div>
         </GlassCard>
 
-        {/* Ticket Promedio Gauge */}
-        <GlassCard className="p-8 flex flex-col items-center justify-center">
-          <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-4 text-center">Ticket Promedio</h3>
-          <div className="h-[200px] w-full relative flex items-center justify-center">
-            {isReady && (
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={[
-                      { value: analyticsSummary.ticketPromedio, fill: '#10B981' },
-                      { value: (analyticsSummary.ticketPromedio * 0.5), fill: '#f3f4f6' }
-                    ]}
-                    cx="50%"
-                    cy="80%"
-                    startAngle={180}
-                    endAngle={0}
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={0}
-                    dataKey="value"
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-            <div className="absolute top-[60%] left-1/2 -translate-x-1/2 text-center">
-              <p className="text-2xl font-black text-gray-900">{formatCompactCurrency(analyticsSummary.ticketPromedio)}</p>
-              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">META: {formatCompactCurrency(analyticsSummary.ticketPromedio * 1.2)}</p>
-            </div>
-          </div>
-        </GlassCard>
 
         {/* Conversion Funnel */}
         <GlassCard className="p-8 flex flex-col">
