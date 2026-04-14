@@ -88,13 +88,8 @@ const WeeklyHeatmap = React.memo(({ data }) => {
   const [hover, setHover] = useState(null);
   
   const maxCount = useMemo(() => {
-    let max = 1;
-    data.forEach(day => {
-      day.hours.forEach(h => {
-        if (h.count > max) max = h.count;
-      });
-    });
-    return max;
+    const counts = data.flatMap(day => day.hours.map(h => h.count));
+    return Math.max(...counts, 1);
   }, [data]);
 
   const handleHover = useCallback((day, hourData, x, y) => {
@@ -137,26 +132,26 @@ const WeeklyHeatmap = React.memo(({ data }) => {
           {hover && (
             <motion.div
               key="heatmap-tooltip"
-              initial={{ opacity: 0, scale: 0.9, y: 8 }}
+              initial={{ opacity: 0, scale: 0.9 }}
               animate={{ 
                 opacity: 1, 
-                scale: 1, 
-                y: 0,
+                scale: 1,
                 left: hover.x,
                 top: hover.y
               }}
-              exit={{ opacity: 0, scale: 0.9, y: 8 }}
+              exit={{ opacity: 0, scale: 0.9 }}
               transition={{ 
                 type: "spring", 
                 damping: 25, 
-                stiffness: 250,
-                opacity: { duration: 0.2 }
+                stiffness: 350,
+                opacity: { duration: 0.1 }
               }}
               style={{ 
                 position: 'fixed', 
                 pointerEvents: 'none',
                 zIndex: 999999,
-                transform: 'translate(-50%, calc(-100% - 15px))'
+                x: '-50%',
+                y: 'calc(-100% - 20px)'
               }}
               className="bg-[#101010]/95 backdrop-blur-2xl text-white p-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col items-center min-w-[160px] border border-white/10"
             >
@@ -322,6 +317,10 @@ export default function AdminAnalytics() {
     } catch (err) {
       console.error('Error updating lead status:', err);
     }
+  };
+
+  const handleSmartExport = () => {
+    window.print();
   };
 
   const handleDeleteLead = async (id) => {
@@ -1191,6 +1190,20 @@ export default function AdminAnalytics() {
     
     return (
       <div className="space-y-8 animate-fadeUp">
+        {/* Actionable BI Header with Export */}
+        <div className="flex justify-between items-center mb-2">
+           <div>
+              <h2 className="text-xl font-black text-gray-900 tracking-tight uppercase">Intelligence Center</h2>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Business Intelligence & Performance Analysis</p>
+           </div>
+           <button 
+             onClick={handleSmartExport}
+             className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-700 text-white text-[10px] font-black uppercase tracking-[0.1em] shadow-xl shadow-indigo-200 active:scale-95 transition-all"
+           >
+              <Download className="w-4 h-4" /> Reporte BI Ejecutivo
+           </button>
+        </div>
+
         {/* Actionable BI KPI Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <GlassCard className="p-6 relative overflow-hidden group">
@@ -1472,7 +1485,10 @@ export default function AdminAnalytics() {
              <button className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-400">
                 <Filter size={14} />
              </button>
-             <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1A1A1A] text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
+             <button 
+               onClick={handleSmartExport}
+               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1A1A1A] text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
+             >
                 <Download className="w-3.5 h-3.5" /> Exportar
              </button>
           </div>
@@ -1734,6 +1750,108 @@ export default function AdminAnalytics() {
             </motion.div>
           </AnimatePresence>
         </div>
+      )}
+      {createPortal(
+        <div id="bi-report-root" className="print-report-container hidden print:flex flex-col bg-white min-h-screen p-16 text-gray-900 pointer-events-none fixed inset-0 z-[-1]">
+           {/* Executive Branding */}
+           <div className="flex justify-between items-start border-b-2 border-gray-900 pb-8 mb-12">
+              <div>
+                 <h1 className="text-4xl font-black uppercase tracking-tighter text-gray-900">Reporte Ejecutivo BI</h1>
+                 <p className="text-xl font-bold text-gray-400 uppercase mt-2 tracking-widest">{activeBrand?.name || 'Alto Andino'}</p>
+              </div>
+              <div className="text-right">
+                 <p className="text-[10px] font-black uppercase text-gray-400">Rango de Análisis</p>
+                 <p className="text-lg font-black text-gray-900 uppercase">
+                    {dateRange === 'today' ? 'Hoy' : dateRange === '7d' ? 'Últimos 7 días' : 'Últimos 30 días'}
+                 </p>
+                 <p className="text-[9px] font-bold text-gray-400 mt-1 italic">Generado: {new Date().toLocaleString()}</p>
+              </div>
+           </div>
+
+           {/* Prime Metrics Grid */}
+           <div className="grid grid-cols-3 gap-12 mb-16">
+              <div className="border-l-4 border-emerald-500 pl-6 py-2">
+                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Ingresos Totales</p>
+                 <p className="text-3xl font-black text-gray-900 tabular-nums">{formatCurrency(biStats.current.revenue)}</p>
+              </div>
+              <div className="border-l-4 border-blue-500 pl-6 py-2">
+                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Utilidad Bruta</p>
+                 <p className="text-3xl font-black text-gray-900 tabular-nums">{formatCurrency(biStats.current.profit)}</p>
+              </div>
+              <div className="border-l-4 border-indigo-500 pl-6 py-2">
+                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Margen Real</p>
+                 <p className="text-3xl font-black text-gray-900 tabular-nums">{biStats.current.margin.toFixed(1)}%</p>
+              </div>
+           </div>
+
+           {/* BCG Matrix Insights */}
+           <div className="mb-16">
+              <h2 className="text-xs font-black text-gray-900 uppercase tracking-widest border-b border-gray-100 pb-4 mb-8 italic">/// Análisis de Portafolio (BCG Matrix)</h2>
+              <div className="grid grid-cols-2 gap-16">
+                 <div>
+                    <h3 className="text-[10px] font-black text-emerald-600 uppercase mb-4 tracking-tighter">★ PRODUCTOS ESTRELLA (Stars)</h3>
+                    <div className="space-y-3">
+                       {bcgData.items.filter(i => i.bcgCategory === 'Star').slice(0, 6).map((p, i) => (
+                          <div key={i} className="flex justify-between items-baseline text-[11px] border-b border-gray-50 pb-1.5">
+                             <span className="font-black text-gray-900 uppercase tracking-tight">{p.name}</span>
+                             <span className="font-bold text-gray-500">{p.units} un • {p.margin.toFixed(0)}% mgn</span>
+                          </div>
+                       ))}
+                    </div>
+                 </div>
+                 <div>
+                    <h3 className="text-[10px] font-black text-rose-600 uppercase mb-4 tracking-tighter">✘ PRODUCTOS PERRO (Dogs)</h3>
+                    <div className="space-y-3">
+                       {bcgData.items.filter(i => i.bcgCategory === 'Dog').slice(0, 6).map((p, i) => (
+                          <div key={i} className="flex justify-between items-baseline text-[11px] border-b border-gray-50 pb-1.5">
+                             <span className="font-black text-gray-900 opacity-40 uppercase tracking-tight">{p.name}</span>
+                             <span className="font-bold text-gray-400">{p.units} un • {p.margin.toFixed(0)}% mgn</span>
+                          </div>
+                       ))}
+                    </div>
+                 </div>
+              </div>
+           </div>
+
+           {/* Leakage Audit */}
+           <div className="mb-16">
+              <h2 className="text-xs font-black text-gray-900 uppercase tracking-widest border-b border-gray-100 pb-4 mb-8 italic">/// Auditoría de Fugas de Ingresos</h2>
+              <div className="bg-gray-50 p-8 rounded-3xl border border-gray-100">
+                 <div className="flex justify-between items-center mb-8">
+                    <p className="text-sm font-black text-rose-600 uppercase tracking-tighter">Impacto Total Fuga: {formatCurrency(leakageAudit.totalLeakage)}</p>
+                 </div>
+                 <div className="grid grid-cols-2 gap-12">
+                    <div>
+                       <p className="text-[9px] font-black border-b border-gray-200 pb-2 mb-4 uppercase text-gray-400 tracking-widest">Cancelaciones</p>
+                       <div className="space-y-2">
+                          {leakageAudit.cancellations.slice(0, 5).map((c, i) => (
+                             <div key={i} className="flex justify-between text-[10px] py-1">
+                                <span className="font-bold text-gray-700">{c.reason.slice(0, 30)}</span>
+                                <span className="font-black text-rose-600">{formatCurrency(c.amount)}</span>
+                             </div>
+                          ))}
+                       </div>
+                    </div>
+                    <div>
+                       <p className="text-[9px] font-black border-b border-gray-200 pb-2 mb-4 uppercase text-gray-400 tracking-widest">Descuentos</p>
+                       <div className="space-y-2">
+                          {leakageAudit.discounts.slice(0, 5).map((d, i) => (
+                             <div key={i} className="flex justify-between text-[10px] py-1">
+                                <span className="font-bold text-gray-700">{d.reason.slice(0, 30)}</span>
+                                <span className="font-black text-amber-600">{formatCurrency(d.amount)}</span>
+                             </div>
+                          ))}
+                       </div>
+                    </div>
+                 </div>
+              </div>
+           </div>
+
+           <div className="mt-auto pt-16 text-[9px] font-black text-gray-300 uppercase italic text-center tracking-[0.2em] border-t border-gray-50">
+              Intelligence Node /// Alto Andino Executive BI /// Confidencial
+           </div>
+        </div>,
+        document.body
       )}
     </div>
   );
