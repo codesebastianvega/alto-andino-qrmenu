@@ -61,6 +61,71 @@ const TabButton = ({ active, onClick, icon: Icon, label }) => (
   </button>
 );
 
+const WeeklyHeatmap = React.memo(({ data }) => {
+  const [hover, setHover] = useState(null);
+  
+  return (
+    <div className="relative">
+      <div className="flex flex-col gap-1.5 overflow-x-auto pb-4 custom-scrollbar">
+        {data.map((day, di) => (
+          <div key={di} className="flex items-center gap-1.5 min-w-[600px]">
+            <span className="w-8 text-[10px] font-black text-gray-400 uppercase">{day.day}</span>
+            <div className="flex-1 flex gap-1">
+              {day.hours.map((h, hi) => {
+                const maxCount = Math.max(...data.flatMap(d => d.hours.map(h => h.count)), 1);
+                const opacity = h.count > 0 ? 0.12 + (h.count / maxCount) * 0.88 : 0.05;
+                const color = h.count > 0 ? 'bg-emerald-500' : 'bg-gray-100';
+                return (
+                  <div 
+                    key={hi} 
+                    className={`flex-1 h-7 rounded-sm ${color} transition-all hover:ring-2 hover:ring-emerald-400 cursor-none relative`}
+                    style={{ opacity }}
+                    onMouseEnter={(e) => {
+                      setHover({
+                        day: day.day,
+                        hour: h.hour,
+                        count: h.count,
+                        x: e.clientX,
+                        y: e.clientY
+                      });
+                    }}
+                    onMouseMove={(e) => {
+                      setHover(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null);
+                    }}
+                    onMouseLeave={() => setHover(null)}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {hover && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            style={{ 
+              position: 'fixed', 
+              top: hover.y - 80, 
+              left: hover.x - 60,
+              pointerEvents: 'none',
+              zIndex: 100 
+            }}
+            className="bg-[#1A1A1A] text-white p-3 rounded-2xl shadow-2xl flex flex-col items-center min-w-[120px] border border-white/10"
+          >
+            <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">{hover.day} • {hover.hour}:00h</p>
+            <p className="text-sm font-black mt-1">{hover.count} <span className="text-gray-400 font-bold uppercase text-[10px]">Pedidos</span></p>
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#1A1A1A] rotate-45" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+});
+
 export default function AdminAnalytics() {
   const [activeTab, setActiveTab] = useState('resumen');
   const [data, setData] = useState({ orders: [], leads: [], events: [], paymentMethods: [] });
@@ -774,28 +839,7 @@ export default function AdminAnalytics() {
               <p className="text-[10px] font-bold text-gray-400 uppercase">Intensidad operativa por horario</p>
             </div>
           </div>
-          <div className="flex flex-col gap-1.5 overflow-x-auto pb-4 custom-scrollbar">
-            {heatmapStats.map((day, di) => (
-              <div key={di} className="flex items-center gap-1.5 min-w-[600px]">
-                <span className="w-8 text-[10px] font-black text-gray-400 uppercase">{day.day}</span>
-                <div className="flex-1 flex gap-1">
-                  {day.hours.map((h, hi) => {
-                    const maxCount = Math.max(...heatmapStats.flatMap(d => d.hours.map(h => h.count)), 1);
-                    const opacity = h.count > 0 ? 0.1 + (h.count / maxCount) * 0.9 : 0.05;
-                    const color = h.count > 0 ? 'bg-emerald-500' : 'bg-gray-200';
-                    return (
-                      <div 
-                        key={hi} 
-                        className={`flex-1 h-6 rounded-sm ${color} transition-all hover:ring-2 hover:ring-emerald-400 cursor-help`}
-                        style={{ opacity }}
-                        title={`${day.day} ${h.hour}:00h - ${h.count} pedidos`}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
+          <WeeklyHeatmap data={heatmapStats} />
         </GlassCard>
 
         {/* Mini Category Performance - Horizontal Bars (As requested/maintained) */}
