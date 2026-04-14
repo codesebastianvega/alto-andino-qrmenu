@@ -81,6 +81,7 @@ export default function AdminKitchen() {
           )
         `)
         .in('status', ['new', 'preparing'])
+        .eq('brand_id', activeBrandId)
       if (error) throw error;
       
       // Multi-level Priority Sorting: Mesa (1) > Llevar (2) > Domicilio (3) > Time (asc)
@@ -100,7 +101,7 @@ export default function AdminKitchen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeBrandId]);
 
   // Fetch Restaurant Settings
   useEffect(() => {
@@ -445,8 +446,13 @@ export default function AdminKitchen() {
     fetchKitchenOrders();
 
     const channel = supabase
-      .channel('kitchen-view-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+      .channel(`kitchen-${activeBrandId}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'orders',
+        filter: `brand_id=eq.${activeBrandId}`
+      }, (payload) => {
         if (payload.eventType === 'INSERT') {
             if (['new', 'preparing'].includes(payload.new.status)) {
                 playNotificationSound();
@@ -464,7 +470,12 @@ export default function AdminKitchen() {
             fetchKitchenOrders();
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, () => {
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'order_items',
+        filter: `brand_id=eq.${activeBrandId}`
+      }, () => {
         fetchKitchenOrders();
       })
       .subscribe();

@@ -326,7 +326,7 @@ export default function AdminAnalytics() {
           .gte('created_at', prevStart.toISOString())
           .lt('created_at', prevEnd.toISOString()),
           
-        supabase.from('payment_methods').select('id', { count: 'exact' }).eq('brand_id', activeBrandId), // wait, this was pmRes. PMs are useful but we need products.
+        supabase.from('payment_methods').select('id, name').eq('brand_id', activeBrandId),
         supabase.from('products').select('id, name, cost, price, image_url').eq('brand_id', activeBrandId)
       ]);
 
@@ -743,6 +743,26 @@ export default function AdminAnalytics() {
     };
   }, [data?.orders]);
 
+  const prospectStats = useMemo(() => {
+    const leads = data?.leads || [];
+    const prevLeads = prevData?.leads || [];
+    
+    const converted = leads.filter(l => l.status === 'converted').length;
+    const contacted = leads.filter(l => l.status === 'contacted').length;
+    const prevConverted = prevLeads.filter(l => l.status === 'converted').length;
+    
+    const rate = leads.length > 0 ? (converted / leads.length) * 100 : 0;
+    const prevRate = prevLeads.length > 0 ? (prevConverted / prevLeads.length) * 100 : 0;
+
+    return {
+      total: leads.length,
+      totalDiff: prevLeads.length === 0 ? (leads.length > 0 ? 100 : 0) : ((leads.length - prevLeads.length) / prevLeads.length) * 100,
+      rate,
+      rateDiff: rate - prevRate,
+      contacted
+    };
+  }, [data?.leads, prevData?.leads]);
+
   // Derived hooks for backward compatibility
   const productPerformance = useMemo(() => {
     return bcgData.items.sort((a,b) => b.revenue - a.revenue);
@@ -804,17 +824,17 @@ export default function AdminAnalytics() {
   const paymentStats = useMemo(() => {
     const stats = {};
     (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
-      const method = o.payment_method || 'Sin especificar';
+      const method = o.payment_method || 'cash';
       
       // Map labels
       let label = method;
       if (method === 'cash') label = 'Efectivo';
       else if (method === 'card') label = 'Tarjeta';
+      else if (method === 'Sin especificar' || !method) label = 'Sin especificar';
       else {
         // Search in paymentMethods if it's a UUID
         const found = data.paymentMethods?.find(pm => pm.id === method);
-        if (found) label = found.name;
-        else if (method === 'Sin especificar') label = 'Sin especificar';
+        if (found && found.name) label = found.name;
         else if (method.length > 20) label = 'Otro (Personalizado)'; // Fallback for UUIDs not found
       }
 
@@ -1114,12 +1134,12 @@ export default function AdminAnalytics() {
       {/* Prime KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {[
-          { label: 'Ingresos Totales', val: formatCompactCurrency(stats.revenue), diff: stats.revenueDiff, icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+          { label: 'Ingresos Totales', val: formatCompactCurrency(stats.revenue), diff: biStats.diffs.revenue, icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
           { label: 'Pronóstico Cierre', val: formatCompactCurrency(advancedData.forecasting?.projected_sales || 0), diff: advancedData.forecasting?.deviation_pct, icon: TrendingUp, color: 'text-indigo-500', bg: 'bg-indigo-50' },
-          { label: 'Pedidos Totales', val: stats.orderCount, diff: stats.ordersDiff, icon: ShoppingCart, color: 'text-blue-500', bg: 'bg-blue-50' },
-          { label: 'Cancelados', val: stats.cancelledCount, diff: stats.cancelledDiff, icon: Trash2, color: 'text-rose-500', bg: 'bg-rose-50' },
-          { label: 'Ticket Promedio', val: formatCompactCurrency(stats.avgTicket), diff: stats.ticketDiff, icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50' },
-          { label: 'Prospección', val: stats.newLeads, diff: stats.leadsDiff, icon: Users, color: 'text-purple-500', bg: 'bg-purple-50' }
+          { label: 'Pedidos Totales', val: stats.orderCount, diff: biStats.diffs.orders, icon: ShoppingCart, color: 'text-blue-500', bg: 'bg-blue-50' },
+          { label: 'Cancelados', val: stats.cancelledCount, diff: biStats.diffs.cancelled, icon: Trash2, color: 'text-rose-500', bg: 'bg-rose-50' },
+          { label: 'Ticket Promedio', val: formatCompactCurrency(stats.avgTicket), diff: biStats.diffs.ticket, icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50' },
+          { label: 'Prospección', val: stats.leadCount, diff: biStats.diffs.leads, icon: Users, color: 'text-purple-500', bg: 'bg-purple-50' }
         ].map((item, i) => (
           <GlassCard key={i} className="p-5">
             <div className="flex justify-between items-start mb-3">
@@ -2044,7 +2064,7 @@ export default function AdminAnalytics() {
             <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
               <Clock className="w-5 h-5" />
             </div>
-            <DiffBadge value={stats.avgTimeDiff} />
+            <DiffBadge value={biStats.diffs.avgTime} />
           </div>
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tiempo Prom. de Entrega</p>
           <div className="flex items-baseline gap-2 mt-1">
@@ -2058,7 +2078,7 @@ export default function AdminAnalytics() {
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center">
               <CheckCircle2 className="w-5 h-5" />
             </div>
-            <DiffBadge value={stats.ordersDiff} />
+            <DiffBadge value={biStats.diffs.orders} />
           </div>
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Órdenes Finalizadas</p>
           <h3 className="text-2xl font-black text-gray-900 mt-1">{stats.orderCount}</h3>
