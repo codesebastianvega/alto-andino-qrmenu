@@ -27,14 +27,16 @@ import {
   ArrowUpRight,
   Monitor,
   Zap,
-  Plus
+  Plus,
+  Check,
+  X
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, Legend, AreaChart, Area,
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ScatterChart, Scatter, ZAxis, ReferenceLine,
-  RadialBarChart, RadialBar, Treemap
+  RadialBarChart, RadialBar, Treemap, ComposedChart
 } from 'recharts';
 
 const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1'];
@@ -174,14 +176,62 @@ const WeeklyHeatmap = React.memo(({ data }) => {
   );
 });
 
+const VisionTooltip = ({ active, payload, label, formatter, units = "ventas" }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-[#0A0A0B]/95 backdrop-blur-3xl text-white p-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] border border-white/10 min-w-[180px] animate-in fade-in zoom-in duration-200">
+        <div className="flex items-center justify-between gap-3 mb-3 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
+            <p className="text-[10px] font-black text-white/90 uppercase tracking-widest leading-none">
+              {label}
+            </p>
+          </div>
+          <span className="text-[8px] font-bold text-emerald-400/50 uppercase tracking-tighter">Vision OS</span>
+        </div>
+        <div className="space-y-2">
+          {payload.map((item, i) => (
+            <div key={i} className="flex justify-between items-center gap-4 group">
+              <div className="flex items-center gap-2">
+                <div 
+                  className="w-1 h-3 rounded-full" 
+                  style={{ backgroundColor: item.color || item.fill || '#10B981' }} 
+                />
+                <span className="text-gray-400 font-bold uppercase text-[9px] tracking-tight group-hover:text-white/80 transition-colors">
+                  {item.name === 'revenue' ? 'Ingresos' : 
+                   item.name === 'avgTicket' ? 'Ticket Prom.' : 
+                   item.name === 'count' ? 'Ventas' :
+                   item.name === 'cumPercentage' ? 'Acomulado' :
+                   item.name === 'value' ? units :
+                   item.name}
+                </span>
+              </div>
+              <span className="text-[13px] font-black tabular-nums text-white">
+                {formatter ? formatter(item.value, item.name) : 
+                 (item.name === 'cumPercentage' ? `${item.value.toFixed(1)}%` : 
+                  (typeof item.value === 'number' && item.value > 1000 ? item.value.toLocaleString() : item.value))}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function AdminAnalytics() {
-  const [activeTab, setActiveTab] = useState('resumen');
+  const [editingProductId, setEditingProductId] = useState(null);
+  const [editValue, setEditValue] = useState('');
+  const [isSavingCost, setIsSavingCost] = useState(false);
   const [data, setData] = useState({ orders: [], leads: [], events: [], paymentMethods: [] });
   const [prevData, setPrevData] = useState({ orders: [], leads: [], events: [] });
   const [productLimit, setProductLimit] = useState(5);
   const [loading, setLoading] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const [dateRange, setDateRange] = useState('7d');
+  const [activeTab, setActiveTab] = useState('resumen');
+  const [paretoType, setParetoType] = useState('revenue');
   const { activeBrand } = useAuth();
   const activeBrandId = activeBrand?.id;
 
@@ -238,7 +288,7 @@ export default function AdminAnalytics() {
           id, total_amount, status, created_at, delivered_at, fulfillment_type, payment_method,
           cancellation_reason, cancelled_by, discount_amount, discount_reason,
           restaurant_tables ( id, table_number ),
-          order_items ( quantity, unit_price, products ( name, cost, margin, categories ( name ) ) )
+          order_items ( quantity, unit_price, products ( id, name, cost, margin, categories ( name ) ) )
         `).eq('brand_id', activeBrandId)
           .gte('created_at', start.toISOString())
           .order('created_at', { ascending: false }),
@@ -316,6 +366,31 @@ export default function AdminAnalytics() {
       fetchData(); // Refresh
     } catch (err) {
       console.error('Error updating lead status:', err);
+    }
+  };
+
+  const handleQuickCostUpdate = async () => {
+    if (!editingProductId || !editValue || isSavingCost) return;
+    setIsSavingCost(true);
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ cost: parseFloat(editValue) })
+        .eq('id', editingProductId);
+      
+      if (error) throw error;
+      
+      // Clear editing state
+      setEditingProductId(null);
+      setEditValue('');
+      
+      // Refresh analytics data
+      await fetchData();
+    } catch (err) {
+      console.error('Error updating product cost:', err);
+      alert('Error actualizando costo. Revisa la consola.');
+    } finally {
+      setIsSavingCost(false);
     }
   };
 
@@ -439,35 +514,40 @@ export default function AdminAnalytics() {
       o.order_items?.forEach(item => {
         const p = item.products;
         if (!p) return;
-        if (!products[p.name]) {
-          products[p.name] = { 
+        if (!products[p.id]) {
+          products[p.id] = { 
+            id: p.id,
             name: p.name, 
             units: 0, 
             revenue: 0, 
-            cost: Number(p.cost || 0),
-            margin: 0
+            cost: (p.cost !== null && p.cost !== undefined) ? Number(p.cost) : 0,
+            hasMissingCost: p.cost === null || p.cost === 0 || p.cost === undefined
           };
         }
-        products[p.name].units += item.quantity;
-        products[p.name].revenue += (item.quantity * item.unit_price);
+        products[p.id].units += item.quantity;
+        products[p.id].revenue += (item.quantity * item.unit_price);
         totalVolume += item.quantity;
       });
     });
 
-    // 1% Relevance Filter
     const relevanceThreshold = totalVolume * 0.01;
-    const filteredProducts = Object.values(products)
-      .filter(p => p.units >= relevanceThreshold)
-      .map(p => ({
-        ...p,
-        margin: p.revenue > 0 ? ((p.revenue - (p.units * p.cost)) / p.revenue) * 100 : 0
-      }));
+    const allItems = Object.values(products).filter(p => p.units >= relevanceThreshold);
+    
+    const validItems = allItems.filter(p => !p.hasMissingCost).map(p => ({
+      ...p,
+      margin: p.revenue > 0 ? ((p.revenue - (p.units * p.cost)) / p.revenue) * 100 : 0
+    }));
 
-    if (filteredProducts.length === 0) return { items: [], medians: { units: 0, margin: 0 } };
+    const missingItems = allItems.filter(p => p.hasMissingCost).map(p => ({
+      ...p,
+      margin: 100, // Visual fallback
+      bcgCategory: 'Dog' // Default for missing
+    }));
 
-    // Median Calculations
-    const sortedUnits = [...filteredProducts].map(p => p.units).sort((a,b) => a-b);
-    const sortedMargins = [...filteredProducts].map(p => p.margin).sort((a,b) => a-b);
+    if (validItems.length === 0) return { items: missingItems, medians: { units: 0, margin: 0 }, missingItems };
+
+    const sortedUnits = [...validItems].map(p => p.units).sort((a,b) => a-b);
+    const sortedMargins = [...validItems].map(p => p.margin).sort((a,b) => a-b);
     
     const getMedian = (arr) => {
       const mid = Math.floor(arr.length / 2);
@@ -479,16 +559,18 @@ export default function AdminAnalytics() {
       margin: getMedian(sortedMargins)
     };
 
-    const items = filteredProducts.map(p => {
-      let category = 'Dog';
-      if (p.units >= medians.units && p.margin >= medians.margin) category = 'Star';
-      else if (p.units >= medians.units && p.margin < medians.margin) category = 'Cow';
-      else if (p.units < medians.units && p.margin >= medians.margin) category = 'Enigma';
-      
-      return { ...p, bcgCategory: category };
-    });
+    const items = [
+      ...validItems.map(p => {
+        let category = 'Dog';
+        if (p.units >= medians.units && p.margin >= medians.margin) category = 'Star';
+        else if (p.units >= medians.units && p.margin < medians.margin) category = 'Cow';
+        else if (p.units < medians.units && p.margin >= medians.margin) category = 'Enigma';
+        return { ...p, bcgCategory: category };
+      }),
+      ...missingItems
+    ];
 
-    return { items, medians };
+    return { items, medians, missingItems };
   }, [data.orders]);
 
   const growthContribution = useMemo(() => {
@@ -537,6 +619,35 @@ export default function AdminAnalytics() {
       };
     }).sort((a,b) => b.profitDiff - a.profitDiff);
   }, [data.orders, prevData.orders]);
+
+  const paretoData = useMemo(() => {
+    const products = {};
+    let total = 0;
+
+    data.orders.filter(o => o.status === 'delivered').forEach(o => {
+      o.order_items?.forEach(item => {
+        const name = item.products?.name;
+        if (!name) return;
+        if (!products[name]) products[name] = { name, value: 0 };
+        const val = paretoType === 'revenue' 
+          ? (item.quantity * item.unit_price) 
+          : item.quantity;
+        products[name].value += val;
+        total += val;
+      });
+    });
+
+    const sorted = Object.values(products).sort((a,b) => b.value - a.value);
+    let cumulative = 0;
+
+    return sorted.map(p => {
+      cumulative += p.value;
+      return {
+        ...p,
+        cumulativePercent: total > 0 ? (cumulative / total) * 100 : 0
+      };
+    });
+  }, [data.orders, paretoType]);
 
   const leakageAudit = useMemo(() => {
     const cancellations = data.orders
@@ -757,31 +868,108 @@ export default function AdminAnalytics() {
     };
   }, [data.events, data.orders, stats]);
 
-  const prospectStats = useMemo(() => {
-    const total = data.leads.length;
-    const prevTotal = prevData.leads.length;
+  const smartRecommendations = useMemo(() => {
+    const recs = [];
     
-    const converted = data.leads.filter(l => l.status === 'converted').length;
-    const prevConverted = prevData.leads.filter(l => l.status === 'converted').length;
-    
-    const contacted = data.leads.filter(l => l.status === 'contacted').length;
-    const rate = total ? (converted / total) * 100 : 0;
-    const prevRate = prevTotal ? (prevConverted / prevTotal) * 100 : 0;
+    // 1. Check for missing costs (Data Integrity)
+    if (bcgData.missingItems.length > 0) {
+      recs.push({
+        type: 'warning',
+        title: 'Integridad de Datos',
+        desc: `Faltan costos para ${bcgData.missingItems.length} productos. La rentabilidad calculada puede ser inexacta.`,
+        actionLabel: 'Completar Costos',
+        icon: AlertCircle,
+        color: 'text-amber-500',
+        bg: 'bg-amber-50'
+      });
+    }
 
-    const getDiff = (curr, old) => {
-      if (!old || old === 0) return curr > 0 ? 100 : 0;
-      return ((curr - old) / old) * 100;
-    };
+    // 2. Identify "Dogs" with high volume (Efficiency Leak)
+    const heavyDogs = bcgData.items.filter(p => p.bcgCategory === 'Dog' && p.units > bcgData.medians.units * 0.5);
+    if (heavyDogs.length > 0) {
+      recs.push({
+        type: 'danger',
+        title: 'Fuga de Esfuerzo',
+        desc: `${heavyDogs[0].name} tiene alto volumen pero margen crítico (${heavyDogs[0].margin.toFixed(1)}%).`,
+        actionLabel: 'Revisar Receta',
+        icon: TrendingUp,
+        color: 'text-rose-500',
+        bg: 'bg-rose-50'
+      });
+    }
 
-    return { 
-      total, 
-      converted, 
-      contacted, 
-      rate,
-      totalDiff: getDiff(total, prevTotal),
-      rateDiff: getDiff(rate, prevRate)
-    };
-  }, [data.leads, prevData.leads]);
+    // 3. Identify "Stars" (Opportunity to push)
+    const stars = bcgData.items.filter(p => p.bcgCategory === 'Star');
+    if (stars.length > 0) {
+      recs.push({
+        type: 'success',
+        title: 'Producto Estrella',
+        desc: `${stars[0].name} lidera en margen y volumen. ¿Por qué no destacarlo más?`,
+        actionLabel: 'Promocionar',
+        icon: Zap,
+        color: 'text-emerald-500',
+        bg: 'bg-emerald-50'
+      });
+    }
+
+    // 4. Identify declining "Cash Cows"
+    const cow = bcgData.items.find(p => p.bcgCategory === 'Cow');
+    const contributor = growthContribution.find(c => c.name === cow?.name);
+    if (contributor && contributor.profitDiff < 0) {
+       recs.push({
+        type: 'info',
+        title: 'Vaca en Declive',
+        desc: `${cow.name} aporta volumen pero su utilidad neta bajó.`,
+        actionLabel: 'Ver Detalles',
+        icon: ShoppingCart,
+        color: 'text-blue-500',
+        bg: 'bg-blue-50'
+      });
+    }
+
+    return recs.slice(0, 3);
+  }, [bcgData, growthContribution]);
+
+  const categoryPopularity = useMemo(() => {
+    const cats = {};
+    let totalUnits = 0;
+
+    data.orders.filter(o => o.status === 'delivered').forEach(o => {
+      o.order_items?.forEach(item => {
+        const catName = item.products?.categories?.name || 'Varios';
+        if (!cats[catName]) cats[catName] = { name: catName, units: 0, revenue: 0 };
+        cats[catName].units += item.quantity;
+        cats[catName].revenue += (item.quantity * item.unit_price);
+        totalUnits += item.quantity;
+      });
+    });
+
+    return Object.values(cats).map(c => ({
+      ...c,
+      share: totalUnits > 0 ? (c.units / totalUnits) * 100 : 0
+    })).sort((a,b) => b.units - a.units);
+  }, [data.orders]);
+
+  const hourlyPerformance = useMemo(() => {
+    const hours = Array.from({ length: 24 }, (_, i) => ({ 
+      hour: i, 
+      label: `${i}h`, 
+      orders: 0, 
+      revenue: 0,
+      avgTicket: 0
+    }));
+
+    data.orders.filter(o => o.status === 'delivered').forEach(o => {
+      const h = new Date(o.created_at).getHours();
+      hours[h].orders += 1;
+      hours[h].revenue += Number(o.total_amount);
+    });
+
+    return hours.map(h => ({
+      ...h,
+      avgTicket: h.orders > 0 ? h.revenue / h.orders : 0
+    }));
+  }, [data.orders]);
 
   const DiffBadge = ({ value }) => {
     if (value === 0) return null;
@@ -986,25 +1174,7 @@ export default function AdminAnalytics() {
                     dataKey="value"
                     cornerRadius={10}
                   />
-                  <RechartsTooltip 
-                    cursor={{ stroke: 'transparent' }}
-                    offset={20}
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-white/20 animate-in fade-in zoom-in duration-200">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: payload[0].payload.fill }} />
-                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">{payload[0].payload.name}</p>
-                            </div>
-                            <p className="text-lg font-black text-gray-900 leading-none">{formatCurrency(payload[0].value)}</p>
-                            <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase">Total de ingresos</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
+                  <RechartsTooltip content={<VisionTooltip units="Ingresos" formatter={(val) => formatCurrency(val)} />} />
                 </RadialBarChart>
               </ResponsiveContainer>
             )}
@@ -1076,11 +1246,7 @@ export default function AdminAnalytics() {
                 >
                   <XAxis type="number" hide />
                   <YAxis type="category" dataKey="name" hide />
-                  <RechartsTooltip 
-                    cursor={{ fill: 'transparent' }}
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
-                    formatter={(value) => formatCurrency(value)}
-                  />
+                  <RechartsTooltip content={<VisionTooltip units="Monto" formatter={(val) => formatCurrency(val)} />} />
                   {paymentStats.map((entry, index) => (
                     <Bar 
                       key={index} 
@@ -1128,11 +1294,7 @@ export default function AdminAnalytics() {
                     textAnchor="end"
                   />
                   <YAxis hide />
-                  <RechartsTooltip 
-                    cursor={{ fill: '#f3f4f6', opacity: 0.4 }}
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
-                    formatter={(val) => [`${val} unidades`, 'Volumen']}
-                  />
+                  <RechartsTooltip content={<VisionTooltip units="Unidades" />} />
                   <Bar 
                     dataKey="value" 
                     fill="#10B981" 
@@ -1170,10 +1332,7 @@ export default function AdminAnalytics() {
                     fill="#8B5CF6"
                     fillOpacity={0.5}
                   />
-                  <RechartsTooltip 
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
-                    formatter={(val) => [formatCurrency(val), 'Ingresos']}
-                  />
+                  <RechartsTooltip content={<VisionTooltip units="Ingresos" formatter={(val) => formatCurrency(val)} />} />
                 </RadarChart>
               </ResponsiveContainer>
             ) : (
@@ -1190,19 +1349,42 @@ export default function AdminAnalytics() {
     
     return (
       <div className="space-y-8 animate-fadeUp">
-        {/* Actionable BI Header with Export */}
-        <div className="flex justify-between items-center mb-2">
-           <div>
-              <h2 className="text-xl font-black text-gray-900 tracking-tight uppercase">Intelligence Center</h2>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Business Intelligence & Performance Analysis</p>
-           </div>
-           <button 
-             onClick={handleSmartExport}
-             className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-700 text-white text-[10px] font-black uppercase tracking-[0.1em] shadow-xl shadow-indigo-200 active:scale-95 transition-all"
-           >
-              <Download className="w-4 h-4" /> Reporte BI Ejecutivo
-           </button>
-        </div>
+        {/* Smart Recommendations Section */}
+        <AnimatePresence mode="wait">
+          {smartRecommendations.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {smartRecommendations.map((rec, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ delay: i * 0.1 }}
+                >
+                  <GlassCard noHover className="p-4 border-l-4 h-full" style={{ borderLeftColor: rec.type === 'danger' ? '#F43F5E' : rec.type === 'warning' ? '#F59E0B' : '#10B981' }}>
+                    <div className="flex gap-4 items-start">
+                      <div className={`w-10 h-10 rounded-xl ${rec.bg} ${rec.color} flex-shrink-0 flex items-center justify-center shadow-sm`}>
+                        <rec.icon size={18} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start">
+                           <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-tight">{rec.title}</h4>
+                        </div>
+                        <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">{rec.desc}</p>
+                        <button 
+                          onClick={() => setActiveTab('operaciones')}
+                          className="mt-2 text-[9px] font-black text-indigo-600 uppercase tracking-widest hover:text-indigo-800 transition-colors flex items-center gap-1"
+                        >
+                          {rec.actionLabel} <ChevronRight size={10} />
+                        </button>
+                      </div>
+                    </div>
+                  </GlassCard>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* Actionable BI KPI Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1215,7 +1397,7 @@ export default function AdminAnalytics() {
             </div>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Utilidad Neta</p>
             <h3 className="text-2xl font-black text-gray-900 mt-1">{formatCurrency(biStats.current.profit)}</h3>
-            <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase">Post-Costos de Insumo</p>
+            <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase text-emerald-600">Post-Costos de Insumo</p>
           </GlassCard>
 
           <GlassCard className="p-6">
@@ -1229,7 +1411,7 @@ export default function AdminAnalytics() {
             </div>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Margen Real</p>
             <h3 className="text-2xl font-black text-gray-900 mt-1">{biStats.current.margin.toFixed(1)}%</h3>
-            <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase">Eficiencia Operativa</p>
+            <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase text-blue-600">Eficiencia Promedio</p>
           </GlassCard>
 
           <GlassCard className="p-6">
@@ -1241,16 +1423,16 @@ export default function AdminAnalytics() {
             </div>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Fuga de Ingresos</p>
             <h3 className="text-2xl font-black text-gray-900 mt-1">{formatCurrency(leakageAudit.totalLeakage)}</h3>
-            <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase">Canc. + Descuentos</p>
+            <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase text-rose-600">Canc. + Descuentos</p>
           </GlassCard>
 
           <GlassCard className="p-6">
             <div className="flex justify-between items-start mb-4">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center">
-                <Users size={18} />
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center">
+                <Package size={18} />
               </div>
             </div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Top Driver Crecimiento</p>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Core Product</p>
             <h3 className="text-lg font-black text-gray-900 mt-1 truncate">{topDriver.name}</h3>
             <p className="text-[9px] font-bold text-emerald-500 mt-1 uppercase">+{topDriver.contribution.toFixed(1)}% Al Crecimiento</p>
           </GlassCard>
@@ -1262,13 +1444,14 @@ export default function AdminAnalytics() {
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Matriz de Portafolio (BCG)</h3>
-                <p className="text-[10px] font-bold text-gray-400 uppercase">Clasificación por Volumen vs Margen (Umbrales Mediana)</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase">Volumen vs Margen (Umbrales Mediana)</p>
               </div>
-              <div className="flex gap-4">
-                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-[9px] font-black text-gray-500 uppercase">Star</span></div>
-                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500" /><span className="text-[9px] font-black text-gray-500 uppercase">Cow</span></div>
-                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500" /><span className="text-[9px] font-black text-gray-500 uppercase">Enigma</span></div>
-                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-rose-500" /><span className="text-[9px] font-black text-gray-500 uppercase">Dog</span></div>
+              <div className="flex flex-wrap gap-2 justify-end max-w-[200px]">
+                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-[8px] font-black text-gray-500 uppercase">Star</span></div>
+                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500" /><span className="text-[8px] font-black text-gray-500 uppercase">Cow</span></div>
+                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500" /><span className="text-[8px] font-black text-gray-500 uppercase">Enigma</span></div>
+                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-rose-500" /><span className="text-[8px] font-black text-gray-500 uppercase">Dog</span></div>
+                 <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-gray-400 opacity-50" /><span className="text-[8px] font-black text-gray-400 uppercase italic">Sin Costo</span></div>
               </div>
             </div>
             <div className="h-[320px] w-full">
@@ -1290,38 +1473,30 @@ export default function AdminAnalytics() {
                     tick={{ fontSize: 9, fontWeight: 900 }}
                   />
                   <ZAxis type="number" dataKey="revenue" range={[60, 400]} />
-                  <RechartsTooltip 
-                    cursor={{ strokeDasharray: '3 3' }}
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                          <div className="bg-white p-3 rounded-xl shadow-2xl border border-gray-100">
-                            <p className="text-[10px] font-black text-gray-900 uppercase mb-1">{data.name}</p>
-                            <p className="text-[9px] font-bold text-gray-500 uppercase">Cant: {data.units} un</p>
-                            <p className="text-[9px] font-bold text-emerald-600 uppercase">Margen: {data.margin.toFixed(1)}%</p>
-                            <p className="text-[9px] font-black text-indigo-600 mt-2 uppercase">{data.bcgCategory}</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
+                  <RechartsTooltip content={<VisionTooltip units="Rentabilidad" formatter={(val, name) => name === 'units' ? `${val} sales/mo` : `${val.toFixed(0)}% margin`} />} />
                   <ReferenceLine x={bcgData.medians.units} stroke="#9ca3af" strokeDasharray="3 3" />
                   <ReferenceLine y={bcgData.medians.margin} stroke="#9ca3af" strokeDasharray="3 3" />
+                  
+                  {/* Quadrant Labels - Pure CSS positioning inside SVG space is tricky, using ReferenceLines with labels is safer */}
+                  <ReferenceLine x={bcgData.medians.units * 1.5} y={bcgData.medians.margin * 1.5} stroke="transparent" label={{ value: 'ESTRELLAS', position: 'center', fill: '#10B981', fontSize: 8, fontWeight: 900, opacity: 0.2 }} />
+                  <ReferenceLine x={bcgData.medians.units * 0.5} y={bcgData.medians.margin * 1.5} stroke="transparent" label={{ value: 'ENIGMAS', position: 'center', fill: '#F59E0B', fontSize: 8, fontWeight: 900, opacity: 0.2 }} />
+                  <ReferenceLine x={bcgData.medians.units * 1.5} y={bcgData.medians.margin * 0.5} stroke="transparent" label={{ value: 'VACAS', position: 'center', fill: '#3B82F6', fontSize: 8, fontWeight: 900, opacity: 0.2 }} />
+                  <ReferenceLine x={bcgData.medians.units * 0.5} y={bcgData.medians.margin * 0.5} stroke="transparent" label={{ value: 'PERROS', position: 'center', fill: '#F43F5E', fontSize: 8, fontWeight: 900, opacity: 0.2 }} />
+
                   <Scatter 
                     name="Productos" 
                     data={bcgData.items} 
-                    fill="#10B981"
                   >
                     {bcgData.items.map((entry, index) => (
                       <Cell 
                         key={`cell-${index}`} 
                         fill={
+                          entry.hasMissingCost ? '#9ca3af' :
                           entry.bcgCategory === 'Star' ? '#10B981' : 
                           entry.bcgCategory === 'Cow' ? '#3B82F6' : 
                           entry.bcgCategory === 'Enigma' ? '#F59E0B' : '#F43F5E'
                         } 
+                        fillOpacity={entry.hasMissingCost ? 0.3 : 1}
                       />
                     ))}
                   </Scatter>
@@ -1330,39 +1505,272 @@ export default function AdminAnalytics() {
             </div>
           </GlassCard>
 
-          {/* Growth Contribution Column */}
-          <GlassCard className="p-8">
-            <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-2">Contribución al Crecimiento</h3>
-            <p className="text-[10px] font-bold text-gray-400 uppercase mb-6">¿Qué producto impulsó el mes?</p>
-            <div className="space-y-4">
-              {growthContribution.slice(0, 6).map((item, i) => (
-                <div key={i} className="flex flex-col gap-1">
-                  <div className="flex justify-between items-center text-[10px] font-black uppercase">
-                    <span className="text-gray-900 truncate max-w-[140px] tracking-tight">{item.name}</span>
-                    <span className={item.profitDiff >= 0 ? 'text-emerald-500' : 'text-rose-500'}>
-                      {item.profitDiff >= 0 ? '+' : ''}{formatCompactCurrency(item.profitDiff)}
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full bg-gray-50 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full ${item.profitDiff >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} 
-                      style={{ width: `${Math.min(Math.abs(item.contribution) * 2, 100)}%` }}
-                    />
-                  </div>
-                  <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest text-right">
-                    Contribución: {item.contribution.toFixed(1)}%
-                  </p>
+          {/* Data Integrity / Gaps in Costs */}
+          <GlassCard className="p-8 flex flex-col">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Integridad BI</h3>
+              {bcgData.missingItems.length > 0 && <AlertCircle className="text-amber-500 animate-pulse" size={16} />}
+            </div>
+            
+            <p className="text-[10px] font-bold text-gray-400 uppercase mb-4 leading-relaxed">
+              {bcgData.missingItems.length > 0 
+                ? `Faltan costos para ${bcgData.missingItems.length} productos relevantes.`
+                : "Base de datos 100% íntegra para análisis de rentabilidad."}
+            </p>
+
+            <div className="flex-1 space-y-3 overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">
+              {bcgData.missingItems.length > 0 ? bcgData.missingItems.map((item, i) => (
+                <div key={i} className="bg-gray-50/50 p-3 rounded-2xl border border-dashed border-gray-200 group hover:border-indigo-200 transition-all">
+                  {editingProductId === item.id ? (
+                    <div className="flex items-center gap-2 p-2 bg-white rounded-2xl shadow-sm border border-gray-100 animate-in slide-in-from-right duration-300">
+                      <input 
+                        type="number"
+                        autoFocus
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        placeholder="Costo unit."
+                        className="w-full bg-gray-50 border-none text-[10px] font-black p-2 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                        onKeyDown={(e) => {
+                          if(e.key === 'Enter') handleQuickCostUpdate(item.id, editValue);
+                          if(e.key === 'Escape') setEditingProductId(null);
+                        }}
+                      />
+                      <div className="flex gap-1 shrink-0">
+                        <button 
+                          onClick={() => handleQuickCostUpdate(item.id, editValue)}
+                          disabled={isSavingCost}
+                          className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition-all active:scale-90"
+                        >
+                          <Check size={12} strokeWidth={3} />
+                        </button>
+                        <button 
+                          onClick={() => setEditingProductId(null)}
+                          className="p-2 bg-gray-100 text-gray-400 rounded-xl hover:bg-gray-200 transition-all active:scale-90"
+                        >
+                          <X size={12} strokeWidth={3} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-center group/item hover:bg-white/5 p-2 rounded-xl transition-all">
+                      <div className="min-w-0 pr-2">
+                        <p className="text-[10px] font-black text-gray-900 uppercase truncate tracking-tight group-hover/item:text-indigo-600 transition-colors uppercase whitespace-nowrap">{item.name}</p>
+                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter shrink-0">{item.units} ventas sin margen</p>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setEditingProductId(item.id);
+                          setEditValue('');
+                        }}
+                        className="flex-shrink-0 text-[9px] font-black text-white bg-indigo-600 px-4 py-2 rounded-xl uppercase hover:bg-indigo-700 hover:shadow-[0_0_15px_rgba(79,70,229,0.4)] transition-all active:scale-95 border border-indigo-500/20"
+                      >
+                        Fix
+                      </button>
+                    </div>
+                  )}
                 </div>
-              ))}
+              )) : (
+                <div className="flex flex-col items-center justify-center h-full text-center py-10">
+                  <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mb-4">
+                    <CheckCircle2 size={24} />
+                  </div>
+                  <p className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Base de Datos Saludable</p>
+                </div>
+              )}
             </div>
           </GlassCard>
         </div>
 
-        {/* Audit & Leakage Section */}
+        {/* Pareto row with Toggle (Revenue vs Quantity) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+           <GlassCard className="lg:col-span-2 p-8">
+              <div className="flex justify-between items-start mb-8">
+                 <div>
+                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Análisis de Pareto (80/20)</h3>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase">Concentración de {paretoType === 'revenue' ? 'Ingresos ($)' : 'Carga en Cocina (Cant.)'}</p>
+                 </div>
+                 <div className="flex p-1 bg-gray-100/50 rounded-xl">
+                    <button 
+                       onClick={() => setParetoType('revenue')}
+                       className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all flex items-center gap-2 ${paretoType === 'revenue' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                       <DollarSign size={12} /> Cash
+                    </button>
+                    <button 
+                       onClick={() => setParetoType('units')}
+                       className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all flex items-center gap-2 ${paretoType === 'units' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                       <Zap size={12} /> Carga
+                    </button>
+                 </div>
+              </div>
+
+              <div className="h-[300px] w-full mt-4">
+                 <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={paretoData.slice(0, 15)} margin={{ top: 10, right: 10, left: 0, bottom: 60 }}>
+                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                       <XAxis 
+                          dataKey="name" 
+                          tick={{ fontSize: 9, fontBold: 900, fill: '#9ca3af' }} 
+                          axisLine={false}
+                          tickLine={false}
+                          angle={-40}
+                          textAnchor="end"
+                          interval={0}
+                       />
+                       <YAxis hide yAxisId="left" />
+                       <YAxis 
+                          yAxisId="right" 
+                          orientation="right" 
+                          domain={[0, 100]} 
+                          tick={{ fontSize: 9, fontBold: 900, fill: '#818cf8' }} 
+                          axisLine={false}
+                          tickLine={false}
+                       />
+                       <RechartsTooltip content={<VisionTooltip units="Valor" />} />
+                       <Bar 
+                          yAxisId="left" 
+                          dataKey="value" 
+                          radius={[6, 6, 0, 0]}
+                       >
+                         {paretoData.slice(0, 15).map((entry, index) => (
+                           <Cell 
+                              key={`cell-${index}`} 
+                              fill={entry.cumPercentage <= 80 ? '#10B981' : '#E5E7EB'} 
+                              fillOpacity={entry.cumPercentage <= 80 ? 1 : 0.4}
+                           />
+                         ))}
+                       </Bar>
+                       <Line 
+                          yAxisId="right" 
+                          type="monotone" 
+                          dataKey="cumulativePercent" 
+                          stroke="#818cf8" 
+                          strokeWidth={3} 
+                          dot={{ r: 3, fill: '#818cf8', strokeWidth: 0 }} 
+                       />
+                       <ReferenceLine 
+                          yAxisId="right" 
+                          y={80} 
+                          stroke="#10B981" 
+                          strokeDasharray="5 5" 
+                          strokeWidth={2}
+                          label={{ 
+                            position: 'right', 
+                            value: '80% RELEVANCIA', 
+                            fill: '#10B981', 
+                            fontSize: 10, 
+                            fontWeight: '900',
+                            className: "drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]"
+                          }} 
+                        />
+                    </ComposedChart>
+                 </ResponsiveContainer>
+              </div>
+           </GlassCard>
+
+           <GlassCard className="p-8">
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-2">Market Contribution</h3>
+              <p className="text-[10px] font-bold text-gray-400 uppercase mb-6">Impacto en Utilidad Bruta</p>
+              <div className="space-y-4">
+                {growthContribution.slice(0, 7).map((item, i) => (
+                  <div key={i} className="flex flex-col gap-1.5">
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase">
+                      <span className="text-gray-900 truncate max-w-[130px] tracking-tight">{item.name}</span>
+                      <span className={item.profitDiff >= 0 ? 'text-emerald-500' : 'text-rose-500'}>
+                        {item.profitDiff >= 0 ? '+' : ''}{formatCompactCurrency(item.profitDiff)}
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full bg-gray-50 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full ${item.profitDiff >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} 
+                        style={{ width: `${Math.min(Math.abs(item.contribution) * 2.5, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+           </GlassCard>
+        </div>
+
+        {/* Efficiency & Hotspots Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+           <GlassCard className="lg:col-span-2 p-8">
+              <div className="flex justify-between items-center mb-8">
+                 <div>
+                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Staffing & Peak Hours</h3>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase">Relación Ingresos vs Órdenes por Hora</p>
+                 </div>
+              </div>
+              <div className="h-[250px] w-full">
+                 <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={hourlyPerformance}>
+                       <defs>
+                          <linearGradient id="colorHourRev" x1="0" y1="0" x2="0" y2="1">
+                             <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
+                             <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                          </linearGradient>
+                       </defs>
+                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
+                       <XAxis 
+                          dataKey="label" 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{ fontSize: 9, fontBold: 900, fill: '#cbd5e1' }}
+                       />
+                       <YAxis hide />
+                       <RechartsTooltip content={<VisionTooltip units="Valor" />} />
+                       <Area 
+                          type="monotone" 
+                          dataKey="revenue" 
+                          stroke="#6366f1" 
+                          strokeWidth={3} 
+                          fillOpacity={1} 
+                          fill="url(#colorHourRev)" 
+                       />
+                       <Area 
+                          type="monotone" 
+                          dataKey="avgTicket" 
+                          stroke="#10b981" 
+                          strokeWidth={2} 
+                          strokeDasharray="4 4" 
+                          fill="transparent" 
+                       />
+                    </AreaChart>
+                 </ResponsiveContainer>
+              </div>
+           </GlassCard>
+
+           <GlassCard className="p-8">
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-8">Volumen por Categoría</h3>
+              <div className="space-y-6">
+                 {categoryPopularity.slice(0, 5).map((cat, i) => (
+                    <div key={i}>
+                       <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-[10px] font-black text-gray-800 uppercase tracking-tight">{cat.name}</span>
+                          <span className="text-[10px] font-black text-indigo-500">{cat.share.toFixed(1)}%</span>
+                       </div>
+                       <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden">
+                          <div 
+                             className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full" 
+                             style={{ width: `${cat.share}%` }}
+                          />
+                       </div>
+                       <div className="flex justify-between mt-2">
+                          <span className="text-[8px] font-bold text-slate-400 uppercase">{cat.units} unid.</span>
+                          <span className="text-[8px] font-black text-emerald-500 uppercase">{formatCompactCurrency(cat.revenue)}</span>
+                       </div>
+                    </div>
+                 ))}
+              </div>
+           </GlassCard>
+        </div>
+
+        {/* Existing Audit Tables */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <GlassCard className="overflow-hidden">
             <div className="p-6 border-b border-gray-100 bg-gray-50/10 flex justify-between items-center">
-              <h3 className="font-black text-gray-900 tracking-tight text-sm uppercase">Auditoría de Fugas: Cancelaciones</h3>
+              <h3 className="font-black text-gray-900 tracking-tight text-sm uppercase">Auditoría: Cancelaciones</h3>
               <Trash2 className="text-rose-400" size={16} />
             </div>
             <div className="overflow-x-auto">
@@ -1385,7 +1793,7 @@ export default function AdminAnalytics() {
                       <td className="px-6 py-4 text-right text-rose-500 font-black">{formatCurrency(c.amount)}</td>
                     </tr>
                   )) : (
-                    <tr><td colSpan="3" className="px-6 py-10 text-center italic text-gray-300">No se registran fugas por cancelación</td></tr>
+                    <tr><td colSpan="3" className="px-6 py-10 text-center italic text-gray-300">Sin fugas críticas</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1394,7 +1802,7 @@ export default function AdminAnalytics() {
 
           <GlassCard className="overflow-hidden">
             <div className="p-6 border-b border-gray-100 bg-gray-50/10 flex justify-between items-center">
-              <h3 className="font-black text-gray-900 tracking-tight text-sm uppercase">Auditoría de Fugas: Descuentos</h3>
+              <h3 className="font-black text-gray-900 tracking-tight text-sm uppercase">Auditoría: Descuentos</h3>
               <DollarSign className="text-amber-400" size={16} />
             </div>
             <div className="overflow-x-auto">
@@ -1735,13 +2143,12 @@ export default function AdminAnalytics() {
         </div>
       ) : (
         <div className="pb-20">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="popLayout">
             <motion.div
               key={activeTab}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
             >
               {activeTab === 'resumen' && <RenderResumen />}
               {activeTab === 'analitica' && <RenderAnalitica />}
