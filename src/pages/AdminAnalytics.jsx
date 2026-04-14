@@ -88,13 +88,13 @@ export default function AdminAnalytics() {
   };
 
   const fetchData = async () => {
-    if (!activeBrandId) {
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
-      const now = new Date();
+      if (!activeBrandId) {
+        setLoading(false);
+        return;
+      }
+
       let start = new Date();
       let prevStart = new Date();
       let prevEnd = new Date();
@@ -132,7 +132,7 @@ export default function AdminAnalytics() {
           .order('created_at', { ascending: false }),
         
         supabase.from('analytics_events').select('*')
-          .filter('metadata->brandId', 'eq', activeBrandId)
+          .contains('metadata', { brandId: activeBrandId })
           .gte('created_at', start.toISOString())
           .order('created_at', { ascending: false }),
 
@@ -147,8 +147,8 @@ export default function AdminAnalytics() {
           .gte('created_at', prevStart.toISOString())
           .lt('created_at', prevEnd.toISOString()),
 
-        supabase.from('analytics_events').select('id, created_at')
-          .filter('metadata->brandId', 'eq', activeBrandId)
+        supabase.from('analytics_events').select('id, created_at, session_id')
+          .contains('metadata', { brandId: activeBrandId })
           .gte('created_at', prevStart.toISOString())
           .lt('created_at', prevEnd.toISOString()),
           
@@ -402,14 +402,21 @@ export default function AdminAnalytics() {
   const analyticsSummary = useMemo(() => {
     const visits = data.events.filter(e => e.event_name === 'menu_visit').length;
     const scans = data.events.filter(e => e.event_name === 'qr_scan').length;
-    const ordersCount = data.orders.length;
-    const abandonmentRate = stats.sessionCount > 0 
-      ? Math.round((stats.abandonedSessions / stats.sessionCount) * 100) 
-      : 0;
     
-    const convRate = stats.sessionCount > 0 
-      ? ((stats.convertedSessions / stats.sessionCount) * 100).toFixed(1) 
-      : 0;
+    // Calculate unique sessions
+    const uniqueSessions = new Set(data.events.map(e => e.session_id).filter(Boolean));
+    const sessionCount = Math.max(uniqueSessions.size, visits, scans);
+    
+    const ordersCount = data.orders.length;
+    
+    // Conversion metrics
+    const convRate = sessionCount > 0 
+      ? ((ordersCount / sessionCount) * 100).toFixed(1) 
+      : (ordersCount > 0 ? 100 : 0);
+    
+    const abandonmentRate = sessionCount > 0 
+      ? Math.round(Math.max(0, 100 - (ordersCount / sessionCount * 100)))
+      : (visits > 0 ? 100 : 0);
     
     const ticketPromedio = stats.orderCount > 0 
       ? Math.round(stats.revenue / stats.orderCount) 
