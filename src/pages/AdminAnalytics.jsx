@@ -41,7 +41,8 @@ import {
 } from 'recharts';
 import BulkCostEditor from '../components/admin/BulkCostEditor';
 import OperationsIntelligence from '../components/admin/OperationsIntelligence';
-// CRM and Prospectos components removed as per user request to revert
+import CustomerDirectory from '../components/admin/CustomerDirectory';
+// Prospectos components removed as per user request to revert
 
 const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1'];
 
@@ -2437,6 +2438,7 @@ export default function AdminAnalytics() {
         <TabButton active={activeTab === 'resumen'} onClick={() => setActiveTab('resumen')} icon={Zap} label="Resumen" />
         <TabButton active={activeTab === 'analitica'} onClick={() => setActiveTab('analitica')} icon={TrendingUp} label="Analítica" />
         <TabButton active={activeTab === 'operaciones'} onClick={() => setActiveTab('operaciones')} icon={Database} label="Operaciones" />
+        <TabButton active={activeTab === 'crm'} onClick={() => setActiveTab('crm')} icon={Users} label="Clientes (CRM)" />
       </div>
 
       {loading ? (
@@ -2460,6 +2462,7 @@ export default function AdminAnalytics() {
               {activeTab === 'resumen' && <RenderResumen />}
               {activeTab === 'analitica' && <RenderAnalitica />}
               {activeTab === 'operaciones' && <RenderOperaciones />}
+              {activeTab === 'crm' && <CustomerDirectory />}
             </motion.div>
           </AnimatePresence>
         </div>
