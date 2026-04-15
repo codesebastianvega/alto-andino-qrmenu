@@ -1554,6 +1554,7 @@ export default function AdminAnalytics() {
                <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black">INTELIGENCIA ACTIVA</div>
             </div>
             <div className="h-[300px] w-full">
+               {isReady && (
                <ResponsiveContainer width="99%" height={300}>
                   <BarChart data={advancedData.revPash}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
@@ -1563,6 +1564,7 @@ export default function AdminAnalytics() {
                     <Bar dataKey="total_revenue" fill="#10B981" radius={[4, 4, 0, 0]} barSize={20} />
                   </BarChart>
                </ResponsiveContainer>
+               )}
             </div>
          </GlassCard>
 
@@ -1576,6 +1578,7 @@ export default function AdminAnalytics() {
                <Users className="w-4 h-4 text-blue-500" />
             </div>
             <div className="h-[300px] w-full flex items-center justify-center">
+               {isReady && (
                <ResponsiveContainer width="99%" height={300}>
                   <PieChart>
                     <Pie
@@ -1597,6 +1600,7 @@ export default function AdminAnalytics() {
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
+               )}
              </div>
           </GlassCard>
        </div>
@@ -1727,7 +1731,8 @@ export default function AdminAnalytics() {
               </div>
             </div>
             <div className="h-[320px] w-full">
-              <ResponsiveContainer width="99%" height="100%">
+              {isReady && (
+              <ResponsiveContainer width="99%" height={320}>
                 <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis 
@@ -1774,6 +1779,7 @@ export default function AdminAnalytics() {
                   </Scatter>
                 </ScatterChart>
               </ResponsiveContainer>
+              )}
             </div>
           </GlassCard>
 
@@ -1878,7 +1884,8 @@ export default function AdminAnalytics() {
               </div>
 
               <div className="h-[300px] w-full mt-4">
-                 <ResponsiveContainer width="99%" height="100%">
+                 {isReady && (
+                 <ResponsiveContainer width="99%" height={300}>
                     <ComposedChart data={paretoData.slice(0, 15)} margin={{ top: 10, right: 10, left: 0, bottom: 60 }}>
                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                        <XAxis 
@@ -1938,6 +1945,7 @@ export default function AdminAnalytics() {
                         />
                     </ComposedChart>
                  </ResponsiveContainer>
+                 )}
               </div>
            </GlassCard>
 
@@ -1975,7 +1983,8 @@ export default function AdminAnalytics() {
                  </div>
               </div>
               <div className="h-[250px] w-full">
-                 <ResponsiveContainer width="99%" height="100%">
+                 {isReady && (
+                 <ResponsiveContainer width="99%" height={250}>
                     <AreaChart data={hourlyPerformance}>
                        <defs>
                           <linearGradient id="colorHourRev" x1="0" y1="0" x2="0" y2="1">
@@ -2010,6 +2019,7 @@ export default function AdminAnalytics() {
                        />
                     </AreaChart>
                  </ResponsiveContainer>
+                 )}
               </div>
            </GlassCard>
 
