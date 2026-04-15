@@ -139,6 +139,17 @@ export default function AdminRecipes() {
         if (error) throw error;
       }
 
+      // Sincronización de Costos hacia Productos
+      const { data: linkedProducts } = await supabase.from('products').select('id, price').eq('recipe_id', recipeId);
+      if (linkedProducts && linkedProducts.length > 0) {
+        const productUpdates = linkedProducts.map(p => {
+          const pPrice = parseFloat(p.price) || 0;
+          const newMargin = pPrice > 0 ? ((pPrice - totalCost) / pPrice) * 100 : 0;
+          return supabase.from('products').update({ cost: totalCost, margin: newMargin }).eq('id', p.id);
+        });
+        await Promise.all(productUpdates);
+      }
+
       toast(editingRecipe ? 'Receta actualizada' : 'Receta creada');
       setIsModalOpen(false);
       fetchData();
