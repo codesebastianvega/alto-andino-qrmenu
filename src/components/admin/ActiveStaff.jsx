@@ -14,10 +14,10 @@ export default function ActiveStaff({ orders = [] }) {
       if (!activeBrand?.id) return;
       try {
         const { data, error } = await supabase
-          .from('profiles')
-          .select('id, full_name, role')
+          .from('staff')
+          .select('id, name, role')
           .eq('brand_id', activeBrand.id)
-          .in('role', ['waiter', 'admin', 'owner', 'kitchen']); // Roles que podrían tomar mesas o trabajar
+          .eq('is_active', true); // Solo personal activo por política
 
         if (error) throw error;
         setStaff(data || []);
@@ -57,6 +57,7 @@ export default function ActiveStaff({ orders = [] }) {
 
         return {
           ...person,
+          full_name: person.name, // Compatibilidad con el resto del UI
           activeOrdersCount: count,
           loadStatus,
         };

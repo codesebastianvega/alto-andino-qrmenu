@@ -84,12 +84,14 @@ export function useOperations() {
       if (prev.length > 0) return prev;
       if (!data || data.length === 0) return prev;
       
-      const seedEvents = data.slice(0, 15).map(o => {
-        let label = `Nuevo pedido — ${o.fulfillment_type === 'dine_in' ? `Mesa ${o.table_id?.slice(0,4)||'?'}` : 'Para llevar'}`;
+      // Tomar los últimos 20 eventos del turno actual
+      const seedEvents = data.slice(0, 20).map(o => {
+        let label = `Nuevo pedido — ${o.fulfillment_type === 'dine_in' ? `Mesa ${o.restaurant_tables?.table_number || '?'}` : 'Para llevar'}`;
         let icon = '🆕';
         if (o.status === 'delivered') { label = `✅ Entregado — $${Number(o.total_amount).toLocaleString()}`; icon = '✅'; }
         else if (o.status === 'cancelled') { label = `❌ Cancelado — $${Number(o.total_amount).toLocaleString()}`; icon = '❌'; }
-        else if (o.status === 'ready') { label = `🔔 Listo — Mesa ${o.table_id?.slice(0,4)||'?'}`; icon = '🔔'; }
+        else if (o.status === 'ready') { label = `🔔 Listo — Mesa ${o.restaurant_tables?.table_number || '?'}`; icon = '🔔'; }
+        else if (o.status === 'waiting_payment') { label = `⏳ Por cobrar — Mesa ${o.restaurant_tables?.table_number || '?'}`; icon = '⏳'; }
 
         return {
           id: `seed-${o.id}-${o.status}`,
@@ -97,7 +99,7 @@ export function useOperations() {
           icon,
           label,
           amount: o.total_amount,
-          time: o.created_at, // Use real time for context
+          time: o.created_at,
         };
       });
       return seedEvents;

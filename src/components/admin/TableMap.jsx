@@ -83,15 +83,27 @@ function TableCard({ table }) {
   const handleFreeTable = async (e) => {
     e.stopPropagation();
     setFreeing(true);
+    
+    // Si está ocupada o por cobrar, pasa a sucia (Limpieza pendiente)
+    // Si ya está sucia, pasa a libre
+    const nextStatus = (table.status === 'sucia') ? 'libre' : 'sucia';
+    const shouldClearTimer = nextStatus === 'sucia'; // El cliente se fue
+
     const { error } = await supabase
       .from('restaurant_tables')
-      .update({ physical_status: 'libre', occupied_at: null })
+      .update({ 
+        physical_status: nextStatus, 
+        occupied_at: shouldClearTimer ? null : table.occupied_at 
+      })
       .eq('id', table.id);
+
     setFreeing(false);
     if (!error) {
-      toast('Mesa liberada con éxito', { icon: '🧹' });
+      toast(nextStatus === 'sucia' ? 'Mesa para limpieza' : 'Mesa lista', { 
+        icon: nextStatus === 'sucia' ? '🧹' : '✨' 
+      });
     } else {
-      toast.error('Error al liberar mesa');
+      toast.error('Error al actualizar mesa');
     }
   };
 
@@ -191,18 +203,26 @@ function TableCard({ table }) {
         )}
       </div>
 
-      {/* Action Button: Liberar Mesa */}
+      {/* Action Button: Liberar Mesa / Limpiar */}
       {(table.status !== 'libre' && table.status !== 'free') && (
         <button
           onClick={handleFreeTable}
           disabled={freeing}
-          className={`mt-2 w-full py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors border flex justify-center items-center gap-1.5 ${
-            freeing 
-              ? 'bg-white/5 border-white/10 text-white/30' 
-              : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300'
-          }`}
+          className={`mt-2 w-full py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border flex justify-center items-center gap-2 shadow-sm
+            ${table.status === 'sucia' 
+              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white' 
+              : 'bg-orange-500/10 border-orange-500/20 text-orange-400 hover:bg-orange-500 hover:text-white'
+            }
+            disabled:opacity-50
+          `}
         >
-          {freeing ? 'Liberando...' : 'Limpiar / Liberar'}
+          {freeing ? (
+            'Procesando...'
+          ) : table.status === 'sucia' ? (
+            <><span className="text-xs">✨</span> Marcar Limpia</>
+          ) : (
+            <><span className="text-xs">🧹</span> Liberar Mesa</>
+          )}
         </button>
       )}
     </motion.div>
