@@ -1127,7 +1127,12 @@ export default function AdminAnalytics() {
     );
   };
 
-  const DataIntegrityCard = () => (
+  const DataIntegrityCard = () => {
+    const missingCostsPct = allProducts?.length > 0 
+      ? (integrityStats.missingCosts / allProducts.length) * 100 
+      : 0;
+
+    return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
       <GlassCard noHover className="p-6 border-l-4 border-l-orange-500 bg-orange-50/10">
         <div className="flex items-start justify-between">
@@ -1137,11 +1142,19 @@ export default function AdminAnalytics() {
             </div>
             <div>
               <h4 className="text-sm font-black text-gray-900 uppercase">Integridad de Costos</h4>
-              <p className="text-[11px] font-medium text-gray-500 mt-0.5">Detectamos <strong>{integrityStats.missingCosts} productos</strong> sin costo unitario asignado.</p>
-              <div className="flex gap-2 mt-3">
+              <p className="text-[11px] font-medium text-gray-500 mt-0.5">El <strong>{missingCostsPct.toFixed(1)}% ({integrityStats.missingCosts} productos)</strong> de tu catálogo no tiene costo asignado.</p>
+              
+              <div className="mt-3 flex items-center gap-2">
+                 <div className="flex-1 h-1.5 bg-orange-100 rounded-full overflow-hidden w-32">
+                    <div className="h-full bg-orange-500" style={{ width: `${missingCostsPct}%` }} />
+                 </div>
+                 <span className="text-[10px] font-black text-orange-600">{Math.round(missingCostsPct)}%</span>
+              </div>
+              
+              <div className="mt-3">
                 <button 
                   onClick={() => setShowBulkEditor(true)}
-                  className="text-[10px] font-black text-orange-600 uppercase bg-white border border-orange-100 px-3 py-1.5 rounded-lg shadow-sm hover:bg-orange-600 hover:text-white transition-all"
+                  className="text-[10px] font-black text-white uppercase bg-orange-500 px-4 py-2 rounded-xl shadow-md hover:bg-orange-600 hover:scale-105 transition-all"
                 >
                   Corregir Ahora
                 </button>
@@ -1179,6 +1192,7 @@ export default function AdminAnalytics() {
       </GlassCard>
     </div>
   );
+  };
 
   const RenderResumen = () => (
     <div className="space-y-8 animate-fadeUp">
