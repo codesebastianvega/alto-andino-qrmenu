@@ -13,6 +13,7 @@ import AdminAllergens from '../../pages/AdminAllergens';
 import AdminModifierGroups from '../../pages/AdminModifierGroups';
 import AdminTables from '../../pages/AdminTables';
 import AdminOrders from '../../pages/AdminOrders';
+import AdminOperations from '../../pages/AdminOperations';
 import AdminKitchen from '../../pages/AdminKitchen';
 import AdminDashboard from '../../pages/AdminDashboard';
 import AdminAnalytics from '../../pages/AdminAnalytics';
@@ -202,12 +203,12 @@ export default function AdminLayout() {
   useEffect(() => {
     if (authLoading) return;
     if (authUser && profile && (profile.role === 'owner' || profile.role === 'superadmin' || profile.role === 'admin')) {
-      // Already authenticated — set as admin user, skip PIN screen
+      // Already authenticated — preserve the specific role (owner or admin)
       setUser({
         id: authUser.id,
         name: profile.full_name || authUser.email || 'Admin',
-        role: 'admin',
-        auth_session: true, // flag to signal this is a Supabase auth session, not PIN
+        role: profile.role, // Use the actual role from profile
+        auth_session: true, 
       });
     } else if (!authUser) {
       // Check sessionStorage for PIN-based login (staff without Supabase account)
@@ -233,10 +234,16 @@ export default function AdminLayout() {
     }
   }, [currentPage, activeBrand]);
 
-  // Auto-redirect if user's role doesn't have access to "orders"
+  // Control estricto de acceso a páginas según rol
   useEffect(() => {
-    if (user && user.role === 'kitchen' && currentPage !== 'kitchen') {
-      setCurrentPage('kitchen');
+    if (!user) return;
+
+    if (user.role === 'kitchen') {
+      if (currentPage !== 'kitchen') setCurrentPage('kitchen');
+    } else if (user.role === 'waiter') {
+      if (!['waiter', 'orders'].includes(currentPage)) setCurrentPage('waiter');
+    } else if (['admin', 'owner', 'superadmin', 'encargado'].includes(user.role)) {
+      // Full access roles, no redirect needed unless we want to default to dashboard
     }
   }, [user, currentPage]);
 
@@ -359,6 +366,7 @@ export default function AdminLayout() {
 
           <div className="flex-1 overflow-y-auto custom-scrollbar pt-2 px-4 space-y-6">
               {/* 1. SECCION ESTRATEGIA (Aura Insight Glass Card) */}
+              {(['admin', 'owner', 'superadmin', 'encargado'].includes(user.role)) && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
                   {!isCollapsed && <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Estrategia</span>}
@@ -499,6 +507,7 @@ export default function AdminLayout() {
                   </div>
                 </motion.button>
               </div>
+              )}
 
             {/* 2. SECCION OPERACION (Operation Cards) */}
             <div className="space-y-3">
@@ -509,6 +518,7 @@ export default function AdminLayout() {
 
               <div className="grid grid-cols-1 gap-2">
                 {/* Pedidos Card */}
+                {user.role !== 'kitchen' && (
                 <button 
                   onClick={() => handleSelectPage('orders', 'Pedidos')}
                   className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
@@ -529,8 +539,10 @@ export default function AdminLayout() {
                     )}
                   </div>
                 </button>
+                )}
 
                 {/* Cocina Card */}
+                {user.role !== 'waiter' && (
                 <button 
                   onClick={() => handleSelectPage('kitchen', 'Cocina', 'kitchen_display')}
                   className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
@@ -568,8 +580,10 @@ export default function AdminLayout() {
                     )}
                   </div>
                 </button>
+                )}
 
                 {/* Toma de Pedidos Card */}
+                {user.role !== 'kitchen' && (
                 <button 
                   onClick={() => handleSelectPage('waiter', 'Toma de Pedidos')}
                   className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
@@ -590,13 +604,44 @@ export default function AdminLayout() {
                     )}
                   </div>
                 </button>
+                )}
+
+                {/* Turno & Caja Card */}
+                {(['admin', 'owner', 'superadmin', 'encargado'].includes(user.role)) && (
+                <button 
+                  onClick={() => handleSelectPage('operations', 'Turno & Caja')}
+                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
+                    currentPage === 'operations' 
+                    ? 'bg-gradient-to-r from-violet-900/40 to-violet-950/40 border-violet-500/20 ring-1 ring-violet-500/20 shadow-lg shadow-violet-950/40' 
+                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
+                  }`}
+                >
+                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'operations' ? 'bg-violet-400/20 text-violet-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="18" cy="6" r="3" fill="currentColor" opacity="0.3"/>
+                      </svg>
+                    </div>
+                    {!isCollapsed && (
+                      <div className="text-left flex-1">
+                        <p className={`text-[13px] font-bold leading-none ${currentPage === 'operations' ? 'text-white' : 'text-white/60'}`}>Turno & Caja</p>
+                        <p className="text-[9px] text-white/30 font-medium mt-1">Caja & Turno en Vivo</p>
+                      </div>
+                    )}
+                  </div>
+                </button>
+                )}
               </div>
             </div>
 
-            <NavSection title="Administración" items={ADMIN_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
-            <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
-            <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
-            <NavSection title="Presencia Web" items={WEB_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+            {(['admin', 'owner', 'superadmin', 'encargado'].includes(user.role)) && (
+              <>
+                <NavSection title="Administración" items={ADMIN_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+                <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+                <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+                <NavSection title="Presencia Web" items={WEB_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+              </>
+            )}
           </div>
 
           {/* User Section / Collapse toggle */}
@@ -684,6 +729,7 @@ export default function AdminLayout() {
           { currentPage === 'dashboard'   && <AdminDashboard /> }
           { currentPage === 'analytics'   && <AdminAnalytics /> }
           { currentPage === 'waiter'      && <AdminWaiter /> }
+          { currentPage === 'operations'  && <AdminOperations /> }
 
           {/* Feature Lock Overlay */}
           <LockOverlay 
