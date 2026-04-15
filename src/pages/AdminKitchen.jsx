@@ -68,6 +68,7 @@ export default function AdminKitchen() {
   const activeBrandId = activeBrand?.id;
 
   const fetchKitchenOrders = useCallback(async () => {
+    if (!activeBrandId) return;
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -443,6 +444,7 @@ export default function AdminKitchen() {
   );
 
   useEffect(() => {
+    if (!activeBrandId) return;
     fetchKitchenOrders();
 
     const channel = supabase

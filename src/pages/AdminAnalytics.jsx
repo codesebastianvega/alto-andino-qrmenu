@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
+import { toast } from '../components/Toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   TrendingUp, 
@@ -91,7 +92,8 @@ const WeeklyHeatmap = React.memo(({ data }) => {
   const [hover, setHover] = useState(null);
   
   const maxCount = useMemo(() => {
-    const counts = data.flatMap(day => day.hours.map(h => h.count));
+    if (!data || !Array.isArray(data)) return 1;
+    const counts = data.flatMap(day => (day.hours || []).map(h => h.count || 0));
     return Math.max(...counts, 1);
   }, [data]);
 
@@ -107,22 +109,30 @@ const WeeklyHeatmap = React.memo(({ data }) => {
 
   const handleLeave = useCallback(() => setHover(null), []);
 
+  if (!data || !Array.isArray(data)) {
+    return (
+      <div className="flex items-center justify-center p-12 text-gray-400 font-bold uppercase text-[10px] tracking-widest bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+        Cargando mapa de calor...
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
       <div className="flex flex-col gap-1.5 overflow-x-auto pt-8 pb-4 custom-scrollbar">
         {data.map((day, di) => (
           <div key={di} className="flex items-center gap-1.5 min-w-[600px]">
-            <span className="w-8 text-[10px] font-black text-gray-400 uppercase">{day.day}</span>
+            <span className="w-8 text-[10px] font-black text-gray-400 uppercase">{day?.day}</span>
             <div className="flex-1 flex gap-1">
-              {day.hours.map((h, hi) => (
+              {(day?.hours || []).map((h, hi) => (
                 <HeatmapCell 
                   key={hi}
-                  day={day.day}
+                  day={day?.day}
                   h={h}
                   maxCount={maxCount}
                   onHover={handleHover}
                   onLeave={handleLeave}
-                  active={hover?.day === day.day && hover?.hour === h.hour}
+                  active={hover?.day === day?.day && hover?.hour === h?.hour}
                 />
               ))}
             </div>
@@ -365,6 +375,12 @@ export default function AdminAnalytics() {
         supabase.from('products').select('id', { count: 'exact' }).eq('brand_id', activeBrandId).or('cost.eq.0,cost.is.null')
       ]);
 
+      const rpcErrors = [forecastingRes.error, revPashRes.error, cohortsRes.error].filter(Boolean);
+      if (rpcErrors.length > 0) {
+        console.error('RPC Errors:', rpcErrors);
+        toast.error('Error al cargar datos avanzados de analítica.');
+      }
+
       setAdvancedData({
         forecasting: forecastingRes.data,
         revPash: revPashRes.data || [],
@@ -382,6 +398,8 @@ export default function AdminAnalytics() {
 
     } catch (err) {
       console.error('Error fetching intelligence data:', err);
+      toast.error('Ocurrió un error al cargar la analítica.');
+      // Optional: set partial data if some requests succeeded
     } finally {
       setLoading(false);
       setTimeout(() => setIsReady(true), 200);
@@ -405,9 +423,11 @@ export default function AdminAnalytics() {
         .update({ status: newStatus })
         .eq('id', id);
       if (error) throw error;
+      toast.success('Estado actualizado correctamente.');
       fetchData(); // Refresh
     } catch (err) {
       console.error('Error updating lead status:', err);
+      toast.error('No se pudo actualizar el estado.');
     }
   };
 
@@ -427,10 +447,11 @@ export default function AdminAnalytics() {
       setEditValue('');
       
       // Refresh analytics data
+      toast.success('Costo actualizado exitosamente.');
       await fetchData();
     } catch (err) {
       console.error('Error updating product cost:', err);
-      alert('Error actualizando costo. Revisa la consola.');
+      toast.error('Error actualizando costo.');
     } finally {
       setIsSavingCost(false);
     }
@@ -450,10 +471,11 @@ export default function AdminAnalytics() {
       if (error) throw error;
       
       setShowBulkEditor(false);
+      toast.success('Costos masivos guardados exitosamente.');
       await fetchData();
     } catch (err) {
       console.error('Error in handleBulkSave:', err);
-      alert('Error al guardar costos. Revisa la consola.');
+      toast.error('Error al guardar costos masivos.');
     } finally {
       setIsSavingCost(false);
     }
@@ -471,15 +493,27 @@ export default function AdminAnalytics() {
         .delete()
         .eq('id', id);
       if (error) throw error;
+      toast.success('Prospecto eliminado correctamente.');
       fetchData(); // Refresh
     } catch (err) {
       console.error('Error deleting lead:', err);
+      toast.error('Ocurrió un error al eliminar el prospecto.');
     }
-  };  const biStats = useMemo(() => {
+  };
+
+  const biStats = useMemo(() => {
     const currentOrders = data?.orders || [];
     const currentLeads = data?.leads || [];
     const prevOrders = prevData?.orders || [];
     const prevLeads = prevData?.leads || [];
+
+    if (!data || !data.orders) {
+      return {
+        current: { revenue: 0, profit: 0, margin: 0, cost: 0, discount: 0, avgTicket: 0, orderCount: 0, leadCount: 0, avgTime: 0, cancelledCount: 0, cancelledRevenue: 0 },
+        prev: { revenue: 0, profit: 0, margin: 0, cost: 0, discount: 0, avgTicket: 0, orderCount: 0, leadCount: 0, avgTime: 0, cancelledCount: 0, cancelledRevenue: 0 },
+        diffs: { revenue: 0, profit: 0, orders: 0, ticket: 0, leads: 0, avgTime: 0, cancelled: 0, margin: 0 }
+      };
+    }
 
     const calc = (orders, leads) => {
       const delivered = orders.filter(o => o.status === 'delivered');
@@ -556,8 +590,9 @@ export default function AdminAnalytics() {
   const stats = useMemo(() => biStats.current, [biStats]);
 
   const bottleneckStats = useMemo(() => {
+    if (!data?.orders) return [];
     const products = {};
-    (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
+    data.orders.filter(o => o.status === 'delivered').forEach(o => {
       if (o.delivered_at && o.created_at) {
         const time = (new Date(o.delivered_at) - new Date(o.created_at)) / 60000;
         o.order_items?.forEach(item => {
@@ -574,10 +609,11 @@ export default function AdminAnalytics() {
       .sort((a,b) => b.avg - a.avg)
       .slice(0, 3); // Top 3 slowest
   }, [data?.orders]);  const bcgData = useMemo(() => {
+    if (!data?.orders) return { items: [], medians: { units: 0, margin: 0 }, missingItems: [] };
     const products = {};
     let totalVolume = 0;
 
-    (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
+    data.orders.filter(o => o.status === 'delivered').forEach(o => {
       o.order_items?.forEach(item => {
         const p = item.products;
         if (!p) return;
@@ -641,6 +677,7 @@ export default function AdminAnalytics() {
   }, [data?.orders]);
 
   const growthContribution = useMemo(() => {
+    if (!data?.orders || !prevData?.orders) return [];
     const currentItems = {};
     const prevItems = {};
 
@@ -688,6 +725,7 @@ export default function AdminAnalytics() {
   }, [data?.orders, prevData?.orders]);
 
   const paretoData = useMemo(() => {
+    if (!data?.orders) return [];
     const products = {};
     let total = 0;
 
@@ -717,7 +755,8 @@ export default function AdminAnalytics() {
   }, [data?.orders, paretoType]);
 
   const leakageAudit = useMemo(() => {
-    const cancellations = (data?.orders || [])
+    if (!data?.orders) return { cancellations: [], discounts: [], totalLeakage: 0 };
+    const cancellations = data.orders
       .filter(o => o.status === 'cancelled')
       .map(o => ({
         id: o.id,
@@ -746,6 +785,7 @@ export default function AdminAnalytics() {
   const prospectStats = useMemo(() => {
     const leads = data?.leads || [];
     const prevLeads = prevData?.leads || [];
+    if (!leads.length && !prevLeads.length) return { total: 0, totalDiff: 0, rate: 0, rateDiff: 0, contacted: 0 };
     
     const converted = leads.filter(l => l.status === 'converted').length;
     const contacted = leads.filter(l => l.status === 'contacted').length;
@@ -773,8 +813,9 @@ export default function AdminAnalytics() {
   }, [bcgData.items]);
 
   const categoryStats = useMemo(() => {
+    if (!data?.orders) return [];
     const cats = {};
-    (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
+    data.orders.filter(o => o.status === 'delivered').forEach(o => {
       o.order_items?.forEach(item => {
         const catName = item.products?.categories?.name || 'Varios';
         if (!cats[catName]) cats[catName] = { name: catName, value: 0, units: 0 };
@@ -786,6 +827,7 @@ export default function AdminAnalytics() {
   }, [data?.orders]);
 
   const channelStats = useMemo(() => {
+    if (!data?.orders) return [];
     const channels = {
       'En Mesa': { name: 'En Mesa', value: 0, fill: '#10B981' },
       'Para Llevar': { name: 'Para Llevar', value: 0, fill: '#3B82F6' },
@@ -808,8 +850,9 @@ export default function AdminAnalytics() {
   }, [data?.orders]);
 
   const tableStats = useMemo(() => {
+    if (!data?.orders) return [];
     const tableCounts = {};
-    (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
+    data.orders.filter(o => o.status === 'delivered').forEach(o => {
       const table = o.restaurant_tables;
       if (table) {
         const label = table.name || `Mesa ${table.table_number}`;
@@ -822,8 +865,9 @@ export default function AdminAnalytics() {
   }, [data?.orders]);
 
   const paymentStats = useMemo(() => {
+    if (!data?.orders) return [];
     const stats = {};
-    (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
+    data.orders.filter(o => o.status === 'delivered').forEach(o => {
       const method = o.payment_method || 'cash';
       
       // Map labels
@@ -848,7 +892,8 @@ export default function AdminAnalytics() {
 
   const hourlyStats = useMemo(() => {
     const hours = Array.from({ length: 24 }, (_, i) => ({ label: `${i}h`, ventas: 0 }));
-    (data?.orders || []).forEach(o => {
+    if (!data?.orders) return hours;
+    data.orders.forEach(o => {
       const h = new Date(o.created_at).getHours();
       hours[h].ventas += Number(o.total_amount);
     });
@@ -867,7 +912,8 @@ export default function AdminAnalytics() {
       hours: Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }))
     }));
 
-    (data?.orders || []).forEach(o => {
+    if (!data?.orders) return matrix;
+    data.orders.forEach(o => {
       const date = new Date(o.created_at);
       const d = date.getDay();
       const h = date.getHours();
@@ -880,7 +926,8 @@ export default function AdminAnalytics() {
     const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     const stats = days.map(name => ({ name, pedidos: 0, revenue: 0, avgTicket: 0 }));
 
-    (data?.orders || []).forEach(o => {
+    if (!data?.orders) return stats;
+    data.orders.forEach(o => {
       const d = new Date(o.created_at).getDay();
       stats[d].pedidos += 1;
       stats[d].revenue += Number(o.total_amount);
@@ -893,8 +940,9 @@ export default function AdminAnalytics() {
   }, [data?.orders]);
 
   const productProfitability = useMemo(() => {
+    if (!data?.orders) return [];
     const stats = {};
-    (data?.orders || []).filter(o => o.status === 'delivered').forEach(o => {
+    data.orders.filter(o => o.status === 'delivered').forEach(o => {
       o.order_items?.forEach(item => {
         const p = item.products;
         if (!p) return;
@@ -924,6 +972,7 @@ export default function AdminAnalytics() {
   }, [data?.orders]);
 
   const analyticsSummary = useMemo(() => {
+    if (!data) return { visits: 0, scans: 0, ordersCount: 0, conversion: 0, abandonmentRate: 0, ticketPromedio: 0 };
     const events = data?.events || [];
     const orders = data?.orders || [];
     const visits = events.filter(e => e.event_name === 'menu_visit').length;
@@ -1750,13 +1799,13 @@ export default function AdminAnalytics() {
                         placeholder="Costo unit."
                         className="w-full bg-gray-50 border-none text-[10px] font-black p-2 rounded-xl focus:ring-2 focus:ring-emerald-500"
                         onKeyDown={(e) => {
-                          if(e.key === 'Enter') handleQuickCostUpdate(item.id, editValue);
+                          if(e.key === 'Enter') handleQuickCostUpdate();
                           if(e.key === 'Escape') setEditingProductId(null);
                         }}
                       />
                       <div className="flex gap-1 shrink-0">
                         <button 
-                          onClick={() => handleQuickCostUpdate(item.id, editValue)}
+                          onClick={() => handleQuickCostUpdate()}
                           disabled={isSavingCost}
                           className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition-all active:scale-90"
                         >
@@ -2133,7 +2182,7 @@ export default function AdminAnalytics() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 font-bold text-gray-600">
-              {data.orders.map((o) => {
+              {(data?.orders || []).map((o) => {
                 const prepTime = o.delivered_at && o.created_at 
                   ? Math.round((new Date(o.delivered_at) - new Date(o.created_at)) / 60000)
                   : null;
@@ -2230,7 +2279,7 @@ export default function AdminAnalytics() {
           </button>
         </div>
         <div className="overflow-x-auto">
-          {data.leads.length === 0 ? (
+          {(data?.leads || []).length === 0 ? (
             <div className="p-20 text-center">
                <Users className="w-12 h-12 text-gray-200 mx-auto mb-4" />
                <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">Bandeja de entrada vacía</p>
@@ -2247,7 +2296,7 @@ export default function AdminAnalytics() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 font-bold text-gray-600">
-                {data.leads.map((lead) => (
+                {(data?.leads || []).map((lead) => (
                   <tr key={lead.id} className="hover:bg-purple-500/[0.02] transition-colors group">
                     <td className="px-6 py-4">
                        <div className="flex items-center gap-3">

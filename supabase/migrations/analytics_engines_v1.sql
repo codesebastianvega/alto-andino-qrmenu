@@ -79,7 +79,7 @@ BEGIN
     INTO v_result
     FROM (
         SELECT 
-            EXTRACT(HOUR FROM created_at) as hour_of_day,
+            EXTRACT(HOUR FROM created_at AT TIME ZONE 'America/Bogota') as hour_of_day,
             COUNT(*) as order_count,
             SUM(total_amount) as total_revenue,
             AVG(total_amount) as avg_ticket,
