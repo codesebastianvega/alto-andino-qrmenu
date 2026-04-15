@@ -137,37 +137,43 @@ const Icons = {
   ),
 };
 
+const ADMIN_ROLES = ['admin', 'owner', 'superadmin', 'encargado'];
+
+const ESTRATEGIA_ITEMS = [
+  { id: 'analytics', label: 'Inteligencia', roles: ADMIN_ROLES, feature: 'advanced_analytics' }
+];
+
 const OPERACION_ITEMS = [
-  // No items here, they are rendered as cards
+  { id: 'orders',     label: 'Pedidos',         roles: [...ADMIN_ROLES, 'waiter'] },
+  { id: 'kitchen',    label: 'Cocina',          roles: [...ADMIN_ROLES, 'kitchen'], feature: 'kitchen_display' },
+  { id: 'waiter',     label: 'Toma de Pedidos', roles: [...ADMIN_ROLES, 'waiter'] },
+  { id: 'operations', label: 'Turno & Caja',    roles: ADMIN_ROLES },
 ];
 
 const CARTA_ITEMS = [
-  { id: 'products',   label: 'Carta Principal',   Icon: Icons.Products, roles: ['admin'] },
-  { id: 'categories', label: 'Categorías',  Icon: Icons.Categories, roles: ['admin'] },
-  { id: 'modifier_groups', label: 'Extras y Opciones', Icon: Icons.Modifiers, roles: ['admin'] },
-  { id: 'tables',     label: 'Mesas y QRs', Icon: Icons.Tables, roles: ['admin'] },
-  { id: 'allergens',  label: 'Dietas y Alérgenos', Icon: Icons.Allergens, roles: ['admin'] },
+  { id: 'products',        label: 'Carta Principal',   Icon: Icons.Products, roles: ADMIN_ROLES },
+  { id: 'categories',      label: 'Categorías',         Icon: Icons.Categories, roles: ADMIN_ROLES },
+  { id: 'modifier_groups', label: 'Extras y Opciones', Icon: Icons.Modifiers, roles: ADMIN_ROLES },
+  { id: 'tables',          label: 'Mesas y QRs',       Icon: Icons.Tables, roles: ADMIN_ROLES },
+  { id: 'allergens',       label: 'Dietas y Alérgenos', Icon: Icons.Allergens, roles: ADMIN_ROLES },
 ];
 
 const PROD_ITEMS = [
-  { id: 'recipes',   label: 'Recetas',      Icon: Icons.Recipes, roles: ['admin', 'kitchen'], feature: 'inventory' },
-  { id: 'inventory', label: 'Inventario',      Icon: Icons.Modifiers, roles: ['admin', 'kitchen'] },
+  { id: 'recipes',   label: 'Recetas',      Icon: Icons.Recipes, roles: [...ADMIN_ROLES, 'kitchen'], feature: 'inventory' },
+  { id: 'inventory', label: 'Inventario',   Icon: Icons.Modifiers, roles: [...ADMIN_ROLES, 'kitchen'] },
 ];
 
 const ADMIN_ITEMS = [
-  { id: 'staff',      label: 'Personal y Staff', Icon: Icons.Staff, roles: ['admin'], feature: 'staff' },
-  { id: 'sedes',      label: 'Sedes y Locales', Icon: Icons.Home, roles: ['admin'], feature: 'multi_location' },
-  { id: 'branding',   label: 'Identidad Visual', Icon: Icons.Branding, roles: ['admin'] },
-  { id: 'settings',   label: 'Ajustes de Operación', Icon: Icons.Settings, roles: ['admin'] },
-];
-
-const ESTRATEGIA_ITEMS = [
-  // No items here, rendered as card
+  { id: 'staff',      label: 'Personal y Staff', Icon: Icons.Staff, roles: ADMIN_ROLES, feature: 'staff' },
+  { id: 'sedes',      label: 'Sedes y Locales',   Icon: Icons.Home, roles: ADMIN_ROLES, feature: 'multi_location' },
+  { id: 'branding',   label: 'Identidad Visual', Icon: Icons.Branding, roles: ADMIN_ROLES },
+  { id: 'settings',   label: 'Ajustes de Operación', Icon: Icons.Settings, roles: ADMIN_ROLES },
 ];
 
 const WEB_ITEMS = [
-  { id: 'web', label: 'Páginas y Web', Icon: Icons.Web, roles: ['admin'], feature: 'landing_page' },
+  { id: 'web', label: 'Páginas y Web', Icon: Icons.Web, roles: ADMIN_ROLES, feature: 'landing_page' },
 ];
+
 export default function AdminLayout() {
   // Read page from URL or default to orders
   const getInitialPage = () => {
@@ -270,7 +276,11 @@ export default function AdminLayout() {
 
   // Render helper for navigation sections
   const NavSection = ({ title, items, current, onSelect, collapsed }) => {
-    const allowed = items.filter(item => !item.roles || item.roles.includes(user.role));
+    // If the user has a full admin role, they should see all items in these sections
+    const allowed = items.filter(item => {
+      if (!item.roles) return true;
+      return item.roles.includes(user.role);
+    });
     if (allowed.length === 0) return null;
 
     return (
@@ -366,7 +376,7 @@ export default function AdminLayout() {
 
           <div className="flex-1 overflow-y-auto custom-scrollbar pt-2 px-4 space-y-6">
               {/* 1. SECCION ESTRATEGIA (Aura Insight Glass Card) */}
-              {(['admin', 'owner', 'superadmin', 'encargado'].includes(user.role)) && (
+              {ADMIN_ROLES.includes(user.role) && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
                   {!isCollapsed && <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Estrategia</span>}
@@ -607,7 +617,7 @@ export default function AdminLayout() {
                 )}
 
                 {/* Turno & Caja Card */}
-                {(['admin', 'owner', 'superadmin', 'encargado'].includes(user.role)) && (
+                {ADMIN_ROLES.includes(user.role) && (
                 <button 
                   onClick={() => handleSelectPage('operations', 'Turno & Caja')}
                   className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
@@ -634,11 +644,11 @@ export default function AdminLayout() {
               </div>
             </div>
 
-            {(['admin', 'owner', 'superadmin', 'encargado'].includes(user.role)) && (
+            {ADMIN_ROLES.includes(user.role) && (
               <>
-                <NavSection title="Administración" items={ADMIN_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
                 <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
                 <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+                <NavSection title="Administración de Staff & Locales" items={ADMIN_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
                 <NavSection title="Presencia Web" items={WEB_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
               </>
             )}
