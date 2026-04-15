@@ -40,6 +40,8 @@ import {
   RadialBarChart, RadialBar, Treemap, ComposedChart
 } from 'recharts';
 import BulkCostEditor from '../components/admin/BulkCostEditor';
+import OperationsIntelligence from '../components/admin/OperationsIntelligence';
+// CRM and Prospectos components removed as per user request to revert
 
 const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1'];
 
@@ -248,6 +250,7 @@ export default function AdminAnalytics() {
   const [prevData, setPrevData] = useState({ orders: [], leads: [], events: [] });
   const { activeBrand } = useAuth();
   const activeBrandId = activeBrand?.id;
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { 
     style: 'currency', 
@@ -300,7 +303,9 @@ export default function AdminAnalytics() {
       const [ordersRes, leadsRes, eventsRes, prevOrdersRes, prevLeadsRes, prevEventsRes, pmRes, productsRes] = await Promise.all([
         supabase.from('orders').select(`
           id, total_amount, status, created_at, delivered_at, fulfillment_type, payment_method,
-          cancellation_reason, cancelled_by, discount_amount, discount_reason,
+          cancellation_reason, cancelled_by, discount_amount, discount_reason, waiter_id,
+          service_fee,
+          staff!waiter_id ( name ),
           restaurant_tables ( id, table_number ),
           order_items ( quantity, unit_price, products ( id, name, cost, margin, categories ( name ) ) )
         `).eq('brand_id', activeBrandId)
@@ -2134,7 +2139,14 @@ export default function AdminAnalytics() {
 
   const RenderOperaciones = () => (
     <div className="space-y-8 animate-fadeUp">
-      {/* Operation Health Header */}
+      {/* 🧠 Tactical Dashboard: Operations Intelligence */}
+      <OperationsIntelligence data={data} formatCurrency={formatCurrency} />
+
+      <div className="pt-8 border-t border-gray-100/50">
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-6">Log Operativo Maestro & KPIs Base</p>
+      </div>
+
+      {/* Existing Operation Health Header */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <GlassCard className="p-6">
           <div className="flex justify-between items-start mb-4">
@@ -2425,7 +2437,6 @@ export default function AdminAnalytics() {
         <TabButton active={activeTab === 'resumen'} onClick={() => setActiveTab('resumen')} icon={Zap} label="Resumen" />
         <TabButton active={activeTab === 'analitica'} onClick={() => setActiveTab('analitica')} icon={TrendingUp} label="Analítica" />
         <TabButton active={activeTab === 'operaciones'} onClick={() => setActiveTab('operaciones')} icon={Database} label="Operaciones" />
-        <TabButton active={activeTab === 'prospectos'} onClick={() => setActiveTab('prospectos')} icon={Users} label="Prospectos" />
       </div>
 
       {loading ? (
@@ -2449,11 +2460,12 @@ export default function AdminAnalytics() {
               {activeTab === 'resumen' && <RenderResumen />}
               {activeTab === 'analitica' && <RenderAnalitica />}
               {activeTab === 'operaciones' && <RenderOperaciones />}
-              {activeTab === 'prospectos' && <RenderProspectos />}
             </motion.div>
           </AnimatePresence>
         </div>
       )}
+
+      {/* CRM components removed */}
 
       <AnimatePresence>
         {showBulkEditor && (
