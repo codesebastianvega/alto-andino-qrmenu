@@ -460,15 +460,19 @@ export default function AdminAnalytics() {
   const handleBulkSave = async (updates) => {
     setIsSavingCost(true);
     try {
-      const { error } = await supabase
-        .from('products')
-        .upsert(updates.map(u => ({
-          id: u.id,
-          cost: u.cost,
-          margin: u.margin
-        })));
+      // Usamos Promise.all con update individual en lugar de upsert para evitar
+      // el problema de constraint 'not-null' para columnas omitidas como 'name'.
+      const updatePromises = updates.map(u => 
+        supabase
+          .from('products')
+          .update({ cost: u.cost, margin: u.margin })
+          .eq('id', u.id)
+      );
       
-      if (error) throw error;
+      const results = await Promise.all(updatePromises);
+      const errors = results.filter(r => r.error).map(r => r.error);
+      
+      if (errors.length > 0) throw errors[0];
       
       setShowBulkEditor(false);
       toast.success('Costos masivos guardados exitosamente.');
@@ -1217,7 +1221,7 @@ export default function AdminAnalytics() {
           </div>
           <div className="h-[250px] w-full relative">
             {isReady && (
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={250} minWidth={1} minHeight={1}>
                 <AreaChart data={hourlyStats}>
                   <defs>
                     <linearGradient id="colorVentas" x1="0" y1="0" x2="0" y2="1">
@@ -1301,7 +1305,7 @@ export default function AdminAnalytics() {
           </div>
           <div className="h-[250px] w-full">
             {isReady && (
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={250} minWidth={1} minHeight={1}>
                 <AreaChart data={dayOfWeekStats}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -1354,7 +1358,7 @@ export default function AdminAnalytics() {
 
           <div className="h-[250px] w-full relative">
             {isReady && (
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={250} minWidth={1} minHeight={1}>
                 <RadialBarChart 
                   innerRadius="30%" 
                   outerRadius="100%" 
@@ -1434,7 +1438,7 @@ export default function AdminAnalytics() {
           </div>
           <div className="h-[250px] w-full">
             {isReady && paymentStats.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={250} minWidth={1} minHeight={1}>
                 <BarChart
                   layout="vertical"
                   data={[{ name: 'Total', ...paymentStats.reduce((acc, curr) => ({ ...acc, [curr.name]: curr.value }), {}) }]}
@@ -1477,7 +1481,7 @@ export default function AdminAnalytics() {
           </div>
           <div className="h-[250px] w-full">
             {isReady && topProducts.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={250} minWidth={1} minHeight={1}>
                 <BarChart data={topProducts.map(p => ({ name: p.name, value: p.units }))} margin={{ top: 20, right: 0, left: 0, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                   <XAxis 
@@ -1517,7 +1521,7 @@ export default function AdminAnalytics() {
           </div>
           <div className="h-[250px] w-full">
             {isReady && tableStats.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={250} minWidth={1} minHeight={1}>
                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={tableStats.slice(0, 6)}>
                   <PolarGrid stroke="#f0f0f0" />
                   <PolarAngleAxis dataKey="name" tick={{ fontSize: 9, fontBold: '900', fill: '#9ca3af' }} />
@@ -1550,7 +1554,7 @@ export default function AdminAnalytics() {
                <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black">INTELIGENCIA ACTIVA</div>
             </div>
             <div className="h-[300px] w-full">
-               <ResponsiveContainer width="100%" height="300">
+               <ResponsiveContainer width="100%" height={300} minWidth={1} minHeight={1}>
                   <BarChart data={advancedData.revPash}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                     <XAxis dataKey="hour_of_day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#6B7280' }} />
@@ -1572,7 +1576,7 @@ export default function AdminAnalytics() {
                <Users className="w-4 h-4 text-blue-500" />
             </div>
             <div className="h-[300px] w-full flex items-center justify-center">
-               <ResponsiveContainer width="100%" height={300}>
+               <ResponsiveContainer width="100%" height={300} minWidth={1} minHeight={1}>
                   <PieChart>
                     <Pie
                       data={[
@@ -1723,7 +1727,7 @@ export default function AdminAnalytics() {
               </div>
             </div>
             <div className="h-[320px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                 <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis 
@@ -1874,7 +1878,7 @@ export default function AdminAnalytics() {
               </div>
 
               <div className="h-[300px] w-full mt-4">
-                 <ResponsiveContainer width="100%" height="100%">
+                 <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <ComposedChart data={paretoData.slice(0, 15)} margin={{ top: 10, right: 10, left: 0, bottom: 60 }}>
                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                        <XAxis 
@@ -1971,7 +1975,7 @@ export default function AdminAnalytics() {
                  </div>
               </div>
               <div className="h-[250px] w-full">
-                 <ResponsiveContainer width="100%" height="100%">
+                 <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <AreaChart data={hourlyPerformance}>
                        <defs>
                           <linearGradient id="colorHourRev" x1="0" y1="0" x2="0" y2="1">
@@ -2426,6 +2430,17 @@ export default function AdminAnalytics() {
           </AnimatePresence>
         </div>
       )}
+
+      <AnimatePresence>
+        {showBulkEditor && (
+          <BulkCostEditor 
+            products={allProducts}
+            onSave={handleBulkSave}
+            onCancel={() => setShowBulkEditor(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {createPortal(
         <div id="bi-report-root" className="print-report-container hidden print:flex flex-col bg-white min-h-screen p-16 text-gray-900 pointer-events-none fixed inset-0 z-[-1]">
            {/* Executive Branding */}
