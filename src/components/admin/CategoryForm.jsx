@@ -119,7 +119,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
       />
 
       <form onSubmit={handleSubmit}>
-        <div className="px-7 py-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="px-7 py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
           {/* Left: Basic info */}
           <div className="space-y-4">
@@ -197,8 +197,11 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                 <TextInput name="accent_color" value={formData.accent_color} onChange={handleChange} />
               </div>
             </FormField>
+          </div>
 
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 pb-1 border-b border-gray-100 mt-6">
+          {/* Column 3: Internal Organization & Hero */}
+          <div className="space-y-4 flex flex-col">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 pb-1 border-b border-gray-100">
               Organización Interna
             </p>
             <FormField label="Subcategorías (una por línea)">
@@ -307,7 +310,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
           </div>
 
           {/* Active toggle */}
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 lg:col-span-3">
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
               <div>
                 <p className="text-sm font-semibold text-gray-700">Categoría activa</p>
