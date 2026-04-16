@@ -45,7 +45,7 @@ export default function ProductLists({
   variant = "standard", // standard, simple-list, grid, wide-grid
   hideNav = false
 }) {
-  const { categories: dbCategories, getProductsByCategory, banners, experiences, loading: menuLoading } = useMenuData();
+  const { categories: dbCategories, getProductsByCategory, banners, experiences, allergens = [], loading: menuLoading } = useMenuData();
   const [counts, setCounts] = useState({});
   const manualRef = useRef(false);
   const scrollerRef = useRef(null);
@@ -53,6 +53,15 @@ export default function ProductLists({
   const [quickProduct, setQuickProduct] = useState(null);
   const [diyOpen, setDiyOpen] = useState(false);
   const [diyProduct, setDiyProduct] = useState(null);
+  const [selectedDiets, setSelectedDiets] = useState([]);
+
+  const toggleDiet = (dietName) => {
+    setSelectedDiets(prev => 
+      prev.includes(dietName) 
+        ? prev.filter(d => d !== dietName) 
+        : [...prev, dietName]
+    );
+  };
 
   const categories = useMemo(() => {
     return dbCategories.map(dbCat => {
@@ -110,20 +119,24 @@ export default function ProductLists({
   const breakfastsFromDB = getProductsByCategory('desayunos');
   const breakfasts = useMemo(
     () =>
-      breakfastsFromDB.filter((it) =>
-        matchesQuery({ title: it.name, description: it.desc }, query),
-      ),
-    [query, breakfastsFromDB],
+      breakfastsFromDB.filter((it) => {
+        const matchesQueryText = matchesQuery({ title: it.name, description: it.desc }, query);
+        const matchesDiets = selectedDiets.length === 0 || selectedDiets.every(d => it.tags?.includes(d));
+        return matchesQueryText && matchesDiets;
+      }),
+    [query, breakfastsFromDB, selectedDiets],
   );
 
   // Get panes from Supabase ONLY
   const panesFromDB = getProductsByCategory('panes');
   const breadItems = useMemo(
     () =>
-      panesFromDB.filter((it) =>
-        matchesQuery({ title: it.name, description: it.desc }, query),
-      ),
-    [query, panesFromDB],
+      panesFromDB.filter((it) => {
+        const matchesQueryText = matchesQuery({ title: it.name, description: it.desc }, query);
+        const matchesDiets = selectedDiets.length === 0 || selectedDiets.every(d => it.tags?.includes(d));
+        return matchesQueryText && matchesDiets;
+      }),
+    [query, panesFromDB, selectedDiets],
   );
   useEffect(() => {
     setCount("desayunos", breakfasts.length);
@@ -145,7 +158,10 @@ export default function ProductLists({
     ORDER.forEach(({ id }) => buckets.set(id, []));
 
     for (const item of allMains) {
-      if (!matchesQuery({ title: item.name, description: item.desc }, query)) continue;
+      const matchesQueryText = matchesQuery({ title: item.name, description: item.desc }, query);
+      const matchesDiets = selectedDiets.length === 0 || selectedDiets.every(d => item.tags?.includes(d));
+      if (!matchesQueryText || !matchesDiets) continue;
+
       const key = item.group || "en_preparacion";
       if (!buckets.has(key)) buckets.set(key, []);
       buckets.get(key).push(item);
@@ -167,7 +183,7 @@ export default function ProductLists({
     }
 
     return [...ordered, ...extras];
-  }, [allMains, query]);
+  }, [allMains, query, selectedDiets]);
 
   const mainsVisible = useMemo(
     () => mainGroups.reduce((acc, group) => acc + group.items.length, 0),
@@ -186,10 +202,12 @@ export default function ProductLists({
    const dessertsFromDB = getProductsByCategory('postres');
    const dessertsBase = useMemo(
      () =>
-       dessertsFromDB.filter((p) =>
-        matchesQuery({ title: p.name, description: p.desc }, query),
-       ),
-    [query, dessertsFromDB],
+      dessertsFromDB.filter((p) => {
+        const matchesQueryText = matchesQuery({ title: p.name, description: p.desc }, query);
+        const matchesDiets = selectedDiets.length === 0 || selectedDiets.every(d => p.tags?.includes(d));
+        return matchesQueryText && matchesDiets;
+      }),
+    [query, dessertsFromDB, selectedDiets],
    );
    const dessertsCount = dessertsCumbre.length + dessertsBase.length;
    useEffect(() => {
@@ -199,9 +217,11 @@ export default function ProductLists({
   const sections = useMemo(() => {
     return categories.map(cat => {
       const allItems = getProductsByCategory(cat.slug);
-      const items = allItems.filter(it => 
-        matchesQuery({ title: it.name, description: it.desc }, query)
-      );
+      const items = allItems.filter(it => {
+        const matchesQueryText = matchesQuery({ title: it.name, description: it.desc }, query);
+        const matchesDiets = selectedDiets.length === 0 || selectedDiets.every(d => it.tags?.includes(d));
+        return matchesQueryText && matchesDiets;
+      });
 
       const config = cat.visibility_config || {};
       const definedSubs = config.subcategories || [];
@@ -365,7 +385,8 @@ export default function ProductLists({
     dessertsBase,
     counts,
     onQuickView,
-    variant
+    variant,
+    selectedDiets
   ]);
   const renderPanel = (s, inTodos = false) => {
     const category = categories.find(c => c.id === s.id);
@@ -526,6 +547,8 @@ export default function ProductLists({
 
   const _safeSwipeHandlers = swipeHandlers || {};
 
+  const dynamicDiets = useMemo(() => allergens.filter(a => a.type === 'diet'), [allergens]);
+
   if (menuLoading) return (
     <div className="flex flex-col items-center justify-center p-20 space-y-4 text-center">
       <div className="w-10 h-10 border-4 border-[#2f4131]/20 border-t-[#2f4131] rounded-full animate-spin" />
@@ -543,6 +566,29 @@ export default function ProductLists({
           onSelect={(cat) => handleManualSelect(cat)}
           variant="bar"
         />
+      )}
+
+      {/* Dietary Filter Bar */}
+      {!hideNav && dynamicDiets.length > 0 && (
+        <div className="px-4 mb-4 mt-2 overflow-x-auto hide-scrollbar scrollbar-hide flex items-center gap-2">
+          {dynamicDiets.map((diet) => {
+            const isSelected = selectedDiets.includes(diet.name);
+            return (
+              <button
+                key={diet.id}
+                onClick={() => toggleDiet(diet.name)}
+                className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all border ${
+                  isSelected
+                    ? "bg-[#2f4131] border-transparent text-white shadow-sm"
+                    : "bg-white border-[#2f4131]/10 text-[#2f4131]/60 hover:border-[#2f4131]/30"
+                }`}
+              >
+                <span>{diet.emoji || "🏷️"}</span>
+                <span className="uppercase tracking-wider">{diet.name}</span>
+              </button>
+            );
+          })}
+        </div>
       )}
        {query && !Object.values(counts).some((n) => n > 0) && (
         <p className="px-4 text-sm text-neutral-600">No hay resultados para “{query}”.</p>
@@ -746,9 +792,18 @@ function List({ items, onQuickView }) {
 
 function ProductRow({ item, onQuickView, style, index }) {
   const { addItem } = useCart();
+  const { allergens = [] } = useMenuData() || {};
   const { state: stockState, isSoon, isLow, isOut: outFromStock } = getStockFlags(
     item.id || slugify(item.name),
   );
+
+  const productAllergens = (item.tags || []).map(tagName => {
+    return allergens.find(a => a.name === tagName && a.type !== 'diet');
+  }).filter(Boolean);
+
+  const productDiets = (item.tags || []).map(tagName => {
+    return allergens.find(a => a.name === tagName && a.type === 'diet');
+  }).filter(Boolean);
   const unavailable = outFromStock || isUnavailable(item);
   const product = {
     ...item,
@@ -814,6 +869,28 @@ function ProductRow({ item, onQuickView, style, index }) {
             <span className="whitespace-nowrap rounded-full border border-neutral-200 bg-neutral-100 px-2 py-[1px] text-[11px] font-medium text-neutral-600">
               {item.origin}
             </span>
+          )}
+          {(productAllergens.length > 0 || productDiets.length > 0) && (
+             <div className="flex gap-1.5 items-center shrink-0">
+               {productDiets.length > 0 && (
+                 <div className="flex gap-1 items-center bg-[#2f4131]/10 rounded-full px-1.5 py-0.5">
+                    {productDiets.map((diet) => (
+                       <span key={diet.id} title={diet.name} className="text-[11px] leading-none">
+                          {diet.emoji}
+                       </span>
+                    ))}
+                 </div>
+               )}
+               {productAllergens.length > 0 && (
+                 <div className="flex gap-1 items-center bg-red-50 rounded-full px-1.5 py-0.5">
+                    {productAllergens.map((alg) => (
+                       <span key={alg.id} title={alg.name} className="text-[11px] leading-none">
+                          {alg.emoji}
+                       </span>
+                    ))}
+                 </div>
+               )}
+             </div>
           )}
         </div>
         {item.desc && <p className="mt-0.5 line-clamp-2 text-sm text-neutral-600">{item.desc}</p>}

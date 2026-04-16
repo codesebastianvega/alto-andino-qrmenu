@@ -21,7 +21,11 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
 
   // Find emojis for the tags the product has
   const productAllergens = (item.tags || []).map(tagName => {
-    return allergens.find(a => a.name === tagName);
+    return allergens.find(a => a.name === tagName && a.type !== 'diet');
+  }).filter(Boolean);
+
+  const productDiets = (item.tags || []).map(tagName => {
+    return allergens.find(a => a.name === tagName && a.type === 'diet');
   }).filter(Boolean);
   
   // Use stock_status from database (Supabase)
@@ -126,13 +130,26 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
           <h3 className={`font-bold text-neutral-900 line-clamp-2 tracking-tight ${isCompact ? "text-sm" : "text-[15px] md:text-base leading-[1.15]"}`}>
             {item.name}
           </h3>
-          {productAllergens.length > 0 && !isCompact && (
-             <div className="flex gap-1 items-center shrink-0 bg-neutral-50 rounded-full px-1.5 py-0.5">
-                 {productAllergens.map((alg) => (
-                    <span key={alg.id} title={alg.name} className="text-[12px] leading-none">
-                       {alg.emoji}
-                    </span>
-                 ))}
+          {(productAllergens.length > 0 || productDiets.length > 0) && !isCompact && (
+             <div className="flex gap-2 items-center shrink-0">
+               {productDiets.length > 0 && (
+                 <div className="flex gap-1 items-center bg-[#2f4131]/10 rounded-full px-1.5 py-0.5 border border-[#2f4131]/10">
+                    {productDiets.map((diet) => (
+                       <span key={diet.id} title={diet.name} className="text-[12px] leading-none">
+                          {diet.emoji}
+                       </span>
+                    ))}
+                 </div>
+               )}
+               {productAllergens.length > 0 && (
+                 <div className="flex gap-1 items-center bg-red-50 rounded-full px-1.5 py-0.5 border border-red-100">
+                    {productAllergens.map((alg) => (
+                       <span key={alg.id} title={alg.name} className="text-[12px] leading-none">
+                          {alg.emoji}
+                       </span>
+                    ))}
+                 </div>
+               )}
              </div>
           )}
         </div>

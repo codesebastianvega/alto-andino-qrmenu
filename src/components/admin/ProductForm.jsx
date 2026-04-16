@@ -452,11 +452,39 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                   )}
                 </div>
 
-                {/* Dietary Tags & Allergens */}
-                <div className="md:col-span-2 mt-4 pt-4 border-t border-gray-100">
-                  <p className="block text-sm font-medium text-gray-700 mb-2">Dietas y Alérgenos</p>
+                {/* Diets Section */}
+                <div className="md:col-span-1 mt-4 pt-4 border-t border-gray-100">
+                  <p className="block text-sm font-medium text-gray-700 mb-2">Dietas</p>
                   <div className="flex flex-wrap gap-2">
-                    {allergens.length > 0 ? allergens.map(allergen => {
+                    {allergens.filter(a => a.type === 'diet').map(diet => {
+                      const isSelected = formData.tags?.includes(diet.name);
+                      return (
+                        <button
+                          key={diet.id}
+                          type="button"
+                          onClick={() => toggleTag(diet.name)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-xl text-sm transition-colors ${
+                            isSelected
+                              ? 'bg-[#1C2B1E]/10 border-[#1C2B1E]/20 text-[#1C2B1E] font-semibold'
+                              : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span className="text-base">{diet.emoji}</span>
+                          <span>{diet.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-2">
+                    Selecciona las dietas que aplican a este producto.
+                  </p>
+                </div>
+
+                {/* Allergens Section */}
+                <div className="md:col-span-1 mt-4 pt-4 border-t border-gray-100">
+                  <p className="block text-sm font-medium text-gray-700 mb-2">Alérgenos</p>
+                  <div className="flex flex-wrap gap-2">
+                    {allergens.filter(a => a.type !== 'diet').length > 0 ? allergens.filter(a => a.type !== 'diet').map(allergen => {
                       const isSelected = formData.tags?.includes(allergen.name);
                       return (
                         <button
@@ -465,7 +493,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                           onClick={() => toggleTag(allergen.name)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-xl text-sm transition-colors ${
                             isSelected
-                              ? 'bg-[#1C2B1E]/10 border-[#1C2B1E]/20 text-[#1C2B1E] font-semibold'
+                              ? 'bg-red-50 border-red-200 text-red-700 font-semibold'
                               : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                           }`}
                         >
@@ -474,11 +502,11 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                         </button>
                       );
                     }) : (
-                      <p className="text-xs text-gray-400">No hay alérgenos configurados. Asegúrate de agregarlos en Configuración.</p>
+                      <p className="text-xs text-gray-400">No hay alérgenos configurados.</p>
                     )}
                   </div>
-                  <p className="text-xs text-gray-400 mt-2">
-                    Estas etiquetas se mostrarán en la carta virtual junto al producto.
+                  <p className="text-[10px] text-gray-400 mt-2">
+                    Marca si el producto contiene alguno de estos alérgenos.
                   </p>
                 </div>
               </div>
