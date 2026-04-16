@@ -58,6 +58,7 @@ const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const AdminOnboarding = lazy(() => import("./pages/AdminOnboarding"));
 import { useAuth } from "./context/AuthContext";
 import BottomTabBar from "./components/navigation/BottomTabBar";
+const CustomerSearch = lazy(() => import("./components/admin/CustomerSearch"));
 
 // Carrito
 import { useCart } from "./context/CartContext";
@@ -97,6 +98,8 @@ export default function App() {
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [query, setQuery] = useState("");
   const cart = useCart();
+  const [showPOSCustomerModal, setShowPOSCustomerModal] = useState(false);
+  const [hasDismissedCustomerModal, setHasDismissedCustomerModal] = useState(false);
   const { categories: dbCategories, restaurantSettings, homeSettings, loading: menuLoading } = useMenuData();
 
   useEffect(() => {
@@ -203,6 +206,35 @@ export default function App() {
       setShowWelcome(false);
     }
   }, [brand_slug, isNewAdminPanel, isOnboardingView, orderTrackingId, activeBrand, loadingBrand, isQr]);
+
+  // ✅ Trigger Customer Search Modal for Waiters
+  useEffect(() => {
+    const isPOS = sessionStorage.getItem("aa_pos_mode") === "true";
+    const hasCustomer = sessionStorage.getItem("aa_current_customer");
+    
+    if (isMenuView && isPOS && !hasCustomer && !hasDismissedCustomerModal) {
+      setShowPOSCustomerModal(true);
+    }
+    
+    // Reset dismissal when leaving the menu, so next table selection prompts again
+    if (!isMenuView) {
+      setHasDismissedCustomerModal(false);
+    }
+  }, [isMenuView, hasDismissedCustomerModal]);
+
+  const handlePOSCustomerSelect = (customer) => {
+    if (customer) {
+      sessionStorage.setItem("aa_current_customer", JSON.stringify({
+        id: customer.id,
+        name: customer.name,
+        phone: customer.phone
+      }));
+    } else {
+      sessionStorage.removeItem("aa_current_customer");
+    }
+    setShowPOSCustomerModal(false);
+    setHasDismissedCustomerModal(true);
+  };
 
   const handleStartExperience = () => {
     // Guardar timestamp en localStorage para no volver a mostrar en 24h
@@ -439,6 +471,18 @@ export default function App() {
         </Suspense>
         <Suspense fallback={<div />}>
           <CartModal open={open} onClose={() => setOpen(false)} />
+        </Suspense>
+
+        <Suspense fallback={<div />}>
+          <CustomerSearch 
+            open={showPOSCustomerModal}
+            onClose={() => {
+              setShowPOSCustomerModal(false);
+              setHasDismissedCustomerModal(true);
+            }}
+            onSelect={handlePOSCustomerSelect}
+            brandId={activeBrand?.id}
+          />
         </Suspense>
 
         <Suspense fallback={<div />}>

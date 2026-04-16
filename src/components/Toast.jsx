@@ -29,9 +29,13 @@ export default function Toast() {
     const onToast = (e) => {
       clearTimeout(hideId);
       clearTimeout(offsetId);
-      const { message, actionLabel, onAction, duration } = e?.detail || {};
+      const { message, actionLabel, onAction, duration, icon, type } = e?.detail || {};
       const normalize = (s = "") => String(s);
-      setMsg(normalize(message || "Añadido al carrito"));
+      setMsg({ 
+        text: normalize(message || "Añadido al carrito"), 
+        icon,
+        type 
+      });
       setAction(actionLabel ? { label: actionLabel, onAction } : null);
       setShow(true);
       const updateOffset = () => setOffset(getCartBarHeight());
@@ -40,7 +44,7 @@ export default function Toast() {
       hideId = setTimeout(() => {
         setShow(false);
         setAction(null);
-      }, duration || 1600);
+      }, duration || 2500); // Increased duration slightly
     };
 
     document.addEventListener("aa:toast", onToast);
@@ -51,25 +55,35 @@ export default function Toast() {
     };
   }, []);
 
+  const getTypeStyles = () => {
+    switch (msg?.type) {
+      case 'error': return 'bg-red-600 ring-red-700/20';
+      case 'success': return 'bg-emerald-600 ring-emerald-700/20';
+      case 'info': return 'bg-blue-600 ring-blue-700/20';
+      default: return 'bg-[#2f4131] ring-black/10';
+    }
+  };
+
   return (
     <div
       aria-live="polite"
       role="status"
       className={[
-        "pointer-events-none fixed left-1/2 z-[120] w-max -translate-x-1/2",
-        "transition-opacity duration-200",
-        show ? "opacity-100" : "opacity-0",
+        "pointer-events-none fixed left-1/2 z-[200] w-max -translate-x-1/2",
+        "transition-all duration-300 ease-out",
+        show ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
       ].join(" ")}
       style={{
-        bottom: `calc(${offset}px + env(safe-area-inset-bottom, 0px) + 10px)`,
+        bottom: `calc(${offset}px + env(safe-area-inset-bottom, 0px) + 20px)`,
       }}
     >
-      <div className="pointer-events-auto flex h-9 w-max items-center gap-3 rounded-full bg-[#2f4131] px-4 text-white shadow-2xl ring-1 ring-black/10">
-        <span className="whitespace-nowrap text-[11px] font-medium">{msg}</span>
+      <div className={`pointer-events-auto flex h-11 w-max items-center gap-3 rounded-2xl px-5 text-white shadow-2xl ring-1 ${getTypeStyles()}`}>
+        {msg?.icon && <span className="text-base">{msg.icon}</span>}
+        <span className="whitespace-nowrap text-xs font-bold tracking-tight">{msg?.text}</span>
         {action && (
           <button
             type="button"
-            className="rounded text-[11px] font-medium underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
+            className="rounded-lg bg-white/20 px-2 py-1 text-[10px] font-black uppercase tracking-widest hover:bg-white/30 transition-colors focus-visible:outline-none"
             onClick={() => {
               action.onAction?.();
               setShow(false);

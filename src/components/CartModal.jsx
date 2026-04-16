@@ -137,6 +137,7 @@ export default function CartModal({ open, onClose }) {
   const [paymentMethod, setPaymentMethod] = useState("");
   const [customerName, setCustomerName] = useState(isPOSMode ? "Mostrador" : "");
   const [customerPhone, setCustomerPhone] = useState(isPOSMode ? "0000000" : "");
+  const [customerId, setCustomerId] = useState(null);
   const [showFulfillmentSelector, setShowFulfillmentSelector] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState("");
@@ -152,7 +153,20 @@ export default function CartModal({ open, onClose }) {
     } else if (initialMesa) {
       setFulfillmentType('dine_in');
     }
-  }, [isPOSMode, manualType, initialMesa]);
+
+    // Load customer from session if set by Admin (Waiter)
+    const storedCustomer = sessionStorage.getItem("aa_current_customer");
+    if (storedCustomer) {
+      try {
+        const c = JSON.parse(storedCustomer);
+        setCustomerName(c.name || "");
+        setCustomerPhone(c.phone || "");
+        setCustomerId(c.id || null);
+      } catch (e) {
+        console.error("Error parsing stored customer:", e);
+      }
+    }
+  }, [isPOSMode, manualType, initialMesa, open]);
 
   useEffect(() => {
     if (activeMethods.length > 0 && !paymentMethod) {
@@ -207,18 +221,25 @@ export default function CartModal({ open, onClose }) {
       // Removed manual validation that required name/phone for POS takeaway/delivery
 
       const mesa = getTable();
-      
       let tableId = null;
-      if (fulfillmentType === 'dine_in' && mesa) {
+
+      // Prioritize direct table ID from sessionStorage (set by AdminWaiter)
+      const sessionTableId = sessionStorage.getItem("aa_current_table_id");
+      
+      if (sessionTableId && sessionTableId !== "null") {
+        tableId = sessionTableId;
+      } else if (fulfillmentType === 'dine_in' && mesa) {
+        // Fallback to table_number lookup
         const { data: tableData } = await supabase.from('restaurant_tables')
           .select('id')
           .eq('table_number', mesa)
           .eq('brand_id', activeBrandId)
-          .single();
+          .limit(1)
+          .maybeSingle();
          if (tableData) tableId = tableData.id;
       }
 
-      // 2. Insert Order
+      // 2. Insert or Update Order
       const finalTotal = fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount;
 
       // Status logic: Dine-in and Takeaway go straight to kitchen ('new').
@@ -230,25 +251,65 @@ export default function CartModal({ open, onClose }) {
         orderStatus = 'new';
       }
 
-      const { data: orderData, error: orderError } = await supabase.from('orders')
-        .insert([{
-          status: orderStatus,
-          origin: fulfillmentType === 'dine_in' ? 'table' : 'takeaway',
-          fulfillment_type: fulfillmentType,
-          table_id: tableId,
-          brand_id: activeBrandId,
-          total_amount: finalTotal,
-          service_fee: serviceFeeAmount,
-          customer_name: customerName,
-          customer_phone: customerPhone,
-          scheduled_time: scheduledTime || null,
-          payment_status: isPaid ? 'paid' : 'pending',
-          payment_method: isPaid ? paymentMethod : null
-        }])
-        .select()
-        .single();
+      let orderData = null;
+
+      // Try to find an existing active order for this table to merge items
+      if (tableId) {
+        const { data: existingOrder } = await supabase.from('orders')
+          .select('*')
+          .eq('table_id', tableId)
+          .eq('brand_id', activeBrandId)
+          .in('status', ['waiting_payment', 'new', 'preparing', 'ready'])
+          .limit(1)
+          .maybeSingle();
         
-      if (orderError) throw orderError;
+        if (existingOrder) {
+          // If we found an existing order, update its total and use its data
+          // Always reset status to 'new' when adding items to an existing order
+          // to ensure kitchen notification triggers correctly for the new items.
+          const updatePayload = {
+            total_amount: Number(existingOrder.total_amount) + Number(finalTotal),
+            service_fee: Number(existingOrder.service_fee || 0) + Number(serviceFeeAmount),
+            status: 'new'
+          };
+
+          const { data: updatedOrder, error: updateError } = await supabase.from('orders')
+            .update(updatePayload)
+            .eq('id', existingOrder.id)
+            .select()
+            .single();
+          
+          if (updateError) throw updateError;
+          orderData = updatedOrder;
+          console.log("✅ Pedido fusionado con orden existente:", orderData.id);
+        }
+      }
+
+      // If no existing order was found (or not applicable), create a new one
+      if (!orderData) {
+        const { data: newOrder, error: orderError } = await supabase.from('orders')
+          .insert([{
+            status: orderStatus,
+            origin: fulfillmentType === 'dine_in' ? 'table' : 'takeaway',
+            fulfillment_type: fulfillmentType,
+            table_id: tableId,
+            brand_id: activeBrandId,
+            total_amount: finalTotal,
+            service_fee: serviceFeeAmount,
+            customer_name: customerName,
+            customer_phone: customerPhone,
+            customer_id: customerId,
+            scheduled_time: scheduledTime || null,
+            payment_status: isPaid ? 'paid' : 'pending',
+            payment_method: isPaid ? paymentMethod : null
+          }])
+          .select()
+          .single();
+          
+        if (orderError) throw orderError;
+        orderData = newOrder;
+        console.log("✅ Nueva orden creada:", orderData.id);
+      }
 
       // 3. Insert Order Items (Including requires_kitchen logic)
       // Extraemos si el item requiere cocina (por defecto true)
@@ -355,10 +416,12 @@ export default function CartModal({ open, onClose }) {
   const resetStates = () => {
     setCustomerName(isPOSMode ? "Mostrador" : "");
     setCustomerPhone(isPOSMode ? "0000000" : "");
+    setCustomerId(null);
     setScheduledTime("");
     setIsPaid(false);
     setPaymentMethod("cash");
     setShowFulfillmentSelector(false);
+    sessionStorage.removeItem("aa_current_customer");
   };
 
   const handleDecrement = (item, idx) => {

@@ -77,7 +77,7 @@ export default function AdminKitchen() {
           *,
           restaurant_tables ( id, table_number ),
           order_items (
-            id, product_id, quantity, unit_price, modifiers, notes,
+            id, product_id, quantity, unit_price, modifiers, notes, created_at,
             products ( id, name, description )
           )
         `)
@@ -369,9 +369,23 @@ export default function AdminKitchen() {
 
         {/* Items List */}
         <div className="space-y-4 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">
-          {order.order_items?.map((item, idx) => (
-            <div key={idx} className="group/item flex gap-4 bg-white/5 hover:bg-white/10 p-3 rounded-2xl border border-white/5 transition-all">
-              <div className="flex flex-col items-center justify-center bg-black/40 rounded-xl px-2 py-1 min-w-[3rem] border border-white/10">
+          {order.order_items?.map((item, idx) => {
+            const isNewItem = item.created_at && (new Date() - new Date(item.created_at)) < 5 * 60000;
+            
+            return (
+              <div key={idx} className="group/item flex gap-4 bg-white/5 hover:bg-white/10 p-3 rounded-2xl border border-white/5 transition-all relative">
+                {isNewItem && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="absolute -top-2 -left-2 z-10"
+                  >
+                    <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-lg animate-pulse uppercase tracking-tighter border border-white/20">
+                      Nuevo
+                    </span>
+                  </motion.div>
+                )}
+                <div className="flex flex-col items-center justify-center bg-black/40 rounded-xl px-2 py-1 min-w-[3rem] border border-white/10">
                 <span className="text-base font-black text-emerald-400 leading-none">{item.quantity}</span>
                 <span className="text-[9px] font-bold text-white/40 uppercase tracking-tighter">Cant</span>
               </div>
@@ -406,7 +420,8 @@ export default function AdminKitchen() {
                 )}
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       </div>
 

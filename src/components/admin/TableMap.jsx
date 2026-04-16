@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../config/supabase';
 import { toast } from '../Toast';
@@ -69,7 +69,7 @@ const STATUS_CONFIG = {
 };
 
 // ─── Tarjeta individual de mesa ──────────────────────────────────────────────
-function TableCard({ table }) {
+const TableCard = React.forwardRef(({ table }, ref) => {
   const cfg = STATUS_CONFIG[table.status] || STATUS_CONFIG.libre;
   const order = table.activeOrder;
   const total = order ? Number(order.total_amount || 0) : 0;
@@ -99,9 +99,7 @@ function TableCard({ table }) {
 
     setFreeing(false);
     if (!error) {
-      toast(nextStatus === 'sucia' ? 'Mesa para limpieza' : 'Mesa lista', { 
-        icon: nextStatus === 'sucia' ? '🧹' : '✨' 
-      });
+      toast.success(nextStatus === 'sucia' ? 'Mesa para limpieza 🧹' : 'Mesa lista ✨');
     } else {
       toast.error('Error al actualizar mesa');
     }
@@ -227,7 +225,7 @@ function TableCard({ table }) {
       )}
     </motion.div>
   );
-}
+});
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function TableMap({ tablesWithStatus = [], loading = false }) {

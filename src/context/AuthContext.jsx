@@ -72,7 +72,25 @@ export const AuthProvider = ({ children }) => {
 
       // Restore last active brand from localStorage
       const stored = localStorage.getItem('aa_active_brand_id');
-      const savedBrand = userBrands.find(b => b.id === stored);
+      let savedBrand = userBrands.find(b => b.id === stored);
+
+      // CRITICAL FIX: If user is not the owner (e.g. waiter), they won't have the brand in ownedBrands.
+      // We must fetch it explicitly using data.brand_id from their profile.
+      if (!savedBrand && !userBrands.length && data.brand_id) {
+        try {
+          const { data: staffBrand } = await supabase
+            .from('brands')
+            .select('id, name, slug, logo_url, business_type, plan_id, onboarding_completed')
+            .eq('id', data.brand_id)
+            .single();
+          
+          if (staffBrand) {
+            savedBrand = staffBrand;
+          }
+        } catch (brandErr) {
+          console.error('Error fetching staff brand:', brandErr);
+        }
+      }
 
       if (savedBrand) {
         setActiveBrandState(savedBrand);

@@ -3,11 +3,12 @@ import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
 import { 
-  PrimaryButton, SecondaryButton, Badge 
+  PrimaryButton, SecondaryButton, Badge, Modal, ModalHeader 
 } from '../components/admin/ui';
 import { 
   Loader2, Sparkles, MapPin, Clock, UtensilsCrossed, PhoneCall, Plus 
 } from 'lucide-react';
+
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 2000 }),
@@ -19,6 +20,8 @@ export default function AdminWaiter() {
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeOrders, setActiveOrders] = useState([]);
+  const [tableToConfirm, setTableToConfirm] = useState(null);
+
 
   useEffect(() => {
     if (profile?.brand_id) {
@@ -62,22 +65,33 @@ export default function AdminWaiter() {
     }
   };
 
-  const handleSelectTable = (tableId) => {
-    // Establecemos el contexto de la mesa
-    sessionStorage.setItem("aa_current_mesa", tableId);
-    sessionStorage.setItem("aa_pos_mode", "true"); // Indicamos que es modo mesero
+  const handleSelectTable = (table) => {
+    // Check if table is occupied
+    const isOccupied = activeOrders.some(o => o.table_id === table.id);
     
-    // Redirigimos al menú
+    if (isOccupied) {
+      setTableToConfirm(table);
+      return;
+    }
+
+    proceedWithTable(table);
+  };
+
+  const proceedWithTable = (table) => {
+    sessionStorage.setItem("aa_current_mesa", table.table_number);
+    sessionStorage.setItem("aa_current_table_id", table.id); // Add table ID for more robust lookups
+    sessionStorage.setItem("aa_pos_mode", "true");
+    sessionStorage.removeItem("aa_manual_type");
     window.location.hash = "#menu";
   };
 
   const handleManualOrder = (type = 'takeaway') => {
     sessionStorage.removeItem("aa_current_mesa");
-    sessionStorage.setItem("aa_pos_mode", "true");
     sessionStorage.setItem("aa_manual_type", type);
-    
+    sessionStorage.setItem("aa_pos_mode", "true");
     window.location.hash = "#menu";
   };
+
 
   const getTableStatus = (tableId) => {
     const order = activeOrders.find(o => o.table_id === tableId);
@@ -143,8 +157,12 @@ export default function AdminWaiter() {
             return (
               <button
                 key={table.id}
-                onClick={() => handleSelectTable(table.table_number)}
-                className="group relative bg-white border border-gray-100 rounded-[2rem] p-6 text-left transition-all hover:border-brand-primary hover:shadow-xl hover:shadow-brand-primary/5 active:scale-95 overflow-hidden"
+                onClick={() => handleSelectTable(table)}
+                className={`group relative bg-white border rounded-[2rem] p-6 text-left transition-all hover:border-brand-primary hover:shadow-xl hover:shadow-brand-primary/5 active:scale-95 overflow-hidden ${
+                  activeOrders.some(o => o.table_id === table.id)
+                    ? 'border-gray-100 bg-gray-50/50 grayscale-[0.3]' 
+                    : 'border-transparent shadow-sm'
+                }`}
               >
                 {/* Indicador de Status */}
                 <div className={`absolute top-0 right-0 px-4 py-1.5 rounded-bl-2xl text-[10px] font-black uppercase tracking-wider border-l border-b ${status.color}`}>
@@ -202,6 +220,35 @@ export default function AdminWaiter() {
             </div>
          </div>
       </div>
+
+
+      {/* MODAL DE CONFIRMACIÓN MESA OCUPADA */}
+      {tableToConfirm && (
+        <Modal onClose={() => setTableToConfirm(null)}>
+          <ModalHeader 
+            title="Mesa Ocupada" 
+            subtitle={`La mesa ${tableToConfirm.table_number} tiene un pedido activo.`}
+            onClose={() => setTableToConfirm(null)} 
+          />
+          <div className="p-7">
+            <p className="text-sm text-gray-600 leading-relaxed mb-8">
+              Esta mesa ya tiene consumos registrados. ¿Deseas <strong>agregar más productos</strong> a la cuenta existente o prefieres cancelar?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <SecondaryButton onClick={() => setTableToConfirm(null)}>
+                Cancelar
+              </SecondaryButton>
+              <PrimaryButton onClick={() => {
+                const t = tableToConfirm;
+                setTableToConfirm(null);
+                proceedWithTable(t);
+              }}>
+                Continuar y Agregar
+              </PrimaryButton>
+            </div>
+          </div>
+        </Modal>
+      )}
 
     </div>
   );

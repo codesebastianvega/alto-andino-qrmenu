@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { useStaff } from '../hooks/useStaff';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import PaymentPOSModal from '../components/admin/PaymentPOSModal';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const ORDER_STATUSES = [
   { id: 'waiting_payment', label: 'Falta Pago', color: 'text-orange-600', icon: 'heroicons:banknotes' },
@@ -121,6 +123,10 @@ export default function AdminOrders() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null); // Para marcar como pagado
   const [restaurantSettings, setRestaurantSettings] = useState(null);
   const [isPOSModalOpen, setIsPOSModalOpen] = useState(false);
+  const [isMerging, setIsMerging] = useState(false);
+  const [mergeSourceOrder, setMergeSourceOrder] = useState(null);
+  const [mergeTargetOrder, setMergeTargetOrder] = useState(null);
+  const [isMergeConfirmOpen, setIsMergeConfirmOpen] = useState(false);
 
   const { activeBrand } = useAuth();
   const activeBrandId = activeBrand?.id;
@@ -341,6 +347,89 @@ export default function AdminOrders() {
     setCancellationReason("");
   };
 
+  const handleMergeOrders = async (sourceOrder, targetOrder) => {
+    if (sourceOrder.id === targetOrder.id) {
+      toast.error("No puedes fusionar un pedido consigo mismo");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // 1. Move items from source to target
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .update({ order_id: targetOrder.id })
+        .eq('order_id', sourceOrder.id);
+
+      if (itemsError) throw itemsError;
+
+      // 2. Update target order totals
+      const newTotal = Number(targetOrder.total_amount || 0) + Number(sourceOrder.total_amount || 0);
+      const newServiceFee = Number(targetOrder.service_fee || 0) + Number(sourceOrder.service_fee || 0);
+      const newPaidAmount = Number(targetOrder.paid_amount || 0) + Number(sourceOrder.paid_amount || 0);
+      const newDiscountAmount = Number(targetOrder.discount_amount || 0) + Number(sourceOrder.discount_amount || 0);
+
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({
+          total_amount: newTotal,
+          service_fee: newServiceFee,
+          paid_amount: newPaidAmount,
+          discount_amount: newDiscountAmount,
+          // If the target was ready/delivered but we added items, reset to 'new' 
+          // so the kitchen gets notified of the additions.
+          status: (targetOrder.status === 'ready' || targetOrder.status === 'delivered') ? 'new' : targetOrder.status
+        })
+        .eq('id', targetOrder.id);
+
+      if (updateError) throw updateError;
+
+      // 3. Delete source order
+      const { error: deleteError } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', sourceOrder.id);
+
+      if (deleteError) throw deleteError;
+
+      toast.success("Pedidos consolidados con éxito ✨");
+      setIsMergeConfirmOpen(false);
+      setMergeSourceOrder(null);
+      setMergeTargetOrder(null);
+      fetchOrders();
+    } catch (err) {
+      console.error('Error merging orders:', err);
+      toast.error("Error al consolidar los pedidos");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onDragEnd = (result) => {
+    const { source, destination, combine, draggableId } = result;
+
+    // Handle Merging (Combine)
+    if (combine) {
+      const sourceOrder = orders.find(o => o.id === draggableId);
+      const targetOrder = orders.find(o => o.id === combine.draggableId);
+      if (sourceOrder && targetOrder) {
+        setMergeSourceOrder(sourceOrder);
+        setMergeTargetOrder(targetOrder);
+        setIsMergeConfirmOpen(true);
+      }
+      return;
+    }
+
+    // Handle Status Change
+    if (!destination) return;
+    if (source.droppableId !== destination.droppableId) {
+      const orderId = draggableId;
+      const newStatus = destination.droppableId;
+      updateOrderStatus(orderId, newStatus);
+    }
+  };
+
   const getFulfillmentLabel = (type) => {
     switch (type) {
       case 'dine_in': return { text: 'EN MESA', icon: 'heroicons:hand-raised', color: 'bg-emerald-100 text-emerald-700' };
@@ -435,6 +524,26 @@ export default function AdminOrders() {
 
   return (
     <div className="p-4 md:p-8 max-w-[1700px] mx-auto min-h-screen">
+       {/* Merging Notification Bar */}
+       {isMerging && (
+         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] bg-[#2f4131] text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 border border-white/10 animate-bounce">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <Icon icon="heroicons:arrows-right-left" className="text-xl" />
+              </div>
+              <div>
+                <p className="text-sm font-black uppercase tracking-widest leading-none mb-1">Modo Consolidación</p>
+                <p className="text-xs opacity-80 font-medium">Selecciona el pedido destino para fusionar con #{mergeSourceOrder?.id?.slice(0,4)}</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => { setIsMerging(false); setMergeSourceOrder(null); }}
+              className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-xs font-black transition-all border border-white/10"
+            >
+              CANCELAR
+            </button>
+         </div>
+       )}
        {/* Actions Bar */}
        <div className="flex justify-end mb-6 gap-3">
           <button 
@@ -457,9 +566,10 @@ export default function AdminOrders() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div>
         </div>
       ) : (
-        <div className="overflow-x-auto pb-4 custom-scrollbar">
-          <div className="flex gap-6 min-w-max items-start">
-            {ORDER_STATUSES.map(statusCol => {
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div className="overflow-x-auto pb-4 custom-scrollbar">
+            <div className="flex gap-6 min-w-max items-start">
+              {ORDER_STATUSES.map(statusCol => {
               const fTypeWeights = { 'dine_in': 1, 'takeaway': 2, 'delivery': 3 };
               
               const sortOrders = (a, b, ascending = true) => {
@@ -487,27 +597,50 @@ export default function AdminOrders() {
                    }).sort((a,b) => sortOrders(a, b, false));
 
               return (
-                <div key={statusCol.id} className="flex flex-col gap-4 bg-gray-50/50 rounded-2xl p-4 border border-gray-100 w-[300px] min-h-[500px] flex-shrink-0">
-                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-200">
-                  <h3 className="font-bold text-gray-700">{statusCol.label}</h3>
-                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${statusCol.color} bg-white opacity-80`}>
-                    {colOrders.length}
-                  </span>
-                </div>
-                
-                <div className="flex flex-col gap-3 h-full">
-                  {colOrders.map(order => {
-                    const fl = getFulfillmentLabel(order.fulfillment_type);
-                    return (
-                      <div 
-                        key={order?.id} 
-                        onClick={() => { setSelectedOrder(order); setIsCancelling(false); }}
-                        className={`bg-white p-4 rounded-2xl shadow-sm border transition-all cursor-pointer group relative overflow-hidden active:scale-[0.98] ${
-                          order?.fulfillment_type === 'dine_in' 
-                          ? 'border-emerald-100 hover:border-emerald-300 hover:shadow-md ring-1 ring-emerald-50/50' 
-                          : 'border-gray-100 hover:shadow-md hover:border-emerald-200'
-                        }`}
-                      >
+                <Droppable droppableId={statusCol.id} isCombineEnabled>
+                  {(provided, snapshot) => (
+                    <div 
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={`flex flex-col gap-4 rounded-2xl p-4 border w-[300px] min-h-[600px] flex-shrink-0 transition-colors ${
+                        snapshot.isDraggingOver ? 'bg-emerald-50/50 border-emerald-200 shadow-inner' : 'bg-gray-50/50 border-gray-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-200">
+                        <h3 className="font-bold text-gray-700">{statusCol.label}</h3>
+                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${statusCol.color} bg-white opacity-80`}>
+                          {colOrders.length}
+                        </span>
+                      </div>
+                      
+                      <div className="flex flex-col gap-3 min-h-[100px]">
+                        {colOrders.map((order, index) => {
+                          const fl = getFulfillmentLabel(order.fulfillment_type);
+                          return (
+                            <Draggable key={order.id} draggableId={order.id} index={index}>
+                              {(provided, snapshot) => (
+                                <div 
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  onClick={() => { 
+                                    if (isMerging) {
+                                      handleMergeOrders(mergeSourceOrder, order);
+                                    } else {
+                                      setSelectedOrder(order); 
+                                      setIsCancelling(false); 
+                                    }
+                                  }}
+                                  className={`bg-white p-4 rounded-2xl shadow-sm border transition-all cursor-pointer group relative overflow-hidden ${
+                                    snapshot.isDragging ? 'shadow-2xl ring-2 ring-emerald-500 scale-105 rotate-2 z-50' : 'active:scale-[0.98]'
+                                  } ${
+                                    order?.fulfillment_type === 'dine_in' 
+                                    ? 'border-emerald-100 hover:border-emerald-300 hover:shadow-md ring-1 ring-emerald-50/50' 
+                                    : 'border-gray-100 hover:shadow-md hover:border-emerald-200'
+                                  } ${
+                                    snapshot.isCombiningWith ? 'bg-emerald-100 border-emerald-500 border-2' : ''
+                                  }`}
+                                >
                         {order.fulfillment_type === 'dine_in' && (
                           <div className="absolute top-0 right-0 w-16 h-16 pointer-events-none overflow-hidden">
                             <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[8px] font-black py-0.5 px-6 rotate-45 translate-x-4 translate-y-2 uppercase shadow-sm">
@@ -588,31 +721,37 @@ export default function AdminOrders() {
                         )}
                         
                         <div className="space-y-1">
-                           {order.order_items?.slice(0, 2).map(item => (
-                             <div key={item.id} className="text-xs text-gray-600 truncate flex items-center gap-1">
-                               <span className="font-black text-[#2f4131] bg-emerald-50 px-1 rounded">{item.quantity}x</span>
-                               {item.products?.name}
-                             </div>
-                           ))}
-                           {order.order_items?.length > 2 && (
-                             <div className="text-[10px] text-gray-400 font-bold pl-6">+{order.order_items.length - 2} más...</div>
-                           )}
+                          {order.order_items?.slice(0, 2).map(item => (
+                            <div key={item.id} className="text-xs text-gray-600 truncate flex items-center gap-1">
+                              <span className="font-black text-[#2f4131] bg-emerald-50 px-1 rounded">{item.quantity}x</span>
+                              {item.products?.name}
+                            </div>
+                          ))}
+                          {order.order_items?.length > 2 && (
+                            <div className="text-[10px] text-gray-400 font-bold pl-6">+{order.order_items.length - 2} más...</div>
+                          )}
                         </div>
                       </div>
-                    );
-                  })}
-                  {colOrders.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-12 opacity-20">
-                      <Icon icon={statusCol.icon} className="text-4xl mb-2" />
-                      <span className="text-xs font-bold uppercase tracking-widest">Sin pedidos</span>
+                    )}
+                  </Draggable>
+                          );
+                        })}
+                        {provided.placeholder}
+                        {colOrders.length === 0 && (
+                          <div className="flex flex-col items-center justify-center py-12 opacity-20">
+                            <Icon icon={statusCol.icon} className="text-4xl mb-2" />
+                            <span className="text-xs font-bold uppercase tracking-widest">Sin pedidos</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
-                </div>
-              </div>
+                </Droppable>
               );
             })}
           </div>
         </div>
+      </DragDropContext>
       )}
 
       {/* Modal Detalle Pedido Rediseñado */}
@@ -921,6 +1060,19 @@ export default function AdminOrders() {
                    RESUMEN
                  </button>
 
+                 <button 
+                   onClick={() => { 
+                     setIsMerging(true); 
+                     setMergeSourceOrder(selectedOrder); 
+                     setSelectedOrder(null); 
+                     toast("Ahora selecciona el pedido destino", { icon: '🎯' });
+                   }}
+                   className="flex-1 md:flex-none px-6 py-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+                 >
+                   <Icon icon="heroicons:arrows-right-left" />
+                   CONSOLIDAR
+                 </button>
+
                  {!isCancelling ? (
                    <button 
                      onClick={() => setIsCancelling(true)}
@@ -1036,6 +1188,43 @@ export default function AdminOrders() {
           }}
         />
       )}
+
+      {/* MERGE CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {isMergeConfirmOpen && mergeSourceOrder && mergeTargetOrder && (
+          <Modal onClose={() => setIsMergeConfirmOpen(false)}>
+            <div className="p-8 text-center">
+              <div className="w-20 h-20 bg-brand-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Icon icon="solar:globus-bold-duotone" className="text-4xl text-brand-primary animate-pulse" />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 mb-2">¿Consolidar Pedidos?</h3>
+              <p className="text-gray-500 font-medium leading-relaxed mb-8">
+                Estás a punto de fusionar el pedido de <span className="text-gray-900 font-bold">{mergeSourceOrder.customer_name || 'Mesa ' + mergeSourceOrder.restaurant_tables?.table_number}</span> dentro de <span className="text-gray-900 font-bold">{mergeTargetOrder.customer_name || 'Mesa ' + mergeTargetOrder.restaurant_tables?.table_number}</span>.
+                <br /><br />
+                Los items del primer pedido se sumarán a la cuenta del segundo y el primer pedido será eliminado.
+              </p>
+
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={() => {
+                    handleMergeOrders(mergeSourceOrder, mergeTargetOrder);
+                    setIsMergeConfirmOpen(false);
+                  }}
+                  className="w-full py-4 bg-brand-primary text-white rounded-2xl font-black shadow-xl shadow-brand-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                >
+                  SÍ, CONSOLIDAR CUENTAS
+                </button>
+                <button 
+                  onClick={() => setIsMergeConfirmOpen(false)}
+                  className="w-full py-4 bg-gray-50 text-gray-400 rounded-2xl font-bold hover:bg-gray-100 transition-all"
+                >
+                  CANCELAR
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
