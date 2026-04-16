@@ -8,6 +8,11 @@ import {
   TableContainer, Th, Modal, ModalHeader, FormField, TextInput, SelectInput
 } from '../components/admin/ui';
 
+import { 
+  Plus, LayoutGrid, MapPin, QrCode, Edit3, Trash2, 
+  ChevronRight, Layers, Table
+} from 'lucide-react';
+
 const toast = {
   success: (msg, opts) => toastFn.success(msg, { duration: 2500, ...opts }),
   error: (msg, opts) => toastFn.error(msg, { duration: 4000, ...opts }),
@@ -227,17 +232,23 @@ export default function AdminTables({ isEmbedded = false }) {
   return (
     <div className={isEmbedded ? "" : "p-8 max-w-7xl mx-auto space-y-6"}>
       {!isEmbedded && (
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm mb-6">
-          <div>
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">Negocio / Mesas</h3>
-            <p className="text-xs text-gray-500 font-medium">Gestiona los códigos QR y ubicaciones físicas.</p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 backdrop-blur-xl p-6 rounded-[2rem] border border-white shadow-xl shadow-gray-200/40 mb-8">
+          <div className="space-y-1">
+             <div className="flex items-center gap-2">
+                <Table className="w-3.5 h-3.5 text-[#2f4131]" />
+                <h3 className="text-[10px] font-black text-[#2f4131] uppercase tracking-[0.3em]">Negocio / Activos</h3>
+             </div>
+            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Gestión de Mesas</h2>
+            <p className="text-xs text-gray-400 font-medium">Controla tus ubicaciones físicas y descarga sus códigos QR únicos.</p>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <SecondaryButton onClick={() => setIsAreaModalOpen(true)} className="w-full sm:w-auto">
+          <div className="flex gap-3 w-full sm:w-auto">
+            <SecondaryButton onClick={() => setIsAreaModalOpen(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 px-6">
+              <Layers size={16} />
               Gestionar Salones
             </SecondaryButton>
-            <PrimaryButton onClick={openCreate} className="w-full sm:w-auto">
-              + Nueva Mesa
+            <PrimaryButton onClick={openCreate} className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 shadow-lg shadow-[#2f4131]/20">
+              <Plus size={18} />
+              Nueva Mesa
             </PrimaryButton>
           </div>
         </div>
@@ -267,40 +278,50 @@ export default function AdminTables({ isEmbedded = false }) {
           </thead>
           <tbody className="divide-y divide-gray-50">
             {tables.length === 0 ? (
-              <tr><td colSpan={3} className="px-5 py-14 text-center text-sm text-gray-400 font-medium">No hay mesas configuradas.</td></tr>
+              <tr><td colSpan={4} className="px-5 py-20 text-center text-sm text-gray-300 font-medium italic">No hay mesas configuradas aún. Empieza agregando una nueva mesa.</td></tr>
             ) : tables.map((table) => (
-              <tr key={table.id} className="group hover:bg-gray-50/60 transition-colors">
-                <td className="px-5 py-3.5">
-                  <div className="font-semibold text-gray-900">{table.table_number}</div>
-                </td>
-                <td className="px-5 py-3.5">
-                  <div className="text-sm text-gray-500 font-medium">
-                    {table.table_areas?.name || <span className="text-gray-300 italic">Sin salón</span>}
+              <tr key={table.id} className="group hover:bg-gray-50/80 transition-all duration-200">
+                <td className="px-6 py-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center border border-gray-100 text-gray-400 group-hover:bg-[#2f4131] group-hover:text-white group-hover:border-[#2f4131] transition-all duration-300">
+                       <MapPin size={18} />
+                    </div>
+                    <div className="font-bold text-gray-900 group-hover:translate-x-1 transition-transform">{table.table_number}</div>
                   </div>
                 </td>
-                <td className="px-5 py-3.5">
-                  <button onClick={() => toggleTableActive(table)}>
+                <td className="px-6 py-5">
+                  <div className="flex items-center gap-2">
+                    <div className={`text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border ${
+                       table.table_areas?.name 
+                        ? 'bg-[#2f4131]/5 border-[#2f4131]/10 text-[#2f4131]/70' 
+                        : 'bg-gray-50 border-gray-100 text-gray-400 italic font-medium lowercase tracking-normal'
+                    }`}>
+                      {table.table_areas?.name || 'sin salón'}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-5">
+                  <button onClick={() => toggleTableActive(table)} className="active:scale-95 transition-transform">
                     <Badge variant={table.is_active ? 'green' : 'gray'}>
                       {table.is_active ? 'Activa' : 'Inactiva'}
                     </Badge>
                   </button>
                 </td>
-                <td className="px-5 py-3.5 text-right">
-                  <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <td className="px-6 py-5 text-right">
+                  <div className="flex justify-end items-center gap-1 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-300">
                     <button onClick={() => setQrTable(table)}
-                      className="px-3 py-1.5 text-[12px] font-semibold text-purple-600 hover:bg-purple-50 rounded-lg transition-all">
-                      Ver QR
+                      className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-transparent hover:border-indigo-100 flex items-center gap-1.5 font-bold text-[11px] uppercase tracking-wider">
+                      <QrCode size={16} />
+                      QR
                     </button>
+                    <div className="w-px h-4 bg-gray-200 mx-1" />
                     <button onClick={() => openEdit(table)}
-                      className="px-3 py-1.5 text-[12px] font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
-                      Editar
+                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-all flex items-center gap-1.5 font-bold text-[11px] uppercase tracking-wider">
+                      <Edit3 size={15} />
                     </button>
                     <button onClick={() => handleDeleteTable(table.id)}
-                      className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                        <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                      </svg>
+                      className="p-2 text-red-400 hover:bg-red-50 rounded-xl transition-all">
+                      <Trash2 size={15} />
                     </button>
                   </div>
                 </td>
