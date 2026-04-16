@@ -9,7 +9,6 @@ import AdminExperiences from '../../pages/AdminExperiences';
 import AdminRecipes from '../../pages/AdminRecipes';
 import AdminBranding from '../../pages/AdminBranding';
 import AdminSettings from '../../pages/AdminSettings';
-import AdminAllergens from '../../pages/AdminAllergens';
 import AdminModifierGroups from '../../pages/AdminModifierGroups';
 import AdminTables from '../../pages/AdminTables';
 import AdminOrders from '../../pages/AdminOrders';
@@ -155,7 +154,6 @@ const CARTA_ITEMS = [
   { id: 'categories',      label: 'Categorías',         Icon: Icons.Categories, roles: ADMIN_ROLES },
   { id: 'modifier_groups', label: 'Extras y Opciones', Icon: Icons.Modifiers, roles: ADMIN_ROLES },
   { id: 'tables',          label: 'Mesas y QRs',       Icon: Icons.Tables, roles: ADMIN_ROLES },
-  { id: 'allergens',       label: 'Dietas y Alérgenos', Icon: Icons.Allergens, roles: ADMIN_ROLES },
 ];
 
 const PROD_ITEMS = [
@@ -725,7 +723,6 @@ export default function AdminLayout() {
           {currentPage === 'web'         && <AdminWebContent />}
           {currentPage === 'products'    && <AdminProducts />}
           {currentPage === 'categories'  && <AdminCategories />}
-          {currentPage === 'allergens'   && <AdminAllergens />}
           { currentPage === 'recipes'     && <AdminRecipes /> }
           { currentPage === 'modifier_groups' && <AdminModifierGroups /> }
           { currentPage === 'inventory'   && <AdminModifiers /> }

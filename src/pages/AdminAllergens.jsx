@@ -3,7 +3,7 @@ import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
 import {
-  TableContainer, Th, Modal, ModalHeader, FormField, TextInput
+  TableContainer, Th, Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButton
 } from '../components/admin/ui';
 import { Icon } from '@iconify-icon/react';
 import EmojiPicker from 'emoji-picker-react';
@@ -112,10 +112,16 @@ export default function AdminAllergens() {
   );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
-      {/* Action Bar */}
-      <div className="flex justify-end bg-white p-5 rounded-2xl border border-gray-100 shadow-sm mb-6">
-        <PrimaryButton onClick={openCreate}>+ Nueva Etiqueta</PrimaryButton>
+    <div className="space-y-6">
+      {/* Search and Action Bar — Subtle integrated look */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white/60 p-4 rounded-3xl border border-gray-100 shadow-sm">
+        <div className="flex items-center gap-2 text-gray-500">
+          <Icon icon="heroicons:tag" className="text-lg text-gray-400" />
+          <span className="text-sm font-medium">Gestión de Etiquetas y Dietas</span>
+        </div>
+        <PrimaryButton onClick={openCreate} className="w-full sm:w-auto">
+          + Nueva Etiqueta
+        </PrimaryButton>
       </div>
 
       <TableContainer>

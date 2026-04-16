@@ -252,14 +252,13 @@ export default function AdminProducts() {
         subtitle="Gestiona el catálogo de tu menú digital."
       >
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-          {maxProducts !== null && maxProducts !== undefined && (
             <div className="text-[11px] font-black uppercase tracking-widest px-4 py-2 bg-white border border-gray-100 rounded-2xl text-gray-500 shadow-sm italic flex flex-col items-center sm:items-end">
               <span className="text-[9px] text-gray-400">Cupo de Catálogo</span>
               <span className={isAtLimit ? 'text-orange-600' : 'text-gray-900'}>
                 {products.length} / {maxProducts} PRODUCTOS
               </span>
             </div>
-          )}
+          
           <PrimaryButton 
             onClick={handleCreate} 
             disabled={isAtLimit}

@@ -3,6 +3,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useCategories } from '../hooks/useCategories';
 import { usePlan } from '../hooks/usePlan';
 import CategoryForm from '../components/admin/CategoryForm';
+import AdminAllergens from './AdminAllergens';
 import {
   PageHeader, PrimaryButton, Badge,
   TableContainer, Th, SearchInput
@@ -15,6 +16,7 @@ export default function AdminCategories() {
   const [editingCategory, setEditingCategory] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState('categories'); // 'categories' | 'allergens'
 
   const onDragEnd = async (result) => {
     if (!result.destination) return;
@@ -52,30 +54,63 @@ export default function AdminCategories() {
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     (c.slug || '').toLowerCase().includes(search.toLowerCase())
   );
-
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
-      {/* Action Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-        <div className="flex-1 w-full max-w-sm">
-          <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar categoría…" />
-        </div>
-        
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-          {maxCategories && (
-            <div className="text-[11px] font-black uppercase tracking-widest px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-xl text-gray-500 italic">
-              Categorías: <span className={isAtLimit ? 'text-orange-600' : 'text-gray-900'}>{categories.length} / {maxCategories}</span>
-            </div>
-          )}
-          <PrimaryButton 
-            onClick={handleCreate} 
-            disabled={isAtLimit}
-            className="w-full sm:w-auto"
-          >
-            {isAtLimit ? 'Límite alcanzado' : '+ Nueva Categoría'}
-          </PrimaryButton>
-        </div>
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6">
+      <PageHeader
+        badge="Administración"
+        title="Categorías y Etiquetas"
+        subtitle="Organiza tu menú y define etiquetas de dieta o alérgenos."
+      >
+        {activeTab === 'categories' && (
+          <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+            {maxCategories && (
+              <div className="text-[11px] font-black uppercase tracking-widest px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-xl text-gray-500 italic">
+                Categorías: <span className={isAtLimit ? 'text-orange-600' : 'text-gray-900'}>{categories.length} / {maxCategories}</span>
+              </div>
+            )}
+            <PrimaryButton 
+              onClick={handleCreate} 
+              disabled={isAtLimit}
+              className="w-full sm:w-auto"
+            >
+              {isAtLimit ? 'Límite alcanzado' : '+ Nueva Categoría'}
+            </PrimaryButton>
+          </div>
+        )}
+      </PageHeader>
+
+      {/* Tabs Switcher — Bento Style */}
+      <div className="flex p-1 bg-gray-100/80 backdrop-blur-sm rounded-2xl w-fit mb-2">
+        <button
+          onClick={() => setActiveTab('categories')}
+          className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${
+            activeTab === 'categories' 
+              ? 'bg-white text-[#2f4131] shadow-sm' 
+              : 'text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          Categorías
+        </button>
+        <button
+          onClick={() => setActiveTab('allergens')}
+          className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${
+            activeTab === 'allergens' 
+              ? 'bg-white text-[#2f4131] shadow-sm' 
+              : 'text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          Dietas y Alérgenos
+        </button>
       </div>
+
+      {activeTab === 'categories' ? (
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-6">
+          {/* Action Bar */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="flex-1 w-full max-w-sm">
+              <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar categoría…" />
+            </div>
+          </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
         <TableContainer>
@@ -200,6 +235,12 @@ export default function AdminCategories() {
           </table>
         </TableContainer>
       </DragDropContext>
+        </div>
+      ) : (
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <AdminAllergens />
+        </div>
+      )}
 
       {isFormOpen && (
         <CategoryForm category={editingCategory} onSave={handleSave} onCancel={() => { setIsFormOpen(false); setEditingCategory(null); }} />
