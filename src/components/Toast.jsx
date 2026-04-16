@@ -60,7 +60,7 @@ export default function Toast() {
       case 'error': return 'bg-red-600 ring-red-700/20';
       case 'success': return 'bg-emerald-600 ring-emerald-700/20';
       case 'info': return 'bg-blue-600 ring-blue-700/20';
-      default: return 'bg-[#2f4131] ring-black/10';
+      default: return 'bg-emerald-600 ring-emerald-700/20'; // Default to success style for better visibility
     }
   };
 

@@ -9,8 +9,8 @@ import { Icon } from '@iconify/react';
 import { Loader2, User, Key, Building2, Trash2, ShieldCheck, MoreVertical } from 'lucide-react';
 
 const toast = {
-  success: (msg) => toastFn(msg, { duration: 2000 }),
-  error: (msg) => toastFn(msg, { duration: 3000 }),
+  success: (msg, opts) => toastFn.success(msg, { duration: 2500, ...opts }),
+  error: (msg, opts) => toastFn.error(msg, { duration: 4000, ...opts }),
 };
 
 const RoleNames = {

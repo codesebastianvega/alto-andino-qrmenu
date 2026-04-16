@@ -34,8 +34,8 @@ const trackEvent = async (eventName, metadata = {}) => {
 
 
 const toast = {
-  success: (msg) => toastFn(msg, { duration: 3000 }),
-  error: (msg) => toastFn(msg, { duration: 4000 })
+  success: (msg, opts) => toastFn.success(msg, { duration: 3000, ...opts }),
+  error: (msg, opts) => toastFn.error(msg, { duration: 4000, ...opts })
 };
 
 const getTable = () => {
@@ -239,6 +239,8 @@ export default function CartModal({ open, onClose }) {
          if (tableData) tableId = tableData.id;
       }
 
+      console.log("🔍 [Order Flow] tableId:", tableId, "activeBrandId:", activeBrandId, "fulfillmentType:", fulfillmentType);
+
       // 2. Insert or Update Order
       const finalTotal = fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount;
 
@@ -255,13 +257,15 @@ export default function CartModal({ open, onClose }) {
 
       // Try to find an existing active order for this table to merge items
       if (tableId) {
-        const { data: existingOrder } = await supabase.from('orders')
+        const { data: existingOrder, error: findError } = await supabase.from('orders')
           .select('*')
           .eq('table_id', tableId)
           .eq('brand_id', activeBrandId)
           .in('status', ['waiting_payment', 'new', 'preparing', 'ready'])
           .limit(1)
           .maybeSingle();
+        
+        console.log("🔍 [Order Flow] Existing order lookup:", { existingOrder, findError, searchParams: { tableId, activeBrandId } });
         
         if (existingOrder) {
           // If we found an existing order, update its total and use its data
@@ -270,7 +274,9 @@ export default function CartModal({ open, onClose }) {
           const updatePayload = {
             total_amount: Number(existingOrder.total_amount) + Number(finalTotal),
             service_fee: Number(existingOrder.service_fee || 0) + Number(serviceFeeAmount),
-            status: 'new'
+            status: 'new',
+            payment_status: isPaid ? 'paid' : existingOrder.payment_status,
+            payment_method: isPaid ? paymentMethod : existingOrder.payment_method
           };
 
           const { data: updatedOrder, error: updateError } = await supabase.from('orders')

@@ -10,8 +10,8 @@ import { Icon } from '@iconify/react';
 import { Loader2 } from 'lucide-react';
 
 const toast = {
-  success: (msg) => toastFn(msg, { duration: 2000 }),
-  error: (msg) => toastFn(msg, { duration: 3000 }),
+  success: (msg, opts) => toastFn.success(msg, { duration: 2500, ...opts }),
+  error: (msg, opts) => toastFn.error(msg, { duration: 4000, ...opts }),
 };
 
 export default function AdminSettings() {
