@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
 import {
   PageHeader, PrimaryButton, SecondaryButton, Badge,
-  TableContainer, Th, Modal, ModalHeader, FormField, TextInput
+  TableContainer, Th, Modal, ModalHeader, FormField, TextInput, SelectInput
 } from '../components/admin/ui';
 
 const toast = {
@@ -20,8 +20,15 @@ export default function AdminTables({ isEmbedded = false }) {
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTable, setEditingTable] = useState(null);
-  const [tableForm, setTableForm] = useState({ table_number: '' });
+  const [tableForm, setTableForm] = useState({ table_number: '', area_id: '' });
   const [isSubmittingTable, setIsSubmittingTable] = useState(false);
+
+  // Areas Management
+  const [areas, setAreas] = useState([]);
+  const [loadingAreas, setLoadingAreas] = useState(false);
+  const [isAreaModalOpen, setIsAreaModalOpen] = useState(false);
+  const [newAreaName, setNewAreaName] = useState('');
+  const [isSubmittingArea, setIsSubmittingArea] = useState(false);
 
   // QR Modal
   const [qrTable, setQrTable] = useState(null);
@@ -29,15 +36,33 @@ export default function AdminTables({ isEmbedded = false }) {
   useEffect(() => {
     if (profile?.brand_id) {
       fetchTables();
+      fetchAreas();
     }
   }, [profile?.brand_id]);
+
+  const fetchAreas = async () => {
+    setLoadingAreas(true);
+    try {
+      const { data, error } = await supabase
+        .from('table_areas')
+        .select('*')
+        .eq('brand_id', profile.brand_id)
+        .order('sort_order', { ascending: true });
+      if (error) throw error;
+      setAreas(data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingAreas(false);
+    }
+  };
 
   const fetchTables = async () => {
     setLoadingTables(true);
     try {
       const { data, error } = await supabase
         .from('restaurant_tables')
-        .select('*')
+        .select('*, table_areas(name)')
         .eq('brand_id', profile.brand_id)
         .order('table_number');
       
@@ -51,15 +76,54 @@ export default function AdminTables({ isEmbedded = false }) {
     }
   };
 
+  const handleCreateArea = async (e) => {
+    e.preventDefault();
+    if (!newAreaName.trim()) return;
+    setIsSubmittingArea(true);
+    try {
+      const { error } = await supabase.from('table_areas').insert([{
+        name: newAreaName.trim(),
+        brand_id: profile.brand_id,
+        sort_order: areas.length
+      }]);
+      if (error) throw error;
+      setNewAreaName('');
+      fetchAreas();
+      toast.success('Área creada');
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al crear área');
+    } finally {
+      setIsSubmittingArea(false);
+    }
+  };
+
+  const handleDeleteArea = async (id) => {
+    if (!window.confirm('¿Seguro? Se desvincularán las mesas de este salón.')) return;
+    try {
+      const { error } = await supabase.from('table_areas').delete().eq('id', id);
+      if (error) throw error;
+      fetchAreas();
+      fetchTables();
+      toast.success('Área eliminada');
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al eliminar área');
+    }
+  };
+
   const openCreate = () => {
     setEditingTable(null);
-    setTableForm({ table_number: '' });
+    setTableForm({ table_number: '', area_id: '' });
     setIsFormOpen(true);
   };
 
   const openEdit = (table) => {
     setEditingTable(table);
-    setTableForm({ table_number: table.table_number });
+    setTableForm({ 
+      table_number: table.table_number,
+      area_id: table.area_id || ''
+    });
     setIsFormOpen(true);
   };
 
@@ -71,7 +135,11 @@ export default function AdminTables({ isEmbedded = false }) {
     try {
       if (editingTable) {
         const { error } = await supabase.from('restaurant_tables')
-          .update({ table_number: tableForm.table_number, updated_at: new Date() })
+          .update({ 
+            table_number: tableForm.table_number, 
+            area_id: tableForm.area_id || null,
+            updated_at: new Date() 
+          })
           .eq('id', editingTable.id);
         if (error) throw error;
         toast.success('Mesa actualizada');
@@ -79,6 +147,7 @@ export default function AdminTables({ isEmbedded = false }) {
         const { error } = await supabase.from('restaurant_tables')
           .insert([{ 
             table_number: tableForm.table_number,
+            area_id: tableForm.area_id || null,
             brand_id: profile.brand_id
           }]);
         if (error) throw error;
@@ -163,7 +232,14 @@ export default function AdminTables({ isEmbedded = false }) {
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">Negocio / Mesas</h3>
             <p className="text-xs text-gray-500 font-medium">Gestiona los códigos QR y ubicaciones físicas.</p>
           </div>
-          <PrimaryButton onClick={openCreate} className="w-full sm:w-auto">+ Nueva Mesa</PrimaryButton>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <SecondaryButton onClick={() => setIsAreaModalOpen(true)} className="w-full sm:w-auto">
+              Gestionar Salones
+            </SecondaryButton>
+            <PrimaryButton onClick={openCreate} className="w-full sm:w-auto">
+              + Nueva Mesa
+            </PrimaryButton>
+          </div>
         </div>
       )}
 
@@ -172,7 +248,10 @@ export default function AdminTables({ isEmbedded = false }) {
            <div>
               <h2 className="text-sm font-bold text-gray-900 uppercase tracking-tight italic">Listado de Mesas</h2>
            </div>
-           <PrimaryButton onClick={openCreate} className="px-6 py-2 text-xs rounded-xl">+ Nueva mesa</PrimaryButton>
+           <div className="flex gap-2">
+             <SecondaryButton onClick={() => setIsAreaModalOpen(true)} className="px-4 py-2 text-xs rounded-xl">Salones</SecondaryButton>
+             <PrimaryButton onClick={openCreate} className="px-6 py-2 text-xs rounded-xl">+ Nueva mesa</PrimaryButton>
+           </div>
         </div>
       )}
 
@@ -181,6 +260,7 @@ export default function AdminTables({ isEmbedded = false }) {
           <thead>
             <tr>
               <Th>Identificador</Th>
+              <Th>Salón / Entorno</Th>
               <Th>Estado</Th>
               <Th right>Acciones</Th>
             </tr>
@@ -192,6 +272,11 @@ export default function AdminTables({ isEmbedded = false }) {
               <tr key={table.id} className="group hover:bg-gray-50/60 transition-colors">
                 <td className="px-5 py-3.5">
                   <div className="font-semibold text-gray-900">{table.table_number}</div>
+                </td>
+                <td className="px-5 py-3.5">
+                  <div className="text-sm text-gray-500 font-medium">
+                    {table.table_areas?.name || <span className="text-gray-300 italic">Sin salón</span>}
+                  </div>
                 </td>
                 <td className="px-5 py-3.5">
                   <button onClick={() => toggleTableActive(table)}>
@@ -242,6 +327,18 @@ export default function AdminTables({ isEmbedded = false }) {
                   placeholder="Ej. Mesa 1, Sala Principal, VIP..."
                   required
                 />
+              </FormField>
+
+              <FormField label="Salón / Entorno">
+                <SelectInput
+                  value={tableForm.area_id}
+                  onChange={(e) => setTableForm({ ...tableForm, area_id: e.target.value })}
+                >
+                  <option value="">Sin salón específico</option>
+                  {areas.map(area => (
+                    <option key={area.id} value={area.id}>{area.name}</option>
+                  ))}
+                </SelectInput>
               </FormField>
             </div>
 
@@ -298,6 +395,51 @@ export default function AdminTables({ isEmbedded = false }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                 </svg>
                 Copiar Enlace Directo
+              </SecondaryButton>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {isAreaModalOpen && (
+        <Modal onClose={() => setIsAreaModalOpen(false)}>
+          <ModalHeader 
+            title="Gestionar Salones / Áreas" 
+            subtitle="Crea entornos para organizar tus mesas (ej. Terraza, VIP)."
+            onClose={() => setIsAreaModalOpen(false)} 
+          />
+          <div className="p-7 space-y-6">
+            <form onSubmit={handleCreateArea} className="flex gap-2">
+              <div className="flex-1">
+                <TextInput 
+                  placeholder="Nuevo salón (ej. Terraza)"
+                  value={newAreaName}
+                  onChange={(e) => setNewAreaName(e.target.value)}
+                />
+              </div>
+              <PrimaryButton type="submit" disabled={isSubmittingArea}>
+                {isSubmittingArea ? '...' : 'Añadir'}
+              </PrimaryButton>
+            </form>
+
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {areas.length === 0 ? (
+                <p className="text-center text-xs text-gray-400 py-4 italic">No hay salones creados.</p>
+              ) : areas.map(area => (
+                <div key={area.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <span className="text-sm font-semibold text-gray-700">{area.name}</span>
+                  <button onClick={() => handleDeleteArea(area.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2">
+              <SecondaryButton onClick={() => setIsAreaModalOpen(false)} className="w-full justify-center">
+                Listo
               </SecondaryButton>
             </div>
           </div>

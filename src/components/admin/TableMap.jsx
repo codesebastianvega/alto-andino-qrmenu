@@ -228,22 +228,30 @@ const TableCard = React.forwardRef(({ table }, ref) => {
 });
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export default function TableMap({ tablesWithStatus = [], loading = false }) {
-  const [filter, setFilter] = useState('all'); // 'all' | 'occupied' | 'needs_billing' | 'free'
+export default function TableMap({ tablesWithStatus = [], areas = [], loading = false }) {
+  const [filter, setFilter] = useState('all'); // 'all' | 'libre' | 'ocupada' | 'sucia' | 'needs_billing'
+  const [selectedAreaId, setSelectedAreaId] = useState('all');
 
+  // 1. Primero filtramos por área
+  const tablesInArea = selectedAreaId === 'all'
+    ? tablesWithStatus
+    : tablesWithStatus.filter(t => t.area_id === selectedAreaId);
+
+  // 2. Calculamos contadores basados en las mesas del área actual
   const counts = {
-    all:           tablesWithStatus.length,
-    libre:         tablesWithStatus.filter(t => t.status === 'libre' || t.status === 'free').length,
-    ocupada:       tablesWithStatus.filter(t => t.status === 'ocupada').length,
-    sucia:         tablesWithStatus.filter(t => t.status === 'sucia').length,
-    needs_billing: tablesWithStatus.filter(t => t.status === 'needs_billing').length,
+    all:           tablesInArea.length,
+    libre:         tablesInArea.filter(t => t.status === 'libre' || t.status === 'free').length,
+    ocupada:       tablesInArea.filter(t => t.status === 'ocupada').length,
+    sucia:         tablesInArea.filter(t => t.status === 'sucia').length,
+    needs_billing: tablesInArea.filter(t => t.status === 'needs_billing').length,
   };
 
+  // 3. Aplicamos el filtro de estado final
   const filtered = filter === 'all'
-    ? tablesWithStatus
+    ? tablesInArea
     : filter === 'libre'
-      ? tablesWithStatus.filter(t => t.status === 'libre' || t.status === 'free')
-      : tablesWithStatus.filter(t => t.status === filter);
+      ? tablesInArea.filter(t => t.status === 'libre' || t.status === 'free')
+      : tablesInArea.filter(t => t.status === filter);
 
   const FILTERS = [
     { id: 'all',           label: 'Todas',       count: counts.all,           dot: 'bg-white/30' },
@@ -278,8 +286,37 @@ export default function TableMap({ tablesWithStatus = [], loading = false }) {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Filtros rápidos */}
+    <div className="space-y-6">
+      {/* Selector de Áreas (Tabs) */}
+      {areas.length > 0 && (
+        <div className="flex items-center gap-1 p-1 bg-white/5 rounded-2xl w-fit overflow-x-auto no-scrollbar">
+          <button
+            onClick={() => setSelectedAreaId('all')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
+              selectedAreaId === 'all'
+                ? 'bg-white/10 text-white shadow-lg'
+                : 'text-white/30 hover:text-white/60'
+            }`}
+          >
+            Todos
+          </button>
+          {areas.map(area => (
+            <button
+              key={area.id}
+              onClick={() => setSelectedAreaId(area.id)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-all ${
+                selectedAreaId === area.id
+                  ? 'bg-[#2f4131] text-white shadow-lg'
+                  : 'text-white/30 hover:text-white/60'
+              }`}
+            >
+              {area.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Filtros rápidos de estado */}
       <div className="flex items-center gap-2 flex-wrap">
         {FILTERS.map(f => (
           <button

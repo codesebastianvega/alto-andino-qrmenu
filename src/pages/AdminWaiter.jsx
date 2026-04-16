@@ -22,6 +22,8 @@ export default function AdminWaiter() {
   const { profile, activeBrand } = useAuth();
   const { staffList } = useStaff();
   const [tables, setTables] = useState([]);
+  const [areas, setAreas] = useState([]);
+  const [selectedAreaId, setSelectedAreaId] = useState('all');
   const [loading, setLoading] = useState(true);
   const [activeOrders, setActiveOrders] = useState([]);
   const [tableToConfirm, setTableToConfirm] = useState(null);
@@ -31,6 +33,7 @@ export default function AdminWaiter() {
   useEffect(() => {
     if (profile?.brand_id) {
       fetchTables();
+      fetchAreas();
       fetchActiveOrders();
 
       // Real-time subscriptions
@@ -48,9 +51,17 @@ export default function AdminWaiter() {
         })
         .subscribe();
 
+      const areasChannel = supabase
+        .channel('areas-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'table_areas', filter: `brand_id=eq.${profile.brand_id}` }, () => {
+          fetchAreas();
+        })
+        .subscribe();
+
       return () => {
         supabase.removeChannel(tablesChannel);
         supabase.removeChannel(ordersChannel);
+        supabase.removeChannel(areasChannel);
       };
     }
   }, [profile?.brand_id]);
@@ -70,6 +81,21 @@ export default function AdminWaiter() {
       toast.error('Error al cargar mesas');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAreas = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('table_areas')
+        .select('*')
+        .eq('brand_id', profile.brand_id)
+        .order('sort_order', { ascending: true });
+      
+      if (error) throw error;
+      setAreas(data || []);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -190,11 +216,41 @@ export default function AdminWaiter() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr,340px] gap-6">
         {/* LADO IZQUIERDO: GRID DE MESAS COMPACTO */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between px-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-2">
             <div className="flex items-center gap-2">
               <LayoutGrid size={18} className="text-[#2f4131]" />
               <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Mapa del Salón</h4>
             </div>
+
+            {/* Selector de Áreas */}
+            {areas.length > 0 && (
+              <div className="flex items-center gap-1 p-1 bg-white border border-gray-100 rounded-2xl shadow-sm self-stretch sm:self-auto overflow-x-auto no-scrollbar">
+                <button
+                  onClick={() => setSelectedAreaId('all')}
+                  className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                    selectedAreaId === 'all'
+                      ? 'bg-[#2f4131] text-white shadow-md'
+                      : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  Todos
+                </button>
+                {areas.map(area => (
+                  <button
+                    key={area.id}
+                    onClick={() => setSelectedAreaId(area.id)}
+                    className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                      selectedAreaId === area.id
+                        ? 'bg-[#2f4131] text-white shadow-md'
+                        : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    {area.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="flex items-center gap-4 text-[9px] font-black text-gray-400 bg-white/80 p-2 rounded-full border border-gray-100 shadow-sm px-4">
                <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> DISPONIBLE</div>
                <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-amber-500" /> EN SERVICIO</div>
@@ -211,7 +267,9 @@ export default function AdminWaiter() {
                   <UtensilsCrossed size={40} className="mx-auto text-gray-200 mb-4" />
                   <p className="text-gray-400 font-black uppercase tracking-widest text-[10px]">Sin mesas</p>
                 </div>
-              ) : tables.map((table) => {
+              ) : tables
+                  .filter(t => selectedAreaId === 'all' || t.area_id === selectedAreaId)
+                  .map((table) => {
                 const status = getTableStatus(table.id);
                 const order = activeOrders.find(o => o.table_id === table.id);
                 

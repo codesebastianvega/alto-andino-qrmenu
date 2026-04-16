@@ -31,6 +31,7 @@ export function useOperations() {
 
   const [orders, setOrders] = useState([]);
   const [tables, setTables] = useState([]);
+  const [areas, setAreas] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [liveEvents, setLiveEvents] = useState([]); // FIFO max 20
@@ -112,7 +113,7 @@ export function useOperations() {
 
     const { data, error } = await supabase
       .from('restaurant_tables')
-      .select('id, table_number, is_active, physical_status, occupied_at')
+      .select('id, table_number, is_active, physical_status, occupied_at, area_id')
       .eq('brand_id', brandId)
       .order('table_number', { ascending: true });
 
@@ -121,6 +122,22 @@ export function useOperations() {
       return;
     }
     setTables(data || []);
+  }, [brandId]);
+
+  const fetchAreas = useCallback(async () => {
+    if (!brandId) return;
+
+    const { data, error } = await supabase
+      .from('table_areas')
+      .select('*')
+      .eq('brand_id', brandId)
+      .order('sort_order', { ascending: true });
+
+    if (error) {
+      console.error('[useOperations] fetchAreas error:', error);
+      return;
+    }
+    setAreas(data || []);
   }, [brandId]);
 
   const fetchPayments = useCallback(async () => {
@@ -147,9 +164,9 @@ export function useOperations() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    await Promise.all([fetchOrders(), fetchTables(), fetchPayments()]);
+    await Promise.all([fetchOrders(), fetchTables(), fetchAreas(), fetchPayments()]);
     setLoading(false);
-  }, [fetchOrders, fetchTables, fetchPayments]);
+  }, [fetchOrders, fetchTables, fetchAreas, fetchPayments]);
 
   // ─── Subscripciones Realtime ────────────────────────────────────────────────
 
@@ -240,6 +257,13 @@ export function useOperations() {
         () => { fetchTables(); }
       )
 
+      // ── Áreas ─────────────────────────────────────────────────────────────
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'table_areas', filter: `brand_id=eq.${brandId}` },
+        () => { fetchAreas(); }
+      )
+
       .subscribe();
 
     return () => {
@@ -327,6 +351,7 @@ export function useOperations() {
     // Raw data
     orders,
     tables,
+    areas,
     payments,
     liveEvents,
     loading,
