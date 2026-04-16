@@ -3,7 +3,7 @@ import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
 import {
-  TableContainer, Th, Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButton
+  Drawer, FormField, TextInput, PrimaryButton, SecondaryButton, BentoCard
 } from '../components/admin/ui';
 import { Icon } from '@iconify-icon/react';
 import EmojiPicker from 'emoji-picker-react';
@@ -12,6 +12,11 @@ const toast = {
   success: (msg, opts) => toastFn.success(msg, { duration: 2500, ...opts }),
   error: (msg, opts) => toastFn.error(msg, { duration: 4000, ...opts }),
 };
+
+const CURATED_EMOJIS = [
+  '🌱', '🥜', '🌾', '🥛', '🥚', '🦐', '🐟', '🥩', '🥦', '🌽', 
+  '🍎', '🍓', '🌶️', '🍯', '🍞', '🧀', '🍗', '🍷', '🍺', '🍹'
+];
 
 export default function AdminAllergens() {
   const { activeBrand } = useAuth();
@@ -22,7 +27,7 @@ export default function AdminAllergens() {
   const [editingAllergen, setEditingAllergen] = useState(null);
   const [allergenForm, setAllergenForm] = useState({ name: '', emoji: '' });
   const [isSubmittingAllergen, setIsSubmittingAllergen] = useState(false);
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [showFullPicker, setShowFullPicker] = useState(false);
 
   useEffect(() => {
     fetchAllergens();
@@ -49,7 +54,7 @@ export default function AdminAllergens() {
 
   const openCreate = () => {
     setEditingAllergen(null);
-    setAllergenForm({ name: '', emoji: '' });
+    setAllergenForm({ name: '', emoji: '🌱' });
     setIsFormOpen(true);
   };
 
@@ -60,7 +65,7 @@ export default function AdminAllergens() {
   };
 
   const handleSaveAllergen = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!allergenForm.name || !allergenForm.emoji) return toast.error('Rellena todos los campos');
 
     setIsSubmittingAllergen(true);
@@ -112,142 +117,170 @@ export default function AdminAllergens() {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Search and Action Bar — Subtle integrated look */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white/60 p-4 rounded-3xl border border-gray-100 shadow-sm">
-        <div className="flex items-center gap-2 text-gray-500">
-          <Icon icon="heroicons:tag" className="text-lg text-gray-400" />
-          <span className="text-sm font-medium">Gestión de Etiquetas y Dietas</span>
+    <div className="space-y-8 pb-12">
+      {/* Header Bar — Premium Glass */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white shadow-xl shadow-gray-200/20 transition-all">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-amber-50 rounded-[1.5rem] flex items-center justify-center border border-amber-100/50 shadow-inner">
+            <Icon icon="heroicons:tag" className="text-2xl text-amber-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-gray-900 leading-tight tracking-tight">Dietas y Alérgenos</h3>
+            <p className="text-xs text-gray-500 font-semibold mt-0.5">Gestión visual de etiquetas para tus platos</p>
+          </div>
         </div>
-        <PrimaryButton onClick={openCreate} className="w-full sm:w-auto">
-          + Nueva Etiqueta
+        <PrimaryButton onClick={openCreate} className="w-full sm:w-auto !px-8 !py-3.5 shadow-2xl shadow-[#2f4131]/20 hover:scale-[1.02] active:scale-[0.98]">
+          <Icon icon="heroicons:plus-circle" className="inline mr-2 text-lg" />
+          Nueva Etiqueta
         </PrimaryButton>
       </div>
 
-      <TableContainer>
-        <table className="w-full min-w-[600px] border-collapse">
-          <thead>
-            <tr>
-              <Th>Icono</Th>
-              <Th>Nombre</Th>
-              <Th right>Acciones</Th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {allergens.length === 0 ? (
-              <tr><td colSpan={3} className="px-5 py-14 text-center text-sm text-gray-400 font-medium">No hay etiquetas configuradas.</td></tr>
-            ) : allergens.map((allergen) => (
-              <tr key={allergen.id} className="group hover:bg-gray-50/60 transition-colors">
-                <td className="px-5 py-3.5 w-20">
-                  <span className="text-2xl bg-gray-100 w-10 h-10 rounded-xl flex items-center justify-center">
-                    {allergen.emoji}
-                  </span>
-                </td>
-                <td className="px-5 py-3.5">
-                  <p className="text-sm font-semibold text-gray-900">{allergen.name}</p>
-                </td>
-                <td className="px-5 py-3.5 text-right">
-                  <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => openEdit(allergen)}
-                      className="px-3 py-1.5 text-[12px] font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
-                      Editar
-                    </button>
-                    <button onClick={() => handleDeleteAllergen(allergen.id)}
-                      className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                        <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                      </svg>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </TableContainer>
+      {/* Grid view — Bento Style */}
+      {allergens.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 bg-gray-50/50 rounded-[3rem] border-2 border-dashed border-gray-200 animate-in fade-in duration-700">
+           <div className="p-6 bg-white rounded-[2rem] shadow-sm mb-6">
+              <Icon icon="heroicons:archive-box" className="text-5xl text-gray-200" />
+           </div>
+           <p className="text-gray-400 font-bold text-lg">No hay etiquetas aún</p>
+           <p className="text-gray-400 text-sm mt-1">Crea tu primera dieta o alérgeno para empezar.</p>
+           <button onClick={openCreate} className="mt-8 text-[#2f4131] font-black text-sm hover:underline">
+             + Añadir etiqueta ahora
+           </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          {allergens.map((allergen, idx) => (
+            <div 
+              key={allergen.id} 
+              className="group relative bg-white rounded-[1.5rem] p-4 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-gray-200/40 hover:-translate-y-1 transition-all duration-500 overflow-hidden"
+              style={{ animationDelay: `${idx * 50}ms` }}
+            >
+              {/* Decorative Glow */}
+              <div className="absolute top-0 right-0 w-24 h-24 bg-amber-50/50 rounded-full blur-3xl -mr-12 -mt-12 group-hover:bg-amber-100/50 transition-colors" />
 
-      {isFormOpen && (
-        <Modal onClose={() => setIsFormOpen(false)}>
-          <ModalHeader 
-            title={editingAllergen ? 'Editar Etiqueta' : 'Nueva Etiqueta'} 
-            subtitle="Los cambios se reflejarán en todos los productos asociados."
-            onClose={() => setIsFormOpen(false)} 
-          />
-          <form onSubmit={handleSaveAllergen} className="p-7 space-y-6">
-            <div className="space-y-4">
-              <FormField>
-                <label className="block text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">Nombre</label>
-                <TextInput
-                  value={allergenForm.name}
-                  onChange={(e) => setAllergenForm({ ...allergenForm, name: e.target.value })}
-                  placeholder="Ej. Vegano"
-                  required
-                />
-              </FormField>
-
-              <FormField>
-                <label className="block text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">Emoji (Icono)</label>
-                <div className="relative">
-                  <div 
-                    className={`flex gap-3 px-3 items-center h-12 w-full border-2 border-dashed rounded-2xl cursor-pointer transition-colors ${
-                      emojiPickerOpen ? 'border-[#2f4131] bg-neutral-50' : 'border-neutral-200 hover:border-[#2f4131] hover:bg-neutral-50'
-                    }`}
-                    onClick={() => setEmojiPickerOpen(p => !p)}
-                  >
-                    <div className="text-2xl flex items-center justify-center shrink-0">
-                      {allergenForm.emoji || '🌱'}
-                    </div>
-                    <span className="text-sm font-semibold text-neutral-400">Clic para cambiar icono</span>
-                  </div>
-                  
-                  {emojiPickerOpen && (
-                    <div className="absolute bottom-full mb-2 left-0 z-50 shadow-2xl rounded-2xl overflow-hidden border border-neutral-100">
-                      <div className="bg-white p-2 border-b border-neutral-100 flex justify-between items-center">
-                        <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Elige tu Emoji</span>
-                        <button type="button" onClick={() => setEmojiPickerOpen(false)} className="text-neutral-400 hover:text-black">
-                           <Icon icon="heroicons:x-mark" className="text-xl" />
-                        </button>
-                      </div>
-                      <EmojiPicker 
-                        onEmojiClick={(pickerOut) => {
-                          setAllergenForm({...allergenForm, emoji: pickerOut.emoji});
-                          setEmojiPickerOpen(false);
-                        }}
-                        autoFocusSearch={false}
-                        searchDisabled={false}
-                        skinTonesDisabled={true}
-                        width={300}
-                        height={350}
-                      />
-                    </div>
-                  )}
+              {/* Icon Container */}
+              <div className="relative z-10 flex flex-col items-center text-center">
+                <div className="w-14 h-14 bg-gray-50 rounded-[1.2rem] flex items-center justify-center mb-3 border border-gray-100 group-hover:scale-110 transition-all duration-500 shadow-inner">
+                  <span className="text-3xl drop-shadow-sm">{allergen.emoji}</span>
                 </div>
-              </FormField>
-            </div>
+                
+                <h4 className="text-[13px] font-black text-gray-900 tracking-tight mb-4 line-clamp-1">
+                  {allergen.name}
+                </h4>
 
-            <div className="flex gap-3 pt-2">
-              <div className="flex-1">
-                <SecondaryButton 
-                  onClick={() => setIsFormOpen(false)}
-                  className="w-full justify-center"
-                >
-                  Cancelar
-                </SecondaryButton>
-              </div>
-              <div className="flex-1">
-                <PrimaryButton 
-                  type="submit" 
-                  disabled={isSubmittingAllergen}
-                  className="w-full justify-center"
-                >
-                  {isSubmittingAllergen ? 'Guardando...' : editingAllergen ? 'Guardar Cambios' : 'Crear Etiqueta'}
-                </PrimaryButton>
+                {/* Actions Overlay */}
+                <div className="flex items-center gap-1.5 w-full">
+                  <button 
+                    onClick={() => openEdit(allergen)}
+                    className="flex-1 px-2 py-1.5 bg-gray-50 text-blue-600 rounded-lg text-[10px] font-black hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100"
+                  >
+                    Ver
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteAllergen(allergen.id)}
+                    className="p-1.5 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                  >
+                    <Icon icon="heroicons:trash" className="text-base" />
+                  </button>
+                </div>
               </div>
             </div>
-          </form>
-        </Modal>
+          ))}
+        </div>
       )}
+
+      {/* Side Drawer Container */}
+      <Drawer
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        title={editingAllergen ? 'Editar Etiqueta' : 'Nueva Etiqueta'}
+        subtitle="Personaliza el icono y nombre de la dieta."
+      >
+        <div className="space-y-6">
+          <BentoCard title="Identidad">
+            <FormField label="Nombre">
+              <TextInput
+                value={allergenForm.name}
+                onChange={(e) => setAllergenForm({ ...allergenForm, name: e.target.value })}
+                placeholder="Ej. Vegano, Sin Lactosa..."
+                className="!bg-white"
+              />
+            </FormField>
+          </BentoCard>
+
+          <BentoCard title="Selección de Icono">
+            <div className="flex flex-col gap-5">
+              <div className="flex items-center gap-4 p-5 bg-white rounded-[1.8rem] border border-gray-100 shadow-inner">
+                <div className="text-5xl w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center border-2 border-dashed border-gray-200 animate-pulse">
+                  {allergenForm.emoji}
+                </div>
+                <div className="flex-1">
+                  <p className="text-[13px] font-black text-gray-900">Previsualización</p>
+                  <p className="text-[11px] text-gray-500 font-medium">Este es el icono que verán tus clientes.</p>
+                </div>
+              </div>
+
+              {/* Curated Grid */}
+              <div className="grid grid-cols-5 gap-3">
+                {CURATED_EMOJIS.map(em => (
+                  <button
+                    key={em}
+                    onClick={() => setAllergenForm({ ...allergenForm, emoji: em })}
+                    className={`h-14 text-3xl flex items-center justify-center rounded-2xl border transition-all duration-300 ${
+                      allergenForm.emoji === em 
+                        ? 'bg-[#2f4131] border-[#2f4131] scale-110 shadow-xl shadow-[#2f4131]/20 !text-white' 
+                        : 'bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50 active:scale-95'
+                    }`}
+                  >
+                    {em}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setShowFullPicker(!showFullPicker)}
+                  className={`h-14 flex items-center justify-center rounded-2xl border transition-all duration-300 ${
+                    showFullPicker ? 'bg-amber-100 border-amber-200 ring-2 ring-amber-100' : 'bg-white border-gray-100 hover:border-gray-200'
+                  }`}
+                >
+                  <Icon icon="heroicons:face-smile" className={`text-2xl ${showFullPicker ? 'text-amber-600' : 'text-gray-400'}`} />
+                </button>
+              </div>
+
+              {showFullPicker && (
+                <div className="pt-2 animate-in fade-in slide-in-from-top-4 duration-500">
+                  <EmojiPicker 
+                    onEmojiClick={(e) => {
+                      setAllergenForm({...allergenForm, emoji: e.emoji});
+                      setShowFullPicker(false);
+                    }}
+                    width="100%"
+                    height={350}
+                    previewConfig={{ showPreview: false }}
+                    searchPlaceHolder="Buscar emoji..."
+                  />
+                </div>
+              )}
+            </div>
+          </BentoCard>
+
+          <div className="flex gap-4 pt-8">
+            <SecondaryButton 
+              onClick={() => setIsFormOpen(false)}
+              className="flex-1 !py-4"
+            >
+              Cancelar
+            </SecondaryButton>
+            <PrimaryButton 
+              onClick={handleSaveAllergen}
+              disabled={isSubmittingAllergen}
+              className="flex-1 !py-4"
+            >
+              {isSubmittingAllergen ? (
+                <Icon icon="line-md:loading-twotone-loop" className="text-xl" />
+              ) : editingAllergen ? 'Guardar Cambios' : 'Crear Etiqueta'}
+            </PrimaryButton>
+          </div>
+        </div>
+      </Drawer>
     </div>
   );
 }

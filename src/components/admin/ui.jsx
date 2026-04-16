@@ -3,6 +3,8 @@
  * Design tokens: Inter, rounded-xl cards, neutral grays, #2f4131 primary
  */
 
+import { Icon } from '@iconify-icon/react';
+
 /** Full page header — title, subtitle, optional badge, right slot */
 export function PageHeader({ badge, title, subtitle, children }) {
   return (
@@ -173,6 +175,76 @@ export function ModalHeader({ title, subtitle, onClose }) {
           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
         </svg>
       </button>
+    </div>
+  );
+}
+
+/** 
+ * Side Drawer (Slide-over) container 
+ * Slides from the right on desktop, bottom on mobile
+ */
+export function Drawer({ children, isOpen, onClose, title, subtitle }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] overflow-hidden">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity animate-in fade-in duration-300"
+        onClick={onClose}
+      />
+      
+      <div className="absolute inset-y-0 right-0 flex max-w-full pl-10">
+        <div className="w-screen max-w-md transform transition-all animate-in slide-in-from-right duration-500 ease-out">
+          <div className="flex h-full flex-col overflow-y-auto bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/20">
+            {/* Header */}
+            <div className="px-6 py-6 border-b border-gray-100/50">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 tracking-tight">{title}</h2>
+                  {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
+                </div>
+                <button
+                  onClick={onClose}
+                  className="rounded-xl p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 transition-all"
+                >
+                  <Icon icon="heroicons:x-mark" className="text-2xl" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="relative flex-1 px-6 py-6 overflow-y-auto">
+              {children}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Bento-style inner card for grouping fields */
+export function BentoCard({ children, title, className = '' }) {
+  return (
+    <div className={`bg-gray-50/50 border border-gray-100 rounded-2xl p-5 ${className}`}>
+      {title && (
+        <h4 className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+          {title}
+        </h4>
+      )}
+      <div className="space-y-4">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** Glassmorphism effect container */
+export function GlassContainer({ children, className = '' }) {
+  return (
+    <div className={`bg-white/40 backdrop-blur-md border border-white/20 shadow-sm ${className}`}>
+      {children}
     </div>
   );
 }
