@@ -76,7 +76,8 @@ export const useAdminProducts = () => {
         requires_kitchen: productData.requires_kitchen ?? true,
         packaging_fee: parseFloat(productData.packaging_fee) || 0,
         subcategory: productData.subcategory || null,
-        brand_id: activeBrandId
+        brand_id: activeBrandId,
+        updated_at: new Date().toISOString()
       };
 
       const { data, error } = await supabase
@@ -123,7 +124,8 @@ export const useAdminProducts = () => {
         requires_kitchen: productData.requires_kitchen ?? true,
         packaging_fee: parseFloat(productData.packaging_fee) || 0,
         subcategory: productData.subcategory || null,
-        brand_id: activeBrandId
+        brand_id: activeBrandId,
+        updated_at: new Date().toISOString()
       };
 
       const { data, error } = await supabase

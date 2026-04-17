@@ -471,9 +471,9 @@ export default function AdminProducts() {
 
                   {/* Subcategory */}
                   <td className="px-5 py-3.5 whitespace-nowrap">
-                    {product.subcategories?.name ? (
+                    {product.subcategory ? (
                       <span className="text-[11px] font-semibold text-blue-600 px-2 py-0.5 bg-blue-50/50 rounded-full border border-blue-100/50">
-                        {product.subcategories.name}
+                        {product.subcategory}
                       </span>
                     ) : (
                       <span className="text-[11px] text-gray-300 italic">—</span>
