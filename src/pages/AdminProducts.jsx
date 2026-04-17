@@ -320,16 +320,18 @@ export default function AdminProducts() {
 
       {/* Table */}
       <TableContainer>
-        <table className="w-full min-w-[900px] border-collapse">
+        <table className="w-full min-w-[1000px] border-collapse">
           <thead>
             <tr>
               <Th>#</Th>
               <Th>Producto</Th>
               <Th>Categoría</Th>
-              <Th>Precio</Th>
+              <Th>Subcategoría</Th>
+              <Th>Precio / Margen</Th>
               <Th>Stock</Th>
+              <Th>Atributos</Th>
               <Th>Receta</Th>
-              <Th>Extras</Th>
+              <Th>Actualizado</Th>
               <Th>Estado</Th>
               <Th right>Acciones</Th>
             </tr>
@@ -385,8 +387,9 @@ export default function AdminProducts() {
                       <div>
                         <div className="flex items-center gap-1.5">
                           <p className="text-sm font-semibold text-gray-900 leading-tight">{product.name}</p>
-                          {product.is_upsell && <span title="Sugerido para Upsell" className="text-xs">✨</span>}
-                          {!product.requires_kitchen && <span title="No requiere cocina" className="text-xs">❄️</span>}
+                          {product.is_addon && (
+                            <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Addon</span>
+                          )}
                         </div>
                         {product.description && (
                           <p className="text-[12px] text-gray-400 font-medium truncate max-w-[180px] mt-0.5">
@@ -402,14 +405,63 @@ export default function AdminProducts() {
                     <Badge variant="gray">{catName || '—'}</Badge>
                   </td>
 
-                  {/* Precio */}
+                  {/* Subcategoría */}
+                  <td className="px-5 py-3.5">
+                    {product.subcategory ? (
+                      <span className="text-[12px] bg-neutral-100 text-neutral-600 px-2 py-1 rounded-lg font-medium">
+                        {product.subcategory}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-gray-300 italic">Sin subcat.</span>
+                    )}
+                  </td>
+
+                  {/* Precio y Margen */}
                   <td className="px-5 py-3.5">
                     <p className="text-sm font-semibold text-gray-900 tabular-nums">{formatCOP(product.price)}</p>
-                    {product.cost > 0 && (
-                      <p className="text-[11px] text-gray-400 font-medium tabular-nums mt-0.5">
-                        Costo {formatCOP(product.cost)}
-                      </p>
+                    {product.cost > 0 ? (
+                      <div className="flex flex-col mt-0.5">
+                        <p className="text-[10px] text-gray-400 font-medium tabular-nums">
+                          Costo {formatCOP(product.cost)}
+                        </p>
+                        {(() => {
+                           const margin = ((product.price - product.cost) / product.price) * 100;
+                           // Thresholds: Green >= 45%, Orange >= 25%, Red < 25%
+                           const color = margin >= 45 ? 'text-green-600 bg-green-50' : margin >= 25 ? 'text-orange-500 bg-orange-50' : 'text-red-500 bg-red-50';
+                           return (
+                             <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold mt-1 w-max ${color} tabular-nums border border-current/10 uppercase`}>
+                               {margin.toFixed(0)}% Margen
+                             </span>
+                           );
+                        })()}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-gray-300 italic mt-0.5">Sin costo req.</p>
                     )}
+                  </td>
+
+                  {/* Atributos */}
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-1.5">
+                      {product.is_upsell && (
+                        <span title="Sugerido para Upsell" className="w-6 h-6 flex items-center justify-center bg-amber-50 text-amber-600 rounded-lg border border-amber-100 shadow-sm cursor-help transition-transform hover:scale-110">
+                          <span className="text-[13px]">✨</span>
+                        </span>
+                      )}
+                      {!product.requires_kitchen && (
+                        <span title="No requiere cocina (Directo)" className="w-6 h-6 flex items-center justify-center bg-blue-50 text-blue-600 rounded-lg border border-blue-100 shadow-sm cursor-help transition-transform hover:scale-110">
+                          <span className="text-[13px]">❄️</span>
+                        </span>
+                      )}
+                      {product.packaging_fee > 0 && (
+                        <span title={`Costo de empaque: ${formatCOP(product.packaging_fee)}`} className="w-6 h-6 flex items-center justify-center bg-gray-50 text-gray-600 rounded-lg border border-gray-100 shadow-sm cursor-help transition-transform hover:scale-110">
+                          <span className="text-[13px]">📦</span>
+                        </span>
+                      )}
+                      {!product.is_upsell && product.requires_kitchen && (!product.packaging_fee || product.packaging_fee === 0) && (
+                        <span className="text-[11px] text-gray-200 font-medium whitespace-nowrap italic">—</span>
+                      )}
+                    </div>
                   </td>
 
                   {/* Stock */}
@@ -430,8 +482,6 @@ export default function AdminProducts() {
                       {stock.label}
                     </button>
                   </td>
-
-                  {/* Receta */}
                   <td className="px-5 py-3.5">
                     {recipe ? (
                       <Badge variant="indigo">{recipe.name}</Badge>
@@ -440,30 +490,19 @@ export default function AdminProducts() {
                     )}
                   </td>
 
-                    <td className="px-5 py-3.5">
-                      {(product.modifier_groups || []).length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {(product.modifier_groups || []).slice(0, 3).map(g => {
-                            const groupData = modifierGroups.find(mg => mg.id === g);
-                            if (!groupData) return null; // No mostrar UUIDs si no hay data
-                            
-                            return (
-                              <span key={g}
-                                className="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-bold bg-violet-50 text-violet-700 border border-violet-100 capitalize shadow-sm">
-                                {groupData.name.replace(/-/g, ' ')}
-                              </span>
-                            );
-                          })}
-                          {(product.modifier_groups || []).length > 3 && (
-                            <span className="text-[10px] text-violet-400 font-bold self-center">
-                              +{(product.modifier_groups || []).length - 3}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-[12px] text-gray-300 font-medium">—</span>
+                  {/* Actualizado */}
+                  <td className="px-5 py-3.5">
+                    <div className="flex flex-col">
+                      <span className="text-[11px] text-gray-500 font-medium">
+                        {product.updated_at ? new Date(product.updated_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }) : '—'}
+                      </span>
+                      {product.updated_at && (
+                        <span className="text-[9px] text-gray-300 tabular-nums">
+                          {new Date(product.updated_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        </span>
                       )}
-                    </td>
+                    </div>
+                  </td>
 
                   {/* Estado */}
                   <td className="px-5 py-3.5">
@@ -503,7 +542,7 @@ export default function AdminProducts() {
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan="9" className="px-5 py-16 text-center text-gray-400 text-sm font-medium">
+                <td colSpan="11" className="px-5 py-16 text-center text-gray-400 text-sm font-medium">
                   {search || catFilter !== 'all'
                     ? 'Sin resultados para los filtros actuales.'
                     : 'Aún no hay productos. Crea el primero.'}
