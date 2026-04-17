@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { CATEGORIES_LIST as menuCategories } from "../config/categories.veggie";
+
 import { useCart } from "../context/CartContext";
 import { getStockState, slugify } from "../utils/stock";
 import * as menu from "../data/menuItems";
