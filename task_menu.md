@@ -34,10 +34,10 @@ Progreso de la transición a un sistema 100% dinámico y jerárquico.
 **Objetivo:** Facilitar la organización de productos por subcategoría.
 
 ### Bloque 3.1: Refactor de `ProductForm.jsx`
-- [ ] **Tarea Atómica:** Implementar `useEffect` para detectar cambios en el selector de Categoría
-- [ ] **Tarea Atómica:** Filtrar el dropdown de Subcategorías basado en la `visibility_config` de la categoría seleccionada
-- [ ] **Tarea Atómica:** Manejar el estado de "Cargando subcategorías" al cambiar de categoría
-- [ ] **Tarea Atómica:** Garantizar que se pueda guardar un producto sin subcategoría (sección "Otros")
+- [x] **Tarea Atómica:** Implementar `useEffect` para detectar cambios en el selector de Categoría
+- [x] **Tarea Atómica:** Filtrar el dropdown de Subcategorías basado en la `visibility_config` de la categoría seleccionada
+- [x] **Tarea Atómica:** Manejar el estado de "Cargando subcategorías" al cambiar de categoría
+- [x] **Tarea Atómica:** Garantizar que se pueda guardar un producto sin subcategoría (sección "Otros")
 
 ---
 

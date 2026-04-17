@@ -56,6 +56,26 @@ export default function ProductForm({ product, categories, recipes = [], allerge
     setImgError(false);
   }, [formData.image_url]);
 
+  // Get available subcategories for the selected category
+  const availableSubcategories = useMemo(() => {
+    if (!formData.category_id || !categories) return [];
+    const cat = categories.find(c => String(c.id) === String(formData.category_id));
+    return cat?.visibility_config?.subcategories || [];
+  }, [formData.category_id, categories]);
+
+  // Reset subcategory if it's no longer valid for the new category
+  useEffect(() => {
+    if (availableSubcategories.length > 0) {
+      // If the current subcategory is not in the new list (and not empty), reset it
+      // Exception: Keep "Otros" or empty
+      if (formData.subcategory && 
+          formData.subcategory !== 'Otros' && 
+          !availableSubcategories.includes(formData.subcategory)) {
+        setFormData(prev => ({ ...prev, subcategory: '' }));
+      }
+    }
+  }, [formData.category_id, availableSubcategories]);
+
   // Detect if the user pasted an Unsplash *page* URL instead of a direct image URL
   const isUnsplashPageLink = (url) => {
     if (!url) return false;
@@ -218,40 +238,27 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                 </FormField>
                 <div className="md:col-span-3">
                   <FormField label="Subcategoría (Opcional)">
-                  {(() => {
-                    // Extract subcategories if they exist for the selected category
-  const subcategories = (() => {
-    if (!formData.category_id || !categories) return [];
-    const cat = categories.find(c => String(c.id) === String(formData.category_id));
-    return cat?.visibility_config?.subcategories || [];
-  })();
-                    
-                    if (subcategories.length > 0) {
-                      return (
-                        <select 
-                          name="subcategory" 
-                          value={formData.subcategory} 
-                          onChange={handleChange}
-                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none"
-                        >
-                          <option value="">Seleccionar subcategoría...</option>
-                          {subcategories.map(sub => (
-                            <option key={sub} value={sub}>{sub}</option>
-                          ))}
-                          <option value="Otros">Otros</option>
-                        </select>
-                      );
-                    }
-                    
-                    return (
+                    {availableSubcategories.length > 0 ? (
+                      <select 
+                        name="subcategory" 
+                        value={formData.subcategory} 
+                        onChange={handleChange}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none"
+                      >
+                        <option value="">Seleccionar subcategoría...</option>
+                        {availableSubcategories.map(sub => (
+                          <option key={sub} value={sub}>{sub}</option>
+                        ))}
+                        <option value="Otros">Otros</option>
+                      </select>
+                    ) : (
                       <TextInput 
                         name="subcategory" 
                         value={formData.subcategory} 
                         onChange={handleChange} 
                         placeholder="Ej. Detox, Proteicos, etc." 
                       />
-                    );
-                  })()}
+                    )}
                   </FormField>
                 </div>
                 <div className="md:col-span-3">
