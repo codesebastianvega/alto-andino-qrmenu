@@ -45,9 +45,9 @@ Progreso de la transición a un sistema 100% dinámico y jerárquico.
 **Objetivo:** Renderizado fluido y dinámico basado en las nuevas reglas.
 
 ### Bloque 4.1: Refactor de `ProductLists.jsx`
-- [ ] **Tarea Atómica:** Eliminar importación de `CATEGORIES_LIST`
-- [ ] **Tarea Atómica:** Implementar lógica de agrupación de productos por el orden establecido en la categoría
-- [ ] **Tarea Atómica:** Inyectar la clase `tint_class` dinámicamente en el contenedor de cada sección
+- [/] **Tarea Atómica:** Eliminar importación de `CATEGORIES_LIST`
+- [/] **Tarea Atómica:** Implementar lógica de agrupación de productos por el orden establecido en la categoría
+- [/] **Tarea Atómica:** Inyectar la clase `tint_class` dinámicamente en el contenedor de cada sección
 - [ ] **Tarea Atómica:** Mapear `section_type` a los componentes específicos (SmoothiesSection, etc.)
 - [ ] **Tarea Atómica:** Renderizar sección "Otros" al final de la categoría si hay productos huérfanos
 
