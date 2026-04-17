@@ -21,10 +21,12 @@ export const useCategories = () => {
       setLoading(true);
       console.log('Fetching categories...');
       
-      
       let query = supabase
         .from('categories')
-        .select('*');
+        .select(`
+          *,
+          items:products(id, is_active, stock_status)
+        `);
 
       if (activeBrandId) {
         query = query.eq('brand_id', activeBrandId);
@@ -37,8 +39,21 @@ export const useCategories = () => {
         throw error;
       }
 
-      console.log('Categories loaded:', data?.length);
-      setCategories(data || []);
+      // Process counts
+      const enrichedData = (data || []).map(cat => {
+        const items = cat.items || [];
+        const total_products = items.length;
+        const active_products = items.filter(p => p.is_active && p.stock_status !== 'out').length;
+        
+        return {
+          ...cat,
+          total_products,
+          active_products
+        };
+      });
+
+      console.log('Categories loaded:', enrichedData.length);
+      setCategories(enrichedData);
       setError(null);
     } catch (err) {
       console.error('Error fetching categories:', err);

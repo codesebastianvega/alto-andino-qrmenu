@@ -14,7 +14,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
       days: [0,1,2,3,4,5,6], 
       subcategories: [], 
       section_type: 'standard',
-      show_in_hero: false,
+      is_hero: false,
       hero_featured_product_id: '',
       hero_rating: '5.0',
       hero_prep_time: '15 mins'
@@ -35,7 +35,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
           days: [0,1,2,3,4,5,6], 
           subcategories: [], 
           section_type: 'standard',
-          show_in_hero: false,
+          is_hero: false,
           hero_featured_product_id: '',
           hero_rating: '5.0',
           hero_prep_time: '15 mins'
@@ -318,9 +318,11 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none"
               >
                 <option value="standard">Estándar (Lista)</option>
-                <option value="simple-list">Lista Compacta (Bebidas)</option>
-                <option value="smoothies">Especial: Smoothies & Funcionales</option>
-                <option value="grid">Cuadrícula (2 columnas)</option>
+                <option value="grid">Grid (2 columnas)</option>
+                <option value="grid-compact">Grid Compacto (Mucha densidad)</option>
+                <option value="horizontal-slider">Slider Horizontal (Carrusel)</option>
+                <option value="list-minimal">Lista Minimalista (Texto)</option>
+                <option value="simple-list">Lista Simple (Bebidas)</option>
                 <option value="wide-grid">Cuadrícula Amplia (Fotos grandes)</option>
               </select>
             </FormField>
@@ -336,14 +338,14 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                 </div>
                 <button 
                   type="button" 
-                  onClick={() => setFormData(p => ({ ...p, visibility_config: { ...p.visibility_config, show_in_hero: !p.visibility_config?.show_in_hero } }))}
-                  className={`w-9 h-[22px] rounded-full relative transition-all shadow-inner ${formData.visibility_config?.show_in_hero ? 'bg-[#2f4131]' : 'bg-gray-200'}`}
+                  onClick={() => setFormData(p => ({ ...p, visibility_config: { ...p.visibility_config, is_hero: !p.visibility_config?.is_hero } }))}
+                  className={`w-9 h-[22px] rounded-full relative transition-all shadow-inner ${formData.visibility_config?.is_hero ? 'bg-[#2f4131]' : 'bg-gray-200'}`}
                 >
-                  <div className={`absolute top-[3px] w-4 h-4 bg-white rounded-full shadow-sm transition-all ${formData.visibility_config?.show_in_hero ? 'left-[18px]' : 'left-[3px]'}`} />
+                  <div className={`absolute top-[3px] w-4 h-4 bg-white rounded-full shadow-sm transition-all ${formData.visibility_config?.is_hero ? 'left-[18px]' : 'left-[3px]'}`} />
                 </button>
               </div>
               
-              {formData.visibility_config?.show_in_hero && (
+              {formData.visibility_config?.is_hero && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
                   <FormField label="Producto Estrella (Se usará su Foto y Precio)">
                     <select 

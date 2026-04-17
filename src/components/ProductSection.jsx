@@ -107,12 +107,37 @@ export default function ProductSection({
 
     if (variant === "grid") {
       gridClasses += " grid-cols-2 lg:grid-cols-3";
+    } else if (variant === "grid-compact") {
+      gridClasses += " grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5";
+      cardVariant = "compact-grid";
     } else if (variant === "wide-grid") {
       gridClasses += " grid-cols-1 sm:grid-cols-2";
       cardVariant = "wide";
     } else if (variant === "simple-list") {
       gridClasses += " grid-cols-1";
       cardVariant = "compact";
+    } else if (variant === "list-minimal") {
+      gridClasses += " grid-cols-1";
+      cardVariant = "minimal";
+    } else if (variant === "horizontal-slider") {
+      // Return a horizontal scroll container instead
+      return (
+        <div className="flex overflow-x-auto gap-4 pb-4 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 scroll-smooth">
+          {arr.map((item, i) => {
+            const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
+            return (
+              <div key={safeItem?.id || `${keySeed}-${i}`} className="min-w-[160px] max-w-[160px] sm:min-w-[200px] sm:max-w-[200px]">
+                <ProductCard
+                  item={safeItem}
+                  variant="standard"
+                  onAdd={(payload) => addItem(payload)}
+                  onQuickView={onQuickView}
+                />
+              </div>
+            );
+          })}
+        </div>
+      );
     } else {
       gridClasses += " grid-cols-2 lg:grid-cols-3";
     }

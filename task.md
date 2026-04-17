@@ -214,7 +214,29 @@
   - [ ] Sincronizar campos de imagen en el objeto de item del carrito.
   - [ ] Mejorar resiliencia de `sameItem`.
 - [ ] **Hidratación en ProductLists.jsx**
-  - [ ] Limpiar/Normalizar objeto recibido en el listener global `aa:quickview`.
+  - [x] Limpiar/Normalizar objeto recibido en el listener global `aa:quickview`.
 - [ ] **Verificación en ProductQuickView.jsx**
-  - [ ] Asegurar que `handleAdd` pase el objeto completo al carrito.
+  - [x] Asegurar que `handleAdd` pase el objeto completo al carrito.
+
+---
+
+## 🟢 BLOQUE 10: Gestión Avanzada de Categorías & Vistas Premium [/]
+> Meta: Interfaz administrativa full-width y nuevas experiencias visuales para el menú.
+
+### 10.1 Admin Categories: Rediseño Full-Width [/]
+- [ ] Modificar `useCategories.js` para incluir conteo de productos (activos / total).
+- [ ] Rediseñar `AdminCategories.jsx` para ocupar el 100% del ancho disponible.
+- [ ] Implementar tabla enriquecida:
+    - [ ] Columna **Banner**: Miniatura de la imagen de cabecera.
+    - [ ] Columna **Productos**: Badge con `activos / total`.
+    - [ ] Columna **Diseño**: Selector (Select) para `section_type` directamente en la fila.
+    - [ ] Columna **Estado**: Quick toggle (Switch) para visibilidad global.
+    - [ ] Columna **Hero**: Toggle para destacar en la página de inicio.
+
+### 10.2 Nuevas Vistas del Menú Público
+- [ ] **Variante `grid-compact`**: Grid de 2 o 3 columnas con tarjetas minimalistas (ideal para bebidas/postres).
+- [ ] **Variante `horizontal-slider`**: Carrusel de desplazamiento horizontal (ideal para destacados o categorías secundarias).
+- [ ] **Variante `list-minimal`**: Lista de solo texto con precio alineado (estilo menú de autor/clásico).
+- [ ] Actualizar `ProductLists.jsx` y `ProductSection.jsx` para soportar estos nuevos `section_type`.
+- [ ] Asegurar responsividad premium en todas las nuevas variantes.
 

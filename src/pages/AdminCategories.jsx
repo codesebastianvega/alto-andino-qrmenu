@@ -6,8 +6,9 @@ import CategoryForm from '../components/admin/CategoryForm';
 import AdminAllergens from './AdminAllergens';
 import {
   PageHeader, PrimaryButton, Badge,
-  TableContainer, Th, SearchInput
+  TableContainer, Th, SearchInput, Switch, SelectInput
 } from '../components/admin/ui';
+import { Icon } from '@iconify-icon/react';
 
 export default function AdminCategories() {
   const { categories, loading, error, createCategory, updateCategory, deleteCategory, updateCategoryOrders } = useCategories();
@@ -55,7 +56,7 @@ export default function AdminCategories() {
     (c.slug || '').toLowerCase().includes(search.toLowerCase())
   );
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-8 w-full space-y-6">
       <PageHeader
         badge="Administración"
         title="Categorías y Etiquetas"
@@ -118,11 +119,12 @@ export default function AdminCategories() {
             <thead>
               <tr>
                 <Th className="w-12 text-center">≡</Th>
-                <Th>Orden</Th>
-                <Th>Categoría</Th>
-                <Th>Slug</Th>
-                <Th>Ícono</Th>
-                <Th>Horario</Th>
+                <Th>Imagen</Th>
+                <Th>Nombre / Slug</Th>
+                <Th>Productos</Th>
+                <Th>Subcats</Th>
+                <Th>Diseño / Vista</Th>
+                <Th>Hero</Th>
                 <Th>Estado</Th>
                 <Th right>Acciones</Th>
               </tr>
@@ -179,41 +181,81 @@ export default function AdminCategories() {
                             </td>
                           ) : (
                             <>
-                              <td className="px-5 py-3.5 text-sm text-gray-400 font-medium tabular-nums">{cat.sort_order || 0}</td>
                               <td className="px-5 py-3.5">
-                                <p className="text-sm font-semibold text-gray-900">{cat.name}</p>
+                                <div className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-100 overflow-hidden flex items-center justify-center text-xl">
+                                  {cat.image_url ? (
+                                    <img src={cat.image_url} alt="" className="w-full h-full object-cover" />
+                                  ) : cat.icon || '📁'}
+                                </div>
                               </td>
                               <td className="px-5 py-3.5">
-                                <span className="font-mono text-[12px] text-gray-400">{cat.slug}</span>
-                              </td>
-                              <td className="px-5 py-3.5 text-xl">{cat.icon}</td>
-                              <td className="px-5 py-3.5">
-                                {(cat.available_from || cat.available_to) ? (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                    {cat.available_from?.slice(0,5) || '00:00'} - {cat.available_to?.slice(0,5) || '23:59'}
-                                  </span>
-                                ) : (
-                                  <span className="text-[12px] text-gray-400">Todo el día</span>
-                                )}
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-gray-900 leading-tight">{cat.name}</span>
+                                  <span className="text-[10px] font-mono text-gray-400 uppercase tracking-tight mt-0.5">{cat.slug}</span>
+                                </div>
                               </td>
                               <td className="px-5 py-3.5">
-                                <Badge variant={cat.is_active !== false ? 'green' : 'gray'}>
-                                  {cat.is_active !== false ? 'Activa' : 'Inactiva'}
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant={(cat.active_products || 0) > 0 ? 'green' : 'gray'}>
+                                      {cat.active_products || 0} activos
+                                    </Badge>
+                                    <span className="text-[10px] text-gray-400 font-medium">de {cat.total_products || 0}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <Badge variant={(cat.visibility_config?.subcategories?.length || 0) > 0 ? 'blue' : 'gray'}>
+                                  {cat.visibility_config?.subcategories?.length || 0} subcats
                                 </Badge>
+                              </td>
+                              <td className="px-5 py-3.5 min-w-[140px]">
+                                <SelectInput 
+                                  value={cat.visibility_config?.section_type || 'standard'}
+                                  onChange={(e) => updateCategory(cat.id, { 
+                                    visibility_config: { 
+                                      ...(cat.visibility_config || {}), 
+                                      section_type: e.target.value 
+                                    } 
+                                  })}
+                                  className="!py-1.5 !rounded-lg !text-[12px]"
+                                >
+                                  <option value="standard">Estándar</option>
+                                  <option value="grid">Grid (Ample)</option>
+                                  <option value="grid-compact">Grid Compacto</option>
+                                  <option value="horizontal-slider">Slider Horizontal</option>
+                                  <option value="list-minimal">Lista Minimal</option>
+                                  <option value="simple-list">Lista Simple</option>
+                                </SelectInput>
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <button 
+                                  onClick={() => updateCategory(cat.id, { 
+                                    visibility_config: { 
+                                      ...(cat.visibility_config || {}), 
+                                      is_hero: !cat.visibility_config?.is_hero 
+                                    } 
+                                  })}
+                                  className={`p-1.5 rounded-lg transition-all ${cat.visibility_config?.is_hero ? 'bg-amber-50 text-amber-500' : 'text-gray-300 hover:text-gray-400'}`}
+                                >
+                                  <Icon icon={cat.visibility_config?.is_hero ? "heroicons:star-20-solid" : "heroicons:star"} className="text-xl" />
+                                </button>
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <Switch 
+                                  checked={cat.is_active !== false} 
+                                  onChange={(val) => updateCategory(cat.id, { is_active: val })}
+                                />
                               </td>
                               <td className="px-5 py-3.5 text-right">
                                 <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <button onClick={() => handleEdit(cat)}
                                     className="px-3 py-1.5 text-[12px] font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
-                                    Editar
+                                    Configurar
                                   </button>
                                   <button onClick={() => setConfirmDeleteId(cat.id)}
                                     className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                                      <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                                    </svg>
+                                    <Icon icon="heroicons:trash" className="text-lg" />
                                   </button>
                                 </div>
                               </td>

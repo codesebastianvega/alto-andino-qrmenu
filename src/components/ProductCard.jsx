@@ -77,7 +77,38 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
 
   // VARIANTES DE DISEÑO
   const isCompact = variant === "compact";
+  const isMinimal = variant === "minimal";
+  const isCompactGrid = variant === "compact-grid";
   const isWide = variant === "wide";
+
+  if (isMinimal) {
+    return (
+      <article
+        className={`group relative flex items-center justify-between p-3 transition-all duration-300 ${
+          isOut ? "opacity-70 grayscale" : "hover:bg-neutral-50"
+        } rounded-xl bg-white border-b border-neutral-100 last:border-0`}
+        onClick={handleQuickView}
+      >
+        <div className="flex flex-col flex-1 pr-4">
+          <h3 className="text-sm font-bold text-neutral-900 leading-tight">{item.name}</h3>
+          {item.desc && <p className="text-[11px] text-neutral-500 line-clamp-1 mt-0.5">{item.desc}</p>}
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-[13px] font-extrabold text-neutral-900 pr-1">
+            {typeof item.price === "number" ? formatCOP(item.price) : item.price}
+          </span>
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={isOut}
+            className="h-7 w-7 flex items-center justify-center rounded-full bg-brand-secondary text-white font-bold shadow-sm transition-all active:scale-95 disabled:opacity-40"
+          >
+            <span style={{ transform: "translateY(-1px)" }}>+</span>
+          </button>
+        </div>
+      </article>
+    );
+  }
 
   return (
     <article
@@ -85,6 +116,8 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
         isOut ? "opacity-70 grayscale" : "hover:shadow-xl hover:-translate-y-1"
       } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 rounded-2xl bg-white text-neutral-900 border border-black/5 ${
         isCompact ? "p-1.5 flex-row" : "p-1 md:p-2.5 flex-col"
+      } ${
+        isCompactGrid ? "p-1 flex-col" : ""
       } ${
         isHero ? "lg:col-span-2 lg:flex-row" : ""
       }`}
@@ -127,7 +160,7 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
 
       <div className={`flex flex-1 flex-col ${isCompact ? "ml-3 py-1" : "px-2 pb-2 pt-3 md:px-3 md:pb-3 md:pt-4"}`}>
         <div className="flex items-start justify-between gap-2">
-          <h3 className={`font-bold text-neutral-900 line-clamp-2 tracking-tight ${isCompact ? "text-sm" : "text-[15px] md:text-base leading-[1.15]"}`}>
+          <h3 className={`font-bold text-neutral-900 line-clamp-2 tracking-tight ${isCompact || isCompactGrid ? "text-[13px] md:text-sm" : "text-[15px] md:text-base leading-[1.15]"}`}>
             {item.name}
           </h3>
           {(productAllergens.length > 0 || productDiets.length > 0) && !isCompact && (
@@ -168,7 +201,7 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
 
         {/* CONTENEDOR DE PRECIO Y BOTON */}
         <div className="mt-auto pt-4 flex items-center justify-between gap-2">
-          <div className={`font-extrabold tracking-tight text-neutral-900 ${isCompact ? "text-[14px]" : "text-[16px] md:text-lg"}`}>
+          <div className={`font-extrabold tracking-tight text-neutral-900 ${isCompact || isCompactGrid ? "text-[13px] md:text-sm" : "text-[16px] md:text-lg"}`}>
             {typeof item.price === "number" ? formatCOP(item.price) : item.price}
           </div>
           
@@ -178,7 +211,7 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
             onClick={handleAdd}
             disabled={isOut}
             className={`flex items-center justify-center rounded-full bg-brand-secondary text-white font-bold shadow-md shadow-brand-secondary/30 transition-all duration-200 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 hover:scale-110 ${
-              isCompact ? "h-7 w-7 md:h-8 md:w-8 text-[18px]" : "h-9 w-9 md:h-10 md:w-10 text-[20px] md:text-[22px] leading-none"
+              isCompact || isCompactGrid ? "h-6 w-6 md:h-7 md:w-7 text-[16px]" : "h-9 w-9 md:h-10 md:w-10 text-[20px] md:text-[22px] leading-none"
             }`}
           >
             <span style={{ transform: "translateY(-1px)" }}>+</span>
