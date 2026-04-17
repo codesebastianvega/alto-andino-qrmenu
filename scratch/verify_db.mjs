@@ -17,31 +17,16 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 async function checkSchema() {
   console.log('🔍 Iniciando auditoría atómica de base de datos...\n');
 
-  // Check categories structure via a sample select (RPC or direct check not always available with anon key for information_schema)
-  // We'll try to fetch one category and see the keys
-  const { data: catData, error: catError } = await supabase
+  // List all categories and slugs
+  const { data: allCats, error: allCatsError } = await supabase
     .from('categories')
-    .select('*')
-    .limit(1);
+    .select('name, slug');
 
-  if (catError) {
-    console.error('❌ Error al consultar tabla "categories":', catError.message);
-  } else if (catData && catData.length > 0) {
-    const keys = Object.keys(catData[0]);
-    const hasTint = keys.includes('tint_class');
-    const hasTarget = keys.includes('target_id');
-    const hasVis = keys.includes('visibility_config');
-
-    console.log(`✅ Tabla "categories":`);
-    console.log(`   - Columna tint_class: ${hasTint ? 'EXISTE' : 'FALTA ❌'}`);
-    console.log(`   - Columna target_id: ${hasTarget ? 'EXISTE' : 'FALTA ❌'}`);
-    console.log(`   - Columna visibility_config: ${hasVis ? 'EXISTE' : 'FALTA ❌'}`);
-    
-    if (hasVis) {
-      console.log(`   - Estructura visibility_config:`, JSON.stringify(catData[0].visibility_config, null, 2));
-    }
+  if (allCatsError) {
+    console.error('❌ Error al listar categorías:', allCatsError.message);
   } else {
-    console.log('⚠️ Tabla "categories" vacía. No se pudo verificar la estructura de las columnas por inspección de datos.');
+    console.log('📋 Categorías actuales:');
+    allCats.forEach(c => console.log(`   - ${c.name}: [${c.slug}]`));
   }
 
   console.log('\n-------------------\n');

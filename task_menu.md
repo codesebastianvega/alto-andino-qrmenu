@@ -12,9 +12,9 @@ Progreso de la transición a un sistema 100% dinámico y jerárquico.
 - [x] asegurar que la tabla `products` permita strings en el campo `subcategory`
 
 ### Bloque 1.2: Migración de Metadata
-- [ ] leer valores de `tintClass` en `src/config/categories.js`
-- [ ] subir dichos valores a la columna `tint_class` de las categorías correspondientes en DB
-- [ ] migrar subcategorías hardcodeadas de los archivos `.js` al campo `subcategories` de cada categoría
+- [x] leer valores de `tintClass` en `src/config/categories.js`
+- [x] subir dichos valores a la columna `tint_class` de las categorías correspondientes en DB
+- [x] migrar subcategorías hardcodeadas de los archivos `.js` al campo `subcategories` de cada categoría
 
 ---
 
