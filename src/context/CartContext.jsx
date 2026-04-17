@@ -33,12 +33,27 @@ function optionsKey(opts) {
   return JSON.stringify(entries);
 }
 
+// Asegura que el item tenga campos consistentes para comparación y visualización
+function normalizeItem(p) {
+  if (!p) return p;
+  const productId = p.productId || p.id || p.productId_ext;
+  return {
+    ...p,
+    productId,
+    id: p.id || productId, // Garantiza id para compatibilidad con ProductQuickView
+    image: p.image || p.image_url,
+    image_url: p.image_url || p.image,
+  };
+}
+
 function sameItem(a, b) {
+  const na = normalizeItem(a);
+  const nb = normalizeItem(b);
   return (
-    a?.productId === b?.productId &&
-    a?.milk === b?.milk &&
-    optionsKey(a?.options) === optionsKey(b?.options) &&
-    String(a?.note || "") === String(b?.note || "")
+    na?.productId === nb?.productId &&
+    na?.milk === nb?.milk &&
+    optionsKey(na?.options) === optionsKey(nb?.options) &&
+    String(na?.note || "") === String(nb?.note || "")
   );
 }
 
@@ -87,15 +102,17 @@ export function CartProvider({ children }) {
           window.localStorage.setItem(STORAGE_KEY, json);
         } catch {}
       }, 0);
-      cancel = () => clearTimeout(tid);
+      cancel = () => setTimeout(() => cancel?.(), 0); // Mocking cancel for completeness
+      return () => clearTimeout(tid);
     }
     return cancel;
   }, [items, hasWindow]);
 
   // API segura (siempre parte de un array)
   function addItem(payload) {
-    setItems((prev) => normalize([...asArray(prev), { qty: 1, ...payload }]));
-    setTimeout(() => toastEvent(`Añadido: ${payload?.name || "Producto"}`), 0);
+    const item = normalizeItem(payload);
+    setItems((prev) => normalize([...asArray(prev), { qty: 1, ...item }]));
+    setTimeout(() => toastEvent(`Añadido: ${item?.name || "Producto"}`), 0);
   }
 
   function removeAt(index) {

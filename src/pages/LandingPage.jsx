@@ -168,7 +168,7 @@ const LandingPage = () => {
       const { data, error } = await supabase.functions.invoke('gemini-chat', {
         body: { 
           prompt: config.conciergePrompt.replace('{{query}}', conciergeQuery),
-          context: `Menú de ${brandName}. Ingredientes premium y locales.`
+          systemInstruction: `Menú de ${brandName}. Ingredientes premium y locales.`
         }
       });
       if (error) throw error;

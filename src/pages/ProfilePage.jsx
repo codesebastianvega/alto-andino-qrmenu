@@ -98,7 +98,7 @@ export default function ProfilePage() {
     try {
       const prompt = `Eres la IA de ${brandName}. Genera un "Perfil de Paladar" divertido y elegante de 1 sola línea (máx 15 palabras) para el cliente ${user.name}. Ej: "Tu paladar exige frescura premium y notas intensas."`;
       const { data, error } = await supabase.functions.invoke('gemini-chat', {
-        body: { prompt, context: `Experiencia gastronómica en ${brandName}.` }
+        body: { prompt, systemInstruction: `Experiencia gastronómica en ${brandName}.` }
       });
       if (error) throw error;
       setAiPalate(data.reply);

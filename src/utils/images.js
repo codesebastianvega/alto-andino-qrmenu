@@ -129,18 +129,42 @@ export const IMAGE_MAP = {
 export function getProductImage(product) {
   if (!product) return null;
 
-  // 1) Si la base de datos provee una URL de imagen, usarla directo
-  // Nota: MenuDataContext mapea product.image_url a product.image y product.image_url
-  const directUrl = product.image_url || product.image || product.imageUrl;
-  if (directUrl && typeof directUrl === 'string' && directUrl.trim() !== '') return directUrl;
-
-  // 2) Intentar buscar en el mapa usando el slug del nombre (sirve para BD con UUIDs)
+  // 1) Intentar buscar en el mapa local (IMAGE_MAP) PRIMERO (Overrides)
+  // Por slug de nombre
   const slugKey = product.name ? slugify(product.name) : null;
   if (slugKey && IMAGE_MAP[slugKey]) return IMAGE_MAP[slugKey];
 
-  // 3) Intentar buscar en el mapa usando el ID original (para legacy o items duros)
-  const idKey = product.id || product.productId;
+  // Por ID
+  const idKey = product.id || product.productId || product.itemId;
   if (idKey && IMAGE_MAP[idKey]) return IMAGE_MAP[idKey];
+
+  // 2) Buscar en las propiedades de imagen del objeto (Database/AI)
+  const directUrl = product.image_url || product.image || product.img || product.imageUrl;
+  
+  if (directUrl && typeof directUrl === 'string' && directUrl.trim() !== '') {
+    // Si es una URL completa o una ruta absoluta
+    if (directUrl.startsWith('http') || directUrl.startsWith('/')) {
+      return directUrl;
+    }
+    // Si es una ruta relativa que empieza por img/ o assets/, le ponemos el / inicial
+    if (directUrl.startsWith('img/') || directUrl.startsWith('assets/')) {
+      return '/' + directUrl;
+    }
+    // Si parece ser un nombre de archivo en la carpeta de productos por defecto
+    if (directUrl.includes('.') && !directUrl.includes('/')) {
+      return '/img/products/' + directUrl;
+    }
+    // En cualquier otro caso, si no es vacío, lo devolvemos tal cual (comportamiento original)
+    return directUrl;
+  }
+
+  // 3) Fallback automático si no hay URL directa: intentar por ID/Slug en la carpeta img/products
+  // Solo si el ID/Slug parece razonable y no es un UUID aleatorio largo
+  const key = idKey || slugKey;
+  if (key && typeof key === 'string' && key.length < 40 && !key.includes(':')) {
+    // No devolvemos nada aquí para evitar falsos positivos de 404, 
+    // pero dejamos la lógica lista por si se requiere reactivar.
+  }
 
   return null;
 }

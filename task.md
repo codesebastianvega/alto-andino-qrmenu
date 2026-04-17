@@ -201,5 +201,20 @@
 ### 8.5 Depuración Final ✅
 - [x] Eliminar archivos legacy (`src/config/categories.js`, `src/data/menuItems.js`, `src/data/banners.js`, `src/utils/resolver.js`, `src/components/StockAdmin.jsx`, `src/components/StoryModal.jsx`)
 - [x] Verificación cruzada (Admin -> DB -> Cliente)
-- [x] Build final sin errores de importación
+- [x] 
+
+## 🤖 BLOQUE 9: Corrección IA & Carrito [/]
+> Meta: Resolver inconsistencias en sugerencias de IA y visualización de imágenes.
+
+- [ ] **Estandarización de Payloads en MenuHero.jsx**
+  - [ ] Añadir `productId` al dispatch de `aa:quickview`.
+  - [ ] Asegurar campos `id`, `name`, `price`, `subtitle`, `image_url` e `image`.
+- [ ] **Normalización en CartContext.jsx**
+  - [ ] Refactorizar `addItem` para asegurar `productId` desde `id`.
+  - [ ] Sincronizar campos de imagen en el objeto de item del carrito.
+  - [ ] Mejorar resiliencia de `sameItem`.
+- [ ] **Hidratación en ProductLists.jsx**
+  - [ ] Limpiar/Normalizar objeto recibido en el listener global `aa:quickview`.
+- [ ] **Verificación en ProductQuickView.jsx**
+  - [ ] Asegurar que `handleAdd` pase el objeto completo al carrito.
 

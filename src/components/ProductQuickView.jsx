@@ -256,7 +256,17 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
         selectedModifiers[g.name] = g.max === 1 ? names[0] : names;
       }
     });
-    addItem({ ...product, price: finalPrice, options: selectedModifiers }, 1);
+
+    // Ensure cart item has resolved image for consistency
+    const cartItem = { 
+      ...product, 
+      price: finalPrice, 
+      options: selectedModifiers,
+      image_url: image || product.image_url || product.image,
+      resolved_image: image // Extra field just in case
+    };
+
+    addItem(cartItem, 1);
     onAdd?.();
     onClose?.();
   };

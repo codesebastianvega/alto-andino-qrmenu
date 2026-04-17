@@ -33,7 +33,7 @@ export default function ProductLists({
   variant = "standard", // standard, simple-list, grid, wide-grid
   hideNav = false
 }) {
-  const { categories: dbCategories, getProductsByCategory, banners, experiences, allergens = [], loading: menuLoading } = useMenuData();
+  const { categories: dbCategories, getProductsByCategory, getAllProducts, banners, experiences, allergens = [], loading: menuLoading } = useMenuData();
   const [counts, setCounts] = useState({});
   const manualRef = useRef(false);
   const scrollerRef = useRef(null);
@@ -85,8 +85,24 @@ export default function ProductLists({
   // Permite abrir QuickView desde otros componentes
   useEffect(() => {
     const onGlobalQV = (e) => {
-      const p = e?.detail;
-      if (!p) return;
+      const incoming = e?.detail;
+      if (!incoming) return;
+
+      const pId = incoming.productId || incoming.id;
+      // Hydrate with full product from context if available
+      const allProducts = getAllProducts ? getAllProducts() : [];
+      const dbProduct = allProducts.find(x => x.id === pId);
+
+      const p = {
+        ...dbProduct,
+        ...incoming,
+        id: dbProduct?.id || pId,
+        productId: dbProduct?.id || pId,
+        // Ensure image fields are preserved or normalized
+        image: incoming.image || dbProduct?.image,
+        image_url: incoming.image_url || dbProduct?.image_url
+      };
+
       if (p.configOptions?.is_diy) {
         setDiyProduct(p);
         setDiyOpen(true);
@@ -97,7 +113,7 @@ export default function ProductLists({
     };
     window.addEventListener("aa:quickview", onGlobalQV);
     return () => window.removeEventListener("aa:quickview", onGlobalQV);
-  }, []);
+  }, [getAllProducts]);
  
   const tabItems = useMemo(() => {
     return [{ id: "todos", label: "Todos" }, ...categories].map((c) => ({

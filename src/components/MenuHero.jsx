@@ -74,7 +74,7 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
     try {
       const prompt = `Eres la IA de ${brandName}. Son las ${new Date().getHours()}:00. Recomienda de forma MUY breve (1 sola frase, máximo 15 palabras) el plato: "${instantProduct.name}". Tono: premium y persuasivo.`;
       const { data, error } = await supabase.functions.invoke('gemini-chat', {
-        body: { prompt, context: `Experiencia gastronómica premium ${brandName}.` }
+        body: { prompt, systemInstruction: `Experiencia gastronómica premium ${brandName}.` }
       });
       if (error) throw error;
       setAiRecommendation(data.reply);
@@ -94,9 +94,12 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
     if (!instantProduct.id) return;
     const payload = {
       id: instantProduct.id,
+      productId: instantProduct.id,
       name: instantProduct.name,
       price: instantProduct.price,
       subtitle: instantProduct.desc,
+      image_url: instantProduct.img,
+      image: instantProduct.img,
     };
     window.dispatchEvent(new CustomEvent("aa:quickview", { detail: payload }));
   };
