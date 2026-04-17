@@ -168,3 +168,31 @@
   - [ ] Vista para que tú (Sebas) puedas editar roles de otros `profiles` sin ir a la DB.
   - [ ] Asignación/Cambio de `brand_id` para nuevos dueños de restaurantes.
 - [ ] **Accesos Rápidos:** Botón de "Perfil" en la parte inferior del Sidebar o Header.
+
+---
+
+## 🏷️ BLOQUE 8: Menú Dinámico "Casas y Habitaciones" [/]
+> Meta: Eliminar dependencias hardcodeadas y permitir gestión total de jerarquía.
+
+### 8.1 Infraestructura & Migración ✅
+- [x] **Audit DB:** Verificar columnas `tint_class`, `target_id` y `subcategory` (Completado)
+- [x] **Migración:** Script de extracción de metadata de `categories.js` a Supabase (Completado)
+
+### 8.2 Admin UX - Gestión de Categorías [/]
+- [ ] **Refactor `CategoryForm.jsx`:** Implementar Drag & Drop para subcategorías (@hello-pangea/dnd)
+- [ ] **Estética Dinámica:** Vincular `tint_class` y `accent_color` al formulario
+- [ ] **Preservación:** Asegurar que el selector de `section_type` siga funcional
+
+### 8.3 Admin UX - Gestión de Productos
+- [ ] **Filtrado Dinámico:** `ProductForm.jsx` filtrando subcategorías según la categoría elegida
+- [ ] **Persistencia:** Guardado del campo `subcategory` en la tabla `products`
+
+### 8.4 Experiencia Cliente (Frontend)
+- [ ] **Refactor `ProductLists.jsx`:** Agrupamiento dinámico por subcategorías (respetando orden)
+- [ ] **Cleanup:** Eliminar imports de `CATEGORIES_LIST` estáticos
+- [ ] **Fallback "Otros":** Manejo automático de productos sin subcategoría
+
+### 8.5 Depuración Final
+- [ ] Eliminar archivos legacy (`src/config/categories.js`, etc.)
+- [ ] Verificación cruzada (Admin -> DB -> Cliente)
+
