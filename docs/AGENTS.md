@@ -1,3 +1,26 @@
+ 📜 REGLAS OBLIGATORIAS PARA LA IA - PROYECTO ALTO ANDINO
+
+Este documento es de lectura obligatoria para la IA antes de realizar cualquier acción en este repositorio.
+
+## 1. MODO PASIVO ESTRICTO
+- **PROHIBIDO** ejecutar herramientas de análisis (`view_file`, `ls`, `grep`, `run_command`) sin permiso explícito para esa acción específica. No hagas "investigaciones preventivas".
+- **PROHIBIDO** realizar más de una tarea a la vez.
+- **PROHIBIDO** modificar un segundo archivo sin haber verificado y confirmado el éxito del primero.
+
+## 2. FLUJO DE TRABAJO "ATÓMICO"
+- Antes de cada edición: Explica en español sencillo qué vas a cambiar y por qué.
+- Espera la confirmación del usuario con un "Adelante" o "Sí".
+- Tras realizar el cambio: Verifica que el proyecto compila (usa `npm run dev` o similar si es necesario).
+- Reporta el resultado y detente. No asumas el siguiente paso.
+
+## 3. SALVAGUARDA DE TOKENS E INVERSIÓN
+- Cada mensaje debe ser de alto valor. No desperdicies turnos en disculpas largas o explicaciones técnicas innecesarias. Ve al grano.
+- Si detectas un error de sintaxis (como un `<div>` mal cerrado), soluciónalo SOLO si el usuario te lo pide o te dio permiso para "limpiar errores".
+
+---
+**ESTADO ACTUAL:** Revertido al último commit estable. Esperando primera tarea.
+
+
 AGENTS.md — Alto Andino · QR Menu
 1) Propósito y alcance
 

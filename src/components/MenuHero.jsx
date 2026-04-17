@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Sparkles, ArrowRight, Sun, Coffee, CloudMoon, Loader2, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getStockState, slugify } from '../utils/stock';
-import * as menu from '../data/menuItems';
+import { getStockState } from '../utils/stock';
 import { supabase } from '../config/supabase';
 import { useMenuData } from '../context/MenuDataContext';
 import { useAuth } from '../context/AuthContext';
@@ -29,36 +28,28 @@ function getTimeContext() {
 export default function MenuHero({ query, setQuery, activeCategory, setActiveCategory, categories = [] }) {
   const { time, label: greeting, Icon: TimeIcon } = getTimeContext();
   const [user] = useState({ name: 'Invitado', isLogged: false }); // User state mock
-  const { homeSettings, restaurantSettings } = useMenuData();
+  const { homeSettings, restaurantSettings, categories: activeCategories, productsByCategory } = useMenuData();
   const { activeBrand } = useAuth();
-
+  
   const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
-
-
 
   // --- RECOMENDACIÓN INSTANTÁNEA ---
   const candidates = useMemo(() => {
-    const pools = {
-      manana: [menu.breakfastItems, menu.coffees, menu.infusions, menu.teasAndChai, menu.moreInfusions],
-      tarde: [menu.smoothies, menu.funcionales, menu.sodas, menu.otherDrinks, menu.coffees],
-      noche: [menu.mainDishes, menu.sandwichItems, menu.dessertBaseItems, menu.coffees],
-    };
-    const bucket = pools[time] || [];
-    const items = bucket.flatMap((arr) => (Array.isArray(arr) ? arr : []));
+    // Usamos las categorías activas en este horario
+    const items = activeCategories.flatMap(cat => productsByCategory[cat.slug] || []);
     return items
-      .map((p) => ({
-        id: p.id || p.productId || (p.key ? `sandwich:${p.key}` : slugify(p.name)),
-        name: p.name,
-        price: p.price,
-        img: p.image_url || p.image || p.imageUrl,
-        desc: p.desc || p.subtitle || ""
-      }))
-      .filter((p) => {
-        if (!p.img) return false;
+      .filter(p => {
         const st = getStockState(p.id);
         return st === "in" || st === "low";
-      });
-  }, [time]);
+      })
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        img: p.image_url,
+        desc: p.description || ""
+      }));
+  }, [activeCategories, productsByCategory]);
 
   const [recIndex, setRecIndex] = useState(0);
   

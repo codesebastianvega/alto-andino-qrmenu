@@ -48,7 +48,6 @@ const DietaryGuide = lazy(() => import("./components/DietaryGuide"));
 const FloatingCartBar = lazy(() => import("./components/FloatingCartBar"));
 const CartModal = lazy(() => import("./components/CartModal"));
 const QrPoster = lazy(() => import("./components/QrPoster"));
-const StockAdmin = lazy(() => import("./components/StockAdmin"));
 const OrderStatus = lazy(() => import("./pages/OrderStatus"));
 
 // Hash Routing Pages
@@ -62,22 +61,6 @@ const CustomerSearch = lazy(() => import("./components/admin/CustomerSearch"));
 
 // Carrito
 import { useCart } from "./context/CartContext";
-import {
-  breakfastItems,
-  mainDishes,
-  dessertBaseItems,
-  preBowl,
-  smoothies,
-  funcionales,
-  coffees,
-  infusions,
-  sodas,
-  otherDrinks,
-  sandwichItems,
-  teasAndChai,
-  moreInfusions,
-} from "./data/menuItems";
-import { getStockState, slugify } from "./utils/stock";
 
 // Póster QR
 import Toast from "./components/Toast";
@@ -149,7 +132,6 @@ export default function App() {
   
   const isQr = searchParams.get("qr") === "1";
   const isDemo = searchParams.get("demo") === "1";
-  const isOldStockAdmin = searchParams.get("admin") === "1";
   
   // (isNewAdminPanel already declared above)
   const isOnboardingView = currentHash === '#admin/onboarding';
@@ -278,43 +260,8 @@ export default function App() {
     window.history.replaceState(null, "", url);
   }, [FEATURE_TABS, selectedCategory, activeBrand, isNewAdminPanel]);
 
-  const counts = useMemo(() => {
-    const count = (items = []) =>
-      items.filter((p) => {
-        const pid = p.id || p.productId || (p.key ? "sandwich:" + p.key : slugify(p.name));
-        const st = getStockState(pid);
-        return st === "in" || st === "low";
-      }).length;
-
-    const result = {
-      desayunos: count(breakfastItems),
-      bowls: count([preBowl]),
-      platos: count(mainDishes),
-      sandwiches: count(
-        sandwichItems?.map((it) => ({ id: "sandwich:" + it.key, name: it.name })) || [],
-      ),
-      smoothies: count([...(smoothies || []), ...(funcionales || [])]),
-      cafe: count([...(coffees || []), ...(infusions || []), ...(teasAndChai || []), ...(moreInfusions || [])]),
-      bebidasfrias: count([...(sodas || []), ...(otherDrinks || [])]),
-      postres: count(dessertBaseItems),
-    };
-
-    result.todos = Object.values(result).reduce((sum, count) => sum + count, 0);
-
-    return result;
-  }, [
-    breakfastItems,
-    preBowl,
-    mainDishes,
-    sandwichItems,
-    smoothies,
-    funcionales,
-    coffees,
-    infusions,
-    sodas,
-    otherDrinks,
-    dessertBaseItems,
-  ]);
+  // Dynamic counts are now handled internally by ProductLists component
+  const counts = useMemo(() => ({ todos: 0 }), []);
 
   // Redirection Logic for Onboarding
   useEffect(() => {
@@ -362,17 +309,6 @@ export default function App() {
     );
   }
 
-  if (isOldStockAdmin) {
-    return (
-      <div className="bg-alto-beige leading-snug text-alto-text">
-        <main className="mx-auto max-w-3xl px-5 pt-5 sm:px-6 md:px-8">
-          <Suspense fallback={<div />}>
-            <StockAdmin />
-          </Suspense>
-        </main>
-      </div>
-    );
-  }
 
   const hasFloatingCartBar = cart.items && cart.items.length > 0;
 
@@ -454,7 +390,6 @@ export default function App() {
               query={query}
               selectedCategory={selectedCategory}
               onCategorySelect={handleCategorySelect}
-              counts={counts}
               featureTabs={FEATURE_TABS}
               hideNav={true}
             />

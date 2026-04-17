@@ -193,10 +193,13 @@
 
 ### 8.4 Experiencia Cliente (Frontend)
 - [ ] **Refactor `ProductLists.jsx`:** Agrupamiento dinámico por subcategorías (respetando orden)
-- [ ] **Cleanup:** Eliminar imports de `CATEGORIES_LIST` estáticos
-- [ ] **Fallback "Otros":** Manejo automático de productos sin subcategoría
+- [x] **Refactor `HeroHeadline.jsx` & `MenuHero.jsx`**: Pool de recomendaciones dinámico por horario (agnóstico a nombres)
+- [x] **Refactor `PromoBannerCarousel.jsx`**: Carga de banners desde Supabase y resolución de productos vía contexto
+- [x] **Cleanup**: Eliminar imports de `CATEGORIES_LIST` y `menuItems` estáticos
+- [x] **Fallback "Otros":** Manejo automático de productos sin subcategoría (ya implementado en ProductLists)
 
-### 8.5 Depuración Final
-- [ ] Eliminar archivos legacy (`src/config/categories.js`, etc.)
-- [ ] Verificación cruzada (Admin -> DB -> Cliente)
+### 8.5 Depuración Final ✅
+- [x] Eliminar archivos legacy (`src/config/categories.js`, `src/data/menuItems.js`, `src/data/banners.js`, `src/utils/resolver.js`, `src/components/StockAdmin.jsx`, `src/components/StoryModal.jsx`)
+- [x] Verificación cruzada (Admin -> DB -> Cliente)
+- [x] Build final sin errores de importación
 

@@ -2,8 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 
 import { useCart } from "../context/CartContext";
-import { getStockState, slugify } from "../utils/stock";
-import * as menu from "../data/menuItems";
+import { getStockState } from "../utils/stock";
 import AAImage from "./ui/AAImage";
 import { useMenuData } from "../context/MenuDataContext";
 import { useAuth } from "../context/AuthContext";
@@ -64,30 +63,23 @@ function getTimeContext(city = "") {
 
 export default function HeroHeadline() {
   const cart = useCart();
-  const { restaurantSettings } = useMenuData();
+  // Selección de producto recomendado con stock disponible
+  const { restaurantSettings, categories, productsByCategory } = useMenuData();
   const { activeBrand } = useAuth();
   
   const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
   const brandCity = activeBrand?.city || "";
 
-  const { emoji, label, time, hour } = getTimeContext(brandCity);
+  const { emoji, label, time } = getTimeContext(brandCity);
 
-  // Selección de producto recomendado con stock disponible
-  const pools = {
-    manana: [menu.breakfastItems, menu.coffees, menu.infusions, menu.teasAndChai, menu.moreInfusions],
-    tarde: [menu.smoothies, menu.funcionales, menu.sodas, menu.otherDrinks, menu.coffees],
-    noche: [menu.mainDishes, menu.sandwichItems, menu.dessertBaseItems, menu.coffees],
-  };
-  const baseBucket = pools[time] || [];
-  const offerHot = hour >= 16 && hour < 19;
-  const bucket = offerHot ? [menu.coffees, menu.teasAndChai, menu.infusions] : baseBucket;
-  const items = bucket.flatMap((arr) => (Array.isArray(arr) ? arr : []));
-  const candidates = items
-    .map((p) => ({ id: p.id || p.productId || (p.key ? `sandwich:${p.key}` : slugify(p.name)), name: p.name, price: p.price }))
-    .filter((p) => {
+  // Pool dinámico: todos los productos de las categorías activas (ya filtradas por horario en el context)
+  const candidates = React.useMemo(() => {
+    const items = categories.flatMap(cat => productsByCategory[cat.slug] || []);
+    return items.filter(p => {
       const st = getStockState(p.id);
       return st === "in" || st === "low";
     });
+  }, [categories, productsByCategory]);
 
   const [recIndex, setRecIndex] = React.useState(0);
   const rec = candidates.length ? candidates[Math.min(recIndex, candidates.length - 1)] : null;
@@ -167,14 +159,11 @@ export default function HeroHeadline() {
             <button
               type="button"
               onClick={() => {
-                // Buscar el objeto completo para obtener descripción e imagen
-                const getId = (p) => p.id || p.productId || (p.key ? `sandwich:${p.key}` : slugify(p.name));
-                const full = (items || []).find((p) => getId(p) === rec.id) || null;
                 const payload = {
                   id: rec.id,
                   name: rec.name,
                   price: rec.price,
-                  subtitle: full?.desc || full?.subtitle || "",
+                  subtitle: rec.desc || rec.description || "",
                 };
                 window.dispatchEvent(new CustomEvent("aa:quickview", { detail: payload }));
               }}

@@ -1,13 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { banners as buildBanners } from "../data/banners";
-import { resolveProductById } from "../utils/resolver";
+import { useEffect, useRef, useState } from "react";
 import { useCart } from "../context/CartContext";
 import ProductQuickView from "./ProductQuickView";
 import PetFriendlyModal from "./PetFriendlyModal";
-import StoryModal from "./StoryModal";
 import { toast } from "./Toast";
 import { formatCOP } from "../utils/money";
-import { productStories } from "../data/stories";
 
 import { useMenuData } from "../context/MenuDataContext";
 
@@ -21,8 +17,6 @@ export default function PromoBannerCarousel() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickProduct, setQuickProduct] = useState(null);
   const [petOpen, setPetOpen] = useState(false);
-  const [storyOpen, setStoryOpen] = useState(false);
-  const [story, setStory] = useState(null);
   const trackRef = useRef(null);
 
   useEffect(() => {
@@ -38,16 +32,13 @@ export default function PromoBannerCarousel() {
         }
 
         let computedAction = 'link';
-        if (item.cta_link === 'story') computedAction = 'story';
-        else if (item.cta_link === 'modal:petfriendly') computedAction = 'modal:petfriendly';
+        if (item.cta_link === 'modal:petfriendly') computedAction = 'modal:petfriendly';
         else if (item.cta_link === 'link:reviews') computedAction = 'link:reviews';
-
-        const hasProduct = !!product;
 
         return {
           ...item,
           type,
-          productId: type === 'product' ? item.product_id : item.cta_link,
+          productId: item.cta_link,
           bgColor: item.bg_color || '#2f4131',
           product,
           ctas: {
@@ -60,14 +51,7 @@ export default function PromoBannerCarousel() {
         };
       }));
     } else {
-      // Fallback to buildBanners only if not loading and no banners
-      if (!contextLoading) {
-        const fallbackItems = (buildBanners(import.meta.env) || []).map((item) => {
-          const product = item.productId ? resolveProductById(item.productId) : null;
-          return { ...item, product };
-        });
-        setItems(fallbackItems);
-      }
+      setItems([]);
     }
     setLoading(false);
   }, [contextBanners, contextLoading, getAllProducts]);
@@ -103,14 +87,6 @@ export default function PromoBannerCarousel() {
       }
     } else if (action === "modal:petfriendly") {
       setPetOpen(true);
-    } else if (action === "story" || action === "recipe") {
-      const st = productStories[productId];
-      if (!st) {
-        toast("Aún no tenemos historia para este producto");
-        return;
-      }
-      setStory(st);
-      setStoryOpen(true);
     } else if (action === "link:reviews") {
       const url = "https://g.page/r/CUlqcqk_KCXBEBM/review";
       if (url) window.open(url, "_blank", "noopener,noreferrer");
@@ -223,7 +199,6 @@ export default function PromoBannerCarousel() {
 
       <ProductQuickView open={quickOpen} product={quickProduct} onClose={() => setQuickOpen(false)} />
       <PetFriendlyModal open={petOpen} onClose={() => setPetOpen(false)} />
-      <StoryModal open={storyOpen} story={story} onClose={() => setStoryOpen(false)} />
     </div>
   );
 }
