@@ -51,6 +51,9 @@ export default function AdminProducts() {
 
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('all');
+  const [attrFilter, setAttrFilter] = useState('all'); // 'all', 'upsell', 'no_kitchen', 'packaging'
+  const [marginFilter, setMarginFilter] = useState('all'); // 'all', 'high', 'med', 'low'
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -134,7 +137,27 @@ export default function AdminProducts() {
     if (p.is_addon) return false;
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
     const matchCat    = catFilter === 'all' || p.category_id === catFilter;
-    return matchSearch && matchCat;
+
+    // Attribute Filtering
+    let matchAttr = true;
+    if (attrFilter === 'upsell') matchAttr = p.is_upsell;
+    else if (attrFilter === 'no_kitchen') matchAttr = !p.requires_kitchen;
+    else if (attrFilter === 'packaging') matchAttr = (p.packaging_fee || 0) > 0;
+
+    // Profitability (Margin) Filtering
+    let matchMargin = true;
+    if (marginFilter !== 'all') {
+      if (p.price > 0 && (p.cost || 0) > 0) {
+        const margin = ((p.price - (p.cost || 0)) / p.price) * 100;
+        if (marginFilter === 'high') matchMargin = margin >= 45;
+        else if (marginFilter === 'med') matchMargin = margin >= 25 && margin < 45;
+        else if (marginFilter === 'low') matchMargin = margin < 25;
+      } else {
+        matchMargin = false; // Exclude if no cost/price data
+      }
+    }
+
+    return matchSearch && matchCat && matchAttr && matchMargin;
   }).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
   const handleEdit   = (p) => { setEditingProduct(p); setIsFormOpen(true); setConfirmDelete(null); };
@@ -245,7 +268,7 @@ export default function AdminProducts() {
             NORMAL MODE UI
      ═══════════════════════════════════════ */
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-8 max-w-[1700px] mx-auto space-y-6">
       <PageHeader
         badge="Administración"
         title="Productos"
@@ -269,41 +292,95 @@ export default function AdminProducts() {
         </div>
       </PageHeader>
 
-      {/* Action Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm">
-        <div className="flex-1 w-full max-w-xl group relative">
-          <SearchInput
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por nombre, descripción o categoría..."
-          />
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-          <div className="w-full sm:w-48">
-            <SelectInput value={catFilter} onChange={e => setCatFilter(e.target.value)}>
-              <option value="all">Todas las categorías</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </SelectInput>
+      <div className="flex flex-col gap-4 bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+          <div className="flex-1 w-full max-w-xl group relative">
+            <SearchInput
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar por nombre o descripción..."
+            />
           </div>
           
-          <div className="flex items-center gap-2 w-full sm:w-auto ml-auto lg:ml-0">
-             {catFilter !== 'all' && (
+          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+            <div className="w-full sm:w-48">
+              <SelectInput value={catFilter} onChange={e => setCatFilter(e.target.value)}>
+                <option value="all">Todas las categorías</option>
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </SelectInput>
+            </div>
+            
+            <div className="flex items-center gap-2 w-full sm:w-auto ml-auto lg:ml-0">
+               {catFilter !== 'all' && (
+                <button 
+                  onClick={enterReorderMode}
+                  className="flex-1 sm:flex-initial px-4 py-2.5 text-[13px] font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-all flex items-center justify-center gap-2"
+                >
+                  <DragHandle />
+                  Ordenar
+                </button>
+              )}
               <button 
-                onClick={enterReorderMode}
-                className="flex-1 sm:flex-initial px-4 py-2.5 text-[13px] font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-all flex items-center justify-center gap-2"
+                onClick={() => setIsBulkEditorOpen(true)}
+                className="flex-1 sm:flex-initial px-4 py-2.5 text-[13px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
               >
-                <DragHandle />
-                Ordenar
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                Editor de Costos
               </button>
-            )}
-            <button 
-              onClick={() => setIsBulkEditorOpen(true)}
-              className="flex-1 sm:flex-initial px-4 py-2.5 text-[13px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-              Editor de Costos
-            </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Operational Filters Row */}
+        <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-gray-50">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-1">Atributos:</span>
+            <div className="flex gap-1.5">
+              {[
+                { id: 'all', label: 'Todos' },
+                { id: 'upsell', label: '✨ Upsell' },
+                { id: 'no_kitchen', label: '❄️ Sin Cocina' },
+                { id: 'packaging', label: '📦 Empaque' },
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setAttrFilter(f.id)}
+                  className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all border ${
+                    attrFilter === f.id 
+                    ? 'bg-[#2f4131] text-white border-[#2f4131] shadow-md shadow-[#2f4131]/10' 
+                    : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="h-4 w-px bg-gray-100 hidden sm:block" />
+
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-1">Rentabilidad:</span>
+            <div className="flex gap-1.5">
+              {[
+                { id: 'all', label: 'Todos' },
+                { id: 'high', label: '📈 Alta', color: 'text-green-600' },
+                { id: 'med', label: '📊 Media', color: 'text-orange-500' },
+                { id: 'low', label: '⚠️ Baja', color: 'text-red-500' },
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setMarginFilter(f.id)}
+                  className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all border ${
+                    marginFilter === f.id 
+                    ? 'bg-[#2f4131] text-white border-[#2f4131] shadow-md shadow-[#2f4131]/10' 
+                    : `bg-white ${f.color || 'text-gray-500'} border-gray-100 hover:bg-gray-50`
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -327,7 +404,9 @@ export default function AdminProducts() {
               <Th>Producto</Th>
               <Th>Categoría</Th>
               <Th>Subcategoría</Th>
-              <Th>Precio / Margen</Th>
+              <Th>Precio</Th>
+              <Th>Costo</Th>
+              <Th>Margen</Th>
               <Th>Stock</Th>
               <Th>Atributos</Th>
               <Th>Receta</Th>
@@ -346,7 +425,7 @@ export default function AdminProducts() {
               // Inline delete confirmation row
               if (isDelConf) return (
                 <tr key={product.id}>
-                  <td colSpan={9} className="px-5 py-3 bg-red-50">
+                  <td colSpan={13} className="px-5 py-3 bg-red-50">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-red-700">
                         ¿Eliminar <strong>"{product.name}"</strong>? Esta acción no se puede deshacer.
@@ -367,77 +446,81 @@ export default function AdminProducts() {
               );
 
               return (
-                <tr key={product.id} className="group hover:bg-gray-50/60 transition-colors">
-                  {/* # (sort order) */}
-                  <td className="px-5 py-3.5">
-                    <span className="text-[11px] text-gray-300 font-medium tabular-nums">{idx + 1}</span>
-                  </td>
-
-                  {/* Producto */}
-                  <td className="px-5 py-3.5">
+                <tr key={product.id} className="hover:bg-gray-50/50 transition-colors border-b border-gray-50 last:border-0">
+                  <td className="px-5 py-3.5 text-xs text-gray-400 font-medium">#{idx + 1}</td>
+                  
+                  {/* Name and Image */}
+                  <td className="px-5 py-3.5 min-w-[300px]">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
-                        <AAImage
-                          src={product.image_url}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                          fallback={<span className="text-base">🍽</span>}
-                        />
+                      <div className="w-10 h-10 rounded-xl overflow-hidden border border-gray-100 flex-shrink-0">
+                        <AAImage src={product.image_url} alt={product.name} />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-semibold text-gray-900 leading-tight">{product.name}</p>
-                          {product.is_addon && (
-                            <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Addon</span>
-                          )}
-                        </div>
-                        {product.description && (
-                          <p className="text-[12px] text-gray-400 font-medium truncate max-w-[180px] mt-0.5">
-                            {product.description}
-                          </p>
-                        )}
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-gray-900 leading-tight">{product.name}</span>
+                        <span className="text-[11px] text-gray-400 line-clamp-1 mt-0.5">{product.description || 'Sin descripción'}</span>
                       </div>
                     </div>
                   </td>
 
-                  {/* Categoría */}
-                  <td className="px-5 py-3.5">
-                    <Badge variant="gray">{catName || '—'}</Badge>
+                  {/* Category */}
+                  <td className="px-5 py-3.5 whitespace-nowrap">
+                    <span className="text-[12px] font-medium text-gray-600 px-2 py-1 bg-gray-50 rounded-lg border border-gray-100">
+                      {catName || 'Sin cat.'}
+                    </span>
                   </td>
 
-                  {/* Subcategoría */}
-                  <td className="px-5 py-3.5">
-                    {product.subcategory ? (
-                      <span className="text-[12px] bg-neutral-100 text-neutral-600 px-2 py-1 rounded-lg font-medium">
-                        {product.subcategory}
+                  {/* Subcategory */}
+                  <td className="px-5 py-3.5 whitespace-nowrap">
+                    {product.subcategories?.name ? (
+                      <span className="text-[11px] font-semibold text-blue-600 px-2 py-0.5 bg-blue-50/50 rounded-full border border-blue-100/50">
+                        {product.subcategories.name}
                       </span>
                     ) : (
-                      <span className="text-[11px] text-gray-300 italic">Sin subcat.</span>
+                      <span className="text-[11px] text-gray-300 italic">—</span>
                     )}
                   </td>
 
-                  {/* Precio y Margen */}
-                  <td className="px-5 py-3.5">
-                    <p className="text-sm font-semibold text-gray-900 tabular-nums">{formatCOP(product.price)}</p>
+                  {/* Precio */}
+                  <td className="px-5 py-3.5 whitespace-nowrap">
+                    <p className="text-sm font-bold text-gray-900 tabular-nums">{formatCOP(product.price)}</p>
+                  </td>
+
+                  {/* Costo */}
+                  <td className="px-5 py-3.5 whitespace-nowrap">
                     {product.cost > 0 ? (
-                      <div className="flex flex-col mt-0.5">
-                        <p className="text-[10px] text-gray-400 font-medium tabular-nums">
-                          Costo {formatCOP(product.cost)}
-                        </p>
-                        {(() => {
-                           const margin = ((product.price - product.cost) / product.price) * 100;
-                           // Thresholds: Green >= 45%, Orange >= 25%, Red < 25%
-                           const color = margin >= 45 ? 'text-green-600 bg-green-50' : margin >= 25 ? 'text-orange-500 bg-orange-50' : 'text-red-500 bg-red-50';
-                           return (
-                             <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold mt-1 w-max ${color} tabular-nums border border-current/10 uppercase`}>
-                               {margin.toFixed(0)}% Margen
-                             </span>
-                           );
-                        })()}
-                      </div>
+                      <p className="text-[12px] text-gray-500 font-medium tabular-nums">
+                        {formatCOP(product.cost)}
+                      </p>
                     ) : (
-                      <p className="text-[10px] text-gray-300 italic mt-0.5">Sin costo req.</p>
+                      <span className="text-[11px] text-gray-300 italic">No req.</span>
                     )}
+                  </td>
+
+                  {/* Margen */}
+                  <td className="px-5 py-3.5 whitespace-nowrap">
+                    {product.cost > 0 ? (
+                      (() => {
+                        const margin = ((product.price - product.cost) / product.price) * 100;
+                        const color = margin >= 45 ? 'text-green-600 bg-green-50' : margin >= 25 ? 'text-orange-500 bg-orange-50' : 'text-red-500 bg-red-50';
+                        return (
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${color} tabular-nums border border-current/10 uppercase`}>
+                            {margin.toFixed(0)}%
+                          </span>
+                        );
+                      })()
+                    ) : (
+                      <span className="text-[11px] text-gray-200 font-medium whitespace-nowrap italic">—</span>
+                    )}
+                  </td>
+
+                  {/* Stock */}
+                  <td className="px-5 py-3.5 whitespace-nowrap">
+                    <button 
+                      onClick={() => toggleStock(product.id, product.stock_status)}
+                      className="group/stock active:scale-95 transition-all"
+                    >
+                      <Badge variant={stock.variant}>{stock.label}</Badge>
+                    </button>
                   </td>
 
                   {/* Atributos */}
@@ -464,86 +547,60 @@ export default function AdminProducts() {
                     </div>
                   </td>
 
-                  {/* Stock */}
-                  <td className="px-5 py-3.5">
-                    <button
-                      onClick={() => toggleStock(product.id, product.stock_status)}
-                      title="Click para cambiar disponibilidad"
-                      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold border transition-all hover:opacity-70 active:scale-95 cursor-pointer ${
-                        stock.variant === 'green'  ? 'bg-green-50 text-green-700 border-green-100' :
-                        stock.variant === 'amber'  ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                                     'bg-red-50 text-red-600 border-red-100'
-                      }`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${
-                        stock.variant === 'green' ? 'bg-green-500' :
-                        stock.variant === 'amber' ? 'bg-amber-500' : 'bg-red-500'
-                      }`}/>
-                      {stock.label}
-                    </button>
-                  </td>
-                  <td className="px-5 py-3.5">
+                  {/* Receta */}
+                  <td className="px-5 py-3.5 whitespace-nowrap">
                     {recipe ? (
-                      <Badge variant="indigo">{recipe.name}</Badge>
+                      <div className="flex flex-col">
+                        <span className="text-[12px] font-semibold text-teal-600">{recipe.name}</span>
+                        <span className="text-[10px] text-gray-400">Vinculado</span>
+                      </div>
                     ) : (
-                      <span className="text-[12px] text-gray-300 font-medium">—</span>
+                      <span className="text-[11px] text-gray-300 italic italic">Sin receta</span>
                     )}
                   </td>
 
                   {/* Actualizado */}
-                  <td className="px-5 py-3.5">
-                    <div className="flex flex-col">
-                      <span className="text-[11px] text-gray-500 font-medium">
-                        {product.updated_at ? new Date(product.updated_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }) : '—'}
-                      </span>
-                      {product.updated_at && (
-                        <span className="text-[9px] text-gray-300 tabular-nums">
-                          {new Date(product.updated_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                        </span>
-                      )}
-                    </div>
+                  <td className="px-5 py-3.5 whitespace-nowrap">
+                    <span className="text-[11px] text-gray-500 font-medium">
+                      {new Date(product.updated_at).toLocaleDateString()}
+                    </span>
                   </td>
 
                   {/* Estado */}
-                  <td className="px-5 py-3.5">
-                    <button
-                      onClick={() => toggleActive(product.id, product.is_active)}
-                      className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition-all hover:opacity-80 ${
-                        product.is_active
-                          ? 'bg-green-50 text-green-700 border-green-100'
-                          : 'bg-gray-100 text-gray-500 border-gray-200'
-                      }`}
-                    >
-                      {product.is_active ? 'Activo' : 'Inactivo'}
+                  <td className="px-5 py-3.5 whitespace-nowrap">
+                    <button onClick={() => toggleActive(product.id, product.is_active)}>
+                      <Badge variant={product.is_active ? 'green' : 'red'}>
+                        {product.is_active ? 'Activo' : 'Oculto'}
+                      </Badge>
                     </button>
                   </td>
 
-                  {/* Acciones */}
-                  <td className="px-5 py-3.5 text-right">
-                    <div className="flex justify-end items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
+                  <td className="px-5 py-3.5 min-w-[120px]">
+                    <div className="flex items-center justify-end gap-1">
+                      <button 
                         onClick={() => handleEdit(product)}
-                        className="px-3 py-1.5 text-[12px] font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        title="Editar producto"
                       >
-                        Editar
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                       </button>
-                      <button
+                      <button 
                         onClick={() => setConfirmDelete(product.id)}
-                        className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all"
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                        title="Eliminar producto"
                       >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                        </svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                       </button>
                     </div>
                   </td>
                 </tr>
               );
             })}
+            
             {filtered.length === 0 && (
               <tr>
-                <td colSpan="11" className="px-5 py-16 text-center text-gray-400 text-sm font-medium">
-                  {search || catFilter !== 'all'
+                <td colSpan="13" className="px-5 py-16 text-center text-gray-400 text-sm font-medium">
+                  {search || catFilter !== 'all' || attrFilter !== 'all' || marginFilter !== 'all'
                     ? 'Sin resultados para los filtros actuales.'
                     : 'Aún no hay productos. Crea el primero.'}
                 </td>
