@@ -498,7 +498,7 @@ export default function AdminProducts() {
 
                   {/* Margen */}
                   <td className="px-5 py-3.5 whitespace-nowrap">
-                    {product.cost > 0 ? (
+                    {product.cost > 0 && product.price > 0 ? (
                       (() => {
                         const margin = ((product.price - product.cost) / product.price) * 100;
                         const color = margin >= 45 ? 'text-green-600 bg-green-50' : margin >= 25 ? 'text-orange-500 bg-orange-50' : 'text-red-500 bg-red-50';
@@ -562,7 +562,7 @@ export default function AdminProducts() {
                   {/* Actualizado */}
                   <td className="px-5 py-3.5 whitespace-nowrap">
                     <span className="text-[11px] text-gray-500 font-medium">
-                      {new Date(product.updated_at).toLocaleDateString()}
+                      {product.updated_at ? new Date(product.updated_at).toLocaleDateString() : '—'}
                     </span>
                   </td>
 
