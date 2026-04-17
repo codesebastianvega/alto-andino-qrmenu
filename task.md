@@ -254,8 +254,17 @@
 - [x] Mejorar visualización de tarjetas:
     - [x] Mostrar vista previa de las primeras 3 opciones.
     - [x] Aplicar efectos hover y sombras premium.
+- [ ] Rediseño de Tabla de Inventario (Insumos)
+    - [ ] Ampliar contenedor a `max-w-[1600px]`.
+    - [ ] Implementar buscador avanzado con iconos.
+    - [ ] Añadir Quick Status Toggle (`is_active`).
+    - [ ] Pulir indicadores de stock y badges de proveedores.
+    - [ ] Mejorar editor de costos inline.
 - [ ] Implementar **Deep Search**: Búsqueda que incluya nombres de opciones.
 - [ ] Implementar **Quick Status Toggle**: Switch de activo/inactivo en tarjeta.
+- [ ] Relative Time en categorías ("Modificado hace 2m").
+- [ ] Public Menu: Estilo Bento para item "Hero".
+- [ ] Public Menu: Soporte para Masonry Layout.
 
 ### 10.4 Refinamientos de UI & UX
 - [ ] **Admin Categories**: Implementar tiempo relativo (Hace X min) en columna de actualización.

@@ -6,6 +6,8 @@ import {
   PageHeader, PrimaryButton, SecondaryButton, Badge,
   FormField, TextInput, SearchInput
 } from '../components/admin/ui';
+import { useAuth } from '../context/AuthContext';
+import { Icon } from '@iconify-icon/react';
 
 const TrashIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -31,19 +33,28 @@ export default function AdminRecipes() {
 
   const { ingredients: allIngredients, fetchIngredients } = useAdminIngredients();
   const [searchTerm, setSearchTerm] = useState('');
+  const { activeBrand } = useAuth();
+  const brandId = activeBrand?.id;
 
   const [formData, setFormData] = useState({
     name: '', description: '', target_price: 0, ingredients: []
   });
 
-  useEffect(() => { fetchData(); fetchIngredients(); }, [fetchIngredients]);
+  useEffect(() => { 
+    if (brandId) {
+      fetchData(); 
+      fetchIngredients(); 
+    }
+  }, [brandId, fetchIngredients]);
 
   const fetchData = async () => {
+    if (!brandId) return;
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('recipes')
         .select(`*, recipe_ingredients(id, ingredient_id, quantity, ingredients(name, unit_cost, usage_unit))`)
+        .eq('brand_id', brandId)
         .order('name');
       if (error) throw error;
       setRecipes(data || []);
@@ -119,12 +130,14 @@ export default function AdminRecipes() {
         name: formData.name.trim(), 
         description: formData.description, 
         target_price: parseFloat(formData.target_price) || 0, 
-        total_cost: totalCost 
+        total_cost: totalCost,
+        brand_id: brandId
       };
 
       if (editingRecipe) {
-        const { error } = await supabase.from('recipes').update(recipeData).eq('id', recipeId);
+        const { error } = await supabase.from('recipes').update(recipeData).eq('id', recipeId).eq('brand_id', brandId);
         if (error) throw error;
+        // The recipe_ingredients table usually doesn't have brand_id but relies on recipe_id RLS
         await supabase.from('recipe_ingredients').delete().eq('recipe_id', recipeId);
       } else {
         const { data: newRec, error } = await supabase.from('recipes').insert([recipeData]).select().single();
@@ -140,12 +153,12 @@ export default function AdminRecipes() {
       }
 
       // Sincronización de Costos hacia Productos
-      const { data: linkedProducts } = await supabase.from('products').select('id, price').eq('recipe_id', recipeId);
+      const { data: linkedProducts } = await supabase.from('products').select('id, price').eq('recipe_id', recipeId).eq('brand_id', brandId);
       if (linkedProducts && linkedProducts.length > 0) {
         const productUpdates = linkedProducts.map(p => {
           const pPrice = parseFloat(p.price) || 0;
           const newMargin = pPrice > 0 ? ((pPrice - totalCost) / pPrice) * 100 : 0;
-          return supabase.from('products').update({ cost: totalCost, margin: newMargin }).eq('id', p.id);
+          return supabase.from('products').update({ cost: totalCost, margin: newMargin }).eq('id', p.id).eq('brand_id', brandId);
         });
         await Promise.all(productUpdates);
       }
@@ -160,7 +173,7 @@ export default function AdminRecipes() {
   };
 
   const handleDelete = async (id) => {
-    const { error } = await supabase.from('recipes').delete().eq('id', id);
+    const { error } = await supabase.from('recipes').delete().eq('id', id).eq('brand_id', brandId);
     if (error) { toast('Error al eliminar'); return; }
     setRecipes(prev => prev.filter(r => r.id !== id));
     toast('Receta eliminada');

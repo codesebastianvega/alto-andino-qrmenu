@@ -7,6 +7,7 @@ import {
   TableContainer, Th, SearchInput, SelectInput,
   Modal, ModalHeader, FormField, TextInput
 } from '../components/admin/ui';
+import { Icon } from '@iconify-icon/react';
 
 const TrashIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -25,19 +26,19 @@ export default function AdminModifiers() {
   const [activeTab, setActiveTab] = useState('inventario');
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-8 w-full max-w-[1600px] mx-auto space-y-8 animate-fade-in">
       {/* Tabs area starts directly */}
 
       {/* Sub-tabs */}
-      <div className="flex gap-1 mb-6 border-b border-gray-200">
+      <div className="flex bg-gray-50 p-1.5 mb-8 rounded-2xl w-fit mx-auto border border-gray-100 shadow-sm">
         {TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2.5 text-sm font-semibold transition-all border-b-2 -mb-px ${
+            className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
               activeTab === tab.id
-                ? 'text-[#2f4131] border-[#2f4131]'
-                : 'text-gray-500 border-transparent hover:text-gray-700'
+                ? 'bg-white text-[#2f4131] shadow-md border border-gray-100'
+                : 'text-gray-400 hover:text-gray-600'
             }`}
           >
             {tab.label}
@@ -95,7 +96,7 @@ function GestionSharedTab() {
 function InsumosTab() {
   const {
     ingredients, loading, fetchIngredients,
-    createIngredient, updateIngredient, deleteIngredient
+    createIngredient, updateIngredient, deleteIngredient, toggleIngredientStatus
   } = useAdminIngredients();
 
   const { categories } = useIngredientCategories();
@@ -134,6 +135,29 @@ function InsumosTab() {
     ingredients.filter(i => !i.unit_cost || i.unit_cost === 0).length,
     [ingredients]
   );
+
+  const totalInventoryValue = useMemo(() => 
+    ingredients.reduce((sum, i) => sum + ((i.unit_cost || 0) * (i.stock_current || 0)), 0),
+    [ingredients]
+  );
+
+  const lowStockCount = useMemo(() => 
+    ingredients.filter(i => i.stock_current <= i.stock_min).length,
+    [ingredients]
+  );
+
+  const formatRelativeTime = (dateString) => {
+    if (!dateString) return 'Nunca';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (diffInSeconds < 60) return 'Hace un momento';
+    if (diffInSeconds < 3600) return `Hace ${Math.floor(diffInSeconds / 60)}m`;
+    if (diffInSeconds < 86400) return `Hace ${Math.floor(diffInSeconds / 3600)}h`;
+    if (diffInSeconds < 604800) return `Hace ${Math.floor(diffInSeconds / 86400)}d`;
+    return date.toLocaleDateString();
+  };
 
   const filtered = useMemo(() =>
     ingredients.filter(i => {
@@ -250,60 +274,114 @@ function InsumosTab() {
 
   return (
     <>
-      {/* Stats / alert bar */}
-      {zeroCostCount > 0 && (
-        <div className="mb-4 flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-xl">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-              </svg>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-slide-up">
+        {/* Total Insumos */}
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-[#2f4131]/10 rounded-2xl flex items-center justify-center text-[#2f4131] group-hover:scale-110 transition-transform">
+              <Icon icon="heroicons:archive-box" className="text-2xl" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-amber-900">
-                {zeroCostCount} insumo{zeroCostCount !== 1 ? 's' : ''} sin precio definido
-              </p>
-              <p className="text-[12px] text-amber-600 font-medium">Esto afecta el cálculo de márgenes en recetas.</p>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Total Insumos</p>
+              <h4 className="text-2xl font-black text-gray-900">{ingredients.length}</h4>
             </div>
           </div>
-          <button
-            onClick={() => setShowZeroOnly(v => !v)}
-            className={`px-4 py-2 rounded-lg text-[12px] font-semibold transition-all ${
-              showZeroOnly
-                ? 'bg-amber-500 text-white shadow-inner'
-                : 'bg-white border border-amber-300 text-amber-700 hover:bg-amber-100'
-            }`}
-          >
-            {showZeroOnly ? '✓ Mostrando solo sin precio' : 'Ver solo sin precio'}
-          </button>
         </div>
-      )}
 
-      {/* Toolbar */}
-      <div className="flex flex-col md:flex-row gap-3 mb-5">
-        <div className="flex-1">
-          <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre o SKU…" />
+        {/* Alertas Stock */}
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 ${lowStockCount > 0 ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+              <Icon icon={lowStockCount > 0 ? "heroicons:exclamation-triangle" : "heroicons:check-badge"} className="text-2xl" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Alertas de Stock</p>
+              <h4 className={`text-2xl font-black ${lowStockCount > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>{lowStockCount}</h4>
+            </div>
+          </div>
         </div>
-        <SelectInput value={catFilter} onChange={e => setCatFilter(e.target.value)} className="w-full md:w-48">
-          <option value="all">Todas las categorías</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </SelectInput>
-        <PrimaryButton onClick={openCreate}>+ Nuevo insumo</PrimaryButton>
+
+        {/* Valor Inventario */}
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+              <Icon icon="heroicons:currency-dollar" className="text-2xl" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Valor Inventario</p>
+              <h4 className="text-2xl font-black text-gray-900">
+                ${totalInventoryValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </h4>
+            </div>
+          </div>
+        </div>
+
+        {/* Sin Costo */}
+        <div className={`${zeroCostCount > 0 ? 'bg-amber-50 border-amber-100' : 'bg-white border-gray-100'} p-6 rounded-[2rem] border shadow-sm hover:shadow-md transition-all group cursor-pointer`} onClick={() => zeroCostCount > 0 && setShowZeroOnly(!showZeroOnly)}>
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 ${zeroCostCount > 0 ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400'} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+              <Icon icon="heroicons:no-symbol" className="text-2xl" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Sin Costo</p>
+              <h4 className={`text-2xl font-black ${zeroCostCount > 0 ? 'text-amber-600' : 'text-gray-900'}`}>{zeroCostCount}</h4>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <TableContainer>
-        <table className="w-full min-w-[900px] border-collapse">
+      {/* Toolbar */}
+      <div className="flex flex-col lg:flex-row items-center justify-between gap-6 mb-8 bg-white p-6 rounded-[1.5rem] shadow-sm border border-gray-100">
+        <div className="flex flex-col sm:flex-row items-center gap-4 flex-1 w-full lg:w-auto">
+          <div className="relative group flex-1 w-full sm:min-w-[300px]">
+            <Icon 
+              icon="heroicons:magnifying-glass" 
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#2f4131] transition-colors" 
+            />
+            <input 
+              type="text" 
+              placeholder="Buscar por nombre o SKU..." 
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2f4131]/20 focus:bg-white transition-all shadow-sm group-hover:border-gray-200"
+            />
+          </div>
+          <div className="relative group w-full sm:w-64">
+             <Icon 
+              icon="heroicons:funnel" 
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#2f4131] transition-colors" 
+            />
+            <select 
+              value={catFilter} 
+              onChange={e => setCatFilter(e.target.value)}
+              className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2f4131]/20 focus:bg-white transition-all shadow-sm group-hover:border-gray-200 appearance-none"
+            >
+              <option value="all">Todas las categorías</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <Icon icon="heroicons:chevron-down" className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
+        <PrimaryButton onClick={openCreate} className="h-11 px-6 w-full lg:w-auto">
+          <Icon icon="heroicons:plus-circle" className="text-xl mr-2" />
+          Nuevo Insumo
+        </PrimaryButton>
+      </div>
+
+      <TableContainer className="rounded-[1.5rem] border border-gray-100 shadow-sm overflow-hidden bg-white">
+        <table className="w-full min-w-[1000px] border-collapse">
           <thead>
-            <tr>
-              <Th>Insumo</Th>
-              <Th>Status / Categoría</Th>
-              <Th>Costo/unidad</Th>
-              <Th>Stock</Th>
-              <Th right>Acciones</Th>
+            <tr className="bg-gray-50/50">
+              <Th className="py-4 pl-8">Insumo / SKU</Th>
+              <Th className="py-4">Categoría / Prov.</Th>
+              <Th className="py-4">Costo Unit.</Th>
+              <Th className="py-4">Stock / Alerta</Th>
+              <Th className="py-4">Valor Stock</Th>
+              <Th className="py-4">Última Act.</Th>
+              <Th right className="py-4 pr-8">Acciones</Th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-gray-100">
             {filtered.map(item => {
               const cat      = categories.find(c => c.id === item.category_id);
               const stockLow = item.stock_current <= item.stock_min;
@@ -314,18 +392,23 @@ function InsumosTab() {
               // ── Delete confirmation row
               if (isDelConf) return (
                 <tr key={item.id}>
-                  <td colSpan={6} className="px-5 py-3 bg-red-50">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-red-700">
-                        ¿Eliminar <strong>"{item.name}"</strong>? Esta acción no se puede deshacer.
-                      </p>
+                  <td colSpan={6} className="px-8 py-4 bg-red-50/50">
+                    <div className="flex items-center justify-between animate-fade-in">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center text-red-600">
+                          <Icon icon="heroicons:trash" />
+                        </div>
+                        <p className="text-sm font-bold text-red-700">
+                          ¿Eliminar <span className="underline decoration-red-200 decoration-2">{item.name}</span> del inventario?
+                        </p>
+                      </div>
                       <div className="flex gap-2">
                         <button onClick={() => { deleteIngredient(item.id); setConfirmDelete(null); }}
-                          className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-[12px] font-semibold hover:bg-red-700 transition-all">
-                          Eliminar
+                          className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 shadow-sm transition-all">
+                          Sí, Eliminar
                         </button>
                         <button onClick={() => setConfirmDelete(null)}
-                          className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-[12px] font-semibold hover:bg-gray-50 transition-all">
+                          className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:bg-gray-50 transition-all">
                           Cancelar
                         </button>
                       </div>
@@ -406,81 +489,118 @@ function InsumosTab() {
 
               // ── Normal row
               return (
-                <tr key={item.id} className={`group transition-colors ${
-                  hasZero ? 'hover:bg-amber-50/30 bg-amber-50/10' : 'hover:bg-gray-50/60'
-                }`}>
-                  <td className="px-5 py-3.5">
-                    <p className="text-sm font-semibold text-gray-900">{item.name}</p>
-                    <p className="text-[11px] text-gray-400 font-medium capitalize mt-0.5">
-                      {item.usage_unit || 'unidad'}
-                      {item.sku && <span className="ml-2 font-mono text-[10px] text-gray-300 bg-gray-50 px-1.5 py-0.5 rounded">{item.sku}</span>}
-                    </p>
+                <tr key={item.id} className={`group transition-all ${
+                  hasZero ? 'bg-amber-50/5 hover:bg-amber-50/20' : 'hover:bg-gray-50/80'
+                } ${!item.is_active ? 'opacity-60 grayscale-[0.5]' : ''}`}>
+                  {/* Name column */}
+                  <td className="py-5 pl-8">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm ${
+                        item.is_active ? 'bg-[#2f4131]/10 text-[#2f4131]' : 'bg-gray-100 text-gray-400'
+                      }`}>
+                        {item.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-gray-900 truncate max-w-[200px]">{item.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                           <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{item.usage_unit || 'unidad'}</span>
+                           {item.sku && (
+                             <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-mono font-bold">
+                               {item.sku}
+                             </span>
+                           )}
+                        </div>
+                      </div>
+                    </div>
                   </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex flex-col gap-1 items-start">
-                      <Badge variant="gray">{cat?.name || 'Sin categ.'}</Badge>
-                      {stockLow ? (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 mt-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                          BAJO STOCK
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 mt-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          OK
-                        </span>
+
+                  {/* Category / Provider column */}
+                  <td className="py-5">
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2">
+                         <span className="px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-wider border border-gray-200">
+                           {cat?.name || 'Sin Categ.'}
+                         </span>
+                      </div>
+                      {item.provider_id && (
+                        <div className="flex items-center gap-1 text-[10px] text-blue-500 font-bold uppercase tracking-wider">
+                           <Icon icon="heroicons:truck" className="text-xs" />
+                           {providers.find(p => p.id === item.provider_id)?.name || 'Proveedor'}
+                        </div>
                       )}
                     </div>
                   </td>
-                  <td className="px-5 py-3.5">
+
+                  {/* Cost column */}
+                  <td className="py-5">
                     {hasZero ? (
                       <button
                         onClick={() => openInlineEdit(item)}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg text-[12px] font-semibold transition-all"
+                        className="flex items-center gap-2 px-3 py-1.5 bg-amber-100/50 hover:bg-amber-100 text-amber-700 rounded-xl text-[11px] font-bold transition-all border border-amber-200/50"
                       >
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                          <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                        </svg>
+                        <Icon icon="heroicons:currency-dollar" className="text-sm" />
                         Fijar precio
                       </button>
                     ) : (
-                      <>
-                        <span className="text-sm font-semibold text-gray-900 tabular-nums">
-                          ${(item.unit_cost || 0).toLocaleString()}
+                      <div className="flex flex-col">
+                        <span className="text-sm font-black text-gray-900 tabular-nums">
+                          ${(item.unit_cost || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </span>
-                        <span className="text-[11px] text-gray-400 font-medium ml-1">/{item.usage_unit || 'u'}</span>
-                      </>
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Por {item.usage_unit || 'u'}</span>
+                      </div>
                     )}
                   </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm font-semibold tabular-nums ${stockLow ? 'text-red-500' : 'text-gray-900'}`}>
-                        {item.stock_current}
-                      </span>
-                      <div className="w-10 h-1 rounded-full bg-gray-100 overflow-hidden">
+
+                  {/* Stock column */}
+                  <td className="py-5">
+                    <div className="flex flex-col gap-1.5 max-w-[140px]">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-sm font-black tabular-nums ${stockLow ? 'text-rose-500' : 'text-[#2f4131]'}`}>
+                          {item.stock_current} <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{item.usage_unit}</span>
+                        </span>
+                        {stockLow && (
+                          <span className="flex items-center gap-1 justify-center h-5 w-5 bg-rose-500 text-white rounded-full animate-pulse shadow-lg shadow-rose-200">
+                            <Icon icon="heroicons:exclamation-circle" className="text-xs" />
+                          </span>
+                        )}
+                      </div>
+                      <div className="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden shadow-inner">
                         <div
-                          className={`h-full rounded-full ${stockLow ? 'bg-red-400' : 'bg-green-400'}`}
+                          className={`h-full rounded-full transition-all duration-500 ${stockLow ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]' : 'bg-[#2f4131]'}`}
                           style={{ width: `${Math.min(100, (item.stock_current / Math.max(1, item.stock_min)) * 50)}%` }}
                         />
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3.5 text-right">
+
+                  {/* Valor Stock column */}
+                  <td className="py-5">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-black text-gray-900 tabular-nums">
+                        ${((item.unit_cost || 0) * (item.stock_current || 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </span>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Valor total</p>
+                    </div>
+                  </td>
+
+                  {/* Last updated column */}
+                  <td className="py-5">
+                    <div className="flex items-center gap-1.5 text-gray-500 font-medium">
+                       <Icon icon="heroicons:clock" className="text-xs" />
+                       <span className="text-xs">{formatRelativeTime(item.updated_at)}</span>
+                    </div>
+                  </td>
+
+                  {/* Actions column */}
+                  <td className="py-5 pr-8 text-right">
                     <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {hasZero && (
-                        <button onClick={() => openInlineEdit(item)}
-                          className="px-3 py-1.5 text-[12px] font-semibold text-amber-600 hover:bg-amber-50 rounded-lg transition-all">
-                          Fijar precio
-                        </button>
-                      )}
                       <button onClick={() => openEdit(item)}
-                        className="px-3 py-1.5 text-[12px] font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
-                        Editar
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all shadow-sm hover:shadow-md bg-white border border-transparent hover:border-blue-100">
+                        <Icon icon="heroicons:pencil-square" className="text-lg" />
                       </button>
                       <button onClick={() => { setConfirmDelete(item.id); setInlineEdit(null); }}
-                        className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all">
-                        <TrashIcon />
+                        className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all shadow-sm hover:shadow-md bg-white border border-transparent hover:border-rose-100">
+                        <Icon icon="heroicons:trash" className="text-lg" />
                       </button>
                     </div>
                   </td>

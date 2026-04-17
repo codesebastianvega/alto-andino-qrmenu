@@ -155,12 +155,34 @@ export function useAdminIngredients() {
     }
   };
 
+  const toggleIngredientStatus = async (id, currentStatus) => {
+    try {
+      const { data, error } = await supabase
+        .from('ingredients')
+        .update({ is_active: !currentStatus })
+        .eq('id', id)
+        .eq('brand_id', activeBrandId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      setIngredients(prev => prev.map(inv => inv.id === id ? data : inv));
+      toast(`Insumo ${!currentStatus ? 'activado' : 'desactivado'}`);
+      return data;
+    } catch (err) {
+      console.error('Error toggling ingredient status:', err);
+      toast('Error al cambiar estado');
+      return null;
+    }
+  };
+
   return {
     ingredients,
     loading,
     fetchIngredients,
     createIngredient,
     updateIngredient,
-    deleteIngredient
+    deleteIngredient,
+    toggleIngredientStatus
   };
 }
