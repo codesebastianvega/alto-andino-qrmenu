@@ -178,10 +178,14 @@
 - [x] **Audit DB:** Verificar columnas `tint_class`, `target_id` y `subcategory` (Completado)
 - [x] **Migración:** Script de extracción de metadata de `categories.js` a Supabase (Completado)
 
-### 8.2 Admin UX - Gestión de Categorías [/]
-- [ ] **Refactor `CategoryForm.jsx`:** Implementar Drag & Drop para subcategorías (@hello-pangea/dnd)
-- [ ] **Estética Dinámica:** Vincular `tint_class` y `accent_color` al formulario
-- [ ] **Preservación:** Asegurar que el selector de `section_type` siga funcional
+### 8.2 Admin UX - Gestión de Categorías ("Casas") [/]
+#### Bloque 1.1: Refactorización de CategoryForm [x]
+- [x] Instalar `@hello-pangea/dnd` para ordenamiento (Hecho)
+- [x] Implementar Drag & Drop para "Habitaciones" (subcategorías)
+- [x] Integrar campos de estilo: `tint_class` y `accent_color`
+- [x] Integrar campo técnico: `target_id` (anclaje ID)
+- [x] Validación visual: Asegurar que el selector de vistas (section_type) siga funcionando
+- [x] Test de persitencia: Guardar y verificar en Supabase Table Editor
 
 ### 8.3 Admin UX - Gestión de Productos
 - [ ] **Filtrado Dinámico:** `ProductForm.jsx` filtrando subcategorías según la categoría elegida

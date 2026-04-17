@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { Icon } from '@iconify-icon/react';
 import { supabase } from '../../config/supabase';
 import { Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButton } from './ui';
 
 export default function CategoryForm({ category, onSave, onCancel }) {
   const [formData, setFormData] = useState({
     name: '', slug: '', icon: '🍽️', sort_order: 0, is_active: true,
-    banner_image_url: '', banner_title: '', banner_description: '', accent_color: '#2f4131',
+    banner_image_url: '', banner_title: '', banner_description: '', 
+    accent_color: '#2f4131', tint_class: 'bg-white', target_id: '',
     available_from: '', available_to: '',
     visibility_config: { 
       days: [0,1,2,3,4,5,6], 
@@ -26,6 +29,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
         sort_order: category.sort_order || 0, is_active: category.is_active !== false,
         banner_image_url: category.banner_image_url || '', banner_title: category.banner_title || '',
         banner_description: category.banner_description || '', accent_color: category.accent_color || '#2f4131',
+        tint_class: category.tint_class || 'bg-white', target_id: category.target_id || '',
         available_from: category.available_from || '', available_to: category.available_to || '',
         visibility_config: category.visibility_config || { 
           days: [0,1,2,3,4,5,6], 
@@ -110,6 +114,22 @@ export default function CategoryForm({ category, onSave, onCancel }) {
     }));
   };
 
+  const onDragEnd = (result) => {
+    if (!result.destination) return;
+    
+    const items = Array.from(formData.visibility_config.subcategories || []);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    setFormData(prev => ({
+      ...prev,
+      visibility_config: {
+        ...prev.visibility_config,
+        subcategories: items
+      }
+    }));
+  };
+
   return (
     <Modal onClose={onCancel} wide>
       <ModalHeader
@@ -190,12 +210,34 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                 placeholder="Texto llamativo para el banner…"
                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#2f4131] outline-none resize-none" />
             </FormField>
-            <FormField label="Color de acento">
+            <FormField label="Color de acento (UI)">
               <div className="flex gap-2 items-center">
                 <input type="color" name="accent_color" value={formData.accent_color} onChange={handleChange}
                   className="w-10 h-10 rounded-lg border-none cursor-pointer" />
                 <TextInput name="accent_color" value={formData.accent_color} onChange={handleChange} />
               </div>
+            </FormField>
+
+            <FormField label="Clase de tinte (Fondo)">
+              <select 
+                name="tint_class" 
+                value={formData.tint_class}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none"
+              >
+                <option value="bg-white">Blanco (Predeterminado)</option>
+                <option value="bg-amber-50">Ambar (Desayunos)</option>
+                <option value="bg-emerald-50">Esmeralda (Bowls)</option>
+                <option value="bg-violet-50">Violeta (Platos)</option>
+                <option value="bg-rose-50">Rosa (Sándwiches)</option>
+                <option value="bg-pink-50">Fucsia (Smoothies)</option>
+                <option value="bg-sky-50">Cielo (Bebidas)</option>
+                <option value="bg-stone-200">Piedra (Café)</option>
+              </select>
+            </FormField>
+
+            <FormField label="ID de Anclaje (Técnico)">
+              <TextInput name="target_id" value={formData.target_id} onChange={handleChange} placeholder="Ej. section-platos" />
             </FormField>
           </div>
 
@@ -204,34 +246,70 @@ export default function CategoryForm({ category, onSave, onCancel }) {
             <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 pb-1 border-b border-gray-100">
               Organización Interna
             </p>
-            <FormField label="Subcategorías (una por línea)">
-              <div className="space-y-4">
-                <textarea
-                  value={formData.visibility_config?.subcategories?.join('\n') || ''}
-                  onChange={(e) => {
-                    const subs = e.target.value.split('\n').map(s => s.trim()).filter(Boolean);
-                    setFormData({
-                      ...formData,
-                      visibility_config: { ...formData.visibility_config, subcategories: subs }
-                    });
-                  }}
-                  placeholder="Ej:&#10;Clásicos&#10;Especiales&#10;Premium"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#7db87a]/30 transition-all min-h-[120px] outline-none"
-                />
-                
-                <div className="flex flex-wrap gap-2">
-                  {formData.visibility_config?.subcategories?.map(sub => (
-                    <span key={sub} className="inline-flex items-center gap-1.5 px-3 py-1 bg-violet-50 text-violet-700 rounded-xl text-[11px] font-bold border border-violet-100">
-                      {sub}
-                      <button type="button" onClick={() => removeSubcategory(sub)} className="hover:text-violet-900 ml-1 opacity-60 hover:opacity-100">
-                        <Icon icon="heroicons:x-mark" className="text-xs" />
-                      </button>
-                    </span>
-                  ))}
-                  {(!formData.visibility_config?.subcategories || formData.visibility_config.subcategories.length === 0) && (
-                    <p className="text-[11px] text-gray-400 italic px-2">Escribe las subcategorías arriba para organizarlas.</p>
-                  )}
+            <FormField label="Habitaciones (Subcategorías)">
+              <div className="space-y-3">
+                <div className="relative">
+                  <TextInput 
+                    placeholder="Nueva subcategoría..." 
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddSubManual(e.target.value.trim());
+                        e.target.value = '';
+                      }
+                    }}
+                    className="pr-10"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <kbd className="text-[10px] font-sans px-1.5 py-0.5 bg-white border border-gray-200 rounded shadow-sm">Enter</kbd>
+                  </div>
                 </div>
+
+                <DragDropContext onDragEnd={onDragEnd}>
+                  <Droppable droppableId="subcategories">
+                    {(provided) => (
+                      <div 
+                        {...provided.droppableProps} 
+                        ref={provided.innerRef}
+                        className="space-y-1.5 min-h-[50px] max-h-[300px] overflow-y-auto p-1"
+                      >
+                        {formData.visibility_config?.subcategories?.map((sub, index) => (
+                          <Draggable key={sub} draggableId={sub} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                className={`flex items-center justify-between px-4 py-2 bg-white border rounded-xl shadow-sm transition-all ${
+                                  snapshot.isDragging ? 'border-[#2f4131] ring-2 ring-[#2f4131]/10 z-50' : 'border-gray-100'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div {...provided.dragHandleProps} className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing">
+                                    <Icon icon="heroicons:bars-2" />
+                                  </div>
+                                  <span className="text-sm font-semibold text-gray-700">{sub}</span>
+                                </div>
+                                <button 
+                                  type="button" 
+                                  onClick={() => removeSubcategory(sub)}
+                                  className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                >
+                                  <Icon icon="heroicons:trash" />
+                                </button>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                        {(!formData.visibility_config?.subcategories || formData.visibility_config.subcategories.length === 0) && (
+                          <div className="text-center py-6 border-2 border-dashed border-gray-100 rounded-2xl">
+                            <p className="text-[11px] text-gray-400 font-medium italic">Sin subcategorías definidas.</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
               </div>
             </FormField>
             <FormField label="Tipo de sección">
