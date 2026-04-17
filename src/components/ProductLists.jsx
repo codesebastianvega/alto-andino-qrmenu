@@ -181,6 +181,7 @@ export default function ProductLists({
           items={items}
           groups={categoryGroups}
           variant={config.section_type || 'standard'}
+          heroId={config.hero_featured_product_id}
           onCount={(n) => setCount(cat.slug, n)}
           onQuickView={onQuickView}
         />

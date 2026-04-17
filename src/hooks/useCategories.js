@@ -106,7 +106,17 @@ export const useCategories = () => {
       if (error) throw error;
 
       setCategories(prev => 
-        prev.map(c => c.id === id ? data : c).sort((a, b) => a.sort_order - b.sort_order)
+        prev.map(c => {
+          if (c.id === id) {
+            // Preserve calculated counts while applying new data
+            return {
+              ...data,
+              total_products: c.total_products,
+              active_products: c.active_products
+            };
+          }
+          return c;
+        }).sort((a, b) => a.sort_order - b.sort_order)
       );
       toast.success('Categoría actualizada');
       return { success: true, data };

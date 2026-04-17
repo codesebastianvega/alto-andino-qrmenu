@@ -124,6 +124,7 @@ export default function AdminCategories() {
                 <Th>Productos</Th>
                 <Th>Subcats</Th>
                 <Th>Diseño / Vista</Th>
+                <Th>Actualización</Th>
                 <Th>Hero</Th>
                 <Th>Estado</Th>
                 <Th right>Acciones</Th>
@@ -189,25 +190,54 @@ export default function AdminCategories() {
                                 </div>
                               </td>
                               <td className="px-5 py-3.5">
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-bold text-gray-900 leading-tight">{cat.name}</span>
-                                  <span className="text-[10px] font-mono text-gray-400 uppercase tracking-tight mt-0.5">{cat.slug}</span>
-                                </div>
-                              </td>
-                              <td className="px-5 py-3.5">
-                                <div className="flex flex-col gap-1">
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant={(cat.active_products || 0) > 0 ? 'green' : 'gray'}>
-                                      {cat.active_products || 0} activos
-                                    </Badge>
-                                    <span className="text-[10px] text-gray-400 font-medium">de {cat.total_products || 0}</span>
+                                <div className="flex items-center gap-3">
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center gap-1.5">
+                                      <Icon icon="heroicons:folder" className="text-gray-400 text-sm" />
+                                      <span className="text-sm font-extrabold text-gray-900 leading-tight">{cat.name}</span>
+                                    </div>
+                                    <span className="text-[10px] font-mono text-gray-400 uppercase tracking-tighter mt-1 bg-gray-50 w-fit px-1.5 rounded">{cat.slug}</span>
                                   </div>
                                 </div>
                               </td>
                               <td className="px-5 py-3.5">
-                                <Badge variant={(cat.visibility_config?.subcategories?.length || 0) > 0 ? 'blue' : 'gray'}>
-                                  {cat.visibility_config?.subcategories?.length || 0} subcats
-                                </Badge>
+                                <div className="flex flex-col gap-1.5 min-w-[100px]">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[10px] text-gray-400 font-bold uppercase whitespace-nowrap">
+                                      {cat.active_products || 0} / {cat.total_products || 0}
+                                    </span>
+                                    <Badge variant={(cat.active_products || 0) > 0 ? 'green' : 'gray'}>
+                                      Activos
+                                    </Badge>
+                                  </div>
+                                  <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden flex">
+                                    <div 
+                                      className="h-full bg-green-500 transition-all duration-500" 
+                                      style={{ width: `${cat.total_products > 0 ? (cat.active_products / cat.total_products) * 100 : 0}%` }}
+                                    />
+                                    <div 
+                                      className="h-full bg-gray-300 transition-all duration-500" 
+                                      style={{ width: `${cat.total_products > 0 ? ((cat.total_products - cat.active_products) / cat.total_products) * 100 : 0}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                  {(cat.visibility_config?.subcategories || []).slice(0, 3).map((sub, i) => (
+                                    <Badge key={i} variant="blue" className="!text-[9px] !px-1.5 !py-0.5 !font-bold">
+                                      {sub}
+                                    </Badge>
+                                  ))}
+                                  {(cat.visibility_config?.subcategories || []).length > 3 && (
+                                    <Badge variant="gray" className="!text-[9px] !px-1.5 !py-0.5 !font-bold">
+                                      +{(cat.visibility_config.subcategories.length - 3)}
+                                    </Badge>
+                                  )}
+                                  {(!cat.visibility_config?.subcategories || cat.visibility_config.subcategories.length === 0) && (
+                                    <span className="text-[10px] text-gray-300 italic font-medium">Sin subcat.</span>
+                                  )}
+                                </div>
                               </td>
                               <td className="px-5 py-3.5 min-w-[140px]">
                                 <SelectInput 
@@ -224,9 +254,21 @@ export default function AdminCategories() {
                                   <option value="grid">Grid (Ample)</option>
                                   <option value="grid-compact">Grid Compacto</option>
                                   <option value="horizontal-slider">Slider Horizontal</option>
+                                  <option value="bento-grid">Bento Grid (Moderno)</option>
+                                  <option value="masonry">Pinterest / Masonry</option>
                                   <option value="list-minimal">Lista Minimal</option>
                                   <option value="simple-list">Lista Simple</option>
                                 </SelectInput>
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <div className="flex flex-col">
+                                  <span className="text-[11px] font-medium text-gray-600">
+                                    {cat.updated_at ? new Date(cat.updated_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }) : '---'}
+                                  </span>
+                                  <span className="text-[10px] text-gray-400 italic">
+                                    {cat.updated_at ? new Date(cat.updated_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                  </span>
+                                </div>
                               </td>
                               <td className="px-5 py-3.5">
                                 <button 

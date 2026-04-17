@@ -223,20 +223,26 @@
 ## 🟢 BLOQUE 10: Gestión Avanzada de Categorías & Vistas Premium [/]
 > Meta: Interfaz administrativa full-width y nuevas experiencias visuales para el menú.
 
-### 10.1 Admin Categories: Rediseño Full-Width [/]
-- [ ] Modificar `useCategories.js` para incluir conteo de productos (activos / total).
-- [ ] Rediseñar `AdminCategories.jsx` para ocupar el 100% del ancho disponible.
-- [ ] Implementar tabla enriquecida:
-    - [ ] Columna **Banner**: Miniatura de la imagen de cabecera.
-    - [ ] Columna **Productos**: Badge con `activos / total`.
-    - [ ] Columna **Diseño**: Selector (Select) para `section_type` directamente en la fila.
-    - [ ] Columna **Estado**: Quick toggle (Switch) para visibilidad global.
-    - [ ] Columna **Hero**: Toggle para destacar en la página de inicio.
+### 10.1 Admin Categories: Rediseño Full-Width [x]
+- [x] Modificar `useCategories.js` para incluir conteo de productos (activos / total). (Hecho)
+- [x] Rediseñar `AdminCategories.jsx` para ocupar el 100% del ancho disponible. (Hecho)
+- [x] Implementar tabla enriquecida:
+    - [x] Columna **Imagen**: Miniatura o ícono de la categoría.
+    - [x] Columna **Productos**: Badge con `activos / total`.
+    - [x] Columna **Diseño**: Selector (Select) para `section_type` directamente en la fila.
+    - [x] Columna **Estado**: Quick toggle (Switch) para visibilidad global.
+    - [x] Columna **Hero**: Toggle para destacar en la página de inicio.
+    - [x] Fix: ReferenceError `Icon` is not defined (Corrected)
+- [ ] Mejorar visualmente:
+    - [ ] Columna **Última Actualización**: Tiempo relativo de edición.
+    - [ ] Visualización de **Subcategorías**: Badges con contador y lista.
 
-### 10.2 Nuevas Vistas del Menú Público
-- [ ] **Variante `grid-compact`**: Grid de 2 o 3 columnas con tarjetas minimalistas (ideal para bebidas/postres).
-- [ ] **Variante `horizontal-slider`**: Carrusel de desplazamiento horizontal (ideal para destacados o categorías secundarias).
-- [ ] **Variante `list-minimal`**: Lista de solo texto con precio alineado (estilo menú de autor/clásico).
-- [ ] Actualizar `ProductLists.jsx` y `ProductSection.jsx` para soportar estos nuevos `section_type`.
+### 10.2 Nuevas Vistas del Menú Público [/]
+- [x] **Variante `grid-compact`**: Grid de 2 o 3 columnas con tarjetas minimalistas (Hecho).
+- [x] **Variante `horizontal-slider`**: Carrusel de desplazamiento horizontal (Hecho).
+- [x] **Variante `list-minimal`**: Lista de solo texto con precio alineado (Hecho).
+- [/] **Variante `bento-grid`**: Diseño asimétrico moderno (En proceso).
+- [/] **Variante `masonry`**: Diseño tipo Pinterest (En proceso).
+- [x] Actualizar `ProductLists.jsx` y `ProductSection.jsx` para soportar estos nuevos `section_type`.
 - [ ] Asegurar responsividad premium en todas las nuevas variantes.
 

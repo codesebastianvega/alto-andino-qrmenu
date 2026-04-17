@@ -28,7 +28,8 @@ export default function ProductSection({
   includeUnavailable = true, // mostrar aunque available === false
   renderAfter,
   countValue,
-  variant = "standard", // standard, simple-list, grid, wide-grid
+  variant = "standard", // standard, simple-list, grid, wide-grid, bento-grid, masonry
+  heroId = null, // ID of the product to show as hero/featured
   renderEmpty,
 }) {
   const { addItem } = useCart();
@@ -120,7 +121,6 @@ export default function ProductSection({
       gridClasses += " grid-cols-1";
       cardVariant = "minimal";
     } else if (variant === "horizontal-slider") {
-      // Return a horizontal scroll container instead
       return (
         <div className="flex overflow-x-auto gap-4 pb-4 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 scroll-smooth">
           {arr.map((item, i) => {
@@ -138,30 +138,50 @@ export default function ProductSection({
           })}
         </div>
       );
+    } else if (variant === "masonry") {
+      return (
+        <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+          {arr.map((item, i) => {
+            const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
+            return (
+              <div key={safeItem?.id || `${keySeed}-${i}`} className="break-inside-avoid mb-4">
+                <ProductCard
+                  item={safeItem}
+                  variant="standard"
+                  onAdd={(payload) => addItem(payload)}
+                  onQuickView={onQuickView}
+                />
+              </div>
+            );
+          })}
+        </div>
+      );
+    } else if (variant === "bento-grid") {
+      gridClasses = "grid grid-cols-2 md:grid-cols-4 gap-4 auto-rows-min md:auto-rows-[180px]";
     } else {
       gridClasses += " grid-cols-2 lg:grid-cols-3";
     }
-
-    // Find the first item with an image for bento hero on desktop
-    const heroIdx = arr.findIndex(item => {
-      const mapped = typeof mapItem === "function" ? mapItem(item) : item;
-      return mapped?.image || mapped?.image_url;
-    });
 
     return (
       <div className={gridClasses}>
         {arr.map((item, i) => {
           const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
-          const isHero = i === heroIdx && cardVariant === "standard";
+          // Determine if this is the hero: either by ID or first item if it's Bento and we need a default
+          const isHero = variant === "bento-grid" && (heroId ? safeItem.id === heroId : i === 0);
+          
           return (
-            <ProductCard
+            <div 
               key={safeItem?.id || `${keySeed}-${i}`}
-              item={safeItem}
-              variant={cardVariant}
-              isHero={isHero}
-              onAdd={(payload) => addItem(payload)}
-              onQuickView={onQuickView}
-            />
+              className={isHero && variant === "bento-grid" ? "col-span-2 row-span-2" : ""}
+            >
+              <ProductCard
+                item={safeItem}
+                variant={cardVariant}
+                isHero={isHero}
+                onAdd={(payload) => addItem(payload)}
+                onQuickView={onQuickView}
+              />
+            </div>
           );
         })}
       </div>

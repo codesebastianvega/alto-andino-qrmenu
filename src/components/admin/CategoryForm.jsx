@@ -324,6 +324,8 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                 <option value="list-minimal">Lista Minimalista (Texto)</option>
                 <option value="simple-list">Lista Simple (Bebidas)</option>
                 <option value="wide-grid">Cuadrícula Amplia (Fotos grandes)</option>
+                <option value="bento-grid">Bento Grid (Premium)</option>
+                <option value="masonry">Pinterest Masonry (Dinámico)</option>
               </select>
             </FormField>
             
