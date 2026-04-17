@@ -246,3 +246,19 @@
 - [x] Actualizar `ProductLists.jsx` y `ProductSection.jsx` para soportar estos nuevos `section_type`.
 - [ ] Asegurar responsividad premium en todas las nuevas variantes.
 
+### 10.3 Admin Extras: Rediseño Premium & Funcional [x]
+- [x] Modificar `AdminModifierGroups.jsx` para ocupar el 100% del ancho disponible.
+- [x] Implementar **Barra de Búsqueda** dinámica por nombre de grupo.
+- [x] Añadir **Indicador de Uso**: Badge con el conteo de productos vinculados.
+- [x] Implementar funcionalidad de **Duplicar Grupo** (Clone).
+- [x] Mejorar visualización de tarjetas:
+    - [x] Mostrar vista previa de las primeras 3 opciones.
+    - [x] Aplicar efectos hover y sombras premium.
+- [ ] Implementar **Deep Search**: Búsqueda que incluya nombres de opciones.
+- [ ] Implementar **Quick Status Toggle**: Switch de activo/inactivo en tarjeta.
+
+### 10.4 Refinamientos de UI & UX
+- [ ] **Admin Categories**: Implementar tiempo relativo (Hace X min) en columna de actualización.
+- [ ] **Product Form**: Unificar estilos del selector de subcategorías con el sistema de diseño.
+- [ ] **Public Menu**: Optimizar `ProductCard.jsx` para soporte premium de Bento y Masonry.
+

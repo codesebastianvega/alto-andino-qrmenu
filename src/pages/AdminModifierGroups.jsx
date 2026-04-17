@@ -5,9 +5,10 @@ import { useIngredientCategories } from '../hooks/useIngredientCategories';
 import { PageHeader, PrimaryButton, SecondaryButton, Modal, ModalHeader, FormField, TextInput } from '../components/admin/ui';
 import { Icon } from '@iconify-icon/react';
 import EmojiPicker from 'emoji-picker-react';
+import { toast } from '../components/Toast';
 
 export default function AdminModifierGroups() {
-  const { modifierGroups, fetchModifierGroups, createGroup, updateGroup, deleteGroup, createOption, updateOption, deleteOption } = useAdminModifierGroups();
+  const { modifierGroups, fetchModifierGroups, createGroup, updateGroup, deleteGroup, duplicateGroup, createOption, updateOption, deleteOption } = useAdminModifierGroups();
   const { ingredients, fetchIngredients } = useAdminIngredients();
   const { categories } = useIngredientCategories();
   
@@ -15,6 +16,7 @@ export default function AdminModifierGroups() {
   const [editingGroup, setEditingGroup] = useState(null);
   const [groupForm, setGroupForm] = useState({ name: '', description: '', is_required: false, min_select: 0, max_select: 1, is_submodifier: false });
   const [activeTab, setActiveTab] = useState('main');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [isOptionModalOpen, setIsOptionModalOpen] = useState(false);
   const [activeGroupId, setActiveGroupId] = useState(null);
@@ -102,75 +104,135 @@ export default function AdminModifierGroups() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-fade-in">
-      <div className="bg-white rounded-[2rem] p-8 mt-6">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-[#2f4131]">Extras y Modificadores</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Configura las opciones que complementan o alteran tus platos.
-            </p>
+    <div className="p-8 w-full space-y-8 animate-fade-in overflow-x-hidden">
+      <div className="bg-white rounded-[2rem] p-8 mt-6 shadow-sm border border-gray-100">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-[#2f4131]/10 rounded-2xl flex items-center justify-center text-[#2f4131]">
+              <Icon icon="heroicons:sparkles" className="text-2xl" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-[#2f4131]">Extras y Modificadores</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Configura las opciones que complementan o alteran tus platos.
+              </p>
+            </div>
           </div>
-          <PrimaryButton onClick={() => handleOpenGroup()}>
-            + Crear Grupo
-          </PrimaryButton>
+          
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="relative group min-w-[300px]">
+              <Icon 
+                icon="heroicons:magnifying-glass" 
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#2f4131] transition-colors" 
+              />
+              <input 
+                type="text" 
+                placeholder="Buscar grupo..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2f4131]/20 focus:bg-white transition-all shadow-sm group-hover:border-gray-200"
+              />
+            </div>
+            <PrimaryButton onClick={() => handleOpenGroup()} className="h-[42px] px-6">
+              <Icon icon="heroicons:plus-circle" className="text-xl mr-2" />
+              Crear Grupo
+            </PrimaryButton>
+          </div>
         </div>
 
-        <div className="flex bg-gray-100 p-1 mb-8 rounded-xl w-fit mx-auto border border-gray-200">
+        <div className="flex bg-gray-50 p-1.5 mb-8 rounded-2xl w-fit mx-auto border border-gray-100">
           <button
             onClick={() => setActiveTab('main')}
-            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'main' ? 'bg-white text-[#2f4131] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'main' ? 'bg-white text-[#2f4131] shadow-md border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
           >
+            <Icon icon="heroicons:list-bullet" className={activeTab === 'main' ? 'text-[#2f4131]' : 'text-gray-400'} />
             Modificadores Principales
           </button>
           <button
             onClick={() => setActiveTab('sub')}
-            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'sub' ? 'bg-white text-[#2f4131] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'sub' ? 'bg-white text-[#2f4131] shadow-md border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
           >
+            <Icon icon="heroicons:tag" className={activeTab === 'sub' ? 'text-[#2f4131]' : 'text-gray-400'} />
             Sub-Modificadores (Atributos)
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
           {modifierGroups
             .filter(group => activeTab === 'sub' ? group.is_submodifier : !group.is_submodifier)
+            .filter(group => group.name.toLowerCase().includes(searchTerm.toLowerCase()))
             .map((group) => (
-            <div key={group.id} className="border border-gray-100 rounded-2xl p-6 bg-gray-50 flex flex-col h-full shadow-sm">
+            <div key={group.id} className="group relative border border-gray-100 rounded-3xl p-6 bg-gray-50/50 flex flex-col h-full hover:bg-white hover:shadow-xl hover:shadow-[#2f4131]/5 transition-all duration-300 border-b-4 hover:border-b-[#2f4131]/20">
               <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-bold text-gray-900 text-lg">{group.name}</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">{group.description}</p>
+                <div className="min-w-0 pr-8">
+                  <h3 className="font-bold text-gray-900 text-lg truncate group-hover:text-[#2f4131] transition-colors">{group.name}</h3>
+                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{group.description || 'Sin descripción'}</p>
                 </div>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => handleOpenGroup(group)} className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors">
+                <div className="absolute top-6 right-6 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button 
+                    onClick={() => duplicateGroup(group)} 
+                    className="p-1.5 bg-white text-gray-400 hover:text-emerald-600 rounded-lg shadow-sm border border-gray-100 transition-all hover:scale-110"
+                    title="Duplicar Grupo"
+                  >
+                    <Icon icon="heroicons:document-duplicate" className="text-lg" />
+                  </button>
+                  <button 
+                    onClick={() => handleOpenGroup(group)} 
+                    className="p-1.5 bg-white text-gray-400 hover:text-blue-600 rounded-lg shadow-sm border border-gray-100 transition-all hover:scale-110"
+                  >
                     <Icon icon="heroicons:pencil-square" className="text-lg" />
                   </button>
-                  <button onClick={() => deleteGroup(group.id)} className="p-1.5 text-gray-400 hover:text-red-600 transition-colors">
+                  <button 
+                    onClick={() => deleteGroup(group.id)} 
+                    className="p-1.5 bg-white text-gray-400 hover:text-red-600 rounded-lg shadow-sm border border-gray-100 transition-all hover:scale-110"
+                  >
                     <Icon icon="heroicons:trash" className="text-lg" />
                   </button>
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2 mb-4">
-                <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border ${group.is_required ? 'bg-red-50 text-red-600 border-red-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+              <div className="flex flex-wrap gap-2 mb-5">
+                <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border shadow-sm ${group.is_required ? 'bg-red-50 text-red-600 border-red-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
                   {group.is_required ? 'Obligatorio' : 'Opcional'}
                 </span>
-                <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-blue-50 text-blue-600 border border-blue-200">
+                <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm">
                   Min {group.min_select} · Max {group.max_select}
                 </span>
+                {group.usage_count > 0 && (
+                  <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-violet-50 text-violet-600 border border-violet-100 shadow-sm flex items-center gap-1">
+                    <Icon icon="heroicons:shopping-bag" />
+                    {group.usage_count} {group.usage_count === 1 ? 'Producto' : 'Productos'}
+                  </span>
+                )}
               </div>
 
-              <div className="flex-1 space-y-2 mt-2 border-t border-gray-200 pt-4">
+              <div className="flex-1 space-y-2 mt-2 border-t border-gray-100 pt-5">
+                {!expandedGroups[group.id] && group.options?.length > 0 && (
+                  <div className="mb-4 space-y-1.5 animate-slide-up">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Vista previa opciones</p>
+                    {group.options.slice(0, 3).map(opt => (
+                      <div key={opt.id} className="flex items-center gap-2 text-[11px] text-gray-600 px-2 py-1 bg-white/40 rounded-lg border border-gray-50">
+                        <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                        <span className="font-medium truncate">{opt.name}</span>
+                        <span className="ml-auto font-black text-[#2f4131]/40">${opt.price || 0}</span>
+                      </div>
+                    ))}
+                    {group.options.length > 3 && (
+                      <p className="text-[10px] text-[#2f4131] font-bold mt-1 ml-2">+ {group.options.length - 3} opciones más...</p>
+                    )}
+                  </div>
+                )}
+
                 <button 
                   onClick={() => toggleGroup(group.id)}
-                  className="w-full flex items-center justify-between text-left group"
+                  className={`w-full flex items-center justify-between text-left p-2 rounded-xl transition-all ${expandedGroups[group.id] ? 'bg-[#2f4131] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'}`}
                 >
-                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider group-hover:text-gray-600 transition-colors">
-                    Opciones ({group.options?.length || 0})
+                  <p className="text-[10px] font-black uppercase tracking-widest ml-1">
+                    Gestionar Opciones ({group.options?.length || 0})
                   </p>
                   <Icon 
                     icon="heroicons:chevron-down" 
-                    className={`text-gray-400 transition-transform ${expandedGroups[group.id] ? 'rotate-180' : ''}`} 
+                    className={`text-lg transition-transform ${expandedGroups[group.id] ? 'rotate-180' : ''}`} 
                   />
                 </button>
                 
