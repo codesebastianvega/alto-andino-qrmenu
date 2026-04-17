@@ -86,25 +86,26 @@ export default function CategoryForm({ category, onSave, onCancel }) {
     const trimmedValue = value?.trim();
     if (!trimmedValue) return;
     
-    const currentSubs = formData.visibility_config?.subcategories || [];
-    if (currentSubs.includes(trimmedValue)) return;
-    
-    setFormData(prev => ({
-      ...prev,
-      visibility_config: {
-        ...prev.visibility_config,
-        subcategories: [...currentSubs, trimmedValue]
-      }
-    }));
+    setFormData(prev => {
+      const currentSubs = prev.visibility_config?.subcategories || [];
+      if (currentSubs.includes(trimmedValue)) return prev;
+      
+      return {
+        ...prev,
+        visibility_config: {
+          ...prev.visibility_config,
+          subcategories: [...currentSubs, trimmedValue]
+        }
+      };
+    });
   };
-
 
   const removeSubcategory = (sub) => {
     setFormData(prev => ({
       ...prev,
       visibility_config: {
         ...prev.visibility_config,
-        subcategories: prev.visibility_config.subcategories.filter(s => s !== sub)
+        subcategories: (prev.visibility_config?.subcategories || []).filter(s => s !== sub)
       }
     }));
   };
@@ -112,17 +113,19 @@ export default function CategoryForm({ category, onSave, onCancel }) {
   const onDragEnd = (result) => {
     if (!result.destination) return;
     
-    const items = Array.from(formData.visibility_config.subcategories || []);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
+    setFormData(prev => {
+      const items = Array.from(prev.visibility_config?.subcategories || []);
+      const [reorderedItem] = items.splice(result.source.index, 1);
+      items.splice(result.destination.index, 0, reorderedItem);
 
-    setFormData(prev => ({
-      ...prev,
-      visibility_config: {
-        ...prev.visibility_config,
-        subcategories: items
-      }
-    }));
+      return {
+        ...prev,
+        visibility_config: {
+          ...prev.visibility_config,
+          subcategories: items
+        }
+      };
+    });
   };
 
   return (
