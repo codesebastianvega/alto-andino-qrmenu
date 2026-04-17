@@ -117,6 +117,28 @@ export default function AdminRecipes() {
     ? ((formData.target_price - totalCost) / formData.target_price) * 100
     : 0;
 
+  // Global metrics for Hero Section
+  const statsMetrics = useMemo(() => {
+    if (!recipes.length) return { avgMargin: 0, totalInvestment: 0, criticalCount: 0 };
+    
+    let totalInv = 0;
+    let sumMargins = 0;
+    let criticals = 0;
+
+    recipes.forEach(r => {
+      totalInv += (r.total_cost || 0);
+      const m = r.target_price > 0 ? ((r.target_price - r.total_cost) / r.target_price) * 100 : 0;
+      sumMargins += m;
+      if (m < 30) criticals++;
+    });
+
+    return {
+      avgMargin: sumMargins / recipes.length,
+      totalInvestment: totalInv,
+      criticalCount: criticals
+    };
+  }, [recipes]);
+
   const handleSave = async (e) => {
     e.preventDefault();
     try {
@@ -185,6 +207,64 @@ export default function AdminRecipes() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-slide-up">
+        {/* Total Recetas */}
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform">
+              <Icon icon="heroicons:book-open" className="text-2xl" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Total Recetas</p>
+              <h4 className="text-2xl font-black text-gray-900">{recipes.length}</h4>
+            </div>
+          </div>
+        </div>
+
+        {/* Inversión Menú */}
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+              <Icon icon="heroicons:shopping-cart" className="text-2xl" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Inversión Menú</p>
+              <h4 className="text-2xl font-black text-gray-900">
+                ${statsMetrics.totalInvestment.toLocaleString('es-CO', { maximumFractionDigits: 0 })}
+              </h4>
+            </div>
+          </div>
+        </div>
+
+        {/* Margen Promedio */}
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 ${statsMetrics.avgMargin > 40 ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+              <Icon icon="heroicons:chart-bar" className="text-2xl" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Margen Prom.</p>
+              <h4 className={`text-2xl font-black ${statsMetrics.avgMargin > 40 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                {statsMetrics.avgMargin.toFixed(1)}%
+              </h4>
+            </div>
+          </div>
+        </div>
+
+        {/* Alertas Críticas */}
+        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 ${statsMetrics.criticalCount > 0 ? 'bg-rose-100 text-rose-600' : 'bg-gray-100 text-gray-400'} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+              <Icon icon="heroicons:exclamation-circle" className="text-2xl" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Alertas Críticas</p>
+              <h4 className={`text-2xl font-black ${statsMetrics.criticalCount > 0 ? 'text-rose-500' : 'text-gray-900'}`}>{statsMetrics.criticalCount}</h4>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <PageHeader
         badge="Producción"
         title="Recetas"
@@ -222,33 +302,43 @@ export default function AdminRecipes() {
                 </tr>
               </thead>
               <tbody>
-                {recipes.map(recipe => (
-                  <tr key={recipe.id} className="group hover:bg-gray-50/50 transition-colors border-b last:border-0 border-gray-50 text-sm font-medium">
-                    <td className="px-5 py-3">
-                      <p className="text-gray-900 font-semibold">{recipe.name}</p>
-                      <p className="text-[12px] text-gray-400 mt-0.5 max-w-[200px] truncate">{recipe.description || 'Sin notas'}</p>
-                    </td>
-                    <td className="px-5 py-3">
-                      <Badge variant="blue">{recipe.recipe_ingredients?.length || 0} insumos</Badge>
-                    </td>
-                    <td className="px-5 py-3 hidden md:table-cell text-gray-500">
-                      {(recipe.target_price || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
-                    </td>
-                    <td className="px-5 py-3 text-right text-[#2f4131] font-semibold">
-                      {(recipe.total_cost || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleOpenModal(recipe)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all">
-                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
-                        <button onClick={() => handleDelete(recipe.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-all">
-                           <TrashIcon />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {recipes.map(recipe => {
+                  const m = recipe.target_price > 0 ? ((recipe.target_price - recipe.total_cost) / recipe.target_price) * 100 : 0;
+                  return (
+                    <tr key={recipe.id} className="group hover:bg-gray-50/50 transition-colors border-b last:border-0 border-gray-50 text-sm font-medium">
+                      <td className="px-5 py-3">
+                        <p className="text-gray-900 font-semibold">{recipe.name}</p>
+                        <p className="text-[12px] text-gray-400 mt-0.5 max-w-[200px] truncate">{recipe.description || 'Sin notas'}</p>
+                      </td>
+                      <td className="px-5 py-3">
+                        <Badge variant="blue">{recipe.recipe_ingredients?.length || 0} insumos</Badge>
+                      </td>
+                      <td className="px-5 py-3 hidden md:table-cell text-gray-500">
+                        {(recipe.target_price || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <div className="flex flex-col items-end">
+                          <span className="text-[#2f4131] font-bold">
+                            {(recipe.total_cost || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
+                          </span>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider ${m > 30 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {m.toFixed(1)}% Margen
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleOpenModal(recipe)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all">
+                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </button>
+                          <button onClick={() => handleDelete(recipe.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-all">
+                             <TrashIcon />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -257,49 +347,76 @@ export default function AdminRecipes() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {recipes.map(recipe => {
             const ingredients = recipe.recipe_ingredients || [];
+            const m = recipe.target_price > 0 ? ((recipe.target_price - recipe.total_cost) / recipe.target_price) * 100 : 0;
+            
             return (
               <div key={recipe.id}
-                className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col group hover:border-gray-300 hover:shadow-md transition-all">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-base font-semibold text-gray-900 leading-tight">{recipe.name}</h3>
-                    <p className="text-[12px] text-gray-400 font-medium mt-0.5">{ingredients.length} insumos</p>
+                className="bg-white rounded-[2rem] border border-gray-100 p-7 flex flex-col group hover:border-[#2f4131]/20 hover:shadow-xl hover:shadow-[#2f4131]/5 transition-all duration-500 relative overflow-hidden">
+                
+                {/* Profitability Badge */}
+                <div className="absolute top-0 right-0">
+                  <div className={`px-5 py-2 rounded-bl-2xl text-[10px] font-black uppercase tracking-widest ${
+                    m > 45 ? 'bg-emerald-500 text-white' : 
+                    m > 30 ? 'bg-amber-400 text-white' : 
+                    'bg-rose-500 text-white'
+                  }`}>
+                    {m > 45 ? 'Rentable' : m > 30 ? 'Margen Medio' : 'Margen Bajo'}
                   </div>
-                  <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                </div>
+
+                <div className="flex justify-between items-start mb-6 pt-2">
+                  <div className="min-w-0 pr-4">
+                    <h3 className="text-lg font-black text-gray-900 leading-tight truncate group-hover:text-[#2f4131] transition-colors">{recipe.name}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ficha Técnica</span>
+                      <div className="w-1 h-1 bg-gray-300 rounded-full" />
+                      <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">{ingredients.length} Items</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 mb-8 flex-1">
+                  {ingredients.slice(0, 3).map(ri => (
+                    <div key={ri.id} className="flex justify-between items-center bg-gray-50/50 group-hover:bg-white border border-transparent group-hover:border-gray-100 rounded-xl px-3 py-2 transition-all">
+                      <span className="text-[13px] text-gray-600 font-bold truncate max-w-[140px]">{ri.ingredients?.name}</span>
+                      <span className="text-[11px] text-gray-400 font-black tabular-nums">×{ri.quantity}</span>
+                    </div>
+                  ))}
+                  {ingredients.length > 3 && (
+                    <p className="text-[10px] text-gray-300 font-bold text-center py-1 uppercase tracking-widest">… {ingredients.length - 3} ingredientes más</p>
+                  )}
+                  {ingredients.length === 0 && (
+                    <p className="text-[12px] text-gray-300 italic text-center py-6 bg-gray-50/30 rounded-2xl border border-dashed border-gray-100">Sin insumos configurados.</p>
+                  )}
+                </div>
+
+                <div className="pt-6 border-t border-gray-100">
+                  <div className="flex justify-between items-center mb-4">
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Precio Objetivo</p>
+                      <p className="text-sm font-black text-gray-400 line-through decoration-rose-500/20 tabular-nums">
+                        ${(recipe.target_price || 0).toLocaleString('es-CO', { maximumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-0.5">Costo Real</p>
+                      <p className="text-xl font-black text-[#2f4131] tabular-nums">
+                        ${(recipe.total_cost || 0).toLocaleString('es-CO', { maximumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
                     <button onClick={() => handleOpenModal(recipe)}
-                      className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                      </svg>
+                      className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-[#2f4131] transition-all flex items-center justify-center gap-2">
+                      <Icon icon="heroicons:pencil-square" />
+                      Editar
                     </button>
                     <button onClick={() => handleDelete(recipe.id)}
-                      className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-all">
+                      className="p-2.5 text-rose-500 bg-rose-50 rounded-xl hover:bg-rose-100 transition-all">
                       <TrashIcon />
                     </button>
                   </div>
-                </div>
-
-                <div className="space-y-1.5 mb-5 flex-1">
-                  {ingredients.slice(0, 4).map(ri => (
-                    <div key={ri.id} className="flex justify-between items-center bg-gray-50/50 rounded-lg px-2 py-1.5">
-                      <span className="text-[13px] text-gray-600 font-medium truncate max-w-[150px]">{ri.ingredients?.name}</span>
-                      <span className="text-[11px] text-gray-400 font-mono">×{ri.quantity} {ri.ingredients?.usage_unit}</span>
-                    </div>
-                  ))}
-                  {ingredients.length > 4 && (
-                    <p className="text-[11px] text-gray-300 font-medium text-center py-1 bg-gray-50/30 rounded-lg">… y {ingredients.length - 4} más</p>
-                  )}
-                  {ingredients.length === 0 && (
-                    <p className="text-[12px] text-gray-300 italic text-center py-4 bg-gray-50/30 rounded-lg border border-dashed border-gray-100">Sin insumos añadidos.</p>
-                  )}
-                </div>
-
-                <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
-                  <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Costo total</span>
-                  <span className="text-base font-semibold text-[#2f4131]">
-                    {recipe.total_cost?.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
-                  </span>
                 </div>
               </div>
             );
@@ -377,56 +494,89 @@ export default function AdminRecipes() {
 
               {/* ── Right: Recipe form (70%) */}
               <form onSubmit={handleSave} className="md:w-[70%] flex flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto px-8 py-6 space-y-5">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <FormField label="Nombre de la receta">
-                      <TextInput required value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Ej. Hamburguesa de la Casa" />
-                    </FormField>
-                    <div className="grid grid-cols-2 gap-3">
-                      <FormField label="Precio objetivo">
-                        <TextInput type="number" value={formData.target_price} onChange={e => setFormData(prev => ({ ...prev, target_price: Number(e.target.value) }))} />
-                      </FormField>
-                      <FormField label="Notas">
-                        <TextInput value={formData.description} onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))} placeholder="Opcional…" />
+                <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
+                  {/* Basic Info Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <div className="lg:col-span-2">
+                       <FormField label="Nombre de la receta" secondary="Cómo aparecerá en el sistema">
+                         <TextInput 
+                           required 
+                           value={formData.name} 
+                           onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} 
+                           placeholder="Ej. Pizza Margherita Gourmet" 
+                           className="text-lg font-bold"
+                         />
+                       </FormField>
+                    </div>
+                    <div>
+                      <FormField label="Precio Objetivo" secondary="Punto de venta sugerido">
+                        <div className="relative">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                          <TextInput 
+                            type="number" 
+                            value={formData.target_price} 
+                            onChange={e => setFormData(prev => ({ ...prev, target_price: Number(e.target.value) }))} 
+                            className="pl-8 font-black text-gray-900"
+                          />
+                        </div>
                       </FormField>
                     </div>
                   </div>
 
+                  <FormField label="Descripción / Notas">
+                    <TextInput 
+                      value={formData.description} 
+                      onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))} 
+                      placeholder="Instrucciones breves o notas de preparación..." 
+                    />
+                  </FormField>
+
                   {/* Ingredient list container */}
-                  <div className="bg-gray-50/50 p-5 rounded-xl border border-gray-100 flex flex-col flex-1 min-h-[40vh]">
-                    <div className="flex justify-between items-center mb-1 shrink-0">
-                      <p className="text-[12px] font-bold uppercase tracking-wider text-gray-500 flex items-center gap-2">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                        Insumos Añadidos
-                      </p>
-                      <Badge variant="blue">{formData.ingredients.length} items</Badge>
+                  <div className="bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100 flex flex-col flex-1 min-h-[45vh] shadow-inner">
+                    <div className="flex justify-between items-center mb-6 shrink-0">
+                      <div>
+                        <p className="text-[12px] font-black uppercase tracking-wider text-[#2f4131] flex items-center gap-2">
+                          <Icon icon="heroicons:beaker" />
+                          Ingredientes de la receta
+                        </p>
+                        <p className="text-[11px] text-gray-400 font-medium mt-0.5">Añade insumos y define sus cantidades.</p>
+                      </div>
+                      <Badge variant="blue" className="px-4 py-1.5 rounded-full">{formData.ingredients.length} seleccionados</Badge>
                     </div>
-                    <p className="text-[11px] text-gray-400 mb-4 shrink-0">Ingresa la cantidad requerida según la unidad de uso de cada insumo (ej. gramos, mililitros).</p>
                     
                     <div className="flex-1 overflow-y-auto pr-2">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {formData.ingredients.map(ing => (
-                          <div key={ing.ingredient_id} className="flex flex-col justify-between p-3.5 bg-white border border-gray-200 shadow-sm rounded-xl hover:border-blue-200 transition-colors">
-                            <div className="flex items-start justify-between min-w-0 mb-3">
-                              <p className="text-sm font-bold text-gray-900 leading-tight pr-2 line-clamp-2">{ing.name}</p>
+                          <div key={ing.ingredient_id} className="group/item flex flex-col p-4 bg-white border border-gray-100 shadow-sm rounded-2xl hover:border-indigo-200 hover:shadow-md transition-all animate-scale-up">
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="min-w-0">
+                                <p className="text-sm font-black text-gray-900 leading-tight truncate pr-4">{ing.name}</p>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Costo Unit: ${ing.unit_cost?.toFixed(1)} / {ing.usage_unit}</p>
+                              </div>
                               <button type="button" onClick={() => handleRemoveIngredient(ing.ingredient_id)}
-                                className="p-1.5 -mr-1.5 -mt-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all shrink-0">
+                                className="p-2 text-gray-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all shrink-0">
                                 <TrashIcon />
                               </button>
                             </div>
-                            <div className="flex items-end justify-between border-t border-gray-50 pt-3">
-                              <div className="flex flex-col gap-1 shrink-0">
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cantidad</span>
-                                <div className="flex items-center gap-1.5">
-                                  <input type="number" step="any" min="0" value={ing.quantity}
+                            
+                            <div className="flex items-end justify-between pt-4 border-t border-gray-50 mt-auto">
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Cantidad</label>
+                                <div className="flex items-center gap-2">
+                                  <input 
+                                    type="number" 
+                                    step="any" 
+                                    min="0" 
+                                    value={ing.quantity}
                                     onChange={e => handleUpdateQuantity(ing.ingredient_id, e.target.value)}
-                                    className="w-[70px] px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-center focus:bg-white focus:ring-2 focus:ring-[#2f4131] outline-none transition-all shadow-inner" />
-                                  <span className="text-[12px] text-gray-500 font-semibold truncate max-w-[50px]">{ing.usage_unit}</span>
+                                    className="w-[85px] px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm font-black text-center focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all" 
+                                  />
+                                  <span className="text-[11px] text-gray-400 font-bold">{ing.usage_unit}</span>
                                 </div>
                               </div>
-                              <div className="text-right shrink-0">
-                                 <p className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-1">Costo</p>
-                                 <p className="text-sm font-bold text-[#2f4131] bg-green-50 px-2 py-0.5 rounded-md inline-block">
+                              <div className="text-right">
+                                 <p className="text-[10px] uppercase font-black text-gray-300 tracking-widest mb-1">Subtotal</p>
+                                 <p className="text-sm font-black text-[#2f4131] bg-[#2f4131]/5 px-3 py-1 rounded-lg">
                                    ${Math.round(ing.quantity * ing.unit_cost).toLocaleString('es-CO')}
                                  </p>
                               </div>
@@ -436,12 +586,12 @@ export default function AdminRecipes() {
                       </div>
                       
                       {formData.ingredients.length === 0 && (
-                        <div className="h-full min-h-[200px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl text-center p-8">
-                          <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
-                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        <div className="h-full min-h-[300px] flex flex-col items-center justify-center border-4 border-dashed border-gray-100 rounded-[2.5rem] text-center p-10 group/empty">
+                          <div className="w-16 h-16 bg-gray-50 rounded-3xl flex items-center justify-center mb-4 group-hover/empty:scale-110 transition-transform">
+                             <Icon icon="heroicons:plus-circle" className="text-3xl text-gray-300" />
                           </div>
-                          <p className="text-sm font-semibold text-gray-900 mb-1">Tu receta está vacía</p>
-                          <p className="text-[12px] text-gray-500 max-w-[200px]">Busca y selecciona insumos del panel izquierdo para empezar.</p>
+                          <h4 className="text-base font-black text-gray-900 mb-1">¿Qué lleva este plato?</h4>
+                          <p className="text-[13px] text-gray-400 max-w-[240px] font-medium">Usa el buscador de la izquierda para añadir insumos a esta receta.</p>
                         </div>
                       )}
                     </div>
