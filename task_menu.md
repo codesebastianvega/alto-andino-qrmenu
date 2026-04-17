@@ -22,9 +22,9 @@ Progreso de la transición a un sistema 100% dinámico y jerárquico.
 **Objetivo:** Gestión total de la jerarquía y estética de la sección.
 
 ### Bloque 2.1: Refactor de `CategoryForm.jsx`
-- [ ] **Tarea Atómica:** Importar y configurar `@hello-pangea/dnd` para la lista de subcategorías
-- [ ] **Tarea Atómica:** Reemplazar `textarea` de subcategorías por un componente de Lista Ordenable
-- [ ] **Tarea Atómica:** Añadir input de texto para `tint_class` (clase de fondo)
+- [x] **Tarea Atómica:** Importar y configurar `@hello-pangea/dnd` para la lista de subcategorías
+- [x] **Tarea Atómica:** Reemplazar `textarea` de subcategorías por un componente de Lista Ordenable
+- [/] **Tarea Atómica:** Añadir input de texto para `tint_class` (clase de fondo)
 - [ ] **Tarea Atómica:** Validar que el dropdown de `section_type` (Vistas) se mantiene intacto y funcional
 - [ ] **Tarea Atómica:** Asegurar que los cambios se guarden correctamente en Supabase
 
