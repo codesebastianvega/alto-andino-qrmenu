@@ -98,13 +98,6 @@ export default function CategoryForm({ category, onSave, onCancel }) {
     }));
   };
 
-  const addSubcategory = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddSubManual(e.target.value);
-      e.target.value = '';
-    }
-  };
 
   const removeSubcategory = (sub) => {
     setFormData(prev => ({
@@ -252,6 +245,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
+                        e.stopPropagation();
                         handleAddSubManual(e.target.value.trim());
                         e.target.value = '';
                       }

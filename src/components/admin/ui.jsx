@@ -106,11 +106,12 @@ export function SearchInput({ value, onChange, placeholder = 'Buscar...' }) {
 }
 
 /** Standard select dropdown */
-export function SelectInput({ value, onChange, children }) {
+export function SelectInput({ value, onChange, children, ...props }) {
   return (
     <select
       value={value}
       onChange={onChange}
+      {...props}
       className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:ring-2 focus:ring-[#2f4131] focus:border-transparent outline-none transition-all"
     >
       {children}
@@ -131,7 +132,7 @@ export function FormField({ label, children }) {
 }
 
 /** Text input */
-export function TextInput({ value, onChange, placeholder, type = 'text', required, name, className = '' }) {
+export function TextInput({ value, onChange, placeholder, type = 'text', required, name, className = '', ...props }) {
   return (
     <input
       type={type}
@@ -140,6 +141,7 @@ export function TextInput({ value, onChange, placeholder, type = 'text', require
       value={value}
       onChange={onChange}
       placeholder={placeholder}
+      {...props}
       className={`w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#2f4131] focus:bg-white focus:border-transparent outline-none transition-all ${className}`}
     />
   );
