@@ -17,37 +17,39 @@ const TrashIcon = () => (
 );
 
 const TABS = [
-  { id: 'inventario',    label: 'Inventario' },
-  { id: 'gestion',       label: 'Categorías & Proveedores' },
-  { id: 'lista_compras', label: 'Lista de Compras' },
+  { id: 'inventario',    label: 'Inventario',    icon: 'heroicons:archive-box' },
+  { id: 'categorias',    label: 'Categorías',    icon: 'heroicons:tag' },
+  { id: 'proveedores',   label: 'Proveedores',   icon: 'heroicons:truck' },
+  { id: 'lista_compras', label: 'Lista de Compras', icon: 'heroicons:shopping-cart' },
 ];
 
 export default function AdminModifiers() {
   const [activeTab, setActiveTab] = useState('inventario');
+  const { ingredients } = useAdminIngredients();
 
   return (
     <div className="p-8 w-full max-w-[1600px] mx-auto space-y-8 animate-fade-in">
-      {/* Tabs area starts directly */}
-
-      {/* Sub-tabs */}
-      <div className="flex bg-gray-50 p-1.5 mb-8 rounded-2xl w-fit mx-auto border border-gray-100 shadow-sm">
+      {/* Tabs Menu */}
+      <div className="flex bg-gray-50/50 backdrop-blur-xl p-1.5 mb-8 rounded-2xl w-fit mx-auto border border-gray-100 shadow-sm sticky top-4 z-50">
         {TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
+            className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
               activeTab === tab.id
-                ? 'bg-white text-[#2f4131] shadow-md border border-gray-100'
-                : 'text-gray-400 hover:text-gray-600'
+                ? 'bg-white text-[#2f4131] shadow-md border border-gray-100 ring-1 ring-gray-200/50'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-white/50'
             }`}
           >
+            <Icon icon={tab.icon} className={activeTab === tab.id ? 'text-[#2f4131]' : 'text-gray-300'} />
             {tab.label}
           </button>
         ))}
       </div>
 
       {activeTab === 'inventario'    && <InsumosTab />}
-      {activeTab === 'gestion'       && <GestionSharedTab />}
+      {activeTab === 'categorias'    && <CategoriasTab ingredients={ingredients} />}
+      {activeTab === 'proveedores'   && <ProveedoresTab ingredients={ingredients} />}
       {activeTab === 'lista_compras' && <ListaComprasTab />}
     </div>
   );
@@ -75,23 +77,7 @@ function ListaComprasTab() {
 }
 
 // ═══════════════════════════════════════════════════════
-// TAB GESTIÓN COMPARTIDA (Categorías y Proveedores)
-// ═══════════════════════════════════════════════════════
-function GestionSharedTab() {
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-fade-in">
-      <div>
-        <CategoriasTab />
-      </div>
-      <div>
-        <ProveedoresTab />
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════
-// TAB 1 — INVENTARIO (Antes Insumos)
+// TAB 1 — INVENTARIO
 // ═══════════════════════════════════════════════════════
 function InsumosTab() {
   const {
@@ -161,13 +147,24 @@ function InsumosTab() {
 
   const filtered = useMemo(() =>
     ingredients.filter(i => {
-      const matchSearch = i.name.toLowerCase().includes(search.toLowerCase()) ||
-                          (i.sku || '').toLowerCase().includes(search.toLowerCase());
+      // Logic for special search terms or standard search
+      let matchSearch = true;
+      if (search === 'stock_bajo') {
+        matchSearch = i.stock_current <= i.stock_min;
+      } else if (search === 'high_value') {
+        // High value items: more than the average value or just a top threshold
+        const avgValue = totalInventoryValue / (ingredients.length || 1);
+        matchSearch = ((i.unit_cost || 0) * (i.stock_current || 0)) >= avgValue;
+      } else {
+        matchSearch = i.name.toLowerCase().includes(search.toLowerCase()) ||
+                      (i.sku || '').toLowerCase().includes(search.toLowerCase());
+      }
+      
       const matchCat    = catFilter === 'all' || i.category_id === catFilter;
       const matchZero   = !showZeroOnly || !i.unit_cost || i.unit_cost === 0;
       return matchSearch && matchCat && matchZero;
     }),
-    [ingredients, search, catFilter, showZeroOnly]
+    [ingredients, search, catFilter, showZeroOnly, totalInventoryValue]
   );
 
   const openCreate = () => { setEditing(null); setForm(emptyForm); setIsOpen(true); };
@@ -276,55 +273,97 @@ function InsumosTab() {
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-slide-up">
         {/* Total Insumos */}
-        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-[#2f4131]/10 rounded-2xl flex items-center justify-center text-[#2f4131] group-hover:scale-110 transition-transform">
+        <div 
+          className="glass-glow p-6 rounded-[2rem] border border-white/20 shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden cursor-pointer"
+          onClick={() => {
+            setSearch('');
+            setCatFilter('all');
+            setShowZeroOnly(false);
+          }}
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#2f4131]/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="w-12 h-12 bg-[#2f4131]/10 rounded-2xl flex items-center justify-center text-[#2f4131] group-hover:rotate-12 transition-transform">
               <Icon icon="heroicons:archive-box" className="text-2xl" />
             </div>
             <div>
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Total Insumos</p>
-              <h4 className="text-2xl font-black text-gray-900">{ingredients.length}</h4>
+              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Insumos Activos</p>
+              <h4 className="text-3xl font-black text-gray-900">{ingredients.length}</h4>
+              <p className="text-[10px] text-emerald-600 font-bold mt-1 flex items-center gap-1">
+                <Icon icon="heroicons:arrow-trending-up" />
+                Sincronizado
+              </p>
             </div>
           </div>
         </div>
 
         {/* Alertas Stock */}
-        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 ${lowStockCount > 0 ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+        <div 
+          className={`glass-glow p-6 rounded-[2rem] border ${lowStockCount > 0 ? 'border-rose-200/50 bg-rose-50/10' : 'border-white/20'} shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden cursor-pointer`} 
+          onClick={() => {
+            if (lowStockCount > 0) {
+              setSearch('stock_bajo');
+              setShowZeroOnly(false); // Clear conflicting filter
+            }
+          }}
+        >
+          <div className={`absolute top-0 right-0 w-32 h-32 ${lowStockCount > 0 ? 'bg-rose-500/5' : 'bg-emerald-500/5'} rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110`} />
+          <div className="flex items-center gap-4 relative z-10">
+            <div className={`w-12 h-12 ${lowStockCount > 0 ? 'bg-rose-100/80 text-rose-600' : 'bg-emerald-100/80 text-emerald-600'} rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform shadow-inner`}>
               <Icon icon={lowStockCount > 0 ? "heroicons:exclamation-triangle" : "heroicons:check-badge"} className="text-2xl" />
             </div>
             <div>
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Alertas de Stock</p>
-              <h4 className={`text-2xl font-black ${lowStockCount > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>{lowStockCount}</h4>
+              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Nivel de Stock</p>
+              <h4 className={`text-3xl font-black ${lowStockCount > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{lowStockCount}</h4>
+              <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-tighter">
+                {lowStockCount > 0 ? 'Acción requerida' : 'Niveles óptimos'}
+              </p>
             </div>
           </div>
         </div>
 
         {/* Valor Inventario */}
-        <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+        <div 
+          className="glass-glow p-6 rounded-[2rem] border border-white/20 shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden cursor-pointer"
+          onClick={() => {
+            setSearch('high_value');
+            setShowZeroOnly(false);
+          }}
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="w-12 h-12 bg-blue-100/80 rounded-2xl flex items-center justify-center text-blue-600 group-hover:rotate-12 transition-transform shadow-inner">
               <Icon icon="heroicons:currency-dollar" className="text-2xl" />
             </div>
             <div>
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Valor Inventario</p>
-              <h4 className="text-2xl font-black text-gray-900">
+              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Valor Real</p>
+              <h4 className="text-3xl font-black text-gray-900 tabular-nums">
                 ${totalInventoryValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </h4>
+              <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-tighter">En almacén</p>
             </div>
           </div>
         </div>
 
         {/* Sin Costo */}
-        <div className={`${zeroCostCount > 0 ? 'bg-amber-50 border-amber-100' : 'bg-white border-gray-100'} p-6 rounded-[2rem] border shadow-sm hover:shadow-md transition-all group cursor-pointer`} onClick={() => zeroCostCount > 0 && setShowZeroOnly(!showZeroOnly)}>
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 ${zeroCostCount > 0 ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400'} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+        <div 
+          className={`glass-glow p-6 rounded-[2rem] border ${zeroCostCount > 0 ? 'border-amber-200/50 bg-amber-50/10' : 'border-white/20'} shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden cursor-pointer`} 
+          onClick={() => {
+            if (zeroCostCount > 0) {
+              setShowZeroOnly(!showZeroOnly);
+              setSearch(''); // Clear search to avoid clashing
+            }
+          }}
+        >
+          <div className={`absolute top-0 right-0 w-32 h-32 ${zeroCostCount > 0 ? 'bg-amber-500/5' : 'bg-gray-500/5'} rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110`} />
+          <div className="flex items-center gap-4 relative z-10">
+            <div className={`w-12 h-12 ${zeroCostCount > 0 ? 'bg-amber-100/80 text-amber-600' : 'bg-gray-100/80 text-gray-400'} rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform shadow-inner`}>
               <Icon icon="heroicons:no-symbol" className="text-2xl" />
             </div>
             <div>
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Sin Costo</p>
-              <h4 className={`text-2xl font-black ${zeroCostCount > 0 ? 'text-amber-600' : 'text-gray-900'}`}>{zeroCostCount}</h4>
+              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Sin Costo</p>
+              <h4 className={`text-3xl font-black ${zeroCostCount > 0 ? 'text-amber-600' : 'text-gray-900'}`}>{zeroCostCount}</h4>
+              <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-tighter">Pendientes</p>
             </div>
           </div>
         </div>
@@ -564,12 +603,25 @@ function InsumosTab() {
                           </span>
                         )}
                       </div>
-                      <div className="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden shadow-inner">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${stockLow ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]' : 'bg-[#2f4131]'}`}
-                          style={{ width: `${Math.min(100, (item.stock_current / Math.max(1, item.stock_min)) * 50)}%` }}
-                        />
+                      <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden shadow-inner border border-gray-100">
+                        {(() => {
+                          const percentage = Math.min(100, (item.stock_current / Math.max(1, item.stock_min * 2)) * 100);
+                          const isCritical = item.stock_current <= item.stock_min;
+                          const isWarning = item.stock_current <= item.stock_min * 1.5;
+                          
+                          let colorClass = 'bg-[#2f4131]';
+                          if (isCritical) colorClass = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]';
+                          else if (isWarning) colorClass = 'bg-amber-400';
+
+                          return (
+                            <div
+                              className={`h-full rounded-full transition-all duration-700 ease-out ${colorClass}`}
+                              style={{ width: `${percentage}%` }}
+                            />
+                          );
+                        })()}
                       </div>
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Mín: {item.stock_min}</p>
                     </div>
                   </td>
 
@@ -608,8 +660,28 @@ function InsumosTab() {
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={6} className="px-5 py-14 text-center text-sm text-gray-400 font-medium">
-                {showZeroOnly ? 'Sin resultados con precio $0 — ¡todos tienen costo definido!' : 'Sin resultados.'}
+              <tr><td colSpan={6} className="px-5 py-14 text-center text-sm text-gray-400 font-medium animate-fade-in">
+                {showZeroOnly ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Icon icon="heroicons:check-badge" className="text-3xl text-emerald-500" />
+                    <span>¡Todos tus insumos tienen un costo definido!</span>
+                  </div>
+                ) : search === 'stock_bajo' ? (
+                   <div className="flex flex-col items-center gap-2">
+                    <Icon icon="heroicons:check-circle" className="text-3xl text-emerald-500" />
+                    <span>No hay insumos con stock bajo. ¡Buen trabajo!</span>
+                  </div>
+                ) : search === 'high_value' ? (
+                  <div className="flex flex-col items-center gap-2">
+                   <Icon icon="heroicons:information-circle" className="text-3xl text-blue-500" />
+                   <span>No hay insumos con valor significativamente alto actualmente.</span>
+                 </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <Icon icon="heroicons:magnifying-glass" className="text-3xl text-gray-300" />
+                    <span>No se encontraron insumos que coincidan con la búsqueda.</span>
+                  </div>
+                )}
               </td></tr>
             )}
           </tbody>
@@ -776,7 +848,7 @@ function InsumosTab() {
 // ═══════════════════════════════════════════════════════
 // TAB 2 — CATEGORÍAS
 // ═══════════════════════════════════════════════════════
-function CategoriasTab() {
+function CategoriasTab({ ingredients = [] }) {
   const { categories, loading, createCategory, updateCategory, deleteCategory } = useIngredientCategories();
 
   const [newName,        setNewName]        = useState('');
@@ -790,6 +862,8 @@ function CategoriasTab() {
     [categories, search]
   );
 
+  const getCategoryCount = (catId) => ingredients.filter(i => i.category_id === catId).length;
+
   const handleCreate = async () => {
     if (!newName.trim()) return;
     const ok = await createCategory(newName.trim());
@@ -802,104 +876,125 @@ function CategoriasTab() {
     if (ok) setEditingId(null);
   };
 
-  const handleDelete = async (id) => {
-    await deleteCategory(id);
-    setConfirmDelete(null);
-  };
+  if (loading && !categories.length)
+    return <div className="py-16 text-center text-sm text-gray-400 font-medium tracking-widest uppercase">Cargando categorías…</div>;
 
   return (
-    <div className="max-w-2xl">
-      {/* Header + create */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
-        <div>
-          <p className="text-sm font-semibold text-gray-900">Categorías</p>
-          <p className="text-[12px] text-gray-400 font-medium mt-0.5">{categories.length} categorías registradas</p>
+    <div className="space-y-8 animate-fade-in">
+      {/* Header & Create Card */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-1">
+          <h2 className="text-2xl font-black text-gray-900 mb-2">Categorías</h2>
+          <p className="text-sm text-gray-500 font-medium">
+            Organiza tus insumos para facilitar la gestión de inventario y costos.
+          </p>
+          
+          <div className="mt-6 p-6 bg-[#2f4131]/5 rounded-[2rem] border border-[#2f4131]/10">
+            <h3 className="text-xs font-bold text-[#2f4131] uppercase tracking-widest mb-4">Nueva Categoría</h3>
+            <div className="space-y-3">
+              <TextInput
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                placeholder="Ej. Proteínas, Lácteos..."
+                className="bg-white border-transparent focus:border-[#2f4131] shadow-sm"
+              />
+              <PrimaryButton onClick={handleCreate} className="w-full justify-center">
+                Crear Categoría
+              </PrimaryButton>
+            </div>
+          </div>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <TextInput
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            placeholder="Nueva categoría…"
-            className="sm:w-52"
-          />
-          <PrimaryButton onClick={handleCreate}>Crear</PrimaryButton>
+
+        <div className="lg:col-span-2 space-y-6">
+          {/* Toolbar */}
+          <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+            <div className="relative flex-1 group">
+              <Icon icon="heroicons:magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#2f4131]" />
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Buscar categoría..."
+                className="w-full pl-10 pr-4 py-2 bg-gray-50 border-transparent rounded-xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#2f4131]/10 outline-none transition-all"
+              />
+            </div>
+            <div className="hidden sm:block text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              {filtered.length} Total
+            </div>
+          </div>
+
+          {/* Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {filtered.map((cat) => {
+              const itemCount = getCategoryCount(cat.id);
+              const isEditing = editingId === cat.id;
+              const isDeleting = confirmDelete === cat.id;
+
+              return (
+                <div key={cat.id} className={`group relative p-5 rounded-[1.5rem] border transition-all ${
+                  isEditing ? 'border-emerald-500 bg-emerald-50/10' : 
+                  isDeleting ? 'border-rose-500 bg-rose-50/10' :
+                  'bg-white border-gray-100 hover:border-gray-300 hover:shadow-lg'
+                }`}>
+                  {isEditing ? (
+                    <div className="space-y-3 animate-fade-in">
+                      <TextInput
+                        autoFocus
+                        value={editingName}
+                        onChange={e => setEditingName(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSaveEdit()}
+                        className="bg-white"
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={handleSaveEdit} className="flex-1 py-2 bg-[#2f4131] text-white text-xs font-bold rounded-xl shadow-sm">Guardar</button>
+                        <button onClick={() => setEditingId(null)} className="px-4 py-2 bg-white border border-gray-200 text-gray-600 text-xs font-bold rounded-xl">✕</button>
+                      </div>
+                    </div>
+                  ) : isDeleting ? (
+                    <div className="text-center space-y-3 animate-fade-in">
+                      <p className="text-sm font-bold text-rose-700">¿Eliminar "{cat.name}"?</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => deleteCategory(cat.id).then(() => setConfirmDelete(null))} className="flex-1 py-2 bg-rose-600 text-white text-xs font-bold rounded-xl shadow-sm">Eliminar</button>
+                        <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2 bg-white border border-gray-200 text-gray-600 text-xs font-bold rounded-xl text-center">Cancelar</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-[#2f4131]/10 group-hover:text-[#2f4131] transition-colors">
+                          <Icon icon="heroicons:tag" className="text-xl" />
+                        </div>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => { setEditingId(cat.id); setEditingName(cat.name); setConfirmDelete(null); }}
+                            className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
+                            <Icon icon="heroicons:pencil-square" />
+                          </button>
+                          <button onClick={() => { setConfirmDelete(cat.id); setEditingId(null); }}
+                            className="p-1.5 text-rose-400 hover:bg-rose-50 rounded-lg transition-colors">
+                            <Icon icon="heroicons:trash" />
+                          </button>
+                        </div>
+                      </div>
+                      <h4 className="text-base font-bold text-gray-900 mb-1">{cat.name}</h4>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 bg-gray-100 text-[10px] font-black text-gray-500 rounded-md uppercase tracking-wider">
+                          {itemCount} {itemCount === 1 ? 'Insumo' : 'Insumos'}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+            {filtered.length === 0 && (
+              <div className="col-span-full py-20 text-center bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200">
+                <Icon icon="heroicons:tag" className="text-4xl text-gray-200 mb-2 mx-auto" />
+                <p className="text-sm font-bold text-gray-400">No se encontraron categorías</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Search */}
-      <div className="mb-4">
-        <SearchInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Filtrar categorías…" />
-      </div>
-
-      {/* List */}
-      {loading && !categories.length ? (
-        <div className="py-12 text-center text-sm text-gray-400">Cargando…</div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden divide-y divide-gray-100">
-          {filtered.length === 0 && (
-            <div className="py-12 text-center text-sm text-gray-400 font-medium">
-              {search ? 'Sin coincidencias.' : 'Aún no hay categorías.'}
-            </div>
-          )}
-          {filtered.map((cat, i) => (
-            <div key={cat.id}>
-              {editingId === cat.id ? (
-                <div className="flex items-center gap-2 p-3">
-                  <span className="text-[11px] text-gray-300 font-medium w-6 text-center shrink-0">{i + 1}</span>
-                  <input
-                    autoFocus
-                    type="text"
-                    value={editingName}
-                    onChange={e => setEditingName(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSaveEdit(); if (e.key === 'Escape') setEditingId(null); }}
-                    className="flex-1 px-4 py-2 bg-gray-50 border-2 border-[#2f4131] rounded-xl text-sm font-medium focus:outline-none"
-                  />
-                  <PrimaryButton onClick={handleSaveEdit}>Guardar</PrimaryButton>
-                  <SecondaryButton onClick={() => setEditingId(null)}>✕</SecondaryButton>
-                </div>
-              ) : confirmDelete === cat.id ? (
-                <div className="flex items-center justify-between p-3 bg-red-50">
-                  <p className="text-sm font-medium text-red-700">
-                    ¿Eliminar <strong>"{cat.name}"</strong>?
-                  </p>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleDelete(cat.id)}
-                      className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-[12px] font-semibold hover:bg-red-700 transition-all">
-                      Eliminar
-                    </button>
-                    <button onClick={() => setConfirmDelete(null)}
-                      className="px-3 py-1.5 bg-white text-gray-600 border border-gray-200 rounded-lg text-[12px] font-semibold hover:bg-gray-50 transition-all">
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 px-4 py-3 group hover:bg-gray-50/60 transition-colors">
-                  <span className="text-[11px] text-gray-300 font-medium w-6 text-center shrink-0">{i + 1}</span>
-                  <span className="flex-1 text-sm font-medium text-gray-800">{cat.name}</span>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => { setEditingId(cat.id); setEditingName(cat.name); setConfirmDelete(null); }}
-                      className="px-2.5 py-1.5 text-[12px] font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                    >
-                      Renombrar
-                    </button>
-                    <button
-                      onClick={() => { setConfirmDelete(cat.id); setEditingId(null); }}
-                      className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all"
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                        <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -907,7 +1002,7 @@ function CategoriasTab() {
 // ═══════════════════════════════════════════════════════
 // TAB 3 — PROVEEDORES
 // ═══════════════════════════════════════════════════════
-function ProveedoresTab() {
+function ProveedoresTab({ ingredients = [] }) {
   const { providers, loading, createProvider, updateProvider, deleteProvider } = useAdminProviders();
   const [editingId, setEditingId] = useState(null);
   
@@ -921,6 +1016,15 @@ function ProveedoresTab() {
   // Edit States
   const [editingForm, setEditingForm] = useState({});
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [search, setSearch] = useState('');
+  const [selectedProvider, setSelectedProvider] = useState(null); // For details modal
+
+  const filtered = useMemo(() =>
+    providers.filter(p => p.name.toLowerCase().includes(search.toLowerCase())),
+    [providers, search]
+  );
+
+  const getProviderItemCount = (provId) => ingredients.filter(i => i.provider_id === provId).length;
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -949,11 +1053,6 @@ function ProveedoresTab() {
     if (ok) setEditingId(null);
   };
 
-  const handleDelete = async (id) => {
-    const ok = await deleteProvider(id);
-    if (ok) setConfirmDelete(null);
-  };
-
   const startEdit = (prov) => {
     setEditingId(prov.id);
     setEditingForm({
@@ -967,95 +1066,278 @@ function ProveedoresTab() {
   };
 
   if (loading && !providers.length)
-    return <div className="py-16 text-center text-sm text-gray-400 font-medium">Cargando proveedores…</div>;
+    return <div className="py-16 text-center text-sm text-gray-400 font-medium tracking-widest uppercase">Cargando proveedores…</div>;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+    <div className="space-y-8 animate-fade-in">
+      {/* Header & Control Panel */}
+      <div className="flex flex-col lg:flex-row justify-between gap-6">
         <div>
-          <p className="text-sm font-semibold text-gray-900">Proveedores</p>
-          <p className="text-[12px] text-gray-400 font-medium mt-0.5">{providers.length} proveedores registrados</p>
+          <h2 className="text-2xl font-black text-gray-900 mb-2">Proveedores</h2>
+          <p className="text-sm text-gray-500 font-medium">Gestiona tu red de suministros y contactos directos.</p>
+        </div>
+        
+        <div className="flex items-center gap-4 bg-white p-2 pl-4 rounded-2xl shadow-sm border border-gray-100 min-w-0 lg:w-96">
+          <Icon icon="heroicons:magnifying-glass" className="text-gray-400 shrink-0" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Nombre del proveedor..."
+            className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium outline-none"
+          />
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <h3 className="text-sm font-bold text-gray-900 mb-4">Añadir nuevo proveedor</h3>
-        <form onSubmit={handleCreate} className="grid grid-cols-1 gap-4 items-end">
-          <FormField label="Nombre (Obligatorio)">
-            <TextInput required value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej. Frutas Pérez" />
-          </FormField>
-          <FormField label="Contacto / WhatsApp">
-            <TextInput value={newContactInfo} onChange={e => setNewContactInfo(e.target.value)} placeholder="Ej. 3001234567" />
-          </FormField>
-          <FormField label="Días de Entrega">
-            <TextInput value={newDeliveryDays} onChange={e => setNewDeliveryDays(e.target.value)} placeholder="Ej. Lunes y Jueves" />
-          </FormField>
-          <FormField label="Pedido Mínimo ($)">
-            <TextInput type="number" step="0.01" value={newMinOrderAmount} onChange={e => setNewMinOrderAmount(e.target.value)} placeholder="Ej. 150000" />
-          </FormField>
-          <FormField label="Notas (Cuentas bancarias, horarios...)">
-            <TextInput value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Notas adicionales..." />
-          </FormField>
-          <div className="flex justify-end pt-2">
-            <PrimaryButton type="submit">Agregar Proveedor</PrimaryButton>
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+        {/* Form Sidebar */}
+        <div className="xl:col-span-1">
+          <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden sticky top-24">
+            <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Nuevo Contacto</h3>
+            </div>
+            <form onSubmit={handleCreate} className="p-6 space-y-4">
+              <FormField label="Razón Social">
+                <TextInput required value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nombre del proveedor" />
+              </FormField>
+              <FormField label="WhatsApp / Tel">
+                <TextInput value={newContactInfo} onChange={e => setNewContactInfo(e.target.value)} placeholder="Ej. 300..." />
+              </FormField>
+              <FormField label="Días de Visita">
+                <TextInput value={newDeliveryDays} onChange={e => setNewDeliveryDays(e.target.value)} placeholder="Lunes, Miércoles..." />
+              </FormField>
+              <FormField label="Monto Mínimo ($)">
+                <TextInput type="number" value={newMinOrderAmount} onChange={e => setNewMinOrderAmount(e.target.value)} placeholder="Mínimo pedido" />
+              </FormField>
+              <FormField label="Notas Internas">
+                <TextInput value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Horarios, Cuentas..." />
+              </FormField>
+              <PrimaryButton type="submit" className="w-full justify-center">Agregar Proveedor</PrimaryButton>
+            </form>
           </div>
-        </form>
+        </div>
+
+        {/* Suppliers Cards Grid */}
+        <div className="xl:col-span-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {filtered.map((prov) => {
+              const itemCount = getProviderItemCount(prov.id);
+              const isEditing = editingId === prov.id;
+              const isDeleting = confirmDelete === prov.id;
+
+              if (isEditing) return (
+                <div key={prov.id} className="bg-emerald-50/10 border-2 border-emerald-200 rounded-[2rem] p-6 space-y-4 animate-fade-in shadow-xl">
+                   <div className="flex items-center gap-3 mb-2">
+                     <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
+                       <Icon icon="heroicons:pencil-square" className="text-xl" />
+                     </div>
+                     <h4 className="text-sm font-black text-gray-900 uppercase">Editando Proveedor</h4>
+                   </div>
+                   
+                   <FormField label="Razón Social">
+                     <TextInput value={editingForm.name} onChange={e => setEditingForm({...editingForm, name: e.target.value})} />
+                   </FormField>
+                   
+                   <div className="grid grid-cols-2 gap-4">
+                     <FormField label="WhatsApp / Contacto">
+                       <TextInput value={editingForm.phone} onChange={e => setEditingForm({...editingForm, phone: e.target.value})} />
+                     </FormField>
+                     <FormField label="Días de Entrega">
+                       <TextInput value={editingForm.delivery_days} onChange={e => setEditingForm({...editingForm, delivery_days: e.target.value})} />
+                     </FormField>
+                   </div>
+
+                   <div className="grid grid-cols-1 gap-4">
+                     <FormField label="Monto Mínimo de Pedido ($)">
+                       <TextInput type="number" value={editingForm.min_order_amount} onChange={e => setEditingForm({...editingForm, min_order_amount: e.target.value})} />
+                     </FormField>
+                     <FormField label="Notas Internas">
+                       <TextInput value={editingForm.notes} onChange={e => setEditingForm({...editingForm, notes: e.target.value})} placeholder="Horarios, números de cuenta, etc." />
+                     </FormField>
+                   </div>
+
+                   <div className="flex justify-end gap-3 pt-4 border-t border-emerald-100">
+                     <button 
+                       onClick={() => setEditingId(null)} 
+                       className="px-6 py-2.5 text-xs font-bold text-gray-400 hover:text-gray-600 transition-colors"
+                     >
+                       Cancelar
+                     </button>
+                     <PrimaryButton onClick={handleSaveEdit} className="px-8">
+                       Guardar Cambios
+                     </PrimaryButton>
+                   </div>
+                </div>
+              );
+
+              if (isDeleting) return (
+                <div key={prov.id} className="bg-rose-50 border-2 border-rose-200 rounded-[2rem] p-6 text-center animate-fade-in">
+                  <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Icon icon="heroicons:trash" className="text-2xl" />
+                  </div>
+                  <h4 className="text-sm font-black text-rose-900 mb-2">¿Eliminar Proveedor?</h4>
+                  <p className="text-xs text-rose-600 mb-6 font-medium">Esta acción desvinculará {itemCount} insumos.</p>
+                  <div className="flex gap-3">
+                    <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2.5 bg-white border border-rose-200 text-rose-700 rounded-xl text-xs font-bold">No, conservar</button>
+                    <button onClick={() => deleteProvider(prov.id).then(() => setConfirmDelete(null))} className="flex-1 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-bold">Sí, eliminar</button>
+                  </div>
+                </div>
+              );
+
+              return (
+                <div key={prov.id} className="group glass-glow border border-gray-100 rounded-[2rem] p-6 hover:shadow-2xl hover:-translate-y-1 transition-all">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 bg-gray-50 rounded-[1.25rem] flex items-center justify-center group-hover:bg-[#2f4131]/10 transition-colors">
+                        <Icon icon="heroicons:building-office" className="text-2xl text-gray-400 group-hover:text-[#2f4131]" />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-black text-gray-900 group-hover:text-[#2f4131] transition-colors">{prov.name}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{itemCount} Productos</span>
+                          {prov.min_order_amount && (
+                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md uppercase tracking-widest">
+                              Min: ${parseFloat(prov.min_order_amount).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => startEdit(prov)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"><Icon icon="heroicons:pencil-square" /></button>
+                      <button onClick={() => setConfirmDelete(prov.id)} className="p-2 text-rose-400 hover:bg-rose-50 rounded-xl transition-colors"><Icon icon="heroicons:trash" /></button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="p-3 bg-gray-50/50 rounded-2xl">
+                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Días Entrega</p>
+                      <p className="text-xs font-bold text-gray-700">{prov.delivery_days || 'No definido'}</p>
+                    </div>
+                    <div className="p-3 bg-gray-50/50 rounded-2xl">
+                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Contacto Directo</p>
+                      <p className="text-xs font-bold text-gray-700">{prov.phone || 'Sin número'}</p>
+                    </div>
+                  </div>
+
+                  {prov.notes && (
+                    <div className="mb-6 p-4 bg-amber-50/30 border border-amber-100/50 rounded-2xl">
+                      <p className="text-[10px] italic text-amber-700 leading-relaxed font-medium">"{prov.notes}"</p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    {prov.phone && (
+                      <a 
+                        href={`https://wa.me/${prov.phone.replace(/\D/g, '')}`} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="flex-[2] py-3 bg-emerald-500 text-white rounded-2xl flex items-center justify-center gap-2 text-xs font-black shadow-lg shadow-emerald-200 hover:bg-emerald-600 hover:scale-[1.02] transition-all active:scale-95"
+                      >
+                        <Icon icon="ic:baseline-whatsapp" className="text-lg" />
+                        WhatsApp
+                      </a>
+                    )}
+                    <button 
+                      onClick={() => setSelectedProvider(prov)}
+                      className="flex-1 py-3 bg-white border border-gray-100 text-gray-600 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold hover:bg-gray-50 transition-all shadow-sm hover:shadow-md active:scale-95"
+                    >
+                      Detalles
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {filtered.length === 0 && (
+            <div className="py-32 text-center bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-200">
+               <Icon icon="heroicons:truck" className="text-5xl text-gray-200 mb-4 mx-auto" />
+               <p className="text-base font-bold text-gray-400">No hay proveedores que coincidan con la búsqueda</p>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {providers.length === 0 ? (
-          <div className="py-16 text-center text-sm text-gray-400 font-medium">
-            No hay proveedores registrados.
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-100">
-            {providers.map((prov, i) => (
-              <div key={prov.id} className="p-4 hover:bg-gray-50/50 transition-colors">
-                {editingId === prov.id ? (
-                  <div className="grid grid-cols-1 gap-3 bg-gray-50 border border-gray-200 rounded-xl p-4">
-                    <FormField label="Nombre"><TextInput value={editingForm.name} onChange={e => setEditingForm({...editingForm, name: e.target.value})} /></FormField>
-                    <FormField label="Contacto"><TextInput value={editingForm.phone} onChange={e => setEditingForm({...editingForm, phone: e.target.value})} /></FormField>
-                    <FormField label="Días Entrega"><TextInput value={editingForm.delivery_days} onChange={e => setEditingForm({...editingForm, delivery_days: e.target.value})} /></FormField>
-                    <FormField label="Pedido Mín ($)"><TextInput type="number" value={editingForm.min_order_amount} onChange={e => setEditingForm({...editingForm, min_order_amount: e.target.value})} /></FormField>
-                    <FormField label="Notas"><TextInput value={editingForm.notes} onChange={e => setEditingForm({...editingForm, notes: e.target.value})} /></FormField>
-                    <div className="flex justify-end gap-2 mt-2">
-                      <SecondaryButton onClick={() => setEditingId(null)}>Cancelar</SecondaryButton>
-                      <PrimaryButton onClick={handleSaveEdit}>Guardar</PrimaryButton>
+      {/* Details Modal */}
+      {selectedProvider && (
+        <Modal onClose={() => setSelectedProvider(null)}>
+          <ModalHeader 
+            title={selectedProvider.name} 
+            subtitle="Detalles del Proveedor e Insumos Vinculados"
+            onClose={() => setSelectedProvider(null)}
+          />
+          <div className="p-7 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+            {/* Info Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">WhatsApp</p>
+                <p className="text-sm font-bold text-gray-900">{selectedProvider.phone || 'No registrado'}</p>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Días Entrega</p>
+                <p className="text-sm font-bold text-gray-900">{selectedProvider.delivery_days || 'No definido'}</p>
+              </div>
+              <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Monto Mínimo</p>
+                <p className="text-sm font-bold text-emerald-700">
+                  {selectedProvider.min_order_amount ? `$${parseFloat(selectedProvider.min_order_amount).toLocaleString()}` : 'Sin mínimo'}
+                </p>
+              </div>
+            </div>
+
+            {/* Notes */}
+            {selectedProvider.notes && (
+              <div className="p-5 bg-amber-50/30 border border-amber-100 rounded-2xl">
+                <p className="text-xs font-black text-amber-700 uppercase tracking-widest mb-2 flex items-center gap-2">
+                  <Icon icon="heroicons:pencil-square" /> Notas Internas
+                </p>
+                <p className="text-sm text-amber-900 leading-relaxed font-medium">
+                  {selectedProvider.notes}
+                </p>
+              </div>
+            )}
+
+            {/* Linked Ingredients */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                  <Icon icon="heroicons:archive-box" className="text-lg text-[#2f4131]" />
+                  Insumos Vinculados
+                </h4>
+                <Badge>{ingredients.filter(i => i.provider_id === selectedProvider.id).length} ítems</Badge>
+              </div>
+
+              <div className="space-y-3">
+                {ingredients.filter(i => i.provider_id === selectedProvider.id).map(ing => (
+                  <div key={ing.id} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center text-gray-400 text-xs font-bold">
+                        {ing.name.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{ing.name}</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Stock: {ing.stock_current} {ing.usage_unit}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                       <p className="text-sm font-black text-gray-900">${(ing.unit_cost || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</p>
+                       <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Costo unitario</p>
                     </div>
                   </div>
-                ) : confirmDelete === prov.id ? (
-                  <div className="flex items-center justify-between p-4 bg-red-50 rounded-xl border border-red-100">
-                    <p className="text-sm font-medium text-red-700">¿Eliminar proveedor?</p>
-                    <div className="flex gap-2">
-                      <button onClick={() => setConfirmDelete(null)} className="px-3 py-1.5 bg-white text-gray-600 border border-gray-200 rounded-lg text-xs font-bold">Cancelar</button>
-                      <button onClick={() => handleDelete(prov.id)} className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold">Eliminar</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[11px] text-gray-300 font-bold w-5">{i + 1}.</span>
-                        <h4 className="text-sm font-bold text-gray-900">{prov.name}</h4>
-                        {prov.phone && <Badge variant="gray">{prov.phone}</Badge>}
-                      </div>
-                      <div className="text-xs text-gray-500 pl-7 space-y-1">
-                        {prov.delivery_days && <p>📦 Entregas: <span className="font-medium text-gray-700">{prov.delivery_days}</span></p>}
-                        {prov.min_order_amount && <p>💰 Min. Pedido: <span className="font-medium text-gray-700">${parseFloat(prov.min_order_amount).toLocaleString()}</span></p>}
-                        {prov.notes && <p className="italic">📝 {prov.notes}</p>}
-                      </div>
-                    </div>
-                    <div className="flex gap-2 pl-7 sm:pl-0">
-                      <button onClick={() => startEdit(prov)} className="text-xs font-semibold text-blue-600 hover:text-blue-800">Editar</button>
-                      <button onClick={() => setConfirmDelete(prov.id)} className="text-xs font-semibold text-red-500 hover:text-red-700">Eliminar</button>
-                    </div>
+                ))}
+                {ingredients.filter(i => i.provider_id === selectedProvider.id).length === 0 && (
+                  <div className="py-10 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
+                    <p className="text-xs font-bold text-gray-400 italic">No hay insumos vinculados a este proveedor aún.</p>
                   </div>
                 )}
               </div>
-            ))}
+            </div>
           </div>
-        )}
-      </div>
+          <div className="px-7 py-4 border-t border-gray-100 bg-gray-50/30 flex justify-end">
+             <SecondaryButton onClick={() => setSelectedProvider(null)}>Cerrar</SecondaryButton>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
