@@ -29,6 +29,7 @@ export default function ProductSection({
   renderAfter,
   countValue,
   variant = "standard", // standard, simple-list, grid, wide-grid
+  renderEmpty,
 }) {
   const { addItem } = useCart();
 

@@ -11,10 +11,7 @@ import { matchesQuery } from "../utils/strings";
  import Section from "./Section";
  import ProductSection from "./ProductSection";
 
- import SmoothiesSection from "./SmoothiesSection";
- import CoffeeSection from "./CoffeeSection"; // Keeping until confirmed delete
-import BowlsSection from "./BowlsSection";
-import ColdDrinksSection from "./ColdDrinksSection"; // Keeping until confirmed delete
+
 import ProductQuickView from "./ProductQuickView";
 import DIYProductModal from "./DIYProductModal";
 import ProductCard from "./ProductCard";
@@ -159,33 +156,19 @@ export default function ProductLists({
 
       let element = null;
 
-      // Special case: Bowls still needs its builder logic
-      if (cat.slug === 'bowls') {
-        element = (
-          <Section id="section-bowls" title={cat.name} count={items.length}>
-            <BowlsSection
-              query={query}
-              onCount={(n) => setCount("bowls", n)}
-              onQuickView={onQuickView}
-              variant={config.section_type || 'standard'}
-            />
-          </Section>
-        );
-      } else {
-        // Generic dynamic section for everything else
-        element = (
-          <ProductSection
-            id={cat.slug}
-            title={cat.name}
-            query={query}
-            items={items}
-            groups={categoryGroups}
-            variant={config.section_type || 'standard'}
-            onCount={(n) => setCount(cat.slug, n)}
-            onQuickView={onQuickView}
-          />
-        );
-      }
+      // Generic dynamic section for everything
+      element = (
+        <ProductSection
+          id={cat.slug}
+          title={cat.name}
+          query={query}
+          items={items}
+          groups={categoryGroups}
+          variant={config.section_type || 'standard'}
+          onCount={(n) => setCount(cat.slug, n)}
+          onQuickView={onQuickView}
+        />
+      );
 
       return {
         id: cat.slug,
