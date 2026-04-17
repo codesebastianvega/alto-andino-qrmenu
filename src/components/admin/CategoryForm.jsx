@@ -83,15 +83,17 @@ export default function CategoryForm({ category, onSave, onCancel }) {
   };
 
   const handleAddSubManual = (value) => {
-    if (!value) return;
+    const trimmedValue = value?.trim();
+    if (!trimmedValue) return;
+    
     const currentSubs = formData.visibility_config?.subcategories || [];
-    if (currentSubs.includes(value)) return;
+    if (currentSubs.includes(trimmedValue)) return;
     
     setFormData(prev => ({
       ...prev,
       visibility_config: {
         ...prev.visibility_config,
-        subcategories: [...currentSubs, value]
+        subcategories: [...currentSubs, trimmedValue]
       }
     }));
   };
@@ -99,7 +101,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
   const addSubcategory = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleAddSubManual(e.target.value.trim());
+      handleAddSubManual(e.target.value);
       e.target.value = '';
     }
   };
@@ -219,21 +221,17 @@ export default function CategoryForm({ category, onSave, onCancel }) {
             </FormField>
 
             <FormField label="Clase de tinte (Fondo)">
-              <select 
-                name="tint_class" 
-                value={formData.tint_class}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none"
-              >
-                <option value="bg-white">Blanco (Predeterminado)</option>
-                <option value="bg-amber-50">Ambar (Desayunos)</option>
-                <option value="bg-emerald-50">Esmeralda (Bowls)</option>
-                <option value="bg-violet-50">Violeta (Platos)</option>
-                <option value="bg-rose-50">Rosa (Sándwiches)</option>
-                <option value="bg-pink-50">Fucsia (Smoothies)</option>
-                <option value="bg-sky-50">Cielo (Bebidas)</option>
-                <option value="bg-stone-200">Piedra (Café)</option>
-              </select>
+              <div className="space-y-1.5">
+                <TextInput 
+                  name="tint_class" 
+                  value={formData.tint_class} 
+                  onChange={handleChange} 
+                  placeholder="Ej. bg-amber-50" 
+                />
+                <p className="text-[10px] text-gray-400 italic font-medium px-1">
+                  Usa clases de Tailwind (bg-white, bg-rose-50, etc.) o deja en blanco.
+                </p>
+              </div>
             </FormField>
 
             <FormField label="ID de Anclaje (Técnico)">
