@@ -45,11 +45,11 @@ Progreso de la transición a un sistema 100% dinámico y jerárquico.
 **Objetivo:** Renderizado fluido y dinámico basado en las nuevas reglas.
 
 ### Bloque 4.1: Refactor de `ProductLists.jsx`
-- [/] **Tarea Atómica:** Eliminar importación de `CATEGORIES_LIST`
-- [/] **Tarea Atómica:** Implementar lógica de agrupación de productos por el orden establecido en la categoría
-- [/] **Tarea Atómica:** Inyectar la clase `tint_class` dinámicamente en el contenedor de cada sección
-- [ ] **Tarea Atómica:** Mapear `section_type` a los componentes específicos (SmoothiesSection, etc.)
-- [ ] **Tarea Atómica:** Renderizar sección "Otros" al final de la categoría si hay productos huérfanos
+- [x] **Tarea Atómica:** Eliminar importación de `CATEGORIES_LIST`
+- [x] **Tarea Atómica:** Implementar lógica de agrupación de productos por el orden establecido en la categoría
+- [x] **Tarea Atómica:** Inyectar la clase `tint_class` dinámicamente en el contenedor de cada sección
+- [x] **Tarea Atómica:** Mapear `section_type` a variantes de `ProductSection`
+- [x] **Tarea Atómica:** Renderizar sección "Otros" al final de la categoría si hay productos huérfanos
 
 ---
 
@@ -57,7 +57,9 @@ Progreso de la transición a un sistema 100% dinámico y jerárquico.
 **Objetivo:** Eliminar archivos obsoletos y verificar integridad.
 
 ### Bloque 5.1: Depuración Técnica
-- [ ] eliminar `src/config/categories.js`
-- [ ] eliminar `src/config/categories.veggie.js`
-- [ ] verificar que ningún componente importe variables de estos archivos
-- [ ] walkthrough final de creación y visualización
+- [x] eliminar `src/config/categories.js`
+- [x] eliminar `src/config/categories.veggie.js`
+- [x] eliminar componentes de sección especializados (`Sandwiches.jsx`, etc.)
+- [x] verificar que ningún componente importe variables de estos archivos
+- [x] walkthrough final de creación y visualización
+

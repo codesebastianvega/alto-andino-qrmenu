@@ -10,7 +10,7 @@ import { matchesQuery } from "../utils/strings";
  import { StatusChip } from "./Buttons";
  import Section from "./Section";
  import ProductSection from "./ProductSection";
- import Sandwiches from "./Sandwiches";
+
  import SmoothiesSection from "./SmoothiesSection";
  import CoffeeSection from "./CoffeeSection"; // Keeping until confirmed delete
 import BowlsSection from "./BowlsSection";
@@ -128,26 +128,33 @@ export default function ProductLists({
       let categoryGroups = null;
       if (definedSubs.length > 0) {
         const grouped = {};
+        const others = [];
+
         items.forEach(p => {
-          const sub = p.subcategory || 'Otros';
-          if (!grouped[sub]) grouped[sub] = [];
-          grouped[sub].push(p);
+          const sub = p.subcategory;
+          if (sub && definedSubs.includes(sub)) {
+            if (!grouped[sub]) grouped[sub] = [];
+            grouped[sub].push(p);
+          } else {
+            others.push(p);
+          }
         });
 
-        // Order them: first those in definedSubs, then 'Otros', then any others
-        const subsToRender = definedSubs.filter(s => grouped[s] && grouped[s].length > 0);
+        const groupsToRender = definedSubs
+          .map(title => ({
+            title,
+            items: grouped[title] || []
+          }))
+          .filter(g => g.items.length > 0);
         
-        // Handle "Otros" correctly: if there are items with subcategory 'Otros' or empty, group them
-        const others = items.filter(p => !p.subcategory || p.subcategory === 'Otros');
-        if (others.length > 0 && !subsToRender.includes('Otros')) {
-          grouped['Otros'] = others;
-          subsToRender.push('Otros');
+        if (others.length > 0) {
+          groupsToRender.push({
+            title: 'Otros',
+            items: others
+          });
         }
 
-        categoryGroups = subsToRender.map(title => ({
-          title,
-          items: grouped[title] || []
-        }));
+        categoryGroups = groupsToRender;
       }
 
       let element = null;
