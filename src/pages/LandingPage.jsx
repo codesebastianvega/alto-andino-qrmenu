@@ -238,6 +238,19 @@ const LandingPage = () => {
           .glass-dark { background: rgba(26, 36, 33, 0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
           .hide-scrollbar::-webkit-scrollbar { display: none; }
           .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+          
+          @keyframes infinite-scroll {
+            from { transform: translateX(0); }
+            to { transform: translateX(calc(-100% - 1.5rem)); }
+          }
+          .animate-infinite-scroll {
+            animation: infinite-scroll 40s linear infinite;
+            display: flex;
+            width: max-content;
+          }
+          .marquee-container:hover .animate-infinite-scroll {
+            animation-play-state: paused;
+          }
         `}
       </style>
 
@@ -491,19 +504,15 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Community Reviews: Infinite Scroll */}
-      <section className="py-24 md:py-32 bg-[#1A2421] relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-[#FAFAFA] to-transparent" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] bg-[#E6B05C]/5 rounded-full blur-[120px] pointer-events-none" />
-        
+      {/* Community Reviews: Infinite Scroll (Light Variant) */}
+      <section className="py-24 md:py-32 bg-[#FAFAFA] relative overflow-hidden">
         <div className="container mx-auto px-4 md:px-6 lg:px-12 relative z-10">
-          <div className="text-center max-w-3xl mx-auto mb-16 md:mb-24">
+          <div className="text-center max-w-3xl mx-auto mb-16 md:mb-20">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="inline-flex items-center gap-2 bg-white/5 backdrop-blur-md text-white/70 px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase mb-6 border border-white/10"
+              className="inline-flex items-center gap-2 bg-[#1A2421]/5 text-[#1A2421] px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase mb-6 border border-[#1A2421]/10"
             >
               <Quote size={12} className="text-[#E6B05C]" />
               Voces de la Comunidad
@@ -513,54 +522,44 @@ const LandingPage = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-3xl md:text-6xl font-extrabold text-white mb-6 tracking-tight leading-tight"
+              className="text-3xl md:text-6xl font-extrabold text-[#1A2421] mb-6 tracking-tight leading-tight"
             >
-              Experiencias que <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E6B05C] to-[#E6B05C]/70">dejan huella.</span>
+              Experiencias que <span className="text-[#E6B05C]">dejan huella.</span>
             </motion.h2>
           </div>
 
-          <div className="relative flex overflow-hidden py-10">
-            {/* Usamos dos filas de carrusel para más dinamismo */}
-            <div className="flex space-x-6 animate-infinite-scroll hover:[animation-play-state:paused]">
-              {[...config.reviews, ...config.reviews].map((rev, idx) => (
+          <div className="marquee-container relative flex overflow-hidden py-4 -translate-y-4">
+            <div className="animate-infinite-scroll flex gap-6 px-4">
+              {[...config.reviews, ...config.reviews, ...config.reviews, ...config.reviews].map((rev, idx) => (
                 <div 
                   key={idx} 
-                  className="w-[300px] md:w-[450px] shrink-0 glass-dark p-8 md:p-10 rounded-[2.5rem] border border-white/5 flex flex-col gap-6"
+                  className="w-[320px] md:w-[450px] shrink-0 bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 flex flex-col gap-6 relative group overflow-hidden shadow-xl shadow-gray-200/50"
                 >
+                  <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <Quote size={80} className="text-[#1A2421]" />
+                  </div>
+                  
                   <div className="flex gap-1.5">
                     {[1, 2, 3, 4, 5].map(star => (
-                      <Star key={star} size={14} fill={star <= (rev.rating || 5) ? "#E6B05C" : "none"} className={star <= (rev.rating || 5) ? "text-[#E6B05C]" : "text-white/20"} />
+                      <Star key={star} size={14} fill={star <= (rev.rating || 5) ? "#E6B05C" : "none"} className={star <= (rev.rating || 5) ? "text-[#E6B05C]" : "text-gray-200"} />
                     ))}
                   </div>
                   
-                  <p className="text-white/80 text-lg md:text-xl font-medium leading-relaxed italic">
+                  <p className="text-[#1A2421]/80 text-lg md:text-xl font-medium leading-relaxed italic relative z-10">
                     "{rev.text}"
                   </p>
                   
-                  <div className="flex items-center gap-4 mt-auto pt-6 border-t border-white/5">
-                    <img src={rev.img || `https://ui-avatars.com/api/?name=${rev.name}&background=E6B05C&color=fff`} alt={rev.name} className="w-12 h-12 rounded-full object-cover border-2 border-white/10" />
+                  <div className="flex items-center gap-4 mt-auto pt-8 border-t border-gray-50 relative z-10">
+                    <img src={rev.img || `https://ui-avatars.com/api/?name=${rev.name}&background=E6B05C&color=fff`} alt={rev.name} className="w-12 h-12 rounded-full object-cover border-2 border-[#1A2421]/5" />
                     <div>
-                      <h4 className="font-bold text-white text-base">{rev.name}</h4>
-                      <p className="text-white/40 text-xs font-bold uppercase tracking-widest">{rev.role}</p>
+                      <h4 className="font-bold text-[#1A2421] text-base">{rev.name}</h4>
+                      <p className="text-[#1A2421]/40 text-[10px] font-bold uppercase tracking-[0.2em]">{rev.role || 'Cliente Satisfecho'}</p>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-
-          <style>
-            {`
-              @keyframes infinite-scroll {
-                from { transform: translateX(0); }
-                to { transform: translateX(-50%); }
-              }
-              .animate-infinite-scroll {
-                animation: infinite-scroll 40s linear infinite;
-                width: max-content;
-              }
-            `}
-          </style>
         </div>
       </section>
 

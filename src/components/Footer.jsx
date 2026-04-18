@@ -28,7 +28,7 @@ export default function Footer({ hasCartBar }) {
   return (
     <footer 
       style={{ backgroundColor: footerBg }}
-      className={`text-white pt-10 md:pt-20 px-4 md:px-6 lg:px-12 rounded-t-[2rem] md:rounded-t-[3.5rem] mt-6 md:mt-10 ${hasCartBar ? "pb-28 md:pb-32" : "pb-6 md:pb-10"}`}
+      className={`text-white pt-10 md:pt-20 px-4 md:px-6 lg:px-12 rounded-t-[2rem] md:rounded-t-[3.5rem] ${hasCartBar ? "pb-28 md:pb-32" : "pb-6 md:pb-10"}`}
     >
       <div className="container mx-auto max-w-7xl">
         
