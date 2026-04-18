@@ -152,6 +152,7 @@ const CARTA_ITEMS = [
   { id: 'products',        label: 'Carta Principal',   Icon: Icons.Products, roles: ADMIN_ROLES },
   { id: 'categories',      label: 'Categorías',         Icon: Icons.Categories, roles: ADMIN_ROLES },
   { id: 'modifier_groups', label: 'Extras y Opciones', Icon: Icons.Modifiers, roles: ADMIN_ROLES },
+  { id: 'experiences',     label: 'Experiencias',      Icon: Icons.Experiences, roles: ADMIN_ROLES },
   { id: 'tables',          label: 'Mesas y QRs',       Icon: Icons.Tables, roles: ADMIN_ROLES },
 ];
 
@@ -721,6 +722,7 @@ export default function AdminLayout() {
           {currentPage === 'web'         && <AdminWebContent />}
           {currentPage === 'products'    && <AdminProducts />}
           {currentPage === 'categories'  && <AdminCategories />}
+          { currentPage === 'experiences' && <AdminExperiences /> }
           { currentPage === 'recipes'     && <AdminRecipes /> }
           { currentPage === 'modifier_groups' && <AdminModifierGroups /> }
           { currentPage === 'inventory'   && <AdminModifiers /> }
