@@ -7,7 +7,6 @@ import AdminCategories from '../../pages/AdminCategories';
 import AdminModifiers from '../../pages/AdminModifiers';
 import AdminExperiences from '../../pages/AdminExperiences';
 import AdminRecipes from '../../pages/AdminRecipes';
-import AdminBranding from '../../pages/AdminBranding';
 import AdminSettings from '../../pages/AdminSettings';
 import AdminModifierGroups from '../../pages/AdminModifierGroups';
 import AdminTables from '../../pages/AdminTables';
@@ -164,7 +163,6 @@ const PROD_ITEMS = [
 const ADMIN_ITEMS = [
   { id: 'staff',      label: 'Personal y Staff', Icon: Icons.Staff, roles: ADMIN_ROLES, feature: 'staff' },
   { id: 'sedes',      label: 'Sedes y Locales',   Icon: Icons.Home, roles: ADMIN_ROLES, feature: 'multi_location' },
-  { id: 'branding',   label: 'Identidad Visual', Icon: Icons.Branding, roles: ADMIN_ROLES },
   { id: 'settings',   label: 'Ajustes de Operación', Icon: Icons.Settings, roles: ADMIN_ROLES },
 ];
 
@@ -729,7 +727,6 @@ export default function AdminLayout() {
           { currentPage === 'tables'      && <AdminTables /> }
           { currentPage === 'orders'      && <AdminOrders /> }
           { currentPage === 'kitchen'     && <AdminKitchen /> }
-          { currentPage === 'branding'    && <AdminBranding /> }
           { currentPage === 'settings'    && <AdminSettings /> }
           { currentPage === 'staff'       && <AdminStaff /> }
           { currentPage === 'sedes'       && <AdminSedes /> }
