@@ -65,7 +65,8 @@ const LandingPage = () => {
     homeSettings, 
     restaurantSettings, 
     categories: allCategories,
-    loading: menuLoading 
+    loading: menuLoading,
+    getProductsByCategory 
   } = useMenuData();
   
   const { addItem } = useCart();
@@ -97,7 +98,7 @@ const LandingPage = () => {
         .filter(cat => cat.visibility_config?.show_in_hero)
         .map(cat => {
           const vc = cat.visibility_config || {};
-          const products = cat.products || [];
+          const products = getProductsByCategory(cat.slug) || [];
           const featuredProduct = products.find(p => p.id === vc.hero_featured_product_id) || products[0];
           
           const img = featuredProduct?.image;

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useMenuData } from '../context/MenuDataContext';
 import { toast as toastFn } from '../components/Toast';
 import { PrimaryButton, SecondaryButton, FormField, TextInput, PageHeader } from '../components/admin/ui';
 import { Icon } from '@iconify-icon/react';
@@ -14,6 +15,7 @@ const toast = {
 
 export default function AdminWebContent() {
   const { activeBrand } = useAuth();
+  const { refetchMenuData } = useMenuData();
   const getInitialTab = () => {
     const params = new URLSearchParams(window.location.search);
     return params.get('tab') || 'inicio';
@@ -63,11 +65,14 @@ export default function AdminWebContent() {
   });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [allCategories, setAllCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
 
   useEffect(() => {
     if (activeBrand?.id) {
       fetchHomeSettings();
       fetchProducts();
+      fetchCategories();
     }
   }, [activeBrand?.id]);
 
@@ -106,6 +111,63 @@ export default function AdminWebContent() {
       setAllProducts(products || []);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const fetchCategories = async () => {
+    if (!activeBrand?.id) return;
+    setLoadingCategories(true);
+    try {
+      const { data: cats, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('brand_id', activeBrand.id)
+        .order('sort_order', { ascending: true });
+      
+      if (error) throw error;
+      setAllCategories(cats || []);
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+      toast.error('Error al cargar categorías');
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  const toggleCategoryHero = async (category) => {
+    const isCurrentlyActive = category.visibility_config?.show_in_hero;
+    const activeCount = allCategories.filter(c => c.visibility_config?.show_in_hero).length;
+
+    if (!isCurrentlyActive && activeCount >= 5) {
+      toast.error('Límite de 5 categorías alcanzado. Desactiva una antes de agregar otra.');
+      return;
+    }
+
+    try {
+      const newConfig = {
+        ...(category.visibility_config || {}),
+        show_in_hero: !isCurrentlyActive
+      };
+
+      const { error } = await supabase
+        .from('categories')
+        .update({ visibility_config: newConfig })
+        .eq('id', category.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setAllCategories(prev => prev.map(c => 
+        c.id === category.id ? { ...c, visibility_config: newConfig } : c
+      ));
+
+      // Update local context for SPA synchronization
+      if (refetchMenuData) refetchMenuData();
+
+      toast.success(isCurrentlyActive ? `${category.name} removida del Hero` : `${category.name} añadida al Hero`);
+    } catch (err) {
+      console.error('Error updating category:', err);
+      toast.error('Error al actualizar categoría');
     }
   };
 
@@ -148,6 +210,10 @@ export default function AdminWebContent() {
           onConflict: 'brand_id' 
         });
       if (error) throw error;
+      
+      // Update local context for SPA synchronization
+      if (refetchMenuData) refetchMenuData();
+
       toast.success('Ajustes web guardados');
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -382,28 +448,90 @@ export default function AdminWebContent() {
                   </div>
                 </div>
 
-                {/* HELP CARD */}
-                <div className="p-6 bg-emerald-50/50 border-2 border-emerald-50 rounded-[2rem] flex flex-col sm:flex-row gap-6 items-center relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-100/20 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-emerald-200/30 transition-colors" />
-                  <div className="w-16 h-16 rounded-2xl bg-emerald-500 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-200 group-hover:scale-110 transition-transform duration-500">
-                    <Icon icon="solar:stars-minimalistic-bold-duotone" className="text-white text-3xl" />
+                {/* GESTIÓN DE CATEGORÍAS EN EL HERO (HERO CHIPS) */}
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                        <Icon icon="solar:stars-minimalistic-bold-duotone" className="text-indigo-600 text-xl" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-gray-900 uppercase tracking-tight">Categorías Destacadas (Hero)</h4>
+                        <p className="text-[11px] text-gray-500 font-medium">Selecciona las categorías que aparecerán en el carrusel principal.</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-100">
+                      <span className={`w-2 h-2 rounded-full ${allCategories.filter(c => c.visibility_config?.show_in_hero).length >= 5 ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                      <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">
+                        {allCategories.filter(c => c.visibility_config?.show_in_hero).length} / 5 Seleccionadas
+                      </span>
+                    </div>
                   </div>
-                  <div className="relative z-10 flex-1 text-center sm:text-left">
-                    <h4 className="text-[14px] font-bold text-emerald-900 uppercase tracking-tight flex items-center justify-center sm:justify-start gap-2">
-                       Personalización Dinámica del Menú
-                    </h4>
-                    <p className="text-[11px] text-emerald-700/80 mt-2 font-bold leading-relaxed max-w-2xl">
-                      Para elegir qué platos aparecen en el carrusel de la página de inicio, ve a la sección de 
-                      <button 
-                        onClick={() => window.location.search = '?admin_page=categories'}
-                        className="bg-emerald-500 text-white px-2 py-0.5 rounded ml-1 mr-1 hover:bg-emerald-600 transition-colors"
-                      >
-                        Categorías
-                      </button>
-                      y activa la opción <strong className="text-emerald-900 uppercase">"Home Hero"</strong> en cada una. 
-                      ¡Asegúrate de que tengan un <span className="underline decoration-emerald-200 decoration-2">Producto Estrella</span> seleccionado!
-                    </p>
-                  </div>
+
+                  {loadingCategories ? (
+                    <div className="flex flex-col items-center justify-center py-12 bg-gray-50/50 rounded-[2rem] border border-dashed border-gray-200">
+                      <Loader2 className="w-8 h-8 text-indigo-200 animate-spin" />
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-4">Cargando categorías...</span>
+                    </div>
+                  ) : allCategories.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-50/50 rounded-[2rem] border border-dashed border-gray-200">
+                      <Icon icon="solar:folder-error-bold-duotone" className="text-4xl text-gray-200" />
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-4">No se encontraron categorías</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                      {allCategories.map((category) => {
+                        const isActive = category.visibility_config?.show_in_hero;
+                        return (
+                          <button
+                            key={category.id}
+                            type="button"
+                            onClick={() => toggleCategoryHero(category)}
+                            className={`group relative p-4 rounded-[1.5rem] text-left transition-all duration-300 border-2 ${
+                              isActive 
+                                ? 'bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-100' 
+                                : 'bg-white border-gray-50 hover:border-indigo-100 hover:scale-[1.02] hover:shadow-md'
+                            }`}
+                          >
+                            <div className="flex flex-col h-full justify-between gap-3">
+                              <div className="flex items-center justify-between">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                                  isActive ? 'bg-white/20' : 'bg-gray-50 group-hover:bg-indigo-50'
+                                }`}>
+                                  <Icon 
+                                    icon={isActive ? "solar:check-circle-bold" : "solar:add-circle-line-duotone"} 
+                                    className={`text-lg ${isActive ? 'text-white' : 'text-gray-300 group-hover:text-indigo-400'}`} 
+                                  />
+                                </div>
+                                {isActive && (
+                                  <span className="flex w-2 h-2 rounded-full bg-white animate-pulse" />
+                                )}
+                              </div>
+                              
+                              <div>
+                                <h5 className={`text-[11px] font-bold uppercase tracking-tight truncate ${
+                                  isActive ? 'text-white' : 'text-gray-900'
+                                }`}>
+                                  {category.name}
+                                </h5>
+                                <p className={`text-[9px] font-medium mt-0.5 ${
+                                  isActive ? 'text-indigo-100' : 'text-gray-400'
+                                }`}>
+                                  {isActive ? 'Activo en Hero' : 'Inactivo'}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {/* Glow Effect on Active */}
+                            {isActive && (
+                              <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-[1.4rem]" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
