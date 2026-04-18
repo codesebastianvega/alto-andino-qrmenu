@@ -99,10 +99,18 @@ const LandingPage = () => {
         .map(cat => {
           const vc = cat.visibility_config || {};
           const products = getProductsByCategory(cat.slug) || [];
-          const featuredProduct = products.find(p => p.id === vc.hero_featured_product_id) || products[0];
           
-          const img = featuredProduct?.image;
-          if (!img) return null;
+          // Buscar producto con imagen: Prioridad al configurado, luego cualquiera con imagen, luego el primero
+          const featuredProduct = products.find(p => p.id === vc.hero_featured_product_id) 
+            || products.find(p => p.image_url || p.image)
+            || products[0];
+          
+          let img = featuredProduct?.image_url || featuredProduct?.image;
+          
+          // Fallback image if nothing found
+          if (!img) {
+            img = "https://images.unsplash.com/photo-1546241072-48010ad28c2c?q=80&w=1200";
+          }
 
           return {
             category: cat.name,

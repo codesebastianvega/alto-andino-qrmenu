@@ -3,9 +3,9 @@ import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useMenuData } from '../context/MenuDataContext';
 import { toast as toastFn } from '../components/Toast';
-import { PrimaryButton, SecondaryButton, FormField, TextInput, PageHeader } from '../components/admin/ui';
+import { PrimaryButton, SecondaryButton, FormField, TextInput, PageHeader, Switch } from '../components/admin/ui';
 import { Icon } from '@iconify-icon/react';
-import { Loader2, Sparkles, Home, BookOpen, Layers, Palette, Cpu } from 'lucide-react';
+import { Loader2, Sparkles, Home, BookOpen, Layers, Palette, Cpu, Settings, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
 import AdminBranding from './AdminBranding';
 
 const toast = {
@@ -67,6 +67,7 @@ export default function AdminWebContent() {
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [allCategories, setAllCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
+  const [editingHeroCategory, setEditingHeroCategory] = useState(null);
 
   useEffect(() => {
     if (activeBrand?.id) {
@@ -168,6 +169,33 @@ export default function AdminWebContent() {
     } catch (err) {
       console.error('Error updating category:', err);
       toast.error('Error al actualizar categoría');
+    }
+  };
+
+  const setHeroFeaturedProduct = async (category, productId) => {
+    try {
+      const newConfig = {
+        ...(category.visibility_config || {}),
+        hero_featured_product_id: productId
+      };
+
+      const { error } = await supabase
+        .from('categories')
+        .update({ visibility_config: newConfig })
+        .eq('id', category.id);
+
+      if (error) throw error;
+
+      setAllCategories(prev => prev.map(c => 
+        c.id === category.id ? { ...c, visibility_config: newConfig } : c
+      ));
+
+      if (refetchMenuData) refetchMenuData();
+      toast.success('Producto destacado actualizado');
+      setEditingHeroCategory(null);
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al actualizar el producto');
     }
   };
 
@@ -480,54 +508,162 @@ export default function AdminWebContent() {
                       <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-4">No se encontraron categorías</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       {allCategories.map((category) => {
                         const isActive = category.visibility_config?.show_in_hero;
+                        
+                        // Check if category is currently active based on dayparting
+                        const isScheduled = () => {
+                          const now = new Date();
+                          const currentDay = now.getDay();
+                          const config = category.visibility_config || {};
+                          const allowedDays = config.days || [0,1,2,3,4,5,6];
+                          
+                          if (!allowedDays.includes(currentDay)) return false;
+                          if (!category.available_from && !category.available_to) return true;
+                          
+                          const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                          const parseTime = (t) => { if (!t) return null; const [h,m] = t.split(':').map(Number); return h*60+m; };
+                          const from = parseTime(category.available_from);
+                          const to = parseTime(category.available_to);
+                          
+                          if (from !== null && to !== null) {
+                            return from < to ? (currentMinutes >= from && currentMinutes <= to) : (currentMinutes >= from || currentMinutes <= to);
+                          }
+                          if (from !== null) return currentMinutes >= from;
+                          if (to !== null) return currentMinutes <= to;
+                          return true;
+                        };
+
+                        const isCurrentlyVisible = isScheduled();
+                        const vc = category.visibility_config || {};
+                        const featuredProduct = allProducts.find(p => p.id === vc.hero_featured_product_id);
+                        const displayImg = featuredProduct?.image_url || allProducts.find(p => p.category_id === category.id && p.image_url)?.image_url;
+
                         return (
-                          <button
+                          <div
                             key={category.id}
-                            type="button"
-                            onClick={() => toggleCategoryHero(category)}
-                            className={`group relative p-4 rounded-[1.5rem] text-left transition-all duration-300 border-2 ${
+                            className={`group relative bg-white rounded-[2rem] border-2 transition-all duration-300 overflow-hidden ${
                               isActive 
-                                ? 'bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-100' 
-                                : 'bg-white border-gray-50 hover:border-indigo-100 hover:scale-[1.02] hover:shadow-md'
+                                ? 'border-indigo-100 shadow-md ring-1 ring-indigo-50/50' 
+                                : 'border-gray-50 hover:border-gray-100'
                             }`}
                           >
-                            <div className="flex flex-col h-full justify-between gap-3">
+                            <div className="p-5 flex flex-col gap-4">
+                              {/* Header: Icon/Img + Toggle */}
                               <div className="flex items-center justify-between">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                                  isActive ? 'bg-white/20' : 'bg-gray-50 group-hover:bg-indigo-50'
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all overflow-hidden shadow-sm ${
+                                  isActive ? 'ring-2 ring-indigo-100 ring-offset-2' : 'bg-gray-50'
                                 }`}>
-                                  <Icon 
-                                    icon={isActive ? "solar:check-circle-bold" : "solar:add-circle-line-duotone"} 
-                                    className={`text-lg ${isActive ? 'text-white' : 'text-gray-300 group-hover:text-indigo-400'}`} 
+                                  {displayImg ? (
+                                    <img src={displayImg} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <Icon icon="solar:plate-bold-duotone" className="text-2xl text-gray-300" />
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {isActive && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingHeroCategory(editingHeroCategory === category.id ? null : category.id)}
+                                      className={`p-2 rounded-xl transition-all ${
+                                        editingHeroCategory === category.id 
+                                          ? 'bg-indigo-600 text-white shadow-lg' 
+                                          : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                                      }`}
+                                      title="Configurar Chip"
+                                    >
+                                      <Settings className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                  <Switch 
+                                    checked={!!isActive} 
+                                    onChange={() => toggleCategoryHero(category)}
                                   />
                                 </div>
-                                {isActive && (
-                                  <span className="flex w-2 h-2 rounded-full bg-white animate-pulse" />
-                                )}
                               </div>
-                              
-                              <div>
-                                <h5 className={`text-[11px] font-bold uppercase tracking-tight truncate ${
-                                  isActive ? 'text-white' : 'text-gray-900'
-                                }`}>
-                                  {category.name}
-                                </h5>
-                                <p className={`text-[9px] font-medium mt-0.5 ${
-                                  isActive ? 'text-indigo-100' : 'text-gray-400'
-                                }`}>
-                                  {isActive ? 'Activo en Hero' : 'Inactivo'}
+
+                              {/* Content: Title + Status */}
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <h5 className="text-sm font-bold text-gray-900 truncate flex-1">{category.name}</h5>
+                                  {isActive && (
+                                    <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                      isCurrentlyVisible ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                                    }`}>
+                                      {isCurrentlyVisible ? (
+                                        <><div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" /> Activo</>
+                                      ) : (
+                                        <><Calendar className="w-2.5 h-2.5" /> Programado</>
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-gray-400 font-medium">
+                                  {isActive ? 'Visible en el carrusel principal' : 'No se muestra en el Hero'}
                                 </p>
                               </div>
                             </div>
                             
-                            {/* Glow Effect on Active */}
-                            {isActive && (
-                              <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-[1.4rem]" />
+                            {/* Detailed Config Panel */}
+                            {editingHeroCategory === category.id && (
+                              <div className="border-t border-indigo-50 bg-indigo-50/20 p-5 space-y-4 animate-in slide-in-from-top-4 duration-300">
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Plato Protagonista</label>
+                                    <Icon icon="solar:magic-stick-3-bold-duotone" className="text-indigo-400" />
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-1 gap-1.5 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {allProducts.filter(p => p.category_id === category.id).length === 0 ? (
+                                      <div className="p-4 bg-white rounded-2xl border border-dashed border-gray-100 text-center">
+                                        <AlertCircle className="w-5 h-5 text-gray-200 mx-auto mb-2" />
+                                        <p className="text-[10px] text-gray-400 italic">Agrega platos a esta categoría primero</p>
+                                      </div>
+                                    ) : allProducts.filter(p => p.category_id === category.id).map(prod => (
+                                      <button
+                                        key={prod.id}
+                                        onClick={() => setHeroFeaturedProduct(category, prod.id)}
+                                        className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all text-left border-2 ${
+                                          category.visibility_config?.hero_featured_product_id === prod.id 
+                                            ? 'bg-white border-indigo-600 shadow-sm' 
+                                            : 'bg-white/50 border-transparent hover:border-gray-100 hover:bg-white'
+                                        }`}
+                                      >
+                                        <div className="w-10 h-10 rounded-xl bg-gray-100 overflow-hidden shrink-0 shadow-sm">
+                                          {prod.image_url ? (
+                                            <img src={prod.image_url} className="w-full h-full object-cover" />
+                                          ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                              <Icon icon="solar:plate-line-duotone" />
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className={`text-[11px] font-bold truncate ${
+                                            category.visibility_config?.hero_featured_product_id === prod.id ? 'text-indigo-600' : 'text-gray-700'
+                                          }`}>{prod.name}</p>
+                                          <p className="text-[9px] text-gray-400 font-medium">
+                                            {prod.price ? `$${(prod.price / 1000).toFixed(0)}k` : 'Consultar'}
+                                          </p>
+                                        </div>
+                                        {category.visibility_config?.hero_featured_product_id === prod.id && (
+                                          <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                                        )}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                                
+                                <button
+                                  onClick={() => setEditingHeroCategory(null)}
+                                  className="w-full py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100"
+                                >
+                                  Listo
+                                </button>
+                              </div>
                             )}
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
