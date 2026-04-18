@@ -137,9 +137,10 @@ export default function App() {
   const isOnboardingView = currentHash === '#admin/onboarding';
   const orderTrackingId = currentHash.startsWith('#order/') ? currentHash.replace('#order/', '') : null;
   
-  const isLandingView = !currentHash || currentHash === '' || currentHash === '#' || currentHash === '#inicio';
-  const isMenuView = currentHash === '#menu';
-  const isAuthView = currentHash === '#login' || currentHash === '#registro';
+  const isLandingView = !currentHash || currentHash === "" || currentHash === "#" || currentHash === "#inicio";
+  const isExplicitInicio = currentHash === "#inicio";
+  const isMenuView = currentHash === "#menu";
+  const isAuthView = currentHash === "#login" || currentHash === "#registro";
   const isOrderingMode = isMenuView || !!sessionStorage.getItem("aa_current_mesa") || searchParams.get("mesa");
 
   // ✅ Welcome Experience State — solo 1 vez cada 24h por marca
@@ -344,7 +345,8 @@ export default function App() {
       {!isDemo && !isAuthView && <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />}
 
 
-        {isLandingView && !isOrderingMode && (
+        {/* Si es vista Landing Y (no estamos en modo pedido O es un hash explícito #inicio) */}
+        {(isExplicitInicio || (isLandingView && !isOrderingMode)) && (
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
             <LandingPage />
           </Suspense>
@@ -374,8 +376,9 @@ export default function App() {
           </Suspense>
         )}
 
-        {/* Menu normal: Si estamos en modo orden o hash explícito #menu, o si NO es la vista landing */}
-        {(isOrderingMode || isMenuView || (!isLandingView && !isNewAdminPanel && currentHash !== '#experiencias' && currentHash !== '#perfil' && currentHash !== '#admin' && !orderTrackingId)) && (
+        {/* Menu normal: Si estamos en modo orden o hash explícito #menu, o si NO es la vista landing. 
+            IMPORTANTE: Excluimos si es hash explícito #inicio para que gane la LandingPage */}
+        {((isOrderingMode || isMenuView || (!isLandingView && !isNewAdminPanel && currentHash !== '#experiencias' && currentHash !== '#perfil' && currentHash !== '#admin' && !orderTrackingId)) && !isExplicitInicio) && (
           <main
             className={`mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl px-5 ${isDemo ? 'pt-12 pb-20 sm:px-6 md:px-8' : 'pt-24 sm:px-6 sm:pt-24 md:px-8 md:pt-24'}`}
           >

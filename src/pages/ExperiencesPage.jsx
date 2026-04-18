@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { Sparkles, Loader2, X, ArrowUpRight } from 'lucide-react';
+import { Sparkles, Loader2, X, ArrowUpRight, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../config/supabase';
 import { useMenuData } from '../context/MenuDataContext';
@@ -56,6 +56,15 @@ export default function ExperiencesPage() {
 
   return (
     <div className="min-h-screen bg-brand-bg text-brand-text font-sans overflow-x-hidden selection:bg-brand-secondary selection:text-white pb-24 md:pb-0">
+      {/* 🔙 BOTÓN VOLVER (Solo visible en mobile o como acceso rápido) */}
+      <div className="fixed top-6 left-6 z-[60] md:hidden">
+        <button 
+          onClick={() => window.location.hash = '#inicio'}
+          className="bg-white/90 backdrop-blur-md p-2 rounded-full shadow-lg border border-white/50 text-brand-primary"
+        >
+          <ChevronLeft size={24} />
+        </button>
+      </div>
       {/* 🚀 HERO SECTION DE EXPERIENCIAS */}
       <section className="relative h-[60vh] md:h-[70vh] flex items-center justify-center overflow-hidden rounded-b-[3rem] md:rounded-b-[4rem]">
         {/* Background Image with Parallax effect */}

@@ -654,7 +654,7 @@ export default function AdminLayout() {
           {/* User Section / Collapse toggle */}
           <div className="mt-auto border-t border-white/5 bg-black/10">
              <a
-               href="/"
+               href={activeBrand?.slug ? `/${activeBrand.slug}/` : "/"}
                className={`flex items-center gap-2.5 px-5 py-3 text-[13px] font-medium text-white/40 hover:text-white/70 hover:bg-white/5 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
              >
                 <Icons.Home />
