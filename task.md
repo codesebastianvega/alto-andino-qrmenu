@@ -271,3 +271,31 @@
 - [ ] **Product Form**: Unificar estilos del selector de subcategorías con el sistema de diseño.
 - [ ] **Public Menu**: Optimizar `ProductCard.jsx` para soporte premium de Bento y Masonry.
 
+---
+
+## 💎 BLOQUE 11: Rediseño Premium de Ajustes (Vision OS) [/]
+> Meta: Unificar la estética "Glass-Bento" en todas las pestañas de configuración.
+
+### 11.1 Rediseño de Sedes (`AdminSedes.jsx`) [/]
+- [ ] Implementar tarjetas "Physical Presence" con efectos de cristal.
+- [ ] Añadir indicadores visuales de estado (Principal, Activa) con micro-animaciones.
+- [ ] Rediseñar modal de creación/edición con estilo premium.
+- [ ] Optimizar vista de "Sede Vacía" con layout bento placeholders.
+
+### 11.2 Rediseño de Staff (`AdminStaff.jsx`) [/]
+- [ ] Implementar tarjetas de personal con codificación de colores por rol.
+- [ ] Mejorar visibilidad de PIN y permisos de acceso.
+- [ ] Rediseñar modal de edición con secciones lógicas.
+- [ ] Añadir estados de carga y animaciones de entrada.
+
+### 11.3 Rediseño de Pagos (`AdminPaymentMethods.jsx`) [/]
+- [ ] Reestructurar cuadrícula de medios de pago para mejor uso de espacio.
+- [ ] Implementar tarjetas con iconos distintivos para Nequi, Daviplata, Efectivo, etc.
+- [ ] Mejorar visualmente los toggles de estado Activo/Inactivo.
+- [ ] Rediseñar modal de configuración con selección visual de tipo de pago.
+
+### 11.4 Pulido de Integración en `AdminSettings.jsx` [/]
+- [ ] Verificación de responsive en todas las pestañas.
+- [ ] Asegurar coherencia de bordes, sombras y desenfoques (blur).
+- [ ] Test de flujo completo (Guardar/Editar/Eliminar) en todos los módulos.
+

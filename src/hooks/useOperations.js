@@ -33,6 +33,7 @@ export function useOperations() {
   const [tables, setTables] = useState([]);
   const [areas, setAreas] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [liveEvents, setLiveEvents] = useState([]); // FIFO max 20
 
@@ -161,12 +162,26 @@ export function useOperations() {
     }
     setPayments(data || []);
   }, [brandId]);
+  
+  const fetchSettings = useCallback(async () => {
+    if (!brandId) return;
+    const { data, error } = await supabase
+      .from('restaurant_settings')
+      .select('*')
+      .eq('brand_id', brandId)
+      .single();
+    if (error && error.code !== 'PGRST116') {
+      console.error('[useOperations] fetchSettings error:', error);
+      return;
+    }
+    setSettings(data || { inactivity_threshold_mins: 30, target_prep_time_mins: 15 });
+  }, [brandId]);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    await Promise.all([fetchOrders(), fetchTables(), fetchAreas(), fetchPayments()]);
+    await Promise.all([fetchOrders(), fetchTables(), fetchAreas(), fetchPayments(), fetchSettings()]);
     setLoading(false);
-  }, [fetchOrders, fetchTables, fetchAreas, fetchPayments]);
+  }, [fetchOrders, fetchTables, fetchAreas, fetchPayments, fetchSettings]);
 
   // ─── Subscripciones Realtime ────────────────────────────────────────────────
 
@@ -353,6 +368,7 @@ export function useOperations() {
     tables,
     areas,
     payments,
+    settings,
     liveEvents,
     loading,
 
