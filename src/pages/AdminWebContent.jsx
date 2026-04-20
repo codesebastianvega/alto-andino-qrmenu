@@ -176,7 +176,10 @@ export default function AdminWebContent() {
     try {
       const newConfig = {
         ...(category.visibility_config || {}),
-        hero_featured_product_id: productId
+        hero_featured_product_id: productId,
+        // When setting a product, we clear the custom image to use the product image by default
+        // unless the user specifies otherwise.
+        hero_custom_image: null
       };
 
       const { error } = await supabase
@@ -253,7 +256,49 @@ export default function AdminWebContent() {
     }
   };
 
-  const handleAddItem = (key, defaultObj) => {
+  // Search and Filter for Must Try
+  const [mustTrySearch, setMustTrySearch] = useState('');
+  const [mustTryCategory, setMustTryCategory] = useState('all');
+
+  // Handle Must Try Product Toggle
+  const toggleMustTryProduct = (product) => {
+    const currentItems = data.featured_items || [];
+    const isSelected = currentItems.some(item => item.product_id === product.id);
+
+    if (isSelected) {
+      // Remove it
+      setData({
+        ...data,
+        featured_items: currentItems.filter(item => item.product_id !== product.id)
+      });
+    } else {
+      // Add it if limit not reached
+      if (currentItems.length >= 8) {
+        // We could add a toast here, but for now we'll just not add it
+        return;
+      }
+      
+      const newItem = {
+        product_id: product.id,
+        name: product.name,
+        img: product.image_url || '',
+        price: `$${(product.price / 1000).toFixed(0)}k`
+      };
+      
+      setData({
+        ...data,
+        featured_items: [...currentItems, newItem]
+      });
+    }
+  };
+
+  const filteredProducts = allProducts.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(mustTrySearch.toLowerCase());
+    const matchesCategory = mustTryCategory === 'all' || p.category_id === mustTryCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const handleAddItem = (field, item) => {
     setData({ ...data, [key]: [...(data[key] || []), defaultObj] });
   };
 
@@ -538,7 +583,11 @@ export default function AdminWebContent() {
                         const isCurrentlyVisible = isScheduled();
                         const vc = category.visibility_config || {};
                         const featuredProduct = allProducts.find(p => p.id === vc.hero_featured_product_id);
-                        const displayImg = featuredProduct?.image_url || allProducts.find(p => p.category_id === category.id && p.image_url)?.image_url;
+                        
+                        // Priority: Custom Image > Featured Product Image > Fallback Category Product Image
+                        const displayImg = vc.hero_custom_image 
+                          || featuredProduct?.image_url 
+                          || allProducts.find(p => p.category_id === category.id && p.image_url)?.image_url;
 
                         return (
                           <div
@@ -653,6 +702,31 @@ export default function AdminWebContent() {
                                       </button>
                                     ))}
                                   </div>
+                                  <div className="space-y-1.5 pt-2">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                      <Icon icon="solar:gallery-bold-duotone" className="text-indigo-400" />
+                                      Imagen Personalizada (URL)
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={category.visibility_config?.hero_custom_image || ''}
+                                      onChange={async (e) => {
+                                        const val = e.target.value;
+                                        const newConfig = { ...(category.visibility_config || {}), hero_custom_image: val };
+                                        
+                                        // Update state locally
+                                        setAllCategories(prev => prev.map(c => c.id === category.id ? { ...c, visibility_config: newConfig } : c));
+                                        
+                                        // Save to DB
+                                        const { error } = await supabase.from('categories').update({ visibility_config: newConfig }).eq('id', category.id);
+                                        if (error) toast.error('Error al guardar imagen');
+                                        if (refetchMenuData) refetchMenuData();
+                                      }}
+                                      placeholder="https://images.unsplash.com/..."
+                                      className="w-full bg-white border border-indigo-100 rounded-xl px-3 py-2 text-[11px] outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-inner"
+                                    />
+                                    <p className="text-[9px] text-gray-400 italic">Si dejas esto vacío, usaremos la imagen del plato seleccionado arriba.</p>
+                                  </div>
                                 </div>
                                 
                                 <button
@@ -678,76 +752,125 @@ export default function AdminWebContent() {
         {/* CONTINUACIÓN TABS INICIO: COMUNIDAD */}
         {activeTab === 'inicio' && (
           <div className="space-y-5 mt-5">
-            {/* FAVORITOS DE LA COMUNIDAD */}
+            {/* FAVORITOS DE LA COMUNIDAD (MUST TRY) */}
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-              <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
-                <div className="shrink-0">
-                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-tight">Favoritos de la Comunidad</h3>
-                  <p className="text-[11px] text-gray-500 mt-0.5 font-medium">Carrusel con platos imperdibles.</p>
+              <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-tight">Favoritos de la Comunidad</h3>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                        (data.featured_items?.length || 0) >= 8 ? 'bg-amber-100 text-amber-700' : 'bg-[#2f4131]/10 text-[#2f4131]'
+                      }`}>
+                        {data.featured_items?.length || 0} / 8 Seleccionados
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-0.5 font-medium">Gestiona los platos que aparecen en la sección destacada de la Landing Page.</p>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-400 font-bold uppercase whitespace-nowrap">Título Sección:</span>
+                    <input
+                      value={data.featured_items_title || ''}
+                      onChange={(e) => setData({ ...data, featured_items_title: e.target.value })}
+                      placeholder="Ej. Must Try"
+                      className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-[#2f4131]/10 min-w-[120px]"
+                    />
+                  </div>
                 </div>
-                <div className="flex-1 flex items-center gap-2">
-                  <span className="text-[10px] text-gray-400 font-semibold uppercase shrink-0">Título:</span>
-                  <input
-                    value={data.featured_items_title || ''}
-                    onChange={(e) => setData({ ...data, featured_items_title: e.target.value })}
-                    placeholder="Ej. Must Try"
-                    className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-[#2f4131]/10"
-                  />
+
+                {/* Filters */}
+                <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1 relative">
+                    <Icon icon="heroicons:magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+                    <input 
+                      type="text"
+                      placeholder="Buscar producto..."
+                      value={mustTrySearch}
+                      onChange={(e) => setMustTrySearch(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#2f4131]/10 placeholder:text-gray-400"
+                    />
+                  </div>
+                  <select
+                    value={mustTryCategory}
+                    onChange={(e) => setMustTryCategory(e.target.value)}
+                    className="bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-[#2f4131]/10 min-w-[150px]"
+                  >
+                    <option value="all">Todas las Categorías</option>
+                    {allCategories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
                 </div>
-                <button 
-                  onClick={() => handleAddItem('featured_items', { name: '', img: '', price: '$0k', product_id: '' })}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#2f4131] text-white rounded-xl text-xs font-bold hover:bg-[#243420] transition-colors shrink-0"
-                >
-                  <Icon icon="heroicons:plus" /> Agregar Item
-                </button>
               </div>
 
-              <div className="p-5 space-y-3">
-                {data.featured_items?.length === 0 && (
-                  <div className="text-center py-8 text-gray-400">
-                    <Icon icon="heroicons:photo" className="text-4xl mb-2" />
-                    <p className="text-sm font-medium">No hay favoritos aún. Agrega productos de tu carta.</p>
+              {/* Selected List - Horizontal Scroll */}
+              {data.featured_items?.length > 0 && (
+                <div className="bg-gray-50/30 border-b border-gray-100 p-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Orden de Visualización:</p>
+                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                    {data.featured_items.map((item, idx) => (
+                      <div key={item.product_id} className="relative shrink-0 group">
+                        <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-[#2f4131]/20 bg-white">
+                          <img src={item.img || 'https://via.placeholder.com/150'} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <button 
+                          onClick={() => toggleMustTryProduct({ id: item.product_id })}
+                          className="absolute -top-1.5 -right-1.5 bg-red-500 text-white p-1 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Icon icon="heroicons:x-mark" className="text-[10px] block" />
+                        </button>
+                        <span className="absolute -bottom-1 -right-1 bg-[#2f4131] text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-white">
+                          {idx + 1}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                )}
-                {data.featured_items?.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    {/* Thumbnail preview */}
-                    <div className="w-14 h-14 rounded-xl bg-gray-200 overflow-hidden shrink-0">
-                      {item.img && <img src={item.img} alt="" className="w-full h-full object-cover" />}
-                    </div>
-                    {/* Product picker */}
-                    <div className="flex-1">
-                      <select
-                        value={item.product_id || ''}
-                        onChange={(e) => {
-                          const prod = allProducts.find(p => p.id === e.target.value);
-                          if (prod) {
-                            const newList = [...data.featured_items];
-                            newList[idx] = {
-                              product_id: prod.id,
-                              name: prod.name,
-                              img: prod.image_url || '',
-                              price: `$${(prod.price / 1000).toFixed(0)}k`
-                            };
-                            setData({ ...data, featured_items: newList });
-                          }
-                        }}
-                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#2f4131]/10"
+                </div>
+              )}
+
+              {/* Product Grid for Selection */}
+              <div className="p-5 overflow-y-auto max-h-[400px] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredProducts.length === 0 ? (
+                  <div className="col-span-full py-12 text-center text-gray-400">
+                    <Icon icon="heroicons:magnifying-glass" className="text-3xl mb-2 mx-auto" />
+                    <p className="text-sm">No se encontraron productos con esos filtros.</p>
+                  </div>
+                ) : (
+                  filteredProducts.map(prod => {
+                    const isSelected = data.featured_items?.some(item => item.product_id === prod.id);
+                    const isAtLimit = (data.featured_items?.length || 0) >= 8 && !isSelected;
+                    
+                    return (
+                      <div 
+                        key={prod.id} 
+                        onClick={() => !isAtLimit && toggleMustTryProduct(prod)}
+                        className={`group relative flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                          isSelected 
+                            ? 'bg-[#2f4131]/5 border-[#2f4131] ring-1 ring-[#2f4131]' 
+                            : isAtLimit 
+                              ? 'bg-gray-50 border-gray-100 opacity-50 cursor-not-allowed'
+                              : 'bg-white border-gray-100 hover:border-[#2f4131]/30 hover:shadow-md'
+                        }`}
                       >
-                        <option value="">Selecciona un producto...</option>
-                        {allProducts.map(p => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} — {p.categories?.name || ''} — ${(p.price / 1000).toFixed(0)}k
-                          </option>
-                        ))}
-                      </select>
-                      {item.name && <p className="text-xs text-gray-500 mt-1 font-medium">{item.name} · {item.price}</p>}
-                    </div>
-                    <button onClick={() => handleRemoveItem('featured_items', idx)} className="text-red-400 p-2 hover:text-red-600 transition-colors">
-                      <Icon icon="heroicons:trash" />
-                    </button>
-                  </div>
-                ))}
+                        <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0">
+                          <img src={prod.image_url || 'https://via.placeholder.com/150'} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-xs font-bold text-gray-900 truncate leading-tight">{prod.name}</h4>
+                          <p className="text-[10px] text-gray-500 font-medium">${(prod.price / 1000).toFixed(0)}k · {prod.categories?.name}</p>
+                        </div>
+                        <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                          isSelected 
+                            ? 'bg-[#2f4131] text-white' 
+                            : 'bg-gray-100 text-gray-400 group-hover:bg-[#2f4131]/10 group-hover:text-[#2f4131]'
+                        }`}>
+                          <Icon icon={isSelected ? "heroicons:check-16-solid" : "heroicons:plus-16-solid"} className={isSelected ? "text-xs" : "text-sm"} />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
 

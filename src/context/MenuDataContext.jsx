@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from './AuthContext';
 import { useBrand } from './BrandContext';
@@ -233,34 +233,38 @@ export const MenuDataProvider = ({ children }) => {
     link.href = faviconUrl;
   }, [restaurantSettings]);
 
-  const getProductsByCategory = (slug) => productsByCategory[slug] || [];
-  const getModifiers = (group) => modifiers[group] || [];
-  const getAllProducts = () => Object.values(productsByCategory).flat();
+  const getProductsByCategory = useCallback((slug) => productsByCategory[slug] || [], [productsByCategory]);
+  const getModifiers = useCallback((group) => modifiers[group] || [], [modifiers]);
+  const getAllProducts = useCallback(() => Object.values(productsByCategory).flat(), [productsByCategory]);
+
+  const value = useMemo(() => ({
+    categories,
+    allCategories,
+    productsByCategory,
+    getProductsByCategory,
+    getAllProducts,
+    getModifiers,
+    modifiers,
+    rawModifierGroups,
+    experiences,
+    banners,
+    allergens,
+    homeSettings,
+    restaurantSettings,
+    brand,
+    planFeatures,
+    loading,
+    activeBrandId,
+    refetchMenuData: () => fetchMenuData(activeBrandId),
+    hasFeature: (key) => planFeatures?.find(f => f.feature_key === key)?.is_included ?? false,
+  }), [
+    categories, allCategories, productsByCategory, getProductsByCategory, getAllProducts, 
+    getModifiers, modifiers, rawModifierGroups, experiences, banners, allergens, 
+    homeSettings, restaurantSettings, brand, planFeatures, loading, activeBrandId, fetchMenuData
+  ]);
 
   return (
-    <MenuDataContext.Provider
-      value={{
-        categories,
-        allCategories,
-        productsByCategory,
-        getProductsByCategory,
-        getAllProducts,
-        getModifiers,
-        modifiers,
-        rawModifierGroups,
-        experiences,
-        banners,
-        allergens,
-        homeSettings,
-        restaurantSettings,
-        brand,
-        planFeatures,
-        loading,
-        activeBrandId,
-        refetchMenuData: () => fetchMenuData(activeBrandId),
-        hasFeature: (key) => planFeatures?.find(f => f.feature_key === key)?.is_included ?? false,
-      }}
-    >
+    <MenuDataContext.Provider value={value}>
       {children}
     </MenuDataContext.Provider>
   );

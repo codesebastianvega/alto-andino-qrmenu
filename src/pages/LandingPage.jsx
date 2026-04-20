@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { supabase } from '../config/supabase';
 import Footer from '../components/Footer';
 import { 
@@ -61,13 +61,15 @@ const LandingPage = () => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [localLoading, setLocalLoading] = useState(true);
   
+  const menuData = useMenuData();
   const { 
     homeSettings, 
     restaurantSettings, 
     categories: allCategories,
     loading: menuLoading,
-    getProductsByCategory 
-  } = useMenuData();
+    getProductsByCategory,
+    getAllProducts 
+  } = menuData;
   
   const { addItem } = useCart();
   const [quickViewProduct, setQuickViewProduct] = useState(null);
@@ -76,41 +78,25 @@ const LandingPage = () => {
   const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
   const brandCity = activeBrand?.city || "";
 
-  const [config, setConfig] = useState({
-    heroDishes: [],
-    featuredItems: [],
-    reviews: [],
-    conciergePrompt: '',
-    conciergeImg: '',
-    conciergeBgColor: '#1A2421',
-    heroH1: 'Descubre tus\nplatos favoritos',
-    heroSubtitle: `Ingredientes locales, nutrición premium y el toque artesanal de nuestra cocina${brandCity ? ` en ${brandCity}` : ''}, directo a tu mesa.`,
-    heroEmojis: ['🥑', '🌿'],
-    featuredTitle: 'Must Try'
-  });
-
-  useEffect(() => {
-    if (menuLoading) return;
-
+  // Configuración reactiva basada en los datos del menú y ajustes de Supabase
+  const config = useMemo(() => {
+    // 1. Cálculo de platos Hero
     let heroDishes = [];
-    if (allCategories && allCategories.length > 0) {
+    if (homeSettings?.hero_items && Array.isArray(homeSettings.hero_items) && homeSettings.hero_items.length > 0) {
+      heroDishes = homeSettings.hero_items;
+    } else if (allCategories && allCategories.length > 0) {
       heroDishes = allCategories
         .filter(cat => cat.visibility_config?.show_in_hero)
         .map(cat => {
           const vc = cat.visibility_config || {};
-          const products = getProductsByCategory(cat.slug) || [];
+          const products = getProductsByCategory ? getProductsByCategory(cat.slug) : [];
           
-          // Buscar producto con imagen: Prioridad al configurado, luego cualquiera con imagen, luego el primero
           const featuredProduct = products.find(p => p.id === vc.hero_featured_product_id) 
             || products.find(p => p.image_url || p.image)
             || products[0];
           
           let img = featuredProduct?.image_url || featuredProduct?.image;
-          
-          // Fallback image if nothing found
-          if (!img) {
-            img = "https://images.unsplash.com/photo-1546241072-48010ad28c2c?q=80&w=1200";
-          }
+          if (!img) img = "https://images.unsplash.com/photo-1546241072-48010ad28c2c?q=80&w=1200";
 
           return {
             category: cat.name,
@@ -124,29 +110,37 @@ const LandingPage = () => {
         })
         .filter(Boolean);
     }
+    if (heroDishes.length === 0) heroDishes = FALLBACK_HERO_DISHES;
 
-    if (heroDishes.length === 0) {
-      heroDishes = FALLBACK_HERO_DISHES;
-    }
-
-    const featuredWithDetails = (homeSettings?.featured_items && homeSettings.featured_items.length > 0) 
-      ? homeSettings.featured_items.map(item => {
-          let fullProduct = null;
-          for (const cat of allCategories || []) {
-            const found = cat.products?.find(p => p.id === item.product_id);
-            if (found) { fullProduct = found; break; }
-          }
-          return { ...item, ...(fullProduct || {}), id: item.product_id };
+    // 2. Cálculo de items destacados (Must Try)
+    // Usamos productsList para evitar conflictos de nombres con getAllProducts
+    const productsList = typeof getAllProducts === 'function' ? getAllProducts() : [];
+    
+    const featuredWithDetails = (homeSettings?.featured_items && Array.isArray(homeSettings.featured_items) && homeSettings.featured_items.length > 0) 
+      ? homeSettings.featured_items.map((item, idx) => {
+          const productId = item.product_id || (typeof item === 'string' ? item : null);
+          const found = productsList.find(p => p.id === productId);
+          
+          return { 
+            ...item, 
+            ...(found || {}), 
+            id: productId || found?.id || `featured-${idx}`,
+            img: item.img || found?.image_url || found?.image || "https://images.unsplash.com/photo-1546241072-48010ad28c2c?q=80&w=1200",
+            price: found?.price ? formatCOP(found.price) : (item.price || ''),
+            name: item.name || found?.name || "Plato Recomendado"
+          };
         })
-      : FALLBACK_FEATURED;
+      : FALLBACK_FEATURED.map((item, idx) => ({ ...item, id: `fallback-${idx}` }));
 
+    // 3. Reseñas
     const reviews = (homeSettings?.reviews && homeSettings.reviews.length > 0) ? homeSettings.reviews : FALLBACK_REVIEWS;
 
+    // 4. Emojis y Textos
     const emojisConfig = homeSettings?.hero_emojis 
       ? homeSettings.hero_emojis.split(',').map(e => e.trim()) 
       : ['🥑', '🌿'];
 
-    setConfig({
+    return {
       heroDishes,
       featuredItems: featuredWithDetails,
       reviews,
@@ -156,17 +150,24 @@ const LandingPage = () => {
       heroH1: homeSettings?.hero_h1 || 'Descubre tus\nplatos favoritos',
       heroSubtitle: homeSettings?.hero_subtitle || `Ingredientes locales, nutrición premium y el toque artesanal de nuestra cocina${brandCity ? ` en ${brandCity}` : ''}, directo a tu mesa.`,
       heroEmojis: emojisConfig.length > 0 ? emojisConfig : ['🥑', '🌿'],
-      featuredTitle: homeSettings?.featured_items_title || 'Must Try'
-    });
+      featuredTitle: homeSettings?.featured_items_title || 'Must Try',
+      featuredTag: homeSettings?.featured_items_tag || 'Selección del Chef'
+    };
+  }, [homeSettings, allCategories, restaurantSettings, brandCity, getProductsByCategory, getAllProducts]);
 
-    if (heroDishes.length > 0 && !activeCategory) {
-      const randomIndex = Math.floor(Math.random() * heroDishes.length);
+  // Manejo de carga inicial y selección aleatoria del plato Hero
+  useEffect(() => {
+    if (config.heroDishes.length > 0 && !activeCategory) {
+      const randomIndex = Math.floor(Math.random() * config.heroDishes.length);
       setHeroDishIndex(randomIndex);
-      setActiveCategory(heroDishes[randomIndex].category);
+      setActiveCategory(config.heroDishes[randomIndex].category);
     }
-    
-    setLocalLoading(false);
-  }, [menuLoading, allCategories, homeSettings]);
+  }, [config.heroDishes, activeCategory]);
+  useEffect(() => {
+    if (!menuLoading) {
+      setLocalLoading(false);
+    }
+  }, [menuLoading]);
 
   const handleMouseMove = (e) => {
     const { clientX, clientY } = e;
@@ -459,12 +460,12 @@ const LandingPage = () => {
             {config.featuredItems.map((item, idx) => {
               // Determinamos el estilo del grid según el índice para el efecto Bento
               const isLarge = idx === 0;
-              const isTall = idx === 1;
-              const isWide = idx === 2 && config.featuredItems.length > 3;
+              const isTall = idx === 1 || idx === 6;
+              const isWide = idx === 2 || idx === 4;
 
               return (
                 <motion.div 
-                  key={idx}
+                  key={item.id}
                   whileHover={{ y: -8 }}
                   className={`relative rounded-[2rem] overflow-hidden group border border-white shadow-sm transition-all duration-500 hover:shadow-2xl ${
                     isLarge ? "col-span-2 row-span-2" : 
