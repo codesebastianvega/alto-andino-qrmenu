@@ -159,10 +159,8 @@ export const MenuDataProvider = ({ children }) => {
 
       const grouped = {};
       (products || []).forEach(product => {
-        if (product.is_addon === true) return;
         const catSlug = product.categories?.slug || 'otros';
-        if (!grouped[catSlug]) grouped[catSlug] = [];
-        grouped[catSlug].push({
+        const normalizedProduct = {
           id: product.id,
           name: product.name,
           price: product.price,
@@ -179,8 +177,15 @@ export const MenuDataProvider = ({ children }) => {
           requires_kitchen: product.requires_kitchen ?? true,
           subcategory: product.subcategory,
           categorySlug: catSlug,
+          is_addon: product.is_addon,
           _supabase: product
-        });
+        };
+
+        // All products go into the categorical map if they are NOT addons
+        if (product.is_addon !== true) {
+          if (!grouped[catSlug]) grouped[catSlug] = [];
+          grouped[catSlug].push(normalizedProduct);
+        }
       });
 
       setAllCategories(cats || []);

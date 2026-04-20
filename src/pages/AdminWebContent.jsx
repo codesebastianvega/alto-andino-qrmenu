@@ -288,7 +288,7 @@ export default function AdminWebContent() {
         product_id: product.id,
         name: product.name || 'Plato sin nombre',
         img: product.image_url || '',
-        price: product.price ? `$${(product.price / 1000).toFixed(0)}k` : ''
+        price: product.price || 0
       };
       
       setData({

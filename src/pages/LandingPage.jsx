@@ -101,7 +101,7 @@ const LandingPage = () => {
           return {
             category: cat.name,
             icon: cat.icon || '🍽️',
-            price: featuredProduct?.price ? formatCOP(featuredProduct.price) : '',
+            price: featuredProduct?.price || 0,
             name: featuredProduct?.name || cat.name,
             rating: vc.hero_rating || "5.0",
             prepTime: vc.hero_prep_time || "10-15 mins",
@@ -182,16 +182,6 @@ const LandingPage = () => {
     const dishIndex = config.heroDishes.findIndex(dish => dish.category === categoryName);
     if (dishIndex !== -1) {
       setHeroDishIndex(dishIndex);
-    }
-  };
-
-  const handleAddToCart = (e, product) => {
-    e.stopPropagation();
-    const needsModifiers = product.modifierGroups?.length > 0 || product.modifier_groups?.length > 0;
-    if (needsModifiers) {
-      setQuickViewProduct(product);
-    } else {
-      addItem(product);
     }
   };
 
@@ -287,7 +277,7 @@ const LandingPage = () => {
                     <span className="text-lg md:text-xl bg-brand-bg w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center">{cat.icon}</span>
                     <div className="flex flex-col">
                       <span className="text-sm font-bold">{cat.category}</span>
-                      <span className="text-[10px] text-black/50 font-semibold">{formatCOP(cat.price)}</span>}
+                      <span className="text-[10px] text-black/50 font-semibold">{formatCOP(cat.price)}</span>
                     </div>
                   </div>
                 ))}
@@ -458,13 +448,14 @@ const LandingPage = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
             {config.featuredItems.map((item, idx) => (
-              <motion.div 
+                <motion.div 
                 key={item.id}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: idx * 0.1 }}
-                className="group relative flex flex-col bg-white rounded-[2rem] overflow-hidden border border-gray-100/10 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.06)] transition-all duration-700"
+                onClick={() => setQuickViewProduct(item)}
+                className="group relative flex flex-col bg-white rounded-[2rem] overflow-hidden border border-gray-100/10 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.06)] transition-all duration-700 cursor-pointer"
               >
                 {/* Image Container with Square Aspect Ratio for Compactness */}
                 <div className="relative aspect-square overflow-hidden">
@@ -497,12 +488,12 @@ const LandingPage = () => {
                       </span>
                     </div>
                     
-                    <button 
-                      onClick={(e) => handleAddToCart(e, item)}
-                      className="shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-[#E6B05C] text-white hover:bg-[#1A2421] hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#E6B05C]/10"
+                    <div 
+                      onClick={() => setQuickViewProduct(item)}
+                      className="shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-[#E6B05C] text-white hover:bg-[#1A2421] hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#E6B05C]/10 cursor-pointer"
                     >
                       <Plus size={18} />
-                    </button>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -581,6 +572,7 @@ const LandingPage = () => {
           <Suspense fallback={null}>
             <ProductQuickView 
               product={quickViewProduct} 
+              open={!!quickViewProduct}
               onClose={() => setQuickViewProduct(null)} 
             />
           </Suspense>
