@@ -44,7 +44,10 @@ export const MenuDataProvider = ({ children }) => {
     try {
       // Helper to add brand filter when needed
       // When brandId is known, filter explicitly — this handles multi-tenancy for admin panel
-      const brandFilter = (query) => brandId ? query.eq('brand_id', brandId) : query;
+      const brandFilter = (query) => {
+        if (!brandId) return query.limit(0); // Safely return nothing if no brand is active
+        return query.eq('brand_id', brandId);
+      };
 
       // Fetch categories
       const { data: cats, error: catError } = await brandFilter(
