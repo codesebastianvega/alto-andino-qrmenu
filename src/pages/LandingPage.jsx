@@ -433,83 +433,81 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Bento Grid: Featured Items */}
-      <section className="py-20 md:py-32 px-4 md:px-6 lg:px-12 bg-[#FAFAFA] relative overflow-hidden">
+      {/* Modern Gallery: Featured Items */}
+      <section id="must-try" className="py-20 md:py-32 px-4 md:px-6 lg:px-12 bg-white relative overflow-hidden">
         <div className="container mx-auto max-w-7xl">
-          <div className="flex flex-col md:flex-row justify-between items-end mb-12 md:mb-20 gap-6">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-12 md:mb-20 gap-8">
             <div className="max-w-xl">
               <div className="inline-flex items-center gap-2 bg-[#1A2421]/5 text-[#1A2421] px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase mb-4 border border-[#1A2421]/10">
                 <ChefHat size={12} className="text-[#E6B05C]" />
                 {restaurantSettings?.featured_items_tag || 'Selección del Chef'}
               </div>
-              <h2 className="text-3xl md:text-5xl font-extrabold mb-4 text-[#1A2421] leading-tight tracking-tight">
+              <h2 className="text-4xl md:text-6xl font-extrabold mb-4 text-[#1A2421] leading-tight tracking-tight">
                 {config.featuredTitle}
               </h2>
-              <p className="text-[#1A2421]/50 font-medium text-sm md:text-base leading-relaxed">
+              <p className="text-[#1A2421]/50 font-medium text-sm md:text-lg leading-relaxed">
                 Descubre los sabores que han cautivado a nuestra comunidad. Preparaciones artesanales con ingredientes de origen local.
               </p>
             </div>
             
-            <a href="#menu" className="group flex items-center gap-3 bg-[#1A2421] text-white px-8 py-4 rounded-2xl text-sm font-bold hover:bg-[#2A3B36] transition-all shadow-xl shadow-[#1A2421]/10">
+            <a href="#menu" className="group flex items-center gap-3 bg-[#1A2421] text-white px-8 py-5 rounded-2xl text-sm font-bold hover:bg-black transition-all shadow-xl shadow-black/10">
               Explorar Menú Completo
               <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
             </a>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 auto-rows-[180px] md:auto-rows-[220px]">
-            {config.featuredItems.map((item, idx) => {
-              // Determinamos el estilo del grid según el índice para el efecto Bento
-              const isLarge = idx === 0;
-              const isTall = idx === 1 || idx === 6;
-              const isWide = idx === 2 || idx === 4;
-
-              return (
-                <motion.div 
-                  key={item.id}
-                  whileHover={{ y: -8 }}
-                  className={`relative rounded-[2rem] overflow-hidden group border border-white shadow-sm transition-all duration-500 hover:shadow-2xl ${
-                    isLarge ? "col-span-2 row-span-2" : 
-                    isTall ? "col-span-1 row-span-2" : 
-                    isWide ? "col-span-2 row-span-1" : 
-                    "col-span-1 row-span-1"
-                  }`}
-                >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+            {config.featuredItems.map((item, idx) => (
+              <motion.div 
+                key={item.id}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+                className="group relative flex flex-col bg-white rounded-[2rem] overflow-hidden border border-gray-100/10 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.06)] transition-all duration-700"
+              >
+                {/* Image Container with Square Aspect Ratio for Compactness */}
+                <div className="relative aspect-square overflow-hidden">
                   <img 
                     src={item.img} 
                     alt={item.name} 
                     className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
                   />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#1A2421]/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                   
-                  {/* Overlay gradiente */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#1A2421]/90 via-[#1A2421]/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
-                  
-                  {/* Contenido de la tarjeta */}
-                  <div className="absolute inset-0 p-5 md:p-8 flex flex-col justify-end">
-                    <div className="flex justify-between items-end gap-4 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                      <div className="flex-1 min-w-0">
-                        <h4 className={`font-bold text-white mb-1 leading-tight ${isLarge ? 'text-xl md:text-3xl' : 'text-sm md:text-lg'}`}>
-                          {item.name}
-                        </h4>
-                        <div className="flex items-center gap-3">
-                          <span className={`font-bold text-[#E6B05C] ${isLarge ? 'text-lg md:text-xl' : 'text-xs md:text-base'}`}>
-                            {item.price}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <button 
-                        onClick={(e) => handleAddToCart(e, item)}
-                        className={`shrink-0 flex items-center justify-center rounded-2xl bg-[#E6B05C] text-white hover:bg-white hover:text-[#1A2421] transition-all transform hover:scale-110 shadow-lg shadow-[#E6B05C]/20 ${
-                          isLarge ? 'w-12 h-12 md:w-16 md:h-16' : 'w-10 h-10 md:w-12 md:h-12'
-                        }`}
-                      >
-                        <Plus size={isLarge ? 24 : 18} />
-                      </button>
+                  {/* Floating Action Badge - Slightly Smaller */}
+                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-500">
+                    <div className="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[9px] font-extrabold text-[#1A2421] shadow-xl border border-white/50 flex items-center gap-1.5">
+                       <Sparkles size={10} className="text-[#E6B05C]" />
+                       RECOMENDADO
                     </div>
                   </div>
-                </motion.div>
-              );
-            })}
+                </div>
+                
+                {/* Content Area - More Compact Padding */}
+                <div className="p-6 md:p-7 flex flex-col flex-1 relative z-10">
+                  <h4 className="font-extrabold text-[#1A2421] text-xl md:text-2xl mb-3 leading-tight group-hover:text-[#E6B05C] transition-colors duration-300">
+                    {item.name}
+                  </h4>
+                  
+                  <div className="mt-auto flex items-center justify-between gap-4 pt-5 border-t border-gray-50">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] uppercase font-bold text-gray-300 tracking-[0.2em] mb-0.5">Precio</span>
+                      <span className="font-extrabold text-[#1A2421] text-xl">
+                        {item.price}
+                      </span>
+                    </div>
+                    
+                    <button 
+                      onClick={(e) => handleAddToCart(e, item)}
+                      className="shrink-0 w-12 h-12 flex items-center justify-center rounded-xl bg-[#E6B05C] text-white hover:bg-[#1A2421] hover:scale-105 active:scale-95 transition-all shadow-xl shadow-[#E6B05C]/20"
+                    >
+                      <Plus size={20} />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
