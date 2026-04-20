@@ -126,7 +126,7 @@ const LandingPage = () => {
             ...(found || {}), 
             id: productId || found?.id || `featured-${idx}`,
             img: item.img || found?.image_url || found?.image || "https://images.unsplash.com/photo-1546241072-48010ad28c2c?q=80&w=1200",
-            price: found?.price ? formatCOP(found.price) : (item.price || ''),
+            price: found?.price || item.price || 0,
             name: item.name || found?.name || "Plato Recomendado"
           };
         })
@@ -287,7 +287,7 @@ const LandingPage = () => {
                     <span className="text-lg md:text-xl bg-brand-bg w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center">{cat.icon}</span>
                     <div className="flex flex-col">
                       <span className="text-sm font-bold">{cat.category}</span>
-                      {cat.price && <span className="text-[10px] text-black/50 font-semibold">{cat.price}</span>}
+                      <span className="text-[10px] text-black/50 font-semibold">{formatCOP(cat.price)}</span>}
                     </div>
                   </div>
                 ))}
@@ -438,21 +438,21 @@ const LandingPage = () => {
         <div className="container mx-auto max-w-7xl">
           <div className="flex flex-col md:flex-row justify-between items-end mb-12 md:mb-20 gap-8">
             <div className="max-w-xl">
-              <div className="inline-flex items-center gap-2 bg-[#1A2421]/5 text-[#1A2421] px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase mb-4 border border-[#1A2421]/10">
-                <ChefHat size={12} className="text-[#E6B05C]" />
+              <div className="inline-flex items-center gap-2 bg-[#1A2421]/5 text-[#1A2421] px-3 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase mb-3 border border-[#1A2421]/10">
+                <ChefHat size={11} className="text-[#E6B05C]" />
                 {restaurantSettings?.featured_items_tag || 'Selección del Chef'}
               </div>
-              <h2 className="text-4xl md:text-6xl font-extrabold mb-4 text-[#1A2421] leading-tight tracking-tight">
+              <h2 className="text-3xl md:text-5xl font-extrabold mb-3 text-[#1A2421] leading-tight tracking-tight">
                 {config.featuredTitle}
               </h2>
-              <p className="text-[#1A2421]/50 font-medium text-sm md:text-lg leading-relaxed">
-                Descubre los sabores que han cautivado a nuestra comunidad. Preparaciones artesanales con ingredientes de origen local.
+              <p className="text-[#1A2421]/50 font-medium text-xs md:text-base leading-relaxed">
+                Descubre los sabores que han cautivado a nuestra comunidad. Preparaciones artesanales con ingredientes locales.
               </p>
             </div>
             
-            <a href="#menu" className="group flex items-center gap-3 bg-[#1A2421] text-white px-8 py-5 rounded-2xl text-sm font-bold hover:bg-black transition-all shadow-xl shadow-black/10">
-              Explorar Menú Completo
-              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            <a href="#menu" className="group flex items-center gap-2.5 bg-[#1A2421] text-white px-6 py-4 rounded-xl text-xs font-bold hover:bg-black transition-all shadow-xl shadow-black/5">
+              Ver Menú Completo
+              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </a>
           </div>
 
@@ -484,25 +484,24 @@ const LandingPage = () => {
                   </div>
                 </div>
                 
-                {/* Content Area - More Compact Padding */}
-                <div className="p-6 md:p-7 flex flex-col flex-1 relative z-10">
-                  <h4 className="font-extrabold text-[#1A2421] text-xl md:text-2xl mb-3 leading-tight group-hover:text-[#E6B05C] transition-colors duration-300">
+                <div className="p-5 md:p-6 flex flex-col flex-1 relative z-10">
+                  <h4 className="font-extrabold text-[#1A2421] text-lg md:text-xl mb-2 leading-tight group-hover:text-[#E6B05C] transition-colors duration-300">
                     {item.name}
                   </h4>
                   
-                  <div className="mt-auto flex items-center justify-between gap-4 pt-5 border-t border-gray-50">
+                  <div className="mt-auto flex items-center justify-between gap-3 pt-4 border-t border-gray-50">
                     <div className="flex flex-col">
-                      <span className="text-[9px] uppercase font-bold text-gray-300 tracking-[0.2em] mb-0.5">Precio</span>
-                      <span className="font-extrabold text-[#1A2421] text-xl">
-                        {item.price}
+                      <span className="text-[8px] uppercase font-bold text-gray-300 tracking-[0.2em] mb-0.5">Precio</span>
+                      <span className="font-extrabold text-[#1A2421] text-lg">
+                        {formatCOP(item.price)}
                       </span>
                     </div>
                     
                     <button 
                       onClick={(e) => handleAddToCart(e, item)}
-                      className="shrink-0 w-12 h-12 flex items-center justify-center rounded-xl bg-[#E6B05C] text-white hover:bg-[#1A2421] hover:scale-105 active:scale-95 transition-all shadow-xl shadow-[#E6B05C]/20"
+                      className="shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-[#E6B05C] text-white hover:bg-[#1A2421] hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#E6B05C]/10"
                     >
-                      <Plus size={20} />
+                      <Plus size={18} />
                     </button>
                   </div>
                 </div>

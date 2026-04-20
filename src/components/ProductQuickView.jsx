@@ -200,7 +200,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   if (!isOpen || !product) return null;
 
   const id = product.id;
-  const basePrice = Number(product.price || 0);
+  const basePrice = typeof product.price === 'number' ? product.price : Number(String(product.price || 0).replace(/[^\d.-]/g, "")) || 0;
   const finalPrice = basePrice + extraPrice;
   const isOutOfStock = product.stock_status === "out";
   const missingRequired = groups
