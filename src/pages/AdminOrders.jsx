@@ -8,6 +8,7 @@ import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import PaymentPOSModal from '../components/admin/PaymentPOSModal';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Modal } from '../components/admin/ui';
 
 const ORDER_STATUSES = [
   { id: 'waiting_payment', label: 'Falta Pago', color: 'text-orange-600', icon: 'heroicons:banknotes' },
@@ -569,35 +570,28 @@ export default function AdminOrders() {
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="overflow-x-auto pb-4 custom-scrollbar">
             <div className="flex gap-6 min-w-max items-start">
-              {ORDER_STATUSES.map(statusCol => {
-              const fTypeWeights = { 'dine_in': 1, 'takeaway': 2, 'delivery': 3 };
-              
-              const sortOrders = (a, b, ascending = true) => {
-                const weightA = fTypeWeights[a.fulfillment_type] || 99;
-                const weightB = fTypeWeights[b.fulfillment_type] || 99;
+              {ORDER_STATUSES.map((statusCol, index) => {
+                const fTypeWeights = { 'dine_in': 1, 'takeaway': 2, 'delivery': 3 };
                 
-                if (weightA !== weightB) {
-                  return weightA - weightB; // Priority by type
-                }
-                
-                // Then by date
-                const dateA = new Date(a.created_at);
-                const dateB = new Date(b.created_at);
-                return ascending ? dateA - dateB : dateB - dateA;
-              };
+                const sortOrders = (a, b, ascending = true) => {
+                  const weightA = fTypeWeights[a.fulfillment_type] || 99;
+                  const weightB = fTypeWeights[b.fulfillment_type] || 99;
+                  
+                  if (weightA !== weightB) {
+                    return weightA - weightB; // Priority by type
+                  }
+                  
+                  const dateA = new Date(a.created_at);
+                  const dateB = new Date(b.created_at);
+                  return ascending ? dateA - dateB : dateB - dateA;
+                };
 
-              const colOrders = statusCol.id !== 'delivered' && statusCol.id !== 'cancelled'
-                 ? orders.filter(o => o.status === statusCol.id).sort((a,b) => sortOrders(a, b, true))
-                 : orders.filter(o => {
-                    if (o.status !== statusCol.id) return false;
-                    const today = new Date();
-                    today.setHours(0,0,0,0);
-                    const orderDate = new Date(o.updated_at || o.created_at);
-                    return orderDate >= today;
-                   }).sort((a,b) => sortOrders(a, b, false));
+                const colOrders = statusCol.id !== 'delivered' && statusCol.id !== 'cancelled'
+                   ? orders.filter(o => o.status === statusCol.id).sort((a,b) => sortOrders(a, b, true))
+                   : orders.filter(o => o.status === statusCol.id).sort((a,b) => sortOrders(a, b, false));
 
-              return (
-                <Droppable droppableId={statusCol.id} isCombineEnabled>
+                return (
+                  <Droppable key={`status-column-${statusCol.id}-${index}`} droppableId={statusCol.id} isCombineEnabled>
                   {(provided, snapshot) => (
                     <div 
                       ref={provided.innerRef}

@@ -89,7 +89,12 @@ export default function AdminWebContent() {
         .single();
       if (error && error.code !== 'PGRST116') throw error;
       if (data) {
-        setData(prev => ({ ...prev, ...data }));
+        setData(prev => ({
+          ...prev,
+          ...data,
+          featured_items: data.featured_items || [],
+          reviews: data.reviews || []
+        }));
       }
     } catch (err) {
       console.error(err);
@@ -262,27 +267,28 @@ export default function AdminWebContent() {
 
   // Handle Must Try Product Toggle
   const toggleMustTryProduct = (product) => {
-    const currentItems = data.featured_items || [];
-    const isSelected = currentItems.some(item => item.product_id === product.id);
+    if (!product?.id) return;
+    const currentItems = data?.featured_items || [];
+    const isSelected = currentItems.some(item => item?.product_id === product.id);
 
     if (isSelected) {
       // Remove it
       setData({
         ...data,
-        featured_items: currentItems.filter(item => item.product_id !== product.id)
+        featured_items: currentItems.filter(item => item?.product_id !== product.id)
       });
     } else {
       // Add it if limit not reached
       if (currentItems.length >= 8) {
-        // We could add a toast here, but for now we'll just not add it
+        toast.error('Límite de 8 platos alcanzado. Elimina uno para agregar otro.');
         return;
       }
       
       const newItem = {
         product_id: product.id,
-        name: product.name,
+        name: product.name || 'Plato sin nombre',
         img: product.image_url || '',
-        price: `$${(product.price / 1000).toFixed(0)}k`
+        price: product.price ? `$${(product.price / 1000).toFixed(0)}k` : ''
       };
       
       setData({
@@ -299,19 +305,23 @@ export default function AdminWebContent() {
   });
 
   const handleAddItem = (field, item) => {
-    setData({ ...data, [key]: [...(data[key] || []), defaultObj] });
+    setData({ ...data, [field]: [...(data[field] || []), item] });
   };
 
   const handleRemoveItem = (key, index) => {
-    const newList = [...data[key]];
+    const items = data[key] || [];
+    const newList = [...items];
     newList.splice(index, 1);
     setData({ ...data, [key]: newList });
   };
 
   const handleChangeItem = (key, index, field, value) => {
-    const newList = [...data[key]];
-    newList[index] = { ...newList[index], [field]: value };
-    setData({ ...data, [key]: newList });
+    const items = data[key] || [];
+    const newList = [...items];
+    if (newList[index]) {
+      newList[index] = { ...newList[index], [field]: value };
+      setData({ ...data, [key]: newList });
+    }
   };
 
   const handleImageUpload = async (e, field) => {
@@ -812,7 +822,7 @@ export default function AdminWebContent() {
                     {data.featured_items.map((item, idx) => (
                       <div key={item.product_id} className="relative shrink-0 group">
                         <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-[#2f4131]/20 bg-white">
-                          <img src={item.img || 'https://via.placeholder.com/150'} alt="" className="w-full h-full object-cover" />
+                          <img src={item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=300&auto=format&fit=crop'} alt="" className="w-full h-full object-cover" />
                         </div>
                         <button 
                           onClick={() => toggleMustTryProduct({ id: item.product_id })}
@@ -854,7 +864,7 @@ export default function AdminWebContent() {
                         }`}
                       >
                         <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0">
-                          <img src={prod.image_url || 'https://via.placeholder.com/150'} alt="" className="w-full h-full object-cover" />
+                          <img src={prod.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=300&auto=format&fit=crop'} alt="" className="w-full h-full object-cover" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="text-xs font-bold text-gray-900 truncate leading-tight">{prod.name}</h4>
