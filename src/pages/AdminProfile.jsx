@@ -8,11 +8,12 @@ import {
   Lock, 
   ShieldCheck, 
   Loader2,
-  ChevronRight,
   LogOut,
-  Image as ImageIcon,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Chrome
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -24,11 +25,23 @@ export default function AdminProfile() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  // Google connection
+  const isGoogleConnected = user?.identities?.some(i => i.provider === 'google') ?? false;
+  const isPasswordProvider = user?.identities?.some(i => i.provider === 'email') ?? false;
+
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
     avatar_url: ''
   });
+
+  // Password change state
+  const [passForm, setPassForm] = useState({ current: '', newPass: '', confirm: '' });
+  const [showPass, setShowPass] = useState({ current: false, newPass: false, confirm: false });
+
+  // Email change state
+  const [emailForm, setEmailForm] = useState({ newEmail: '', confirmPass: '' });
+  const [showEmailPass, setShowEmailPass] = useState(false);
 
   // Split full_name for UI
   const [nameParts, setNameParts] = useState({ first: '', last: '' });
@@ -193,13 +206,22 @@ export default function AdminProfile() {
           <div className="flex-1 text-center md:text-left space-y-2">
             <h1 className="text-3xl font-extrabold tracking-tight text-[#1A2421]">Mi Perfil</h1>
             <p className="text-gray-500 font-medium">Gestiona tu identidad y seguridad en la plataforma Aluna.</p>
-            <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-4">
+            <div className="flex flex-wrap justify-center md:justify-start gap-3 mt-4">
               <span className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-1.5 rounded-full text-xs font-bold border border-green-100 shadow-sm">
                 <ShieldCheck size={14} /> Dueño / Administrador
               </span>
               <span className="flex items-center gap-2 bg-gray-50 text-gray-600 px-4 py-1.5 rounded-full text-xs font-bold border border-gray-100">
                 <Mail size={14} /> {user?.email}
               </span>
+              {isGoogleConnected ? (
+                <span className="flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full text-xs font-bold border border-blue-100">
+                  <Chrome size={14} /> Conectado con Google
+                </span>
+              ) : (
+                <span className="flex items-center gap-2 bg-gray-50 text-gray-400 px-4 py-1.5 rounded-full text-xs font-bold border border-gray-100">
+                  <Chrome size={14} /> Sin Google vinculado
+                </span>
+              )}
             </div>
           </div>
         </section>
@@ -273,84 +295,159 @@ export default function AdminProfile() {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Cambio de Contraseña */}
-                <div className="p-6 bg-gray-50 rounded-[2rem] space-y-6 border border-black/5">
+
+                {/* Cambio de Contraseña — flujo seguro */}
+                <div className="p-6 bg-gray-50 rounded-[2rem] space-y-4 border border-black/5">
                   <div className="flex items-center gap-3 border-b border-black/5 pb-2">
                     <ShieldCheck size={18} className="text-gray-400" />
-                    <span className="text-sm font-bold text-[#1A2421]">Seguridad de Acceso</span>
+                    <span className="text-sm font-bold text-[#1A2421]">Cambiar Contraseña</span>
                   </div>
-                  
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Nueva Contraseña</label>
-                      <input 
-                        type="password"
-                        placeholder="••••••••"
-                        className="w-full bg-white border border-black/5 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#1A2421] outline-none"
-                        id="new-password"
-                      />
+
+                  {!isPasswordProvider ? (
+                    <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-3">
+                      <Chrome size={16} className="text-blue-500 mt-0.5 shrink-0" />
+                      <p className="text-xs text-blue-600 font-medium leading-relaxed">
+                        Tu cuenta usa Google como método de acceso. No tienes una contraseña local asignada.
+                      </p>
                     </div>
-                    <button 
-                      onClick={async () => {
-                        const pass = document.getElementById('new-password').value;
-                        if (!pass || pass.length < 6) {
-                          toast.error('La contraseña debe tener al menos 6 caracteres');
-                          return;
-                        }
-                        setLoading(true);
-                        const { error } = await supabase.auth.updateUser({ password: pass });
-                        setLoading(false);
-                        if (error) {
-                          toast.error(error.message);
-                        } else {
-                          toast.success('Contraseña actualizada correctamente');
-                          document.getElementById('new-password').value = '';
-                        }
-                      }}
-                      className="w-full py-2.5 bg-[#1A2421] text-white rounded-xl text-xs font-bold hover:bg-[#2c3d38] transition-all"
-                    >
-                      Actualizar Contraseña
-                    </button>
-                  </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {[{ key: 'current', label: 'Contraseña actual', placeholder: '••••••••' },
+                        { key: 'newPass', label: 'Nueva contraseña', placeholder: 'Mínimo 8 caracteres' },
+                        { key: 'confirm', label: 'Confirmar nueva contraseña', placeholder: '••••••••' }
+                      ].map(({ key, label, placeholder }) => (
+                        <div key={key} className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{label}</label>
+                          <div className="relative">
+                            <input
+                              type={showPass[key] ? 'text' : 'password'}
+                              placeholder={placeholder}
+                              value={passForm[key]}
+                              onChange={e => setPassForm(prev => ({ ...prev, [key]: e.target.value }))}
+                              className="w-full bg-white border border-black/5 rounded-xl p-3 pr-10 text-sm focus:ring-2 focus:ring-[#1A2421] outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPass(prev => ({ ...prev, [key]: !prev[key] }))}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                              {showPass[key] ? <EyeOff size={15} /> : <Eye size={15} />}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      <button
+                        onClick={async () => {
+                          if (!passForm.current) { toast.error('Ingresa tu contraseña actual'); return; }
+                          if (passForm.newPass.length < 8) { toast.error('La nueva contraseña debe tener al menos 8 caracteres'); return; }
+                          if (passForm.newPass !== passForm.confirm) { toast.error('Las contraseñas no coinciden'); return; }
+                          setLoading(true);
+                          // Verificar contraseña actual
+                          const { error: signInError } = await supabase.auth.signInWithPassword({
+                            email: user.email,
+                            password: passForm.current
+                          });
+                          if (signInError) {
+                            toast.error('La contraseña actual es incorrecta');
+                            setLoading(false);
+                            return;
+                          }
+                          const { error } = await supabase.auth.updateUser({ password: passForm.newPass });
+                          setLoading(false);
+                          if (error) {
+                            toast.error(error.message);
+                          } else {
+                            toast.success('Contraseña actualizada correctamente');
+                            setPassForm({ current: '', newPass: '', confirm: '' });
+                          }
+                        }}
+                        disabled={loading}
+                        className="w-full py-2.5 bg-[#1A2421] text-white rounded-xl text-xs font-bold hover:bg-[#2c3d38] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {loading ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
+                        Actualizar Contraseña
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                {/* Cambio de Email */}
-                <div className="p-6 bg-gray-50 rounded-[2rem] space-y-6 border border-black/5">
+                {/* Cambio de Email — con re-autenticación */}
+                <div className="p-6 bg-gray-50 rounded-[2rem] space-y-4 border border-black/5">
                   <div className="flex items-center gap-3 border-b border-black/5 pb-2">
                     <Mail size={18} className="text-gray-400" />
-                    <span className="text-sm font-bold text-[#1A2421]">Correo Electrónico</span>
+                    <span className="text-sm font-bold text-[#1A2421]">Cambiar Correo</span>
                   </div>
-                  
+
+                  <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl p-3">
+                    <AlertCircle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-amber-700 leading-relaxed font-medium">
+                      Se enviará un enlace de confirmación al <strong>nuevo correo</strong>. El cambio solo aplica después de que hagas clic en ese enlace.
+                    </p>
+                  </div>
+
                   <div className="space-y-3">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Nuevo Email</label>
-                      <input 
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Nuevo correo electrónico</label>
+                      <input
                         type="email"
-                        placeholder={user?.email}
+                        placeholder="nuevo@correo.com"
+                        value={emailForm.newEmail}
+                        onChange={e => setEmailForm(prev => ({ ...prev, newEmail: e.target.value }))}
                         className="w-full bg-white border border-black/5 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#1A2421] outline-none"
-                        id="new-email"
                       />
                     </div>
-                    <button 
+                    {isPasswordProvider && (
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Confirmar con tu contraseña</label>
+                        <div className="relative">
+                          <input
+                            type={showEmailPass ? 'text' : 'password'}
+                            placeholder="Tu contraseña actual"
+                            value={emailForm.confirmPass}
+                            onChange={e => setEmailForm(prev => ({ ...prev, confirmPass: e.target.value }))}
+                            className="w-full bg-white border border-black/5 rounded-xl p-3 pr-10 text-sm focus:ring-2 focus:ring-[#1A2421] outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowEmailPass(p => !p)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            {showEmailPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <button
                       onClick={async () => {
-                        const email = document.getElementById('new-email').value;
-                        if (!email || !email.includes('@')) {
-                          toast.error('Por favor ingresa un email válido');
+                        if (!emailForm.newEmail || !emailForm.newEmail.includes('@')) {
+                          toast.error('Ingresa un email válido');
                           return;
                         }
                         setLoading(true);
-                        const { error } = await supabase.auth.updateUser({ email });
+                        // Re-auth si tiene contraseña local
+                        if (isPasswordProvider) {
+                          if (!emailForm.confirmPass) { toast.error('Ingresa tu contraseña actual para confirmar'); setLoading(false); return; }
+                          const { error: signInError } = await supabase.auth.signInWithPassword({
+                            email: user.email,
+                            password: emailForm.confirmPass
+                          });
+                          if (signInError) { toast.error('Contraseña incorrecta'); setLoading(false); return; }
+                        }
+                        const { error } = await supabase.auth.updateUser({ email: emailForm.newEmail });
                         setLoading(false);
                         if (error) {
                           toast.error(error.message);
                         } else {
-                          toast.success('Se ha enviado un correo de confirmación al nuevo email');
-                          document.getElementById('new-email').value = '';
+                          toast.success('¡Revisa ' + emailForm.newEmail + ' y confirma el enlace para completar el cambio!');
+                          setEmailForm({ newEmail: '', confirmPass: '' });
                         }
                       }}
-                      className="w-full py-2.5 bg-brand-primary text-white rounded-xl text-xs font-bold hover:opacity-90 transition-all"
+                      disabled={loading}
+                      className="w-full py-2.5 bg-[#1A2421] text-white rounded-xl text-xs font-bold hover:bg-[#2c3d38] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      Cambiar Email
+                      {loading ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
+                      Enviar Confirmación
                     </button>
                   </div>
                 </div>
