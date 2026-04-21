@@ -1251,10 +1251,7 @@ export default function AdminAnalytics() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                   <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} />
                   <YAxis hide />
-                  <RechartsTooltip 
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
-                    formatter={(val) => [formatCompactCurrency(val), 'Ventas']}
-                  />
+                  <RechartsTooltip cursor={false} content={<VisionTooltip units="Ventas" formatter={(val) => formatCompactCurrency(val)} />} />
                   <Area type="monotone" dataKey="ventas" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorVentas)" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -1340,10 +1337,7 @@ export default function AdminAnalytics() {
                     tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 'bold' }} 
                   />
                   <YAxis hide />
-                  <RechartsTooltip 
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
-                    formatter={(val, name) => [formatCurrency(val), name === 'revenue' ? 'Ingresos' : 'Ticket Prom.']}
-                  />
+                  <RechartsTooltip cursor={false} content={<VisionTooltip units="Ingresos" formatter={(val) => formatCurrency(val)} />} />
                   <Area 
                     type="monotone" 
                     dataKey="revenue" 
