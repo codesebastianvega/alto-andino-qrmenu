@@ -11,21 +11,8 @@ export default function AlunaHero() {
       {/* Contenedor principal con bordes redondeados */}
       <div className="w-full relative rounded-[40px] overflow-hidden bg-[#0A0A0A] min-h-[90vh] flex items-center shadow-2xl border border-white/10">
 
-        {/* Logo sutil centrado arriba */}
-        <div className="absolute top-8 left-1/2 -translate-x-1/2 z-20">
-          <span className="text-3xl text-white/90 tracking-wide" style={{ fontFamily: "'DM Serif Display', serif" }}>Aluna</span>
-        </div>
-
-        {/* Imagen de fondo con opacidad y modo de mezcla */}
-        <img
-          src="https://images.unsplash.com/photo-1514933651103-005eec06c04b?q=80&w=1920&auto=format&fit=crop"
-          alt="Restaurant Background"
-          className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-overlay"
-          referrerPolicy="no-referrer"
-        />
-
         {/* Gradiente superpuesto */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-black/95 via-black/40 to-transparent"></div>
 
         {/* Contenido (Grid de 2 columnas) */}
         <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 lg:px-20 py-12 md:py-20 grid md:grid-cols-[1.1fr_0.9fr] gap-8 items-center">

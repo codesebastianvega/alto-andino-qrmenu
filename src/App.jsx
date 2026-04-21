@@ -145,7 +145,7 @@ export default function App() {
   const isLandingView = !currentHash || currentHash === "" || currentHash === "#" || currentHash === "#inicio";
   const isExplicitInicio = currentHash === "#inicio";
   const isMenuView = currentHash === "#menu";
-  const isAuthView = currentHash === "#login" || currentHash === "#registro";
+  const isAuthView = currentHash === "#login" || currentHash === "#registro" || window.location.pathname === '/login' || window.location.pathname === '/registro';
   const isOrderingMode = isMenuView || !!sessionStorage.getItem("aa_current_mesa") || searchParams.get("mesa");
 
   // ✅ Welcome Experience State — solo 1 vez cada 24h por marca

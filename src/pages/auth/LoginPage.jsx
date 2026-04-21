@@ -1,16 +1,19 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../config/supabase';
-import { LogIn, AlertCircle, ArrowLeft, Mail, Lock } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { LogIn, AlertCircle, ArrowLeft, Mail, Lock, Eye, EyeOff, Github, Chrome } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FadeIn, MagneticButton, SpotlightCard } from '../../components/aluna/animations';
 
 export default function LoginPage() {
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [shake, setShake] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,31 +36,48 @@ export default function LoginPage() {
         if (profileData?.role === 'superadmin') {
           window.location.href = '/superadmin';
         } else {
-          // Redirigir a la raíz para que el Global Portal gestione la selección
           window.location.href = '/';
         }
       }
       
     } catch (err) {
       setError(err.message || 'Error al iniciar sesión. Verifica tus credenciales.');
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] relative flex flex-col items-center justify-center p-4 overflow-hidden">
-      {/* Background Decor */}
+    <div className="min-h-screen bg-[#060606] relative flex flex-col items-center justify-center p-4 overflow-hidden">
+      {/* Premium Background */}
       <div className="absolute inset-0 z-0">
-        <img
-          src="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=1920&auto=format&fit=crop"
-          alt="Abstract Background"
-          className="w-full h-full object-cover opacity-20 mix-blend-overlay"
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#1A3A2C,transparent_70%)] opacity-20"></div>
+        <div className="absolute inset-0" style={{ 
+          backgroundImage: `linear-gradient(#ffffff03 1px, transparent 1px), linear-gradient(90deg, #ffffff03 1px, transparent 1px)`,
+          backgroundSize: '40px 40px'
+        }}></div>
+        
+        {/* Dynamic Glow Orbs */}
+        <motion.div 
+          animate={{ 
+            x: [0, 100, 0],
+            y: [0, 50, 0],
+            scale: [1, 1.2, 1]
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#2D6A4F]/20 blur-[120px] rounded-full"
         />
-        <div className="absolute inset-0 bg-gradient-to-tr from-black via-black/90 to-[#2D6A4F]/20"></div>
-        {/* Animated Glow */}
-        <div className="absolute top-1/4 -right-20 w-[400px] h-[400px] bg-[#D4A853]/10 blur-[120px] rounded-full animate-pulse"></div>
-        <div className="absolute bottom-1/4 -left-20 w-[400px] h-[400px] bg-[#2D6A4F]/10 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <motion.div 
+          animate={{ 
+            x: [0, -80, 0],
+            y: [0, 100, 0],
+            scale: [1, 1.3, 1]
+          }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear", delay: 2 }}
+          className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-[#D4A853]/10 blur-[150px] rounded-full"
+        />
       </div>
 
       <FadeIn direction="up" className="w-full max-w-md relative z-10">
@@ -88,20 +108,30 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <SpotlightCard className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 md:p-10 shadow-3xl">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl bg-red-500/10 border border-red-500/20 p-4"
-              >
-                <div className="flex gap-3">
-                  <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
-                  <p className="text-sm text-red-200">{error}</p>
-                </div>
-              </motion.div>
-            )}
+        <motion.div
+          animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}}
+          transition={{ duration: 0.4 }}
+        >
+          <SpotlightCard className="bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative overflow-hidden group/card">
+            {/* Card Inner Glow */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent pointer-events-none"></div>
+
+            <form className="space-y-6 relative z-10" onSubmit={handleSubmit}>
+              <AnimatePresence mode="wait">
+                {error && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="rounded-2xl bg-red-500/10 border border-red-500/20 p-4 mb-4"
+                  >
+                    <div className="flex gap-3">
+                      <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
+                      <p className="text-sm text-red-200">{error}</p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
             <div className="space-y-5">
               <div>
@@ -141,13 +171,20 @@ export default function LoginPage() {
                   <input
                     id="password"
                     name="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#D4A853]/30 focus:border-[#D4A853]/50 transition-all text-sm"
+                    className="block w-full pl-11 pr-12 py-3 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#D4A853]/30 focus:border-[#D4A853]/50 transition-all text-sm"
                     placeholder="••••••••"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/30 hover:text-white transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
               </div>
             </div>
@@ -173,7 +210,7 @@ export default function LoginPage() {
                 className="w-full relative group h-12 rounded-2xl bg-white text-[#0A0A0A] font-bold text-sm overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
               >
                 <div className="absolute inset-0 bg-[#D4A853] translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                <div className="relative z-10 flex items-center justify-center gap-2 group-hover:text-black transition-colors duration-300">
+                <div className="relative z-10 flex items-center justify-center gap-2 group-hover:text-white transition-colors duration-300">
                   {loading ? (
                     <>
                       <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></span>
@@ -187,8 +224,32 @@ export default function LoginPage() {
                 </div>
               </button>
             </div>
+
+            {/* Social Logins */}
+            <div className="pt-4 space-y-4">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-white/10"></div>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-[#121212] px-2 text-white/30 tracking-widest">O continúa con</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <button type="button" className="flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors group">
+                  <Chrome className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
+                  <span className="text-xs font-medium text-white/60 group-hover:text-white">Google</span>
+                </button>
+                <button type="button" className="flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors group">
+                  <Github className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
+                  <span className="text-xs font-medium text-white/60 group-hover:text-white">GitHub</span>
+                </button>
+              </div>
+            </div>
           </form>
         </SpotlightCard>
+      </motion.div>
 
         <p className="mt-8 text-center text-sm text-white/30">
           ¿No tienes una cuenta activa?{' '}
@@ -198,6 +259,5 @@ export default function LoginPage() {
         </p>
       </FadeIn>
     </div>
-  );
   );
 }
