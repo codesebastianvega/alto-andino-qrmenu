@@ -14,6 +14,8 @@ export const AuthProvider = ({ children }) => {
   const [activeBrand, setActiveBrandState] = useState(null);
   const [activeBrandFeatures, setActiveBrandFeatures] = useState([]);
   const [activePlan, setActivePlan]                   = useState(null);
+  // true when a Google OAuth user signed in but has no business yet
+  const [needsOnboarding, setNeedsOnboarding]         = useState(false);
 
   const fetchBrandFeatures = useCallback(async (brandId, planId) => {
     if (!brandId || !planId) return;
@@ -95,12 +97,17 @@ export const AuthProvider = ({ children }) => {
       if (savedBrand) {
         setActiveBrandState(savedBrand);
         fetchBrandFeatures(savedBrand.id, savedBrand.plan_id);
+        setNeedsOnboarding(false);
       } else if (userBrands.length > 0) {
         // Default: the brand matching the profile's brand_id
         const profileBrand = userBrands.find(b => b.id === data.brand_id) || userBrands[0];
         setActiveBrandState(profileBrand);
         localStorage.setItem('aa_active_brand_id', profileBrand.id);
         fetchBrandFeatures(profileBrand.id, profileBrand.plan_id);
+        setNeedsOnboarding(false);
+      } else {
+        // Usuario autenticado (ej: via Google) pero sin negocio creado todavía
+        setNeedsOnboarding(true);
       }
 
     } catch (err) {
@@ -182,6 +189,7 @@ export const AuthProvider = ({ children }) => {
       user,
       profile,
       loading,
+      needsOnboarding,
       ownedBrands,
       activeBrand,
       activePlan,

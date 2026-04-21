@@ -23,6 +23,7 @@ const SuperAdminPlans = React.lazy(() => import("./pages/superadmin/SuperAdminPl
 const SuperAdminSettings = React.lazy(() => import("./pages/superadmin/SuperAdminSettings.jsx"));
 const LoginPage = React.lazy(() => import("./pages/auth/LoginPage.jsx"));
 const RegisterPage = React.lazy(() => import("./pages/auth/RegisterPage.jsx"));
+const CompleteProfilePage = React.lazy(() => import("./pages/auth/CompleteProfilePage.jsx"));
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -62,6 +63,16 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               <AuthProvider>
                 <React.Suspense fallback={<div />}>
                   <RegisterPage />
+                </React.Suspense>
+              </AuthProvider>
+            }
+          />
+          <Route
+            path="/completar-registro"
+            element={
+              <AuthProvider>
+                <React.Suspense fallback={<div />}>
+                  <CompleteProfilePage />
                 </React.Suspense>
               </AuthProvider>
             }

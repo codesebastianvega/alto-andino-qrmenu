@@ -74,7 +74,12 @@ import Toast from "./components/Toast";
 export default function App() {
   const { brand_slug } = useParams();
   const { brand: activeBrandFromContext, loadingBrand } = useBrand();
-  const { activeBrand: activeBrandFromAuth, profile, loading: authLoading } = useAuth();
+  const { activeBrand: activeBrandFromAuth, profile, loading: authLoading, needsOnboarding } = useAuth();
+  
+  // Redirect Google OAuth users who signed in but have no business
+  if (needsOnboarding && !authLoading) {
+    return <Navigate to="/completar-registro" replace />;
+  }
   
   // En el panel de admin, priorizamos SIEMPRE la marca de la sesión activa
   const isNewAdminPanel = window.location.hash.startsWith('#admin');
