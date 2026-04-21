@@ -155,19 +155,20 @@
 
 ---
 
-## 👤 BLOQUE 7: Perfil & Gestión de Cuenta
+## ✅ COMPLETADO — BLOQUE 7: Perfil & Gestión de Cuenta
 > Meta: Autogestión de perfil, seguridad y roles administrativos.
 
-- [ ] **Vista de Mi Perfil (`/admin/profile`):**
-  - [ ] Interfaz para visualizar datos actuales (Nombre, Avatar, Rol).
-  - [ ] Edición de información personal básica.
-- [ ] **Seguridad & Credenciales:**
-  - [ ] Flujo de actualización de Email (Supabase Auth).
-  - [ ] Formulario de cambio de contraseña con validación.
+- [x] **Vista de Mi Perfil (`/admin/profile`):**
+  - [x] Interfaz para visualizar datos actuales (Nombre, Avatar, Rol).
+  - [x] Edición de información personal básica.
+- [x] **Seguridad & Credenciales:**
+  - [x] Flujo de actualización de Email (Supabase Auth) con advertencias y re-auth.
+  - [x] Formulario de cambio de contraseña con validación de contraseña actual y toggles visuales.
+  - [x] Badge de estado de conexión con Google.
 - [ ] **Gestión de Roles Globales (Solo Superadmin):**
   - [ ] Vista para que tú (Sebas) puedas editar roles de otros `profiles` sin ir a la DB.
   - [ ] Asignación/Cambio de `brand_id` para nuevos dueños de restaurantes.
-- [ ] **Accesos Rápidos:** Botón de "Perfil" en la parte inferior del Sidebar o Header.
+- [x] **Accesos Rápidos:** Botón de "Perfil" integrado en el Header del Admin.
 
 ---
 
@@ -302,7 +303,7 @@
 
 ---
 
-## 🔒 BLOQUE 12: Finalización de Auth & Onboarding (Aluna Core) [x]
+## ✅ BLOQUE 12: Finalización de Auth & Onboarding (Aluna Core) [COMPLETADO] 🏆
 > Meta: Flujo de entrada profesional, sin IDs técnicos y a prueba de balas.
 
 - [x] Integrar Plan Chips en `GlobalPortal.jsx`
@@ -314,3 +315,15 @@
 - [x] Normalización de colores "Inteligencia" en sidebar (Premium Glass + Brand Primary)
 - [x] Optimización de AuthContext para evitar flashes de carga en focus (TOKEN_REFRESH)
 - [ ] Guía de marca personalizada para Google Console (Pendiente de USER)
+
+---
+
+## 🟢 BLOQUE 13: Fase 2.4 — Onboarding de Nueva Marca (GlobalPortal) [COMPLETADO] 🏆
+> Meta: Flujo inline para crear una nueva marca directamente desde el portal global.
+
+- [x] **Tarjeta "+" en el Brand Grid:** Tarjeta especial con borde punteado y animación hover rotativa al final del grid.
+- [x] **Modal de Creación Inline:** Panel glass con formulario de nombre + tipo de negocio sin salir de la página.
+- [x] **Helper `createBrand`:** Crea `brands`, `restaurant_settings`, `home_settings` y staff por defecto.
+- [x] **Auto-switch de Marca:** Tras crear, llama a `switchBrand` para activar la nueva marca en sesión.
+- [x] **Redirección al Onboarding:** Navega a `/{slug}/#admin/onboarding` para completar la configuración inicial.
+- [x] **Feedback visual:** Animación de éxito (`CheckCircle2`) antes de la redirección.

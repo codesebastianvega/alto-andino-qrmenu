@@ -21,7 +21,7 @@
 - [x] **2.1 Brand Selector Canvas:** Nueva pantalla post-login que muestra tarjetas de todas las marcas asociadas al usuario.
 - [x] **2.2 Lógica de Persistencia de Marca:** Guardar `activeBrandId` en localStorage para mantener la sesión en la marca elegida.
 - [x] **2.3 Acceso Rápido desde Sidebar:** Botón en el sidebar para cambiar de marca sin cerrar sesión.
-- [ ] **2.4 Onboarding de Nueva Marca:** Botón "+" para iniciar el flujo de creación de una marca desde cero.
+- [x] **2.4 Onboarding de Nueva Marca:** Tarjeta "+" en el grid con modal inline para crear una marca desde cero, con auto-switch y redirección al onboarding.
 
 ---
 
@@ -154,6 +154,14 @@
 - [ ] **20.1 Documentación para Usuario Final:** Guías de configuración de marca y sedes.
 - [ ] **20.2 QA General:** Pruebas de estrés en el flujo de cambio entre múltiples marcas.
 - [ ] **20.3 Readiness Check:** Verificación de que el sistema es 100% multi-tenant y escalable.
+
+---
+
+## 🟦 FASE 21: Configuración de Comunicaciones Seguras (Auth & SMTP)
+> Finalización técnica de los flujos de seguridad del usuario.
+- [ ] **21.1 Configuración de SMTP Custom:** Integración con Resend o SendGrid para asegurar la entrega de correos administrativos.
+- [ ] **21.2 Personalización de Templates:** Traducción y diseño de los emails de confirmación, cambio de correo y recuperación de contraseña.
+- [ ] **21.3 Ajuste de URLs de Redirección:** Configuración de Site URL y Redirect URLs en Supabase para flujos de producción.
 
 ---
 
