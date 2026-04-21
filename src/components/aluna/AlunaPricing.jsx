@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Sparkles, Check } from "lucide-react";
 import { FadeIn, SpotlightCard } from "./animations";
 import { supabase } from "../../config/supabase";
@@ -96,13 +97,16 @@ export default function AlunaPricing() {
                           </li>
                         ))}
                       </ul>
-                      <a href={`#registro?plan=${plan.slug}`} className={`block text-center w-full py-4 rounded-full text-sm font-semibold transition-colors ${
-                        isPopular 
-                          ? 'bg-white text-[#1A1A1A] hover:bg-gray-100' 
-                          : 'border border-[#1A1A1A] text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white'
-                      }`}>
+                      <Link 
+                        to={`/registro?plan=${plan.slug}`} 
+                        className={`block text-center w-full py-4 rounded-full text-sm font-semibold transition-colors ${
+                          isPopular 
+                            ? 'bg-white text-[#1A1A1A] hover:bg-gray-100' 
+                            : 'border border-[#1A1A1A] text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white'
+                        }`}
+                      >
                         {plan.cta_text || `Elegir ${plan.name}`}
-                      </a>
+                      </Link>
                     </SpotlightCard>
                   </FadeIn>
                 );
