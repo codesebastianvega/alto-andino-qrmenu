@@ -2,8 +2,10 @@ import { Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import InteractivePhone from "./InteractivePhone";
 import { FadeIn, MagneticButton } from "./animations";
+import { useAuth } from "../../context/AuthContext";
 
 export default function AlunaHero() {
+  const { profile } = useAuth();
   return (
     <section className="pt-4 px-4 md:px-6 pb-12">
       {/* Contenedor principal con bordes redondeados */}
@@ -50,11 +52,19 @@ export default function AlunaHero() {
 
               {/* Botones */}
               <div className="flex flex-col sm:flex-row gap-4">
-                <MagneticButton>
-                  <Link to="/registro" className="bg-white text-[#1A1A1A] px-8 py-4 rounded-full text-sm font-semibold hover:bg-gray-100 transition-all flex items-center justify-center gap-2 shadow-xl">
-                    Comienza Hoy
-                  </Link>
-                </MagneticButton>
+                {profile ? (
+                  <MagneticButton>
+                    <Link to="/" className="bg-[#D4A853] text-black px-10 py-4 rounded-full text-sm font-bold hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#D4A853]/20">
+                      Gestionar mis Marcas
+                    </Link>
+                  </MagneticButton>
+                ) : (
+                  <MagneticButton>
+                    <Link to="/registro" className="bg-white text-[#1A1A1A] px-10 py-4 rounded-full text-sm font-semibold hover:bg-gray-100 transition-all flex items-center justify-center gap-2 shadow-xl">
+                      Comienza Hoy
+                    </Link>
+                  </MagneticButton>
+                )}
                 <Link to="/aluna?demo=1" className="bg-transparent border border-white/30 text-white px-8 py-4 rounded-full text-sm font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2">
                   Ver Demo
                 </Link>

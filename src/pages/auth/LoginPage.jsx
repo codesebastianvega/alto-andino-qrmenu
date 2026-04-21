@@ -30,11 +30,9 @@ export default function LoginPage() {
 
         if (profileData?.role === 'superadmin') {
           window.location.href = '/superadmin';
-        } else if (profileData?.brand?.slug) {
-          window.location.href = `/${profileData.brand.slug}/#admin`;
         } else {
-          // Fallback por si no tiene marca (no debería pasar para un owner)
-          window.location.hash = '#admin';
+          // Redirigir a la raíz para que el Global Portal gestione la selección
+          window.location.href = '/';
         }
       }
       

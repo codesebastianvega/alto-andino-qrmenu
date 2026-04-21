@@ -29,17 +29,19 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <ErrorBoundary>
       <BrowserRouter>
         <Routes>
-          {/* Aluna platform landing page at root */}
+          {/* Aluna platform entry point */}
           <Route
             path="/"
             element={
-              <React.Suspense fallback={
-                <div className="min-h-screen flex items-center justify-center bg-white">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D6A4F]"></div>
-                </div>
-              }>
-                <AlunaLanding />
-              </React.Suspense>
+              <AuthProvider>
+                <BrandProvider>
+                  <MenuDataProvider>
+                    <CartProvider>
+                      <App />
+                    </CartProvider>
+                  </MenuDataProvider>
+                </BrandProvider>
+              </AuthProvider>
             }
           />
 

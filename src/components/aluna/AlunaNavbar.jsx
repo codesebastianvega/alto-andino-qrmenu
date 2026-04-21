@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 export default function AlunaNavbar() {
+  const { profile } = useAuth();
   const [visible, setVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
@@ -58,12 +60,23 @@ export default function AlunaNavbar() {
 
       {/* CTA */}
       <div className="flex items-center gap-1 sm:gap-2">
-        <Link to="/login" className="text-gray-300 hover:text-white px-2 sm:px-3 py-2 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap">
-          Entrar
-        </Link>
-        <Link to="/registro" className="bg-white text-[#1A1A1A] px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-semibold hover:bg-gray-100 transition-all whitespace-nowrap">
-          Comenzar
-        </Link>
+        {profile ? (
+          <Link 
+            to="/" 
+            className="bg-white text-[#1A1A1A] px-6 sm:px-8 py-2 rounded-full text-xs sm:text-sm font-semibold hover:bg-gray-100 transition-all shadow-lg active:scale-95"
+          >
+            Mi Portal
+          </Link>
+        ) : (
+          <>
+            <Link to="/login" className="text-gray-300 hover:text-white px-2 sm:px-3 py-2 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap">
+              Entrar
+            </Link>
+            <Link to="/registro" className="bg-white text-[#1A1A1A] px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-semibold hover:bg-gray-100 transition-all whitespace-nowrap">
+              Comenzar
+            </Link>
+          </>
+        )}
       </div>
     </nav>
   );

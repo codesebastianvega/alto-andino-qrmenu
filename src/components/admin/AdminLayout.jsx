@@ -209,20 +209,30 @@ export default function AdminLayout() {
   const logoUrl = activeBrand?.logo_url || restaurantSettings?.logo_url || "/logoalto.png";
   const restaurantName = activeBrand?.name || restaurantSettings?.business_name || "Mi Negocio";
 
-  // If there's an authenticated Supabase session with owner/superadmin role,
-  // auto-login them without requiring PIN
+  // ─── Phase 1.5: Auth Robustness ──────────────────────────────────────────
   useEffect(() => {
     if (authLoading) return;
-    if (authUser && profile && (profile.role === 'owner' || profile.role === 'superadmin' || profile.role === 'admin')) {
-      // Already authenticated — preserve the specific role (owner or admin)
-      setUser({
-        id: authUser.id,
-        name: profile.full_name || authUser.email || 'Admin',
-        role: profile.role, // Use the actual role from profile
-        auth_session: true, 
-      });
+
+    if (authUser && profile) {
+      const isAdminRole = ['admin', 'owner', 'superadmin', 'encargado'].includes(profile.role);
+      
+      if (isAdminRole) {
+        // Auto-login Owner/Admin
+        setUser({
+          id: authUser.id,
+          name: profile.full_name || authUser.email || 'Admin',
+          role: profile.role,
+          auth_session: true, 
+        });
+      } else {
+        // Authenticated user exists but doesn't have an admin role
+        // This could happen if a customer accidentally goes to #admin
+        // or a staff member tries to use email login
+        // For now, we clear the user state to let AdminPinLogin handle it
+        setUser(null);
+      }
     } else if (!authUser) {
-      // Check sessionStorage for PIN-based login (staff without Supabase account)
+      // PIN-based staff login (no Supabase session)
       const savedSession = sessionStorage.getItem('aa_admin_session');
       if (savedSession) {
         try {
@@ -345,26 +355,22 @@ export default function AdminLayout() {
 
   const currentItemLabel = [...WEB_ITEMS, ...CARTA_ITEMS, ...PROD_ITEMS, ...ADMIN_ITEMS, ...OPERACION_ITEMS, ...ESTRATEGIA_ITEMS].find(i => i.id === currentPage)?.label || 'Panel';
 
-  if (authLoading) {
+  if (authLoading || (authUser && !profile)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0F170F]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#7db87a]"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F170F] gap-4">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-brand-primary/20 rounded-full animate-pulse" />
+          <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-brand-primary rounded-full animate-spin" />
+        </div>
+        <p className="text-white/40 text-xs font-bold uppercase tracking-widest animate-pulse">Verificando credenciales...</p>
       </div>
     );
   }
 
   if (!user) {
-    // Only show PIN login for staff (no active Supabase session)
-    // If there is an authUser but profile is still loading, wait for it
-    if (authUser && !profile) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-[#0F170F]">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#7db87a]"></div>
-        </div>
-      );
-    }
-
-    // Owners/admins with Supabase auth are auto-logged in via the useEffect above
+    // 💡 Logic: If authUser exists but its role wasn't whitelisted above (user is null),
+    // we should probably NOT show PIN login to an owner who just needs to pick a brand.
+    // But for now, if no email user is found, default to staff PIN.
     return <AdminPinLogin onLogin={setUser} />;
   }
 
@@ -728,10 +734,10 @@ export default function AdminLayout() {
             <button 
               onClick={async () => {
                 sessionStorage.removeItem('aa_admin_session');
-                if (user.auth_session) {
+                if (user?.auth_session) {
                   await supabase.auth.signOut();
-                  window.location.hash = '';
-                  window.location.reload();
+                  // Redirect to landing to avoid falling back to the current brand's menu
+                  window.location.href = '/'; 
                 } else {
                   setUser(null);
                 }

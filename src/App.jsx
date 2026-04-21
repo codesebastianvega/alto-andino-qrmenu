@@ -52,9 +52,14 @@ const OrderStatus = lazy(() => import("./pages/OrderStatus"));
 
 // Hash Routing Pages
 const LandingPage = lazy(() => import("./pages/LandingPage"));
+const AlunaLanding = lazy(() => import("./pages/AlunaLanding"));
 const ExperiencesPage = lazy(() => import("./pages/ExperiencesPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const AdminOnboarding = lazy(() => import("./pages/AdminOnboarding"));
+const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
+const RegisterPage = lazy(() => import("./pages/auth/RegisterPage"));
+const GlobalPortal = lazy(() => import("./components/admin/GlobalPortal"));
+
 import { useAuth } from "./context/AuthContext";
 import BottomTabBar from "./components/navigation/BottomTabBar";
 const CustomerSearch = lazy(() => import("./components/admin/CustomerSearch"));
@@ -69,7 +74,7 @@ import Toast from "./components/Toast";
 export default function App() {
   const { brand_slug } = useParams();
   const { brand: activeBrandFromContext, loadingBrand } = useBrand();
-  const { activeBrand: activeBrandFromAuth, profile } = useAuth();
+  const { activeBrand: activeBrandFromAuth, profile, loading: authLoading } = useAuth();
   
   // En el panel de admin, priorizamos SIEMPRE la marca de la sesión activa
   const isNewAdminPanel = window.location.hash.startsWith('#admin');
@@ -276,9 +281,9 @@ export default function App() {
   }, [isNewAdminPanel, isOnboardingView, activeBrand]);
 
 
-  if (loadingBrand || (brand_slug && menuLoading)) {
+  if (authLoading || loadingBrand || (brand_slug && menuLoading)) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-4">
+      <div className="min-h-screen relative flex flex-col items-center justify-center bg-white gap-4">
         <Loader2 className="w-12 h-12 text-brand-primary animate-spin" />
         <p className="text-brand-text/50 font-medium animate-pulse text-sm">Preparando experiencia...</p>
       </div>
@@ -293,7 +298,9 @@ export default function App() {
   if (isOnboardingView) {
     return (
       <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
-        <AdminOnboarding />
+        <div className="relative min-h-screen">
+          <AdminOnboarding />
+        </div>
       </Suspense>
     );
   }
@@ -325,7 +332,7 @@ export default function App() {
 
   return (
     <div 
-      className="leading-snug text-alto-text min-h-screen transition-colors duration-500"
+      className="leading-snug text-alto-text min-h-screen relative transition-colors duration-500"
       style={{ 
         backgroundColor: restaurantSettings?.theme_background || "#F5F5F7"
       }}
@@ -342,13 +349,17 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {!isDemo && !isAuthView && <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />}
+      {!isDemo && !isAuthView && brand_slug && <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />}
 
 
         {/* Si es vista Landing Y (no estamos en modo pedido O es un hash explícito #inicio) */}
         {(isExplicitInicio || (isLandingView && !isOrderingMode)) && (
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
-            <LandingPage />
+            {brand_slug ? (
+              <LandingPage />
+            ) : (
+              profile ? <GlobalPortal /> : <AlunaLanding />
+            )}
           </Suspense>
         )}
 
@@ -401,11 +412,11 @@ export default function App() {
           </main>
         )}
 
-        {!isDemo && <BottomTabBar currentHash={currentHash} />}
+        {!isDemo && brand_slug && <BottomTabBar currentHash={currentHash} />}
 
         {/* Barra flotante y Drawer del carrito */}
         <Suspense fallback={<div />}>
-          <FloatingCartBar items={cart.items} total={cart.total} onOpen={() => setOpen(true)} />
+          {brand_slug && <FloatingCartBar items={cart.items} total={cart.total} onOpen={() => setOpen(true)} />}
         </Suspense>
         <Suspense fallback={<div />}>
           <CartModal open={open} onClose={() => setOpen(false)} />

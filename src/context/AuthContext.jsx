@@ -173,7 +173,8 @@ export const AuthProvider = ({ children }) => {
   const signUp  = (data) => supabase.auth.signUp(data);
   const signOut = async () => {
     localStorage.removeItem('aa_active_brand_id');
-    return supabase.auth.signOut();
+    await supabase.auth.signOut();
+    window.location.href = '/';
   };
 
   return (
