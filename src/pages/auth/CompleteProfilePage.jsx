@@ -50,8 +50,9 @@ export default function CompleteProfilePage() {
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
   const [formData, setFormData] = useState({
-    restaurantName: '',
-    businessType: 'restaurant',
+    // Pre-llenamos si el usuario venía de /registro
+    restaurantName: sessionStorage.getItem('aluna_pending_name') || '',
+    businessType:   sessionStorage.getItem('aluna_pending_type') || 'restaurant',
   });
   const [error, setError]   = useState(null);
   const [loading, setLoading] = useState(false);
@@ -121,6 +122,11 @@ export default function CompleteProfilePage() {
       });
 
       setSuccess(true);
+
+      // Limpiar datos temporales del sessionStorage
+      sessionStorage.removeItem('aluna_pending_name');
+      sessionStorage.removeItem('aluna_pending_type');
+      sessionStorage.removeItem('aluna_pending_plan');
 
       // Refrescar el contexto y redirigir
       await refreshProfile(user.id);
