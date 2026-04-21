@@ -85,9 +85,9 @@
 
 ## 🟦 FASE 10: Plan Pro (Inteligencia Operativa)
 > Control total para negocios establecidos.
-- [x] **10.1 Analíticas Avanzadas:** Filtros de tiempo, ticket promedio y rendimiento por mesero.
-- [x] **10.2 IA Flash Integration:** El asistente de IA responde preguntas sobre ventas y stock.
-- [x] **10.3 Gestión de Recetas y Costos:** Acceso al módulo de rentabilidad y márgenes.
+- [ ] **10.1 Analíticas Avanzadas:** Filtros de tiempo, ticket promedio y rendimiento por mesero.
+- [ ] **10.2 IA Flash Integration:** El asistente de IA responde preguntas sobre ventas y stock.
+- [ ] **10.3 Gestión de Recetas y Costos:** Acceso al módulo de rentabilidad y márgenes.
 
 ---
 
