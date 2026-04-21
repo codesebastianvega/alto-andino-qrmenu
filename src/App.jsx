@@ -145,7 +145,10 @@ export default function App() {
   const isLandingView = !currentHash || currentHash === "" || currentHash === "#" || currentHash === "#inicio";
   const isExplicitInicio = currentHash === "#inicio";
   const isMenuView = currentHash === "#menu";
-  const isAuthView = currentHash === "#login" || currentHash === "#registro" || window.location.pathname === '/login' || window.location.pathname === '/registro';
+  const isAuthView = currentHash === "#login" || 
+                     currentHash === "#registro" || 
+                     window.location.pathname.startsWith('/login') || 
+                     window.location.pathname.startsWith('/registro');
   const isOrderingMode = isMenuView || !!sessionStorage.getItem("aa_current_mesa") || searchParams.get("mesa");
 
   // ✅ Welcome Experience State — solo 1 vez cada 24h por marca
@@ -349,7 +352,9 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {!isDemo && !isAuthView && brand_slug && <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />}
+      {!isDemo && !isAuthView && brand_slug && brand_slug !== 'anonimo' && (
+        <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />
+      )}
 
 
         {/* Si es vista Landing Y (no estamos en modo pedido O es un hash explícito #inicio) */}

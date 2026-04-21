@@ -33,7 +33,7 @@ export default function AlunaLanding() {
   }, []);
 
   return (
-    <div className="bg-white font-sans antialiased">
+    <div className="bg-white font-sans antialiased relative">
       <AlunaNavbar />
       <AlunaHero />
       <AlunaAbout />

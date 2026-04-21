@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../config/supabase';
-import { LogIn, AlertCircle, ArrowLeft, Mail, Lock, Eye, EyeOff, Github, Chrome } from 'lucide-react';
+import { 
+  LogIn, AlertCircle, ArrowLeft, Mail, Lock, 
+  Eye, EyeOff, Github, Chrome, Zap, Coffee 
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FadeIn, MagneticButton, SpotlightCard } from '../../components/aluna/animations';
 
@@ -50,39 +53,22 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#060606] relative flex flex-col items-center justify-center p-4 overflow-hidden">
-      {/* Premium Background */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#1A3A2C,transparent_70%)] opacity-20"></div>
-        <div className="absolute inset-0" style={{ 
-          backgroundImage: `linear-gradient(#ffffff03 1px, transparent 1px), linear-gradient(90deg, #ffffff03 1px, transparent 1px)`,
-          backgroundSize: '40px 40px'
-        }}></div>
-        
-        {/* Dynamic Glow Orbs */}
-        <motion.div 
-          animate={{ 
-            x: [0, 100, 0],
-            y: [0, 50, 0],
-            scale: [1, 1.2, 1]
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#2D6A4F]/20 blur-[120px] rounded-full"
+    <div className="min-h-screen relative flex flex-col items-center justify-center p-4 overflow-hidden">
+      {/* Premium Background with Image */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <img 
+          src="/assets/images/auth-bg.png" 
+          alt="Atmosphere" 
+          className="w-full h-full object-cover scale-110 blur-sm"
         />
-        <motion.div 
-          animate={{ 
-            x: [0, -80, 0],
-            y: [0, 100, 0],
-            scale: [1, 1.3, 1]
-          }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear", delay: 2 }}
-          className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-[#D4A853]/10 blur-[150px] rounded-full"
-        />
+        {/* Overlay más oscuro para dar contraste al contenido exterior */}
+        <div className="absolute inset-0 bg-stone-900/50"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-stone-900/30 via-transparent to-stone-900/40"></div>
       </div>
 
       <FadeIn direction="up" className="w-full max-w-md relative z-10">
         {/* Back link */}
-        <Link to="/" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors mb-8 text-sm group">
+        <Link to="/" className="inline-flex items-center gap-2 text-white/70 hover:text-white transition-colors mb-8 text-sm group font-medium">
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
           Volver a inicio
         </Link>
@@ -95,15 +81,15 @@ export default function LoginPage() {
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="inline-block"
           >
-            <span className="text-5xl text-white tracking-[0.2em] font-light mb-3 block" style={{ fontFamily: "'DM Serif Display', serif" }}>
+            <span className="text-5xl text-white tracking-[0.2em] font-light mb-3 block drop-shadow-md" style={{ fontFamily: "'DM Serif Display', serif" }}>
               ALUNA
             </span>
-            <div className="h-px w-16 bg-gradient-to-r from-transparent via-[#D4A853] to-transparent mx-auto opacity-60"></div>
+            <div className="h-px w-16 bg-gradient-to-r from-transparent via-[#D4A853] to-transparent mx-auto"></div>
           </motion.div>
-          <h2 className="mt-6 text-2xl font-medium text-white/90">
+          <h2 className="mt-6 text-2xl font-semibold text-white drop-shadow-sm">
             Bienvenido de nuevo
           </h2>
-          <p className="mt-2 text-white/40 text-sm">
+          <p className="mt-2 text-white/70 text-sm">
             Ingresa a tu cuenta para gestionar tu negocio.
           </p>
         </div>
@@ -112,9 +98,7 @@ export default function LoginPage() {
           animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}}
           transition={{ duration: 0.4 }}
         >
-          <SpotlightCard className="bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative overflow-hidden group/card">
-            {/* Card Inner Glow */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent pointer-events-none"></div>
+          <SpotlightCard className="bg-white/95 backdrop-blur-xl border border-stone-200/80 rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative overflow-hidden group/card" spotlightColor="rgba(212,168,83,0.08)">
 
             <form className="space-y-6 relative z-10" onSubmit={handleSubmit}>
               <AnimatePresence mode="wait">
@@ -123,11 +107,11 @@ export default function LoginPage() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="rounded-2xl bg-red-500/10 border border-red-500/20 p-4 mb-4"
+                    className="rounded-2xl bg-red-50 border border-red-100 p-4 mb-4"
                   >
                     <div className="flex gap-3">
                       <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
-                      <p className="text-sm text-red-200">{error}</p>
+                      <p className="text-sm text-red-700">{error}</p>
                     </div>
                   </motion.div>
                 )}
@@ -135,11 +119,11 @@ export default function LoginPage() {
 
             <div className="space-y-5">
               <div>
-                <label htmlFor="email" className="block text-xs font-medium text-white/50 uppercase tracking-widest mb-2 ml-1">
+                <label htmlFor="email" className="block text-xs font-bold text-stone-600 uppercase tracking-widest mb-2 ml-1">
                   Correo electrónico
                 </label>
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white/30 group-focus-within:text-[#D4A853] transition-colors">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-stone-400 group-focus-within:text-[#D4A853] transition-colors">
                     <Mail className="h-4 w-4" />
                   </div>
                   <input
@@ -149,7 +133,7 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#D4A853]/30 focus:border-[#D4A853]/50 transition-all text-sm"
+                    className="block w-full pl-11 pr-4 py-3.5 bg-stone-50 border border-stone-200 rounded-2xl text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#D4A853]/30 focus:border-[#D4A853] transition-all text-sm"
                     placeholder="ejemplo@aluna.test"
                   />
                 </div>
@@ -157,15 +141,15 @@ export default function LoginPage() {
 
               <div>
                 <div className="flex items-center justify-between mb-2 ml-1">
-                  <label htmlFor="password" className="block text-xs font-medium text-white/50 uppercase tracking-widest">
+                  <label htmlFor="password" className="block text-xs font-bold text-stone-600 uppercase tracking-widest">
                     Contraseña
                   </label>
-                  <a href="#" className="text-xs text-[#D4A853] hover:text-white transition-colors">
+                  <a href="#" className="text-xs font-semibold text-[#D4A853] hover:text-stone-900 transition-colors">
                     ¿Olvidaste la clave?
                   </a>
                 </div>
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white/30 group-focus-within:text-[#D4A853] transition-colors">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-stone-400 group-focus-within:text-[#D4A853] transition-colors">
                     <Lock className="h-4 w-4" />
                   </div>
                   <input
@@ -175,13 +159,13 @@ export default function LoginPage() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full pl-11 pr-12 py-3 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#D4A853]/30 focus:border-[#D4A853]/50 transition-all text-sm"
+                    className="block w-full pl-11 pr-12 py-3.5 bg-stone-50 border border-stone-200 rounded-2xl text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#D4A853]/30 focus:border-[#D4A853] transition-all text-sm"
                     placeholder="••••••••"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/30 hover:text-white transition-colors"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-stone-400 hover:text-stone-800 transition-colors"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -195,9 +179,9 @@ export default function LoginPage() {
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
-                  className="h-4 w-4 bg-white/5 border-white/10 rounded text-[#D4A853] focus:ring-[#D4A853] focus:ring-offset-black"
+                  className="h-4 w-4 rounded border-stone-300 text-[#D4A853] focus:ring-[#D4A853]"
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-white/40">
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-stone-600 font-medium">
                   Recordarme
                 </label>
               </div>
@@ -208,10 +192,10 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full relative group h-12 rounded-2xl bg-white text-[#0A0A0A] font-bold text-sm overflow-hidden transition-all active:scale-[0.98] disabled:opacity-50"
+                  className="w-full relative group h-12 rounded-2xl bg-slate-900 text-white font-bold text-sm overflow-hidden transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-slate-200"
                 >
                   <div className="absolute inset-0 bg-[#D4A853] translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                  <div className="relative z-10 flex items-center justify-center gap-2 group-hover:text-white transition-colors duration-300">
+                  <div className="relative z-10 flex items-center justify-center gap-2 transition-colors duration-300">
                     {loading ? (
                       <>
                         <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></span>
@@ -229,26 +213,23 @@ export default function LoginPage() {
 
             {/* Social Logins */}
             <div className="pt-4 space-y-4">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/10"></div>
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-[#121212] px-2 text-white/30 tracking-widest">O continúa con</span>
-                </div>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 border-t border-stone-200"></div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400 shrink-0">O continúa con</span>
+                <div className="flex-1 border-t border-stone-200"></div>
               </div>
 
-               <div className="grid grid-cols-2 gap-4">
+               <div className="grid grid-cols-2 gap-3">
                 <MagneticButton className="w-full">
-                  <button type="button" className="w-full flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors group">
-                    <Chrome className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
-                    <span className="text-xs font-medium text-white/60 group-hover:text-white">Google</span>
+                  <button type="button" className="w-full flex items-center justify-center gap-2 py-3 bg-stone-50 border border-stone-200 rounded-2xl hover:bg-white hover:border-[#D4A853]/50 hover:shadow-sm transition-all group">
+                    <Chrome className="w-4 h-4 text-stone-500 group-hover:text-stone-900 transition-colors" />
+                    <span className="text-xs font-bold text-stone-600 group-hover:text-stone-900">Google</span>
                   </button>
                 </MagneticButton>
                 <MagneticButton className="w-full">
-                  <button type="button" className="w-full flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors group">
-                    <Github className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
-                    <span className="text-xs font-medium text-white/60 group-hover:text-white">GitHub</span>
+                  <button type="button" className="w-full flex items-center justify-center gap-2 py-3 bg-stone-50 border border-stone-200 rounded-2xl hover:bg-white hover:border-[#D4A853]/50 hover:shadow-sm transition-all group">
+                    <Github className="w-4 h-4 text-stone-500 group-hover:text-stone-900 transition-colors" />
+                    <span className="text-xs font-bold text-stone-600 group-hover:text-stone-900">GitHub</span>
                   </button>
                 </MagneticButton>
               </div>
@@ -257,17 +238,17 @@ export default function LoginPage() {
         </SpotlightCard>
       </motion.div>
 
-        <p className="mt-8 text-center text-sm text-white/30">
+        <p className="mt-8 text-center text-sm text-white/80">
           ¿No tienes una cuenta activa?{' '}
           <Link to="/registro" className="font-bold text-[#D4A853] hover:text-white transition-colors">
             Registra tu negocio gratis
           </Link>
         </p>
 
-        <div className="mt-12 pt-8 border-t border-white/5 flex flex-wrap justify-center gap-6 text-[10px] uppercase tracking-widest font-bold text-white/20">
-          <span className="flex items-center gap-2"><Zap className="w-3 h-3" /> Setup instantáneo</span>
-          <span className="flex items-center gap-2"><Lock className="w-3 h-3" /> Seguridad bancaria</span>
-          <span className="flex items-center gap-2"><Coffee className="w-3 h-3" /> Soporte 24/7</span>
+        <div className="mt-10 flex flex-wrap justify-center gap-6 text-[10px] uppercase tracking-widest font-bold text-white/50">
+          <span className="flex items-center gap-1.5"><Zap className="w-3 h-3 text-[#D4A853]" /> Setup instantáneo</span>
+          <span className="flex items-center gap-1.5"><Lock className="w-3 h-3 text-[#D4A853]" /> Seguridad bancaria</span>
+          <span className="flex items-center gap-1.5"><Coffee className="w-3 h-3 text-[#D4A853]" /> Soporte 24/7</span>
         </div>
       </FadeIn>
     </div>
