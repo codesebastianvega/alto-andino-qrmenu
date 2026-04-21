@@ -455,18 +455,19 @@ export default function AdminLayout() {
 
                   {/* CONTENT */}
                   <div className={`relative z-10 flex items-center w-full ${isCollapsed ? 'justify-center' : 'px-5 gap-4'}`}>
-                    {/* Icon Container - PERFECTLY ROUNDED AND CLEAN */}
-                    <div className="relative group/icon flex shrink-0">
-                      <div className={`w-11 h-11 rounded-full aspect-square flex items-center justify-center transition-all duration-500 relative ${
+                    <div className="relative group/icon flex shrink-0 items-center justify-center">
+                      <div className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center transition-all duration-500 relative ${
                         currentPage === 'analytics' 
                         ? 'bg-brand-primary/20 text-brand-primary' 
                         : 'bg-white/5 text-white/40 group-hover:text-white/80 group-hover:bg-white/10'
                       }`}
-                      style={currentPage === 'analytics' ? { boxShadow: '0 0 15px var(--color-brand-primary)' } : {}}
+                      style={currentPage === 'analytics' ? { 
+                        boxShadow: '0 0 20px -5px var(--color-brand-primary)'
+                      } : {}}
                       >
                          {/* Subtle Circular Glass Stroke */}
                         <div className={`absolute inset-0 rounded-full border transition-colors duration-500 ${
-                          currentPage === 'analytics' ? 'border-brand-primary/30' : 'border-white/[0.08]'
+                          currentPage === 'analytics' ? 'border-brand-primary/40' : 'border-white/[0.08]'
                         }`} />
                         <Icons.Strategy />
                       </div>

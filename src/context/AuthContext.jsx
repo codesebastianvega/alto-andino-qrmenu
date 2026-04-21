@@ -123,35 +123,47 @@ export const AuthProvider = ({ children }) => {
     }
   }, [fetchBrandFeatures]);
 
+  const currentUserRef = React.useRef(user);
   useEffect(() => {
+    currentUserRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
+      const initialUser = session?.user ?? null;
+      setUser(initialUser);
+      if (initialUser) fetchProfile(initialUser.id);
       else setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const newUser = session?.user ?? null;
-      
-      // If the user hasn't changed, don't trigger a full reload/re-fetch
-      // This prevents the "flash" when Supabase refreshes the token on window focus
-      if (newUser?.id === user?.id && event !== 'SIGNED_OUT') {
-        setUser(newUser);
-        return;
-      }
+      const prevUser = currentUserRef.current;
 
-      setUser(newUser);
-      if (newUser) {
-        setLoading(true);
-        fetchProfile(newUser.id);
-      } else {
+      // 1. Handle Sign Out strictly
+      if (event === 'SIGNED_OUT' || !newUser) {
+        setUser(null);
         setProfile(null);
         setOwnedBrands([]);
         setActiveBrandState(null);
         setActiveBrandFeatures([]);
         setActivePlan(null);
         setLoading(false);
+        return;
       }
+
+      // 2. Prevent redundant work on token refreshes/window focus
+      // If the user ID is the same and we already have a profile, just update the user object (for token info) and STOP.
+      if (newUser.id === prevUser?.id) {
+        setUser(newUser); // Keep the session/user object fresh
+        return;
+      }
+
+      // 3. New user or session transition
+      setUser(newUser);
+      setLoading(true);
+      fetchProfile(newUser.id);
     });
 
     return () => subscription.unsubscribe();

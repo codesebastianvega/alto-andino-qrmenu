@@ -205,10 +205,20 @@ export const MenuDataProvider = ({ children }) => {
   }, []);
 
   // Trigger fetch when brand changes (resolved from URL slug or session)
+  const lastFetchedBrandRef = React.useRef(null);
+  
   useEffect(() => {
     if (loadingBrand) return; 
+    
+    // Safety: if brandId is the same as last one successfully fetched, don't re-trigger heavy fetch
+    // Unless it's the very first load
+    if (activeBrandId === lastFetchedBrandRef.current && categories.length > 0) {
+      return;
+    }
+
+    lastFetchedBrandRef.current = activeBrandId;
     fetchMenuData(activeBrandId);
-  }, [activeBrandId, loadingBrand, fetchMenuData]);
+  }, [activeBrandId, loadingBrand, fetchMenuData, categories.length]);
 
   // Real-time branding and home settings updates
   useEffect(() => {
