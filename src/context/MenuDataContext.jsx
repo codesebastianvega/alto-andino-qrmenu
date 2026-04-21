@@ -210,11 +210,14 @@ export const MenuDataProvider = ({ children }) => {
     fetchMenuData(activeBrandId);
   }, [activeBrandId, loadingBrand, fetchMenuData]);
 
-  // Real-time branding updates
+  // Real-time branding and home settings updates
   useEffect(() => {
-    const channel = supabase.channel('branding-changes')
+    const channel = supabase.channel('content-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_settings' }, (payload) => {
         if (payload.new) setRestaurantSettings(payload.new);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'home_settings' }, (payload) => {
+        if (payload.new) setHomeSettings(payload.new);
       })
       .subscribe();
     return () => supabase.removeChannel(channel);

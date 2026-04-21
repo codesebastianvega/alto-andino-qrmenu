@@ -244,7 +244,7 @@ const LandingPage = () => {
             to { transform: translateX(calc(-100% - 1.5rem)); }
           }
           .animate-infinite-scroll {
-            animation: infinite-scroll 40s linear infinite;
+            animation: infinite-scroll 230s linear infinite;
             display: flex;
             width: max-content;
           }
