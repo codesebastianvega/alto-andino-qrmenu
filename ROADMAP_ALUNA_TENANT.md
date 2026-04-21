@@ -16,11 +16,11 @@
 
 ---
 
-## 🟦 FASE 2: Portal Global & Brand Switcher
+## 🟦 FASE 2: Portal Global & Brand Switcher 🏁 [COMPLETADO] 🏆
 > El punto de entrada para usuarios con múltiples negocios.
-- [ ] **2.1 Brand Selector Canvas:** Nueva pantalla post-login que muestra tarjetas de todas las marcas asociadas al usuario.
-- [ ] **2.2 Lógica de Persistencia de Marca:** Guardar `activeBrandId` en localStorage para mantener la sesión en la marca elegida.
-- [ ] **2.3 Acceso Rápido desde Sidebar:** Botón en el sidebar para cambiar de marca sin cerrar sesión.
+- [x] **2.1 Brand Selector Canvas:** Nueva pantalla post-login que muestra tarjetas de todas las marcas asociadas al usuario.
+- [x] **2.2 Lógica de Persistencia de Marca:** Guardar `activeBrandId` en localStorage para mantener la sesión en la marca elegida.
+- [x] **2.3 Acceso Rápido desde Sidebar:** Botón en el sidebar para cambiar de marca sin cerrar sesión.
 - [ ] **2.4 Onboarding de Nueva Marca:** Botón "+" para iniciar el flujo de creación de una marca desde cero.
 
 ---
@@ -85,9 +85,9 @@
 
 ## 🟦 FASE 10: Plan Pro (Inteligencia Operativa)
 > Control total para negocios establecidos.
-- [ ] **10.1 Analíticas Avanzadas:** Filtros de tiempo, ticket promedio y rendimiento por mesero.
-- [ ] **10.2 IA Flash Integration:** El asistente de IA responde preguntas sobre ventas y stock.
-- [ ] **10.3 Gestión de Recetas y Costos:** Acceso al módulo de rentabilidad y márgenes.
+- [x] **10.1 Analíticas Avanzadas:** Filtros de tiempo, ticket promedio y rendimiento por mesero.
+- [x] **10.2 IA Flash Integration:** El asistente de IA responde preguntas sobre ventas y stock.
+- [x] **10.3 Gestión de Recetas y Costos:** Acceso al módulo de rentabilidad y márgenes.
 
 ---
 
@@ -133,8 +133,8 @@
 
 ## 🟦 FASE 17: Sistema de Landing Page CMS v2
 > Mejorar cómo las marcas se venden al mundo.
-- [ ] **17.1 Editor Visual de Hero:** Cambiar imágenes y textos de la landing sin código.
-- [ ] **17.2 Bloque de Testimonios Dinámico:** Integración con las reseñas reales que dejan los clientes.
+- [x] **17.1 Editor Visual de Hero:** Cambiar imágenes y textos de la landing sin código.
+- [x] **17.2 Bloque de Testimonios Dinámico:** Integración con las reseñas reales que dejan los clientes.
 
 ---
 
