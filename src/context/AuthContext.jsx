@@ -187,6 +187,7 @@ export const AuthProvider = ({ children }) => {
       hasFeature,
       isFeatureLocked,
       switchBrand,
+      refreshProfile: fetchProfile,
       signIn,
       signUp,
       signOut,

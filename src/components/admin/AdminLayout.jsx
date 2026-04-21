@@ -20,9 +20,11 @@ import AdminStaff from '../../pages/AdminStaff';
 import AdminSedes from '../../pages/AdminSedes';
 import AdminPinLogin from './AdminPinLogin';
 import AdminWebContent from '../../pages/AdminWebContent';
+import AdminProfile from '../../pages/AdminProfile';
 import BrandSwitcher from './BrandSwitcher';
 import LockOverlay from './LockOverlay';
 import { useMenuData } from '../../context/MenuDataContext';
+import Toast from '../Toast';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
 const Icons = {
@@ -133,6 +135,11 @@ const Icons = {
       <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
     </svg>
   ),
+  Profile: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+    </svg>
+  ),
 };
 
 const ADMIN_ROLES = ['admin', 'owner', 'superadmin', 'encargado'];
@@ -165,6 +172,7 @@ const ADMIN_ITEMS = [
   { id: 'staff',      label: 'Personal y Staff', Icon: Icons.Staff, roles: ADMIN_ROLES, feature: 'staff' },
   { id: 'sedes',      label: 'Sedes y Locales',   Icon: Icons.Home, roles: ADMIN_ROLES, feature: 'multi_location' },
   { id: 'settings',   label: 'Ajustes de Operación', Icon: Icons.Settings, roles: ADMIN_ROLES },
+  { id: 'profile',    label: 'Mi Perfil Admin', Icon: Icons.Profile, roles: ADMIN_ROLES },
 ];
 
 const WEB_ITEMS = [
@@ -690,9 +698,23 @@ export default function AdminLayout() {
              )}
           </div>
           <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="text-[13px] font-semibold text-gray-800 leading-tight">{user.name}</div>
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">{user.role}</div>
+            <div 
+              className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => setCurrentPage('profile')}
+            >
+              <div className="text-right hidden sm:block">
+                <div className="text-[13px] font-semibold text-gray-800 leading-tight">{profile?.full_name || user.email}</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">{profile?.role || 'Propietario'}</div>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center overflow-hidden">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[11px] font-bold text-brand-primary">
+                    {(profile?.full_name || user.email)?.[0].toUpperCase()}
+                  </span>
+                )}
+              </div>
             </div>
             <button 
               onClick={async () => {
@@ -736,6 +758,7 @@ export default function AdminLayout() {
           { currentPage === 'analytics'   && <AdminAnalytics /> }
           { currentPage === 'waiter'      && <AdminWaiter /> }
           { currentPage === 'operations'  && <AdminOperations /> }
+          { currentPage === 'profile'     && <AdminProfile /> }
 
           {/* Feature Lock Overlay */}
           <LockOverlay 
@@ -750,6 +773,7 @@ export default function AdminLayout() {
           />
         </div>
       </main>
+      <Toast />
     </div>
   );
 }
