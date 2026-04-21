@@ -502,10 +502,10 @@ export default function AdminLayout() {
                                className="absolute inset-0 w-1/2 bg-brand-primary/80"
                              />
                           </div>
-                          <p className={`text-[9px] font-black uppercase tracking-[0.15em] transition-colors duration-300 truncate ${
-                            currentPage === 'analytics' ? 'text-brand-primary/80' : 'text-white/30 group-hover:text-white/50'
+                          <p className={`text-[9px] font-medium uppercase tracking-[0.2em] transition-colors duration-300 truncate ${
+                            currentPage === 'analytics' ? 'text-white/80' : 'text-white/30 group-hover:text-white/50'
                           }`}>
-                            Aluna Mind
+                            Análisis
                           </p>
                         </div>
                       </div>
