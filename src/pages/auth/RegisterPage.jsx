@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../config/supabase';
 import { UserPlus, AlertCircle, Store, Coffee, Cake, Zap, ShoppingBag, Grid, ArrowLeft, Mail, Lock, CheckCircle2, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FadeIn, SpotlightCard } from '../../components/aluna/animations';
+import { FadeIn, SpotlightCard, MagneticButton } from '../../components/aluna/animations';
 
 // Plan IDs from DB
 const PLAN_IDS = {
@@ -207,7 +207,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-[#060606] relative flex flex-col items-center justify-center p-4 overflow-hidden py-20">
       {/* Premium Background */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#1A3A2C,transparent_70%)] opacity-20"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,#1A3A2C,transparent_60%)] opacity-30"></div>
         <div className="absolute inset-0" style={{ 
           backgroundImage: `linear-gradient(#ffffff03 1px, transparent 1px), linear-gradient(90deg, #ffffff03 1px, transparent 1px)`,
           backgroundSize: '40px 40px'
@@ -216,12 +216,21 @@ export default function RegisterPage() {
         {/* Dynamic Glow Orbs */}
         <motion.div 
           animate={{ 
+            x: [0, 80, 0],
+            y: [0, 100, 0],
+            scale: [1, 1.3, 1]
+          }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-[#D4A853]/10 blur-[150px] rounded-full"
+        />
+        <motion.div 
+          animate={{ 
             x: [0, -100, 0],
             y: [0, -50, 0],
             scale: [1, 1.2, 1]
           }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#2D6A4F]/15 blur-[120px] rounded-full"
+          transition={{ duration: 20, repeat: Infinity, ease: "linear", delay: 2 }}
+          className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#2D6A4F]/20 blur-[120px] rounded-full"
         />
       </div>
 
@@ -237,12 +246,13 @@ export default function RegisterPage() {
           <motion.div 
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="inline-block"
           >
-            <span className="text-4xl text-white tracking-widest font-light" style={{ fontFamily: "'DM Serif Display', serif" }}>
+            <span className="text-5xl text-white tracking-[0.2em] font-light block" style={{ fontFamily: "'DM Serif Display', serif" }}>
               ALUNA
             </span>
-            <div className="h-px w-12 bg-[#D4A853] mx-auto opacity-60 mt-2"></div>
+            <div className="h-px w-16 bg-gradient-to-r from-transparent via-[#D4A853] to-transparent mx-auto opacity-60 mt-3"></div>
           </motion.div>
           <h2 className="mt-6 text-2xl font-medium text-white/90">
             Crea tu negocio
@@ -405,26 +415,28 @@ export default function RegisterPage() {
 
               {/* Submit */}
               <div className="pt-4">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full relative group h-14 rounded-2xl bg-white text-[#0A0A0A] font-bold text-sm overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-                >
-                  <div className="absolute inset-0 bg-[#D4A853] translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                  <div className="relative z-10 flex items-center justify-center gap-2 group-hover:text-white transition-colors duration-300">
-                    {loading ? (
-                      <>
-                        <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></span>
-                        Creando tu imperio...
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="h-5 w-5" />
-                        Lanzar mi negocio gratis
-                      </>
-                    )}
-                  </div>
-                </button>
+                <MagneticButton className="w-full">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full relative group h-14 rounded-2xl bg-white text-[#0A0A0A] font-bold text-sm overflow-hidden transition-all active:scale-[0.98] disabled:opacity-50"
+                  >
+                    <div className="absolute inset-0 bg-[#D4A853] translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                    <div className="relative z-10 flex items-center justify-center gap-2 group-hover:text-white transition-colors duration-300">
+                      {loading ? (
+                        <>
+                          <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></span>
+                          Creando tu imperio...
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="h-5 w-5" />
+                          Lanzar mi negocio gratis
+                        </>
+                      )}
+                    </div>
+                  </button>
+                </MagneticButton>
               </div>
             </form>
           </SpotlightCard>

@@ -92,13 +92,13 @@ export default function LoginPage() {
           <motion.div 
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="inline-block"
           >
-            <span className="text-4xl text-white tracking-widest font-light mb-2 block" style={{ fontFamily: "'DM Serif Display', serif" }}>
+            <span className="text-5xl text-white tracking-[0.2em] font-light mb-3 block" style={{ fontFamily: "'DM Serif Display', serif" }}>
               ALUNA
             </span>
-            <div className="h-px w-12 bg-[#D4A853] mx-auto opacity-60"></div>
+            <div className="h-px w-16 bg-gradient-to-r from-transparent via-[#D4A853] to-transparent mx-auto opacity-60"></div>
           </motion.div>
           <h2 className="mt-6 text-2xl font-medium text-white/90">
             Bienvenido de nuevo
@@ -204,25 +204,27 @@ export default function LoginPage() {
             </div>
 
             <div className="pt-2">
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full relative group h-12 rounded-2xl bg-white text-[#0A0A0A] font-bold text-sm overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-              >
-                <div className="absolute inset-0 bg-[#D4A853] translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                <div className="relative z-10 flex items-center justify-center gap-2 group-hover:text-white transition-colors duration-300">
-                  {loading ? (
-                    <>
-                      <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></span>
-                      Accediendo...
-                    </>
-                  ) : (
-                    <>
-                      <LogIn className="h-4 w-4" /> Entrar a mi cuenta
-                    </>
-                  )}
-                </div>
-              </button>
+              <MagneticButton className="w-full">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full relative group h-12 rounded-2xl bg-white text-[#0A0A0A] font-bold text-sm overflow-hidden transition-all active:scale-[0.98] disabled:opacity-50"
+                >
+                  <div className="absolute inset-0 bg-[#D4A853] translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                  <div className="relative z-10 flex items-center justify-center gap-2 group-hover:text-white transition-colors duration-300">
+                    {loading ? (
+                      <>
+                        <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></span>
+                        Accediendo...
+                      </>
+                    ) : (
+                      <>
+                        <LogIn className="h-4 w-4" /> Entrar a mi cuenta
+                      </>
+                    )}
+                  </div>
+                </button>
+              </MagneticButton>
             </div>
 
             {/* Social Logins */}
@@ -236,15 +238,19 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <button type="button" className="flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors group">
-                  <Chrome className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
-                  <span className="text-xs font-medium text-white/60 group-hover:text-white">Google</span>
-                </button>
-                <button type="button" className="flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors group">
-                  <Github className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
-                  <span className="text-xs font-medium text-white/60 group-hover:text-white">GitHub</span>
-                </button>
+               <div className="grid grid-cols-2 gap-4">
+                <MagneticButton className="w-full">
+                  <button type="button" className="w-full flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors group">
+                    <Chrome className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
+                    <span className="text-xs font-medium text-white/60 group-hover:text-white">Google</span>
+                  </button>
+                </MagneticButton>
+                <MagneticButton className="w-full">
+                  <button type="button" className="w-full flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors group">
+                    <Github className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
+                    <span className="text-xs font-medium text-white/60 group-hover:text-white">GitHub</span>
+                  </button>
+                </MagneticButton>
               </div>
             </div>
           </form>
@@ -257,6 +263,12 @@ export default function LoginPage() {
             Registra tu negocio gratis
           </Link>
         </p>
+
+        <div className="mt-12 pt-8 border-t border-white/5 flex flex-wrap justify-center gap-6 text-[10px] uppercase tracking-widest font-bold text-white/20">
+          <span className="flex items-center gap-2"><Zap className="w-3 h-3" /> Setup instantáneo</span>
+          <span className="flex items-center gap-2"><Lock className="w-3 h-3" /> Seguridad bancaria</span>
+          <span className="flex items-center gap-2"><Coffee className="w-3 h-3" /> Soporte 24/7</span>
+        </div>
       </FadeIn>
     </div>
   );
