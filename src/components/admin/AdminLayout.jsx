@@ -355,6 +355,15 @@ export default function AdminLayout() {
 
   if (!user) {
     // Only show PIN login for staff (no active Supabase session)
+    // If there is an authUser but profile is still loading, wait for it
+    if (authUser && !profile) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-[#0F170F]">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#7db87a]"></div>
+        </div>
+      );
+    }
+
     // Owners/admins with Supabase auth are auto-logged in via the useEffect above
     return <AdminPinLogin onLogin={setUser} />;
   }

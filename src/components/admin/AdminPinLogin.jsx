@@ -102,9 +102,16 @@ export default function AdminPinLogin({ onLogin }) {
           ))}
         </div>
         {staffList.length === 0 && (
-          <div className="text-center text-gray-500 bg-white p-6 rounded-lg shadow-sm border border-orange-200">
-            <p className="font-medium text-orange-600">No hay personal configurado.</p>
-            <p className="text-sm">Por favor ejecuta la migración SQL `v2_phase5_analytics_schema.sql` en Supabase.</p>
+          <div className="text-center text-gray-500 bg-white p-8 rounded-2xl shadow-sm border border-orange-100 max-w-sm">
+            <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <p className="font-semibold text-gray-900 mb-1">No hay personal configurado</p>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              El administrador principal debe configurar el personal desde el panel de control.
+            </p>
           </div>
         )}
       </div>
