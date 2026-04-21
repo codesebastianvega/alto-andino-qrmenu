@@ -193,7 +193,7 @@ const WeeklyHeatmap = React.memo(({ data }) => {
 const VisionTooltip = ({ active, payload, label, formatter, units = "ventas" }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-[#0A0A0B]/95 backdrop-blur-3xl text-white p-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] border border-white/10 min-w-[180px] animate-in fade-in zoom-in duration-200">
+      <div className="bg-[#0A0A0B]/95 backdrop-blur-3xl text-white p-4 rounded-2xl border border-white/10 min-w-[180px] animate-in fade-in zoom-in duration-200">
         <div className="flex items-center justify-between gap-3 mb-3 pb-2 border-b border-white/5">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
