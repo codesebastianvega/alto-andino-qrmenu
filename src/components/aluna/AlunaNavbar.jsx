@@ -30,10 +30,44 @@ export default function AlunaNavbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
+  const isHome = window.location.pathname === "/";
+
   const scrollTo = (e, href) => {
-    e.preventDefault();
-    const el = document.getElementById(href.replace("#", ""));
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (isHome) {
+      e.preventDefault();
+      const el = document.getElementById(href.replace("#", ""));
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+    // Si no es home, dejamos que el <Link> (o <a>) haga su trabajo normal 
+    // pero idealmente recargaría el home.
+  };
+
+  // Convertimos los links en objetos que funcionen tanto en home como fuera
+  const renderLink = ({ label, href }) => {
+    if (isHome) {
+      return (
+        <a
+          key={href}
+          href={href}
+          onClick={(e) => scrollTo(e, href)}
+          className="text-xs sm:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 px-3 py-2 rounded-full transition-all whitespace-nowrap"
+        >
+          {label}
+        </a>
+      );
+    } else {
+      return (
+        <Link
+          key={href}
+          to={`/${href}`}
+          className="text-xs sm:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 px-3 py-2 rounded-full transition-all whitespace-nowrap"
+        >
+          {label}
+        </Link>
+      );
+    }
   };
 
   return (
@@ -56,16 +90,7 @@ export default function AlunaNavbar() {
 
       {/* Nav links */}
       <div className="flex items-center gap-1 sm:gap-2 px-2 overflow-x-auto scrollbar-hide">
-        {NAV_LINKS.map(({ label, href }) => (
-          <a
-            key={href}
-            href={href}
-            onClick={(e) => scrollTo(e, href)}
-            className="text-xs sm:text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 px-3 py-2 rounded-full transition-all whitespace-nowrap"
-          >
-            {label}
-          </a>
-        ))}
+        {NAV_LINKS.map(renderLink)}
       </div>
 
       <div className="w-[1px] h-6 bg-white/20 mx-2" />

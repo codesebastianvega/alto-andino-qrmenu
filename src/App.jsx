@@ -98,9 +98,18 @@ export default function App() {
   useEffect(() => {
     // En el panel de admin, priorizamos el nombre de la marca de la sesión
     // En el menú público, priorizamos la configuración de branding de la base de datos
-    const brandName = isNewAdminPanel 
-      ? (activeBrand?.name || "Administración")
-      : (restaurantSettings?.business_name || activeBrand?.name || "Aluna");
+    let brandName = "Aluna";
+    
+    if (isNewAdminPanel) {
+      brandName = activeBrand?.name || "Administración";
+    } else {
+      brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
+    }
+
+    // Si estamos en la landing global, forzar Aluna
+    if (isLandingView && !brand_slug) {
+      brandName = "Aluna";
+    }
       
     document.title = brandName;
 

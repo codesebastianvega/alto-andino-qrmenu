@@ -64,7 +64,10 @@ export const AuthProvider = ({ children }) => {
       // Fetch all brands this user owns (owner_id = user.id)
       const { data: brands } = await supabase
         .from('brands')
-        .select('id, name, slug, logo_url, business_type, plan_id, onboarding_completed')
+        .select(`
+          id, name, slug, logo_url, business_type, plan_id, onboarding_completed,
+          plans (name)
+        `)
         .eq('owner_id', userId)
         .eq('is_active', true)
         .order('name');
@@ -82,7 +85,10 @@ export const AuthProvider = ({ children }) => {
         try {
           const { data: staffBrand } = await supabase
             .from('brands')
-            .select('id, name, slug, logo_url, business_type, plan_id, onboarding_completed')
+            .select(`
+              id, name, slug, logo_url, business_type, plan_id, onboarding_completed,
+              plans (name)
+            `)
             .eq('id', data.brand_id)
             .single();
           
@@ -124,11 +130,20 @@ export const AuthProvider = ({ children }) => {
       else setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        setLoading(true); // Ensure loading is true while we fetch the profile
-        fetchProfile(session.user.id);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const newUser = session?.user ?? null;
+      
+      // If the user hasn't changed, don't trigger a full reload/re-fetch
+      // This prevents the "flash" when Supabase refreshes the token on window focus
+      if (newUser?.id === user?.id && event !== 'SIGNED_OUT') {
+        setUser(newUser);
+        return;
+      }
+
+      setUser(newUser);
+      if (newUser) {
+        setLoading(true);
+        fetchProfile(newUser.id);
       } else {
         setProfile(null);
         setOwnedBrands([]);

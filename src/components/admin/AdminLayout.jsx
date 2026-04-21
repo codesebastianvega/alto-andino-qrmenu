@@ -398,34 +398,35 @@ export default function AdminLayout() {
               {/* 1. SECCION ESTRATEGIA (Aura Insight Glass Card) */}
               {ADMIN_ROLES.includes(user.role) && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between px-1">
-                  {!isCollapsed && <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Estrategia</span>}
-                  <div className="h-px flex-1 bg-white/5 ml-3" />
-                </div>
-
                 <motion.button 
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.01, y: -1 }}
+                  whileTap={{ scale: 0.99 }}
                   onClick={() => handleSelectPage('analytics', 'Centro de Inteligencia', 'advanced_analytics')}
-                  className={`w-full group relative overflow-hidden transition-all duration-500 ${isCollapsed ? 'h-14' : 'h-24'} rounded-2xl border flex items-center ${
+                  className={`w-full group relative overflow-hidden transition-all duration-500 ${isCollapsed ? 'h-14' : 'h-[92px]'} rounded-2xl flex items-center ${
                     currentPage === 'analytics' 
-                    ? 'bg-white/[0.12] border-brand-primary shadow-[0_20px_40px_rgba(125,184,122,0.25)] ring-1 ring-brand-primary/30' 
-                    : 'bg-white/[0.03] backdrop-blur-3xl border-white/10 hover:bg-white/[0.08] hover:border-white/25 hover:shadow-[0_15px_30px_rgba(0,0,0,0.2)]'
+                    ? 'bg-white/[0.08] shadow-lg shadow-brand-primary/5' 
+                    : 'bg-white/[0.02] hover:bg-white/[0.04]'
                   } ${isFeatureLocked('advanced_analytics') && !isCollapsed ? 'opacity-90' : ''}`}
                 >
-                  {/* --- VISION PRO LAYERS --- */}
+                  {/* --- PREMIUM GLASS NEURO ENVELOPE --- */}
+                  <div className="absolute inset-0 backdrop-blur-xl pointer-events-none" />
+                  
+                  {/* Internal Glow Border (The one the user wants clean) */}
+                  <div className={`absolute inset-0 rounded-2xl border transition-all duration-500 ${
+                    currentPage === 'analytics' 
+                    ? 'border-brand-primary/30' 
+                    : 'border-white/[0.05] group-hover:border-white/10'
+                  }`} />
                   
                   {/* 1. Interactive Aura Base */}
-                  <div className="absolute inset-0 opacity-40 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+                  <div className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity duration-700 pointer-events-none">
                     <motion.div 
                       animate={{ 
-                        scale: [1, 1.2, 1],
-                        opacity: [0.3, 0.6, 0.3],
-                        x: [0, 10, 0],
-                        y: [0, -5, 0]
+                        opacity: [0.03, 0.08, 0.03],
+                        scale: [1, 1.1, 1],
                       }}
-                      transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                      className="absolute -top-1/2 -left-1/4 w-full h-[200%] bg-[radial-gradient(circle_at_center,_rgba(125,184,122,0.15)_0%,_transparent_70%)] blur-3xl"
+                      transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+                      className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] bg-[radial-gradient(circle_at_center,_var(--color-brand-primary)_0%,_transparent_60%)] opacity-[0.05]"
                     />
                   </div>
 
@@ -433,103 +434,77 @@ export default function AdminLayout() {
                   <motion.div 
                     initial={{ x: '-100%' }}
                     animate={{ x: '200%' }}
-                    transition={{ duration: 3, repeat: Infinity, repeatDelay: 5, ease: "easeInOut" }}
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.05] to-transparent skew-x-[-20deg] pointer-events-none"
+                    transition={{ duration: 6, repeat: Infinity, repeatDelay: 5, ease: "easeInOut" }}
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent skew-x-[-25deg] pointer-events-none"
                   />
 
-                  {/* 3. Dynamic Sparkline (Vision Pro Pulse) */}
-                  <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20">
-                    <svg width="100%" height="100%" viewBox="0 0 120 40" preserveAspectRatio="none" className="filter blur-[1px]">
+                  {/* 3. Dynamic Sparkline (Takes Brand Color) */}
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.08] group-hover:opacity-[0.14] transition-opacity duration-500">
+                    <svg width="100%" height="100%" viewBox="0 0 120 40" preserveAspectRatio="none">
                       <motion.path
-                        d="M0 35 Q 20 38, 40 25 T 80 28 T 120 18"
+                        d="M0 30 Q 15 35, 30 20 T 60 25 T 90 15 T 120 22"
                         fill="none"
-                        stroke="currentColor"
-                        className="text-brand-primary"
-                        strokeWidth="1.5"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: 1 }}
-                        transition={{ 
-                          pathLength: { duration: 6, repeat: Infinity, ease: "linear" },
-                          opacity: { duration: 3, repeat: Infinity, repeatType: "reverse" }
-                        }}
-                      />
-                      <motion.path
-                        d="M0 35 Q 20 38, 40 25 T 80 28 T 120 18"
-                        fill="none"
-                        stroke="white"
-                        strokeWidth="0.5"
+                        stroke="var(--color-brand-primary)"
+                        strokeWidth="1.2"
                         initial={{ pathLength: 0 }}
                         animate={{ pathLength: 1 }}
-                        transition={{ duration: 6, repeat: Infinity, ease: "linear", delay: 0.1 }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
                       />
                     </svg>
                   </div>
 
-                  {/* 4. Active State Glowing Trace */}
-                  <AnimatePresence>
-                    {currentPage === 'analytics' && (
-                      <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-transparent via-brand-primary to-transparent shadow-[0_-4px_10px_rgba(125,184,122,0.5)]"
-                      />
-                    )}
-                  </AnimatePresence>
-
-                  {/* CONTENT REACHING */}
+                  {/* CONTENT */}
                   <div className={`relative z-10 flex items-center w-full ${isCollapsed ? 'justify-center' : 'px-5 gap-4'}`}>
-                    {/* Icon Container with Depth */}
-                    <div className="relative group/icon">
-                      <motion.div 
-                        animate={currentPage === 'analytics' ? { scale: [1, 1.15, 1], rotate: [0, 5, 0, -5, 0] } : {}}
-                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                        className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-500 relative ${
-                          currentPage === 'analytics' 
-                          ? 'bg-gradient-to-br from-brand-primary to-emerald-600 text-white shadow-[0_0_25px_rgba(125,184,122,0.5)]' 
-                          : 'bg-white/10 text-white/50 group-hover:bg-brand-primary group-hover:text-white group-hover:shadow-[0_0_20px_rgba(125,184,122,0.3)]'
-                        }`}
+                    {/* Icon Container - PERFECTLY ROUNDED AND CLEAN */}
+                    <div className="relative group/icon flex shrink-0">
+                      <div className={`w-11 h-11 rounded-full aspect-square flex items-center justify-center transition-all duration-500 relative ${
+                        currentPage === 'analytics' 
+                        ? 'bg-brand-primary/20 text-brand-primary' 
+                        : 'bg-white/5 text-white/40 group-hover:text-white/80 group-hover:bg-white/10'
+                      }`}
+                      style={currentPage === 'analytics' ? { boxShadow: '0 0 15px var(--color-brand-primary)' } : {}}
                       >
+                         {/* Subtle Circular Glass Stroke */}
+                        <div className={`absolute inset-0 rounded-full border transition-colors duration-500 ${
+                          currentPage === 'analytics' ? 'border-brand-primary/30' : 'border-white/[0.08]'
+                        }`} />
                         <Icons.Strategy />
-                        {/* Magnetic Pulse Ring */}
-                        <div className={`absolute inset-0 rounded-2xl border border-white/30 scale-100 opacity-0 group-hover/icon:scale-150 group-hover/icon:opacity-100 transition-all duration-700`} />
-                      </motion.div>
+                      </div>
                       
-                      {/* Intelligence Alert Dot */}
-                      <div className="absolute -top-1 -right-1 flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-primary shadow-[0_0_10px_rgba(125,184,122,1)] border border-white/20"></span>
+                      {/* Alert Dot (Dynamic Color) */}
+                      <div className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-60"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-primary shadow-[0_0_10px_var(--color-brand-primary)] border border-[#0d0d0d]"></span>
                       </div>
                     </div>
 
                     {!isCollapsed && (
-                      <div className="text-left flex-1">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <p className={`text-[15px] font-bold leading-none tracking-tight transition-colors duration-300 ${
-                              currentPage === 'analytics' ? 'text-white' : 'text-white/80 group-hover:text-white'
-                            }`}>
-                              Inteligencia
-                            </p>
-                            {isFeatureLocked('advanced_analytics') && (
-                              <div className="flex items-center justify-center bg-amber-500/10 p-0.5 rounded border border-amber-500/20">
-                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
-                                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <div className="flex -space-x-1">
-                            {[1, 2, 3].map(i => (
-                              <div key={i} className={`w-2.5 h-1 rounded-full ${i === 1 ? 'bg-brand-primary' : 'bg-white/10'}`} />
-                            ))}
-                          </div>
-                          <p className={`text-[10px] font-medium transition-colors duration-300 ${
-                            currentPage === 'analytics' ? 'text-white/60' : 'text-white/30 group-hover:text-white/50'
+                      <div className="text-left flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className={`text-[14px] font-bold leading-none tracking-tight transition-colors duration-300 ${
+                            currentPage === 'analytics' ? 'text-white' : 'text-white/60 group-hover:text-white'
                           }`}>
-                            Centro de Decisiones
+                            Inteligencia
+                          </p>
+                          {isFeatureLocked('advanced_analytics') && (
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500/60 shrink-0">
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-2.5">
+                           {/* Status line (DYNAMIC BRAND COLOR) */}
+                          <div className={`h-[2px] w-8 rounded-full overflow-hidden bg-white/10 relative`}>
+                             <motion.div 
+                               animate={{ x: ['-100%', '100%'] }}
+                               transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                               className="absolute inset-0 w-1/2 bg-brand-primary/80"
+                             />
+                          </div>
+                          <p className={`text-[9px] font-black uppercase tracking-[0.15em] transition-colors duration-300 truncate ${
+                            currentPage === 'analytics' ? 'text-brand-primary/80' : 'text-white/30 group-hover:text-white/50'
+                          }`}>
+                            Aluna Mind
                           </p>
                         </div>
                       </div>

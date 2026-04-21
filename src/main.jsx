@@ -29,12 +29,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ErrorBoundary>
       <BrowserRouter>
-        <Routes>
-          {/* Aluna platform entry point */}
-          <Route
-            path="/"
-            element={
-              <AuthProvider>
+        <AuthProvider>
+          <Routes>
+            {/* Aluna platform entry point */}
+            <Route
+              path="/"
+              element={
                 <BrandProvider>
                   <MenuDataProvider>
                     <CartProvider>
@@ -42,62 +42,52 @@ ReactDOM.createRoot(document.getElementById("root")).render(
                     </CartProvider>
                   </MenuDataProvider>
                 </BrandProvider>
-              </AuthProvider>
-            }
-          />
+              }
+            />
 
-          {/* Global Auth Routes */}
-          <Route
-            path="/login"
-            element={
-              <AuthProvider>
+            {/* Global Auth Routes */}
+            <Route
+              path="/login"
+              element={
                 <React.Suspense fallback={<div />}>
                   <LoginPage />
                 </React.Suspense>
-              </AuthProvider>
-            }
-          />
-          <Route
-            path="/registro"
-            element={
-              <AuthProvider>
+              }
+            />
+            <Route
+              path="/registro"
+              element={
                 <React.Suspense fallback={<div />}>
                   <RegisterPage />
                 </React.Suspense>
-              </AuthProvider>
-            }
-          />
-          <Route
-            path="/completar-registro"
-            element={
-              <AuthProvider>
+              }
+            />
+            <Route
+              path="/completar-registro"
+              element={
                 <React.Suspense fallback={<div />}>
                   <CompleteProfilePage />
                 </React.Suspense>
-              </AuthProvider>
-            }
-          />
+              }
+            />
 
-          {/* Superadmin Routes */}
-          <Route path="/superadmin/*" element={
-            <AuthProvider>
+            {/* Superadmin Routes */}
+            <Route path="/superadmin/*" element={
               <React.Suspense fallback={<div className="p-8 italic">Cargando panel de control...</div>}>
                 <SuperAdminLayout />
               </React.Suspense>
-            </AuthProvider>
-          }>
-            <Route index element={<SuperAdminMetrics />} />
-            <Route path="brands" element={<SuperAdminBrands />} />
-            <Route path="brands/:id" element={<SuperAdminBrandDetail />} />
-            <Route path="plans" element={<SuperAdminPlans />} />
-            <Route path="settings" element={<SuperAdminSettings />} />
-          </Route>
+            }>
+              <Route index element={<SuperAdminMetrics />} />
+              <Route path="brands" element={<SuperAdminBrands />} />
+              <Route path="brands/:id" element={<SuperAdminBrandDetail />} />
+              <Route path="plans" element={<SuperAdminPlans />} />
+              <Route path="settings" element={<SuperAdminSettings />} />
+            </Route>
 
-          {/* Brand Experience: This route captures the brand slug and everything after */}
-          <Route
-            path="/:brand_slug/*"
-            element={
-              <AuthProvider>
+            {/* Brand Experience: This route captures the brand slug and everything after */}
+            <Route
+              path="/:brand_slug/*"
+              element={
                 <BrandProvider>
                   <MenuDataProvider>
                     <CartProvider>
@@ -105,15 +95,14 @@ ReactDOM.createRoot(document.getElementById("root")).render(
                     </CartProvider>
                   </MenuDataProvider>
                 </BrandProvider>
-              </AuthProvider>
-            }
-          />
+              }
+            />
 
-          {/* Compatibility: If a hash is used at root without slug (old style), redirect or handler can be added here */}
-          <Route path="/aluna" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Compatibility: If a hash is used at root without slug (old style), redirect or handler can be added here */}
+            <Route path="/aluna" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>
-
   </React.StrictMode>,
 );

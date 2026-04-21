@@ -299,3 +299,18 @@
 - [ ] Asegurar coherencia de bordes, sombras y desenfoques (blur).
 - [ ] Test de flujo completo (Guardar/Editar/Eliminar) en todos los módulos.
 
+
+---
+
+## 🔒 BLOQUE 12: Finalización de Auth & Onboarding (Aluna Core) [x]
+> Meta: Flujo de entrada profesional, sin IDs técnicos y a prueba de balas.
+
+- [x] Integrar Plan Chips en `GlobalPortal.jsx`
+- [x] Join de tablas en `AuthContext.jsx` para traer nombres de planes
+- [x] Centralización de Auth Provider para evitar bloqueos de Supabase
+- [x] Redirección inteligente `needsOnboarding` → `/completar-registro`
+- [x] Branding Audit: Títulos limpios en `App.jsx`
+- [x] Registro multi-marca: Soporte para usuarios logueados en `RegisterPage.jsx`
+- [x] Normalización de colores "Inteligencia" en sidebar (Premium Glass + Brand Primary)
+- [x] Optimización de AuthContext para evitar flashes de carga en focus (TOKEN_REFRESH)
+- [ ] Guía de marca personalizada para Google Console (Pendiente de USER)

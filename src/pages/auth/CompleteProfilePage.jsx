@@ -59,6 +59,13 @@ export default function CompleteProfilePage() {
   const [success, setSuccess] = useState(false);
   const [shake, setShake]   = useState(false);
 
+  // Forzar título de pestaña
+  useEffect(() => {
+    const prevTitle = document.title;
+    document.title = "Completar Registro | Aluna";
+    return () => { document.title = prevTitle; };
+  }, []);
+
   // Si ya tiene negocio, redirigir al panel
   useEffect(() => {
     if (!needsOnboarding && !loading && user) {

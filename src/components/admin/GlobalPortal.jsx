@@ -107,8 +107,17 @@ export default function GlobalPortal() {
                       <Store className="w-8 h-8 text-white/20" />
                     )}
                   </div>
-                  <div className="px-3 py-1 rounded-full bg-[#7db87a]/10 border border-[#7db87a]/20">
-                    <span className="text-[10px] font-bold text-[#7db87a] uppercase tracking-widest">Activo</span>
+                  <div className="flex items-center gap-2">
+                    <div className="px-3 py-1 rounded-full bg-[#7db87a]/10 border border-[#7db87a]/20">
+                      <span className="text-[10px] font-bold text-[#7db87a] uppercase tracking-widest">Activo</span>
+                    </div>
+                    {brand.plans?.name && (
+                      <div className="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20">
+                        <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">
+                          {brand.plans.name}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
