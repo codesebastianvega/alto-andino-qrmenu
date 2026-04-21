@@ -273,6 +273,7 @@ export default function AdminAnalytics() {
 
   const fetchData = async () => {
     setLoading(true);
+    setIsReady(false);
     try {
       if (!activeBrandId) {
         setLoading(false);
@@ -353,7 +354,7 @@ export default function AdminAnalytics() {
         paymentMethods: pmRes.data || []
       });
 
-      setAllProducts(productsRes.data || []); // Wait, the destructuring index is 6 for pmRes if I add one more.
+      setAllProducts(productsRes.data || []);
 
       setPrevData({
         orders: prevOrdersRes.data || [],
@@ -361,12 +362,16 @@ export default function AdminAnalytics() {
         events: prevEventsRes.data || []
       });
 
-      // --- Advanced Analytics RPCs ---
-      const [forecastingRes, revPashRes, cohortsRes, integrityRes] = await Promise.all([
+      // Show charts immediately with basic data
+      setLoading(false);
+      setIsReady(true);
+
+      // --- Advanced Analytics RPCs (load in background, non-blocking) ---
+      Promise.all([
         supabase.rpc('analytics_forecasting', { 
           p_brand_id: activeBrandId, 
           p_start_date: start.toISOString(), 
-          p_end_date: (dateRange === 'all' ? new Date().toISOString() : new Date().toISOString()) 
+          p_end_date: new Date().toISOString()
         }),
         supabase.rpc('analytics_revpash', { 
           p_brand_id: activeBrandId, 
@@ -379,44 +384,38 @@ export default function AdminAnalytics() {
           p_end_date: new Date().toISOString() 
         }),
         supabase.from('products').select('id', { count: 'exact' }).eq('brand_id', activeBrandId).or('cost.eq.0,cost.is.null')
-      ]);
-
-      const rpcErrors = [forecastingRes.error, revPashRes.error, cohortsRes.error].filter(Boolean);
-      if (rpcErrors.length > 0) {
-        console.error('RPC Errors:', rpcErrors);
-        toast.error('Error al cargar datos avanzados de analítica.');
-      }
-
-      setAdvancedData({
-        forecasting: forecastingRes.data,
-        revPash: revPashRes.data || [],
-        cohorts: cohortsRes.data || {}
-      });
-
-      // Calculate identified pct
-      const totalOrders = ordersRes.data?.length || 0;
-      const identifiedOrders = ordersRes.data?.filter(o => o.customer_phone && o.customer_phone !== '').length || 0;
-
-      setIntegrityStats({
-        missingCosts: integrityRes.count || 0,
-        identifiedPct: totalOrders > 0 ? (identifiedOrders / totalOrders) * 100 : 0
+      ]).then(([forecastingRes, revPashRes, cohortsRes, integrityRes]) => {
+        const rpcErrors = [forecastingRes.error, revPashRes.error, cohortsRes.error].filter(Boolean);
+        if (rpcErrors.length > 0) {
+          console.error('RPC Errors:', rpcErrors);
+        }
+        setAdvancedData({
+          forecasting: forecastingRes.data,
+          revPash: revPashRes.data || [],
+          cohorts: cohortsRes.data || {}
+        });
+        const totalOrders = ordersRes.data?.length || 0;
+        const identifiedOrders = ordersRes.data?.filter(o => o.customer_phone && o.customer_phone !== '').length || 0;
+        setIntegrityStats({
+          missingCosts: integrityRes.count || 0,
+          identifiedPct: totalOrders > 0 ? (identifiedOrders / totalOrders) * 100 : 0
+        });
+      }).catch(err => {
+        console.error('Error fetching advanced analytics:', err);
       });
 
     } catch (err) {
       console.error('Error fetching intelligence data:', err);
       toast.error('Ocurrió un error al cargar la analítica.');
-      // Optional: set partial data if some requests succeeded
     } finally {
+
       setLoading(false);
       setTimeout(() => setIsReady(true), 200);
     }
   };
 
-  useEffect(() => {
-    setIsReady(false);
-    const timer = setTimeout(() => setIsReady(true), 400);
-    return () => clearTimeout(timer);
-  }, [activeTab, dateRange, activeBrandId]);
+
+
 
   useEffect(() => {
     fetchData();
@@ -1394,7 +1393,7 @@ export default function AdminAnalytics() {
                     dataKey="value"
                     cornerRadius={10}
                   />
-                  <RechartsTooltip content={<VisionTooltip units="Ingresos" formatter={(val) => formatCurrency(val)} />} />
+                  <RechartsTooltip cursor={false} content={<VisionTooltip units="Ingresos" formatter={(val) => formatCurrency(val)} />} />
                 </RadialBarChart>
               </ResponsiveContainer>
             )}
@@ -1466,7 +1465,7 @@ export default function AdminAnalytics() {
                 >
                   <XAxis type="number" hide />
                   <YAxis type="category" dataKey="name" hide />
-                  <RechartsTooltip content={<VisionTooltip units="Monto" formatter={(val) => formatCurrency(val)} />} />
+                  <RechartsTooltip cursor={false} content={<VisionTooltip units="Monto" formatter={(val) => formatCurrency(val)} />} />
                   {paymentStats.map((entry, index) => (
                     <Bar 
                       key={index} 
@@ -1514,7 +1513,7 @@ export default function AdminAnalytics() {
                     textAnchor="end"
                   />
                   <YAxis hide />
-                  <RechartsTooltip content={<VisionTooltip units="Unidades" />} />
+                  <RechartsTooltip cursor={false} content={<VisionTooltip units="Unidades" />} />
                   <Bar 
                     dataKey="value" 
                     fill="#10B981" 
@@ -1552,7 +1551,7 @@ export default function AdminAnalytics() {
                     fill="#8B5CF6"
                     fillOpacity={0.5}
                   />
-                  <RechartsTooltip content={<VisionTooltip units="Ingresos" formatter={(val) => formatCurrency(val)} />} />
+                  <RechartsTooltip cursor={false} content={<VisionTooltip units="Ingresos" formatter={(val) => formatCurrency(val)} />} />
                 </RadarChart>
               </ResponsiveContainer>
             ) : (
@@ -1580,7 +1579,7 @@ export default function AdminAnalytics() {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                     <XAxis dataKey="hour_of_day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#6B7280' }} />
                     <YAxis hide />
-                    <RechartsTooltip content={<VisionTooltip units="PASH" formatter={(val) => formatCurrency(val)} />} />
+                    <RechartsTooltip cursor={false} content={<VisionTooltip units="PASH" formatter={(val) => formatCurrency(val)} />} />
                     <Bar dataKey="total_revenue" fill="#10B981" radius={[4, 4, 0, 0]} barSize={20} />
                   </BarChart>
                </ResponsiveContainer>
@@ -1616,7 +1615,7 @@ export default function AdminAnalytics() {
                         <Cell key={i} cornerRadius={8} />
                       ))}
                     </Pie>
-                    <RechartsTooltip content={<VisionTooltip units="Clientes" />} />
+                    <RechartsTooltip cursor={false} content={<VisionTooltip units="Clientes" />} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -1770,7 +1769,7 @@ export default function AdminAnalytics() {
                     tick={{ fontSize: 9, fontWeight: 900 }}
                   />
                   <ZAxis type="number" dataKey="revenue" range={[60, 400]} />
-                  <RechartsTooltip content={<VisionTooltip units="Rentabilidad" formatter={(val, name) => name === 'units' ? `${val} sales/mo` : `${val.toFixed(0)}% margin`} />} />
+                  <RechartsTooltip cursor={false} content={<VisionTooltip units="Rentabilidad" formatter={(val, name) => name === 'units' ? `${val} sales/mo` : `${val.toFixed(0)}% margin`} />} />
                   <ReferenceLine x={bcgData.medians.units} stroke="#9ca3af" strokeDasharray="3 3" />
                   <ReferenceLine y={bcgData.medians.margin} stroke="#9ca3af" strokeDasharray="3 3" />
                   
@@ -1926,7 +1925,7 @@ export default function AdminAnalytics() {
                           axisLine={false}
                           tickLine={false}
                        />
-                       <RechartsTooltip content={<VisionTooltip units="Valor" />} />
+                       <RechartsTooltip cursor={false} content={<VisionTooltip units="Valor" />} />
                        <Bar 
                           yAxisId="left" 
                           dataKey="value" 
@@ -2020,7 +2019,7 @@ export default function AdminAnalytics() {
                           tick={{ fontSize: 9, fontBold: 900, fill: '#cbd5e1' }}
                        />
                        <YAxis hide />
-                       <RechartsTooltip content={<VisionTooltip units="Valor" />} />
+                       <RechartsTooltip cursor={false} content={<VisionTooltip units="Valor" />} />
                        <Area 
                           type="monotone" 
                           dataKey="revenue" 
