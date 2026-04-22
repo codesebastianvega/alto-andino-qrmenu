@@ -175,7 +175,6 @@ const PROD_ITEMS = [
 ];
 
 const ADMIN_ITEMS = [
-  { id: 'staff',      label: 'Personal y Staff', Icon: Icons.Staff, roles: ADMIN_ROLES, feature: 'staff' },
   { id: 'settings',   label: 'Ajustes de Operación', Icon: Icons.Settings, roles: ADMIN_ROLES },
   { id: 'business_profile', label: 'Perfil Comercial', Icon: Icons.Business, roles: ADMIN_ROLES },
   { id: 'profile',    label: 'Mi Perfil Admin', Icon: Icons.Profile, roles: ADMIN_ROLES },
