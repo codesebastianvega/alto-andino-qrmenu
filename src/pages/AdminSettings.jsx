@@ -255,7 +255,16 @@ export default function AdminSettings() {
                   </div>
 
                   <form onSubmit={handleSaveSettings} className="space-y-6 relative z-10">
-                    <div className="bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100 transition-all hover:bg-white focus-within:bg-white focus-within:ring-4 focus-within:ring-emerald-50">
+                    <div className={`relative bg-gray-50/50 p-6 rounded-[2rem] border ${!settingsForm.whatsapp_number_orders ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-100'} transition-all hover:bg-white focus-within:bg-white focus-within:ring-4 ${!settingsForm.whatsapp_number_orders ? 'focus-within:ring-red-50' : 'focus-within:ring-emerald-50'}`}>
+                      {!settingsForm.whatsapp_number_orders && (
+                        <div className="absolute top-6 right-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-red-500 bg-red-50 px-3 py-1.5 rounded-full border border-red-100 shadow-sm">
+                          <span className="flex h-2 w-2 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                          </span>
+                          Falta Completar
+                        </div>
+                      )}
                       <FormField label="Número de WhatsApp">
                         <div className="relative">
                           <TextInput
@@ -265,8 +274,8 @@ export default function AdminSettings() {
                             className="bg-transparent border-none focus:ring-0 text-lg font-black tracking-widest text-[#2f4131] placeholder:text-gray-300 placeholder:font-medium p-0"
                           />
                         </div>
-                        <p className="text-[10px] text-gray-400 mt-3 font-medium flex items-center gap-2">
-                           <Icon icon="heroicons:information-circle" className="text-emerald-500" />
+                        <p className={`text-[10px] mt-3 font-medium flex items-center gap-2 ${!settingsForm.whatsapp_number_orders ? 'text-red-400' : 'text-gray-400'}`}>
+                           <Icon icon="heroicons:information-circle" className={!settingsForm.whatsapp_number_orders ? "text-red-500" : "text-emerald-500"} />
                            El número debe incluir el prefijo internacional (ej. +57 para Colombia).
                         </p>
                       </FormField>

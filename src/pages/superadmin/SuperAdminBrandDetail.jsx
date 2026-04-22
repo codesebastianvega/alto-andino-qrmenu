@@ -27,10 +27,20 @@ export default function SuperAdminBrandDetail() {
         .select('id, name')
         .order('sort_order');
 
+      const { data: settingsData } = await supabase
+        .from('restaurant_settings')
+        .select('legal_name, legal_id')
+        .eq('brand_id', id)
+        .maybeSingle();
+
       if (brandError) throw brandError;
       if (plansError) throw plansError;
 
-      setBrand(brandData);
+      setBrand({
+        ...brandData,
+        legal_name: settingsData?.legal_name || '',
+        legal_id: settingsData?.legal_id || ''
+      });
       setPlans(plansData);
     } catch (error) {
       console.error('Error fetching brand details', error);
@@ -58,6 +68,15 @@ export default function SuperAdminBrandDetail() {
         .eq('id', id);
       
       if (error) throw error;
+
+      try {
+        await supabase.from('restaurant_settings')
+          .update({ legal_name: brand.legal_name, legal_id: brand.legal_id })
+          .eq('brand_id', id);
+      } catch (e) {
+         console.warn("Legal fields not yet implemented in DB", e);
+      }
+
       alert('Cambios guardados correctamente');
     } catch (error) {
       console.error('Error saving brand', error);
@@ -186,6 +205,32 @@ export default function SuperAdminBrandDetail() {
                 className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none resize-none"
                 rows={3}
               />
+            </div>
+
+            <div className="md:col-span-2 pt-4 border-t border-gray-100 mt-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Información Legal</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Razón Social</label>
+                  <input
+                    type="text"
+                    value={brand.legal_name || ''}
+                    onChange={(e) => setBrand({...brand, legal_name: e.target.value})}
+                    placeholder="Ej. Restaurantes del Sur S.A.S."
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">NIT / RUT</label>
+                  <input
+                    type="text"
+                    value={brand.legal_id || ''}
+                    onChange={(e) => setBrand({...brand, legal_id: e.target.value})}
+                    placeholder="Ej. 900.000.000-1"
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

@@ -239,34 +239,43 @@ export default function AdminProfile() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-gray-400">Nombre</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                    Nombre
+                    {!nameParts.first && <span className="flex h-2 w-2 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span></span>}
+                  </label>
                   <input 
                     type="text" 
                     value={nameParts.first}
                     onChange={(e) => setNameParts(prev => ({ ...prev, first: e.target.value }))}
-                    className="w-full bg-[#f9f9f9] border border-black/5 rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-[#1A2421] focus:border-[#1A2421] transition-all outline-none"
+                    className={`w-full bg-[#f9f9f9] border ${!nameParts.first ? 'border-red-500 ring-1 ring-red-500' : 'border-black/5'} rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-[#1A2421] focus:border-[#1A2421] transition-all outline-none`}
                     placeholder="Ej. Roberto"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-gray-400">Apellidos</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                    Apellidos
+                    {!nameParts.last && <span className="flex h-2 w-2 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span></span>}
+                  </label>
                   <input 
                     type="text" 
                     value={nameParts.last}
                     onChange={(e) => setNameParts(prev => ({ ...prev, last: e.target.value }))}
-                    className="w-full bg-[#f9f9f9] border border-black/5 rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-[#1A2421] focus:border-[#1A2421] transition-all outline-none"
+                    className={`w-full bg-[#f9f9f9] border ${!nameParts.last ? 'border-red-500 ring-1 ring-red-500' : 'border-black/5'} rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-[#1A2421] focus:border-[#1A2421] transition-all outline-none`}
                     placeholder="Ej. García"
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-gray-400">Teléfono Móvil</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                    Teléfono Móvil
+                    {!formData.phone && <span className="flex h-2 w-2 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span></span>}
+                  </label>
                   <div className="relative">
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><Phone size={16} /></div>
                     <input 
                       type="tel" 
                       value={formData.phone}
                       onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                      className="w-full bg-[#f9f9f9] border border-black/5 rounded-2xl p-4 pl-12 text-sm font-medium focus:ring-2 focus:ring-[#1A2421] focus:border-[#1A2421] transition-all outline-none"
+                      className={`w-full bg-[#f9f9f9] border ${!formData.phone ? 'border-red-500 ring-1 ring-red-500' : 'border-black/5'} rounded-2xl p-4 pl-12 text-sm font-medium focus:ring-2 focus:ring-[#1A2421] focus:border-[#1A2421] transition-all outline-none`}
                       placeholder="+57 300 000 0000"
                     />
                   </div>

@@ -20,6 +20,7 @@ import AdminStaff from '../../pages/AdminStaff';
 import AdminSedes from '../../pages/AdminSedes';
 import AdminPinLogin from './AdminPinLogin';
 import AdminWebContent from '../../pages/AdminWebContent';
+import AdminBusinessProfile from '../../pages/AdminBusinessProfile';
 import AdminProfile from '../../pages/AdminProfile';
 import BrandSwitcher from './BrandSwitcher';
 import LockOverlay from './LockOverlay';
@@ -140,6 +141,11 @@ const Icons = {
       <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
     </svg>
   ),
+  Business: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/>
+    </svg>
+  ),
 };
 
 const ADMIN_ROLES = ['admin', 'owner', 'superadmin', 'encargado'];
@@ -172,6 +178,7 @@ const ADMIN_ITEMS = [
   { id: 'staff',      label: 'Personal y Staff', Icon: Icons.Staff, roles: ADMIN_ROLES, feature: 'staff' },
   { id: 'sedes',      label: 'Sedes y Locales',   Icon: Icons.Home, roles: ADMIN_ROLES, feature: 'multi_location' },
   { id: 'settings',   label: 'Ajustes de Operación', Icon: Icons.Settings, roles: ADMIN_ROLES },
+  { id: 'business_profile', label: 'Perfil Comercial', Icon: Icons.Business, roles: ADMIN_ROLES },
   { id: 'profile',    label: 'Mi Perfil Admin', Icon: Icons.Profile, roles: ADMIN_ROLES },
 ];
 
@@ -289,6 +296,12 @@ export default function AdminLayout() {
     return () => supabase.removeChannel(channel);
   }, []);
 
+  const missingAlerts = {
+    profile: !profile?.phone || !profile?.full_name,
+    business_profile: !activeBrand?.email || !activeBrand?.phone || !activeBrand?.city || !activeBrand?.country,
+    settings: !restaurantSettings?.whatsapp_number_orders
+  };
+
   // Render helper for navigation sections
   const NavSection = ({ title, items, current, onSelect, collapsed }) => {
     // If the user has a full admin role, they should see all items in these sections
@@ -312,6 +325,7 @@ export default function AdminLayout() {
             const Icon = Icons[item.id.charAt(0).toUpperCase() + item.id.slice(1)] || item.Icon;
             const isActive = current === item.id;
             const isLocked = item.feature && isFeatureLocked(item.feature);
+            const hasAlert = missingAlerts[item.id] && !isActive; // Hide alert dot if we are already viewing the tab
             
             return (
               <button
@@ -325,12 +339,28 @@ export default function AdminLayout() {
                     : 'text-white/40 hover:text-white/80 hover:bg-white/5'
                 } ${isLocked ? 'opacity-60 grayscale-[0.5]' : ''}`}
               >
-                <span className={`shrink-0 ${isActive ? 'text-brand-secondary' : ''}`}>
-                  <Icon />
-                </span>
+                <div className="relative">
+                  <span className={`shrink-0 ${isActive ? 'text-brand-secondary' : ''}`}>
+                    <Icon />
+                  </span>
+                  {collapsed && hasAlert && (
+                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600 border border-[#0F170F]"></span>
+                    </span>
+                  )}
+                </div>
                 {!collapsed && (
                   <span className="flex-1 flex items-center justify-between">
-                    {item.label}
+                    <span className="flex items-center gap-2">
+                      {item.label}
+                      {hasAlert && (
+                        <span className="flex h-2 w-2 relative">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                        </span>
+                      )}
+                    </span>
                     {isLocked && (
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-amber-500/80">
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -749,6 +779,7 @@ export default function AdminLayout() {
           { currentPage === 'analytics'   && <AdminAnalytics /> }
           { currentPage === 'waiter'      && <AdminWaiter /> }
           { currentPage === 'operations'  && <AdminOperations /> }
+          { currentPage === 'business_profile' && <AdminBusinessProfile /> }
           { currentPage === 'profile'     && <AdminProfile /> }
 
           {/* Feature Lock Overlay */}

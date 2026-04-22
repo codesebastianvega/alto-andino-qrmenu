@@ -20,7 +20,7 @@ const FONT_OPTIONS = [
 ];
 
 export default function AdminBranding({ isEmbedded = false }) {
-  const { activeBrand, activePlan, isFeatureLocked } = useAuth();
+  const { activeBrand, activePlan, isFeatureLocked, refreshProfile, user } = useAuth();
   const [settings, setSettings] = useState(null);
   const [loadingSettings, setLoadingSettings] = useState(false);
   
@@ -51,13 +51,15 @@ export default function AdminBranding({ isEmbedded = false }) {
   const fetchSettings = async () => {
     setLoadingSettings(true);
     try {
-      const { data, error } = await supabase
-        .from('restaurant_settings')
-        .select('*')
-        .eq('brand_id', activeBrand.id)
-        .maybeSingle();
+      const [settingsRes, brandRes] = await Promise.all([
+        supabase.from('restaurant_settings').select('*').eq('brand_id', activeBrand.id).maybeSingle(),
+        supabase.from('brands').select('name, logo_url').eq('id', activeBrand.id).single()
+      ]);
 
-      if (error) throw error;
+      if (settingsRes.error) throw settingsRes.error;
+      
+      const data = settingsRes.data;
+      const bData = brandRes.data || {};
       
       if (data) {
         setSettings(data);
@@ -110,16 +112,22 @@ export default function AdminBranding({ isEmbedded = false }) {
         updated_at: new Date()
       };
 
-      const { data, error } = await supabase
-        .from('restaurant_settings')
-        .upsert(payload, { onConflict: 'brand_id' })
-        .select()
-        .single();
+      const brandPayload = {
+        name: settingsForm.business_name
+      };
 
-      if (error) throw error;
-      if (data) setSettings(data);
+      const [settingsRes, brandRes] = await Promise.all([
+        supabase.from('restaurant_settings').upsert(payload, { onConflict: 'brand_id' }).select().single(),
+        supabase.from('brands').update(brandPayload).eq('id', activeBrand.id)
+      ]);
 
-      toast.success('¡Branding guardado correctamente!');
+      if (settingsRes.error) throw settingsRes.error;
+      if (brandRes.error) throw brandRes.error;
+      
+      if (settingsRes.data) setSettings(settingsRes.data);
+
+      toast.success('¡Branding y perfil guardados correctamente!');
+      if (user) refreshProfile(user.id);
     } catch (err) {
       console.error('Error saving branding:', err);
       toast.error('Error guardando configuración de branding');
@@ -273,6 +281,7 @@ export default function AdminBranding({ isEmbedded = false }) {
               </div>
             </div>
           </section>
+
 
           {/* Section: Palette & Fonts */}
           <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden transition-all hover:shadow-md">
