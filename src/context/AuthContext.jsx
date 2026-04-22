@@ -66,7 +66,8 @@ export const AuthProvider = ({ children }) => {
         .from('brands')
         .select(`
           id, name, slug, logo_url, business_type, plan_id, onboarding_completed,
-          plans (name)
+          plans (name),
+          restaurant_settings (primary_color)
         `)
         .eq('owner_id', userId)
         .eq('is_active', true)
@@ -87,7 +88,8 @@ export const AuthProvider = ({ children }) => {
             .from('brands')
             .select(`
               id, name, slug, logo_url, business_type, plan_id, onboarding_completed,
-              plans (name)
+              plans (name),
+              restaurant_settings (primary_color)
             `)
             .eq('id', data.brand_id)
             .single();

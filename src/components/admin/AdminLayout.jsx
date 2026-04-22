@@ -411,16 +411,16 @@ export default function AdminLayout() {
         }`}
       >
         <div className="flex flex-col h-full">
-          {/* Logo Section */}
-          <div className={`flex items-center h-20 px-5 gap-3 shrink-0 ${isCollapsed ? 'justify-center px-0' : ''}`}>
-             {isCollapsed && (
+          {/* Logo Section (Only when collapsed to avoid gap) */}
+          {isCollapsed && (
+            <div className="flex items-center h-20 justify-center shrink-0">
                <div className="w-10 h-10 flex items-center justify-center shrink-0 drop-shadow-md">
                  <img src={logoUrl} alt="Logo" className="w-full h-full object-contain filter brightness-0 invert" />
                </div>
-             )}
-          </div>
+            </div>
+          )}
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar pt-2 px-4 space-y-6">
+          <div className="flex-1 overflow-y-auto custom-scrollbar pt-5 px-4 space-y-6">
               {/* 1. SECCION ESTRATEGIA (Aura Insight Glass Card) */}
               {ADMIN_ROLES.includes(user.role) && (
               <div className="space-y-3">

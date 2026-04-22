@@ -10,7 +10,6 @@ import {
   Check, 
   Building2, 
   Plus, 
-  LayoutGrid,
   ArrowRight,
   Coffee,
   Cake,
@@ -85,70 +84,86 @@ export default function ContextBreadcrumb() {
     setOpenDropdown(null);
   };
 
+  // Dynamic Styles
+  const activeBrandColor = activeBrand.restaurant_settings?.primary_color || '#b8a17a';
+  const royalIndigo = '#6366f1'; // Premium Executive Indigo
+
   return (
-    <div ref={dropdownRef} className="flex items-center gap-1.5 py-1 select-none">
+    <div ref={dropdownRef} className="flex items-center gap-2 py-1 select-none">
       
-      {/* --- BRAND SELECTOR --- */}
+      {/* ── Brand Selector (Dynamic Glassmorphism) ───────────────────── */}
       <div className="relative">
-        <button
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => toggleDropdown('brand')}
-          className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl transition-all duration-300 group ${
-            openDropdown === 'brand' 
-              ? 'bg-gray-100/80 shadow-inner' 
-              : 'hover:bg-gray-50'
-          }`}
+          style={{ 
+            backgroundColor: `${activeBrandColor}20`,
+            borderColor: `${activeBrandColor}40`,
+            boxShadow: openDropdown === 'brand' ? `0 0 20px ${activeBrandColor}15` : 'none'
+          }}
+          className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl border backdrop-blur-md transition-all duration-300 group`}
         >
           <BrandAvatar brand={activeBrand} size={24} />
-          <span className="text-[15px] font-bold text-gray-900 tracking-tight">
+          <span className="text-[14px] font-extrabold text-gray-900 tracking-tight">
             {activeBrand.name}
           </span>
           <motion.div
             animate={{ rotate: openDropdown === 'brand' ? 180 : 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
           >
             <ChevronDown size={14} className="text-gray-400 group-hover:text-gray-600 transition-colors" />
           </motion.div>
-        </button>
+        </motion.button>
 
         <AnimatePresence>
           {openDropdown === 'brand' && (
             <motion.div
-              initial={{ opacity: 0, y: 8, scale: 0.95 }}
+              initial={{ opacity: 0, y: 12, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.95 }}
-              className="absolute left-0 top-[calc(100%+8px)] z-[100] w-[280px] bg-white/95 backdrop-blur-xl rounded-2xl border border-gray-200 shadow-2xl shadow-black/10 overflow-hidden"
+              exit={{ opacity: 0, y: 12, scale: 0.95 }}
+              className="absolute left-0 top-[calc(100%+10px)] z-[100] w-[300px] bg-white/70 backdrop-blur-2xl rounded-2xl border border-white shadow-2xl shadow-black/10 overflow-hidden"
             >
               <div className="p-2 space-y-1">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-2">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-3 py-2">
                   Tus Marcas
                 </p>
-                {ownedBrands.map((brand) => (
-                  <button
-                    key={brand.id}
-                    onClick={() => handleBrandSwitch(brand)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                      brand.id === activeBrand.id 
-                        ? 'bg-brand-primary/5 text-brand-primary' 
-                        : 'hover:bg-gray-50 text-gray-700'
-                    }`}
-                  >
-                    <BrandAvatar brand={brand} size={32} />
-                    <div className="flex-1 text-left min-w-0">
-                      <p className="text-sm font-bold truncate leading-tight">{brand.name}</p>
-                      <p className="text-[10px] opacity-60 capitalize mt-0.5">{brand.business_type || 'Negocio'}</p>
-                    </div>
-                    {brand.id === activeBrand.id && (
-                      <div className="w-5 h-5 rounded-full bg-brand-primary/20 flex items-center justify-center">
-                        <Check size={12} className="text-brand-primary" />
+                {ownedBrands.map((brand) => {
+                  const brandColor = brand.restaurant_settings?.[0]?.primary_color || brand.restaurant_settings?.primary_color || '#b8a17a';
+                  const isSelected = brand.id === activeBrand.id;
+                  return (
+                    <button
+                      key={brand.id}
+                      onClick={() => handleBrandSwitch(brand)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all relative group ${
+                        isSelected ? 'bg-white/40 shadow-sm' : 'hover:bg-white/40'
+                      }`}
+                    >
+                      <BrandAvatar brand={brand} size={32} />
+                      <div className="flex-1 text-left min-w-0">
+                        <p className="text-sm font-bold truncate leading-tight text-gray-800">{brand.name}</p>
+                        <p className="text-[10px] text-gray-500 capitalize mt-0.5">{brand.business_type || 'Negocio'}</p>
                       </div>
-                    )}
-                  </button>
-                ))}
+                      {isSelected ? (
+                        <div 
+                          className="w-6 h-6 rounded-lg flex items-center justify-center transition-all"
+                          style={{ backgroundColor: `${brandColor}20`, color: brandColor }}
+                        >
+                          <Check size={14} strokeWidth={3} />
+                        </div>
+                      ) : (
+                        <div className="w-6 h-6 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ArrowRight size={14} className="text-gray-300" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
-              <div className="p-2 border-t border-gray-100 bg-gray-50/50">
+              <div className="p-2 border-t border-gray-100/50 bg-gray-50/30">
                 <button
                   onClick={() => window.location.href = '/?new=1'}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-gray-500 hover:text-brand-primary hover:bg-white transition-all group"
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-gray-500 hover:text-brand-primary hover:bg-white/80 transition-all group"
                 >
                   <div className="w-8 h-8 rounded-lg border border-dashed border-gray-300 group-hover:border-brand-primary/40 flex items-center justify-center">
                     <Plus size={14} />
@@ -163,101 +178,107 @@ export default function ContextBreadcrumb() {
 
       <ChevronRight size={14} className="text-gray-300 mx-0.5" />
 
-      {/* --- LOCATION SELECTOR --- */}
+      {/* ── Location Selector (Coral Blue Glass) ────────────────────── */}
       <div className="relative">
-        <button
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => toggleDropdown('location')}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all duration-300 group ${
-            openDropdown === 'location' 
-              ? 'bg-gray-100/80 shadow-inner' 
-              : 'hover:bg-gray-50'
-          }`}
+          style={{ 
+            backgroundColor: `${royalIndigo}15`,
+            borderColor: `${royalIndigo}35`,
+            boxShadow: openDropdown === 'location' ? `0 0 20px ${royalIndigo}15` : 'none'
+          }}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border backdrop-blur-md transition-all duration-300 group`}
         >
-          <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
-            isAllLocations ? 'bg-indigo-100 text-indigo-600' : 'bg-orange-100 text-orange-600'
-          }`}>
+          <div 
+            className="w-6 h-6 rounded-lg flex items-center justify-center transition-all"
+            style={{ backgroundColor: `${royalIndigo}20`, color: royalIndigo }}
+          >
             {isAllLocations ? <Building2 size={13} /> : <MapPin size={13} />}
           </div>
-          <span className="text-[15px] font-medium text-gray-700 tracking-tight">
+          <span className="text-[14px] font-bold text-gray-800 tracking-tight">
             {isAllLocations ? 'Todas las Sedes' : activeLocation?.name || 'Seleccionar Sede'}
           </span>
           <motion.div
             animate={{ rotate: openDropdown === 'location' ? 180 : 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
           >
             <ChevronDown size={14} className="text-gray-400 group-hover:text-gray-600 transition-colors" />
           </motion.div>
-        </button>
+        </motion.button>
 
         <AnimatePresence>
           {openDropdown === 'location' && (
             <motion.div
-              initial={{ opacity: 0, y: 8, scale: 0.95 }}
+              initial={{ opacity: 0, y: 12, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.95 }}
-              className="absolute left-0 top-[calc(100%+8px)] z-[100] w-[240px] bg-white/95 backdrop-blur-xl rounded-2xl border border-gray-200 shadow-2xl shadow-black/10 overflow-hidden"
+              exit={{ opacity: 0, y: 12, scale: 0.95 }}
+              className="absolute left-0 top-[calc(100%+10px)] z-[100] w-[260px] bg-white/70 backdrop-blur-2xl rounded-2xl border border-white shadow-2xl shadow-black/10 overflow-hidden"
             >
               <div className="p-2 space-y-1">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 py-2">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-3 py-2">
                   Sedes disponibles
                 </p>
                 
                 {/* Option: All Locations */}
                 <button
                   onClick={() => handleLocationSwitch('all')}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                    isAllLocations 
-                      ? 'bg-indigo-50 text-indigo-600' 
-                      : 'hover:bg-gray-50 text-gray-700'
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group ${
+                    isAllLocations ? 'bg-white/40 shadow-sm' : 'hover:bg-white/40'
                   }`}
                 >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    isAllLocations ? 'bg-indigo-200/40' : 'bg-gray-100'
-                  }`}>
+                  <div 
+                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+                    style={{ backgroundColor: `${royalIndigo}20`, color: royalIndigo }}
+                  >
                     <Building2 size={16} />
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="text-sm font-bold">Todas las Sedes</p>
-                    <p className="text-[10px] opacity-60">Vista consolidada</p>
+                    <p className="text-sm font-bold text-gray-800">Todas las Sedes</p>
+                    <p className="text-[10px] text-gray-500">Vista consolidada</p>
                   </div>
-                  {isAllLocations && <Check size={14} />}
+                  {isAllLocations && <Check size={14} style={{ color: royalIndigo }} />}
                 </button>
 
-                <div className="h-px bg-gray-100 my-1 mx-2" />
+                <div className="h-px bg-gray-100/50 my-1 mx-2" />
 
-                {locations.map((loc) => (
-                  <button
-                    key={loc.id}
-                    onClick={() => handleLocationSwitch(loc.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                      loc.id === activeLocationId 
-                        ? 'bg-orange-50 text-orange-600' 
-                        : 'hover:bg-gray-50 text-gray-700'
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      loc.id === activeLocationId ? 'bg-orange-200/40' : 'bg-gray-100'
-                    }`}>
-                      <MapPin size={16} />
-                    </div>
-                    <div className="flex-1 text-left min-w-0">
-                      <p className="text-sm font-bold truncate leading-tight">{loc.name}</p>
-                      <p className="text-[10px] opacity-60 truncate capitalize">{loc.city || 'Ubicación'}</p>
-                    </div>
-                    {loc.id === activeLocationId && <Check size={14} />}
-                  </button>
-                ))}
+                {locations.map((loc) => {
+                  const isSelected = loc.id === activeLocationId;
+                  return (
+                    <button
+                      key={loc.id}
+                      onClick={() => handleLocationSwitch(loc.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group ${
+                        isSelected ? 'bg-white/40 shadow-sm' : 'hover:bg-white/40'
+                      }`}
+                    >
+                      <div 
+                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+                        style={{ 
+                          backgroundColor: isSelected ? `${royalIndigo}20` : 'rgba(0,0,0,0.05)', 
+                          color: isSelected ? royalIndigo : 'rgba(0,0,0,0.4)' 
+                        }}
+                      >
+                        <MapPin size={16} />
+                      </div>
+                      <div className="flex-1 text-left min-w-0">
+                        <p className="text-sm font-bold truncate leading-tight text-gray-800">{loc.name}</p>
+                        <p className="text-[10px] text-gray-500 truncate capitalize">{loc.city || 'Ubicación'}</p>
+                      </div>
+                      {isSelected && <Check size={14} style={{ color: royalIndigo }} />}
+                    </button>
+                  );
+                })}
               </div>
               
-              <div className="p-2 border-t border-gray-100 bg-gray-50/50 text-center">
+              <div className="p-2 border-t border-gray-100/50 bg-gray-50/30 text-center">
                  <button 
-                  onClick={() => {
-                    setOpenDropdown(null);
-                    // Emit event or logic to open sedes management
-                  }}
-                  className="text-[11px] font-bold text-brand-primary/70 hover:text-brand-primary transition-colors flex items-center justify-center gap-1.5 mx-auto py-1"
+                  onClick={() => setOpenDropdown(null)}
+                  style={{ color: royalIndigo }}
+                  className="text-[11px] font-black opacity-80 hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 mx-auto py-1 tracking-wider uppercase"
                  >
-                   Gestionar Sedes <ArrowRight size={10} />
+                   Gestionar Sedes <ChevronRight size={12} />
                  </button>
               </div>
             </motion.div>
