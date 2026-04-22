@@ -11,18 +11,19 @@ function getGreetingMessage() {
 }
 
 export default function Footer({ hasCartBar }) {
-  const { restaurantSettings } = useMenuData();
+  const { restaurantSettings, locations } = useMenuData();
   const { activeBrand } = useAuth();
+  
+  const mainLocation = locations?.find(loc => loc.is_main) || locations?.[0];
   
   const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
   const logoUrl = restaurantSettings?.logo_url;
   const footerBg = restaurantSettings?.theme_footer_bg || "#1A2421";
 
   const IG_URL = restaurantSettings?.instagram_url || (activeBrand?.instagram ? `https://instagram.com/${activeBrand.instagram.replace('@', '')}` : null);
-  const RAW_WA = (restaurantSettings?.whatsapp_number_orders || activeBrand?.whatsapp || "").replace(/\D/g, "");
+  const RAW_WA = (mainLocation?.phone || restaurantSettings?.whatsapp_number_orders || activeBrand?.whatsapp || "").replace(/\D/g, "");
   const WA_NUM = RAW_WA ? (RAW_WA.startsWith("57") ? RAW_WA : `57${RAW_WA}`) : null;
   const WA_LINK = WA_NUM ? `https://wa.me/${WA_NUM}` : null;
-  const MAPS_LINK = restaurantSettings?.maps_url || activeBrand?.address_link;
   const REVIEWS_URL = restaurantSettings?.reviews_url;
 
   return (
@@ -91,25 +92,57 @@ export default function Footer({ hasCartBar }) {
             </div>
           </div>
 
-          {/* Location */}
-          <div>
-            <h4 className="font-bold mb-3 md:mb-5 text-sm md:text-base">Visítanos</h4>
-            <ul className="space-y-2 md:space-y-3 text-xs md:text-sm text-white/60 font-medium">
-              <li>{activeBrand?.address || ""}</li>
-              <li>{activeBrand?.city || ""}</li>
-              {MAPS_LINK && (
-                <li className="pt-1">
-                  <a 
-                    href={MAPS_LINK} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="text-[#E6B05C] hover:text-white transition-colors cursor-pointer flex items-center gap-2"
-                  >
-                    <MapPin size={16} /> Abrir en Maps
-                  </a>
-                </li>
-              )}
-            </ul>
+          {/* Locations */}
+          <div className="sm:col-span-2 md:col-span-1">
+            <h4 className="font-bold mb-4 md:mb-6 text-sm md:text-base uppercase tracking-widest text-[#E6B05C]">Visítanos</h4>
+            {locations && locations.length > 0 ? (
+              <div className="grid grid-cols-1 gap-6">
+                {locations.filter(loc => loc.is_active).map(loc => (
+                  <div key={loc.id} className="group/loc space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#E6B05C]" />
+                      <p className="font-bold text-white/90 text-sm md:text-base tracking-tight uppercase italic">{loc.name}</p>
+                    </div>
+                    <div className="pl-3.5 space-y-1.5 border-l border-white/10 group-hover/loc:border-[#E6B05C]/30 transition-colors">
+                      <p className="text-xs md:text-sm text-white/50 leading-snug">{loc.address}</p>
+                      {loc.phone && (
+                        <p className="text-xs text-white/40 flex items-center gap-2">
+                          <MessageCircle size={12} className="text-[#E6B05C]/50" />
+                          {loc.phone}
+                        </p>
+                      )}
+                      {loc.maps_url && (
+                        <a 
+                          href={loc.maps_url} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 text-[10px] md:text-xs font-black uppercase tracking-widest text-[#E6B05C] hover:text-white transition-all pt-1"
+                        >
+                          <MapPin size={12} /> Google Maps
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <ul className="space-y-2 md:space-y-3 text-xs md:text-sm text-white/60 font-medium">
+                <li>{activeBrand?.address || ""}</li>
+                <li>{activeBrand?.city || ""}</li>
+                {activeBrand?.address_link && (
+                  <li className="pt-1">
+                    <a 
+                      href={activeBrand.address_link} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="text-[#E6B05C] hover:text-white transition-colors cursor-pointer flex items-center gap-2"
+                    >
+                      <MapPin size={16} /> Abrir en Maps
+                    </a>
+                  </li>
+                )}
+              </ul>
+            )}
           </div>
 
           {/* Hours */}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../config/supabase';
 import { Link } from 'react-router-dom';
-import { Store, CheckCircle, XCircle, Search, Settings } from 'lucide-react';
+import { Store, CheckCircle, XCircle, Search, Settings, MapPin } from 'lucide-react';
 
 export default function SuperAdminBrands() {
   const [brands, setBrands] = useState([]);
@@ -17,7 +17,7 @@ export default function SuperAdminBrands() {
       const { data, error } = await supabase
         .from('brands')
         .select(`
-          id, name, slug, is_active, created_at, city,
+          id, name, slug, is_active, created_at, city, google_maps_url,
           plan:plans(name)
         `)
         .order('created_at', { ascending: false });
@@ -102,6 +102,17 @@ export default function SuperAdminBrands() {
                         <Store size={20} />
                       </div>
                       <span className="font-semibold text-[#1A1A1A]">{brand.name}</span>
+                      {brand.google_maps_url && (
+                        <a 
+                          href={brand.google_maps_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-all"
+                          title="Ver en Google Maps"
+                        >
+                          <MapPin size={14} />
+                        </a>
+                      )}
                     </div>
                   </td>
                   <td className="py-4 px-6 text-gray-600">/{brand.slug}</td>

@@ -7,6 +7,7 @@ export default function SuperAdminBrandDetail() {
   const { id } = useParams();
   const [brand, setBrand] = useState(null);
   const [plans, setPlans] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -33,6 +34,12 @@ export default function SuperAdminBrandDetail() {
         .eq('brand_id', id)
         .maybeSingle();
 
+      const { data: locationsData } = await supabase
+        .from('locations')
+        .select('*')
+        .eq('brand_id', id)
+        .order('is_main', { ascending: false });
+
       if (brandError) throw brandError;
       if (plansError) throw plansError;
 
@@ -42,6 +49,7 @@ export default function SuperAdminBrandDetail() {
         legal_id: settingsData?.legal_id || ''
       });
       setPlans(plansData);
+      setLocations(locationsData || []);
     } catch (error) {
       console.error('Error fetching brand details', error);
     } finally {
@@ -64,7 +72,8 @@ export default function SuperAdminBrandDetail() {
           address: brand.address,
           phone: brand.phone,
           email: brand.email,
-          description: brand.description
+          description: brand.description,
+          google_maps_url: brand.google_maps_url
         })
         .eq('id', id);
       
@@ -207,6 +216,17 @@ export default function SuperAdminBrandDetail() {
                 className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Enlace de Google Maps (Principal)</label>
+              <input
+                type="text"
+                value={brand.google_maps_url || ''}
+                onChange={(e) => setBrand({...brand, google_maps_url: e.target.value})}
+                placeholder="https://maps.app.goo.gl/..."
+                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-sm"
+              />
+            </div>
             
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Descripción corta</label>
@@ -242,6 +262,51 @@ export default function SuperAdminBrandDetail() {
                   />
                 </div>
               </div>
+            </div>
+            
+            <div className="md:col-span-2 pt-4 border-t border-gray-100 mt-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Sedes Registradas</h3>
+              {locations.length > 0 ? (
+                <div className="space-y-4">
+                  {locations.map(loc => (
+                    <div key={loc.id} className="p-4 bg-gray-50 border border-gray-200 rounded-xl relative">
+                       {loc.is_main && <span className="absolute top-4 right-4 bg-emerald-100 text-emerald-700 text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest">Sede Principal</span>}
+                       <h4 className="font-bold text-gray-900 flex items-center gap-2">
+                         <Store size={16} className="text-gray-400" />
+                         {loc.name}
+                       </h4>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                         <div>
+                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Dirección</p>
+                           <p className="text-sm text-gray-700 font-medium">{loc.address || 'No definida'}</p>
+                         </div>
+                         <div>
+                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Contacto Operativo</p>
+                           <p className="text-sm text-gray-700 font-medium">{loc.phone || 'Sin teléfono'}</p>
+                         </div>
+                       </div>
+                       
+                       <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
+                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${loc.is_active ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                           {loc.is_active ? '● PRODUCTIVA' : '○ INACTIVA'}
+                         </span>
+                         {loc.maps_url && (
+                           <a 
+                             href={loc.maps_url} 
+                             target="_blank" 
+                             rel="noreferrer" 
+                             className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-bold uppercase tracking-tighter"
+                           >
+                             Abrir Mapa <ExternalLink size={12} />
+                           </a>
+                         )}
+                       </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 italic">No hay sedes configuradas desde el panel de cliente.</p>
+              )}
             </div>
           </div>
 

@@ -277,17 +277,17 @@
 ## 💎 BLOQUE 11: Rediseño Premium de Ajustes (Vision OS) [/]
 > Meta: Unificar la estética "Glass-Bento" en todas las pestañas de configuración.
 
-### 11.1 Rediseño de Sedes (`AdminSedes.jsx`) [/]
-- [ ] Implementar tarjetas "Physical Presence" con efectos de cristal.
-- [ ] Añadir indicadores visuales de estado (Principal, Activa) con micro-animaciones.
-- [ ] Rediseñar modal de creación/edición con estilo premium.
-- [ ] Optimizar vista de "Sede Vacía" con layout bento placeholders.
+### 11.1 Rediseño de Sedes (`AdminSedes.jsx`) [x]
+- [x] Implementar tarjetas "Physical Presence" con efectos de cristal.
+- [x] Añadir indicadores visuales de estado (Principal, Activa) con micro-animaciones.
+- [x] Rediseñar modal de creación/edición con estilo premium.
+- [x] Optimizar vista de "Sede Vacía" con layout bento placeholders.
 
-### 11.2 Rediseño de Staff (`AdminStaff.jsx`) [/]
-- [ ] Implementar tarjetas de personal con codificación de colores por rol.
-- [ ] Mejorar visibilidad de PIN y permisos de acceso.
-- [ ] Rediseñar modal de edición con secciones lógicas.
-- [ ] Añadir estados de carga y animaciones de entrada.
+### 11.2 Rediseño de Staff (`AdminStaff.jsx`) [x]
+- [x] Implementar tarjetas de personal con codificación de colores por rol.
+- [x] Mejorar visibilidad de PIN y permisos de acceso.
+- [x] Rediseñar modal de edición con secciones lógicas (Portal integration).
+- [x] Añadir estados de carga y animaciones de entrada.
 
 ### 11.3 Rediseño de Pagos (`AdminPaymentMethods.jsx`) [/]
 - [ ] Reestructurar cuadrícula de medios de pago para mejor uso de espacio.

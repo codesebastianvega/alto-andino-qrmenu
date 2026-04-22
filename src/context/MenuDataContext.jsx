@@ -18,6 +18,7 @@ export const MenuDataProvider = ({ children }) => {
   const [restaurantSettings, setRestaurantSettings] = useState(null);
   const [brand, setBrand] = useState(null);
   const [planFeatures, setPlanFeatures] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Get brand information from BrandContext (which resolves slug/session)
@@ -40,6 +41,7 @@ export const MenuDataProvider = ({ children }) => {
     setRestaurantSettings(null);
     setBrand(null);
     setPlanFeatures([]);
+    setLocations([]);
 
     try {
       // Helper to add brand filter when needed
@@ -112,6 +114,12 @@ export const MenuDataProvider = ({ children }) => {
         supabase.from('allergens').select('*').order('name')
       );
       setAllergens(allgs || []);
+
+      // Fetch locations
+      const { data: locs } = await brandFilter(
+        supabase.from('locations').select('*').eq('is_active', true).order('is_main', { ascending: false })
+      );
+      setLocations(locs || []);
 
       // Fetch banners
       const { data: bnrs } = await brandFilter(
@@ -274,6 +282,7 @@ export const MenuDataProvider = ({ children }) => {
     restaurantSettings,
     brand,
     planFeatures,
+    locations,
     loading,
     activeBrandId,
     refetchMenuData: () => fetchMenuData(activeBrandId),
@@ -281,7 +290,7 @@ export const MenuDataProvider = ({ children }) => {
   }), [
     categories, allCategories, productsByCategory, getProductsByCategory, getAllProducts, 
     getModifiers, modifiers, rawModifierGroups, experiences, banners, allergens, 
-    homeSettings, restaurantSettings, brand, planFeatures, loading, activeBrandId, fetchMenuData
+    homeSettings, restaurantSettings, brand, planFeatures, locations, loading, activeBrandId, fetchMenuData
   ]);
 
   return (

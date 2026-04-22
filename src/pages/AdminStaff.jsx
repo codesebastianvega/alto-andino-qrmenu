@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { useStaff } from '../hooks/useStaff';
 import { useLocations } from '../hooks/useLocations';
@@ -266,7 +267,7 @@ export default function AdminStaff({ isEmbedded = false }) {
         )}
       </div>
 
-      {isModalOpen && (
+      {isModalOpen && createPortal(
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xl flex items-center justify-center p-4 z-[9999] animate-in fade-in duration-300">
            <div className="bg-white rounded-[3rem] w-full max-w-xl shadow-[0_40px_120px_-20px_rgba(0,0,0,0.2)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-5 duration-300">
               <div className="px-10 py-8 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center">
@@ -365,7 +366,8 @@ export default function AdminStaff({ isEmbedded = false }) {
                  </div>
               </form>
            </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
