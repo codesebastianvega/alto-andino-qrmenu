@@ -93,56 +93,48 @@ export default function Footer({ hasCartBar }) {
           </div>
 
           {/* Locations */}
-          <div className="sm:col-span-2 md:col-span-1">
-            <h4 className="font-bold mb-4 md:mb-6 text-sm md:text-base uppercase tracking-widest text-[#E6B05C]">Visítanos</h4>
-            {locations && locations.length > 0 ? (
-              <div className="grid grid-cols-1 gap-6">
-                {locations.filter(loc => loc.is_active).map(loc => (
-                  <div key={loc.id} className="group/loc space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#E6B05C]" />
-                      <p className="font-bold text-white/90 text-sm md:text-base tracking-tight uppercase italic">{loc.name}</p>
-                    </div>
-                    <div className="pl-3.5 space-y-1.5 border-l border-white/10 group-hover/loc:border-[#E6B05C]/30 transition-colors">
-                      <p className="text-xs md:text-sm text-white/50 leading-snug">{loc.address}</p>
-                      {loc.phone && (
-                        <p className="text-xs text-white/40 flex items-center gap-2">
-                          <MessageCircle size={12} className="text-[#E6B05C]/50" />
-                          {loc.phone}
-                        </p>
-                      )}
-                      {loc.maps_url && (
+          <div>
+            <h4 className="font-bold mb-3 md:mb-5 text-sm md:text-base">Visítanos</h4>
+            <div className="space-y-6">
+              {locations && locations.filter(loc => loc.is_active).length > 0 ? (
+                locations.filter(loc => loc.is_active).map(loc => (
+                  <ul key={loc.id} className="space-y-2 text-xs md:text-sm text-white/60 font-medium border-l border-white/10 pl-3">
+                    <li className="text-white/90 font-bold">{loc.name}</li>
+                    <li>{loc.address}</li>
+                    {loc.phone && <li>{loc.phone}</li>}
+                    {loc.maps_url && (
+                      <li className="pt-1">
                         <a 
                           href={loc.maps_url} 
                           target="_blank" 
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 text-[10px] md:text-xs font-black uppercase tracking-widest text-[#E6B05C] hover:text-white transition-all pt-1"
+                          className="text-[#E6B05C] hover:text-white transition-colors cursor-pointer flex items-center gap-2"
                         >
-                          <MapPin size={12} /> Google Maps
+                          <MapPin size={16} /> Abrir en Maps
                         </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <ul className="space-y-2 md:space-y-3 text-xs md:text-sm text-white/60 font-medium">
-                <li>{activeBrand?.address || ""}</li>
-                <li>{activeBrand?.city || ""}</li>
-                {activeBrand?.address_link && (
-                  <li className="pt-1">
-                    <a 
-                      href={activeBrand.address_link} 
-                      target="_blank" 
-                      rel="noreferrer"
-                      className="text-[#E6B05C] hover:text-white transition-colors cursor-pointer flex items-center gap-2"
-                    >
-                      <MapPin size={16} /> Abrir en Maps
-                    </a>
-                  </li>
-                )}
-              </ul>
-            )}
+                      </li>
+                    )}
+                  </ul>
+                ))
+              ) : (
+                <ul className="space-y-2 md:space-y-3 text-xs md:text-sm text-white/60 font-medium">
+                  <li>{activeBrand?.address || ""}</li>
+                  <li>{activeBrand?.city || ""}</li>
+                  {activeBrand?.address_link && (
+                    <li className="pt-1">
+                      <a 
+                        href={activeBrand.address_link} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="text-[#E6B05C] hover:text-white transition-colors cursor-pointer flex items-center gap-2"
+                      >
+                        <MapPin size={16} /> Abrir en Maps
+                      </a>
+                    </li>
+                  )}
+                </ul>
+              )}
+            </div>
           </div>
 
           {/* Hours */}

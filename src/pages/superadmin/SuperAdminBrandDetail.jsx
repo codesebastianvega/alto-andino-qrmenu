@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../config/supabase';
-import { ArrowLeft, Store, Save, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Store, Save, ExternalLink, MapPin, Phone, MessageCircle } from 'lucide-react';
 
 export default function SuperAdminBrandDetail() {
   const { id } = useParams();
@@ -264,40 +264,58 @@ export default function SuperAdminBrandDetail() {
               </div>
             </div>
             
-            <div className="md:col-span-2 pt-4 border-t border-gray-100 mt-4">
+            <div className="md:col-span-2 pt-6 border-t border-gray-100 mt-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Sedes Registradas</h3>
               {locations.length > 0 ? (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {locations.map(loc => (
-                    <div key={loc.id} className="p-4 bg-gray-50 border border-gray-200 rounded-xl relative">
-                       {loc.is_main && <span className="absolute top-4 right-4 bg-emerald-100 text-emerald-700 text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest">Sede Principal</span>}
-                       <h4 className="font-bold text-gray-900 flex items-center gap-2">
-                         <Store size={16} className="text-gray-400" />
+                    <div key={loc.id} className="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm relative hover:border-emerald-200 transition-colors">
+                       {loc.is_main && (
+                         <span className="absolute top-4 right-4 bg-emerald-50 text-emerald-700 text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wider border border-emerald-100">
+                           Sede Principal
+                         </span>
+                       )}
+                       <h4 className="font-bold text-gray-900 flex items-center gap-2 text-base">
+                         <Store size={18} className="text-emerald-600" />
                          {loc.name}
                        </h4>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                         <div>
-                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Dirección</p>
-                           <p className="text-sm text-gray-700 font-medium">{loc.address || 'No definida'}</p>
+                       
+                       <div className="mt-4 space-y-3">
+                         <div className="flex gap-3">
+                           <MapPin size={16} className="text-gray-400 shrink-0 mt-0.5" />
+                           <div>
+                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Ubicación</p>
+                             <p className="text-sm text-gray-600">{loc.address || 'Sin dirección'}</p>
+                           </div>
                          </div>
-                         <div>
-                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Contacto Operativo</p>
-                           <p className="text-sm text-gray-700 font-medium">{loc.phone || 'Sin teléfono'}</p>
-                         </div>
+                         
+                         {loc.phone && (
+                           <div className="flex gap-3">
+                             <Phone size={16} className="text-gray-400 shrink-0 mt-0.5" />
+                             <div>
+                               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Contacto</p>
+                               <p className="text-sm text-gray-600">{loc.phone}</p>
+                             </div>
+                           </div>
+                         )}
                        </div>
                        
-                       <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
-                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${loc.is_active ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                           {loc.is_active ? '● PRODUCTIVA' : '○ INACTIVA'}
-                         </span>
+                       <div className="mt-5 pt-4 border-t border-gray-50 flex justify-between items-center">
+                         <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium ${
+                           loc.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-50 text-gray-400'
+                         }`}>
+                           <div className={`w-1.5 h-1.5 rounded-full ${loc.is_active ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                           {loc.is_active ? 'Activa' : 'Inactiva'}
+                         </div>
+                         
                          {loc.maps_url && (
                            <a 
                              href={loc.maps_url} 
                              target="_blank" 
                              rel="noreferrer" 
-                             className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-bold uppercase tracking-tighter"
+                             className="text-xs text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1 bg-emerald-50/50 px-3 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors"
                            >
-                             Abrir Mapa <ExternalLink size={12} />
+                             Ver en Maps <ExternalLink size={14} />
                            </a>
                          )}
                        </div>
