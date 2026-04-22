@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useLocations } from '../context/LocationContext';
 import { useStaff } from '../hooks/useStaff';
 import { toast as toastFn } from '../components/Toast';
 import { 
@@ -20,6 +21,7 @@ const toast = {
 
 export default function AdminWaiter() {
   const { profile, activeBrand } = useAuth();
+  const { activeLocationId, isAllLocations } = useLocations();
   const { staffList } = useStaff();
   const [tables, setTables] = useState([]);
   const [areas, setAreas] = useState([]);
@@ -36,7 +38,6 @@ export default function AdminWaiter() {
       fetchAreas();
       fetchActiveOrders();
 
-      // Real-time subscriptions
       const tablesChannel = supabase
         .channel('tables-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_tables', filter: `brand_id=eq.${profile.brand_id}` }, () => {
@@ -64,14 +65,15 @@ export default function AdminWaiter() {
         supabase.removeChannel(areasChannel);
       };
     }
-  }, [profile?.brand_id]);
+  }, [profile?.brand_id, activeLocationId, isAllLocations]);
 
   const fetchTables = async () => {
     try {
       const { data, error } = await supabase
         .from('restaurant_tables')
-        .select('*')
+        .select('*, locations(name)')
         .eq('brand_id', profile.brand_id)
+        .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
         .order('table_number');
       
       if (error) throw error;
@@ -90,6 +92,7 @@ export default function AdminWaiter() {
         .from('table_areas')
         .select('*')
         .eq('brand_id', profile.brand_id)
+        .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
         .order('sort_order', { ascending: true });
       
       if (error) throw error;
@@ -105,6 +108,7 @@ export default function AdminWaiter() {
         .from('orders')
         .select('id, status, table_id, created_at, customer_name, fulfillment_type')
         .eq('brand_id', profile.brand_id)
+        .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
         .in('status', ['new', 'preparing', 'ready']);
       
       if (error) throw error;
@@ -314,10 +318,17 @@ export default function AdminWaiter() {
                         </div>
                       )}
                       
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${
-                         order ? 'bg-amber-100 text-amber-600' : 'bg-gray-50 text-gray-300 group-hover:bg-[#2f4131] group-hover:text-white group-hover:rotate-45'
-                      }`}>
-                        {order ? <Coffee size={18} /> : <Plus size={18} />}
+                      <div className={`flex flex-col gap-1 items-end`}>
+                        {isAllLocations && table.locations?.name && (
+                           <span className="text-[8px] font-black text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full uppercase tracking-widest mb-1">
+                             {table.locations.name}
+                           </span>
+                        )}
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                           order ? 'bg-amber-100 text-amber-600' : 'bg-gray-50 text-gray-300 group-hover:bg-[#2f4131] group-hover:text-white group-hover:rotate-45'
+                        }`}>
+                          {order ? <Coffee size={18} /> : <Plus size={18} />}
+                        </div>
                       </div>
                     </div>
                   </motion.button>

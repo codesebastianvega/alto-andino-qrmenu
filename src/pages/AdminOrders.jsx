@@ -201,6 +201,7 @@ export default function AdminOrders() {
         .from('orders')
         .select(`
           *,
+          locations ( name ),
           restaurant_tables ( id, table_number ),
           order_items (
             id, quantity, unit_price, modifiers, notes, is_paid,
@@ -694,6 +695,11 @@ export default function AdminOrders() {
                             <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-1 rounded-lg flex items-center gap-1">
                               <Icon icon="heroicons:user-circle" />
                               {waiters.find(w => w.id === order?.waiter_id)?.name?.split(' ')[0] || 'Mesero'}
+                            </span>
+                          )}
+                          {isAllLocations && order.locations?.name && (
+                            <span className="text-[10px] font-black text-gray-500 bg-gray-100 px-2 py-1 rounded-lg uppercase tracking-wider">
+                              {order.locations.name}
                             </span>
                           )}
                         </div>

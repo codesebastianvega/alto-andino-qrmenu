@@ -77,6 +77,7 @@ export default function AdminKitchen() {
         .from('orders')
         .select(`
           *,
+          locations ( name ),
           restaurant_tables ( id, table_number ),
           order_items (
             id, product_id, quantity, unit_price, modifiers, notes, created_at,
@@ -339,6 +340,11 @@ export default function AdminKitchen() {
               <span className="text-white/40 text-[10px] font-black tracking-widest uppercase">
                 #{order.id.slice(0, 4)}
               </span>
+              {isAllLocations && order.locations?.name && (
+                <span className="text-[10px] font-black px-3 py-1 bg-white/10 text-white/50 border border-white/20 rounded-full tracking-widest uppercase">
+                  {order.locations.name}
+                </span>
+              )}
             </div>
             <h3 className="text-base font-black text-white flex items-center gap-2 mt-1 uppercase">
               {order.fulfillment_type === 'dine_in' ? (

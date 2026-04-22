@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../config/supabase';
+import { useLocation } from '../../context/LocationContext';
 import { toast } from '../Toast';
 
 // ─── Timer en vivo por mesa ───────────────────────────────────────────────────
@@ -74,6 +75,11 @@ const TableCard = React.forwardRef(({ table }, ref) => {
   const order = table.activeOrder;
   const total = order ? Number(order.total_amount || 0) : 0;
   const [freeing, setFreeing] = useState(false);
+  const { locations, isAllLocations } = useLocation();
+
+  const locationName = isAllLocations 
+    ? locations.find(l => l.id === table.location_id)?.name 
+    : null;
 
   const slaAlert =
     table.minutesSinceActivity !== null && table.minutesSinceActivity >= 40;
@@ -116,6 +122,14 @@ const TableCard = React.forwardRef(({ table }, ref) => {
         ${table.status === 'needs_billing' ? 'animate-pulse-slow' : ''}
       `}
     >
+      {/* Location label if in all mode */}
+      {locationName && (
+        <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10">
+          <p className="text-[8px] font-black text-white/40 uppercase tracking-tighter">
+            {locationName}
+          </p>
+        </div>
+      )}
       {/* SLA alert bar */}
       {(slaAlert || slaWarn) && (
         <div
@@ -229,15 +243,31 @@ const TableCard = React.forwardRef(({ table }, ref) => {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function TableMap({ tablesWithStatus = [], areas = [], loading = false }) {
+  const { isAllLocations, locations } = useLocation();
   const [filter, setFilter] = useState('all'); // 'all' | 'libre' | 'ocupada' | 'sucia' | 'needs_billing'
   const [selectedAreaId, setSelectedAreaId] = useState('all');
+  const [selectedLocationId, setSelectedLocationId] = useState('all');
 
-  // 1. Primero filtramos por área
+  // Reset filters when areas or locations change significantly
+  useEffect(() => {
+    setSelectedAreaId('all');
+  }, [areas.length]);
+
+  useEffect(() => {
+    setSelectedLocationId('all');
+  }, [isAllLocations]);
+
+  // 1. Filtrar por sede (solo si estamos en modo "Todas")
+  const tablesInLocation = isAllLocations && selectedLocationId !== 'all'
+    ? tablesWithStatus.filter(t => t.location_id === selectedLocationId)
+    : tablesWithStatus;
+
+  // 2. Filtrar por área
   const tablesInArea = selectedAreaId === 'all'
-    ? tablesWithStatus
-    : tablesWithStatus.filter(t => t.area_id === selectedAreaId);
+    ? tablesInLocation
+    : tablesInLocation.filter(t => t.area_id === selectedAreaId);
 
-  // 2. Calculamos contadores basados en las mesas del área actual
+  // 3. Calculamos contadores basados en las mesas del área/sede actual
   const counts = {
     all:           tablesInArea.length,
     libre:         tablesInArea.filter(t => t.status === 'libre' || t.status === 'free').length,
@@ -246,7 +276,7 @@ export default function TableMap({ tablesWithStatus = [], areas = [], loading = 
     needs_billing: tablesInArea.filter(t => t.status === 'needs_billing').length,
   };
 
-  // 3. Aplicamos el filtro de estado final
+  // 4. Aplicamos el filtro de estado final
   const filtered = filter === 'all'
     ? tablesInArea
     : filter === 'libre'
@@ -287,34 +317,74 @@ export default function TableMap({ tablesWithStatus = [], areas = [], loading = 
 
   return (
     <div className="space-y-6">
-      {/* Selector de Áreas (Tabs) */}
-      {areas.length > 0 && (
-        <div className="flex items-center gap-1 p-1 bg-white/5 rounded-2xl w-fit overflow-x-auto no-scrollbar">
-          <button
-            onClick={() => setSelectedAreaId('all')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
-              selectedAreaId === 'all'
-                ? 'bg-white/10 text-white shadow-lg'
-                : 'text-white/30 hover:text-white/60'
-            }`}
-          >
-            Todos
-          </button>
-          {areas.map(area => (
-            <button
-              key={area.id}
-              onClick={() => setSelectedAreaId(area.id)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-all ${
-                selectedAreaId === area.id
-                  ? 'bg-[#2f4131] text-white shadow-lg'
-                  : 'text-white/30 hover:text-white/60'
-              }`}
-            >
-              {area.name}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Selectores de Sede y Área */}
+      <div className="flex flex-col gap-4">
+        {/* Selector de Sede (solo si estamos en modo "Todas") */}
+        {isAllLocations && locations.length > 1 && (
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-black text-white/20 uppercase tracking-widest pl-1">Filtrar por Sede</span>
+            <div className="flex items-center gap-1 p-1 bg-white/5 rounded-2xl w-fit overflow-x-auto no-scrollbar border border-white/5">
+              <button
+                onClick={() => setSelectedLocationId('all')}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                  selectedLocationId === 'all'
+                    ? 'bg-white/10 text-white shadow-lg'
+                    : 'text-white/30 hover:text-white/60'
+                }`}
+              >
+                Todas las Sedes
+              </button>
+              {locations.map(loc => (
+                <button
+                  key={loc.id}
+                  onClick={() => setSelectedLocationId(loc.id)}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                    selectedLocationId === loc.id
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 shadow-lg'
+                      : 'text-white/30 hover:text-white/60 border border-transparent'
+                  }`}
+                >
+                  {loc.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Selector de Áreas (Tabs) */}
+        {areas.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-black text-white/20 uppercase tracking-widest pl-1">Filtrar por Área</span>
+            <div className="flex items-center gap-1 p-1 bg-white/5 rounded-2xl w-fit overflow-x-auto no-scrollbar border border-white/5">
+              <button
+                onClick={() => setSelectedAreaId('all')}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                  selectedAreaId === 'all'
+                    ? 'bg-white/10 text-white shadow-lg'
+                    : 'text-white/30 hover:text-white/60'
+                }`}
+              >
+                Todas las Áreas
+              </button>
+              {areas
+                .filter(a => selectedLocationId === 'all' || a.location_id === selectedLocationId)
+                .map(area => (
+                  <button
+                    key={area.id}
+                    onClick={() => setSelectedAreaId(area.id)}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                      selectedAreaId === area.id
+                        ? 'bg-[#2f4131] text-white shadow-lg border border-white/10'
+                        : 'text-white/30 hover:text-white/60 border border-transparent'
+                    }`}
+                  >
+                    {area.name}
+                  </button>
+                ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Filtros rápidos de estado */}
       <div className="flex items-center gap-2 flex-wrap">

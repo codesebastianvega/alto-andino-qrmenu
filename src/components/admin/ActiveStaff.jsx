@@ -1,24 +1,31 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
+import { useLocation } from '../../context/LocationContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ActiveStaff({ orders = [] }) {
   const { activeBrand } = useAuth();
+  const { activeLocationId, isAllLocations } = useLocation();
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Cargar perfiles de meseros para esta marca
+  // Cargar perfiles de meseros para esta marca y sede
   useEffect(() => {
     async function loadStaff() {
       if (!activeBrand?.id) return;
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('staff')
-          .select('id, name, role')
+          .select('id, name, role, location_id')
           .eq('brand_id', activeBrand.id)
-          .eq('is_active', true); // Solo personal activo por política
+          .eq('is_active', true);
 
+        if (!isAllLocations) {
+          query = query.eq('location_id', activeLocationId);
+        }
+
+        const { data, error } = await query;
         if (error) throw error;
         setStaff(data || []);
       } catch (err) {
@@ -28,7 +35,7 @@ export default function ActiveStaff({ orders = [] }) {
       }
     }
     loadStaff();
-  }, [activeBrand?.id]);
+  }, [activeBrand?.id, activeLocationId, isAllLocations]);
 
   // Cruzar el staff con las órdenes activas para determinar carga de trabajo
   const staffWorkload = useMemo(() => {

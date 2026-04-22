@@ -52,7 +52,7 @@ export default function AdminTables({ isEmbedded = false }) {
     try {
       let query = supabase
         .from('table_areas')
-        .select('*')
+        .select('*, locations(name)')
         .eq('brand_id', profile.brand_id)
         .order('sort_order', { ascending: true });
 
@@ -75,7 +75,7 @@ export default function AdminTables({ isEmbedded = false }) {
     try {
       let query = supabase
         .from('restaurant_tables')
-        .select('*, table_areas(name)')
+        .select('*, table_areas(name), locations(name)')
         .eq('brand_id', profile.brand_id)
         .order('table_number');
       
@@ -312,14 +312,22 @@ export default function AdminTables({ isEmbedded = false }) {
                   </div>
                 </td>
                 <td className="px-6 py-5">
-                  <div className="flex items-center gap-2">
-                    <div className={`text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border ${
-                       table.table_areas?.name 
-                        ? 'bg-[#2f4131]/5 border-[#2f4131]/10 text-[#2f4131]/70' 
-                        : 'bg-gray-50 border-gray-100 text-gray-400 italic font-medium lowercase tracking-normal'
-                    }`}>
-                      {table.table_areas?.name || 'sin salón'}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className={`text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border ${
+                        table.table_areas?.name 
+                          ? 'bg-[#2f4131]/5 border-[#2f4131]/10 text-[#2f4131]/70' 
+                          : 'bg-gray-50 border-gray-100 text-gray-400 italic font-medium lowercase tracking-normal'
+                      }`}>
+                        {table.table_areas?.name || 'sin salón'}
+                      </div>
                     </div>
+                    {isAllLocations && table.locations?.name && (
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider pl-0.5">
+                        <MapPin size={10} className="text-gray-300" />
+                        {table.locations.name}
+                      </div>
+                    )}
                   </div>
                 </td>
                 <td className="px-6 py-5">
@@ -469,13 +477,21 @@ export default function AdminTables({ isEmbedded = false }) {
               {areas.length === 0 ? (
                 <p className="text-center text-xs text-gray-400 py-4 italic">No hay salones creados.</p>
               ) : areas.map(area => (
-                <div key={area.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <span className="text-sm font-semibold text-gray-700">{area.name}</span>
-                  <button onClick={() => handleDeleteArea(area.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                    </svg>
-                  </button>
+                <div key={area.id} className="flex flex-col gap-1 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-gray-700">{area.name}</span>
+                    <button onClick={() => handleDeleteArea(area.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-colors">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                      </svg>
+                    </button>
+                  </div>
+                  {isAllLocations && area.locations?.name && (
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      <MapPin size={10} className="text-gray-300" />
+                      {area.locations.name}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
