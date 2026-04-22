@@ -20,6 +20,7 @@ export default function AdminBusinessProfile({ isEmbedded = false }) {
     contact_phone: '',
     city: '',
     country: '',
+    address: '',
     description: '',
     // Legal fields (ready for future use or mapped to restaurant_settings if exists)
     legal_name: '',
@@ -40,7 +41,7 @@ export default function AdminBusinessProfile({ isEmbedded = false }) {
       // First try to fetch from brands
       const { data: bData, error } = await supabase
         .from('brands')
-        .select('email, phone, city, country, description')
+        .select('email, phone, city, country, address, description')
         .eq('id', activeBrand.id)
         .single();
 
@@ -58,6 +59,7 @@ export default function AdminBusinessProfile({ isEmbedded = false }) {
         contact_phone: bData?.phone || '',
         city: bData?.city || '',
         country: bData?.country || '',
+        address: bData?.address || '',
         description: bData?.description || '',
         legal_name: sData?.legal_name || '',
         legal_id: sData?.legal_id || '',
@@ -81,6 +83,7 @@ export default function AdminBusinessProfile({ isEmbedded = false }) {
         phone: profileForm.contact_phone,
         city: profileForm.city,
         country: profileForm.country,
+        address: profileForm.address,
         description: profileForm.description
       };
 
@@ -226,6 +229,25 @@ export default function AdminBusinessProfile({ isEmbedded = false }) {
                       value={profileForm.country}
                       onChange={(e) => setProfileForm({ ...profileForm, country: e.target.value })}
                       placeholder="Ej. Colombia"
+                    />
+                  </FormField>
+                </div>
+
+                <div className={`relative transition-all md:col-span-2 ${!profileForm.address ? 'bg-red-50/30 p-4 rounded-2xl border border-red-200' : ''}`}>
+                  {!profileForm.address && (
+                    <div className="absolute top-4 right-4 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-100/50 px-2 py-1 rounded-lg">
+                      <span className="flex h-1.5 w-1.5 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+                      </span>
+                      Falta
+                    </div>
+                  )}
+                  <FormField label="Dirección Completa">
+                    <TextInput
+                      value={profileForm.address}
+                      onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                      placeholder="Ej. Calle 123 #45-67, Local 1"
                     />
                   </FormField>
                 </div>

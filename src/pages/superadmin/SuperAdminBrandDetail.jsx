@@ -61,6 +61,7 @@ export default function SuperAdminBrandDetail() {
           plan_id: brand.plan_id,
           city: brand.city,
           country: brand.country,
+          address: brand.address,
           phone: brand.phone,
           email: brand.email,
           description: brand.description
@@ -193,6 +194,16 @@ export default function SuperAdminBrandDetail() {
                 type="text"
                 value={brand.country || ''}
                 onChange={(e) => setBrand({...brand, country: e.target.value})}
+                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
+            </div>
+            
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Dirección Completa</label>
+              <input
+                type="text"
+                value={brand.address || ''}
+                onChange={(e) => setBrand({...brand, address: e.target.value})}
                 className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
