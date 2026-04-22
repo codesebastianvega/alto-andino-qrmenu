@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import QRCode from "react-qr-code";
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useLocations } from '../context/LocationContext';
 import { toast as toastFn } from '../components/Toast';
 import {
   PageHeader, PrimaryButton, SecondaryButton, Badge,
@@ -20,6 +21,7 @@ const toast = {
 
 export default function AdminTables({ isEmbedded = false }) {
   const { profile } = useAuth();
+  const { activeLocationId, isAllLocations } = useLocations();
   const [tables, setTables] = useState([]);
   const [loadingTables, setLoadingTables] = useState(false);
   
@@ -43,16 +45,22 @@ export default function AdminTables({ isEmbedded = false }) {
       fetchTables();
       fetchAreas();
     }
-  }, [profile?.brand_id]);
+  }, [profile?.brand_id, activeLocationId, isAllLocations]);
 
   const fetchAreas = async () => {
     setLoadingAreas(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('table_areas')
         .select('*')
         .eq('brand_id', profile.brand_id)
         .order('sort_order', { ascending: true });
+
+      if (!isAllLocations && activeLocationId) {
+        query = query.eq('location_id', activeLocationId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       setAreas(data || []);
     } catch (err) {
@@ -65,11 +73,17 @@ export default function AdminTables({ isEmbedded = false }) {
   const fetchTables = async () => {
     setLoadingTables(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('restaurant_tables')
         .select('*, table_areas(name)')
         .eq('brand_id', profile.brand_id)
         .order('table_number');
+      
+      if (!isAllLocations && activeLocationId) {
+        query = query.eq('location_id', activeLocationId);
+      }
+
+      const { data, error } = await query;
       
       if (error) throw error;
       setTables(data || []);
@@ -84,11 +98,15 @@ export default function AdminTables({ isEmbedded = false }) {
   const handleCreateArea = async (e) => {
     e.preventDefault();
     if (!newAreaName.trim()) return;
+    if (isAllLocations || !activeLocationId) {
+      return toast.error('Selecciona una sede específica para crear un salón');
+    }
     setIsSubmittingArea(true);
     try {
       const { error } = await supabase.from('table_areas').insert([{
         name: newAreaName.trim(),
         brand_id: profile.brand_id,
+        location_id: activeLocationId,
         sort_order: areas.length
       }]);
       if (error) throw error;
@@ -118,6 +136,9 @@ export default function AdminTables({ isEmbedded = false }) {
   };
 
   const openCreate = () => {
+    if (isAllLocations || !activeLocationId) {
+      return toast.error('Selecciona una sede específica para crear una mesa');
+    }
     setEditingTable(null);
     setTableForm({ table_number: '', area_id: '' });
     setIsFormOpen(true);
@@ -153,7 +174,8 @@ export default function AdminTables({ isEmbedded = false }) {
           .insert([{ 
             table_number: tableForm.table_number,
             area_id: tableForm.area_id || null,
-            brand_id: profile.brand_id
+            brand_id: profile.brand_id,
+            location_id: activeLocationId
           }]);
         if (error) throw error;
         toast.success('Mesa creada');

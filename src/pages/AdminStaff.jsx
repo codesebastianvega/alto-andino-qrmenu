@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { useStaff } from '../hooks/useStaff';
+import { useLocation } from '../context/LocationContext';
 import { useLocations } from '../hooks/useLocations';
 import { toast as toastFn } from '../components/Toast';
 import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton, SelectInput } from '../components/admin/ui';
@@ -61,6 +62,7 @@ const RoleColors = {
 export default function AdminStaff({ isEmbedded = false }) {
   const { staffList, loading, createStaff, updateStaff, deleteStaff } = useStaff();
   const { locations, loading: loadingLocs } = useLocations();
+  const { activeLocationId, isAllLocations } = useLocation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -89,7 +91,7 @@ export default function AdminStaff({ isEmbedded = false }) {
         name: '', 
         role: 'waiter', 
         pin: '',
-        location_id: locations.find(l => l.is_main)?.id || (locations[0]?.id || ''),
+        location_id: (!isAllLocations && activeLocationId) ? activeLocationId : (locations.find(l => l.is_main)?.id || (locations[0]?.id || '')),
         is_active: true
       });
     }
@@ -171,7 +173,7 @@ export default function AdminStaff({ isEmbedded = false }) {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-        {staffList.map((staff) => {
+        {(isAllLocations ? staffList : staffList.filter(s => s.location_id === activeLocationId)).map((staff) => {
           const locName = locations.find(l => l.id === staff.location_id)?.name || 'Sin asignar';
           const roleCfg = RoleColors[staff.role] || RoleColors.waiter;
           

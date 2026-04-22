@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useLocation } from '../context/LocationContext';
 import { toast } from '../components/Toast';
 
 /**
@@ -27,6 +28,7 @@ function getStartOfDayColombia() {
 
 export function useOperations() {
   const { activeBrand } = useAuth();
+  const { activeLocationId, isAllLocations } = useLocation();
   const brandId = activeBrand?.id;
 
   const [orders, setOrders] = useState([]);
@@ -52,13 +54,13 @@ export function useOperations() {
     if (!brandId) return;
     const startOfDay = getStartOfDayColombia();
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('orders')
       .select(`
         id, status, total_amount, paid_amount, service_fee,
         fulfillment_type, payment_status, created_at, delivered_at,
         cancelled_at, discount_amount, waiter_id, table_id,
-        cancellation_reason,
+        cancellation_reason, location_id,
         restaurant_tables ( id, table_number ),
         order_items (
           id, quantity, unit_price,
@@ -69,8 +71,13 @@ export function useOperations() {
         )
       `)
       .eq('brand_id', brandId)
-      .gte('created_at', startOfDay)
-      .order('created_at', { ascending: false });
+      .gte('created_at', startOfDay);
+
+    if (!isAllLocations) {
+      query = query.eq('location_id', activeLocationId);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
       console.error('[useOperations] fetchOrders error:', error);
@@ -112,11 +119,16 @@ export function useOperations() {
   const fetchTables = useCallback(async () => {
     if (!brandId) return;
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('restaurant_tables')
-      .select('id, table_number, is_active, physical_status, occupied_at, area_id')
-      .eq('brand_id', brandId)
-      .order('table_number', { ascending: true });
+      .select('id, table_number, is_active, physical_status, occupied_at, area_id, location_id')
+      .eq('brand_id', brandId);
+
+    if (!isAllLocations) {
+      query = query.eq('location_id', activeLocationId);
+    }
+
+    const { data, error } = await query.order('table_number', { ascending: true });
 
     if (error) {
       console.error('[useOperations] fetchTables error:', error);
@@ -128,11 +140,16 @@ export function useOperations() {
   const fetchAreas = useCallback(async () => {
     if (!brandId) return;
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('table_areas')
       .select('*')
-      .eq('brand_id', brandId)
-      .order('sort_order', { ascending: true });
+      .eq('brand_id', brandId);
+
+    if (!isAllLocations) {
+      query = query.eq('location_id', activeLocationId);
+    }
+
+    const { data, error } = await query.order('sort_order', { ascending: true });
 
     if (error) {
       console.error('[useOperations] fetchAreas error:', error);
@@ -146,15 +163,21 @@ export function useOperations() {
     const startOfDay = getStartOfDayColombia();
 
     // Traemos los pagos del día a través de los pedidos del día
-    const { data, error } = await supabase
+    let query = supabase
       .from('order_payments')
       .select(`
         id, amount, created_at,
         payment_methods ( name, type ),
-        orders!inner ( id, brand_id, created_at )
+        orders!inner ( id, brand_id, created_at, location_id )
       `)
       .eq('orders.brand_id', brandId)
       .gte('orders.created_at', startOfDay);
+
+    if (!isAllLocations) {
+      query = query.eq('orders.location_id', activeLocationId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('[useOperations] fetchPayments error:', error);
@@ -183,6 +206,13 @@ export function useOperations() {
     setLoading(false);
   }, [fetchOrders, fetchTables, fetchAreas, fetchPayments, fetchSettings]);
 
+  // Re-fetch everything when location context changes
+  useEffect(() => {
+    if (brandId) {
+      fetchAll();
+    }
+  }, [brandId, activeLocationId, fetchAll]);
+
   // ─── Subscripciones Realtime ────────────────────────────────────────────────
 
   useEffect(() => {
@@ -191,15 +221,23 @@ export function useOperations() {
       return;
     }
 
-    fetchAll();
+    // Initial fetch handled by the useEffect above triggered by location change
+    // fetchAll(); // Removed from here to avoid duplicate calls on mount
+
+    const channelId = isAllLocations ? `operations-all-${brandId}` : `operations-${activeLocationId}`;
+    
+    // Filtros de realtime: inyectamos location_id si no estamos en vista "Todas"
+    const orderFilter = isAllLocations ? `brand_id=eq.${brandId}` : `location_id=eq.${activeLocationId}`;
+    const tableFilter = isAllLocations ? `brand_id=eq.${brandId}` : `location_id=eq.${activeLocationId}`;
+    const areaFilter  = isAllLocations ? `brand_id=eq.${brandId}` : `location_id=eq.${activeLocationId}`;
 
     const channel = supabase
-      .channel(`operations-${brandId}`)
+      .channel(channelId)
 
       // ── Órdenes ──────────────────────────────────────────────────────────
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'orders', filter: `brand_id=eq.${brandId}` },
+        { event: 'INSERT', schema: 'public', table: 'orders', filter: orderFilter },
         (payload) => {
           const order = payload.new;
           if (!knownOrderIds.current.has(order.id)) {
@@ -218,7 +256,7 @@ export function useOperations() {
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `brand_id=eq.${brandId}` },
+        { event: 'UPDATE', schema: 'public', table: 'orders', filter: orderFilter },
         (payload) => {
           const updated = payload.new;
           const prev = payload.old;
@@ -252,6 +290,15 @@ export function useOperations() {
         { event: 'INSERT', schema: 'public', table: 'order_payments' },
         (payload) => {
           const payment = payload.new;
+          
+          // Si estamos en una sede específica, verificamos si el pago pertenece a una orden de esa sede
+          // Dado que el payload de postgres_changes no trae la orden unida, tenemos que verificar si la orden
+          // ya existe en nuestra lista filtrada de órdenes.
+          const orderExists = orders.some(o => o.id === payment.order_id);
+          
+          // Si no es "Todas" y la orden no está en nuestra lista, ignoramos el evento
+          if (!isAllLocations && !orderExists) return;
+
           toast('💳 Pago registrado', { icon: '💳' });
           pushEvent({
             type: 'payment',
@@ -268,14 +315,14 @@ export function useOperations() {
       // ── Mesas ─────────────────────────────────────────────────────────────
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'restaurant_tables', filter: `brand_id=eq.${brandId}` },
+        { event: '*', schema: 'public', table: 'restaurant_tables', filter: tableFilter },
         () => { fetchTables(); }
       )
 
       // ── Áreas ─────────────────────────────────────────────────────────────
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'table_areas', filter: `brand_id=eq.${brandId}` },
+        { event: '*', schema: 'public', table: 'table_areas', filter: areaFilter },
         () => { fetchAreas(); }
       )
 
@@ -284,7 +331,7 @@ export function useOperations() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [brandId, fetchAll, fetchOrders, fetchPayments, fetchTables, pushEvent]);
+  }, [brandId, activeLocationId, isAllLocations, fetchOrders, fetchPayments, fetchTables, fetchAreas, pushEvent, orders]);
 
   // ─── Métricas Derivadas (calculadas, no en estado) ─────────────────────────
 

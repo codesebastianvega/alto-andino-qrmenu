@@ -3,6 +3,7 @@ import { supabase } from '../config/supabase';
 import { Icon } from '@iconify-icon/react';
 import { toast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
+import { useLocations } from '../context/LocationContext';
 import { useStaff } from '../hooks/useStaff';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import PaymentPOSModal from '../components/admin/PaymentPOSModal';
@@ -130,6 +131,7 @@ export default function AdminOrders() {
   const [isMergeConfirmOpen, setIsMergeConfirmOpen] = useState(false);
 
   const { activeBrand } = useAuth();
+  const { activeLocationId, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id;
 
   const { staffList } = useStaff();
@@ -203,6 +205,10 @@ export default function AdminOrders() {
         query = query.eq('brand_id', activeBrandId);
       }
 
+      if (!isAllLocations && activeLocationId) {
+        query = query.eq('location_id', activeLocationId);
+      }
+
       const { data, error } = await query
         .order('created_at', { ascending: false });
 
@@ -224,13 +230,16 @@ export default function AdminOrders() {
 
     fetchOrders();
 
+    const locationFilter = !isAllLocations && activeLocationId ? `,location_id=eq.${activeLocationId}` : '';
+    const channelName = `admin-orders-${activeBrandId}${!isAllLocations && activeLocationId ? `-${activeLocationId}` : ''}`;
+
     const channel = supabase
-      .channel(`admin-orders-${activeBrandId}`)
+      .channel(channelName)
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
         table: 'orders',
-        filter: `brand_id=eq.${activeBrandId}`
+        filter: `brand_id=eq.${activeBrandId}${locationFilter}`
       }, (payload) => {
         setOrders(prev => [payload.new, ...prev]);
         playNotificationSound();
@@ -241,7 +250,7 @@ export default function AdminOrders() {
         event: 'UPDATE', 
         schema: 'public', 
         table: 'orders',
-        filter: `brand_id=eq.${activeBrandId}`
+        filter: `brand_id=eq.${activeBrandId}${locationFilter}`
       }, (payload) => {
         setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o));
         if (selectedOrder?.id === payload.new.id) {
@@ -252,9 +261,6 @@ export default function AdminOrders() {
         event: '*', 
         schema: 'public', 
         table: 'order_items' 
-        // Note: order_items usually don't have brand_id directly, 
-        // so we'd need to fetch or filter in JS if multi-tenancy is strict.
-        // For now, we fetchOrders which is scoped by brand_id.
       }, () => {
         fetchOrders();
       })
@@ -263,7 +269,7 @@ export default function AdminOrders() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [activeBrandId, fetchOrders]); // Removed selectedOrder.id as dependency to avoid re-subscribing on every selection
+  }, [activeBrandId, fetchOrders, activeLocationId, isAllLocations]); 
 
   // NEW: Sync selectedOrder with the latest data from the orders list
   useEffect(() => {

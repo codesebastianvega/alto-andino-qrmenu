@@ -4,6 +4,7 @@ import { Icon } from '@iconify-icon/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
+import { useLocations } from '../context/LocationContext';
 
 const playNotificationSound = () => {
     try {
@@ -65,6 +66,7 @@ export default function AdminKitchen() {
   const [restaurantSettings, setRestaurantSettings] = useState(null);
 
   const { activeBrand } = useAuth();
+  const { activeLocationId, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id;
 
   const fetchKitchenOrders = useCallback(async () => {
@@ -83,6 +85,7 @@ export default function AdminKitchen() {
         `)
         .in('status', ['new', 'preparing'])
         .eq('brand_id', activeBrandId)
+        .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
       if (error) throw error;
       
       // Multi-level Priority Sorting: Mesa (1) > Llevar (2) > Domicilio (3) > Time (asc)
@@ -468,7 +471,7 @@ export default function AdminKitchen() {
         event: '*', 
         schema: 'public', 
         table: 'orders',
-        filter: `brand_id=eq.${activeBrandId}`
+        filter: `brand_id=eq.${activeBrandId}${!isAllLocations && activeLocationId ? `,location_id=eq.${activeLocationId}` : ''}`
       }, (payload) => {
         if (payload.eventType === 'INSERT') {
             if (['new', 'preparing'].includes(payload.new.status)) {
@@ -491,7 +494,7 @@ export default function AdminKitchen() {
         event: '*', 
         schema: 'public', 
         table: 'order_items',
-        filter: `brand_id=eq.${activeBrandId}`
+        filter: `brand_id=eq.${activeBrandId}${!isAllLocations && activeLocationId ? `,location_id=eq.${activeLocationId}` : ''}`
       }, () => {
         fetchKitchenOrders();
       })
@@ -500,7 +503,7 @@ export default function AdminKitchen() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchKitchenOrders]);
+  }, [fetchKitchenOrders, activeBrandId, activeLocationId, isAllLocations]);
 
 
   if (loading && orders.length === 0) {

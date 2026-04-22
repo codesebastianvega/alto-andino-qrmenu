@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useLocations } from '../context/LocationContext';
 import { toast } from '../components/Toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -250,6 +251,7 @@ export default function AdminAnalytics() {
   const [data, setData] = useState({ orders: [], leads: [], events: [], paymentMethods: [] });
   const [prevData, setPrevData] = useState({ orders: [], leads: [], events: [] });
   const { activeBrand } = useAuth();
+  const { activeLocationId, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id;
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
@@ -311,16 +313,19 @@ export default function AdminAnalytics() {
           restaurant_tables ( id, table_number ),
           order_items ( quantity, unit_price, products ( id, name, cost, margin, categories ( name ) ) )
         `).eq('brand_id', activeBrandId)
+          .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
           .gte('created_at', start.toISOString())
           .order('created_at', { ascending: false }),
         
         supabase.from('leads').select('*')
           .eq('brand_id', activeBrandId)
+          .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
           .gte('created_at', start.toISOString())
           .order('created_at', { ascending: false }),
         
         supabase.from('analytics_events').select('*')
-          .contains('metadata', { brandId: activeBrandId })
+          .eq('brand_id', activeBrandId)
+          .eq('location_id', isAllLocations ? null : activeLocationId)
           .gte('created_at', start.toISOString())
           .order('created_at', { ascending: false }),
 
@@ -330,16 +335,19 @@ export default function AdminAnalytics() {
           order_items ( quantity, unit_price, products ( name, cost, margin ) )
         `)
           .eq('brand_id', activeBrandId)
+          .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
           .gte('created_at', prevStart.toISOString())
           .lt('created_at', prevEnd.toISOString()),
         
         supabase.from('leads').select('id, created_at, status')
           .eq('brand_id', activeBrandId)
+          .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
           .gte('created_at', prevStart.toISOString())
           .lt('created_at', prevEnd.toISOString()),
 
         supabase.from('analytics_events').select('id, created_at, session_id')
-          .contains('metadata', { brandId: activeBrandId })
+          .eq('brand_id', activeBrandId)
+          .eq('location_id', isAllLocations ? null : activeLocationId)
           .gte('created_at', prevStart.toISOString())
           .lt('created_at', prevEnd.toISOString()),
           
@@ -419,7 +427,7 @@ export default function AdminAnalytics() {
 
   useEffect(() => {
     fetchData();
-  }, [dateRange, activeBrandId]);
+  }, [dateRange, activeBrandId, activeLocationId, isAllLocations]);
 
   const handleUpdateLeadStatus = async (id, newStatus) => {
     try {

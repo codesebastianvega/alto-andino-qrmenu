@@ -14,6 +14,7 @@ import { supabase } from "@/config/supabase";
 import { translateGroup } from "@/utils/formatters";
 import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { useLocationPayments } from "@/hooks/useLocationPayments";
 
 // --- ANALYTICS HELPER ---
 const trackEvent = async (eventName, metadata = {}) => {
@@ -110,7 +111,53 @@ export default function CartModal({ open, onClose }) {
   const { brandSlug } = useParams();
   const { getAllProducts, hasFeature, activeBrandId } = useMenuData();
   const { paymentMethods, loading: loadingPayments } = usePaymentMethods(activeBrandId);
-  const activeMethods = useMemo(() => paymentMethods.filter(m => m.is_active), [paymentMethods]);
+  
+  // Localized Settings & Payments
+  const [currentLocationId, setCurrentLocationId] = useState(null);
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const { locationPayments, loading: loadingLocPayments } = useLocationPayments(currentLocationId);
+
+  const { locations } = useMenuData();
+  const mesa = getTable();
+
+  // Resolve Location from Table
+  useEffect(() => {
+    const resolveLocation = async () => {
+      if (!mesa || !activeBrandId) return;
+      try {
+        const { data: tableData } = await supabase
+          .from('restaurant_tables')
+          .select('location_id')
+          .eq('table_number', mesa)
+          .eq('brand_id', activeBrandId)
+          .maybeSingle();
+
+        if (tableData?.location_id) {
+          setCurrentLocationId(tableData.location_id);
+          const loc = locations.find(l => l.id === tableData.location_id);
+          if (loc) setCurrentLocation(loc);
+        }
+      } catch (err) {
+        console.error("Error resolving location:", err);
+      }
+    };
+    resolveLocation();
+  }, [mesa, activeBrandId, locations]);
+
+  const activeMethods = useMemo(() => {
+    if (currentLocation?.independent_payments && locationPayments.length > 0) {
+      // Return only methods that are active for this location
+      // And merge with their localized config
+      return locationPayments
+        .filter(lp => lp.is_active)
+        .map(lp => ({
+          ...lp.payment_method,
+          config: lp.config || lp.payment_method.config // Localized config takes priority
+        }));
+    }
+    // Fallback to brand level active methods
+    return paymentMethods.filter(m => m.is_active);
+  }, [paymentMethods, locationPayments, currentLocation]);
   
   const allDBProducts = useMemo(() => getAllProducts(), [getAllProducts]);
 
@@ -385,13 +432,31 @@ export default function CartModal({ open, onClose }) {
       localStorage.setItem("aa_active_order", orderData.id);
       setLastOrderId(orderData.id);
 
-      // --- WHATSAPP REDIRECTION (Emprendedor Plan) ---
+      // --- WHATSAPP REDIRECTION (Aluna Localization) ---
       // SKIP in POS mode to avoid interrupting staff workflow
-      /* REDIRECTION DISABLED AS REQUESTED
       if (hasFeature('whatsapp_orders') && !isPOSMode) {
-        // ... (existing WhatsApp logic)
+        const whatsappNumber = currentLocation?.whatsapp || settings?.whatsapp_number_orders;
+        
+        if (whatsappNumber) {
+          const cleanPhone = whatsappNumber.replace(/\D/g, "");
+          const message = encodeURIComponent(
+            `*NUEVO PEDIDO #${orderData.id.slice(-4).toUpperCase()}*\n\n` +
+            `*Cliente:* ${customerName}\n` +
+            `*Mesa:* ${mesa || 'N/A'}\n` +
+            `*Tipo:* ${fulfillmentType}\n\n` +
+            `*Productos:*\n` +
+            items.map(it => `- ${it.qty}x ${it.name} (${formatCOP(getItemUnit(it) * it.qty)})`).join('\n') +
+            `\n\n*Total:* ${formatCOP(finalTotal)}\n` +
+            `*Método de pago:* ${paymentMethod}\n\n` +
+            `Ver pedido en: ${window.location.origin}/${brandSlug}/#order/${orderData.id}`
+          );
+          
+          // Delay redirection slightly to allow state updates to finish
+          setTimeout(() => {
+            window.location.href = `https://wa.me/${cleanPhone}?text=${message}`;
+          }, 1000);
+        }
       }
-      */
       // -----------------------------------------------
 
       if (typeof clearCart === 'function') {

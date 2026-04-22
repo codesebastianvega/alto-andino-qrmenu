@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLocations } from '../hooks/useLocations';
+import { usePaymentMethods } from '../hooks/usePaymentMethods';
+import { useLocationPayments } from '../hooks/useLocationPayments';
 import { toast as toastFn } from '../components/Toast';
 import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton } from '../components/admin/ui';
 import { Icon } from '@iconify/react';
@@ -18,6 +20,16 @@ export default function AdminSedes({ isEmbedded = false }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
+
+  // Global brand payment methods
+  const { paymentMethods: brandPaymentMethods } = usePaymentMethods();
+  
+  // Location-specific payment methods
+  const { 
+    locationPayments, 
+    togglePaymentMethod, 
+    updateLocationPaymentConfig 
+  } = useLocationPayments(editingLocation?.id);
 
   const [activeTab, setActiveTab] = useState('info');
   const [form, setForm] = useState({
@@ -490,11 +502,72 @@ export default function AdminSedes({ isEmbedded = false }) {
                       </div>
 
                       {form.independent_payments && (
-                        <div className="p-8 bg-white rounded-[2.5rem] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-center opacity-70">
-                           <Icon icon="solar:bank-bold-duotone" width="32" className="text-gray-300 mb-4" />
-                           <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 leading-tight">
-                             La configuración detallada de cuentas <br/> aparecerá aquí próximamente.
-                           </p>
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                          <div className="flex items-center justify-between px-2">
+                             <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">Métodos Disponibles</h5>
+                             <span className="text-[9px] font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded-full uppercase tracking-tighter italic">Selecciona los activos para esta sede</span>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-4">
+                            {brandPaymentMethods.map(method => {
+                              const locPay = locationPayments.find(lp => lp.payment_method_id === method.id);
+                              const isEnabled = locPay?.is_active ?? false;
+
+                              return (
+                                <div key={method.id} className={`group relative flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all ${isEnabled ? 'bg-white border-indigo-100 shadow-xl shadow-indigo-50/50' : 'bg-gray-50 border-transparent opacity-60 grayscale-[0.5] hover:opacity-100 hover:grayscale-0'}`}>
+                                  <div className="flex items-center gap-5">
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm transition-transform group-hover:scale-110 ${isEnabled ? 'bg-indigo-600 text-white' : 'bg-white text-gray-300'}`}>
+                                      <Icon icon={method.type === 'transfer' ? 'solar:card-transfer-bold' : 'solar:wad-of-money-bold'} width="24" />
+                                    </div>
+                                    <div>
+                                      <h6 className="text-[13px] font-black text-gray-900 uppercase italic tracking-tight leading-none mb-1">{method.name}</h6>
+                                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{method.type === 'transfer' ? 'Transferencia' : 'Efectivo / Datáfono'}</p>
+                                    </div>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => togglePaymentMethod(method.id, !isEnabled)}
+                                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                                      isEnabled 
+                                        ? 'bg-indigo-50 border-indigo-100 text-indigo-600' 
+                                        : 'bg-white border-gray-100 text-gray-400 hover:text-indigo-600'
+                                    }`}
+                                  >
+                                    <Icon icon={isEnabled ? 'solar:check-circle-bold' : 'solar:add-circle-bold'} className="text-base" />
+                                    {isEnabled ? 'Activo' : 'Activar'}
+                                  </button>
+
+                                  {isEnabled && method.type === 'transfer' && (
+                                    <div className="absolute -bottom-2 right-12 z-10 px-4 py-1.5 bg-indigo-600 text-white rounded-full text-[8px] font-black uppercase tracking-widest shadow-lg shadow-indigo-200 border-2 border-white translate-y-1/2">
+                                      Requiere QR Local
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+
+                            {brandPaymentMethods.length === 0 && (
+                              <div className="p-12 border-2 border-dashed border-gray-100 rounded-[2.5rem] flex flex-col items-center justify-center text-center">
+                                <Icon icon="solar:card-transfer-broken" width="40" className="text-gray-200 mb-4" />
+                                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest max-w-[200px]">No hay métodos configurados en la marca.</p>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {locationPayments.some(lp => lp.is_active && lp.payment_method?.type === 'transfer') && (
+                            <div className="mt-10 p-6 bg-amber-50 rounded-[2rem] border border-amber-100 flex items-start gap-4">
+                               <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-amber-200">
+                                  <Icon icon="solar:qr-code-bold" width="20" />
+                               </div>
+                               <div>
+                                  <h6 className="text-[11px] font-black text-amber-800 uppercase tracking-tight mb-1">Nota sobre QRs de Transferencia</h6>
+                                  <p className="text-[10px] font-medium text-amber-600 uppercase tracking-tighter leading-relaxed italic">
+                                    Pronto podrás subir una imagen de QR específica para esta sede. Por ahora se usará el número de cuenta registrado en la marca.
+                                  </p>
+                               </div>
+                            </div>
+                          )}
                         </div>
                       )}
                    </div>

@@ -42,20 +42,43 @@
 ## 🟦 FASE 4: Gestión de Sedes (Física & Operativa)
 > Panel para que el Owner configure sus locales.
 - [ ] **4.1 CRUD de Sedes Pro:** Mejora de `AdminSedes.jsx` con mapa, horarios y datos de contacto específicos.
+    - [x] Migración DB y refactor modal con Tabs.
+    - [x] Gestión de Horarios, Operación y Pagos por sede.
 - [ ] **4.2 Selector de Sede Global:** Switcher en el Header del Admin para filtrar TODA la vista actual por una sede específica.
+    - [x] Integrar `LocationProvider` globalmente.
+    - [x] Crear `ContextBreadcrumb.jsx` (Diseño Premium).
+    - [ ] Integrar en el Header de `AdminLayout.jsx`.
+    - [ ] Implementar "Modo Todas las Sedes".
+    - [ ] **Aislamiento Operativo: Filtrado por Sede (Prioridad 1)**
+        - [ ] **Refector useOperations.js**: Integrar `location_id` en todas las consultas y suscripciones (Dashboard, Cocina, Mesas, Pedidos).
+        - [ ] **AdminDashboard**: Segmentar métricas, contadores y feed de eventos por sede activa.
+        - [ ] **AdminOrders & AdminKitchen**: Restringir la vista a pedidos de la sede física actual.
+        - [ ] **AdminTables**: Cargar solo las áreas y mesas pertenecientes a la sede.
+        - [ ] **AdminStaff**: Filtrar la lista de empleados por asignación a sede.
+        - [ ] **Analíticas Localizadas**: Añadir selector de sede en `AdminAnalytics.jsx` para reportes segmentados.
+        - [ ] **Sede Config (WhatsApp & Pagos)**: Mover configuración de contacto y QRs de pago al contexto de la sede física.
 - [ ] **4.3 QR Generator por Sede:** Lógica para generar códigos QR que apunten a la URL de la marca con el parámetro de sede pre-cargado.
 - [ ] **4.4 Independencia Operativa:** Refactor de `business_hours` para soportar horarios específicos por cada sede física.
 - [ ] **4.5 Finanzas Segmentadas:** Permitir configuración de métodos de pago (Nequi, Daviplata, etc) independientes por sede.
 - [ ] **4.6 Logística Local (Geofencing):** Definición de radio de entrega (km) por sede para el control de domicilios.
 - [ ] **4.7 Live Pulse Dashboard:** Indicadores de ocupación (mesas) y carga (cocina) visibles en la tarjeta de cada sede.
+- [ ] **4.8 Simulador de Roles (Dev Mode):** Herramienta para testing rápido de permisos entre Owner, Admin, Mesero y Cocina.
 
 ---
 
 ## 🟦 FASE 5: Inventario Localizado (Stock por Sede)
-> El corazón de la operación para marcas grandes.
-- [ ] **5.1 UI de Inventario Multi-Sede:** En `AdminProducts`, al editar un producto, mostrar un desglose de stock por cada sede abierta.
-- [ ] **5.2 Alertas de Stock Bajo por Sede:** Notificaciones específicas cuando un insumo se agota en una sucursal.
-- [ ] **5.3 Transferencias entre Sedes:** (Opcional) Funcionalidad básica para mover stock de un inventario a otro.
+> El corazón de la operación para marcas con múltiples sucursales.
+- [ ] **5.1 Arquitectura de Stock por Sede:**
+    - [ ] Implementar CRUD de stock en `location_inventory` vinculado a `location_id`.
+    - [ ] Vista en `AdminProducts`: Desglose de existencias por sede activa.
+- [ ] **5.2 Movimientos de Inventario:**
+    - [ ] Registro de entradas/salidas de insumos con trazabilidad por sede.
+    - [ ] Historial de ajustes manuales (merma, error de conteo).
+- [ ] **5.3 Alertas de Stock Bajo:**
+    - [ ] Configuración de umbrales mínimos por producto y por sede.
+    - [ ] Notificaciones en el Dashboard cuando el stock local es crítico.
+- [ ] **5.4 Valoración de Inventario Local:**
+    - [ ] Cálculo del valor del inventario basado en los costos de compra de cada sede.
 
 ---
 
@@ -96,7 +119,10 @@
 > Control total para negocios establecidos.
 - [ ] **10.1 Analíticas Avanzadas:** Filtros de tiempo, ticket promedio y rendimiento por mesero.
 - [ ] **10.2 IA Flash Integration:** El asistente de IA responde preguntas sobre ventas y stock.
-- [ ] **10.3 Gestión de Recetas y Costos:** Acceso al módulo de rentabilidad y márgenes.
+- [ ] **10.3 Gestión de Recetas y Costos (Híbrido):**
+    - [ ] **Definición Global (Marca):** Crear recetas estándar compartidas por todas las sedes.
+    - [ ] **Ejecución Local (Sede):** Descuento automático de stock de la sede correspondiente al vender un producto.
+    - [ ] **Rentabilidad Localizada:** Cálculo de márgenes basado en el costo del insumo en la sede específica vs precio de venta local.
 
 ---
 

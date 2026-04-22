@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useLocations } from '../context/LocationContext';
 
 export function useStaff() {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { activeBrand } = useAuth();
+  const { activeLocationId, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id;
 
   useEffect(() => {
@@ -15,7 +17,7 @@ export function useStaff() {
     } else {
       setLoading(false);
     }
-  }, [activeBrandId]);
+  }, [activeBrandId, activeLocationId, isAllLocations]);
 
   async function fetchStaff() {
     try {
@@ -26,6 +28,10 @@ export function useStaff() {
 
       if (activeBrandId) {
         query = query.eq('brand_id', activeBrandId);
+      }
+
+      if (!isAllLocations && activeLocationId) {
+        query = query.eq('location_id', activeLocationId);
       }
 
       const { data, error: fetchError } = await query

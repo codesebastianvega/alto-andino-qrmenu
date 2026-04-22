@@ -224,53 +224,54 @@
 ## 🟢 BLOQUE 10: Gestión Avanzada de Categorías & Vistas Premium [/]
 > Meta: Interfaz administrativa full-width y nuevas experiencias visuales para el menú.
 
-### 10.1 Admin Categories: Rediseño Full-Width [x]
-- [x] Modificar `useCategories.js` para incluir conteo de productos (activos / total). (Hecho)
-- [x] Rediseñar `AdminCategories.jsx` para ocupar el 100% del ancho disponible. (Hecho)
-- [x] Implementar tabla enriquecida:
-    - [x] Columna **Imagen**: Miniatura o ícono de la categoría.
-    - [x] Columna **Productos**: Badge con `activos / total`.
-    - [x] Columna **Diseño**: Selector (Select) para `section_type` directamente en la fila.
-    - [x] Columna **Estado**: Quick toggle (Switch) para visibilidad global.
-    - [x] Columna **Hero**: Toggle para destacar en la página de inicio.
-    - [x] Fix: ReferenceError `Icon` is not defined (Corrected)
+### 10.1 Admin Categories: Rediseño Full-Width [/]
+- [ ] Modificar `useCategories.js` para incluir conteo de productos (activos / total).
+- [ ] Rediseñar `AdminCategories.jsx` para ocupar el 100% del ancho disponible.
+- [ ] Implementar tabla enriquecida:
+    - [ ] Columna **Imagen**: Miniatura o ícono de la categoría.
+    - [ ] Columna **Productos**: Badge con `activos / total`.
+    - [ ] Columna **Diseño**: Selector (Select) para `section_type` directamente en la fila.
+    - [ ] Columna **Estado**: Quick toggle (Switch) para visibilidad global.
+    - [ ] Columna **Hero**: Toggle para destacar en la página de inicio.
+    - [ ] Fix: ReferenceError `Icon` is not defined
 - [ ] Mejorar visualmente:
     - [ ] Columna **Última Actualización**: Tiempo relativo de edición.
     - [ ] Visualización de **Subcategorías**: Badges con contador y lista.
 
 ### 10.2 Nuevas Vistas del Menú Público [/]
-- [x] **Variante `grid-compact`**: Grid de 2 o 3 columnas con tarjetas minimalistas (Hecho).
-- [x] **Variante `horizontal-slider`**: Carrusel de desplazamiento horizontal (Hecho).
-- [x] **Variante `list-minimal`**: Lista de solo texto con precio alineado (Hecho).
-- [/] **Variante `bento-grid`**: Diseño asimétrico moderno (En proceso).
-- [/] **Variante `masonry`**: Diseño tipo Pinterest (En proceso).
-- [x] Actualizar `ProductLists.jsx` y `ProductSection.jsx` para soportar estos nuevos `section_type`.
+- [ ] **Variante `grid-compact`**: Grid de 2 o 3 columnas con tarjetas minimalistas.
+- [ ] **Variante `horizontal-slider`**: Carrusel de desplazamiento horizontal.
+- [ ] **Variante `list-minimal`**: Lista de solo texto con precio alineado.
+- [/] **Variante `bento-grid`**: Diseño asimétrico moderno.
+- [/] **Variante `masonry`**: Diseño tipo Pinterest.
+- [ ] Actualizar `ProductLists.jsx` y `ProductSection.jsx` para soportar estos nuevos `section_type`.
 - [ ] Asegurar responsividad premium en todas las nuevas variantes.
 
-### 10.3 Admin Extras: Rediseño Premium & Funcional [x]
-- [x] Modificar `AdminModifierGroups.jsx` para ocupar el 100% del ancho disponible.
-- [x] Implementar **Barra de Búsqueda** dinámica por nombre de grupo.
-- [x] Añadir **Indicador de Uso**: Badge con el conteo de productos vinculados.
-- [x] Implementar funcionalidad de **Duplicar Grupo** (Clone).
-- [x] Mejorar visualización de tarjetas:
-    - [x] Mostrar vista previa de las primeras 3 opciones.
-    - [x] Aplicar efectos hover y sombras premium.
-- [ ] Rediseño de Tabla de Inventario (Insumos)
-    - [ ] Ampliar contenedor a `max-w-[1600px]`.
-    - [ ] Implementar buscador avanzado con iconos.
-    - [ ] Añadir Quick Status Toggle (`is_active`).
-    - [ ] Pulir indicadores de stock y badges de proveedores.
-    - [ ] Mejorar editor de costos inline.
+### 10.3 Admin Extras: Rediseño Premium & Funcional [/]
+- [ ] Modificar `AdminModifierGroups.jsx` para ocupar el 100% del ancho disponible.
+- [ ] Implementar **Barra de Búsqueda** dinámica por nombre de grupo.
+- [ ] Añadir **Indicador de Uso**: Badge con el conteo de productos vinculados.
+- [ ] Implementar funcionalidad de **Duplicar Grupo** (Clone).
+- [/] Aislamiento Operativo: Filtrado por Sede (Prioridad 1)
+    - [x] Refector `useOperations.js`: Integrar `location_id` en todas las consultas y suscripciones.
+    - [/] `AdminDashboard`: Segmentar métricas, contadores y feed de eventos por sede activa.
+    - [ ] `AdminOrders` & `AdminKitchen`: Restringir la vista a pedidos de la sede física actual.
+    - [ ] `AdminTables`: Cargar solo las áreas y mesas pertenecientes a la sede.
+    - [ ] `AdminStaff`: Filtrar la lista de empleados por asignación a sede.
+    - [/] Analíticas Localizadas: Implementar filtrado en `AdminAnalytics.jsx` y `OperationsIntelligence.jsx`.
+    - [ ] Sede Config (WhatsApp & Pagos): Mover configuración al contexto de la sede.
 - [ ] Implementar **Deep Search**: Búsqueda que incluya nombres de opciones.
 - [ ] Implementar **Quick Status Toggle**: Switch de activo/inactivo en tarjeta.
 - [ ] Relative Time en categorías ("Modificado hace 2m").
 - [ ] Public Menu: Estilo Bento para item "Hero".
 - [ ] Public Menu: Soporte para Masonry Layout.
 
-### 10.4 Refinamientos de UI & UX
-- [ ] **Admin Categories**: Implementar tiempo relativo (Hace X min) en columna de actualización.
-- [ ] **Product Form**: Unificar estilos del selector de subcategorías con el sistema de diseño.
-- [ ] **Public Menu**: Optimizar `ProductCard.jsx` para soporte premium de Bento y Masonry.
+### 10.4 Refinamientos de UI & UX — Aislamiento por Sede [/]
+- [x] **Infraestructura de Datos**: Refactorizar `useOperations.js` para filtrar por `activeLocationId`.
+- [/] **Dashboard e Inteligencia**: Actualizar `AdminDashboard.jsx` y `OperationsIntelligence.jsx`.
+- [ ] **Operación Diaria**: Actualizar `AdminOrders.jsx` (Kanban), `AdminKitchen.jsx` y `AdminTables.jsx`.
+- [ ] **Staff & Asignación**: Verificar que el staff solo vea su sede asignada.
+- [ ] **Configuración**: Asegurar que `AdminCategories.jsx` y `AdminProducts.jsx` carguen según contexto.
 
 ---
 

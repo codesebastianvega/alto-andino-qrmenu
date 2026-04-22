@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useLocations } from '../context/LocationContext';
 import { Icon } from '@iconify-icon/react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -14,6 +15,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('7d'); // 'today', '7d', '30d', 'all'
   const { activeBrand } = useAuth();
+  const { activeLocationId, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id;
 
   useEffect(() => {
@@ -32,6 +34,10 @@ export default function AdminDashboard() {
 
         if (activeBrandId) {
           query = query.eq('brand_id', activeBrandId);
+        }
+
+        if (!isAllLocations && activeLocationId) {
+          query = query.eq('location_id', activeLocationId);
         }
 
         // Aplicar filtro de fecha en JS o en DB. Mejor DB para rendimiento si hay muchos.
@@ -53,7 +59,7 @@ export default function AdminDashboard() {
       }
     }
     fetchDashboardData();
-  }, [dateRange, activeBrandId]);
+  }, [dateRange, activeBrandId, activeLocationId, isAllLocations]);
 
   const stats = useMemo(() => {
     if (!orders.length) return { revenue: 0, avgTicket: 0, orderCount: 0, avgTime: 0, itemsCount: 0 };
