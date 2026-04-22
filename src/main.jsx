@@ -9,6 +9,7 @@ import { CartProvider } from "./context/CartContext";
 import { AuthProvider } from "./context/AuthContext";
 import { BrandProvider } from "./context/BrandContext";
 import { MenuDataProvider } from "./context/MenuDataContext";
+import { LocationProvider } from "./context/LocationContext";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 
 // Aluna Landing (lazy)
@@ -30,77 +31,79 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <ErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            {/* Aluna platform entry point */}
-            <Route
-              path="/"
-              element={
-                <BrandProvider>
-                  <MenuDataProvider>
-                    <CartProvider>
-                      <App />
-                    </CartProvider>
-                  </MenuDataProvider>
-                </BrandProvider>
-              }
-            />
+          <LocationProvider>
+            <Routes>
+              {/* Aluna platform entry point */}
+              <Route
+                path="/"
+                element={
+                  <BrandProvider>
+                    <MenuDataProvider>
+                      <CartProvider>
+                        <App />
+                      </CartProvider>
+                    </MenuDataProvider>
+                  </BrandProvider>
+                }
+              />
 
-            {/* Global Auth Routes */}
-            <Route
-              path="/login"
-              element={
-                <React.Suspense fallback={<div />}>
-                  <LoginPage />
+              {/* Global Auth Routes */}
+              <Route
+                path="/login"
+                element={
+                  <React.Suspense fallback={<div />}>
+                    <LoginPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/registro"
+                element={
+                  <React.Suspense fallback={<div />}>
+                    <RegisterPage />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/completar-registro"
+                element={
+                  <React.Suspense fallback={<div />}>
+                    <CompleteProfilePage />
+                  </React.Suspense>
+                }
+              />
+
+              {/* Superadmin Routes */}
+              <Route path="/superadmin/*" element={
+                <React.Suspense fallback={<div className="p-8 italic">Cargando panel de control...</div>}>
+                  <SuperAdminLayout />
                 </React.Suspense>
-              }
-            />
-            <Route
-              path="/registro"
-              element={
-                <React.Suspense fallback={<div />}>
-                  <RegisterPage />
-                </React.Suspense>
-              }
-            />
-            <Route
-              path="/completar-registro"
-              element={
-                <React.Suspense fallback={<div />}>
-                  <CompleteProfilePage />
-                </React.Suspense>
-              }
-            />
+              }>
+                <Route index element={<SuperAdminMetrics />} />
+                <Route path="brands" element={<SuperAdminBrands />} />
+                <Route path="brands/:id" element={<SuperAdminBrandDetail />} />
+                <Route path="plans" element={<SuperAdminPlans />} />
+                <Route path="settings" element={<SuperAdminSettings />} />
+              </Route>
 
-            {/* Superadmin Routes */}
-            <Route path="/superadmin/*" element={
-              <React.Suspense fallback={<div className="p-8 italic">Cargando panel de control...</div>}>
-                <SuperAdminLayout />
-              </React.Suspense>
-            }>
-              <Route index element={<SuperAdminMetrics />} />
-              <Route path="brands" element={<SuperAdminBrands />} />
-              <Route path="brands/:id" element={<SuperAdminBrandDetail />} />
-              <Route path="plans" element={<SuperAdminPlans />} />
-              <Route path="settings" element={<SuperAdminSettings />} />
-            </Route>
+              {/* Brand Experience: This route captures the brand slug and everything after */}
+              <Route
+                path="/:brand_slug/*"
+                element={
+                  <BrandProvider>
+                    <MenuDataProvider>
+                      <CartProvider>
+                        <App />
+                      </CartProvider>
+                    </MenuDataProvider>
+                  </BrandProvider>
+                }
+              />
 
-            {/* Brand Experience: This route captures the brand slug and everything after */}
-            <Route
-              path="/:brand_slug/*"
-              element={
-                <BrandProvider>
-                  <MenuDataProvider>
-                    <CartProvider>
-                      <App />
-                    </CartProvider>
-                  </MenuDataProvider>
-                </BrandProvider>
-              }
-            />
-
-            {/* Compatibility: If a hash is used at root without slug (old style), redirect or handler can be added here */}
-            <Route path="/aluna" element={<Navigate to="/" replace />} />
-          </Routes>
+              {/* Compatibility: If a hash is used at root without slug (old style), redirect or handler can be added here */}
+              <Route path="/aluna" element={<Navigate to="/" replace />} />
+            </Routes>
+          </LocationProvider>
         </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>

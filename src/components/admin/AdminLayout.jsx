@@ -22,7 +22,7 @@ import AdminPinLogin from './AdminPinLogin';
 import AdminWebContent from '../../pages/AdminWebContent';
 import AdminBusinessProfile from '../../pages/AdminBusinessProfile';
 import AdminProfile from '../../pages/AdminProfile';
-import BrandSwitcher from './BrandSwitcher';
+import ContextBreadcrumb from './ContextBreadcrumb';
 import LockOverlay from './LockOverlay';
 import { useMenuData } from '../../context/MenuDataContext';
 import Toast from '../Toast';
@@ -413,9 +413,7 @@ export default function AdminLayout() {
         <div className="flex flex-col h-full">
           {/* Logo Section */}
           <div className={`flex items-center h-20 px-5 gap-3 shrink-0 ${isCollapsed ? 'justify-center px-0' : ''}`}>
-             {!isCollapsed ? (
-               <BrandSwitcher />
-             ) : (
+             {isCollapsed && (
                <div className="w-10 h-10 flex items-center justify-center shrink-0 drop-shadow-md">
                  <img src={logoUrl} alt="Logo" className="w-full h-full object-contain filter brightness-0 invert" />
                </div>
@@ -707,8 +705,13 @@ export default function AdminLayout() {
         }`}
       >
         <header className="h-16 bg-white border-b border-gray-200/60 sticky top-0 z-40 flex items-center justify-between px-8 shadow-sm shadow-black/[0.02]">
-          <div className="flex items-center gap-5">
-             <h2 className="text-lg font-bold text-gray-900 tracking-tight pr-4">{currentItemLabel}</h2>
+          <div className="flex items-center gap-6">
+             {/* Context ContextBreadcrumb (Brand > Sede) */}
+             <ContextBreadcrumb />
+             
+             <div className="h-6 w-px bg-gray-200 hidden sm:block" />
+
+             <h2 className="text-lg font-bold text-gray-900 tracking-tight">{currentItemLabel}</h2>
              {activePlan && (
                <div className="flex items-center gap-2 px-2.5 py-1 bg-brand-primary/5 border border-brand-primary/10 rounded-full">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
