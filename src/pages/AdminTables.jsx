@@ -136,11 +136,12 @@ export default function AdminTables({ isEmbedded = false }) {
   };
 
   const openCreate = () => {
-    if (isAllLocations || !activeLocationId) {
-      return toast.error('Selecciona una sede específica para crear una mesa');
-    }
     setEditingTable(null);
-    setTableForm({ table_number: '', area_id: '' });
+    setTableForm({ 
+      table_number: '', 
+      area_id: '',
+      location_id: isAllLocations ? '' : activeLocationId 
+    });
     setIsFormOpen(true);
   };
 
@@ -170,12 +171,20 @@ export default function AdminTables({ isEmbedded = false }) {
         if (error) throw error;
         toast.success('Mesa actualizada');
       } else {
+        const effectiveLocationId = isAllLocations ? tableForm.location_id : activeLocationId;
+        
+        if (!effectiveLocationId || effectiveLocationId === 'all') {
+          toast.error('Selecciona una sede válida');
+          setIsSubmittingTable(false);
+          return;
+        }
+
         const { error } = await supabase.from('restaurant_tables')
           .insert([{ 
             table_number: tableForm.table_number,
             area_id: tableForm.area_id || null,
             brand_id: profile.brand_id,
-            location_id: activeLocationId
+            location_id: effectiveLocationId
           }]);
         if (error) throw error;
         toast.success('Mesa creada');
@@ -300,58 +309,65 @@ export default function AdminTables({ isEmbedded = false }) {
           </thead>
           <tbody className="divide-y divide-gray-50">
             {tables.length === 0 ? (
-              <tr><td colSpan={4} className="px-5 py-20 text-center text-sm text-gray-300 font-medium italic">No hay mesas configuradas aún. Empieza agregando una nueva mesa.</td></tr>
+              <tr><td colSpan={4} className="px-5 py-24 text-center text-sm text-gray-300 font-medium italic">No hay mesas configuradas aún. Empieza agregando una nueva mesa.</td></tr>
             ) : tables.map((table) => (
-              <tr key={table.id} className="group hover:bg-gray-50/80 transition-all duration-200">
-                <td className="px-6 py-5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center border border-gray-100 text-gray-400 group-hover:bg-[#2f4131] group-hover:text-white group-hover:border-[#2f4131] transition-all duration-300">
-                       <MapPin size={18} />
+              <tr key={table.id} className="group hover:bg-gray-50/60 transition-all duration-300">
+                <td className="px-6 py-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-[1.2rem] bg-white shadow-sm border border-gray-100 flex items-center justify-center text-[#2f4131] group-hover:bg-[#2f4131] group-hover:text-white group-hover:border-[#2f4131] group-hover:shadow-[0_8px_16px_-4px_rgba(47,65,49,0.2)] transition-all duration-500">
+                       <Table size={20} className={table.is_active ? "" : "opacity-30"} />
                     </div>
-                    <div className="font-bold text-gray-900 group-hover:translate-x-1 transition-transform">{table.table_number}</div>
+                    <div className="space-y-0.5">
+                      <div className="font-bold text-gray-900 text-base tracking-tight group-hover:translate-x-1 transition-transform duration-300">{table.table_number}</div>
+                      {isAllLocations && table.locations?.name && (
+                        <div className="flex items-center gap-1.5 py-0.5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#2f4131]/5 text-[#2f4131] text-[9px] font-black uppercase tracking-wider border border-[#2f4131]/10">
+                            <MapPin size={8} />
+                            {table.locations.name}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </td>
-                <td className="px-6 py-5">
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-2">
-                      <div className={`text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border ${
-                        table.table_areas?.name 
-                          ? 'bg-[#2f4131]/5 border-[#2f4131]/10 text-[#2f4131]/70' 
-                          : 'bg-gray-50 border-gray-100 text-gray-400 italic font-medium lowercase tracking-normal'
-                      }`}>
-                        {table.table_areas?.name || 'sin salón'}
-                      </div>
-                    </div>
-                    {isAllLocations && table.locations?.name && (
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider pl-0.5">
-                        <MapPin size={10} className="text-gray-300" />
-                        {table.locations.name}
-                      </div>
-                    )}
+                <td className="px-6 py-6">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-colors ${
+                      table.table_areas?.name 
+                        ? 'bg-indigo-50/50 border-indigo-100 text-indigo-600' 
+                        : 'bg-gray-50 border-gray-100 text-gray-400 italic font-medium lowercase tracking-normal'
+                    }`}>
+                      {table.table_areas?.name ? (
+                        <>
+                          <Layers size={10} className="mr-1.5" />
+                          {table.table_areas.name}
+                        </>
+                      ) : 'sin salón'}
+                    </span>
                   </div>
                 </td>
-                <td className="px-6 py-5">
+                <td className="px-6 py-6">
                   <button onClick={() => toggleTableActive(table)} className="active:scale-95 transition-transform">
                     <Badge variant={table.is_active ? 'green' : 'gray'}>
                       {table.is_active ? 'Activa' : 'Inactiva'}
                     </Badge>
                   </button>
                 </td>
-                <td className="px-6 py-5 text-right">
-                  <div className="flex justify-end items-center gap-1 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-300">
+                <td className="px-6 py-6 text-right">
+                  <div className="flex justify-end items-center gap-2">
                     <button onClick={() => setQrTable(table)}
-                      className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-transparent hover:border-indigo-100 flex items-center gap-1.5 font-bold text-[11px] uppercase tracking-wider">
-                      <QrCode size={16} />
-                      QR
+                      className="p-2.5 text-indigo-600 hover:bg-white hover:shadow-md hover:border-indigo-100 rounded-2xl transition-all border border-transparent flex items-center gap-2 font-bold text-[11px] uppercase tracking-wider">
+                      <QrCode size={18} />
+                      <span className="hidden sm:inline">QR</span>
                     </button>
-                    <div className="w-px h-4 bg-gray-200 mx-1" />
+                    <div className="w-px h-6 bg-gray-100 mx-1" />
                     <button onClick={() => openEdit(table)}
-                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-all flex items-center gap-1.5 font-bold text-[11px] uppercase tracking-wider">
-                      <Edit3 size={15} />
+                      className="p-2.5 text-gray-400 hover:text-gray-900 hover:bg-white hover:shadow-md hover:border-gray-200 rounded-2xl transition-all border border-transparent flex items-center gap-1.5">
+                      <Edit3 size={18} />
                     </button>
                     <button onClick={() => handleDeleteTable(table.id)}
-                      className="p-2 text-red-400 hover:bg-red-50 rounded-xl transition-all">
-                      <Trash2 size={15} />
+                      className="p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50/50 rounded-2xl transition-all border border-transparent">
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 </td>
@@ -380,6 +396,21 @@ export default function AdminTables({ isEmbedded = false }) {
                 />
               </FormField>
 
+              {isAllLocations && !editingTable && (
+                <FormField label="Sede">
+                  <SelectInput
+                    value={tableForm.location_id || ''}
+                    onChange={(e) => setTableForm({ ...tableForm, location_id: e.target.value, area_id: '' })}
+                    required
+                  >
+                    <option value="">Seleccionar Sede...</option>
+                    {locations.map(loc => (
+                      <option key={loc.id} value={loc.id}>{loc.name}</option>
+                    ))}
+                  </SelectInput>
+                </FormField>
+              )}
+
               <FormField label="Salón / Entorno">
                 <SelectInput
                   value={tableForm.area_id}
@@ -387,7 +418,9 @@ export default function AdminTables({ isEmbedded = false }) {
                 >
                   <option value="">Sin salón específico</option>
                   {areas.map(area => (
-                    <option key={area.id} value={area.id}>{area.name}</option>
+                    <option key={area.id} value={area.id}>
+                      {area.name} {isAllLocations && area.locations?.name ? `(${area.locations.name})` : ''}
+                    </option>
                   ))}
                 </SelectInput>
               </FormField>
@@ -460,17 +493,35 @@ export default function AdminTables({ isEmbedded = false }) {
             onClose={() => setIsAreaModalOpen(false)} 
           />
           <div className="p-7 space-y-6">
-            <form onSubmit={handleCreateArea} className="flex gap-2">
-              <div className="flex-1">
-                <TextInput 
-                  placeholder="Nuevo salón (ej. Terraza)"
-                  value={newAreaName}
-                  onChange={(e) => setNewAreaName(e.target.value)}
-                />
+            <form onSubmit={handleCreateArea} className="space-y-3">
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <TextInput 
+                    placeholder="Nuevo salón (ej. Terraza)"
+                    value={newAreaName}
+                    onChange={(e) => setNewAreaName(e.target.value)}
+                  />
+                </div>
+                <PrimaryButton type="submit" disabled={isSubmittingArea}>
+                  {isSubmittingArea ? '...' : 'Añadir'}
+                </PrimaryButton>
               </div>
-              <PrimaryButton type="submit" disabled={isSubmittingArea}>
-                {isSubmittingArea ? '...' : 'Añadir'}
-              </PrimaryButton>
+              
+              {isAllLocations && (
+                <div className="px-1">
+                  <SelectInput
+                    value={tableForm.location_id || ''}
+                    onChange={(e) => setTableForm({ ...tableForm, location_id: e.target.value })}
+                    className="text-[10px] font-bold h-9"
+                    required
+                  >
+                    <option value="">Sede para el salón...</option>
+                    {locations.map(loc => (
+                      <option key={loc.id} value={loc.id}>{loc.name}</option>
+                    ))}
+                  </SelectInput>
+                </div>
+              )}
             </form>
 
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">

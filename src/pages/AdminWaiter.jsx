@@ -90,7 +90,7 @@ export default function AdminWaiter() {
     try {
       const { data, error } = await supabase
         .from('table_areas')
-        .select('*')
+        .select('*, locations(name)')
         .eq('brand_id', profile.brand_id)
         .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
         .order('sort_order', { ascending: true });
@@ -239,19 +239,22 @@ export default function AdminWaiter() {
                 >
                   Todos
                 </button>
-                {areas.map(area => (
-                  <button
-                    key={area.id}
-                    onClick={() => setSelectedAreaId(area.id)}
-                    className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
-                      selectedAreaId === area.id
-                        ? 'bg-[#2f4131] text-white shadow-md'
-                        : 'text-gray-400 hover:text-gray-600'
-                    }`}
-                  >
-                    {area.name}
-                  </button>
-                ))}
+                    <button
+                      key={area.id}
+                      onClick={() => setSelectedAreaId(area.id)}
+                      className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition-all flex flex-col items-center ${
+                        selectedAreaId === area.id
+                          ? 'bg-[#2f4131] text-white shadow-md'
+                          : 'text-gray-400 hover:text-gray-600'
+                      }`}
+                    >
+                      <span>{area.name}</span>
+                      {isAllLocations && area.locations?.name && (
+                        <span className="text-[7px] opacity-70 italic lowercase tracking-normal">
+                          {area.locations.name}
+                        </span>
+                      )}
+                    </button>
               </div>
             )}
 
