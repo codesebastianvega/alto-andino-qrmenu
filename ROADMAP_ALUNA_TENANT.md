@@ -25,12 +25,17 @@
 
 ---
 
-## 🟦 FASE 3: Infraestructura de Datos Multi-Sede (Core DB)
+## 🟦 FASE 3: Infraestructura de Datos Multi-Sede (Core DB) 🏁 [COMPLETADO] 🏆
 > Preparar la base técnica para la segmentación operativa.
-- [ ] **3.1 Refactor de la tabla `locations`:** Asegurar que cada registro dependa de un `brand_id`.
-- [ ] **3.2 Inyección de `location_id`:** Añadir columna en las tablas `orders`, `analytics_events` y `tables`.
-- [ ] **3.3 Tabla `location_inventory`:** Creación de tabla para mapear `product_id` + `location_id` + `stock`.
-- [ ] **3.4 Tabla `location_product_status`:** Permitir que un producto esté "Agotado" en Sede A pero "Disponible" en Sede B.
+- [x] **3.1 Refactor de la tabla `locations`:** Asegurar que cada registro dependa de un `brand_id` y añadir restricción para que solo exista una sede principal (`is_main`) por marca.
+- [x] **3.2 Inyección de `location_id`:** Añadir columna en las tablas `orders`, `restaurant_tables`, `table_areas` y `analytics_events`.
+- [x] **3.3 Localización de Precios e Disponibilidad:** Crear tablas `location_product_prices` y `location_product_status` para tener control por sede.
+- [x] **3.4 Inventario Segmentado:** Creación de tabla `location_inventory` para mapear stock de productos e ingredientes por cada sede.
+- [x] **3.5 Seguridad RLS (Location-Level Search):** Configurar políticas para que el staff solo acceda a los datos de su sede asignada.
+- [x] **3.6 Migración de Datos Existentes:** Asignar todos los registros actuales a la sede principal de cada marca para no romper la operación.
+- [x] **3.7 Robustez: Helpers de Acceso RLS:** Implementación de funciones `has_brand_access` y `has_location_access` para centralizar seguridad.
+- [x] **3.8 Robustez: Índices de Integridad:** Creación de `idx_one_main_location_per_brand` para evitar múltiples sedes principales por error.
+- [x] **3.9 Robustez: Enriquecimiento de Analíticas:** Adición de `brand_id` y `location_id` a `analytics_events` para filtrado eficiente sin parsing JSON.
 
 ---
 
@@ -39,6 +44,10 @@
 - [ ] **4.1 CRUD de Sedes Pro:** Mejora de `AdminSedes.jsx` con mapa, horarios y datos de contacto específicos.
 - [ ] **4.2 Selector de Sede Global:** Switcher en el Header del Admin para filtrar TODA la vista actual por una sede específica.
 - [ ] **4.3 QR Generator por Sede:** Lógica para generar códigos QR que apunten a la URL de la marca con el parámetro de sede pre-cargado.
+- [ ] **4.4 Independencia Operativa:** Refactor de `business_hours` para soportar horarios específicos por cada sede física.
+- [ ] **4.5 Finanzas Segmentadas:** Permitir configuración de métodos de pago (Nequi, Daviplata, etc) independientes por sede.
+- [ ] **4.6 Logística Local (Geofencing):** Definición de radio de entrega (km) por sede para el control de domicilios.
+- [ ] **4.7 Live Pulse Dashboard:** Indicadores de ocupación (mesas) y carga (cocina) visibles en la tarjeta de cada sede.
 
 ---
 

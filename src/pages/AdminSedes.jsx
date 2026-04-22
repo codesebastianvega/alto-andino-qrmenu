@@ -19,25 +19,35 @@ export default function AdminSedes({ isEmbedded = false }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
 
+  const [activeTab, setActiveTab] = useState('info');
   const [form, setForm] = useState({
     name: '',
     address: '',
     phone: '',
+    whatsapp: '',
     maps_url: '',
     is_main: false,
-    is_active: true
+    is_active: true,
+    operational_modes: ['dine_in', 'takeaway'],
+    delivery_radius_km: 5,
+    independent_payments: false
   });
 
   const handleOpenModal = (loc = null) => {
+    setActiveTab('info');
     if (loc) {
       setEditingLocation(loc);
       setForm({
         name: loc.name || '',
         address: loc.address || '',
         phone: loc.phone || '',
+        whatsapp: loc.whatsapp || '',
         maps_url: loc.maps_url || '',
         is_main: loc.is_main || false,
-        is_active: loc.is_active ?? true
+        is_active: loc.is_active ?? true,
+        operational_modes: loc.operational_modes || ['dine_in', 'takeaway'],
+        delivery_radius_km: loc.delivery_radius_km || 5,
+        independent_payments: loc.independent_payments || false
       });
     } else {
       setEditingLocation(null);
@@ -45,9 +55,13 @@ export default function AdminSedes({ isEmbedded = false }) {
         name: '',
         address: '',
         phone: '',
+        whatsapp: '',
         maps_url: '',
         is_main: locations.length === 0,
-        is_active: true
+        is_active: true,
+        operational_modes: ['dine_in', 'takeaway'],
+        delivery_radius_km: 5,
+        independent_payments: false
       });
     }
     setIsModalOpen(true);
@@ -194,6 +208,15 @@ export default function AdminSedes({ isEmbedded = false }) {
                     <p className="text-[13px] text-gray-400 font-bold tracking-widest">{loc.phone}</p>
                   </div>
                 )}
+
+                {loc.whatsapp && (
+                  <div className="flex items-center gap-4 px-4">
+                    <div className="w-8 h-8 rounded-xl bg-transparent flex items-center justify-center text-emerald-400">
+                      <Icon icon="solar:whatsapp-bold" width="18" />
+                    </div>
+                    <p className="text-[13px] text-emerald-600 font-black tracking-widest">{loc.whatsapp}</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -242,104 +265,247 @@ export default function AdminSedes({ isEmbedded = false }) {
 
       {isModalOpen && createPortal(
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xl flex items-center justify-center p-4 z-[9999] animate-in fade-in duration-300">
-           <div className="bg-white rounded-[3rem] w-full max-w-xl shadow-[0_40px_120px_-20px_rgba(0,0,0,0.2)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-5 duration-300">
-              <div className="px-10 py-8 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center">
+            <div className="bg-white rounded-[3rem] w-full max-w-2xl shadow-[0_40px_120px_-20px_rgba(0,0,0,0.2)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-5 duration-300 flex flex-col max-h-[90vh]">
+              <div className="px-10 pt-8 pb-4 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center shrink-0">
                  <div>
-                    <h3 className="text-2xl font-black text-gray-900 tracking-tight italic uppercase">{editingLocation ? 'Editar Punto' : 'Nuevo Local'}</h3>
-                    <p className="text-[12px] text-gray-500 font-medium italic mt-1 uppercase tracking-tight">Geolocalización y contacto operativo.</p>
+                    <h3 className="text-2xl font-black text-gray-900 tracking-tight italic uppercase">{editingLocation ? 'Gestionar Sede' : 'Nueva Sede'}</h3>
+                    <p className="text-[12px] text-gray-500 font-medium italic mt-1 uppercase tracking-tight">Parametrización operativa por punto de venta.</p>
                  </div>
                  <button onClick={() => setIsModalOpen(false)} className="w-12 h-12 rounded-full hover:bg-rose-50 flex items-center justify-center text-gray-300 hover:text-rose-500 transition-all border border-gray-100 hover:border-rose-100">
                     <Icon icon="solar:close-circle-bold" width="32" />
                  </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-10 space-y-8">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <FormField label="Identificación de la Sede">
-                       <TextInput 
-                          value={form.name} 
-                          onChange={(e) => setForm({...form, name: e.target.value})} 
-                          placeholder="Ej. Sede Norte Gourmet"
-                          required
-                          className="text-lg font-black py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white"
-                       />
-                    </FormField>
-                    <FormField label="Línea de Contacto">
-                       <TextInput 
-                          value={form.phone} 
-                          onChange={(e) => setForm({...form, phone: e.target.value})} 
-                          placeholder="+57 321 456 7890"
-                          className="text-lg font-black py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white"
-                       />
-                    </FormField>
-                 </div>
+              {/* Tabs Navigation */}
+              <div className="flex px-10 gap-8 border-b border-gray-50 bg-gray-50/30 shrink-0">
+                {[
+                  { id: 'info', label: 'Información', icon: 'solar:info-circle-bold' },
+                  { id: 'hours', label: 'Horarios', icon: 'solar:clock-circle-bold' },
+                  { id: 'ops', label: 'Operación', icon: 'solar:settings-minimalistic-bold' },
+                  { id: 'payments', label: 'Pagos', icon: 'solar:card-2-bold' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 py-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${
+                      activeTab === tab.id 
+                        ? 'border-indigo-600 text-indigo-600' 
+                        : 'border-transparent text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    <Icon icon={tab.icon} className="text-lg" />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
 
-                 <FormField label="Dirección Geográfica">
-                    <TextInput 
-                       value={form.address} 
-                       onChange={(e) => setForm({...form, address: e.target.value})} 
-                       placeholder="Dirección completa para deliveries..."
-                       className="font-bold py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white"
-                    />
-                 </FormField>
+              <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-10 space-y-8 custom-scrollbar">
+                 {activeTab === 'info' && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <FormField label="Identificación de la Sede">
+                            <TextInput 
+                                value={form.name} 
+                                onChange={(e) => setForm({...form, name: e.target.value})} 
+                                placeholder="Ej. Sede Norte Gourmet"
+                                required
+                                className="text-lg font-black py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white"
+                            />
+                          </FormField>
+                          <FormField label="WhatsApp de Pedidos">
+                            <TextInput 
+                                value={form.whatsapp} 
+                                onChange={(e) => setForm({...form, whatsapp: e.target.value})} 
+                                placeholder="+57 321 456 7890"
+                                className="text-lg font-black py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white text-emerald-600"
+                            />
+                          </FormField>
+                      </div>
 
-                 <FormField label="Enlace de Mapas (G-Maps / Waze)">
-                    <div className="relative group">
-                      <TextInput 
-                        value={form.maps_url} 
-                        onChange={(e) => setForm({...form, maps_url: e.target.value})} 
-                        placeholder="https://maps.app.goo.gl/..."
-                        className="font-mono text-[11px] py-4 px-12 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white truncate"
-                      />
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500">
-                        <Icon icon="solar:map-point-bold-duotone" width="20" />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <FormField label="Teléfono Fijo / Local">
+                          <TextInput 
+                              value={form.phone} 
+                              onChange={(e) => setForm({...form, phone: e.target.value})} 
+                              placeholder="601 234 5678"
+                              className="text-lg font-black py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white"
+                          />
+                        </FormField>
+                        <FormField label="Enlace de Google Maps">
+                          <TextInput 
+                              value={form.maps_url} 
+                              onChange={(e) => setForm({...form, maps_url: e.target.value})} 
+                              placeholder="https://maps.app.goo.gl/..."
+                              className="text-lg font-black py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white"
+                          />
+                        </FormField>
+                      </div>
+
+                      <FormField label="Dirección Física">
+                          <TextInput 
+                            value={form.address} 
+                            onChange={(e) => setForm({...form, address: e.target.value})} 
+                            placeholder="Calle 123 # 45-67, Ciudad"
+                            className="font-bold py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white"
+                          />
+                      </FormField>
+
+                      <div className="flex flex-col sm:flex-row gap-6">
+                        <label className={`flex-1 flex items-center gap-4 p-5 rounded-[2rem] border-2 transition-all cursor-pointer group ${form.is_main ? 'bg-gray-900 border-gray-900 text-white shadow-xl' : 'bg-white border-gray-100 hover:border-gray-200 text-gray-500'}`}>
+                          <input 
+                            type="checkbox" 
+                            checked={form.is_main} 
+                            onChange={(e) => setForm({...form, is_main: e.target.checked})} 
+                            className="sr-only"
+                          />
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${form.is_main ? 'bg-white/10' : 'bg-gray-50 text-gray-300'}`}>
+                              <Icon icon="solar:star-bold" className="text-xl" />
+                          </div>
+                          <div className="flex flex-col">
+                              <span className="text-[12px] font-black uppercase tracking-widest leading-none mb-1">Operación Base</span>
+                              <span className={`text-[9px] font-bold uppercase ${form.is_main ? 'text-indigo-300' : 'text-gray-300'}`}>Punto principal</span>
+                          </div>
+                        </label>
+
+                        <label className={`flex-1 flex items-center gap-4 p-5 rounded-[2rem] border-2 transition-all cursor-pointer group ${form.is_active ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-xl shadow-emerald-50' : 'bg-white border-gray-100 hover:border-gray-200 text-gray-500'}`}>
+                          <input 
+                            type="checkbox" 
+                            checked={form.is_active} 
+                            onChange={(e) => setForm({...form, is_active: e.target.checked})} 
+                            className="sr-only"
+                          />
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${form.is_active ? 'bg-emerald-500 text-white' : 'bg-gray-50 text-gray-300'}`}>
+                              <Icon icon="solar:check-read-bold" className="text-xl" />
+                          </div>
+                          <div className="flex flex-col">
+                              <span className="text-[12px] font-black uppercase tracking-widest leading-none mb-1">Estado OnLine</span>
+                              <span className={`text-[9px] font-bold uppercase ${form.is_active ? 'text-emerald-500' : 'text-gray-300'}`}>Visible al cliente</span>
+                          </div>
+                        </label>
                       </div>
                     </div>
-                 </FormField>
+                 )}
 
-                 <div className="flex flex-col sm:flex-row gap-6">
-                    <label className={`flex-1 flex items-center gap-4 p-5 rounded-[2rem] border-2 transition-all cursor-pointer group ${form.is_main ? 'bg-gray-900 border-gray-900 text-white shadow-xl' : 'bg-white border-gray-100 hover:border-gray-200 text-gray-500'}`}>
-                       <input 
-                         type="checkbox" 
-                         checked={form.is_main} 
-                         onChange={(e) => setForm({...form, is_main: e.target.checked})} 
-                         className="sr-only"
-                       />
-                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${form.is_main ? 'bg-white/10' : 'bg-gray-50 text-gray-300'}`}>
-                          <Icon icon="solar:star-bold" className="text-xl" />
-                       </div>
-                       <div className="flex flex-col">
-                          <span className="text-[12px] font-black uppercase tracking-widest leading-none mb-1">Operación Base</span>
-                          <span className={`text-[9px] font-bold uppercase ${form.is_main ? 'text-indigo-300' : 'text-gray-300'}`}>Punto principal</span>
-                       </div>
-                    </label>
+                 {activeTab === 'hours' && (
+                   <div className="flex flex-col items-center justify-center py-10 text-center animate-in fade-in slide-in-from-right-4 duration-300">
+                     <div className="w-20 h-20 rounded-[2rem] bg-indigo-50 flex items-center justify-center text-indigo-600 mb-6">
+                        <Icon icon="solar:clock-circle-bold-duotone" width="40" />
+                     </div>
+                     <h4 className="text-lg font-black text-gray-900 uppercase italic tracking-tight">Gestión de Horarios</h4>
+                     <p className="text-sm text-gray-400 mt-2 max-w-[300px] font-medium leading-relaxed uppercase tracking-tighter">
+                       {editingLocation 
+                        ? "Configura los horarios específicos para esta sede. Por defecto hereda los de la marca." 
+                        : "Los horarios se heredarán automáticamente de la sede principal al crearla."}
+                     </p>
+                     <div className="mt-8 px-6 py-3 bg-amber-50 rounded-2xl border border-amber-100 flex items-center gap-3">
+                        <Icon icon="solar:info-circle-bold" className="text-amber-500" />
+                        <span className="text-[10px] font-black text-amber-600 uppercase tracking-tight">Próximamente: Editor visual de horarios por sede</span>
+                     </div>
+                   </div>
+                 )}
 
-                    <label className={`flex-1 flex items-center gap-4 p-5 rounded-[2rem] border-2 transition-all cursor-pointer group ${form.is_active ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-xl shadow-emerald-50' : 'bg-white border-gray-100 hover:border-gray-200 text-gray-500'}`}>
-                       <input 
-                         type="checkbox" 
-                         checked={form.is_active} 
-                         onChange={(e) => setForm({...form, is_active: e.target.checked})} 
-                         className="sr-only"
-                       />
-                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${form.is_active ? 'bg-emerald-500 text-white' : 'bg-gray-50 text-gray-300'}`}>
-                          <Icon icon="solar:check-read-bold" className="text-xl" />
+                 {activeTab === 'ops' && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                       <div className="bg-gray-50/50 p-8 rounded-[2.5rem] border border-gray-100">
+                         <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6 flex items-center gap-2">
+                           <Icon icon="solar:delivery-bold" /> Modos de Operación
+                         </h4>
+                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            {[
+                              { id: 'dine_in', label: 'En Local', icon: 'solar:plate-bold' },
+                              { id: 'takeaway', label: 'Para Llevar', icon: 'solar:bag-3-bold' },
+                              { id: 'delivery', label: 'Delivery', icon: 'solar:delivery-bold' }
+                            ].map(mode => (
+                              <button
+                                key={mode.id}
+                                type="button"
+                                onClick={() => {
+                                  const modes = form.operational_modes || [];
+                                  if (modes.includes(mode.id)) {
+                                    setForm({...form, operational_modes: modes.filter(m => m !== mode.id)});
+                                  } else {
+                                    setForm({...form, operational_modes: [...modes, mode.id]});
+                                  }
+                                }}
+                                className={`flex flex-col items-center gap-3 p-6 rounded-[2rem] border-2 transition-all ${
+                                  form.operational_modes?.includes(mode.id)
+                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg'
+                                    : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
+                                }`}
+                              >
+                                <Icon icon={mode.icon} width="24" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">{mode.label}</span>
+                              </button>
+                            ))}
+                         </div>
                        </div>
-                       <div className="flex flex-col">
-                          <span className="text-[12px] font-black uppercase tracking-widest leading-none mb-1">Estado OnLine</span>
-                          <span className={`text-[9px] font-bold uppercase ${form.is_active ? 'text-emerald-500' : 'text-gray-300'}`}>Visible al cliente</span>
-                       </div>
-                    </label>
-                 </div>
 
-                 <div className="pt-8 border-t border-gray-100 flex gap-4">
+                       <FormField label="Radio de Cobertura Delivery (Kilómetros)">
+                          <div className="flex items-center gap-6 p-6 bg-white rounded-[2rem] border-2 border-gray-100">
+                             <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                                <Icon icon="solar:radius-bold" width="24" />
+                             </div>
+                             <input 
+                                type="range" 
+                                min="1" 
+                                max="50" 
+                                step="0.5"
+                                value={form.delivery_radius_km}
+                                onChange={(e) => setForm({...form, delivery_radius_km: parseFloat(e.target.value)})}
+                                className="flex-1 accent-indigo-600 h-1.5 bg-gray-100 rounded-lg cursor-pointer"
+                             />
+                             <div className="w-16 text-center">
+                                <span className="text-lg font-black text-gray-900">{form.delivery_radius_km}</span>
+                                <span className="text-[10px] font-bold text-gray-400 block -mt-1 uppercase tracking-tight">km</span>
+                             </div>
+                          </div>
+                       </FormField>
+                    </div>
+                 )}
+
+                 {activeTab === 'payments' && (
+                   <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                      <div className={`p-8 rounded-[2.5rem] border-2 transition-all ${form.independent_payments ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-gray-100'}`}>
+                         <div className="flex items-center justify-between gap-6">
+                            <div className="flex-1">
+                               <h4 className="text-sm font-black text-gray-900 uppercase italic tracking-tight mb-1">Pagos Independientes</h4>
+                               <p className="text-[11px] text-gray-400 font-medium leading-relaxed">
+                                 {form.independent_payments 
+                                  ? "Esta sede gestiona sus propios métodos de pago (Cuentas bancarias, pasarelas, etc)." 
+                                  : "Esta sede utilizará los métodos de pago configurados a nivel de marca."}
+                               </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setForm({...form, independent_payments: !form.independent_payments})}
+                              className={`w-16 h-8 rounded-full transition-all relative ${form.independent_payments ? 'bg-indigo-600' : 'bg-gray-300'}`}
+                            >
+                              <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${form.independent_payments ? 'right-1' : 'left-1'}`} />
+                            </button>
+                         </div>
+                      </div>
+
+                      {form.independent_payments && (
+                        <div className="p-8 bg-white rounded-[2.5rem] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-center opacity-70">
+                           <Icon icon="solar:bank-bold-duotone" width="32" className="text-gray-300 mb-4" />
+                           <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 leading-tight">
+                             La configuración detallada de cuentas <br/> aparecerá aquí próximamente.
+                           </p>
+                        </div>
+                      )}
+                   </div>
+                 )}
+
+                 <div className="pt-8 border-t border-gray-100 flex gap-4 shrink-0">
                     <SecondaryButton type="button" onClick={() => setIsModalOpen(false)} className="flex-1 rounded-[1.5rem] py-5 border-gray-100 font-black uppercase tracking-widest text-[11px] text-gray-400">
-                       Descartar
+                       Cancelar
                     </SecondaryButton>
                     <PrimaryButton type="submit" disabled={isSubmitting} className="flex-[2] rounded-[1.5rem] py-5 shadow-2xl shadow-indigo-100 font-black uppercase tracking-widest text-[11px]">
                        {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (
                          <div className="flex items-center justify-center gap-3">
                            <Icon icon="solar:diskette-bold-duotone" className="text-xl" />
-                           {editingLocation ? 'Sincronizar Cambios' : 'Confirmar Nueva Sede'}
+                           {editingLocation ? 'Guardar Cambios' : 'Crear Sede'}
                          </div>
                        )}
                     </PrimaryButton>
