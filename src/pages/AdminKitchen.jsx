@@ -105,7 +105,7 @@ export default function AdminKitchen() {
     } finally {
       setLoading(false);
     }
-  }, [activeBrandId]);
+  }, [activeBrandId, isAllLocations, activeLocationId]);
 
   // Fetch Restaurant Settings
   useEffect(() => {

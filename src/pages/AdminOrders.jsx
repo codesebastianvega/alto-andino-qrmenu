@@ -220,7 +220,7 @@ export default function AdminOrders() {
     } finally {
       setLoading(false);
     }
-  }, [activeBrandId]);
+  }, [activeBrandId, isAllLocations, activeLocationId]);
 
   useEffect(() => {
     if (!activeBrandId) {
