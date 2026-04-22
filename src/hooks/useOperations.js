@@ -114,7 +114,7 @@ export function useOperations() {
       return seedEvents;
     });
 
-  }, [brandId]);
+  }, [brandId, isAllLocations, activeLocationId]);
 
   const fetchTables = useCallback(async () => {
     if (!brandId) return;
@@ -135,7 +135,7 @@ export function useOperations() {
       return;
     }
     setTables(data || []);
-  }, [brandId]);
+  }, [brandId, isAllLocations, activeLocationId]);
 
   const fetchAreas = useCallback(async () => {
     if (!brandId) return;
@@ -156,7 +156,7 @@ export function useOperations() {
       return;
     }
     setAreas(data || []);
-  }, [brandId]);
+  }, [brandId, isAllLocations, activeLocationId]);
 
   const fetchPayments = useCallback(async () => {
     if (!brandId) return;
@@ -184,7 +184,7 @@ export function useOperations() {
       return;
     }
     setPayments(data || []);
-  }, [brandId]);
+  }, [brandId, isAllLocations, activeLocationId]);
   
   const fetchSettings = useCallback(async () => {
     if (!brandId) return;

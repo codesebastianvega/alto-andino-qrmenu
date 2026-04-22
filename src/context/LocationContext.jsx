@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
-import { useLocations } from '../hooks/useLocations';
+import { useLocations as useLocationsHook } from '../hooks/useLocations';
 
 const LocationContext = createContext({});
 
 export const LocationProvider = ({ children }) => {
   const { activeBrand } = useAuth();
-  const { locations, loading: locationsLoading } = useLocations();
+  const { locations, loading: locationsLoading } = useLocationsHook();
   
   // State for the active location ID (either a UUID or 'all')
   const [activeLocationId, setActiveLocationId] = useState(() => {
@@ -63,3 +63,6 @@ export const useLocation = () => {
   }
   return context;
 };
+
+// Alias to support plural naming used in standard admin pages
+export const useLocations = useLocation;

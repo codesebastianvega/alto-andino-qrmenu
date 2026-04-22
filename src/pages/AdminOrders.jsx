@@ -134,6 +134,12 @@ export default function AdminOrders() {
   const { activeLocationId, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id;
 
+  // Debug location state
+  useEffect(() => {
+    console.log('Location state updated in AdminOrders:', { activeLocationId, isAllLocations });
+  }, [activeLocationId, isAllLocations]);
+
+
   const { staffList } = useStaff();
   const waiters = useMemo(() => staffList.filter(s => s.role === 'waiter' || s.role === 'admin'), [staffList]);
 
@@ -187,8 +193,10 @@ export default function AdminOrders() {
       setLoading(false);
       return;
     }
+    console.log('Fetching orders with filter:', isAllLocations ? 'All Locations' : `Location: ${activeLocationId}`);
     try {
       setLoading(true);
+
       let query = supabase
         .from('orders')
         .select(`

@@ -303,8 +303,10 @@ export default function AdminAnalytics() {
         start = new Date(0); // All time
         prevStart = new Date(0);
       }
+      const filterObj = !isAllLocations && activeLocationId ? { location_id: activeLocationId } : {};
 
       const [ordersRes, leadsRes, eventsRes, prevOrdersRes, prevLeadsRes, prevEventsRes, pmRes, productsRes] = await Promise.all([
+        // 1. Current Period Orders
         supabase.from('orders').select(`
           id, total_amount, status, created_at, delivered_at, fulfillment_type, payment_method,
           cancellation_reason, cancelled_by, discount_amount, discount_reason, waiter_id,
@@ -313,45 +315,51 @@ export default function AdminAnalytics() {
           restaurant_tables ( id, table_number ),
           order_items ( quantity, unit_price, products ( id, name, cost, margin, categories ( name ) ) )
         `).eq('brand_id', activeBrandId)
-          .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
+          .match(filterObj)
           .gte('created_at', start.toISOString())
           .order('created_at', { ascending: false }),
         
-        supabase.from('leads').select('*')
+        // 2. Current Period Leads
+        supabase.from('leads').select('id, created_at, status')
           .eq('brand_id', activeBrandId)
-          .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
-          .gte('created_at', start.toISOString())
-          .order('created_at', { ascending: false }),
-        
-        supabase.from('analytics_events').select('*')
-          .eq('brand_id', activeBrandId)
-          .eq('location_id', isAllLocations ? null : activeLocationId)
+          .match(filterObj)
           .gte('created_at', start.toISOString())
           .order('created_at', { ascending: false }),
 
-        // Previous period - now including items for detailed margin comparison
+        // 3. Current Period Events
+        supabase.from('analytics_events').select('id, created_at, session_id')
+          .eq('brand_id', activeBrandId)
+          .match(filterObj)
+          .gte('created_at', start.toISOString()),
+
+        // 4. Previous Period Orders
         supabase.from('orders').select(`
           id, total_amount, status, created_at, delivered_at,
           order_items ( quantity, unit_price, products ( name, cost, margin ) )
         `)
           .eq('brand_id', activeBrandId)
-          .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
+          .match(filterObj)
           .gte('created_at', prevStart.toISOString())
           .lt('created_at', prevEnd.toISOString()),
         
+        // 5. Previous Period Leads
         supabase.from('leads').select('id, created_at, status')
           .eq('brand_id', activeBrandId)
-          .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
+          .match(filterObj)
           .gte('created_at', prevStart.toISOString())
           .lt('created_at', prevEnd.toISOString()),
 
+        // 6. Previous Period Events
         supabase.from('analytics_events').select('id, created_at, session_id')
           .eq('brand_id', activeBrandId)
-          .eq('location_id', isAllLocations ? null : activeLocationId)
+          .match(filterObj)
           .gte('created_at', prevStart.toISOString())
           .lt('created_at', prevEnd.toISOString()),
           
+        // 7. Payment Methods
         supabase.from('payment_methods').select('id, name').eq('brand_id', activeBrandId),
+
+        // 8. Products
         supabase.from('products').select('id, name, cost, price, image_url').eq('brand_id', activeBrandId)
       ]);
 

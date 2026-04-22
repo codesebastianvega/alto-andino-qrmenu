@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
-import { useLocations } from '../context/LocationContext';
+import { useLocation } from '../context/LocationContext';
 import { Icon } from '@iconify-icon/react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -15,7 +15,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('7d'); // 'today', '7d', '30d', 'all'
   const { activeBrand } = useAuth();
-  const { activeLocationId, isAllLocations } = useLocations();
+  const { activeLocationId, isAllLocations } = useLocation();
   const activeBrandId = activeBrand?.id;
 
   useEffect(() => {
