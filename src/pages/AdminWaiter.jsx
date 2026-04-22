@@ -33,38 +33,59 @@ export default function AdminWaiter() {
   const activeStaff = useMemo(() => staffList.filter(s => s.role === 'waiter' || s.role === 'admin'), [staffList]);
 
   useEffect(() => {
-    if (profile?.brand_id) {
-      fetchTables();
-      fetchAreas();
-      fetchActiveOrders();
+    if (!profile?.brand_id) return;
+    
+    // Safety: Don't subscribe if we are in specific location mode but have no ID yet
+    if (!isAllLocations && !activeLocationId) return;
 
-      const tablesChannel = supabase
-        .channel('tables-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_tables', filter: `brand_id=eq.${profile.brand_id}` }, () => {
-          fetchTables();
-        })
-        .subscribe();
+    fetchTables();
+    fetchAreas();
+    fetchActiveOrders();
 
-      const ordersChannel = supabase
-        .channel('orders-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `brand_id=eq.${profile.brand_id}` }, () => {
-          fetchActiveOrders();
-        })
-        .subscribe();
+    const locationFilter = !isAllLocations ? `,location_id=eq.${activeLocationId}` : '';
+    const channelSuffix = `${profile.brand_id}-${activeLocationId || 'all'}`;
 
-      const areasChannel = supabase
-        .channel('areas-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'table_areas', filter: `brand_id=eq.${profile.brand_id}` }, () => {
-          fetchAreas();
-        })
-        .subscribe();
+    const tablesChannel = supabase
+      .channel(`tables-${channelSuffix}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'restaurant_tables', 
+        filter: `brand_id=eq.${profile.brand_id}${locationFilter}` 
+      }, () => {
+        fetchTables();
+      })
+      .subscribe();
 
-      return () => {
-        supabase.removeChannel(tablesChannel);
-        supabase.removeChannel(ordersChannel);
-        supabase.removeChannel(areasChannel);
-      };
-    }
+    const ordersChannel = supabase
+      .channel(`orders-${channelSuffix}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'orders', 
+        filter: `brand_id=eq.${profile.brand_id}${locationFilter}` 
+      }, () => {
+        fetchActiveOrders();
+      })
+      .subscribe();
+
+    const areasChannel = supabase
+      .channel(`areas-${channelSuffix}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'table_areas', 
+        filter: `brand_id=eq.${profile.brand_id}${locationFilter}` 
+      }, () => {
+        fetchAreas();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(tablesChannel);
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(areasChannel);
+    };
   }, [profile?.brand_id, activeLocationId, isAllLocations]);
 
   const fetchTables = async () => {

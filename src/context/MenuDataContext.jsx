@@ -230,16 +230,28 @@ export const MenuDataProvider = ({ children }) => {
 
   // Real-time branding and home settings updates
   useEffect(() => {
-    const channel = supabase.channel('content-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_settings' }, (payload) => {
+    if (!activeBrandId) return;
+
+    const channel = supabase.channel(`content-changes-${activeBrandId}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'restaurant_settings',
+        filter: `brand_id=eq.${activeBrandId}`
+      }, (payload) => {
         if (payload.new) setRestaurantSettings(payload.new);
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'home_settings' }, (payload) => {
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'home_settings',
+        filter: `brand_id=eq.${activeBrandId}`
+      }, (payload) => {
         if (payload.new) setHomeSettings(payload.new);
       })
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, []);
+  }, [activeBrandId]);
 
   // Inject CSS Variables for Dynamic Theming
   useEffect(() => {

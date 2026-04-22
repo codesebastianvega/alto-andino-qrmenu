@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
+import { useLocations } from '../../context/LocationContext';
 import AdminProducts from '../../pages/AdminProducts';
 import AdminCategories from '../../pages/AdminCategories';
 import AdminModifiers from '../../pages/AdminModifiers';
@@ -192,6 +193,8 @@ export default function AdminLayout() {
   };
 
   const { user: authUser, profile, loading: authLoading, isFeatureLocked, activeBrand, activePlan } = useAuth();
+  const { activeLocationId, isAllLocations } = useLocations();
+  const activeBrandId = activeBrand?.id || profile?.brand_id;
   const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState(getInitialPage); 
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -274,25 +277,42 @@ export default function AdminLayout() {
   }, [user, currentPage]);
 
   useEffect(() => {
+    if (!activeBrandId) return;
+    
+    // Safety: Don't subscribe yet if we need a specific location but don't have it
+    if (!isAllLocations && !activeLocationId) return;
+
     const fetchPendingCount = async () => {
-      const { count } = await supabase
+      let query = supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
+        .eq('brand_id', activeBrandId)
         .in('status', ['new', 'preparing']);
       
+      if (!isAllLocations && activeLocationId) {
+        query = query.eq('location_id', activeLocationId);
+      }
+
+      const { count } = await query;
       setPendingOrdersCount(count || 0);
     };
 
     fetchPendingCount();
 
-    const channel = supabase.channel('layout_orders')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+    const locationFilter = !isAllLocations ? `,location_id=eq.${activeLocationId}` : '';
+    const channel = supabase.channel(`layout_orders-${activeBrandId}-${activeLocationId || 'all'}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'orders',
+        filter: `brand_id=eq.${activeBrandId}${locationFilter}`
+      }, () => {
         fetchPendingCount();
       })
       .subscribe();
 
     return () => supabase.removeChannel(channel);
-  }, []);
+  }, [activeBrandId, activeLocationId, isAllLocations]);
 
   const missingAlerts = {
     profile: !profile?.phone || !profile?.full_name,

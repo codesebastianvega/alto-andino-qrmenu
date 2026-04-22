@@ -469,15 +469,25 @@ export default function AdminKitchen() {
 
   useEffect(() => {
     if (!activeBrandId) return;
+    
+    // Safety: Don't subscribe if we are in specific location mode but have no ID yet
+    if (!isAllLocations && !activeLocationId) return;
+
     fetchKitchenOrders();
 
+    // Orders can be filtered by location at DB level
+    const ordersFilter = `brand_id=eq.${activeBrandId}${!isAllLocations ? `,location_id=eq.${activeLocationId}` : ''}`;
+    
+    // order_items only has brand_id, so we filter by brand and let fetchKitchenOrders handle sedes
+    const itemsFilter = `brand_id=eq.${activeBrandId}`;
+
     const channel = supabase
-      .channel(`kitchen-${activeBrandId}`)
+      .channel(`kitchen-${activeBrandId}-${activeLocationId || 'all'}`)
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'orders',
-        filter: `brand_id=eq.${activeBrandId}${!isAllLocations && activeLocationId ? `,location_id=eq.${activeLocationId}` : ''}`
+        filter: ordersFilter
       }, (payload) => {
         if (payload.eventType === 'INSERT') {
             if (['new', 'preparing'].includes(payload.new.status)) {
@@ -500,14 +510,14 @@ export default function AdminKitchen() {
         event: '*', 
         schema: 'public', 
         table: 'order_items',
-        filter: `brand_id=eq.${activeBrandId}${!isAllLocations && activeLocationId ? `,location_id=eq.${activeLocationId}` : ''}`
+        filter: itemsFilter
       }, () => {
         fetchKitchenOrders();
       })
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [fetchKitchenOrders, activeBrandId, activeLocationId, isAllLocations]);
 
