@@ -130,6 +130,7 @@ export default function AdminWaiter() {
   const proceedWithTable = (table) => {
     sessionStorage.setItem("aa_current_mesa", table.table_number);
     sessionStorage.setItem("aa_current_table_id", table.id);
+    sessionStorage.setItem("aa_current_location_id", table.location_id);
     sessionStorage.setItem("aa_pos_mode", "true");
     sessionStorage.removeItem("aa_manual_type");
     window.location.hash = "#menu";
@@ -137,6 +138,9 @@ export default function AdminWaiter() {
 
   const handleManualOrder = (type = 'takeaway') => {
     sessionStorage.removeItem("aa_current_mesa");
+    if (activeLocationId && !isAllLocations) {
+      sessionStorage.setItem("aa_current_location_id", activeLocationId);
+    }
     sessionStorage.setItem("aa_manual_type", type);
     sessionStorage.setItem("aa_pos_mode", "true");
     window.location.hash = "#menu";

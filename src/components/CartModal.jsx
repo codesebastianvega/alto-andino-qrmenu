@@ -58,6 +58,20 @@ const getTable = () => {
   }
 };
 
+const getLocationId = (brandId) => {
+  try {
+    const sess = sessionStorage.getItem("aa_current_location_id");
+    if (sess) return sess;
+    if (brandId) {
+      const brandLoc = localStorage.getItem(`aa_active_loc_${brandId}`);
+      if (brandLoc) return brandLoc;
+    }
+    return localStorage.getItem("aa_active_location_id") || "";
+  } catch {
+    return "";
+  }
+};
+
 const renderOptionsPills = (opts) => {
   if (!opts) return null;
   const parts = [];
@@ -269,24 +283,32 @@ export default function CartModal({ open, onClose }) {
 
       const mesa = getTable();
       let tableId = null;
+      let orderLocationId = getLocationId(activeBrandId);
 
       // Prioritize direct table ID from sessionStorage (set by AdminWaiter)
       const sessionTableId = sessionStorage.getItem("aa_current_table_id");
       
       if (sessionTableId && sessionTableId !== "null") {
         tableId = sessionTableId;
-      } else if (fulfillmentType === 'dine_in' && mesa) {
-        // Fallback to table_number lookup
+      }
+
+      // If we have a table number but not an ID, or if we want to confirm location from table
+      if (fulfillmentType === 'dine_in' && mesa) {
+        // Fetch table to confirm both ID and location
         const { data: tableData } = await supabase.from('restaurant_tables')
-          .select('id')
+          .select('id, location_id')
           .eq('table_number', mesa)
           .eq('brand_id', activeBrandId)
           .limit(1)
           .maybeSingle();
-         if (tableData) tableId = tableData.id;
+
+         if (tableData) {
+           tableId = tableData.id;
+           if (tableData.location_id) orderLocationId = tableData.location_id;
+         }
       }
 
-      console.log("🔍 [Order Flow] tableId:", tableId, "activeBrandId:", activeBrandId, "fulfillmentType:", fulfillmentType);
+      console.log("🔍 [Order Flow] tableId:", tableId, "activeBrandId:", activeBrandId, "locationId:", orderLocationId, "fulfillmentType:", fulfillmentType);
 
       // 2. Insert or Update Order
       const finalTotal = fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount;
@@ -308,6 +330,7 @@ export default function CartModal({ open, onClose }) {
           .select('*')
           .eq('table_id', tableId)
           .eq('brand_id', activeBrandId)
+          .match(orderLocationId ? { location_id: orderLocationId } : {})
           .in('status', ['waiting_payment', 'new', 'preparing', 'ready'])
           .limit(1)
           .maybeSingle();
@@ -347,6 +370,7 @@ export default function CartModal({ open, onClose }) {
             fulfillment_type: fulfillmentType,
             table_id: tableId,
             brand_id: activeBrandId,
+            location_id: orderLocationId || null,
             total_amount: finalTotal,
             service_fee: serviceFeeAmount,
             customer_name: customerName,

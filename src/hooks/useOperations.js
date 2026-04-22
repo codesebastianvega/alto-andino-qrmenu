@@ -224,12 +224,17 @@ export function useOperations() {
     // Initial fetch handled by the useEffect above triggered by location change
     // fetchAll(); // Removed from here to avoid duplicate calls on mount
 
+    // Safety: don't subscribe if missing key identifiers
+    if (!brandId || (!isAllLocations && !activeLocationId)) return;
+
     const channelId = isAllLocations ? `operations-all-${brandId}` : `operations-${activeLocationId}`;
     
     // Filtros de realtime: inyectamos location_id si no estamos en vista "Todas"
+    // Usamos el ID explícito para evitar "undefined" en el string del filtro
     const orderFilter = isAllLocations ? `brand_id=eq.${brandId}` : `location_id=eq.${activeLocationId}`;
     const tableFilter = isAllLocations ? `brand_id=eq.${brandId}` : `location_id=eq.${activeLocationId}`;
     const areaFilter  = isAllLocations ? `brand_id=eq.${brandId}` : `location_id=eq.${activeLocationId}`;
+    const paymentFilter = `brand_id=eq.${brandId}`;
 
     const channel = supabase
       .channel(channelId)
@@ -287,7 +292,7 @@ export function useOperations() {
       // ── Pagos ─────────────────────────────────────────────────────────────
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'order_payments' },
+        { event: 'INSERT', schema: 'public', table: 'order_payments', filter: paymentFilter },
         (payload) => {
           const payment = payload.new;
           

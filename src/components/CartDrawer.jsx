@@ -42,6 +42,23 @@ const getTable = () => {
   }
 };
 
+const getLocationId = (brandId) => {
+  try {
+    const sess = sessionStorage.getItem("aa_current_location_id");
+    if (sess) return sess;
+    
+    // Use the standard brand-specific key if brandId is available
+    if (brandId) {
+      const brandLoc = localStorage.getItem(`aa_active_loc_${brandId}`);
+      if (brandLoc) return brandLoc;
+    }
+
+    return localStorage.getItem("aa_active_location_id") || "";
+  } catch {
+    return "";
+  }
+};
+
 // Using shared translateGroup from utils/formatters.js
 
 const buildWaText = ({ items = [], total = 0, note = "", brandName = "Aluna" }) => {
@@ -163,12 +180,20 @@ export default function CartDrawer({ open, onClose }) {
     try {
       const mesa = getTable();
       
-      // 1. Get exact table_id if mesa string matches table_number
+      // 1. Get exact table_id and location_id if dine_in
       let tableId = null;
+      let orderLocationId = getLocationId(activeBrand?.id);
+
       if (fulfillmentType === 'dine_in' && mesa) {
         const { data: tableData } = await supabase.from('restaurant_tables')
-          .select('id').eq('table_number', mesa).single();
-         if (tableData) tableId = tableData.id;
+          .select('id, location_id')
+          .eq('table_number', mesa)
+          .eq('brand_id', activeBrand?.id)
+          .maybeSingle();
+         if (tableData) {
+           tableId = tableData.id;
+           if (tableData.location_id) orderLocationId = tableData.location_id;
+         }
       }
 
       // 2. Insert Order
@@ -176,6 +201,8 @@ export default function CartDrawer({ open, onClose }) {
 
       const { data: orderData, error: orderError } = await supabase.from('orders')
         .insert([{
+          brand_id: activeBrand?.id,
+          location_id: orderLocationId || null,
           status: (fulfillmentType === 'dine_in' || fulfillmentType === 'takeaway') ? 'new' : 'waiting_payment',
           origin: fulfillmentType === 'dine_in' ? 'table' : (fulfillmentType === 'takeaway' ? 'takeaway' : 'whatsapp'),
           fulfillment_type: fulfillmentType,

@@ -232,15 +232,11 @@ export default function AdminOrders() {
   }, [activeBrandId, isAllLocations, activeLocationId]);
 
   useEffect(() => {
-    if (!activeBrandId) {
-      setLoading(false);
-      return;
-    }
+    // Safety: don't subscribe if missing identifiers
+    if (!activeBrandId || (!isAllLocations && !activeLocationId)) return;
 
-    fetchOrders();
-
-    const locationFilter = !isAllLocations && activeLocationId ? `,location_id=eq.${activeLocationId}` : '';
-    const channelName = `admin-orders-${activeBrandId}${!isAllLocations && activeLocationId ? `-${activeLocationId}` : ''}`;
+    const channelName = `admin-orders-${activeBrandId}-${isAllLocations ? 'all' : activeLocationId}`;
+    const orderFilter = isAllLocations ? `brand_id=eq.${activeBrandId}` : `location_id=eq.${activeLocationId}`;
 
     const channel = supabase
       .channel(channelName)
@@ -248,8 +244,11 @@ export default function AdminOrders() {
         event: 'INSERT', 
         schema: 'public', 
         table: 'orders',
-        filter: `brand_id=eq.${activeBrandId}${locationFilter}`
+        filter: orderFilter
       }, (payload) => {
+        // Double check location client-side (extra safety)
+        if (!isAllLocations && activeLocationId && payload.new.location_id !== activeLocationId) return;
+
         setOrders(prev => [payload.new, ...prev]);
         playNotificationSound();
         toast('Nuevo pedido recibido!', { icon: '🔔' });
@@ -259,8 +258,14 @@ export default function AdminOrders() {
         event: 'UPDATE', 
         schema: 'public', 
         table: 'orders',
-        filter: `brand_id=eq.${activeBrandId}${locationFilter}`
+        filter: orderFilter
       }, (payload) => {
+        // Filter by location client-side if needed
+        if (!isAllLocations && activeLocationId && payload.new.location_id !== activeLocationId) {
+          setOrders(prev => prev.filter(o => o.id !== payload.new.id));
+          return;
+        }
+
         setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o));
         if (selectedOrder?.id === payload.new.id) {
             setSelectedOrder(prev => ({ ...prev, ...payload.new }));
@@ -269,7 +274,8 @@ export default function AdminOrders() {
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'order_items' 
+        table: 'order_items',
+        filter: `brand_id=eq.${activeBrandId}`
       }, () => {
         fetchOrders();
       })
@@ -278,7 +284,7 @@ export default function AdminOrders() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [activeBrandId, fetchOrders, activeLocationId, isAllLocations]); 
+  }, [activeBrandId, fetchOrders, activeLocationId, isAllLocations, selectedOrder?.id]); 
 
   // NEW: Sync selectedOrder with the latest data from the orders list
   useEffect(() => {
