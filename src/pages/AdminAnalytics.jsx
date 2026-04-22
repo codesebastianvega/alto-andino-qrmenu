@@ -375,21 +375,26 @@ export default function AdminAnalytics() {
       setIsReady(true);
 
       // --- Advanced Analytics RPCs (load in background, non-blocking) ---
+      const p_location_id = isAllLocations ? null : activeLocationId;
+
       Promise.all([
         supabase.rpc('analytics_forecasting', { 
           p_brand_id: activeBrandId, 
           p_start_date: start.toISOString(), 
-          p_end_date: new Date().toISOString()
+          p_end_date: new Date().toISOString(),
+          p_location_id
         }),
         supabase.rpc('analytics_revpash', { 
           p_brand_id: activeBrandId, 
           p_start_date: start.toISOString(), 
-          p_end_date: new Date().toISOString() 
+          p_end_date: new Date().toISOString(),
+          p_location_id
         }),
         supabase.rpc('analytics_cohorts', { 
           p_brand_id: activeBrandId, 
           p_start_date: start.toISOString(), 
-          p_end_date: new Date().toISOString() 
+          p_end_date: new Date().toISOString(),
+          p_location_id
         }),
         supabase.from('products').select('id', { count: 'exact' }).eq('brand_id', activeBrandId).or('cost.eq.0,cost.is.null')
       ]).then(([forecastingRes, revPashRes, cohortsRes, integrityRes]) => {
