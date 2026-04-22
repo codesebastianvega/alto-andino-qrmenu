@@ -35,6 +35,8 @@ export default function AdminSedes({ isEmbedded = false }) {
 
   const handleOpenModal = (loc = null) => {
     setActiveTab('info');
+    const mainLocation = locations.find(l => l.is_main);
+    
     if (loc) {
       setEditingLocation(loc);
       setForm({
@@ -54,8 +56,8 @@ export default function AdminSedes({ isEmbedded = false }) {
       setForm({
         name: '',
         address: '',
-        phone: '',
-        whatsapp: '',
+        phone: mainLocation?.phone || '',
+        whatsapp: mainLocation?.whatsapp || '',
         maps_url: '',
         is_main: locations.length === 0,
         is_active: true,
@@ -318,6 +320,7 @@ export default function AdminSedes({ isEmbedded = false }) {
                                 value={form.whatsapp} 
                                 onChange={(e) => setForm({...form, whatsapp: e.target.value})} 
                                 placeholder="+57 321 456 7890"
+                                required
                                 className="text-lg font-black py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white text-emerald-600"
                             />
                           </FormField>
