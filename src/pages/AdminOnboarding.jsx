@@ -12,12 +12,12 @@ import {
   Upload, 
   Loader2,
   Globe,
-  Instagram,
-  Zap
+  Zap,
+  Briefcase
 } from 'lucide-react';
 
 export default function AdminOnboarding() {
-  const { activeBrand, switchBrand, profile } = useAuth();
+  const { activeBrand } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -29,6 +29,12 @@ export default function AdminOnboarding() {
     business_type: 'restaurant',
     whatsapp: '',
     phone: '',
+    email: '',
+    city: '',
+    country: '',
+    address: '',
+    business_legal_name: '',
+    tax_id: '',
     primary_color: '#7db87a',
     logo_url: '',
   });
@@ -40,13 +46,38 @@ export default function AdminOnboarding() {
         name: activeBrand.name || '',
         slug: activeBrand.slug || '',
         business_type: activeBrand.business_type || 'restaurant',
+        whatsapp: activeBrand.whatsapp || '',
+        phone: activeBrand.phone || '',
+        email: activeBrand.email || '',
+        city: activeBrand.city || '',
+        country: activeBrand.country || '',
+        address: activeBrand.address || '',
         logo_url: activeBrand.logo_url || '',
       }));
     }
   }, [activeBrand]);
 
-  const handleNext = () => setStep(s => s + 1);
-  const handleBack = () => setStep(s => s - 1);
+  const handleNext = () => {
+    // Validación por paso
+    if (step === 1) {
+      if (!formData.name || !formData.slug || !formData.business_type) {
+        setError('Por favor completa todos los campos de Identidad.');
+        return;
+      }
+    } else if (step === 2) {
+      if (!formData.whatsapp || !formData.phone || !formData.email || !formData.city || !formData.country || !formData.address) {
+        setError('Por favor completa todos los datos obligatorios de Contacto y Ubicación.');
+        return;
+      }
+    }
+    setError(null);
+    setStep(s => s + 1);
+  };
+  
+  const handleBack = () => {
+    setError(null);
+    setStep(s => s - 1);
+  };
 
   const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -92,6 +123,10 @@ export default function AdminOnboarding() {
           business_type: formData.business_type,
           whatsapp: formData.whatsapp,
           phone: formData.phone,
+          email: formData.email,
+          city: formData.city,
+          country: formData.country,
+          address: formData.address,
           logo_url: formData.logo_url,
           onboarding_completed: true,
         })
@@ -104,6 +139,8 @@ export default function AdminOnboarding() {
         .from('restaurant_settings')
         .update({
           business_name: formData.name,
+          business_legal_name: formData.business_legal_name,
+          tax_id: formData.tax_id,
           primary_color: formData.primary_color,
           logo_url: formData.logo_url,
         })
@@ -124,7 +161,8 @@ export default function AdminOnboarding() {
   const steps = [
     { id: 1, title: 'Identidad', icon: Store },
     { id: 2, title: 'Contacto', icon: Phone },
-    { id: 3, title: 'Estilo', icon: Palette },
+    { id: 3, title: 'Legal', icon: Briefcase },
+    { id: 4, title: 'Estilo', icon: Palette },
   ];
 
   return (
@@ -139,11 +177,11 @@ export default function AdminOnboarding() {
         </div>
 
         {/* Stepper */}
-        <div className="flex items-center justify-center gap-4 mb-10">
+        <div className="flex items-center justify-center gap-2 md:gap-4 mb-10 overflow-x-auto pb-2">
           {steps.map((s, i) => (
             <React.Fragment key={s.id}>
               <div 
-                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-full transition-all whitespace-nowrap ${
                   step === s.id 
                     ? 'bg-[#7db87a] text-black font-bold' 
                     : step > s.id 
@@ -152,15 +190,15 @@ export default function AdminOnboarding() {
                 }`}
               >
                 <s.icon size={16} />
-                <span className="text-sm">{s.title}</span>
+                <span className="text-xs md:text-sm">{s.title}</span>
               </div>
-              {i < steps.length - 1 && <div className="h-px w-8 bg-white/10" />}
+              {i < steps.length - 1 && <div className="h-px w-4 md:w-8 bg-white/10 shrink-0" />}
             </React.Fragment>
           ))}
         </div>
 
         {/* Content Card */}
-        <div className="bg-[#111] border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+        <div className="bg-[#111] border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
           {loading && (
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center rounded-3xl">
               <Loader2 className="w-10 h-10 text-[#7db87a] animate-spin" />
@@ -178,7 +216,7 @@ export default function AdminOnboarding() {
             <div className="space-y-6 animate-in fade-in duration-500">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Nombre Comercial</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Nombre Comercial *</label>
                   <input 
                     type="text" 
                     value={formData.name}
@@ -188,15 +226,15 @@ export default function AdminOnboarding() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Slug (URL)</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Slug (URL) *</label>
                   <div className="flex items-center bg-white/5 border border-white/10 rounded-xl px-4 py-3">
                     <Globe size={14} className="text-gray-500 mr-2" />
-                    <span className="text-xs text-gray-500 mr-1">aluna.app/</span>
+                    <span className="text-[10px] md:text-xs text-gray-500 mr-1 hidden md:inline">aluna.app/</span>
                     <input 
                       type="text" 
                       value={formData.slug}
                       onChange={e => setFormData({...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})}
-                      className="bg-transparent flex-1 text-white outline-none"
+                      className="bg-transparent flex-1 text-white outline-none w-full"
                       placeholder="mi-restaurante"
                     />
                   </div>
@@ -204,7 +242,7 @@ export default function AdminOnboarding() {
               </div>
 
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Tipo de Negocio</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Tipo de Negocio *</label>
                 <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
                   {['restaurant', 'cafe', 'bakery', 'bar', 'store', 'other'].map(type => (
                     <button
@@ -216,7 +254,7 @@ export default function AdminOnboarding() {
                           : 'border-white/10 text-gray-500 hover:border-white/20'
                       }`}
                     >
-                      {type}
+                      {type === 'restaurant' ? 'Rte' : type === 'bakery' ? 'Pan' : type}
                     </button>
                   ))}
                 </div>
@@ -224,21 +262,14 @@ export default function AdminOnboarding() {
             </div>
           )}
 
-          {/* STEP 2: CONTACT */}
+          {/* STEP 2: CONTACT & LOCATION */}
           {step === 2 && (
             <div className="space-y-6 animate-in fade-in duration-500">
-              <div className="bg-[#1A1A1A] p-6 rounded-2xl border border-white/5">
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="p-3 bg-[#25D366]/10 rounded-xl text-[#25D366]">
-                    <Zap size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold">WhatsApp de Pedidos</h3>
-                    <p className="text-gray-500 text-xs">Este número recibirá los pedidos de tus clientes directamente.</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Número de WhatsApp (con código de país)</label>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 {/* WhatsApp */}
+                 <div className="space-y-2">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">WhatsApp Pedidos *</label>
                   <input 
                     type="tel" 
                     value={formData.whatsapp}
@@ -246,24 +277,118 @@ export default function AdminOnboarding() {
                     className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-[#25D366]/50 outline-none transition"
                     placeholder="Ej. +573001234567"
                   />
+                  <p className="text-[10px] text-gray-500">Recibirá los pedidos directamente.</p>
+                </div>
+
+                {/* Correo */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Correo Público *</label>
+                  <input 
+                    type="email" 
+                    value={formData.email}
+                    onChange={e => setFormData({...formData, email: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-[#7db87a]/50 outline-none transition"
+                    placeholder="contacto@minegocio.com"
+                  />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Teléfono Staff / Auxiliar</label>
+               {/* Teléfono Staff */}
+               <div className="space-y-2">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Teléfono Secundario (Staff) *</label>
                 <input 
                   type="tel" 
                   value={formData.phone}
                   onChange={e => setFormData({...formData, phone: e.target.value})}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-[#7db87a]/50 outline-none transition"
-                  placeholder="Teléfono fijo o móvil de contacto"
+                  placeholder="Teléfono fijo o móvil adicional"
                 />
+              </div>
+
+              {/* País y Ciudad */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">País *</label>
+                  <input 
+                    type="text" 
+                    value={formData.country}
+                    onChange={e => setFormData({...formData, country: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-[#7db87a]/50 outline-none transition"
+                    placeholder="Ej. Colombia"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Ciudad *</label>
+                  <input 
+                    type="text" 
+                    value={formData.city}
+                    onChange={e => setFormData({...formData, city: e.target.value})}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-[#7db87a]/50 outline-none transition"
+                    placeholder="Ej. Bogotá"
+                  />
+                </div>
+              </div>
+
+              {/* Dirección */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                  <MapPin size={14} /> Dirección Completa *
+                </label>
+                <input 
+                  type="text" 
+                  value={formData.address}
+                  onChange={e => setFormData({...formData, address: e.target.value})}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-[#7db87a]/50 outline-none transition"
+                  placeholder="Ej. Av. Siempre Viva 123, Local 4"
+                />
+              </div>
+
+            </div>
+          )}
+
+          {/* STEP 3: LEGAL INFO (OPTIONAL) */}
+          {step === 3 && (
+            <div className="space-y-6 animate-in fade-in duration-500">
+               <div className="bg-[#1A1A1A] p-6 rounded-2xl border border-white/5">
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="p-3 bg-blue-500/10 rounded-xl text-blue-500">
+                    <Briefcase size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold">Información Legal (Opcional)</h3>
+                    <p className="text-gray-500 text-xs">Puedes llenar esto después. Es requerido para facturación o trámites formales.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Razón Social</label>
+                    <input 
+                      type="text" 
+                      value={formData.business_legal_name}
+                      onChange={e => setFormData({...formData, business_legal_name: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+                      placeholder="Ej. Inversiones Gastronómicas S.A.S."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">NIT / RUT</label>
+                    <input 
+                      type="text" 
+                      value={formData.tax_id}
+                      onChange={e => setFormData({...formData, tax_id: e.target.value})}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition"
+                      placeholder="Ej. 900.123.456-7"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {/* STEP 3: STYLE */}
-          {step === 3 && (
+          {/* STEP 4: STYLE */}
+          {step === 4 && (
             <div className="space-y-6 animate-in fade-in duration-500">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
@@ -288,8 +413,8 @@ export default function AdminOnboarding() {
                 </div>
 
                 <div className="space-y-4">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Color de Identidad</label>
-                  <p className="text-xs text-gray-500 mb-2">Este color definirá los botones y destacados de tu menú digital.</p>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Color Oficial</label>
+                  <p className="text-[10px] text-gray-500 mb-2">Este color definirá los botones de tu menú digital o portal.</p>
                   <div className="flex items-center gap-4">
                     <input 
                       type="color" 
@@ -298,7 +423,7 @@ export default function AdminOnboarding() {
                       className="h-16 w-16 bg-transparent border-none cursor-pointer"
                     />
                     <div className="flex-1">
-                      <div className={`h-12 w-full rounded-xl flex items-center justify-center text-[10px] font-bold uppercase shadow-lg`} style={{ backgroundColor: formData.primary_color }}>
+                      <div className={`h-12 w-full rounded-xl flex items-center justify-center text-[10px] font-bold uppercase shadow-lg text-black`} style={{ backgroundColor: formData.primary_color }}>
                         Vista Previa Botón
                       </div>
                     </div>
@@ -323,7 +448,7 @@ export default function AdminOnboarding() {
             <button
               onClick={handleBack}
               disabled={step === 1 || loading}
-              className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition ${
+              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-full text-sm font-bold transition ${
                 step === 1 ? 'opacity-0 pointer-events-none' : 'text-gray-400 hover:text-white'
               }`}
             >
@@ -331,10 +456,10 @@ export default function AdminOnboarding() {
               Atrás
             </button>
 
-            {step < 3 ? (
+            {step < 4 ? (
               <button
                 onClick={handleNext}
-                className="flex items-center gap-2 px-8 py-3 bg-white text-black rounded-full text-sm font-bold hover:bg-gray-200 transition"
+                className="flex items-center gap-2 px-6 md:px-8 py-3 bg-white text-black rounded-full text-sm font-bold hover:bg-gray-200 transition"
               >
                 Siguiente
                 <ChevronRight size={18} />
@@ -342,9 +467,9 @@ export default function AdminOnboarding() {
             ) : (
               <button
                 onClick={handleSubmit}
-                className="flex items-center gap-2 px-8 py-3 bg-[#7db87a] text-black rounded-full text-sm font-bold hover:scale-105 transition"
+                className="flex items-center gap-2 px-6 md:px-8 py-3 bg-[#7db87a] text-black rounded-full text-sm font-bold hover:scale-105 transition"
               >
-                Completar Configuración
+                Completar <span className="hidden md:inline">Configuración</span>
                 <CheckCircle2 size={18} />
               </button>
             )}
