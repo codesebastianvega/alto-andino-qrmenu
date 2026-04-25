@@ -198,7 +198,8 @@ export default function AdminLayout() {
   const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState(getInitialPage); 
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const [newOrdersCount, setNewOrdersCount] = useState(0);
+  const [preparingOrdersCount, setPreparingOrdersCount] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [lockedFeatureName, setLockedFeatureName] = useState('');
   
@@ -285,7 +286,7 @@ export default function AdminLayout() {
     const fetchPendingCount = async () => {
       let query = supabase
         .from('orders')
-        .select('*', { count: 'exact', head: true })
+        .select('status', { count: 'exact' })
         .eq('brand_id', activeBrandId)
         .in('status', ['new', 'preparing']);
       
@@ -293,20 +294,30 @@ export default function AdminLayout() {
         query = query.eq('location_id', activeLocationId);
       }
 
-      const { count } = await query;
-      setPendingOrdersCount(count || 0);
+      const { data, error } = await query;
+      if (!error && data) {
+        const counts = data.reduce((acc, order) => {
+          acc[order.status] = (acc[order.status] || 0) + 1;
+          return acc;
+        }, { new: 0, preparing: 0 });
+        
+        setNewOrdersCount(counts.new);
+        setPreparingOrdersCount(counts.preparing);
+      }
     };
 
     fetchPendingCount();
 
-    const locationFilter = !isAllLocations ? `,location_id=eq.${activeLocationId}` : '';
+    // Listener para cambios en tiempo real (Un solo filtro para cumplimiento de Supabase)
     const channel = supabase.channel(`layout_orders-${activeBrandId}-${activeLocationId || 'all'}`)
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'orders',
-        filter: `brand_id=eq.${activeBrandId}${locationFilter}`
+        filter: `brand_id=eq.${activeBrandId}`
       }, () => {
+        // Al recibir cualquier cambio en la marca, re-consultamos el conteo 
+        // (el fetch ya filtra por sede correctamente)
         fetchPendingCount();
       })
       .subscribe();
@@ -607,7 +618,7 @@ export default function AdminLayout() {
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'kitchen' ? 'bg-orange-400/20 text-orange-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
                       <div className="relative">
                         <Icons.Kitchen />
-                        {!isFeatureLocked('kitchen_display') && pendingOrdersCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-ping" />}
+                        {!isFeatureLocked('kitchen_display') && (newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-ping" />}
                       </div>
                     </div>
                     {!isCollapsed && (
@@ -623,10 +634,29 @@ export default function AdminLayout() {
                           </div>
                           <p className="text-[9px] text-white/30 font-medium mt-1">Pantalla de Producción</p>
                         </div>
-                        {pendingOrdersCount > 0 && !isFeatureLocked('kitchen_display') && (
-                          <span className="bg-orange-500 text-white text-[10px] font-black h-5 px-1.5 flex items-center justify-center rounded-md">
-                            {pendingOrdersCount}
-                          </span>
+                        {!isFeatureLocked('kitchen_display') && (newOrdersCount > 0 || preparingOrdersCount > 0) && (
+                          <div className="flex items-center gap-1">
+                            {newOrdersCount > 0 && (
+                              <motion.span 
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="bg-blue-500 text-white text-[10px] font-black h-4 px-1.5 flex items-center justify-center rounded-sm shadow-sm"
+                                title="Pedidos nuevos"
+                              >
+                                {newOrdersCount}
+                              </motion.span>
+                            )}
+                            {preparingOrdersCount > 0 && (
+                              <motion.span 
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="bg-orange-500 text-white text-[10px] font-black h-4 px-1.5 flex items-center justify-center rounded-sm shadow-sm"
+                                title="En preparación"
+                              >
+                                {preparingOrdersCount}
+                              </motion.span>
+                            )}
+                          </div>
                         )}
                       </div>
                     )}

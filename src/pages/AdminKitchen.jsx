@@ -475,9 +475,6 @@ export default function AdminKitchen() {
 
     fetchKitchenOrders();
 
-    // Orders can be filtered by location at DB level
-    const ordersFilter = `brand_id=eq.${activeBrandId}${!isAllLocations ? `,location_id=eq.${activeLocationId}` : ''}`;
-    
     // order_items only has brand_id, so we filter by brand and let fetchKitchenOrders handle sedes
     const itemsFilter = `brand_id=eq.${activeBrandId}`;
 
@@ -487,8 +484,12 @@ export default function AdminKitchen() {
         event: '*', 
         schema: 'public', 
         table: 'orders',
-        filter: ordersFilter
+        filter: `brand_id=eq.${activeBrandId}`
       }, (payload) => {
+        // Filtrado manual por sede debido a limitaciones de un solo filtro en Realtime de Supabase
+        const isTargetLocation = isAllLocations || (payload.new && payload.new.location_id === activeLocationId);
+        if (!isTargetLocation) return;
+
         if (payload.eventType === 'INSERT') {
             if (['new', 'preparing'].includes(payload.new.status)) {
                 playNotificationSound();
@@ -497,7 +498,7 @@ export default function AdminKitchen() {
             }
         } else if (payload.eventType === 'UPDATE') {
             if (!['new', 'preparing'].includes(payload.new.status)) {
-                // If status changed to something else (ready, delivered, cancelled), remove it
+                // Si cambió a un estado que no es de cocina, lo quitamos
                 setOrders(prev => prev.filter(o => o.id !== payload.new.id));
             } else {
                 fetchKitchenOrders();
