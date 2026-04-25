@@ -46,35 +46,35 @@ const playNotificationSound = () => {
     }
 };
 
-const DailyStats = ({ orders }) => {
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  
-  const todayOrders = orders.filter(o => {
-    const d = new Date(o.created_at);
-    return d >= today;
-  });
+const DailyStats = ({ orders, range }) => {
+  const rangeLabels = {
+    today: 'Hoy',
+    '7d': '7 Días',
+    '30d': '30 Días',
+    all: 'Total Histórico'
+  };
 
-  const deliveredToday = todayOrders.filter(o => o.status === 'delivered');
-  const revenueToday = deliveredToday.reduce((sum, o) => sum + Number(o.total_amount), 0);
+  const delivered = orders.filter(o => o.status === 'delivered');
+  const revenue = delivered.reduce((sum, o) => sum + Number(o.total_amount), 0);
+  const cancelled = orders.filter(o => o.status === 'cancelled');
   
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
       <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Ventas Hoy</p>
-        <p className="text-2xl font-black text-[#2f4131]">${revenueToday.toLocaleString()}</p>
+        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Ventas {rangeLabels[range]}</p>
+        <p className="text-2xl font-black text-[#2f4131]">${revenue.toLocaleString()}</p>
       </div>
       <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Pedidos Hoy</p>
-        <p className="text-2xl font-black text-gray-800">{todayOrders.length}</p>
+        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Pedidos {rangeLabels[range]}</p>
+        <p className="text-2xl font-black text-gray-800">{orders.length}</p>
       </div>
       <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
         <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Entregados</p>
-        <p className="text-2xl font-black text-green-600">{deliveredToday.length}</p>
+        <p className="text-2xl font-black text-green-600">{delivered.length}</p>
       </div>
       <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
         <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Cancelados</p>
-        <p className="text-2xl font-black text-red-600">{todayOrders.filter(o => o.status === 'cancelled').length}</p>
+        <p className="text-2xl font-black text-red-600">{cancelled.length}</p>
       </div>
     </div>
   );
@@ -118,6 +118,7 @@ function OrderTimer({ createdAt, status }) {
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState('today'); // Default: Today
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -134,12 +135,7 @@ export default function AdminOrders() {
   const { activeLocationId, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id;
 
-  // Debug location state
-  useEffect(() => {
-    console.log('Location state updated in AdminOrders:', { activeLocationId, isAllLocations });
-  }, [activeLocationId, isAllLocations]);
-
-
+  // REINSTATED: Missing logic for staff, payments and settings
   const { staffList } = useStaff();
   const waiters = useMemo(() => staffList.filter(s => s.role === 'waiter' || s.role === 'admin'), [staffList]);
 
@@ -149,7 +145,6 @@ export default function AdminOrders() {
   // Set default payment method when methods are loaded
   useEffect(() => {
     if (activeMethods.length > 0) {
-      // Si no hay seleccionado o el seleccionado ya no existe/está inactivo
       const currentExists = activeMethods.find(m => m.id === selectedPaymentMethod);
       if (!selectedPaymentMethod || !currentExists) {
         setSelectedPaymentMethod(activeMethods[0].id);
@@ -188,12 +183,32 @@ export default function AdminOrders() {
     }
   };
 
+  // Helper for date filtering (Colombia UTC-5)
+  const getFilterDate = useCallback(() => {
+    if (dateRange === 'all') return null;
+    const now = new Date();
+    const offsetMs = 5 * 60 * 60 * 1000;
+    
+    if (dateRange === 'today') {
+      const localMs = now.getTime() - offsetMs;
+      const localDate = new Date(localMs);
+      const startLocal = new Date(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate(), 0, 0, 0, 0);
+      return new Date(startLocal.getTime() + offsetMs).toISOString();
+    }
+    
+    const days = dateRange === '7d' ? 7 : 30;
+    const date = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+    const startOfRange = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+    return new Date(startOfRange.getTime() + offsetMs).toISOString();
+  }, [dateRange]);
+
   const fetchOrders = useCallback(async () => {
     if (!activeBrandId) {
       setLoading(false);
       return;
     }
-    console.log('Fetching orders with filter:', isAllLocations ? 'All Locations' : `Location: ${activeLocationId}`);
+    
+    const filterDate = getFilterDate();
     try {
       setLoading(true);
 
@@ -214,6 +229,10 @@ export default function AdminOrders() {
         query = query.eq('brand_id', activeBrandId);
       }
 
+      if (filterDate) {
+        query = query.gte('created_at', filterDate);
+      }
+
       if (!isAllLocations && activeLocationId) {
         query = query.eq('location_id', activeLocationId);
       }
@@ -229,7 +248,7 @@ export default function AdminOrders() {
     } finally {
       setLoading(false);
     }
-  }, [activeBrandId, isAllLocations, activeLocationId]);
+  }, [activeBrandId, isAllLocations, activeLocationId, getFilterDate, dateRange]);
 
   useEffect(() => {
     // Safety: don't subscribe if missing identifiers
@@ -601,20 +620,35 @@ export default function AdminOrders() {
        )}
        {/* Actions Bar */}
        <div className="flex justify-end mb-6 gap-3">
-          <button 
-            onClick={exportLeads} 
-            className="px-4 py-2 bg-amber-50 border border-amber-200 rounded-2xl hover:bg-amber-100 text-amber-700 transition-colors shadow-sm flex items-center gap-2 font-bold text-sm"
-          >
-             <Icon icon="heroicons:arrow-down-tray" className="text-xl" />
-             Exportar Leads
-          </button>
+          {/* Time Range Selector */}
+          <div className="flex bg-white border border-gray-100 p-1 rounded-2xl shadow-sm overflow-hidden">
+            {[
+              { id: 'today', label: 'Hoy' },
+              { id: '7d', label: '7 Días' },
+              { id: '30d', label: '30 Días' },
+              { id: 'all', label: 'Total' }
+            ].map((range) => (
+              <button
+                key={range.id}
+                onClick={() => setDateRange(range.id)}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                  dateRange === range.id 
+                    ? 'bg-[#2f4131] text-white shadow-md shadow-[#2f4131]/20' 
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {range.label}
+              </button>
+            ))}
+          </div>
+
           <button onClick={fetchOrders} className="p-3 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 text-gray-600 transition-colors shadow-sm flex items-center gap-2 font-bold text-sm">
-             <Icon icon="heroicons:arrow-path" className="text-xl" />
+             <Icon icon="heroicons:arrow-path" className={`text-xl ${loading ? 'animate-spin' : ''}`} />
              Actualizar
           </button>
        </div>
        
-       <DailyStats orders={orders} />
+       <DailyStats orders={orders} range={dateRange} />
 
        {loading && orders.length === 0 ? (
         <div className="flex justify-center items-center h-64">
