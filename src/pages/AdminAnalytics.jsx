@@ -305,7 +305,7 @@ export default function AdminAnalytics() {
       }
       const filterObj = !isAllLocations && activeLocationId ? { location_id: activeLocationId } : {};
 
-      const [ordersRes, leadsRes, eventsRes, prevOrdersRes, prevLeadsRes, prevEventsRes, pmRes, productsRes] = await Promise.all([
+      const [ordersRes, leadsRes, eventsRes, prevOrdersRes, prevLeadsRes, prevEventsRes, pmRes, productsRes, paymentsRes] = await Promise.all([
         // 1. Current Period Orders
         supabase.from('orders').select(`
           id, total_amount, status, created_at, delivered_at, fulfillment_type, payment_method,
@@ -360,14 +360,26 @@ export default function AdminAnalytics() {
         supabase.from('payment_methods').select('id, name').eq('brand_id', activeBrandId),
 
         // 8. Products
-        supabase.from('products').select('id, name, cost, price, image_url').eq('brand_id', activeBrandId)
+        supabase.from('products').select('id, name, cost, price, image_url').eq('brand_id', activeBrandId),
+
+        // 9. Order Payments
+        supabase.from('order_payments').select(`
+          id, amount, created_at,
+          payment_methods ( name, type ),
+          orders!inner ( id, brand_id, created_at, location_id )
+        `)
+          .eq('orders.brand_id', activeBrandId)
+          .match(filterObj)
+          .gte('created_at', start.toISOString())
+          .order('created_at', { ascending: false })
       ]);
 
       setData({
         orders: ordersRes.data || [],
         leads: leadsRes.data || [],
         events: eventsRes.data || [],
-        paymentMethods: pmRes.data || []
+        paymentMethods: pmRes.data || [],
+        payments: paymentsRes.data || []
       });
 
       setAllProducts(productsRes.data || []);
@@ -895,29 +907,33 @@ export default function AdminAnalytics() {
   }, [data?.orders]);
 
   const paymentStats = useMemo(() => {
-    if (!data?.orders) return [];
-    const stats = {};
-    data.orders.filter(o => o.status === 'delivered').forEach(o => {
-      const method = o.payment_method || 'cash';
-      
-      // Map labels
-      let label = method;
-      if (method === 'cash') label = 'Efectivo';
-      else if (method === 'card') label = 'Tarjeta';
-      else if (method === 'Sin especificar' || !method) label = 'Sin especificar';
-      else {
-        // Search in paymentMethods if it's a UUID
-        const found = data.paymentMethods?.find(pm => pm.id === method);
-        if (found && found.name) label = found.name;
-        else if (method.length > 20) label = 'Otro (Personalizado)'; // Fallback for UUIDs not found
-      }
+    const pmCounts = {};
+    
+    // Use order_payments if available
+    if (data?.payments && data.payments.length > 0) {
+      data.payments.forEach(p => {
+        const name = p.payment_methods?.name || 'Otro';
+        pmCounts[name] = (pmCounts[name] || 0) + Number(p.amount || 0);
+      });
+    } else {
+      // Fallback to orders.payment_method for legacy data
+      data?.orders?.filter(o => o.status === 'delivered').forEach(o => {
+        let method = o.payment_method || 'Otro';
+        if (method === 'cash') method = 'Efectivo';
+        else if (method === 'card') method = 'Tarjeta';
+        else if (method.length > 30) {
+          const pmEntry = data.paymentMethods.find(p => p.id === method);
+          if (pmEntry) method = pmEntry.name;
+          else method = 'Otro (Personalizado)';
+        }
+        pmCounts[method] = (pmCounts[method] || 0) + (o.total_amount || 0);
+      });
+    }
 
-      if (!stats[label]) stats[label] = { name: label, value: 0, count: 0 };
-      stats[label].value += Number(o.total_amount);
-      stats[label].count += 1;
-    });
-    return Object.values(stats);
-  }, [data?.orders, data?.paymentMethods]);
+    return Object.entries(pmCounts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [data?.orders, data?.payments, data?.paymentMethods]);
 
 
   const hourlyStats = useMemo(() => {
@@ -1280,13 +1296,12 @@ export default function AdminAnalytics() {
           </div>
         </GlassCard>
 
-
-        {/* Conversion Funnel */}
+        {/* Conversion Funnel - Moved Up */}
         <GlassCard className="p-8 flex flex-col">
           <div className="flex justify-between items-center mb-8">
-            <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Embudo</h3>
+            <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Embudo de Ventas</h3>
             <div className="text-right">
-              <p className="text-xs font-black text-rose-600">{analyticsSummary.abandonmentRate}% Escapa</p>
+              <p className="text-xs font-black text-rose-600">{analyticsSummary.abandonmentRate}% Fuga</p>
             </div>
           </div>
           <div className="flex-1 space-y-4">
@@ -1295,9 +1310,9 @@ export default function AdminAnalytics() {
               const maxVal = Math.max(scans, visits, ordersCount, 1);
               
               const steps = [
-                { label: 'Escaneos', val: scans, icon: Zap, color: 'bg-amber-100 text-amber-600', percent: (scans / maxVal) * 100 },
-                { label: 'Vistas', val: visits, icon: Monitor, color: 'bg-blue-100 text-blue-600', percent: (visits / maxVal) * 100 },
-                { label: 'Pedidos', val: ordersCount, icon: ShoppingCart, color: 'bg-emerald-100 text-emerald-600', percent: (ordersCount / maxVal) * 100 }
+                { label: 'Escaneos QR', val: scans, icon: Zap, color: 'bg-amber-100 text-amber-600', percent: (scans / maxVal) * 100 },
+                { label: 'Vistas Carta', val: visits, icon: Monitor, color: 'bg-blue-100 text-blue-600', percent: (visits / maxVal) * 100 },
+                { label: 'Pedidos Realizados', val: ordersCount, icon: ShoppingCart, color: 'bg-emerald-100 text-emerald-600', percent: (ordersCount / maxVal) * 100 }
               ];
 
               return steps.map((step, i) => (
@@ -1317,6 +1332,119 @@ export default function AdminAnalytics() {
               ));
             })()}
           </div>
+        </GlassCard>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* Recent Orders - Visual Feed - Expanded to 3 cols */}
+        <GlassCard className="lg:col-span-3 p-8">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Actividad Reciente</h3>
+              <p className="text-[10px] font-bold text-gray-400 uppercase">Monitor operativo en vivo</p>
+            </div>
+            <div className="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest animate-pulse">
+              En Vivo
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px]">
+              <thead>
+                <tr className="text-[9px] font-black text-gray-300 uppercase tracking-widest border-b border-gray-50">
+                  <th className="pb-4">Estado</th>
+                  <th className="pb-4">Origen</th>
+                  <th className="pb-4">Hora</th>
+                  <th className="pb-4 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {(data?.orders || []).slice(0, 6).map((o, i) => (
+                  <tr key={i} className="group hover:bg-gray-50/50 transition-all cursor-pointer">
+                    <td className="py-4">
+                       <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-[10px] ${
+                          o.status === 'delivered' ? 'bg-emerald-100 text-emerald-600' : 
+                          o.status === 'cancelled' ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'
+                       }`}>
+                        {o.status === 'delivered' ? '✓' : o.status === 'cancelled' ? '✕' : '🕒'}
+                       </div>
+                    </td>
+                    <td className="py-4">
+                      <p className="text-[10px] font-black text-gray-900 uppercase">
+                        {o.fulfillment_type === 'dine_in' ? `Mesa ${o.restaurant_tables?.table_number || '??'}` : 'Para Llevar'}
+                      </p>
+                      <p className="text-[8px] font-bold text-gray-400 uppercase">#{o.id.slice(0, 6)}</p>
+                    </td>
+                    <td className="py-4 font-bold text-gray-500 uppercase">
+                      {new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="py-4 text-right">
+                      <p className="text-[11px] font-black text-gray-900 font-mono tracking-tight">{formatCompactCurrency(o.total_amount)}</p>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </GlassCard>
+
+        {/* Action Card - Operational Focus */}
+        <GlassCard className="p-8 flex flex-col justify-between border-gray-100/50 relative overflow-hidden group">
+          {/* Subtle Dynamic Background */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-emerald-50 rounded-full blur-[80px] opacity-60 group-hover:opacity-100 transition-all duration-700" />
+          
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center mb-4 border border-gray-100 shadow-sm transition-transform group-hover:scale-110 duration-500">
+              <Zap className="w-5 h-5 text-emerald-500" />
+            </div>
+            <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight text-center">Rendimiento Operativo</h3>
+            <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase tracking-wider text-center">Estado de Hoy</p>
+          </div>
+
+          {/* Central Metric - Centered & Enriched */}
+          <div className="relative z-10 flex flex-col items-center py-4">
+             {(() => {
+                const successfulOrders = (data?.orders || []).filter(o => o.status === 'delivered');
+                const totalRevenue = successfulOrders.reduce((acc, o) => acc + (o.total_amount || 0), 0);
+                const avgTicket = successfulOrders.length > 0 ? totalRevenue / successfulOrders.length : 0;
+
+                return (
+                   <>
+                      <div className="flex items-baseline justify-center gap-1.5">
+                         <span className="text-5xl font-black text-gray-900 tracking-tighter">
+                            {successfulOrders.length}
+                         </span>
+                         <span className="text-[11px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-1.5 py-0.5 rounded-md">
+                            Ventas
+                         </span>
+                      </div>
+                      
+                      <div className="mt-4 flex gap-6 items-center">
+                         <div className="text-center">
+                            <p className="text-[10px] font-black text-gray-900 font-mono">
+                               {formatCompactCurrency(avgTicket)}
+                            </p>
+                            <p className="text-[8px] font-bold text-gray-400 uppercase">Ticket Prom.</p>
+                         </div>
+                         <div className="w-px h-6 bg-gray-100" />
+                         <div className="text-center">
+                            <p className="text-[10px] font-black text-emerald-600">
+                               LIVE
+                            </p>
+                            <p className="text-[8px] font-bold text-gray-400 uppercase">Sincronizado</p>
+                         </div>
+                      </div>
+                   </>
+                );
+             })()}
+          </div>
+          
+          <button 
+            onClick={() => setActiveTab('operaciones')}
+            className="relative z-10 w-full py-3.5 bg-gray-900 text-white rounded-xl text-[9px] font-black uppercase tracking-[0.2em] hover:bg-emerald-600 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+          >
+            Ver Pedidos (Log)
+            <span className="opacity-40 tracking-normal font-normal">→</span>
+          </button>
         </GlassCard>
       </div>
 
@@ -2451,7 +2579,7 @@ export default function AdminAnalytics() {
       <div className="flex flex-wrap gap-3 mb-12 pb-6 border-b border-gray-100">
         <TabButton active={activeTab === 'resumen'} onClick={() => setActiveTab('resumen')} icon={Zap} label="Resumen" />
         <TabButton active={activeTab === 'analitica'} onClick={() => setActiveTab('analitica')} icon={TrendingUp} label="Analítica" />
-        <TabButton active={activeTab === 'operaciones'} onClick={() => setActiveTab('operaciones')} icon={Database} label="Operaciones" />
+        <TabButton active={activeTab === 'operaciones'} onClick={() => setActiveTab('operaciones')} icon={Database} label="Pedidos (Log)" />
         <TabButton active={activeTab === 'crm'} onClick={() => setActiveTab('crm')} icon={Users} label="Clientes (CRM)" />
       </div>
 

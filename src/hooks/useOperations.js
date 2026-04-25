@@ -173,7 +173,7 @@ export function useOperations() {
         orders!inner ( id, brand_id, created_at, location_id )
       `)
       .eq('orders.brand_id', brandId)
-      .gte('orders.created_at', startOfDay);
+      .gte('created_at', startOfDay);
 
     if (!isAllLocations) {
       query = query.eq('orders.location_id', activeLocationId);
