@@ -39,8 +39,10 @@ export function useOperations() {
   const [loading, setLoading] = useState(true);
   const [liveEvents, setLiveEvents] = useState([]); // FIFO max 20
 
-  // Ref para evitar toast duplicados en la misma sesión
+  // Refs para evitar loops y cierres obsoletos en realtime
   const knownOrderIds = useRef(new Set());
+  const ordersRef = useRef(orders);
+  useEffect(() => { ordersRef.current = orders; }, [orders]);
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -297,9 +299,8 @@ export function useOperations() {
           const payment = payload.new;
           
           // Si estamos en una sede específica, verificamos si el pago pertenece a una orden de esa sede
-          // Dado que el payload de postgres_changes no trae la orden unida, tenemos que verificar si la orden
-          // ya existe en nuestra lista filtrada de órdenes.
-          const orderExists = orders.some(o => o.id === payment.order_id);
+          // Usamos ordersRef para evitar que este effect dependa de 'orders' (loop)
+          const orderExists = ordersRef.current.some(o => o.id === payment.order_id);
           
           // Si no es "Todas" y la orden no está en nuestra lista, ignoramos el evento
           if (!isAllLocations && !orderExists) return;
@@ -336,7 +337,7 @@ export function useOperations() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [brandId, activeLocationId, isAllLocations, fetchOrders, fetchPayments, fetchTables, fetchAreas, pushEvent, orders]);
+  }, [brandId, activeLocationId, isAllLocations, fetchOrders, fetchPayments, fetchTables, fetchAreas, pushEvent]);
 
   // ─── Métricas Derivadas (calculadas, no en estado) ─────────────────────────
 

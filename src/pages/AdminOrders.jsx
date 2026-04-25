@@ -233,7 +233,13 @@ export default function AdminOrders() {
 
   useEffect(() => {
     // Safety: don't subscribe if missing identifiers
-    if (!activeBrandId || (!isAllLocations && !activeLocationId)) return;
+    if (!activeBrandId || (!isAllLocations && !activeLocationId)) {
+      setLoading(false);
+      return;
+    }
+
+    // Initial load
+    fetchOrders();
 
     const channelName = `admin-orders-${activeBrandId}-${isAllLocations ? 'all' : activeLocationId}`;
     const orderFilter = isAllLocations ? `brand_id=eq.${activeBrandId}` : `location_id=eq.${activeLocationId}`;
