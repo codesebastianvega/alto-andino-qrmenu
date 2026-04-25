@@ -12,12 +12,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Modal } from '../components/admin/ui';
 
 const ORDER_STATUSES = [
-  { id: 'waiting_payment', label: 'Falta Pago', color: 'text-orange-600', icon: 'heroicons:banknotes' },
   { id: 'new', label: 'Nuevos', color: 'text-blue-600', icon: 'heroicons:star' },
   { id: 'preparing', label: 'En Cocina', color: 'text-yellow-600', icon: 'heroicons:fire' },
   { id: 'ready', label: 'Listos', color: 'text-green-600', icon: 'heroicons:check-badge' },
-  { id: 'delivered', label: 'Entregado', color: 'text-gray-600', icon: 'heroicons:truck' },
-  { id: 'cancelled', label: 'Cancelado', color: 'text-red-600', icon: 'heroicons:x-circle' },
 ];
 
 const playNotificationSound = () => {
@@ -46,7 +43,7 @@ const playNotificationSound = () => {
     }
 };
 
-const DailyStats = ({ orders, range }) => {
+const DailyStats = ({ orders, range, onCancelledClick, onDeliveredClick }) => {
   const rangeLabels = {
     today: 'Hoy',
     '7d': '7 Días',
@@ -60,22 +57,39 @@ const DailyStats = ({ orders, range }) => {
   
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm transition-transform active:scale-95 cursor-default">
         <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Ventas {rangeLabels[range]}</p>
         <p className="text-2xl font-black text-[#2f4131]">${revenue.toLocaleString()}</p>
       </div>
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm transition-transform active:scale-95 cursor-default">
         <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Pedidos {rangeLabels[range]}</p>
         <p className="text-2xl font-black text-gray-800">{orders.length}</p>
       </div>
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Entregados</p>
-        <p className="text-2xl font-black text-green-600">{delivered.length}</p>
-      </div>
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Cancelados</p>
-        <p className="text-2xl font-black text-red-600">{cancelled.length}</p>
-      </div>
+      <button 
+        onClick={onDeliveredClick}
+        className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm transition-all active:scale-95 hover:bg-emerald-50 hover:border-emerald-100 group text-left w-full relative overflow-hidden"
+      >
+        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1 group-hover:text-emerald-600 transition-colors">Entregados</p>
+        <div className="flex items-center justify-between">
+          <p className="text-2xl font-black text-emerald-600">{delivered.length}</p>
+          <span className="text-[9px] font-black bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg border border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+            VER TODO
+          </span>
+        </div>
+      </button>
+
+      <button 
+        onClick={onCancelledClick}
+        className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm transition-all active:scale-95 hover:bg-red-50 hover:border-red-100 group text-left w-full relative overflow-hidden"
+      >
+        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1 group-hover:text-red-600 transition-colors">Cancelados</p>
+        <div className="flex items-center justify-between">
+          <p className="text-2xl font-black text-red-600">{cancelled.length}</p>
+          <span className="text-[9px] font-black bg-red-50 text-red-600 px-2 py-1 rounded-lg border border-red-100 group-hover:bg-red-600 group-hover:text-white transition-all">
+            VER TODO
+          </span>
+        </div>
+      </button>
     </div>
   );
 };
@@ -130,6 +144,8 @@ export default function AdminOrders() {
   const [mergeSourceOrder, setMergeSourceOrder] = useState(null);
   const [mergeTargetOrder, setMergeTargetOrder] = useState(null);
   const [isMergeConfirmOpen, setIsMergeConfirmOpen] = useState(false);
+  const [showCancelledHistory, setShowCancelledHistory] = useState(false);
+  const [showDeliveredHistory, setShowDeliveredHistory] = useState(false);
 
   const { activeBrand } = useAuth();
   const { activeLocationId, isAllLocations } = useLocations();
@@ -648,7 +664,142 @@ export default function AdminOrders() {
           </button>
        </div>
        
-       <DailyStats orders={orders} range={dateRange} />
+       <DailyStats 
+         orders={orders} 
+         range={dateRange} 
+         onCancelledClick={() => setShowCancelledHistory(true)} 
+         onDeliveredClick={() => setShowDeliveredHistory(true)}
+       />
+
+       {/* Modal de Historial de Entregados */}
+       {showDeliveredHistory && (
+         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+           <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-md" onClick={() => setShowDeliveredHistory(false)}></div>
+           <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden relative flex flex-col max-h-[85vh] border border-gray-100">
+             <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
+               <div>
+                 <h3 className="text-xl font-black text-gray-900 tracking-tight">Historial de Entregados</h3>
+                 <div className="flex items-center gap-2 mt-1">
+                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                   <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">{orders.filter(o => o.status === 'delivered').length} Pedidos Hoy</p>
+                 </div>
+               </div>
+               <button onClick={() => setShowDeliveredHistory(false)} className="p-2.5 hover:bg-gray-50 rounded-xl transition-all border border-gray-100 shadow-sm text-gray-400 hover:text-gray-600">
+                 <Icon icon="heroicons:x-mark" className="text-xl" />
+               </button>
+             </div>
+             
+             <div className="overflow-y-auto px-2 scrollbar-hide">
+               <div className="divide-y divide-gray-50">
+                 {orders.filter(o => o.status === 'delivered').length > 0 ? (
+                   orders.filter(o => o.status === 'delivered').map(order => (
+                     <div key={order.id} className="px-6 py-5 flex items-center gap-6 hover:bg-gray-50/80 transition-colors group">
+                       <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0 group-hover:scale-110 transition-transform">
+                         <Icon icon="heroicons:truck" className="text-xl" />
+                       </div>
+                       <div className="flex-1 min-w-0">
+                         <div className="flex justify-between items-start mb-0.5">
+                           <p className="font-black text-gray-900 text-base flex items-center gap-3">
+                             {order.customer_name || 'Sin nombre'}
+                             <span className="text-[9px] font-mono text-gray-300 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100/50">#{order.id.slice(0,4).toUpperCase()}</span>
+                           </p>
+                           <p className="text-[10px] font-black text-gray-400 bg-white px-2 py-1 rounded shadow-sm border border-gray-50">
+                             {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                           </p>
+                         </div>
+                         <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <span className="font-bold text-gray-800">${Number(order.total_amount).toLocaleString()}</span>
+                            <span className="text-gray-300">•</span>
+                            <span>{order.order_items?.length || 0} productos</span>
+                            <span className="text-gray-300">•</span>
+                            <span className="capitalize">{order.fulfillment_type?.replace('_', ' ')}</span>
+                         </div>
+                       </div>
+                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Icon icon="heroicons:check-circle" className="text-emerald-500 text-xl" />
+                       </div>
+                     </div>
+                   ))
+                 ) : (
+                   <div className="py-24 text-center">
+                     <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                        <Icon icon="heroicons:archive-box" className="text-4xl text-gray-200" />
+                     </div>
+                     <p className="font-black uppercase tracking-[0.2em] text-[10px] text-gray-300">Archivo vacío</p>
+                   </div>
+                 )}
+               </div>
+             </div>
+             <div className="p-6 bg-gray-50/50 border-t border-gray-100 mt-auto text-center">
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Fin del historial diario</p>
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* Modal de Historial de Cancelados */}
+       {showCancelledHistory && (
+         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+           <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-md" onClick={() => setShowCancelledHistory(false)}></div>
+           <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden relative flex flex-col max-h-[85vh] border border-gray-100">
+             <div className="px-8 py-6 border-b border-rose-50 flex justify-between items-center bg-white sticky top-0 z-10">
+               <div>
+                 <h3 className="text-xl font-black text-gray-900 tracking-tight">Historial de Cancelados</h3>
+                 <div className="flex items-center gap-2 mt-1">
+                   <div className="w-2 h-2 rounded-full bg-rose-500" />
+                   <p className="text-[10px] text-rose-400 font-black uppercase tracking-[0.2em]">{orders.filter(o => o.status === 'cancelled').length} Incidencias Hoy</p>
+                 </div>
+               </div>
+               <button onClick={() => setShowCancelledHistory(false)} className="p-2.5 hover:bg-gray-50 rounded-xl transition-all border border-gray-100 shadow-sm text-gray-400 hover:text-gray-600">
+                 <Icon icon="heroicons:x-mark" className="text-xl" />
+               </button>
+             </div>
+             
+             <div className="overflow-y-auto px-2 scrollbar-hide">
+               <div className="divide-y divide-gray-50">
+                 {orders.filter(o => o.status === 'cancelled').length > 0 ? (
+                   orders.filter(o => o.status === 'cancelled').map(order => (
+                     <div key={order.id} className="px-6 py-5 flex items-center gap-6 hover:bg-rose-50/30 transition-colors group">
+                       <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 flex-shrink-0 group-hover:scale-110 transition-transform">
+                         <Icon icon="heroicons:x-circle" className="text-xl" />
+                       </div>
+                       <div className="flex-1 min-w-0">
+                         <div className="flex justify-between items-start mb-0.5">
+                           <p className="font-black text-gray-900 text-base flex items-center gap-3">
+                             {order.customer_name || 'Sin nombre'}
+                             <span className="text-[9px] font-mono text-rose-300 bg-rose-50/50 px-1.5 py-0.5 rounded border border-rose-100/50">#{order.id.slice(0,4).toUpperCase()}</span>
+                           </p>
+                           <p className="text-[10px] font-black text-gray-400 bg-white px-2 py-1 rounded shadow-sm border border-gray-50">
+                             {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                           </p>
+                         </div>
+                         <div className="flex flex-col gap-1">
+                            <p className="text-xs text-rose-600 font-black mt-0.5 italic">MOTIVO: {order.cancellation_reason || 'Sin especificar'}</p>
+                            <div className="flex items-center gap-4 text-[10px] text-gray-400 uppercase font-black tracking-widest mt-1">
+                                <span>Subtotal: ${Number(order.total_amount).toLocaleString()}</span>
+                                <span>•</span>
+                                <span>{order.order_items?.length || 0} ítems</span>
+                            </div>
+                         </div>
+                       </div>
+                     </div>
+                   ))
+                 ) : (
+                   <div className="py-24 text-center">
+                     <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                        <Icon icon="heroicons:archive-box-x-mark" className="text-4xl text-gray-200" />
+                     </div>
+                     <p className="font-black uppercase tracking-[0.2em] text-[10px] text-gray-300">Sin cancelaciones</p>
+                   </div>
+                 )}
+               </div>
+             </div>
+             <div className="p-6 bg-gray-50/50 border-t border-gray-100 mt-auto text-center">
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Resumen de perdidas y cancelaciones</p>
+             </div>
+           </div>
+         </div>
+       )}
 
        {loading && orders.length === 0 ? (
         <div className="flex justify-center items-center h-64">
@@ -656,27 +807,30 @@ export default function AdminOrders() {
         </div>
       ) : (
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="overflow-x-auto pb-4 custom-scrollbar">
-            <div className="flex gap-6 min-w-max items-start">
+          <div className="pb-8 h-[calc(100vh-280px)] min-h-[600px]">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 h-full items-stretch">
               {ORDER_STATUSES.map((statusCol, index) => {
                 const fTypeWeights = { 'dine_in': 1, 'takeaway': 2, 'delivery': 3 };
                 
                 const sortOrders = (a, b, ascending = true) => {
                   const weightA = fTypeWeights[a.fulfillment_type] || 99;
                   const weightB = fTypeWeights[b.fulfillment_type] || 99;
-                  
-                  if (weightA !== weightB) {
-                    return weightA - weightB; // Priority by type
-                  }
-                  
+                  if (weightA !== weightB) return weightA - weightB;
                   const dateA = new Date(a.created_at);
                   const dateB = new Date(b.created_at);
                   return ascending ? dateA - dateB : dateB - dateA;
                 };
 
-                const colOrders = statusCol.id !== 'delivered' && statusCol.id !== 'cancelled'
-                   ? orders.filter(o => o.status === statusCol.id).sort((a,b) => sortOrders(a, b, true))
-                   : orders.filter(o => o.status === statusCol.id).sort((a,b) => sortOrders(a, b, false));
+                const colOrders = statusCol.id === 'new'
+                    ? orders.filter(o => o.status === 'new' || o.status === 'waiting_payment').sort((a,b) => sortOrders(a, b, true))
+                    : orders.filter(o => o.status === statusCol.id).sort((a,b) => sortOrders(a, b, true));
+
+                // Color themes per column
+                const themes = {
+                  new: 'from-blue-50/50 to-indigo-50/30 border-blue-100/50 shadow-blue-500/5',
+                  preparing: 'from-amber-50/50 to-orange-50/30 border-amber-100/50 shadow-amber-500/5',
+                  ready: 'from-emerald-50/50 to-teal-50/30 border-emerald-100/50 shadow-emerald-500/5'
+                };
 
                 return (
                   <Droppable key={`status-column-${statusCol.id}-${index}`} droppableId={statusCol.id} isCombineEnabled>
@@ -684,18 +838,25 @@ export default function AdminOrders() {
                     <div 
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`flex flex-col gap-4 rounded-2xl p-4 border w-[300px] min-h-[600px] flex-shrink-0 transition-colors ${
-                        snapshot.isDraggingOver ? 'bg-emerald-50/50 border-emerald-200 shadow-inner' : 'bg-gray-50/50 border-gray-100'
-                      }`}
+                      className={`flex flex-col rounded-[2.5rem] p-6 border-2 transition-all duration-300 bg-gradient-to-b ${
+                        snapshot.isDraggingOver 
+                          ? 'bg-white/80 border-emerald-300 shadow-2xl scale-[1.01] z-10' 
+                          : `${themes[statusCol.id]} shadow-xl`
+                      } h-full`}
                     >
-                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-200">
-                        <h3 className="font-bold text-gray-700">{statusCol.label}</h3>
-                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${statusCol.color} bg-white opacity-80`}>
+                      <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-200/50">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2.5 rounded-2xl bg-white shadow-sm ${statusCol.color.replace('text-', 'text-Opacity-80')}`}>
+                             <Icon icon={statusCol.icon} className="text-xl" />
+                          </div>
+                          <h3 className="font-black text-gray-800 text-lg tracking-tight">{statusCol.label}</h3>
+                        </div>
+                        <span className={`text-sm font-black px-4 py-1.5 rounded-2xl shadow-sm border border-white bg-white/80 ${statusCol.color}`}>
                           {colOrders.length}
                         </span>
                       </div>
                       
-                      <div className="flex flex-col gap-3 min-h-[100px]">
+                      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-5">
                         {colOrders.map((order, index) => {
                           const fl = getFulfillmentLabel(order.fulfillment_type);
                           return (
@@ -713,109 +874,85 @@ export default function AdminOrders() {
                                       setIsCancelling(false); 
                                     }
                                   }}
-                                  className={`bg-white p-4 rounded-2xl shadow-sm border transition-all cursor-pointer group relative overflow-hidden ${
-                                    snapshot.isDragging ? 'shadow-2xl ring-2 ring-emerald-500 scale-105 rotate-2 z-50' : 'active:scale-[0.98]'
+                                  className={`bg-white p-6 rounded-[2rem] shadow-sm border-2 transition-all cursor-pointer group relative overflow-hidden flex flex-col gap-4 ${
+                                    snapshot.isDragging ? 'shadow-2xl ring-4 ring-emerald-500/20 scale-105 rotate-1 z-50' : 'active:scale-[0.98]'
                                   } ${
                                     order?.fulfillment_type === 'dine_in' 
-                                    ? 'border-emerald-100 hover:border-emerald-300 hover:shadow-md ring-1 ring-emerald-50/50' 
-                                    : 'border-gray-100 hover:shadow-md hover:border-emerald-200'
+                                    ? 'border-emerald-100/80 hover:border-emerald-300' 
+                                    : 'border-gray-100 hover:border-emerald-200'
                                   } ${
                                     snapshot.isCombiningWith ? 'bg-emerald-100 border-emerald-500 border-2' : ''
                                   }`}
                                 >
-                        {order.fulfillment_type === 'dine_in' && (
-                          <div className="absolute top-0 right-0 w-16 h-16 pointer-events-none overflow-hidden">
-                            <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[8px] font-black py-0.5 px-6 rotate-45 translate-x-4 translate-y-2 uppercase shadow-sm">
-                              MESA
-                            </div>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex-1 min-w-0 mr-2">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1 min-w-0">
                              <div className="flex flex-col">
-                                <span className={`text-lg font-black leading-tight truncate group-hover:text-emerald-800 ${
+                                <span className={`text-xl font-black leading-tight truncate group-hover:text-emerald-800 transition-colors ${
                                   order?.fulfillment_type === 'dine_in' ? 'text-emerald-900' : 'text-gray-900'
                                 }`}>
                                   {order?.fulfillment_type === 'dine_in' 
-                                    ? `Mesa ${order?.restaurant_tables?.table_number || '?'}` 
+                                    ? (order?.restaurant_tables?.table_number ? `Mesa ${order.restaurant_tables.table_number}` : 'Mesa ?')
                                     : (order?.customer_name || 'Sin nombre')}
                                 </span>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  <span className="text-[10px] font-bold text-gray-400 font-mono tracking-wider">#{order?.id?.slice(0, 4).toUpperCase()}</span>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[10px] font-bold text-gray-400 font-mono tracking-widest bg-gray-50 px-1.5 py-0.5 rounded">#{order?.id?.slice(0, 4).toUpperCase()}</span>
                                   {order?.fulfillment_type === 'dine_in' && order?.customer_name && (
                                     <span className="text-[10px] text-gray-400 font-medium truncate">• {order?.customer_name}</span>
-                                  )}
-                                  {order?.fulfillment_type !== 'dine_in' && !order?.customer_name && (
-                                    <span className="text-[10px] text-gray-300 italic">Cliente incógnito</span>
                                   )}
                                 </div>
                              </div>
                           </div>
-                          <div className="flex-shrink-0">
+                          <div className="flex flex-col items-end gap-2">
                             <OrderTimer createdAt={order.created_at} status={order.status} />
+                            {order.fulfillment_type === 'dine_in' && (
+                              <span className="text-[8px] font-black bg-emerald-500 text-white px-2 py-0.5 rounded-full uppercase tracking-tighter">MESA</span>
+                            )}
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className={`text-[10px] font-black px-2 py-1 rounded-lg flex items-center gap-1 ${fl.color}`}>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`text-[10px] font-black px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm border border-black/5 ${fl.color}`}>
                             <Icon icon={fl.icon} />
                             {fl.text}
                           </span>
-                          <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded-lg">
+                          <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2.5 py-1.5 rounded-xl border border-gray-100">
                             {order?.order_items?.length || 0} ítems
                           </span>
-                          {order?.waiter_id && (
-                            <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-1 rounded-lg flex items-center gap-1">
-                              <Icon icon="heroicons:user-circle" />
-                              {waiters.find(w => w.id === order?.waiter_id)?.name?.split(' ')[0] || 'Mesero'}
-                            </span>
-                          )}
-                          {isAllLocations && order.locations?.name && (
-                            <span className="text-[10px] font-black text-gray-500 bg-gray-100 px-2 py-1 rounded-lg uppercase tracking-wider">
-                              {order.locations.name}
-                            </span>
-                          )}
                         </div>
                         
-                        {/* Indicador de Pago / Balancé */}
+                        {/* Indicador de Pago / Balancé - Rediseñado a Rojo Suave */}
                         {order?.payment_status !== 'paid' && order?.status !== 'cancelled' && (
-                          <div className={`mb-3 flex flex-col gap-1.5 px-3 py-2 rounded-xl border ${
+                          <div className={`flex flex-col gap-2 px-4 py-3 rounded-[1.25rem] border transition-colors ${
                             (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && order?.status === 'new') ||
                             (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && order?.status === 'ready')
-                              ? 'bg-emerald-50 border-emerald-100 text-emerald-700 animate-pulse'
-                              : 'bg-gray-50 border-gray-100 text-gray-500'
+                              ? 'bg-rose-50 border-rose-100 text-rose-700 animate-pulse'
+                              : 'bg-rose-50/30 border-rose-100/50 text-rose-600/80'
                           }`}>
-                            <div className="flex items-center gap-2">
-                              <Icon icon="heroicons:banknotes" className="text-lg" />
-                              <span className="text-[10px] font-black uppercase tracking-wider">
-                                {order?.paid_amount > 0 ? 'Falta Saldo' : 'Pago Pendiente'}
-                              </span>
-                              <span className="ml-auto text-[10px] font-black">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Icon icon="heroicons:banknotes" className="text-base" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">
+                                  {order?.paid_amount > 0 ? 'Falta Saldo' : 'Pago Pendiente'}
+                                </span>
+                              </div>
+                              <span className="text-[11px] font-black">
                                 {order?.paid_amount > 0 
-                                  ? `$${(order.total_amount - order.paid_amount).toLocaleString()} falta` 
+                                  ? `$${(order.total_amount - order.paid_amount).toLocaleString()}` 
                                   : `$${Number(order?.total_amount || 0).toLocaleString()}`}
                               </span>
                             </div>
-                            {order?.paid_amount > 0 && (
-                              <div className="w-full bg-gray-200 h-1 rounded-full overflow-hidden">
-                                <div 
-                                  className="bg-emerald-500 h-full transition-all" 
-                                  style={{ width: `${(order.paid_amount / order.total_amount) * 100}%` }}
-                                />
-                              </div>
-                            )}
                           </div>
                         )}
                         
-                        <div className="space-y-1">
+                        <div className="space-y-2 mt-1">
                           {order.order_items?.slice(0, 2).map(item => (
-                            <div key={item.id} className="text-xs text-gray-600 truncate flex items-center gap-1">
-                              <span className="font-black text-[#2f4131] bg-emerald-50 px-1 rounded">{item.quantity}x</span>
-                              {item.products?.name}
+                            <div key={item.id} className="text-[13px] text-gray-600 truncate flex items-center gap-2">
+                              <span className="font-black text-emerald-700 bg-emerald-50 w-6 h-6 flex items-center justify-center rounded-lg text-[10px] shrink-0">{item.quantity}x</span>
+                              <span className="font-medium truncate">{item.products?.name}</span>
                             </div>
                           ))}
                           {order.order_items?.length > 2 && (
-                            <div className="text-[10px] text-gray-400 font-bold pl-6">+{order.order_items.length - 2} más...</div>
+                            <div className="text-[10px] text-gray-400 font-bold pl-8">+{order.order_items.length - 2} productos más...</div>
                           )}
                         </div>
                       </div>
