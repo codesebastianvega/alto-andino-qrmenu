@@ -185,7 +185,7 @@ export default function OrderStatus({ orderId }) {
     new: { label: 'Recibido', icon: <CheckCircle2 size={48} />, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100', glow: 'bg-blue-500/15', text: 'text-blue-600', step: 2 },
     preparing: { label: 'En Cocina', icon: <ChefHat size={48} />, color: 'text-yellow-600', bg: 'bg-[#FFF9E6]', border: 'border-[#F8E5A0]', glow: 'bg-[#E6B05C]/20', text: 'text-yellow-700', step: 3 },
     ready: { label: '¡Listo!', icon: <ShoppingBag size={48} />, color: 'text-green-500', bg: 'bg-green-50', border: 'border-green-100', glow: 'bg-green-500/15', text: 'text-green-600', step: 4 },
-    delivered: { label: 'Entregado', icon: <Home size={48} />, color: 'text-[#4A7856]', bg: 'bg-[#EAF1EC]', border: 'border-[#4A7856]/20', glow: 'bg-[#4A7856]/15', text: 'text-[#4A7856]', step: 5 }
+    delivered: { label: 'Finalizado', icon: <Home size={48} />, color: 'text-[#4A7856]', bg: 'bg-[#EAF1EC]', border: 'border-[#4A7856]/20', glow: 'bg-[#4A7856]/15', text: 'text-[#4A7856]', step: 5 }
   };
 
   const currentStatus = STATUS_STEPS[order.status] || STATUS_STEPS['new'];
@@ -204,7 +204,7 @@ export default function OrderStatus({ orderId }) {
       { id: 2, title: 'Recibido', icon: <CheckCircle2 size={20} /> },
       { id: 3, title: 'Cocina', icon: <ChefHat size={20} /> },
       { id: 4, title: order.fulfillment_type === 'dine_in' ? 'A Mesa' : 'Listo', icon: <ShoppingBag size={20} /> },
-      { id: 5, title: 'Entregado', icon: <Home size={20} /> }
+      { id: 5, title: 'Finalizado', icon: <Home size={20} /> }
     ];
   }
   

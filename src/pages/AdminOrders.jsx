@@ -14,7 +14,8 @@ import { Modal } from '../components/admin/ui';
 const ORDER_STATUSES = [
   { id: 'new', label: 'Nuevos', color: 'text-blue-600', icon: 'heroicons:star' },
   { id: 'preparing', label: 'En Cocina', color: 'text-yellow-600', icon: 'heroicons:fire' },
-  { id: 'ready', label: 'Listos', color: 'text-green-600', icon: 'heroicons:check-badge' },
+  { id: 'ready', label: 'Listos', color: 'text-emerald-600', icon: 'heroicons:check-badge' },
+  { id: 'on_table', label: 'En Mesa', color: 'text-purple-600', icon: 'heroicons:home' },
 ];
 
 const playNotificationSound = () => {
@@ -69,7 +70,7 @@ const DailyStats = ({ orders, range, onCancelledClick, onDeliveredClick }) => {
         onClick={onDeliveredClick}
         className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm transition-all active:scale-95 hover:bg-emerald-50 hover:border-emerald-100 group text-left w-full relative overflow-hidden"
       >
-        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1 group-hover:text-emerald-600 transition-colors">Entregados</p>
+        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1 group-hover:text-emerald-600 transition-colors">Finalizados</p>
         <div className="flex items-center justify-between">
           <p className="text-2xl font-black text-emerald-600">{delivered.length}</p>
           <span className="text-[9px] font-black bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg border border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white transition-all">
@@ -808,7 +809,7 @@ export default function AdminOrders() {
       ) : (
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="pb-8 h-[calc(100vh-280px)] min-h-[600px]">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 h-full items-stretch">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 h-full items-stretch">
               {ORDER_STATUSES.map((statusCol, index) => {
                 const fTypeWeights = { 'dine_in': 1, 'takeaway': 2, 'delivery': 3 };
                 
@@ -829,7 +830,8 @@ export default function AdminOrders() {
                 const themes = {
                   new: 'from-blue-50/50 to-indigo-50/30 border-blue-100/50 shadow-blue-500/5',
                   preparing: 'from-amber-50/50 to-orange-50/30 border-amber-100/50 shadow-amber-500/5',
-                  ready: 'from-emerald-50/50 to-teal-50/30 border-emerald-100/50 shadow-emerald-500/5'
+                  ready: 'from-emerald-50/50 to-teal-50/30 border-emerald-100/50 shadow-emerald-500/5',
+                  on_table: 'from-purple-50/50 to-fuchsia-50/30 border-purple-100/50 shadow-purple-500/5'
                 };
 
                 return (
@@ -1023,7 +1025,7 @@ export default function AdminOrders() {
                       {selectedOrder.status === 'delivered' && (
                         <div className="flex items-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm bg-green-50 text-green-700 border border-green-100">
                           <Icon icon="heroicons:check-circle" className="text-lg" />
-                          Pedido Entregado a las {new Date(selectedOrder.delivered_at).toLocaleTimeString()}
+                          Pedido Finalizado a las {new Date(selectedOrder.delivered_at).toLocaleTimeString()}
                         </div>
                       )}
                       {selectedOrder.status === 'cancelled' && (
@@ -1374,8 +1376,42 @@ export default function AdminOrders() {
                     </button>
                   )}
 
-                  {/* BOTÓN: MARCAR ENTREGADO */}
+                  {/* BOTÓN: SERVIR EN MESA / FINALIZAR */}
                   {selectedOrder.status === 'ready' && (
+                    <div className="flex flex-col gap-3">
+                      {selectedOrder.fulfillment_type === 'dine_in' && (
+                        <button 
+                          onClick={() => updateOrderStatus(selectedOrder.id, 'on_table')}
+                          disabled={updatingStatus === selectedOrder.id}
+                          className="w-full py-4.5 bg-purple-600 hover:bg-purple-700 text-white rounded-[2rem] font-black text-base shadow-2xl shadow-purple-200/50 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 border-2 border-purple-600 hover:-translate-y-0.5"
+                        >
+                          <Icon icon="solar:shop-2-bold" className="text-2xl" />
+                          SERVIR EN MESA
+                        </button>
+                      )}
+                      
+                      <button 
+                        onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
+                        disabled={
+                          updatingStatus === selectedOrder.id || 
+                          (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid')
+                        }
+                        className={`w-full py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
+                          restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
+                            ? 'bg-neutral-200 text-neutral-400 border-2 border-neutral-100 shadow-none cursor-not-allowed grayscale'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200/50 hover:-translate-y-0.5 border-2 border-emerald-600'
+                        }`}
+                      >
+                        <Icon icon="solar:box-minimalistic-bold" className="text-2xl" />
+                        {restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
+                          ? 'PAGO REQUERIDO PARA FINALIZAR'
+                          : 'FINALIZAR PEDIDO'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* BOTÓN: FINALIZAR (Desde En Mesa) */}
+                  {selectedOrder.status === 'on_table' && (
                     <button 
                       onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
                       disabled={
@@ -1388,10 +1424,10 @@ export default function AdminOrders() {
                           : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200/50 hover:-translate-y-0.5 border-2 border-emerald-600'
                       }`}
                     >
-                      <Icon icon="solar:box-minimalistic-bold" className="text-2xl" />
+                      <Icon icon="solar:check-read-bold" className="text-2xl" />
                       {restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
-                        ? 'PAGO REQUERIDO PARA ENTREGA'
-                        : 'MARCAR COMO ENTREGADO'}
+                        ? 'PAGO REQUERIDO PARA FINALIZAR'
+                        : 'FINALIZAR PEDIDO'}
                     </button>
                   )}
                 </div>

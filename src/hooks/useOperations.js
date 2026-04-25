@@ -273,7 +273,8 @@ export function useOperations() {
             const statusLabels = {
               preparing: '🍳 En preparación',
               ready:     '✅ Listo para entregar',
-              delivered: '🚀 Entregado',
+              on_table:  '🏠 En Mesa',
+              delivered: '🏁 Finalizado',
               cancelled: '❌ Cancelado',
             };
             if (statusLabels[updated.status]) {
@@ -344,7 +345,7 @@ export function useOperations() {
   const metrics = (() => {
     const delivered = orders.filter(o => o.status === 'delivered');
     const cancelled = orders.filter(o => o.status === 'cancelled');
-    const active    = orders.filter(o => ['new', 'preparing', 'ready', 'waiting_payment'].includes(o.status));
+    const active    = orders.filter(o => ['new', 'preparing', 'ready', 'on_table', 'waiting_payment'].includes(o.status));
 
     const totalRevenue    = delivered.reduce((s, o) => s + Number(o.total_amount  || 0), 0);
     const totalTips       = delivered.reduce((s, o) => s + Number(o.service_fee   || 0), 0);
@@ -383,7 +384,7 @@ export function useOperations() {
     const activeOrder = orders.find(
       o =>
         o.table_id === table.id &&
-        ['new', 'preparing', 'ready', 'waiting_payment'].includes(o.status)
+        ['new', 'preparing', 'ready', 'on_table', 'waiting_payment'].includes(o.status)
     );
 
     // El status base es el físico

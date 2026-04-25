@@ -218,7 +218,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <p className="text-2xl lg:text-3xl font-black text-gray-900">{formatCurrency(stats.revenue)}</p>
-                <p className="text-[10px] font-bold text-gray-400 mt-1">{stats.orderCount} pedidos entregados</p>
+                <p className="text-[10px] font-bold text-gray-400 mt-1">{stats.orderCount} pedidos finalizados</p>
               </div>
             </div>
 
@@ -244,7 +244,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <p className="text-2xl lg:text-3xl font-black text-gray-900">{stats.avgTime} <span className="text-lg text-gray-500 font-bold">min</span></p>
-                <p className="text-[10px] font-bold text-gray-400 mt-1">Desde recibido hasta entregado</p>
+                <p className="text-[10px] font-bold text-gray-400 mt-1">Desde recibido hasta finalizado</p>
               </div>
             </div>
 
