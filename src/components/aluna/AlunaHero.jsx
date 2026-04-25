@@ -41,7 +41,7 @@ export default function AlunaHero() {
               <div className="flex flex-col sm:flex-row gap-4">
                 {profile ? (
                   <MagneticButton>
-                    <Link to="/" className="bg-[#D4A853] text-black px-10 py-4 rounded-full text-sm font-bold hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#D4A853]/20">
+                    <Link to="/#portal" className="bg-[#D4A853] text-black px-10 py-4 rounded-full text-sm font-bold hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#D4A853]/20">
                       Gestionar mis Marcas
                     </Link>
                   </MagneticButton>

@@ -99,7 +99,7 @@ export default function AlunaNavbar() {
       <div className="flex items-center gap-1 sm:gap-2">
         {profile ? (
           <Link
-            to="/"
+            to="/#portal"
             className="bg-white text-[#1A1A1A] px-6 sm:px-8 py-2 rounded-full text-xs sm:text-sm font-semibold hover:bg-gray-100 transition-all shadow-lg active:scale-95"
           >
             Mi Portal

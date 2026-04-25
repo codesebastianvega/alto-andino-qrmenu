@@ -39,7 +39,7 @@ export default function LoginPage() {
         if (profileData?.role === 'superadmin') {
           window.location.href = '/superadmin';
         } else {
-          window.location.href = '/';
+          window.location.href = '/#portal';
         }
       }
       

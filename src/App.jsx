@@ -377,8 +377,14 @@ export default function App() {
             {brand_slug ? (
               <LandingPage />
             ) : (
-              profile ? <GlobalPortal /> : <AlunaLanding />
+              <AlunaLanding />
             )}
+          </Suspense>
+        )}
+
+        {currentHash === '#portal' && profile && (
+          <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
+            <GlobalPortal />
           </Suspense>
         )}
 

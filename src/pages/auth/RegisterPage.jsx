@@ -238,7 +238,7 @@ export default function RegisterPage() {
               </p>
             )}
             <Link
-              to={isAlreadyLoggedIn ? '/' : '/login'}
+              to={isAlreadyLoggedIn ? '/#portal' : '/login'}
               className="w-full group relative flex items-center justify-center gap-2 py-4 bg-stone-900 text-white font-bold rounded-2xl overflow-hidden transition-transform hover:scale-[1.02] active:scale-[0.98] shadow-lg mt-4"
             >
               <div className="absolute inset-0 bg-[#D4A853] translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
