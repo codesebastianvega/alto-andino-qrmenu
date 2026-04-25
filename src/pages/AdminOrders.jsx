@@ -147,15 +147,6 @@ export default function AdminOrders() {
   const [showCancelledHistory, setShowCancelledHistory] = useState(false);
   const [showDeliveredHistory, setShowDeliveredHistory] = useState(false);
 
-  const getFulfillmentStyle = (type) => {
-    switch (type) {
-      case 'dine_in': return { icon: 'heroicons:building-storefront', color: 'text-emerald-600 bg-emerald-50 border-emerald-100', text: 'Mesa' };
-      case 'takeaway': return { icon: 'heroicons:shopping-bag', color: 'text-amber-600 bg-amber-50 border-amber-100', text: 'Llevar' };
-      case 'delivery': return { icon: 'material-symbols:motorcycle', color: 'text-blue-600 bg-blue-50 border-blue-100', text: 'Domicilio' };
-      default: return { icon: 'heroicons:truck', color: 'text-gray-600 bg-gray-50 border-gray-100', text: 'Pedido' };
-    }
-  };
-
   const { activeBrand } = useAuth();
   const { activeLocationId, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id;
@@ -701,37 +692,34 @@ export default function AdminOrders() {
              <div className="overflow-y-auto px-2 scrollbar-hide">
                <div className="divide-y divide-gray-50">
                  {orders.filter(o => o.status === 'delivered').length > 0 ? (
-                   orders.filter(o => o.status === 'delivered').map(order => {
-                     const fStyle = getFulfillmentStyle(order.fulfillment_type);
-                     return (
-                       <div key={order.id} className="px-6 py-5 flex items-center gap-6 hover:bg-gray-50/80 transition-colors group">
-                         <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform ${fStyle.color}`}>
-                           <Icon icon={fStyle.icon} className="text-xl" />
+                   orders.filter(o => o.status === 'delivered').map(order => (
+                     <div key={order.id} className="px-6 py-5 flex items-center gap-6 hover:bg-gray-50/80 transition-colors group">
+                       <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0 group-hover:scale-110 transition-transform">
+                         <Icon icon="heroicons:truck" className="text-xl" />
+                       </div>
+                       <div className="flex-1 min-w-0">
+                         <div className="flex justify-between items-start mb-0.5">
+                           <p className="font-black text-gray-900 text-base flex items-center gap-3">
+                             {order.customer_name || 'Sin nombre'}
+                             <span className="text-[9px] font-mono text-gray-300 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100/50">#{order.id.slice(0,4).toUpperCase()}</span>
+                           </p>
+                           <p className="text-[10px] font-black text-gray-400 bg-white px-2 py-1 rounded shadow-sm border border-gray-50">
+                             {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                           </p>
                          </div>
-                         <div className="flex-1 min-w-0">
-                           <div className="flex justify-between items-start mb-0.5">
-                             <p className="font-black text-gray-900 text-base flex items-center gap-3">
-                               {order.customer_name || 'Sin nombre'}
-                               <span className="text-[9px] font-mono text-gray-300 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100/50">#{order.id.slice(0,4).toUpperCase()}</span>
-                             </p>
-                             <p className="text-[10px] font-black text-gray-400 bg-white px-2 py-1 rounded shadow-sm border border-gray-50">
-                               {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                             </p>
-                           </div>
-                           <div className="flex items-center gap-4 text-xs text-gray-500">
-                              <span className="font-bold text-gray-800">${Number(order.total_amount).toLocaleString()}</span>
-                              <span className="text-gray-300">•</span>
-                              <span>{order.order_items?.length || 0} productos</span>
-                              <span className="text-gray-300">•</span>
-                              <span className="capitalize">{order.fulfillment_type?.replace('_', ' ')}</span>
-                           </div>
-                         </div>
-                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Icon icon="heroicons:check-circle" className="text-emerald-500 text-xl" />
+                         <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <span className="font-bold text-gray-800">${Number(order.total_amount).toLocaleString()}</span>
+                            <span className="text-gray-300">•</span>
+                            <span>{order.order_items?.length || 0} productos</span>
+                            <span className="text-gray-300">•</span>
+                            <span className="capitalize">{order.fulfillment_type?.replace('_', ' ')}</span>
                          </div>
                        </div>
-                     );
-                   })
+                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Icon icon="heroicons:check-circle" className="text-emerald-500 text-xl" />
+                       </div>
+                     </div>
+                   ))
                  ) : (
                    <div className="py-24 text-center">
                      <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
@@ -770,35 +758,32 @@ export default function AdminOrders() {
              <div className="overflow-y-auto px-2 scrollbar-hide">
                <div className="divide-y divide-gray-50">
                  {orders.filter(o => o.status === 'cancelled').length > 0 ? (
-                   orders.filter(o => o.status === 'cancelled').map(order => {
-                     const fStyle = getFulfillmentStyle(order.fulfillment_type);
-                     return (
-                       <div key={order.id} className="px-6 py-5 flex items-center gap-6 hover:bg-rose-50/30 transition-colors group">
-                         <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 flex-shrink-0 group-hover:scale-110 transition-transform">
-                           <Icon icon={fStyle.icon} className="text-xl" />
+                   orders.filter(o => o.status === 'cancelled').map(order => (
+                     <div key={order.id} className="px-6 py-5 flex items-center gap-6 hover:bg-rose-50/30 transition-colors group">
+                       <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 flex-shrink-0 group-hover:scale-110 transition-transform">
+                         <Icon icon="heroicons:x-circle" className="text-xl" />
+                       </div>
+                       <div className="flex-1 min-w-0">
+                         <div className="flex justify-between items-start mb-0.5">
+                           <p className="font-black text-gray-900 text-base flex items-center gap-3">
+                             {order.customer_name || 'Sin nombre'}
+                             <span className="text-[9px] font-mono text-rose-300 bg-rose-50/50 px-1.5 py-0.5 rounded border border-rose-100/50">#{order.id.slice(0,4).toUpperCase()}</span>
+                           </p>
+                           <p className="text-[10px] font-black text-gray-400 bg-white px-2 py-1 rounded shadow-sm border border-gray-50">
+                             {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                           </p>
                          </div>
-                         <div className="flex-1 min-w-0">
-                           <div className="flex justify-between items-start mb-0.5">
-                             <p className="font-black text-gray-900 text-base flex items-center gap-3">
-                               {order.customer_name || 'Sin nombre'}
-                               <span className="text-[9px] font-mono text-rose-300 bg-rose-50/50 px-1.5 py-0.5 rounded border border-rose-100/50">#{order.id.slice(0,4).toUpperCase()}</span>
-                             </p>
-                             <p className="text-[10px] font-black text-gray-400 bg-white px-2 py-1 rounded shadow-sm border border-gray-50">
-                               {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                             </p>
-                           </div>
-                           <div className="flex flex-col gap-1">
-                              <p className="text-xs text-rose-600 font-black mt-0.5 italic">MOTIVO: {order.cancellation_reason || 'Sin especificar'}</p>
-                              <div className="flex items-center gap-4 text-[10px] text-gray-400 uppercase font-black tracking-widest mt-1">
-                                  <span>Subtotal: ${Number(order.total_amount).toLocaleString()}</span>
-                                  <span>•</span>
-                                  <span>{order.order_items?.length || 0} ítems</span>
-                              </div>
-                           </div>
+                         <div className="flex flex-col gap-1">
+                            <p className="text-xs text-rose-600 font-black mt-0.5 italic">MOTIVO: {order.cancellation_reason || 'Sin especificar'}</p>
+                            <div className="flex items-center gap-4 text-[10px] text-gray-400 uppercase font-black tracking-widest mt-1">
+                                <span>Subtotal: ${Number(order.total_amount).toLocaleString()}</span>
+                                <span>•</span>
+                                <span>{order.order_items?.length || 0} ítems</span>
+                            </div>
                          </div>
                        </div>
-                     );
-                   })
+                     </div>
+                   ))
                  ) : (
                    <div className="py-24 text-center">
                      <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
@@ -816,583 +801,654 @@ export default function AdminOrders() {
          </div>
        )}
 
-        {loading && orders.length === 0 ? (
-         <div className="flex justify-center items-center h-64">
-           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div>
-         </div>
-       ) : (
-         <DragDropContext onDragEnd={onDragEnd}>
-           <div className="pb-8 h-[calc(100vh-280px)] min-h-[600px]">
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 h-full items-stretch">
-               {ORDER_STATUSES.map((statusCol, index) => {
-                 const fTypeWeights = { 'dine_in': 1, 'takeaway': 2, 'delivery': 3 };
-                 
-                 const sortOrders = (a, b, ascending = true) => {
-                   const weightA = fTypeWeights[a.fulfillment_type] || 99;
-                   const weightB = fTypeWeights[b.fulfillment_type] || 99;
-                   if (weightA !== weightB) return weightA - weightB;
-                   const dateA = new Date(a.created_at);
-                   const dateB = new Date(b.created_at);
-                   return ascending ? dateA - dateB : dateB - dateA;
-                 };
+       {loading && orders.length === 0 ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div>
+        </div>
+      ) : (
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div className="pb-8 h-[calc(100vh-280px)] min-h-[600px]">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 h-full items-stretch">
+              {ORDER_STATUSES.map((statusCol, index) => {
+                const fTypeWeights = { 'dine_in': 1, 'takeaway': 2, 'delivery': 3 };
+                
+                const sortOrders = (a, b, ascending = true) => {
+                  const weightA = fTypeWeights[a.fulfillment_type] || 99;
+                  const weightB = fTypeWeights[b.fulfillment_type] || 99;
+                  if (weightA !== weightB) return weightA - weightB;
+                  const dateA = new Date(a.created_at);
+                  const dateB = new Date(b.created_at);
+                  return ascending ? dateA - dateB : dateB - dateA;
+                };
 
-                 const colOrders = statusCol.id === 'new'
-                     ? orders.filter(o => o.status === 'new' || o.status === 'waiting_payment').sort((a,b) => sortOrders(a, b, true))
-                     : orders.filter(o => o.status === statusCol.id).sort((a,b) => sortOrders(a, b, true));
+                const colOrders = statusCol.id === 'new'
+                    ? orders.filter(o => o.status === 'new' || o.status === 'waiting_payment').sort((a,b) => sortOrders(a, b, true))
+                    : orders.filter(o => o.status === statusCol.id).sort((a,b) => sortOrders(a, b, true));
 
-                 // Color themes per column
-                 const themes = {
-                   new: 'from-blue-50/50 to-indigo-50/30 border-blue-100/50 shadow-blue-500/5',
-                   preparing: 'from-amber-50/50 to-orange-50/30 border-amber-100/50 shadow-amber-500/5',
-                   ready: 'from-emerald-50/50 to-teal-50/30 border-emerald-100/50 shadow-emerald-500/5'
-                 };
+                // Color themes per column
+                const themes = {
+                  new: 'from-blue-50/50 to-indigo-50/30 border-blue-100/50 shadow-blue-500/5',
+                  preparing: 'from-amber-50/50 to-orange-50/30 border-amber-100/50 shadow-amber-500/5',
+                  ready: 'from-emerald-50/50 to-teal-50/30 border-emerald-100/50 shadow-emerald-500/5'
+                };
 
-                 const headerColors = {
-                   new: 'bg-blue-600 shadow-blue-200',
-                   preparing: 'bg-amber-600 shadow-amber-200',
-                   ready: 'bg-emerald-600 shadow-emerald-200'
-                 };
-
-                 return (
-                   <div key={statusCol.id} className="flex flex-col h-full min-h-[500px]">
-                     {/* Column Header */}
-                     <div className={`mb-4 p-4 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-between relative overflow-hidden group`}>
-                        <div className="flex items-center gap-3 z-10">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg ${headerColors[statusCol.id]}`}>
-                            <Icon icon={statusCol.icon} className="text-xl" />
+                return (
+                  <Droppable key={`status-column-${statusCol.id}-${index}`} droppableId={statusCol.id} isCombineEnabled>
+                  {(provided, snapshot) => (
+                    <div 
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={`flex flex-col rounded-[2.5rem] p-6 border-2 transition-all duration-300 bg-gradient-to-b ${
+                        snapshot.isDraggingOver 
+                          ? 'bg-white/80 border-emerald-300 shadow-2xl scale-[1.01] z-10' 
+                          : `${themes[statusCol.id]} shadow-xl`
+                      } h-full`}
+                    >
+                      <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-200/50">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2.5 rounded-2xl bg-white shadow-sm ${statusCol.color.replace('text-', 'text-Opacity-80')}`}>
+                             <Icon icon={statusCol.icon} className="text-xl" />
                           </div>
-                          <div>
-                            <h3 className="font-black text-gray-900 text-sm uppercase tracking-widest">{statusCol.label}</h3>
-                            <p className="text-[10px] text-gray-400 font-bold">{colOrders.length} PEDIDOS</p>
+                          <h3 className="font-black text-gray-800 text-lg tracking-tight">{statusCol.label}</h3>
+                        </div>
+                        <span className={`text-sm font-black px-4 py-1.5 rounded-2xl shadow-sm border border-white bg-white/80 ${statusCol.color}`}>
+                          {colOrders.length}
+                        </span>
+                      </div>
+                      
+                      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-5">
+                        {colOrders.map((order, index) => {
+                          const fl = getFulfillmentLabel(order.fulfillment_type);
+                          return (
+                            <Draggable key={order.id} draggableId={order.id} index={index}>
+                              {(provided, snapshot) => (
+                                <div 
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  onClick={() => { 
+                                    if (isMerging) {
+                                      handleMergeOrders(mergeSourceOrder, order);
+                                    } else {
+                                      setSelectedOrder(order); 
+                                      setIsCancelling(false); 
+                                    }
+                                  }}
+                                  className={`bg-white p-6 rounded-[2rem] shadow-sm border-2 transition-all cursor-pointer group relative overflow-hidden flex flex-col gap-4 ${
+                                    snapshot.isDragging ? 'shadow-2xl ring-4 ring-emerald-500/20 scale-105 rotate-1 z-50' : 'active:scale-[0.98]'
+                                  } ${
+                                    order?.fulfillment_type === 'dine_in' 
+                                    ? 'border-emerald-100/80 hover:border-emerald-300' 
+                                    : 'border-gray-100 hover:border-emerald-200'
+                                  } ${
+                                    snapshot.isCombiningWith ? 'bg-emerald-100 border-emerald-500 border-2' : ''
+                                  }`}
+                                >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1 min-w-0">
+                             <div className="flex flex-col">
+                                <span className={`text-xl font-black leading-tight truncate group-hover:text-emerald-800 transition-colors ${
+                                  order?.fulfillment_type === 'dine_in' ? 'text-emerald-900' : 'text-gray-900'
+                                }`}>
+                                  {order?.fulfillment_type === 'dine_in' 
+                                    ? (order?.restaurant_tables?.table_number ? `Mesa ${order.restaurant_tables.table_number}` : 'Mesa ?')
+                                    : (order?.customer_name || 'Sin nombre')}
+                                </span>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[10px] font-bold text-gray-400 font-mono tracking-widest bg-gray-50 px-1.5 py-0.5 rounded">#{order?.id?.slice(0, 4).toUpperCase()}</span>
+                                  {order?.fulfillment_type === 'dine_in' && order?.customer_name && (
+                                    <span className="text-[10px] text-gray-400 font-medium truncate">• {order?.customer_name}</span>
+                                  )}
+                                </div>
+                             </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <OrderTimer createdAt={order.created_at} status={order.status} />
+                            {order.fulfillment_type === 'dine_in' && (
+                              <span className="text-[8px] font-black bg-emerald-500 text-white px-2 py-0.5 rounded-full uppercase tracking-tighter">MESA</span>
+                            )}
                           </div>
                         </div>
-                        {/* Decorative background icon */}
-                        <Icon icon={statusCol.icon} className="absolute -right-2 -bottom-2 text-6xl text-gray-50 opacity-50 group-hover:scale-110 transition-transform" />
-                     </div>
 
-                     <Droppable droppableId={statusCol.id} isCombineEnabled>
-                       {(provided, snapshot) => (
-                         <div
-                           {...provided.droppableProps}
-                           ref={provided.innerRef}
-                           className={`flex-1 rounded-[2.5rem] p-4 transition-all duration-300 border-2 border-dashed flex flex-col gap-4 overflow-y-auto scrollbar-hide min-h-[400px] ${
-                             snapshot.isDraggingOver 
-                               ? 'bg-gray-50 border-gray-300 scale-[0.98]' 
-                               : `bg-gradient-to-b ${themes[statusCol.id]} border-transparent`
-                           }`}
-                         >
-                           <AnimatePresence mode="popLayout">
-                             {colOrders.map((order, index) => (
-                               <Draggable key={order.id} draggableId={order.id} index={index}>
-                                 {(provided, snapshot) => (
-                                   <div
-                                     ref={provided.innerRef}
-                                     {...provided.draggableProps}
-                                     {...provided.dragHandleProps}
-                                     onClick={() => setSelectedOrder(order)}
-                                     style={provided.draggableProps.style}
-                                     className="outline-none"
-                                   >
-                                     <motion.div
-                                       layout
-                                       initial={{ opacity: 0, y: 20 }}
-                                       animate={{ opacity: 1, y: 0 }}
-                                       exit={{ opacity: 0, scale: 0.9 }}
-                                       className={`bg-white p-5 rounded-3xl border transition-all cursor-pointer relative overflow-hidden group ${
-                                         snapshot.isDragging 
-                                           ? 'shadow-2xl ring-2 ring-[#2f4131] border-transparent rotate-1 scale-105' 
-                                           : 'shadow-sm border-gray-100 hover:shadow-xl hover:-translate-y-1'
-                                       }`}
-                                     >
-                                       {/* Top level info */}
-                                       <div className="flex justify-between items-start mb-4">
-                                          <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-black shadow-inner ${
-                                              order.fulfillment_type === 'dine_in' ? 'bg-emerald-50 text-emerald-700' :
-                                              order.fulfillment_type === 'takeaway' ? 'bg-amber-50 text-amber-700' :
-                                              'bg-blue-50 text-blue-700'
-                                            }`}>
-                                              {order.restaurant_tables?.table_number || 'S/M'}
-                                            </div>
-                                            <div>
-                                              <p className="font-black text-gray-900 text-sm truncate max-w-[120px]">
-                                                {order.customer_name || 'Sin nombre'}
-                                              </p>
-                                              <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-black text-gray-300 uppercase leading-none tracking-tighter">#{order.id.slice(0,4)}</span>
-                                                <OrderTimer createdAt={order.created_at} status={order.status} />
-                                              </div>
-                                            </div>
-                                          </div>
-                                          
-                                          <div className="flex flex-col items-end gap-1">
-                                            <span className="text-xs font-black text-gray-900">
-                                              ${Number(order.total_amount).toLocaleString()}
-                                            </span>
-                                            <div className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${
-                                              order.payment_status === 'paid' 
-                                                ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
-                                                : 'bg-rose-50 text-rose-500 border border-rose-100'
-                                            }`}>
-                                              {order.payment_status === 'paid' ? 'Pagado' : 'Pendiente'}
-                                            </div>
-                                          </div>
-                                       </div>
-
-                                       {/* Items Preview */}
-                                       <div className="space-y-1.5 mb-4">
-                                          {order.order_items?.slice(0, 3).map((item, i) => (
-                                            <div key={i} className="flex justify-between items-center text-[10px] font-bold text-gray-500">
-                                              <span className="truncate max-w-[150px]">
-                                                {item.quantity}x {item.products?.name}
-                                              </span>
-                                              {item.is_paid && <Icon icon="heroicons:check-badge" className="text-emerald-500 text-xs" />}
-                                            </div>
-                                          ))}
-                                          {order.order_items?.length > 3 && (
-                                            <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest mt-1">
-                                              + {order.order_items.length - 3} productos más
-                                            </p>
-                                          )}
-                                       </div>
-
-                                       <div className="flex items-center justify-between pt-4 border-t border-gray-50/50">
-                                          <div className="flex -space-x-2">
-                                            {order.waiter_id && (
-                                              <div className="w-6 h-6 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-[10px] font-black text-gray-400" title="Mesero asignado">
-                                                <Icon icon="heroicons:user-circle" />
-                                              </div>
-                                            )}
-                                            {order.notes && (
-                                              <div className="w-6 h-6 rounded-full bg-amber-100 border-2 border-white flex items-center justify-center text-[10px] font-black text-amber-600" title="Tiene notas">
-                                                <Icon icon="heroicons:chat-bubble-bottom-center-text" />
-                                              </div>
-                                            )}
-                                          </div>
-                                          <div className="flex items-center gap-1">
-                                            <Icon icon={getFulfillmentLabel(order.fulfillment_type).icon} className={`text-sm ${getFulfillmentLabel(order.fulfillment_type).color.split(' ')[1]}`} />
-                                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">
-                                              {getFulfillmentLabel(order.fulfillment_type).text}
-                                            </span>
-                                          </div>
-                                       </div>
-                                     </motion.div>
-                                   </div>
-                                 )}
-                               </Draggable>
-                             ))}
-                           </AnimatePresence>
-                           {provided.placeholder}
-                         </div>
-                       )}
-                     </Droppable>
-                   </div>
-                 );
-               })}
-             </div>
-           </div>
-         </DragDropContext>
-       )}
-
-       {/* Order detail panel (Overlay) */}
-       <AnimatePresence>
-         {selectedOrder && (
-           <motion.div
-             initial={{ opacity: 0 }}
-             animate={{ opacity: 1 }}
-             exit={{ opacity: 0 }}
-             className="fixed inset-0 z-[110] flex items-center justify-center p-4"
-           >
-             <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-md" onClick={() => setSelectedOrder(null)}></div>
-             <motion.div 
-               initial={{ scale: 0.9, y: 20 }}
-               animate={{ scale: 1, y: 0 }}
-               exit={{ scale: 0.9, y: 20 }}
-               className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col lg:flex-row border border-gray-100"
-             >
-                {/* Lateral Navigation / Quick Actions */}
-                <div className="lg:w-72 bg-gray-50/50 border-r border-gray-100 flex flex-col p-8 order-2 lg:order-1">
-                   <div className="mb-8">
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Estado del Pedido</p>
-                      <div className="space-y-3">
-                         {ORDER_STATUSES.map(s => (
-                           <button
-                             key={s.id}
-                             disabled={updatingStatus === selectedOrder.id}
-                             onClick={() => updateOrderStatus(selectedOrder.id, s.id)}
-                             className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
-                               selectedOrder.status === s.id
-                                 ? 'bg-[#2f4131] border-[#2f4131] text-white shadow-lg shadow-[#2f4131]/20 scale-[1.02]'
-                                 : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
-                             }`}
-                           >
-                              <div className="flex items-center gap-3">
-                                <Icon icon={s.icon} className="text-xl" />
-                                <span className="text-xs font-black uppercase tracking-wider">{s.label}</span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`text-[10px] font-black px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm border border-black/5 ${fl.color}`}>
+                            <Icon icon={fl.icon} />
+                            {fl.text}
+                          </span>
+                          <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2.5 py-1.5 rounded-xl border border-gray-100">
+                            {order?.order_items?.length || 0} ítems
+                          </span>
+                        </div>
+                        
+                        {/* Indicador de Pago / Balancé - Rediseñado a Rojo Suave */}
+                        {order?.payment_status !== 'paid' && order?.status !== 'cancelled' && (
+                          <div className={`flex flex-col gap-2 px-4 py-3 rounded-[1.25rem] border transition-colors ${
+                            (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && order?.status === 'new') ||
+                            (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && order?.status === 'ready')
+                              ? 'bg-rose-50 border-rose-100 text-rose-700 animate-pulse'
+                              : 'bg-rose-50/30 border-rose-100/50 text-rose-600/80'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Icon icon="heroicons:banknotes" className="text-base" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">
+                                  {order?.paid_amount > 0 ? 'Falta Saldo' : 'Pago Pendiente'}
+                                </span>
                               </div>
-                              {selectedOrder.status === s.id && <Icon icon="heroicons:check-circle" />}
-                           </button>
-                         ))}
-                      </div>
-                   </div>
-
-                   <div className="mt-auto pt-8 border-t border-gray-200/50 space-y-4">
-                      {selectedOrder.status !== 'delivered' && (
-                        <button 
-                          disabled={updatingStatus === selectedOrder.id}
-                          onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
-                          className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-200 hover:bg-emerald-700 transition-all flex items-center justify-center gap-3"
-                        >
-                           <Icon icon="heroicons:truck" className="text-xl" />
-                           Entregar Pedido
-                        </button>
-                      )}
-                      
-                      <button 
-                        onClick={() => setIsCancelling(true)}
-                        className="w-full py-4 bg-white text-rose-500 border border-rose-100 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-50 transition-all flex items-center justify-center gap-3"
-                      >
-                         <Icon icon="heroicons:trash" className="text-xl" />
-                         Cancelar
-                      </button>
-                   </div>
-                </div>
-
-                {/* Main Content Area */}
-                <div className="flex-1 p-8 lg:p-12 overflow-y-auto scrollbar-hide order-1 lg:order-2 bg-white">
-                    <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-12">
-                       <div>
-                          <div className="flex items-center gap-4 mb-4">
-                            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.15em] border ${
-                              selectedOrder.payment_status === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'
-                            }`}>
-                              {selectedOrder.payment_status === 'paid' ? 'FACTURADO' : 'CUENTA ABIERTA'}
-                            </span>
-                            <span className="text-gray-300">•</span>
-                            <span className="text-xs font-black text-gray-400">REF: #{selectedOrder.id.slice(0,8).toUpperCase()}</span>
+                              <span className="text-[11px] font-black">
+                                {order?.paid_amount > 0 
+                                  ? `$${(order.total_amount - order.paid_amount).toLocaleString()}` 
+                                  : `$${Number(order?.total_amount || 0).toLocaleString()}`}
+                              </span>
+                            </div>
                           </div>
-                          <h1 className="text-4xl font-black text-gray-900 tracking-tight leading-none mb-4">
-                            {selectedOrder.customer_name || 'Cliente sin nombre'}
-                          </h1>
-                          <div className="flex items-center gap-3">
-                             <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100">
-                                <Icon icon="heroicons:map-pin" className="text-gray-400" />
-                                <span className="text-xs font-black text-gray-600 uppercase tracking-wider">{selectedOrder.locations?.name}</span>
-                             </div>
-                             <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100">
-                                <Icon icon="heroicons:hand-raised" className="text-gray-400" />
-                                <span className="text-xs font-black text-gray-600">MESA {selectedOrder.restaurant_tables?.table_number || 'S/M'}</span>
-                             </div>
-                          </div>
-                       </div>
-
-                       <div className="flex flex-col items-end bg-gray-50/50 p-6 rounded-3xl border border-gray-100 min-w-[220px]">
-                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total a Pagar</p>
-                          <p className="text-4xl font-black text-[#2f4131] leading-none mb-3">${Number(selectedOrder.total_amount).toLocaleString()}</p>
-                          {selectedOrder.payment_status !== 'paid' && (
-                            <button 
-                              onClick={() => setIsPOSModalOpen(true)}
-                              className="w-full flex items-center justify-center gap-2 py-2 bg-[#2f4131] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.05] active:scale-95"
-                            >
-                               <Icon icon="heroicons:banknotes" className="text-lg" />
-                               Registrar Pago
-                            </button>
+                        )}
+                        
+                        <div className="space-y-2 mt-1">
+                          {order.order_items?.slice(0, 2).map(item => (
+                            <div key={item.id} className="text-[13px] text-gray-600 truncate flex items-center gap-2">
+                              <span className="font-black text-emerald-700 bg-emerald-50 w-6 h-6 flex items-center justify-center rounded-lg text-[10px] shrink-0">{item.quantity}x</span>
+                              <span className="font-medium truncate">{item.products?.name}</span>
+                            </div>
+                          ))}
+                          {order.order_items?.length > 2 && (
+                            <div className="text-[10px] text-gray-400 font-bold pl-8">+{order.order_items.length - 2} productos más...</div>
                           )}
-                       </div>
+                        </div>
+                      </div>
+                    )}
+                  </Draggable>
+                          );
+                        })}
+                        {provided.placeholder}
+                        {colOrders.length === 0 && (
+                          <div className="flex flex-col items-center justify-center py-12 opacity-20">
+                            <Icon icon={statusCol.icon} className="text-4xl mb-2" />
+                            <span className="text-xs font-bold uppercase tracking-widest">Sin pedidos</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
+                  )}
+                </Droppable>
+              );
+            })}
+          </div>
+        </div>
+      </DragDropContext>
+      )}
 
-                    {/* Quick Info Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-                       <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-8 group transition-all hover:border-gray-200">
-                          <div className="flex items-center gap-3 mb-6">
-                             <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                                <Icon icon="heroicons:shopping-cart" className="text-xl" />
-                             </div>
-                             <h4 className="font-black text-gray-900 uppercase tracking-widest text-xs">Comanda Digital</h4>
-                          </div>
-                          
-                          <div className="space-y-6">
-                             {selectedOrder.order_items?.map((item, idx) => (
-                               <div key={idx} className="pb-6 border-b border-gray-50 last:border-0 last:pb-0">
-                                  <div className="flex justify-between items-start mb-2">
-                                     <div className="flex gap-4">
-                                        <span className="w-8 h-8 rounded-xl bg-gray-50 flex items-center justify-center text-xs font-black text-gray-400 border border-gray-100">{item.quantity}</span>
-                                        <div>
-                                           <p className="font-black text-gray-900 text-sm">{item.products?.name}</p>
-                                           <p className="text-xs text-gray-400 font-bold mt-0.5">${(item.unit_price * item.quantity).toLocaleString()}</p>
-                                        </div>
-                                     </div>
-                                     {item.is_paid && (
-                                       <span className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase border border-emerald-100">
-                                          <Icon icon="heroicons:check-badge" /> PAGADO
-                                       </span>
-                                     )}
-                                  </div>
-                                  
-                                  {item.modifiers && Object.keys(item.modifiers).length > 0 && (
-                                    <div className="ml-12 flex flex-wrap gap-2 mt-2">
-                                       {Object.entries(item.modifiers).map(([group, val]) => (
-                                         <div key={group} className="flex items-center gap-1.5 px-2 py-1 bg-gray-50/50 rounded-lg border border-gray-100">
-                                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{translateGroup(group)}:</span>
-                                            <span className="text-[10px] font-bold text-gray-600 capitalize">
-                                               {Array.isArray(val) ? val.join(', ') : val}
-                                            </span>
-                                         </div>
-                                       ))}
-                                    </div>
-                                  )}
-                                  
-                                  {item.notes && (
-                                    <div className="ml-12 mt-3 flex items-start gap-2 bg-amber-50/50 p-3 rounded-2xl border border-amber-100/50">
-                                       <Icon icon="heroicons:chat-bubble-bottom-center-text" className="text-amber-500 mt-0.5" />
-                                       <p className="text-[11px] italic font-medium text-amber-900">{item.notes}</p>
-                                    </div>
-                                  )}
-                               </div>
-                             ))}
-                          </div>
-                       </div>
-
-                       <div className="space-y-8">
-                          {/* Waiter Assign Selection */}
-                          <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-8">
-                             <div className="flex items-center justify-between mb-6">
-                                <div className="flex items-center gap-3">
-                                   <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                                      <Icon icon="heroicons:user-group" className="text-xl" />
-                                   </div>
-                                   <h4 className="font-black text-gray-900 uppercase tracking-widest text-xs">Gestión Staff</h4>
-                                </div>
-                             </div>
-                             
-                             <div className="space-y-3">
-                                {waiters.map(waiter => (
-                                  <button
-                                    key={waiter.id}
-                                    onClick={() => assignWaiter(selectedOrder.id, waiter.id === selectedOrder.waiter_id ? null : waiter.id)}
-                                    className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
-                                      selectedOrder.waiter_id === waiter.id 
-                                        ? 'bg-amber-50 border-amber-200 text-amber-900 ring-2 ring-amber-500/20' 
-                                        : 'bg-white border-gray-100 hover:border-gray-200 text-gray-400'
-                                    }`}
-                                  >
-                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-black text-gray-400 uppercase">
-                                           {waiter.full_name?.slice(0,2)}
-                                        </div>
-                                        <span className="text-xs font-black uppercase tracking-wider">{waiter.full_name}</span>
-                                     </div>
-                                     {selectedOrder.waiter_id === waiter.id && <Icon icon="heroicons:check-circle" className="text-xl" />}
-                                  </button>
-                                ))}
-                             </div>
-                          </div>
-
-                          {/* Order Details Footer */}
-                          <div className="bg-[#2f4131] rounded-[2rem] p-8 text-white shadow-2xl relative overflow-hidden group">
-                             <Icon icon="heroicons:ticket" className="absolute -right-8 -top-8 text-[12rem] opacity-5 group-hover:scale-110 transition-transform duration-700" />
-                             
-                             <h4 className="font-black uppercase tracking-widest text-xs mb-6 relative z-10 flex items-center gap-2">
-                               <Icon icon="heroicons:document-text" /> 
-                               Resumen Financiero
-                             </h4>
-                             
-                             <div className="space-y-4 relative z-10">
-                                <div className="flex justify-between text-xs font-black uppercase tracking-widest opacity-60">
-                                   <span>Subtotal</span>
-                                   <span>${(selectedOrder.total_amount - (selectedOrder.service_fee || 0) + (selectedOrder.discount_amount || 0)).toLocaleString()}</span>
-                                </div>
-                                {selectedOrder.service_fee > 0 && (
-                                  <div className="flex justify-between text-xs font-black uppercase tracking-widest opacity-60">
-                                     <span>Propina sugerida</span>
-                                     <span>${selectedOrder.service_fee.toLocaleString()}</span>
-                                  </div>
-                                )}
-                                {selectedOrder.discount_amount > 0 && (
-                                  <div className="flex justify-between text-xs font-black uppercase tracking-widest text-[#93c47d]">
-                                     <span>DESCUENTO ({selectedOrder.discount_reason})</span>
-                                     <span>- ${selectedOrder.discount_amount.toLocaleString()}</span>
-                                  </div>
-                                )}
-                                <div className="pt-4 border-t border-white/10 flex justify-between items-end">
-                                   <div>
-                                      <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Total Confirmado</p>
-                                      <p className="text-3xl font-black">${selectedOrder.total_amount.toLocaleString()}</p>
-                                   </div>
-                                   <div className="text-right">
-                                      <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Fecha</p>
-                                      <p className="text-xs font-bold">{new Date(selectedOrder.created_at).toLocaleDateString()}</p>
-                                   </div>
-                                </div>
-                             </div>
-                          </div>
-                          
-                          {/* Share Actions */}
-                          <div className="flex gap-4">
-                             <button 
-                               onClick={() => shareToWhatsApp(selectedOrder, 'summary')}
-                               className="flex-1 py-4 bg-emerald-50 text-emerald-600 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-emerald-100 hover:bg-emerald-100 transition-all flex items-center justify-center gap-2"
-                             >
-                                <Icon icon="logos:whatsapp-icon" className="text-lg" />
-                                RESUMEN CUENTA
-                             </button>
-                             <button 
-                               onClick={() => shareToWhatsApp(selectedOrder, 'ready')}
-                               className="flex-1 py-4 bg-blue-50 text-blue-600 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-blue-100 hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
-                             >
-                                <Icon icon="logos:whatsapp-icon" className="text-lg" />
-                                NOTIFICAR LISTO
-                             </button>
-                          </div>
-                          
-                          {/* Quick Discount Buttons - Only for admin/owner */}
-                          <div className="bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100">
-                             <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Cortesías y Descuentos</h4>
-                             <div className="flex gap-3">
-                                {[5, 10, 50, 100].map(pct => (
-                                  <button
-                                    key={pct}
-                                    onClick={() => applyDiscount(selectedOrder.id, pct)}
-                                    className={`flex-1 py-2 rounded-xl text-xs font-black border transition-all ${
-                                      selectedOrder.discount_amount > 0 && selectedOrder.discount_reason?.includes(`${pct}%`)
-                                        ? 'bg-[#2f4131] text-white border-[#2f4131]'
-                                        : 'bg-white text-gray-600 border-gray-100 hover:border-gray-300'
-                                    }`}
-                                  >
-                                    {pct === 100 ? 'VIP' : `${pct}%`}
-                                  </button>
-                                ))}
-                             </div>
-                          </div>
-                       </div>
-                    </div>
+      {/* Modal Detalle Pedido Rediseñado */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div 
+            className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
+            onClick={() => setSelectedOrder(null)}
+          ></div>
+          <div className="bg-gray-50/50 w-full max-w-7xl max-h-[90vh] rounded-[2.5rem] shadow-2xl overflow-hidden relative border border-white/20 backdrop-blur-xl flex flex-col">
+            {/* Header Modal */}
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-gray-100">
+                  <Icon icon="heroicons:clipboard-document-list" className="text-2xl text-[#2f4131]" />
                 </div>
-             </motion.div>
-           </motion.div>
-         )}
-       </AnimatePresence>
-
-       {/* Cancel Reason Modal Overlay */}
-       <AnimatePresence>
-         {isCancelling && (
-           <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-              <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsCancelling(false)}></div>
-              <motion.div 
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white w-full max-w-md p-8 rounded-[2rem] shadow-2xl relative border border-gray-100"
+                <div>
+                  <h2 className="text-2xl font-black text-gray-900 leading-none mb-1">PEDIDO #{selectedOrder.id.slice(0,4).toUpperCase()}</h2>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-black px-2 py-0.5 rounded-lg ${getFulfillmentLabel(selectedOrder.fulfillment_type).color}`}>
+                      {getFulfillmentLabel(selectedOrder.fulfillment_type).text}
+                    </span>
+                    <span className="text-xs font-bold text-gray-400">
+                      Recibido a las {new Date(selectedOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setSelectedOrder(null); setIsCancelling(false); }}
+                className="h-10 w-10 bg-white hover:bg-red-50 hover:text-red-500 rounded-full flex items-center justify-center transition-all text-gray-400 shadow-sm border border-gray-100"
               >
-                 <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center mb-6">
-                    <Icon icon="heroicons:exclamation-triangle" className="text-3xl" />
-                 </div>
-                 <h3 className="text-2xl font-black text-gray-900 tracking-tight leading-none mb-2">Cancelar Pedido</h3>
-                 <p className="text-sm text-gray-500 font-medium mb-8">Esto marcará el pedido como cancelado permanentemente. ¿Cuál es el motivo?</p>
-                 
-                 <div className="space-y-3 mb-8">
-                    {['Error del sistema', 'Cliente se arrepintió', 'Faltante de stock', 'Otro'].map(reason => (
-                      <button
-                        key={reason}
-                        onClick={() => setCancellationReason(reason)}
-                        className={`w-full p-4 rounded-2xl border text-sm font-black text-left transition-all flex items-center justify-between ${
-                          cancellationReason === reason
-                            ? 'bg-rose-50 border-rose-500 text-rose-700'
-                            : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
-                        }`}
-                      >
-                         {reason}
-                         {cancellationReason === reason && <div className="w-2 h-2 rounded-full bg-rose-500" />}
-                      </button>
-                    ))}
-                    <input 
-                      type="text" 
-                      placeholder="Escribe otro motivo..." 
-                      className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-                      value={cancellationReason.startsWith('Otro: ') ? cancellationReason.replace('Otro: ', '') : ''}
-                      onChange={(e) => setCancellationReason(`Otro: ${e.target.value}`)}
-                      autoFocus
-                    />
-                 </div>
+                <Icon icon="heroicons:x-mark" className="text-2xl" />
+              </button>
+            </div>
 
-                 <div className="flex gap-4">
-                    <button 
-                      onClick={() => { setIsCancelling(false); setCancellationReason(""); }}
-                      className="flex-1 py-4 bg-gray-50 text-gray-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-100 transition-colors"
-                    >
-                      VOLVER
-                    </button>
-                    <button 
-                      onClick={() => cancelOrder(selectedOrder.id)}
-                      className="flex-1 py-4 bg-rose-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-rose-200 hover:bg-rose-600 transition-all"
-                    >
-                      CANCELAR DEFINITIVO
-                    </button>
-                 </div>
-              </motion.div>
-           </div>
-         )}
-       </AnimatePresence>
-
-       {/* Consolidation Confirm Modal */}
-       <AnimatePresence>
-         {isMergeConfirmOpen && mergeSourceOrder && mergeTargetOrder && (
-           <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-              <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsMergeConfirmOpen(false)}></div>
-              <motion.div 
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white w-full max-w-lg p-10 rounded-[3rem] shadow-2xl relative border border-gray-100 text-center"
-              >
-                 <div className="flex items-center justify-center gap-6 mb-8">
-                    <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex flex-col items-center justify-center">
-                       <span className="text-[10px] font-black leading-none mb-1">DE</span>
-                       <span className="font-black">#{mergeSourceOrder.id.slice(0,4)}</span>
+            <div className="flex-1 overflow-y-auto p-6 bg-white custom-scrollbar pb-32">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr,340px] gap-8">
+                
+                {/* Columna Izquierda: Consumo */}
+                <div className="space-y-6">
+                  {/* Alertas de Estado */}
+                  {(selectedOrder.status === 'delivered' || selectedOrder.status === 'cancelled') && (
+                    <div className="flex flex-col gap-3">
+                      {selectedOrder.status === 'delivered' && (
+                        <div className="flex items-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm bg-green-50 text-green-700 border border-green-100">
+                          <Icon icon="heroicons:check-circle" className="text-lg" />
+                          Pedido Entregado a las {new Date(selectedOrder.delivered_at).toLocaleTimeString()}
+                        </div>
+                      )}
+                      {selectedOrder.status === 'cancelled' && (
+                        <div className="flex flex-col gap-2 px-4 py-3 rounded-2xl font-bold text-sm bg-red-50 text-red-700 border border-red-100">
+                          <div className="flex items-center gap-2 font-black uppercase text-xs">
+                            <Icon icon="heroicons:x-circle" className="text-lg" />
+                            Pedido Cancelado
+                          </div>
+                          {selectedOrder.cancellation_reason && (
+                            <p className="text-xs font-medium opacity-80">Motivo: {selectedOrder.cancellation_reason}</p>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <Icon icon="heroicons:arrow-long-right" className="text-3xl text-gray-200" />
-                    <div className="w-16 h-16 bg-[#2f4131] text-white rounded-2xl flex flex-col items-center justify-center shadow-xl shadow-[#2f4131]/20">
-                       <span className="text-[10px] font-black leading-none mb-1">A</span>
-                       <span className="font-black">#{mergeTargetOrder.id.slice(0,4)}</span>
+                  )}
+
+                  <div className="bg-gray-50/50 rounded-[2rem] p-6 border border-gray-100">
+                    <h3 className="font-black text-gray-400 mb-6 uppercase tracking-widest text-[10px] flex items-center gap-2">
+                       <Icon icon="heroicons:shopping-cart" className="text-lg" />
+                       Detalle del Pedido
+                    </h3>
+                    <div className="space-y-4">
+                      {selectedOrder.order_items?.map(item => (
+                        <div key={item.id} className="flex gap-4 group">
+                          <span className="font-black text-xl text-[#2f4131] w-8">{item.quantity}x</span>
+                          <div className="flex flex-col flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-gray-900 group-hover:text-emerald-700 transition-colors uppercase text-sm tracking-tight">{item.products?.name}</span>
+                              {item.is_paid && (
+                                <span className="bg-emerald-100 text-emerald-700 text-[8px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                  <Icon icon="heroicons:check-circle-16-solid" />
+                                  PAGADO
+                                </span>
+                              )}
+                            </div>
+                            {item.modifiers && Object.keys(item.modifiers).length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {Object.entries(item.modifiers).map(([k, v]) => (
+                                  <span key={k} className="text-[10px] bg-white border border-gray-200 text-gray-500 px-2 py-0.5 rounded-lg font-bold">
+                                    {translateGroup(k)}: {Array.isArray(v) ? v.join(", ") : v}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {item.notes && (
+                              <div className="mt-2 text-[11px] text-amber-700 bg-amber-50 px-3 py-1.5 rounded-xl italic font-medium border border-amber-100">
+                                <Icon icon="heroicons:chat-bubble-bottom-center-text" className="mr-1 inline" />
+                                "{item.notes}"
+                              </div>
+                            )}
+                          </div>
+                          <span className="font-bold text-gray-800">
+                            ${(item.quantity * item.unit_price).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                      
+                      <div className="mt-8 pt-6 border-t border-gray-200/60 space-y-3">
+                         <div className="flex justify-between items-center text-sm font-bold text-gray-500">
+                           <span>Subtotal</span>
+                           <span>${selectedOrder.order_items?.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toLocaleString()}</span>
+                         </div>
+                         
+                         {selectedOrder.service_fee > 0 && (
+                            <div className="flex justify-between items-center text-sm font-bold text-emerald-600">
+                              <span className="flex items-center gap-1">
+                                <Icon icon="heroicons:heart" />
+                                Servicio Voluntario
+                              </span>
+                              <span>${selectedOrder.service_fee.toLocaleString()}</span>
+                            </div>
+                         )}
+
+                         {selectedOrder.discount_amount > 0 && (
+                           <div className="flex justify-between items-center text-sm font-bold text-red-600">
+                             <span className="flex items-center gap-1">
+                               <Icon icon="heroicons:tag" />
+                               Descuento ({selectedOrder.discount_reason})
+                             </span>
+                             <span>-${selectedOrder.discount_amount.toLocaleString()}</span>
+                           </div>
+                         )}
+
+                         <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                            <span className="text-base font-black text-gray-900">TOTAL</span>
+                            <span className="text-3xl font-black text-[#2f4131] tracking-tighter">
+                              ${selectedOrder.total_amount?.toLocaleString()}
+                            </span>
+                         </div>
+                      </div>
                     </div>
-                 </div>
-                 
-                 <h3 className="text-2xl font-black text-gray-900 tracking-tight leading-none mb-4">¿Consolidar pedidos?</h3>
-                 <p className="text-sm text-gray-500 font-medium mb-10 px-8">
-                    Se moverán todos los productos de <b>{mergeSourceOrder.customer_name || 'Pedido A'}</b> hacia la cuenta de <b>{mergeTargetOrder.customer_name || 'Pedido B'}</b>. El primer pedido será eliminado permanentemente.
-                 </p>
+                  </div>
+                </div>
 
-                 <div className="flex gap-4">
-                    <button 
-                      onClick={() => { setIsMergeConfirmOpen(false); setMergeSourceOrder(null); setMergeTargetOrder(null); }}
-                      className="flex-1 py-4 bg-gray-50 text-gray-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-colors"
-                    >
-                      NO, CANCELAR
-                    </button>
-                    <button 
-                      onClick={() => handleMergeOrders(mergeSourceOrder, mergeTargetOrder)}
-                      className="flex-1 py-4 bg-[#2f4131] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-[#2f4131]/20 hover:bg-black transition-all"
-                    >
-                      SÍ, CONSOLIDAR AHORA
-                    </button>
-                 </div>
-              </motion.div>
-           </div>
-         )}
-       </AnimatePresence>
+                {/* Columna Derecha: Sidebar Admin */}
+                <div className="space-y-6">
+                  {/* Contexto: Cliente y Ubicación */}
+                  <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm space-y-5">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Información General</p>
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 border border-gray-100">
+                        <Icon icon="heroicons:user" className="text-xl" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase leading-none mb-1">Cliente</p>
+                        <p className="font-bold text-gray-800 text-sm leading-none">{selectedOrder.customer_name || 'Sin nombre'}</p>
+                      </div>
+                    </div>
 
-       {selectedOrder && (
-         <PaymentPOSModal
-           isOpen={isPOSModalOpen}
-           onClose={() => setIsPOSModalOpen(false)}
-           order={selectedOrder}
-           paymentMethods={activeMethods}
-           onSuccess={() => {
-             setIsPOSModalOpen(false);
-             fetchOrders();
-             setSelectedOrder(null);
-           }}
-         />
-       )}
+                    {selectedOrder.customer_phone && (
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 border border-gray-100">
+                          <Icon icon="heroicons:phone" className="text-xl" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-gray-400 uppercase leading-none mb-1">Celular</p>
+                          <p className="font-bold text-gray-800 text-sm leading-none">{selectedOrder.customer_phone}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
+                        <Icon icon="heroicons:map-pin" className="text-xl" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-emerald-600 uppercase leading-none mb-1">Ubicación</p>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-3 py-1 rounded-lg text-sm font-black ${
+                            selectedOrder.fulfillment_type === 'dine_in' 
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                              : 'bg-blue-100 text-blue-800 border border-blue-200'
+                          }`}>
+                            {selectedOrder.fulfillment_type === 'dine_in' 
+                              ? `MESA ${selectedOrder.restaurant_tables?.table_number || '?'}`
+                              : getFulfillmentLabel(selectedOrder.fulfillment_type).text}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Asignación de Mesero */}
+                  <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Mesero Asignado</p>
+                    <select 
+                      value={selectedOrder.waiter_id || ''}
+                      onChange={(e) => assignWaiter(selectedOrder.id, e.target.value)}
+                      className="w-full p-3 rounded-2xl border border-gray-100 text-sm font-bold text-gray-700 bg-gray-50 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
+                    >
+                      <option value="">No asignado</option>
+                      {waiters.map(w => (
+                        <option key={w.id} value={w.id}>{w.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Resumen de Pago */}
+                  <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm space-y-4">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Estado Financiero</p>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-500">Monto Total</span>
+                      <span className="text-sm font-black text-gray-900">${selectedOrder.total_amount.toLocaleString()}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-500">Pagado</span>
+                      <span className="text-sm font-black text-emerald-600">${(selectedOrder.paid_amount || 0).toLocaleString()}</span>
+                    </div>
+
+                    <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
+                      <span className="text-xs font-black text-gray-900">PENDIENTE</span>
+                      <span className={`text-lg font-black ${selectedOrder.payment_status === 'paid' ? 'text-emerald-600' : 'text-orange-600'}`}>
+                        ${Math.max(0, selectedOrder.total_amount - (selectedOrder.paid_amount || 0)).toLocaleString()}
+                      </span>
+                    </div>
+
+                    {selectedOrder.payment_status === 'paid' && (
+                      <div className="flex items-center gap-2 justify-center py-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100 mt-2">
+                        <Icon icon="heroicons:check-circle" className="text-lg" />
+                        <span className="text-[10px] font-black uppercase tracking-wider">Completamente Pagado</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Historial de Pagos */}
+                  {selectedOrder.order_payments?.length > 0 && (
+                    <div className="bg-gray-50/80 p-6 rounded-[2rem] border border-gray-100 space-y-4 animate-in slide-in-from-right-4 duration-300">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                        <Icon icon="heroicons:clipboard-document-check" className="text-sm" />
+                        Historial de Pagos
+                      </p>
+                      
+                      <div className="space-y-2">
+                        {selectedOrder.order_payments.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).map(pay => (
+                          <div key={pay.id} className="flex justify-between items-center bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] font-black text-gray-900 uppercase">{pay.payment_method_name || 'Desconocido'}</span>
+                              <span className="text-[8px] font-bold text-gray-400 uppercase">{new Date(pay.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-xs font-black text-emerald-600 block">${pay.amount.toLocaleString()}</span>
+                              {pay.change_amount > 0 && (
+                                <span className="text-[8px] font-bold text-gray-400 block italic">Cambio: ${pay.change_amount.toLocaleString()}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Descuentos VIP */}
+                  {selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
+                    <div className="bg-gray-900 p-6 rounded-[2rem] shadow-xl">
+                      <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Icon icon="heroicons:sparkles" />
+                        CORTESÍA / VIP
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[10, 20, 50, 100].map(pct => (
+                          <button
+                            key={pct}
+                            onClick={async () => {
+                              await applyDiscount(selectedOrder.id, pct);
+                              // Auto move to 'new' if it was waiting_payment
+                              if (selectedOrder.status === 'waiting_payment') {
+                                await updateOrderStatus(selectedOrder.id, "new", { 
+                                  payment_status: "paid", 
+                                  payment_method: selectedPaymentMethod 
+                                });
+                              }
+                            } }
+                            disabled={updatingStatus === selectedOrder.id}
+                            className="py-2.5 bg-gray-800 hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-all border border-gray-700 active:scale-95 disabled:opacity-50"
+                          >
+                            {pct}% {pct === 100 && 'OFF'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Fijo del Modal */}
+            <div className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-gray-100 flex flex-col md:flex-row gap-4 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-10">
+               
+               <div className="flex-1 flex gap-2">
+                 <button 
+                   onClick={() => shareToWhatsApp(selectedOrder, 'summary')}
+                   className="flex-1 md:flex-none px-6 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+                 >
+                   <Icon icon="logos:whatsapp-icon" />
+                   RESUMEN
+                 </button>
+
+                 <button 
+                   onClick={() => { 
+                     setIsMerging(true); 
+                     setMergeSourceOrder(selectedOrder); 
+                     setSelectedOrder(null); 
+                     toast("Ahora selecciona el pedido destino", { icon: '🎯' });
+                   }}
+                   className="flex-1 md:flex-none px-6 py-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+                 >
+                   <Icon icon="heroicons:arrows-right-left" />
+                   CONSOLIDAR
+                 </button>
+
+                 {!isCancelling ? (
+                   <button 
+                     onClick={() => setIsCancelling(true)}
+                     className="flex-1 md:flex-none px-6 py-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+                   >
+                     <Icon icon="heroicons:trash" />
+                     CANCELAR
+                   </button>
+                 ) : (
+                   <div className="flex-1 flex gap-2 items-center bg-red-50 p-2 rounded-2xl border border-red-100 animate-in fade-in slide-in-from-bottom-2">
+                     <input 
+                       type="text" 
+                       placeholder="Motivo..."
+                       value={cancellationReason}
+                       onChange={(e) => setCancellationReason(e.target.value)}
+                       className="flex-1 bg-white border-none text-xs font-bold p-2.5 rounded-xl focus:ring-1 focus:ring-red-300"
+                     />
+                     <button onClick={() => cancelOrder(selectedOrder.id)} className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-black">CONFIRMAR</button>
+                     <button onClick={() => setIsCancelling(false)} className="p-2 text-gray-400 hover:text-gray-600">
+                       <Icon icon="heroicons:x-mark" />
+                     </button>
+                   </div>
+                 )}
+                </div>
+
+                <div className="flex-[1.5]">
+                  {/* BOTÓN: POS MODAL (Reemplaza Mark as Paid) */}
+                  {selectedOrder.payment_status !== 'paid' && (
+                    <button 
+                      onClick={() => setIsPOSModalOpen(true)}
+                      disabled={updatingStatus === selectedOrder.id}
+                      className={`w-full py-5 rounded-[2.5rem] font-black text-lg shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50 mb-4 border-2 group relative overflow-hidden ${
+                        (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.status === 'new') || 
+                        (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.status === 'ready')
+                          ? 'bg-emerald-600 border-emerald-600 text-white shadow-emerald-200/50 hover:bg-emerald-700 hover:-translate-y-0.5'
+                          : 'bg-white border-emerald-600 text-emerald-600 hover:bg-emerald-50 shadow-emerald-100/50 hover:-translate-y-0.5'
+                      }`}
+                    >
+                      <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <Icon icon="solar:round-transfer-horizontal-bold" className="text-2xl group-hover:rotate-12 transition-transform" />
+                      <span className="relative">COBRAR / DESGLOSAR PAGO</span>
+                    </button>
+                  )}
+
+                  {/* BOTÓN: ENVIAR A COCINA */}
+                  {selectedOrder.status === 'new' && (
+                    <button 
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'preparing')}
+                      disabled={
+                        updatingStatus === selectedOrder.id || 
+                        (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid')
+                      }
+                      className={`w-full py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
+                        restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid'
+                          ? 'bg-neutral-200 text-neutral-400 border-2 border-neutral-100 shadow-none cursor-not-allowed grayscale'
+                          : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200/50 hover:-translate-y-0.5 border-2 border-blue-600'
+                      }`}
+                    >
+                      <Icon icon="solar:fire-bold" className="text-2xl" />
+                      {restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid' 
+                        ? 'PAGO REQUERIDO PARA COCINA' 
+                        : 'ENVIAR A COCINA'}
+                    </button>
+                  )}
+
+                  {/* BOTÓN: LISTO PARA ENTREGA */}
+                  {selectedOrder.status === 'preparing' && (
+                    <button 
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'ready')}
+                      disabled={updatingStatus === selectedOrder.id}
+                      className="w-full py-4.5 bg-amber-500 hover:bg-amber-600 text-white rounded-[2rem] font-black text-base shadow-2xl shadow-amber-200/50 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 border-2 border-amber-500 hover:-translate-y-0.5"
+                    >
+                      <Icon icon="solar:check-circle-bold" className="text-2xl" />
+                      LISTO PARA ENTREGA
+                    </button>
+                  )}
+
+                  {/* BOTÓN: MARCAR ENTREGADO */}
+                  {selectedOrder.status === 'ready' && (
+                    <button 
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
+                      disabled={
+                        updatingStatus === selectedOrder.id || 
+                        (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid')
+                      }
+                      className={`w-full py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
+                        restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
+                          ? 'bg-neutral-200 text-neutral-400 border-2 border-neutral-100 shadow-none cursor-not-allowed grayscale'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200/50 hover:-translate-y-0.5 border-2 border-emerald-600'
+                      }`}
+                    >
+                      <Icon icon="solar:box-minimalistic-bold" className="text-2xl" />
+                      {restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
+                        ? 'PAGO REQUERIDO PARA ENTREGA'
+                        : 'MARCAR COMO ENTREGADO'}
+                    </button>
+                  )}
+                </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POS Payment Modal */}
+      {isPOSModalOpen && selectedOrder && (
+        <PaymentPOSModal 
+          order={selectedOrder}
+          paymentMethods={activeMethods}
+          onClose={() => setIsPOSModalOpen(false)}
+          onSuccess={async () => {
+            await fetchOrders();
+            // The sync useEffect will take care of updating selectedOrder
+          }}
+        />
+      )}
+
+      {/* MERGE CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {isMergeConfirmOpen && mergeSourceOrder && mergeTargetOrder && (
+          <Modal onClose={() => setIsMergeConfirmOpen(false)}>
+            <div className="p-8 text-center">
+              <div className="w-20 h-20 bg-brand-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Icon icon="solar:globus-bold-duotone" className="text-4xl text-brand-primary animate-pulse" />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 mb-2">¿Consolidar Pedidos?</h3>
+              <p className="text-gray-500 font-medium leading-relaxed mb-8">
+                Estás a punto de fusionar el pedido de <span className="text-gray-900 font-bold">{mergeSourceOrder.customer_name || 'Mesa ' + mergeSourceOrder.restaurant_tables?.table_number}</span> dentro de <span className="text-gray-900 font-bold">{mergeTargetOrder.customer_name || 'Mesa ' + mergeTargetOrder.restaurant_tables?.table_number}</span>.
+                <br /><br />
+                Los items del primer pedido se sumarán a la cuenta del segundo y el primer pedido será eliminado.
+              </p>
+
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={() => {
+                    handleMergeOrders(mergeSourceOrder, mergeTargetOrder);
+                    setIsMergeConfirmOpen(false);
+                  }}
+                  className="w-full py-4 bg-brand-primary text-white rounded-2xl font-black shadow-xl shadow-brand-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                >
+                  SÍ, CONSOLIDAR CUENTAS
+                </button>
+                <button 
+                  onClick={() => setIsMergeConfirmOpen(false)}
+                  className="w-full py-4 bg-gray-50 text-gray-400 rounded-2xl font-bold hover:bg-gray-100 transition-all"
+                >
+                  CANCELAR
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
