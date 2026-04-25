@@ -840,7 +840,7 @@ export default function AdminOrders() {
                       {...provided.droppableProps}
                       className={`flex flex-col rounded-[2.5rem] p-6 border-2 transition-all duration-300 bg-gradient-to-b ${
                         snapshot.isDraggingOver 
-                          ? 'bg-white/80 border-emerald-300 shadow-2xl scale-[1.01] z-10' 
+                          ? 'bg-white/80 border-emerald-300 shadow-2xl' 
                           : `${themes[statusCol.id]} shadow-xl`
                       } h-full`}
                     >

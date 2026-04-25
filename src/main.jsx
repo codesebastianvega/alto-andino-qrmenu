@@ -27,7 +27,6 @@ const RegisterPage = React.lazy(() => import("./pages/auth/RegisterPage.jsx"));
 const CompleteProfilePage = React.lazy(() => import("./pages/auth/CompleteProfilePage.jsx"));
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
     <ErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
@@ -106,6 +105,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           </LocationProvider>
         </AuthProvider>
       </BrowserRouter>
-    </ErrorBoundary>
-  </React.StrictMode>,
+    </ErrorBoundary>,
 );
