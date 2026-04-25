@@ -42,7 +42,7 @@ export default function AdminWaiter() {
     fetchAreas();
     fetchActiveOrders();
 
-    const locationFilter = !isAllLocations ? `,location_id=eq.${activeLocationId}` : '';
+    const orderFilter = `brand_id=eq.${profile.brand_id}`;
     const channelSuffix = `${profile.brand_id}-${activeLocationId || 'all'}`;
 
     const tablesChannel = supabase
@@ -51,8 +51,9 @@ export default function AdminWaiter() {
         event: '*', 
         schema: 'public', 
         table: 'restaurant_tables', 
-        filter: `brand_id=eq.${profile.brand_id}${locationFilter}` 
-      }, () => {
+        filter: orderFilter 
+      }, (payload) => {
+        if (!isAllLocations && activeLocationId && payload.new && payload.new.location_id !== activeLocationId) return;
         fetchTables();
       })
       .subscribe();
@@ -63,8 +64,9 @@ export default function AdminWaiter() {
         event: '*', 
         schema: 'public', 
         table: 'orders', 
-        filter: `brand_id=eq.${profile.brand_id}${locationFilter}` 
-      }, () => {
+        filter: orderFilter
+      }, (payload) => {
+        if (!isAllLocations && activeLocationId && payload.new && payload.new.location_id !== activeLocationId) return;
         fetchActiveOrders();
       })
       .subscribe();
@@ -75,8 +77,9 @@ export default function AdminWaiter() {
         event: '*', 
         schema: 'public', 
         table: 'table_areas', 
-        filter: `brand_id=eq.${profile.brand_id}${locationFilter}` 
-      }, () => {
+        filter: orderFilter
+      }, (payload) => {
+        if (!isAllLocations && activeLocationId && payload.new && payload.new.location_id !== activeLocationId) return;
         fetchAreas();
       })
       .subscribe();
@@ -130,7 +133,7 @@ export default function AdminWaiter() {
         .select('id, status, table_id, created_at, customer_name, fulfillment_type')
         .eq('brand_id', profile.brand_id)
         .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
-        .in('status', ['new', 'preparing', 'ready']);
+        .in('status', ['new', 'preparing', 'ready', 'waiting_payment']);
       
       if (error) throw error;
       setActiveOrders(data || []);
@@ -140,6 +143,12 @@ export default function AdminWaiter() {
   };
 
   const handleSelectTable = (table) => {
+    // 1. Bloqueo si la mesa está sucia
+    if (table.physical_status === 'sucia') {
+      toast.error('La mesa está marcada para limpieza 🧹');
+      return;
+    }
+
     const isOccupied = activeOrders.some(o => o.table_id === table.id);
     if (isOccupied) {
       setTableToConfirm(table);
@@ -167,8 +176,34 @@ export default function AdminWaiter() {
     window.location.hash = "#menu";
   };
 
-  const getTableStatus = (tableId) => {
+  const getTableStatus = (tableId, physicalStatus) => {
+    // 1. Prioridad: Estados físicos de la base de datos (Sucia / Ocupada)
+    if (physicalStatus === 'sucia') return { 
+      label: 'Sucia', 
+      variant: 'amber', 
+      dot: 'bg-orange-500', 
+      bg: 'bg-orange-50/20' 
+    };
+
+    if (physicalStatus === 'ocupada' || physicalStatus === 'needs_billing') {
+      return { 
+        label: 'Ocupada', 
+        variant: 'amber', 
+        dot: 'bg-amber-500', 
+        bg: 'bg-amber-50/10' 
+      };
+    }
+
     const order = activeOrders.find(o => o.table_id === tableId);
+    if (order && order.status === 'waiting_payment') {
+      return { 
+        label: 'Por Cobrar', 
+        variant: 'red', 
+        dot: 'bg-red-500', 
+        bg: 'bg-red-50/10' 
+      };
+    }
+
     if (!order) return { 
       label: 'Disponible', 
       variant: 'green',
@@ -182,7 +217,7 @@ export default function AdminWaiter() {
       'ready': { label: 'Listo', variant: 'indigo', dot: 'bg-indigo-500', bg: 'bg-indigo-50/10' }
     };
     
-    return statusMap[order.status] || { label: 'Ocupada', variant: 'gray', dot: 'bg-gray-400', bg: 'bg-gray-50' };
+    return statusMap[order.status] || { label: 'Ocupada', variant: 'amber', dot: 'bg-amber-500', bg: 'bg-amber-50/10' };
   };
 
   const getTimeOccupied = (createdAt) => {
@@ -205,7 +240,7 @@ export default function AdminWaiter() {
     );
   }
 
-  const freeTablesCount = tables.filter(t => !activeOrders.some(o => o.table_id === t.id)).length;
+  const freeTablesCount = tables.filter(t => t.physical_status === 'libre' || !t.physical_status).length;
   const occupiedTablesCount = tables.length - freeTablesCount;
   const externalOrders = activeOrders.filter(o => !o.table_id);
   const takeawayCount = externalOrders.filter(o => o.fulfillment_type === 'takeaway').length;
@@ -288,6 +323,7 @@ export default function AdminWaiter() {
             <div className="flex items-center gap-4 text-[9px] font-black text-gray-400 bg-white/80 p-2 rounded-full border border-gray-100 shadow-sm px-4">
                <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> DISPONIBLE</div>
                <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-amber-500" /> EN SERVICIO</div>
+               <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-orange-500" /> SUCIA</div>
             </div>
           </div>
 
@@ -304,7 +340,7 @@ export default function AdminWaiter() {
               ) : tables
                   .filter(t => selectedAreaId === 'all' || t.area_id === selectedAreaId)
                   .map((table) => {
-                const status = getTableStatus(table.id);
+                const statusParam = getTableStatus(table.id, table.physical_status);
                 const order = activeOrders.find(o => o.table_id === table.id);
                 
                 return (
@@ -315,11 +351,12 @@ export default function AdminWaiter() {
                     key={table.id}
                     onClick={() => handleSelectTable(table)}
                     className={`group relative bg-white border rounded-[2rem] p-5 text-left transition-all hover:border-[#2f4131] shadow-lg shadow-gray-200/20 hover:shadow-[#2f4131]/5 active:scale-[0.98] overflow-hidden ${
-                      order ? 'border-amber-100 bg-amber-50/10' : 'border-gray-50'
+                      table.physical_status === 'sucia' ? 'border-orange-200 bg-orange-50/10' :
+                      (table.physical_status === 'ocupada' || table.physical_status === 'needs_billing' || order) ? 'border-amber-100 bg-amber-50/10' : 'border-gray-50'
                     }`}
                   >
                     <div className="flex justify-between items-start mb-4">
-                       <Badge variant={status.variant}>{status.label}</Badge>
+                       <Badge variant={statusParam.variant}>{statusParam.label}</Badge>
                        {order && (
                          <div className="flex items-center gap-1.5 bg-white/90 px-2 py-1 rounded-lg border border-gray-100 shadow-sm">
                            <Timer size={12} className="text-amber-500" />
@@ -336,10 +373,15 @@ export default function AdminWaiter() {
                     </div>
 
                     <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
-                      {order ? (
+                      {table.physical_status === 'sucia' ? (
+                        <div className="flex items-center gap-1.5">
+                           <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                           <span className="text-[10px] font-bold text-orange-600 uppercase tracking-tight">Para Limpiar</span>
+                        </div>
+                      ) : (table.physical_status === 'ocupada' || table.physical_status === 'needs_billing' || order) ? (
                         <div className="flex flex-col">
-                           <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Cliente</span>
-                           <span className="text-[11px] font-black text-gray-900 truncate max-w-[100px]">{order.customer_name || 'Comensal'}</span>
+                           <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Ocupada</span>
+                           <span className="text-[11px] font-black text-gray-900 truncate max-w-[100px]">{order?.customer_name || 'En Servicio'}</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5">

@@ -305,6 +305,21 @@ export default function AdminOrders() {
 
   const updateOrderStatus = async (orderId, newStatus, extraPayload = {}) => {
     try {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+
+      // Bloqueo de seguridad: Validar requerimientos de pago según configuración
+      // Esto protege tanto los clics en botones como el Drag & Drop del Kanban
+      if (newStatus === 'preparing' && restaurantSettings?.payment_requirement_stage === 'pre_preparation' && order.payment_status !== 'paid') {
+        toast.error('⚠️ Se requiere el pago total para enviar a cocina');
+        return;
+      }
+      
+      if (newStatus === 'delivered' && restaurantSettings?.payment_requirement_stage === 'pre_delivery' && order.payment_status !== 'paid') {
+        toast.error('⚠️ El pedido debe estar pagado para marcar como entregado');
+        return;
+      }
+
       setUpdatingStatus(orderId);
       const payload = { status: newStatus, ...extraPayload };
       if (newStatus === 'ready') payload.ready_at = new Date().toISOString();
@@ -454,6 +469,18 @@ export default function AdminOrders() {
     if (source.droppableId !== destination.droppableId) {
       const orderId = draggableId;
       const newStatus = destination.droppableId;
+      const order = orders.find(o => o.id === orderId);
+
+      // Protección contra cancelaciones accidentales
+      if (newStatus === 'cancelled') {
+        if (order) {
+          setSelectedOrder(order);
+          setIsCancelling(true);
+          toast("Ingresa el motivo de cancelación para continuar", { icon: '📝' });
+        }
+        return; // Detenemos aquí, el usuario deberá confirmar en el panel de detalles
+      }
+
       updateOrderStatus(orderId, newStatus);
     }
   };
