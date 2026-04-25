@@ -34,7 +34,8 @@ export default function AdminBranding({ isEmbedded = false }) {
     theme_text: '#1A1A1A',
     theme_footer_bg: '#1A2421',
     favicon_url: '',
-    font_family: 'Inter'
+    font_family: 'Inter',
+    brand_concepts: []
   });
 
   const [isSubmittingSettings, setIsSubmittingSettings] = useState(false);
@@ -73,7 +74,8 @@ export default function AdminBranding({ isEmbedded = false }) {
           theme_text: data.theme_text || '#1A1A1A',
           theme_footer_bg: data.theme_footer_bg || '#1A2421',
           favicon_url: data.favicon_url || '',
-          font_family: data.font_family || 'Inter'
+          font_family: data.font_family || 'Inter',
+          brand_concepts: data.brand_concepts || []
         });
       } else {
         // Initialize form with brand defaults if no settings found
@@ -89,6 +91,36 @@ export default function AdminBranding({ isEmbedded = false }) {
     } finally {
       setLoadingSettings(false);
     }
+  };
+
+  const addConcept = () => {
+    const newConcept = {
+      id: crypto.randomUUID(),
+      name: 'Nuevo Concepto',
+      description: '',
+      image_url: '',
+      accent_color: settingsForm.primary_color
+    };
+    setSettingsForm(prev => ({
+      ...prev,
+      brand_concepts: [...(prev.brand_concepts || []), newConcept]
+    }));
+  };
+
+  const removeConcept = (id) => {
+    setSettingsForm(prev => ({
+      ...prev,
+      brand_concepts: prev.brand_concepts.filter(c => c.id !== id)
+    }));
+  };
+
+  const updateConcept = (id, field, value) => {
+    setSettingsForm(prev => ({
+      ...prev,
+      brand_concepts: prev.brand_concepts.map(c => 
+        c.id === id ? { ...c, [field]: value } : c
+      )
+    }));
   };
 
   const handleSaveSettings = async (e) => {
@@ -109,6 +141,7 @@ export default function AdminBranding({ isEmbedded = false }) {
         theme_footer_bg: settingsForm.theme_footer_bg,
         favicon_url: settingsForm.favicon_url,
         font_family: settingsForm.font_family,
+        brand_concepts: settingsForm.brand_concepts,
         updated_at: new Date()
       };
 
@@ -377,6 +410,98 @@ export default function AdminBranding({ isEmbedded = false }) {
                       isPremium={isAdvancedLocked}
                     />
                  </div>
+              </div>
+            </div>
+          </section>
+
+          {/* BRAND CONCEPTS SECTION */}
+          <section className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
+            <div className="p-8">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl">
+                    <Icon icon="solar:star-rainbow-bold" width="24" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 leading-tight">Conceptos de Marca</h3>
+                    <p className="text-[13px] text-gray-400 font-medium mt-0.5">Sub-marcas o líneas de negocio (ej: Delicattesen)</p>
+                  </div>
+                </div>
+                <button 
+                  type="button"
+                  onClick={addConcept}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-sm font-bold hover:bg-amber-100 transition-all border border-amber-100"
+                >
+                  <Icon icon="solar:add-circle-bold" width="18" />
+                  Nuevo Concepto
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {(settingsForm.brand_concepts || []).length === 0 ? (
+                  <div className="py-12 px-6 border-2 border-dashed border-gray-100 rounded-[2rem] text-center">
+                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Icon icon="solar:box-minimalistic-linear" width="32" className="text-gray-200" />
+                    </div>
+                    <p className="text-sm font-medium text-gray-400">No hay conceptos creados.</p>
+                    <p className="text-[11px] text-gray-300 mt-1 uppercase tracking-widest font-black">Empieza añadiendo uno para tu marca</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {settingsForm.brand_concepts.map((concept) => (
+                      <div key={concept.id} className="p-6 bg-gray-50/50 rounded-[2rem] border border-gray-100 relative group animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <button 
+                          type="button"
+                          onClick={() => removeConcept(concept.id)}
+                          className="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                        >
+                          <Icon icon="solar:trash-bin-trash-bold" width="20" />
+                        </button>
+
+                        <div className="grid sm:grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                            <FormField label="Nombre del Concepto">
+                              <TextInput 
+                                value={concept.name}
+                                onChange={(e) => updateConcept(concept.id, 'name', e.target.value)}
+                                placeholder="Ej: Delicattesen"
+                              />
+                            </FormField>
+                            <FormField label="Descripción corta">
+                              <TextInput 
+                                value={concept.description}
+                                onChange={(e) => updateConcept(concept.id, 'description', e.target.value)}
+                                placeholder="Línea de productos premium..."
+                              />
+                            </FormField>
+                          </div>
+                          <div className="space-y-4">
+                            <FormField label="Color de Acento">
+                              <div className="flex items-center gap-3">
+                                <div 
+                                  className="w-10 h-10 rounded-xl border border-gray-200 shadow-inner shrink-0" 
+                                  style={{ backgroundColor: concept.accent_color }}
+                                />
+                                <TextInput 
+                                  value={concept.accent_color}
+                                  onChange={(e) => updateConcept(concept.id, 'accent_color', e.target.value)}
+                                  placeholder="#HEX"
+                                />
+                              </div>
+                            </FormField>
+                            <FormField label="URL de Imagen / Logo">
+                              <TextInput 
+                                value={concept.image_url}
+                                onChange={(e) => updateConcept(concept.id, 'image_url', e.target.value)}
+                                placeholder="https://..."
+                              />
+                            </FormField>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </section>

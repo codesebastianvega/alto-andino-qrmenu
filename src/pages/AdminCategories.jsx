@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useCategories } from '../hooks/useCategories';
 import { usePlan } from '../hooks/usePlan';
+import { useLocationOverrides } from '../hooks/useLocationOverrides';
 import CategoryForm from '../components/admin/CategoryForm';
 import AdminAllergens from './AdminAllergens';
 import {
@@ -35,11 +36,21 @@ export default function AdminCategories() {
   const handleEdit    = (cat) => { setEditingCategory(cat); setIsFormOpen(true); };
   const handleDelete  = async (id) => { await deleteCategory(id); setConfirmDeleteId(null); };
 
-  const handleSave = async (data) => {
+  const { saveCategoryOverrides } = useLocationOverrides();
+
+  const handleSave = async (data, locationOverrides) => {
     const result = editingCategory
       ? await updateCategory(editingCategory.id, data)
       : await createCategory(data);
-    if (result?.success) { setIsFormOpen(false); setEditingCategory(null); }
+      
+    if (result?.success) {
+      const categoryId = editingCategory ? editingCategory.id : result.data?.id;
+      if (categoryId && locationOverrides) {
+        await saveCategoryOverrides(categoryId, locationOverrides);
+      }
+      setIsFormOpen(false); 
+      setEditingCategory(null); 
+    }
   };
 
   if (loading) return (

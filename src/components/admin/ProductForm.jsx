@@ -2,8 +2,10 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useMenuData } from '../../context/MenuDataContext';
 import { supabase } from '../../config/supabase';
-import { Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButton } from './ui';
+import { Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButton, Switch } from './ui';
 import { Icon } from '@iconify-icon/react';
+import { useLocations } from '../../hooks/useLocations';
+import { useLocationOverrides } from '../../hooks/useLocationOverrides';
 
 export default function ProductForm({ product, categories, recipes = [], allergens = [], onSave, onCancel }) {
   const { rawModifierGroups = [] } = useMenuData();
@@ -50,6 +52,40 @@ export default function ProductForm({ product, categories, recipes = [], allerge
   const [isUploading, setIsUploading] = useState(false);
   const [imgError, setImgError] = useState(false);
   const fileInputRef = useRef(null);
+
+  // --- Location Overrides ---
+  const { locations } = useLocations();
+  const { fetchProductOverrides } = useLocationOverrides();
+  const [locationOverrides, setLocationOverrides] = useState([]);
+
+  useEffect(() => {
+    if (product?.id) {
+      const loadOverrides = async () => {
+        const data = await fetchProductOverrides(product.id);
+        setLocationOverrides(data);
+      };
+      loadOverrides();
+    } else {
+      setLocationOverrides([]);
+    }
+  }, [product?.id]);
+
+  const handleOverrideChange = (locationId, field, value) => {
+    setLocationOverrides(prev => {
+      const existing = prev.find(o => o.location_id === locationId);
+      if (existing) {
+        return prev.map(o => o.location_id === locationId ? { ...o, [field]: value } : o);
+      } else {
+        // Initialize with default values if not present
+        return [...prev, { 
+          location_id: locationId, 
+          is_active: true, 
+          stock_status: 'in', 
+          [field]: value 
+        }];
+      }
+    });
+  };
 
   // Reset image error state whenever the URL changes
   useEffect(() => {
@@ -167,13 +203,20 @@ export default function ProductForm({ product, categories, recipes = [], allerge
       alert('Por favor completa nombre, precio y categoría.');
       return;
     }
+    
+    // Normalize overrides
+    const normalizedOverrides = locationOverrides.map(o => ({
+      ...o,
+      price: o.price === '' || o.price === undefined || o.price === null ? null : parseFloat(o.price)
+    }));
+
     onSave({ 
       ...formData, 
       price: parseFloat(formData.price), 
       cost: parseFloat(formData.cost) || 0, 
       packaging_fee: parseFloat(formData.packaging_fee) || 0,
       subcategory: formData.subcategory || null
-    });
+    }, normalizedOverrides);
   };
 
   const priceNum  = parseFloat(formData.price) || 0;
@@ -261,6 +304,65 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                     )}
                   </FormField>
                 </div>
+                {/* --- SECCIÓN: DISPONIBILIDAD POR SEDE --- */}
+                <div className="md:col-span-3">
+                  <section className="bg-white border border-gray-100 rounded-2xl p-6 mb-4">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 rounded-xl bg-[#2f4131]/5 flex items-center justify-center">
+                        <svg className="w-5 h-5 text-[#2f4131]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-gray-900">Disponibilidad por Sede</h3>
+                        <p className="text-xs text-gray-500">Configura precios y visibilidad específicos para cada punto de venta.</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      {locations.map(loc => {
+                        const override = locationOverrides[loc.id] || { is_active: true, stock_status: 'in', price: '' };
+                        return (
+                          <div key={loc.id} className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border border-gray-50 bg-gray-50/30">
+                            <div className="flex items-center gap-3 min-w-[150px]">
+                              <div className={`w-2 h-2 rounded-full ${override.is_active ? 'bg-green-500' : 'bg-gray-300'}`} />
+                              <span className="text-sm font-semibold text-gray-900">{loc.name}</span>
+                            </div>
+
+                            <div className="flex items-center gap-6">
+                              {/* Toggle Visibilidad */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] font-medium text-gray-500 uppercase">Visible</span>
+                                <Switch
+                                  checked={override.is_active}
+                                  onChange={(val) => handleOverrideChange(loc.id, 'is_active', val)}
+                                  size="sm"
+                                />
+                              </div>
+
+                              {/* Precio Override */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] font-medium text-gray-500 uppercase">Precio</span>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+                                  <input
+                                    type="number"
+                                    placeholder="Base"
+                                    value={override.price}
+                                    onChange={(e) => handleOverrideChange(loc.id, 'price', e.target.value)}
+                                    className="w-28 pl-6 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                </div>
+
                 <div className="md:col-span-3">
                   <FormField label="Descripción">
                     <textarea name="description" value={formData.description} onChange={handleChange} rows={3}

@@ -2,9 +2,49 @@ import { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Icon } from '@iconify-icon/react';
 import { supabase } from '../../config/supabase';
+import { useLocations } from '../../hooks/useLocations';
+import { useLocationOverrides } from '../../hooks/useLocationOverrides';
 import { Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButton } from './ui';
 
 export default function CategoryForm({ category, onSave, onCancel }) {
+  const { locations } = useLocations();
+  const { getCategoryOverrides, saveCategoryOverrides } = useLocationOverrides();
+  const [locationOverrides, setLocationOverrides] = useState([]);
+  const [loadingOverrides, setLoadingOverrides] = useState(false);
+
+  useEffect(() => {
+    if (category?.id) {
+      loadOverrides();
+    } else {
+      // For new category, default to active in all locations
+      setLocationOverrides(locations.map(loc => ({
+        location_id: loc.id,
+        is_active: true
+      })));
+    }
+  }, [category, locations]);
+
+  async function loadOverrides() {
+    setLoadingOverrides(true);
+    const overrides = await getCategoryOverrides(category.id);
+    // Merge with all available locations to ensure every location has an entry
+    const merged = locations.map(loc => {
+      const existing = overrides.find(o => o.location_id === loc.id);
+      return {
+        location_id: loc.id,
+        is_active: existing ? existing.is_active : true // Default to true if not specified
+      };
+    });
+    setLocationOverrides(merged);
+    setLoadingOverrides(false);
+  }
+
+  const toggleLocation = (locationId) => {
+    setLocationOverrides(prev => prev.map(o => 
+      o.location_id === locationId ? { ...o, is_active: !o.is_active } : o
+    ));
+  };
+
   const [formData, setFormData] = useState({
     name: '', slug: '', icon: '🍽️', sort_order: 0, is_active: true,
     banner_image_url: '', banner_title: '', banner_description: '', 
@@ -66,7 +106,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
     if (!dataToSave.available_from) dataToSave.available_from = null;
     if (!dataToSave.available_to) dataToSave.available_to = null;
     
-    onSave(dataToSave);
+    onSave(dataToSave, locationOverrides);
   };
 
   const toggleDay = (dayIndex) => {
@@ -384,6 +424,47 @@ export default function CategoryForm({ category, onSave, onCancel }) {
               )}
             </div>
             
+          </div>
+
+          {/* Disponibilidad por Sede */}
+          <div className="md:col-span-2 lg:col-span-3">
+            <div className="p-5 bg-white rounded-2xl border border-gray-100 shadow-sm space-y-4">
+              <div className="flex items-center gap-2">
+                <Icon icon="heroicons:map-pin" className="text-xl text-[#2f4131]" />
+                <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">Disponibilidad por Sede</h3>
+              </div>
+              <p className="text-[12px] text-gray-400 font-medium leading-relaxed">
+                Define en qué sedes estará disponible esta categoría. Si la marca tiene sedes con diferentes menús, puedes controlarlo aquí.
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {locations.map(loc => {
+                  const override = locationOverrides.find(o => o.location_id === loc.id);
+                  const isActive = override ? override.is_active : true;
+                  
+                  return (
+                    <div key={loc.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500">
+                          <Icon icon="heroicons:home" />
+                        </div>
+                        <span className="text-[13px] font-bold text-gray-700">{loc.name}</span>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => toggleLocation(loc.id)}
+                        className={`w-9 h-[22px] rounded-full relative transition-all shadow-inner ${isActive ? 'bg-[#2f4131]' : 'bg-gray-200'}`}
+                      >
+                        <div className={`absolute top-[3px] w-4 h-4 bg-white rounded-full shadow-sm transition-all ${isActive ? 'left-[18px]' : 'left-[3px]'}`} />
+                      </button>
+                    </div>
+                  );
+                })}
+                {locations.length === 0 && (
+                  <p className="col-span-full text-[11px] text-gray-400 italic">Cargando sedes o no hay sedes configuradas...</p>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Active toggle */}

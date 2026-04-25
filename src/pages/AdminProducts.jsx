@@ -8,6 +8,7 @@ import { useAdminModifierGroups } from '../hooks/useAdminModifierGroups';
 import { useAllergens } from '../hooks/useAllergens';
 import { formatCOP } from '../utils/money';
 import ProductForm from '../components/admin/ProductForm';
+import { useLocationOverrides } from '../hooks/useLocationOverrides';
 import BulkCostEditor from '../components/admin/BulkCostEditor';
 import AAImage from '../components/ui/AAImage';
 import {
@@ -48,9 +49,11 @@ export default function AdminProducts() {
   const { recipes, fetchRecipes } = useAdminRecipes();
   const { modifierGroups, fetchModifierGroups } = useAdminModifierGroups();
   const { allergens, loading: loadingAllergens } = useAllergens();
+  const { saveProductOverrides } = useLocationOverrides();
 
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('all');
+  const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'active', 'hidden'
   const [attrFilter, setAttrFilter] = useState('all'); // 'all', 'upsell', 'no_kitchen', 'packaging'
   const [marginFilter, setMarginFilter] = useState('all'); // 'all', 'high', 'med', 'low'
 
@@ -157,7 +160,12 @@ export default function AdminProducts() {
       }
     }
 
-    return matchSearch && matchCat && matchAttr && matchMargin;
+    // Visibility Filtering
+    let matchVisibility = true;
+    if (activeFilter === 'active') matchVisibility = p.is_active;
+    else if (activeFilter === 'hidden') matchVisibility = !p.is_active;
+
+    return matchSearch && matchCat && matchAttr && matchMargin && matchVisibility;
   }).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
   const handleEdit   = (p) => { setEditingProduct(p); setIsFormOpen(true); setConfirmDelete(null); };
@@ -166,11 +174,29 @@ export default function AdminProducts() {
     await deleteProduct(id);
     setConfirmDelete(null);
   };
-  const handleSave = async (data) => {
-    const ok = editingProduct
+  const handleSave = async (data, overrides) => {
+    const result = editingProduct
       ? await updateProduct(editingProduct.id, data)
       : await createProduct(data);
-    if (ok) { setIsFormOpen(false); setEditingProduct(null); }
+    
+    if (result) {
+      const productId = editingProduct?.id || result.id;
+      if (productId && overrides) {
+        const structuredOverrides = {
+          prices: overrides
+            .filter(o => o.price !== null)
+            .map(o => ({ location_id: o.location_id, price: o.price })),
+          status: overrides.map(o => ({
+            location_id: o.location_id,
+            is_active: o.is_active,
+            stock_status: o.stock_status
+          }))
+        };
+        await saveProductOverrides(productId, structuredOverrides);
+      }
+      setIsFormOpen(false);
+      setEditingProduct(null);
+    }
   };
 
   /* ═══════════════════════════════════════
@@ -332,7 +358,34 @@ export default function AdminProducts() {
         </div>
 
         {/* Operational Filters Row */}
-        <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-gray-50">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-4 pt-4 border-t border-gray-50">
+          {/* Visibilidad */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-1">Visibilidad:</span>
+            <div className="flex gap-1.5">
+              {[
+                { id: 'all', label: 'Todos' },
+                { id: 'active', label: '✅ Activos' },
+                { id: 'hidden', label: '👁️ Ocultos' },
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setActiveFilter(f.id)}
+                  className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all border ${
+                    activeFilter === f.id 
+                    ? 'bg-[#2f4131] text-white border-[#2f4131] shadow-md shadow-[#2f4131]/10' 
+                    : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="h-4 w-px bg-gray-100 hidden sm:block" />
+
+          {/* Atributos */}
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-1">Atributos:</span>
             <div className="flex gap-1.5">

@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAdminIngredients } from '../hooks/useAdminIngredients';
 import { useIngredientCategories } from '../hooks/useIngredientCategories';
 import { useAdminProviders } from '../hooks/useAdminProviders';
+import { useLocations } from '../hooks/useLocations';
+import { useLocationInventory } from '../hooks/useLocationInventory';
 import {
   PageHeader, PrimaryButton, SecondaryButton, Badge,
   TableContainer, Th, SearchInput, SelectInput,
@@ -97,6 +99,11 @@ function InsumosTab() {
   const [inlineEdit,    setInlineEdit]    = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
+  // Per-location inventory state
+  const { locations } = useLocations();
+  const { saveInventory, fetchInventory } = useLocationInventory();
+  const [locationInventory, setLocationInventory] = useState({}); // { [locId]: { stock_quantity, min_stock } }
+
   const emptyForm = {
     name: '', description: '', sku: '',
     purchase_price: 0, purchase_unit: 'Unidad', purchase_quantity: 1,
@@ -167,8 +174,14 @@ function InsumosTab() {
     [ingredients, search, catFilter, showZeroOnly, totalInventoryValue]
   );
 
-  const openCreate = () => { setEditing(null); setForm(emptyForm); setIsOpen(true); };
-  const openEdit   = (item) => {
+  const openCreate = () => { 
+    setEditing(null); 
+    setForm(emptyForm); 
+    setLocationInventory({});
+    setIsOpen(true); 
+  };
+
+  const openEdit   = async (item) => {
     setEditing(item);
     setForm({
       name: item.name, description: item.description || '', sku: item.sku || '',
@@ -179,6 +192,18 @@ function InsumosTab() {
       category_id: item.category_id || '', provider_id: item.provider_id || '', is_active: item.is_active,
       portion_size: item.portion_size || 50
     });
+
+    // Load per-location inventory
+    const existingInv = await fetchInventory({ ingredient_id: item.id });
+    const invMap = {};
+    existingInv.forEach(inv => {
+      invMap[inv.location_id] = {
+        stock_quantity: inv.stock_quantity,
+        min_stock: inv.min_stock
+      };
+    });
+    setLocationInventory(invMap);
+
     setIsOpen(true);
   };
 
@@ -208,10 +233,25 @@ function InsumosTab() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    const ok = editing
+    const savedItem = editing
       ? await updateIngredient(editing.id, form)
       : await createIngredient(form);
-    if (ok) setIsOpen(false);
+    
+    if (savedItem) {
+      // Save location-specific inventory
+      const invData = Object.entries(locationInventory).map(([locId, data]) => ({
+        location_id: locId,
+        ingredient_id: savedItem.id,
+        stock_quantity: data.stock_quantity,
+        min_stock: data.min_stock
+      }));
+
+      if (invData.length > 0) {
+        await saveInventory(invData);
+      }
+
+      setIsOpen(false);
+    }
   };
 
   const f = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
@@ -777,12 +817,66 @@ function InsumosTab() {
                 </FormField>
               </div>
 
-              <FormField label="Stock actual">
+              <FormField label="Stock actual (General)">
                 <TextInput type="number" value={form.stock_current} onChange={e => f('stock_current', Number(e.target.value))} />
               </FormField>
-              <FormField label="Stock mínimo (alerta)">
+              <FormField label="Stock mínimo (General)">
                 <TextInput type="number" value={form.stock_min} onChange={e => f('stock_min', Number(e.target.value))} />
               </FormField>
+
+              {/* Per-location inventory section */}
+              <div className="md:col-span-2 space-y-4">
+                <div className="flex items-center gap-3 py-2 border-b border-gray-100">
+                  <Icon icon="heroicons:map-pin" className="text-gray-400 text-lg" />
+                  <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest">Stock por Sede</h4>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-4">
+                  {locations.map(loc => (
+                    <div key={loc.id} className="flex items-center gap-4 p-4 bg-gray-50/50 rounded-2xl border border-gray-100 group hover:border-[#2f4131]/30 transition-all">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-gray-900 truncate">{loc.name}</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{loc.city}</p>
+                      </div>
+                      
+                      <div className="flex items-center gap-3">
+                        <div className="w-24">
+                          <label className="text-[9px] font-black text-gray-400 uppercase block mb-1">Stock</label>
+                          <TextInput 
+                            type="number" 
+                            className="h-9 text-xs"
+                            value={locationInventory[loc.id]?.stock_quantity ?? ''}
+                            placeholder={form.stock_current.toString()}
+                            onChange={e => setLocationInventory({
+                              ...locationInventory,
+                              [loc.id]: {
+                                ...locationInventory[loc.id],
+                                stock_quantity: e.target.value
+                              }
+                            })}
+                          />
+                        </div>
+                        <div className="w-24">
+                          <label className="text-[9px] font-black text-gray-400 uppercase block mb-1">Min.</label>
+                          <TextInput 
+                            type="number" 
+                            className="h-9 text-xs"
+                            value={locationInventory[loc.id]?.min_stock ?? ''}
+                            placeholder={form.stock_min.toString()}
+                            onChange={e => setLocationInventory({
+                              ...locationInventory,
+                              [loc.id]: {
+                                ...locationInventory[loc.id],
+                                min_stock: e.target.value
+                              }
+                            })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               {/* Modifier toggle & Profit Margin */}
               <div className="md:col-span-2 flex flex-col p-4 bg-gray-50 rounded-xl border border-gray-200">
