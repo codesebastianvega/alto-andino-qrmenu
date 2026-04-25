@@ -70,7 +70,7 @@ const STATUS_CONFIG = {
 };
 
 // ─── Tarjeta individual de mesa ──────────────────────────────────────────────
-const TableCard = React.forwardRef(({ table }, ref) => {
+const TableCard = React.forwardRef(({ table, onUpdateTableStatus }, ref) => {
   const cfg = STATUS_CONFIG[table.status] || STATUS_CONFIG.libre;
   const order = table.activeOrder;
   const total = order ? Number(order.total_amount || 0) : 0;
@@ -89,25 +89,31 @@ const TableCard = React.forwardRef(({ table }, ref) => {
   const handleFreeTable = async (e) => {
     e.stopPropagation();
     setFreeing(true);
-    
-    // Si está ocupada o por cobrar, pasa a sucia (Limpieza pendiente)
-    // Si ya está sucia, pasa a libre
     const nextStatus = (table.status === 'sucia') ? 'libre' : 'sucia';
     const shouldClearTimer = nextStatus === 'sucia'; // El cliente se fue
 
-    const { error } = await supabase
-      .from('restaurant_tables')
-      .update({ 
-        physical_status: nextStatus, 
-        occupied_at: shouldClearTimer ? null : table.occupied_at 
-      })
-      .eq('id', table.id);
-
-    setFreeing(false);
-    if (!error) {
-      toast.success(nextStatus === 'sucia' ? 'Mesa para limpieza 🧹' : 'Mesa lista ✨');
+    if (onUpdateTableStatus) {
+      const { error } = await onUpdateTableStatus(table.id, nextStatus, shouldClearTimer);
+      setFreeing(false);
+      if (!error) {
+        toast.success(nextStatus === 'sucia' ? 'Mesa para limpieza 🧹' : 'Mesa lista ✨');
+      }
     } else {
-      toast.error('Error al actualizar mesa');
+      // Fallback
+      const { error } = await supabase
+        .from('restaurant_tables')
+        .update({ 
+          physical_status: nextStatus, 
+          occupied_at: shouldClearTimer ? null : table.occupied_at 
+        })
+        .eq('id', table.id);
+
+      setFreeing(false);
+      if (!error) {
+        toast.success(nextStatus === 'sucia' ? 'Mesa para limpieza 🧹' : 'Mesa lista ✨');
+      } else {
+        toast.error('Error al actualizar mesa');
+      }
     }
   };
 
@@ -242,7 +248,7 @@ const TableCard = React.forwardRef(({ table }, ref) => {
 });
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export default function TableMap({ tablesWithStatus = [], areas = [], loading = false }) {
+export default function TableMap({ tablesWithStatus = [], areas = [], loading = false, onUpdateTableStatus }) {
   const { isAllLocations, locations } = useLocation();
   const [filter, setFilter] = useState('all'); // 'all' | 'libre' | 'ocupada' | 'sucia' | 'needs_billing'
   const [selectedAreaId, setSelectedAreaId] = useState('all');
@@ -424,7 +430,11 @@ export default function TableMap({ tablesWithStatus = [], areas = [], loading = 
           >
             <AnimatePresence mode="popLayout">
               {filtered.map(table => (
-                <TableCard key={table.id} table={table} />
+                <TableCard 
+                  key={table.id} 
+                  table={table} 
+                  onUpdateTableStatus={onUpdateTableStatus}
+                />
               ))}
             </AnimatePresence>
           </motion.div>

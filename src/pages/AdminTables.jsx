@@ -227,7 +227,7 @@ export default function AdminTables({ isEmbedded = false }) {
   };
 
   const getTableUrl = (table) => {
-    return `${window.location.origin}?mesa=${encodeURIComponent(table.table_number)}`;
+    return `${window.location.origin}?mesa=${encodeURIComponent(table.table_number)}&loc=${table.location_id}`;
   };
 
   const handleCopyUrl = (table) => {

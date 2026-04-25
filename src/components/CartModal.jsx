@@ -60,13 +60,16 @@ const getTable = () => {
 
 const getLocationId = (brandId) => {
   try {
+    // 1. URL search params (most fresh)
+    const params = new URLSearchParams(window.location.search);
+    const urlLoc = params.get("loc");
+    if (urlLoc) return urlLoc;
+
+    // 2. Session storage (persisted for the visit)
     const sess = sessionStorage.getItem("aa_current_location_id");
     if (sess) return sess;
-    if (brandId) {
-      const brandLoc = localStorage.getItem(`aa_active_loc_${brandId}`);
-      if (brandLoc) return brandLoc;
-    }
-    return localStorage.getItem("aa_active_location_id") || "";
+    
+    return "";
   } catch {
     return "";
   }
@@ -294,18 +297,23 @@ export default function CartModal({ open, onClose }) {
 
       // If we have a table number but not an ID, or if we want to confirm location from table
       if (fulfillmentType === 'dine_in' && mesa) {
-        // Fetch table to confirm both ID and location
-        const { data: tableData } = await supabase.from('restaurant_tables')
+        let query = supabase.from('restaurant_tables')
           .select('id, location_id')
           .eq('table_number', mesa)
-          .eq('brand_id', activeBrandId)
-          .limit(1)
-          .maybeSingle();
+          .eq('brand_id', activeBrandId);
 
-         if (tableData) {
-           tableId = tableData.id;
-           if (tableData.location_id) orderLocationId = tableData.location_id;
-         }
+        // If we have a location context (from URL/Session), use it as a constraint
+        // to avoid ambiguity between "Mesa 1" in different sedes.
+        if (orderLocationId) {
+          query = query.eq('location_id', orderLocationId);
+        }
+
+        const { data: tableData } = await query.maybeSingle();
+
+        if (tableData) {
+          tableId = tableData.id;
+          if (tableData.location_id) orderLocationId = tableData.location_id;
+        }
       }
 
       console.log("🔍 [Order Flow] tableId:", tableId, "activeBrandId:", activeBrandId, "locationId:", orderLocationId, "fulfillmentType:", fulfillmentType);

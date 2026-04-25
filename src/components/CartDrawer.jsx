@@ -44,16 +44,16 @@ const getTable = () => {
 
 const getLocationId = (brandId) => {
   try {
+    // 1. Priority: URL parameter (most specific)
+    const params = new URLSearchParams(window.location.search);
+    const urlLoc = params.get("loc");
+    if (urlLoc) return urlLoc;
+
+    // 2. Session storage: set by App.jsx or previous selection
     const sess = sessionStorage.getItem("aa_current_location_id");
     if (sess) return sess;
     
-    // Use the standard brand-specific key if brandId is available
-    if (brandId) {
-      const brandLoc = localStorage.getItem(`aa_active_loc_${brandId}`);
-      if (brandLoc) return brandLoc;
-    }
-
-    return localStorage.getItem("aa_active_location_id") || "";
+    return "";
   } catch {
     return "";
   }
@@ -185,15 +185,23 @@ export default function CartDrawer({ open, onClose }) {
       let orderLocationId = getLocationId(activeBrand?.id);
 
       if (fulfillmentType === 'dine_in' && mesa) {
-        const { data: tableData } = await supabase.from('restaurant_tables')
+        let query = supabase.from('restaurant_tables')
           .select('id, location_id')
           .eq('table_number', mesa)
-          .eq('brand_id', activeBrand?.id)
-          .maybeSingle();
-         if (tableData) {
-           tableId = tableData.id;
-           if (tableData.location_id) orderLocationId = tableData.location_id;
-         }
+          .eq('brand_id', activeBrand?.id);
+
+        // If we have a location context (from URL/Session), use it as a constraint
+        // to avoid ambiguity between "Mesa 1" in different sedes.
+        if (orderLocationId) {
+          query = query.eq('location_id', orderLocationId);
+        }
+
+        const { data: tableData } = await query.maybeSingle();
+
+        if (tableData) {
+          tableId = tableData.id;
+          if (tableData.location_id) orderLocationId = tableData.location_id;
+        }
       }
 
       // 2. Insert Order

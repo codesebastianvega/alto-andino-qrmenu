@@ -431,5 +431,28 @@ export function useOperations() {
 
     // Acciones
     refresh: fetchAll,
+
+    updateTablePhysicalStatus: async (tableId, nextStatus, shouldClearTimer) => {
+      setTables(prev => prev.map(t => 
+        t.id === tableId 
+          ? { ...t, physical_status: nextStatus, occupied_at: shouldClearTimer ? null : t.occupied_at }
+          : t
+      ));
+
+      const updatePayload = { physical_status: nextStatus };
+      if (shouldClearTimer) updatePayload.occupied_at = null;
+
+      const { error } = await supabase
+        .from('restaurant_tables')
+        .update(updatePayload)
+        .eq('id', tableId);
+
+      if (error) {
+        toast.error('Error al actualizar mesa');
+        fetchTables();
+        return { error };
+      }
+      return { data: true };
+    }
   };
 }

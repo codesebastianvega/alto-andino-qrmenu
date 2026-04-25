@@ -17,7 +17,7 @@ import ActiveStaff from '../components/admin/ActiveStaff';
  * 3.6 Roles en sidebar (próximo)
  */
 export default function AdminOperations() {
-  const { orders, metrics, tablesWithStatus, areas, liveEvents, loading, refresh } = useOperations();
+  const { orders, metrics, tablesWithStatus, areas, liveEvents, loading, refresh, updateTablePhysicalStatus } = useOperations();
 
   return (
     <div className="p-4 md:p-8 max-w-[1700px] mx-auto min-h-screen">
@@ -75,7 +75,12 @@ export default function AdminOperations() {
                 <span className="text-[10px] font-bold text-white/30 uppercase tracking-wider">Live</span>
               </div>
             </div>
-            <TableMap tablesWithStatus={tablesWithStatus} areas={areas} loading={loading} />
+            <TableMap 
+              tablesWithStatus={tablesWithStatus} 
+              areas={areas} 
+              loading={loading} 
+              onUpdateTableStatus={updateTablePhysicalStatus}
+            />
           </div>
 
           {/* ── 3.4 Inteligencia de Cocina + Feed ────────────────────────── */}

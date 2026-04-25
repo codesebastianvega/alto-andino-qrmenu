@@ -144,6 +144,11 @@ export default function App() {
     if (mesa) {
       sessionStorage.setItem("aa_current_mesa", mesa);
     }
+
+    const loc = params.get("loc");
+    if (loc) {
+      sessionStorage.setItem("aa_current_location_id", loc);
+    }
   }, []);
 
   // ✅ View Detection & UI States
