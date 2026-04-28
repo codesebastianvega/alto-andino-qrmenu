@@ -140,7 +140,7 @@ export default function AdminSedes({ isEmbedded = false }) {
               disabled={!canAddMore}
               className="rounded-[1.5rem] px-8 py-4 shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-[12px]"
             >
-              <Icon icon="solar:shop-2-bold" className="w-5 h-5 mr-3" />
+              <Icon icon="solar:shop-2-bold" className="w-5 h-5" />
               Nueva Sede
             </PrimaryButton>
             {!canAddMore && (
@@ -164,7 +164,7 @@ export default function AdminSedes({ isEmbedded = false }) {
               disabled={!canAddMore}
               className="rounded-2xl py-3 px-6 shadow-lg shadow-gray-100 text-[11px] font-black uppercase tracking-widest transition-transform active:scale-95"
             >
-              <Icon icon="solar:add-circle-bold" className="w-4 h-4 mr-2" />
+              <Icon icon="solar:add-circle-bold" className="w-4 h-4" />
               Añadir Sede
             </PrimaryButton>
             {!canAddMore && (

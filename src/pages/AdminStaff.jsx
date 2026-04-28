@@ -150,7 +150,7 @@ export default function AdminStaff({ isEmbedded = false }) {
             onClick={() => openModal()}
             className="rounded-[1.5rem] px-8 py-4 shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-[12px] self-start md:self-auto"
           >
-            <Icon icon="solar:user-plus-bold" className="w-5 h-5 mr-3" />
+            <Icon icon="solar:user-plus-bold" className="w-5 h-5" />
             Vincular Staff
           </PrimaryButton>
         </div>
@@ -166,7 +166,7 @@ export default function AdminStaff({ isEmbedded = false }) {
             onClick={() => openModal()} 
             className="rounded-2xl py-3 px-6 shadow-lg shadow-gray-100 text-[11px] font-black uppercase tracking-widest transition-transform active:scale-95"
           >
-            <Icon icon="solar:user-plus-bold" className="w-4 h-4 mr-2" />
+            <Icon icon="solar:user-plus-bold" className="w-4 h-4" />
             Añadir Staff
           </PrimaryButton>
         </div>

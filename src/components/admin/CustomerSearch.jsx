@@ -200,7 +200,7 @@ export default function CustomerSearch({ open, onSelect, onClose, brandId }) {
                 <div className="text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
                   <p className="text-sm text-gray-400 mb-4 font-medium italic">No se encontraron clientes.</p>
                   <SecondaryButton onClick={() => setNewCustomerMode(true)} className="bg-white">
-                    <Plus size={16} className="mr-2" /> Registrar "{searchTerm}"
+                    <Plus size={16} /> Registrar "{searchTerm}"
                   </SecondaryButton>
                 </div>
               ) : (
