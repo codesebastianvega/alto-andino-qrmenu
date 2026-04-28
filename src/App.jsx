@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import { useParams, Navigate } from "react-router-dom";
+import { useParams, Navigate, useLocation } from "react-router-dom";
 import { useMenuData } from "./context/MenuDataContext";
 import { useBrand } from "./context/BrandContext";
 import { Loader2 } from "lucide-react";
@@ -88,12 +88,48 @@ export default function App() {
   const [open, setOpen] = useState(false);
   const [openGuide, setOpenGuide] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("todos");
-  const [currentHash, setCurrentHash] = useState(window.location.hash);
+  const location = useLocation();
+  const [currentHash, setCurrentHash] = useState(location.hash);
+
+  useEffect(() => {
+    setCurrentHash(location.hash);
+  }, [location.hash]);
+
   const [query, setQuery] = useState("");
   const cart = useCart();
   const [showPOSCustomerModal, setShowPOSCustomerModal] = useState(false);
   const [hasDismissedCustomerModal, setHasDismissedCustomerModal] = useState(false);
   const { categories: dbCategories, restaurantSettings, homeSettings, loading: menuLoading } = useMenuData();
+
+  // ✅ View Detection & UI States (Moved up to avoid initialization errors)
+  const searchParams = useMemo(() => new URLSearchParams(window.location.search), [window.location.search]);
+  
+  const isQr = searchParams.get("qr") === "1";
+  const isDemo = searchParams.get("demo") === "1";
+  
+  // (isNewAdminPanel already declared above)
+  const isOnboardingView = currentHash === '#admin/onboarding';
+  const orderTrackingId = currentHash.startsWith('#order/') ? currentHash.replace('#order/', '') : null;
+  
+  // ✅ Simplified Hash Routing logic
+  const isLandingView = !currentHash || currentHash === "" || currentHash === "#" || currentHash === "#inicio";
+  const isExplicitInicio = currentHash === "#inicio";
+  const isMenuView = currentHash === "#menu";
+  
+  // Global platform views that should NOT show the menu/header of a brand
+  const isSpecialPlatformView = 
+    currentHash.startsWith('#portal') || 
+    currentHash === '#experiencias' || 
+    currentHash === '#perfil' || 
+    currentHash === '#login' || 
+    currentHash === '#registro';
+
+  const isAuthView = currentHash === "#login" || 
+                     currentHash === "#registro" || 
+                     window.location.pathname.startsWith('/login') || 
+                     window.location.pathname.startsWith('/registro');
+  
+  const isOrderingMode = isMenuView || !!sessionStorage.getItem("aa_current_mesa") || searchParams.get("mesa");
 
   useEffect(() => {
     // En el panel de admin, priorizamos el nombre de la marca de la sesión
@@ -106,12 +142,12 @@ export default function App() {
       brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
     }
 
-    // Si estamos en la landing global, forzar Aluna
-    if (isLandingView && !brand_slug) {
+    // Si estamos en la landing global o portal, forzar Aluna
+    if ((isLandingView || currentHash.startsWith('#portal')) && !brand_slug) {
       brandName = "Aluna";
     }
       
-    document.title = brandName;
+    document.title = currentHash.startsWith('#portal') ? `Portal | ${brandName}` : brandName;
 
     // Update favicon
     const faviconUrl = restaurantSettings?.favicon_url || "/favicon.ico";
@@ -120,15 +156,9 @@ export default function App() {
     link.rel = 'shortcut icon';
     link.href = faviconUrl;
     document.getElementsByTagName('head')[0].appendChild(link);
-  }, [restaurantSettings, activeBrand]);
+  }, [restaurantSettings, activeBrand, isLandingView, brand_slug]);
 
   const isValidCat = (cat) => cat === "todos" || dbCategories.some(c => c.slug === cat);
-
-  useEffect(() => {
-    const handleHashChange = () => setCurrentHash(window.location.hash);
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
 
   function handleCategorySelect(cat) {
     const slug = typeof cat === "string" ? cat : cat.id;
@@ -151,24 +181,6 @@ export default function App() {
     }
   }, []);
 
-  // ✅ View Detection & UI States
-  const searchParams = useMemo(() => new URLSearchParams(window.location.search), [window.location.search]);
-  
-  const isQr = searchParams.get("qr") === "1";
-  const isDemo = searchParams.get("demo") === "1";
-  
-  // (isNewAdminPanel already declared above)
-  const isOnboardingView = currentHash === '#admin/onboarding';
-  const orderTrackingId = currentHash.startsWith('#order/') ? currentHash.replace('#order/', '') : null;
-  
-  const isLandingView = !currentHash || currentHash === "" || currentHash === "#" || currentHash === "#inicio";
-  const isExplicitInicio = currentHash === "#inicio";
-  const isMenuView = currentHash === "#menu";
-  const isAuthView = currentHash === "#login" || 
-                     currentHash === "#registro" || 
-                     window.location.pathname.startsWith('/login') || 
-                     window.location.pathname.startsWith('/registro');
-  const isOrderingMode = isMenuView || !!sessionStorage.getItem("aa_current_mesa") || searchParams.get("mesa");
 
   // ✅ Welcome Experience State — solo 1 vez cada 24h por marca
   const WELCOME_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 horas
@@ -186,7 +198,8 @@ export default function App() {
   useEffect(() => {
     const isPublicMenu = !isNewAdminPanel && !isOnboardingView && !orderTrackingId && !isQr;
     
-    if (isPublicMenu && activeBrand && !loadingBrand) {
+    // Solo mostrar bienvenida si hay una marca activa Y estamos en su ruta específica (brand_slug presente)
+    if (isPublicMenu && activeBrand && !loadingBrand && brand_slug) {
       const key = `aluna_welcome_${activeBrand.slug || brand_slug}`;
       const lastSeen = localStorage.getItem(key);
       const seenRecently = lastSeen && (Date.now() - Number(lastSeen) < WELCOME_COOLDOWN_MS);
@@ -274,8 +287,10 @@ export default function App() {
     if (!FEATURE_TABS) return;
     const url = new URL(window.location.href);
     
-    // Ensure slug in URL matches intended brand
-    if (activeBrand?.slug) {
+    // Ensure slug in URL matches intended brand ONLY if we are in a brand context or admin
+    const shouldForceSlug = (brand_slug || isNewAdminPanel) && activeBrand?.slug;
+
+    if (shouldForceSlug) {
       url.pathname = `/${activeBrand.slug}/`;
     }
 
@@ -286,7 +301,7 @@ export default function App() {
     }
     
     window.history.replaceState(null, "", url);
-  }, [FEATURE_TABS, selectedCategory, activeBrand, isNewAdminPanel]);
+  }, [FEATURE_TABS, selectedCategory, activeBrand, isNewAdminPanel, brand_slug]);
 
   // Dynamic counts are now handled internally by ProductLists component
   const counts = useMemo(() => ({ todos: 0 }), []);
@@ -387,7 +402,7 @@ export default function App() {
           </Suspense>
         )}
 
-        {currentHash === '#portal' && profile && (
+        {currentHash.startsWith('#portal') && profile && (
           <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
             <GlobalPortal />
           </Suspense>
@@ -418,8 +433,8 @@ export default function App() {
         )}
 
         {/* Menu normal: Si estamos en modo orden o hash explícito #menu, o si NO es la vista landing. 
-            IMPORTANTE: Excluimos si es hash explícito #inicio para que gane la LandingPage */}
-        {((isOrderingMode || isMenuView || (!isLandingView && !isNewAdminPanel && currentHash !== '#experiencias' && currentHash !== '#perfil' && currentHash !== '#admin' && !orderTrackingId)) && !isExplicitInicio) && (
+            IMPORTANTE: Excluimos vistas especiales (Portal, Auth, Perfil) y el hash explícito #inicio */}
+        {((isOrderingMode || isMenuView || (!isLandingView && !isNewAdminPanel && !isSpecialPlatformView && !orderTrackingId)) && !isExplicitInicio) && (
           <main
             className={`mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl px-5 ${isDemo ? 'pt-12 pb-20 sm:px-6 md:px-8' : 'pt-24 sm:px-6 sm:pt-24 md:px-8 md:pt-24'}`}
           >

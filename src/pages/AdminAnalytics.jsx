@@ -305,12 +305,12 @@ export default function AdminAnalytics() {
       }
       const filterObj = !isAllLocations && activeLocationId ? { location_id: activeLocationId } : {};
 
-      const [ordersRes, leadsRes, eventsRes, prevOrdersRes, prevLeadsRes, prevEventsRes, pmRes, productsRes, paymentsRes] = await Promise.all([
-        // 1. Current Period Orders
+      const results = await Promise.allSettled([
+        // 0. Current Period Orders
         supabase.from('orders').select(`
           id, total_amount, status, created_at, delivered_at, fulfillment_type, payment_method,
           cancellation_reason, cancelled_by, discount_amount, discount_reason, waiter_id,
-          service_fee,
+          service_fee, customer_phone,
           staff!waiter_id ( name ),
           restaurant_tables ( id, table_number ),
           order_items ( quantity, unit_price, products ( id, name, cost, margin, categories ( name ) ) )
@@ -319,20 +319,20 @@ export default function AdminAnalytics() {
           .gte('created_at', start.toISOString())
           .order('created_at', { ascending: false }),
         
-        // 2. Current Period Leads
+        // 1. Current Period Leads
         supabase.from('leads').select('id, created_at, status')
           .eq('brand_id', activeBrandId)
           .match(filterObj)
           .gte('created_at', start.toISOString())
           .order('created_at', { ascending: false }),
 
-        // 3. Current Period Events
+        // 2. Current Period Events
         supabase.from('analytics_events').select('id, created_at, session_id')
           .eq('brand_id', activeBrandId)
           .match(filterObj)
           .gte('created_at', start.toISOString()),
 
-        // 4. Previous Period Orders
+        // 3. Previous Period Orders
         supabase.from('orders').select(`
           id, total_amount, status, created_at, delivered_at,
           order_items ( quantity, unit_price, products ( name, cost, margin ) )
@@ -342,27 +342,27 @@ export default function AdminAnalytics() {
           .gte('created_at', prevStart.toISOString())
           .lt('created_at', prevEnd.toISOString()),
         
-        // 5. Previous Period Leads
+        // 4. Previous Period Leads
         supabase.from('leads').select('id, created_at, status')
           .eq('brand_id', activeBrandId)
           .match(filterObj)
           .gte('created_at', prevStart.toISOString())
           .lt('created_at', prevEnd.toISOString()),
 
-        // 6. Previous Period Events
+        // 5. Previous Period Events
         supabase.from('analytics_events').select('id, created_at, session_id')
           .eq('brand_id', activeBrandId)
           .match(filterObj)
           .gte('created_at', prevStart.toISOString())
           .lt('created_at', prevEnd.toISOString()),
           
-        // 7. Payment Methods
+        // 6. Payment Methods
         supabase.from('payment_methods').select('id, name').eq('brand_id', activeBrandId),
 
-        // 8. Products
+        // 7. Products
         supabase.from('products').select('id, name, cost, price, image_url').eq('brand_id', activeBrandId),
 
-        // 9. Order Payments
+        // 8. Order Payments
         supabase.from('order_payments').select(`
           id, amount, created_at,
           payment_methods ( name, type ),
@@ -373,6 +373,10 @@ export default function AdminAnalytics() {
           .gte('created_at', start.toISOString())
           .order('created_at', { ascending: false })
       ]);
+
+      const [ordersRes, leadsRes, eventsRes, prevOrdersRes, prevLeadsRes, prevEventsRes, pmRes, productsRes, paymentsRes] = results.map(r => 
+        r.status === 'fulfilled' ? r.value : { data: [], error: r.reason }
+      );
 
       setData({
         orders: ordersRes.data || [],
@@ -397,7 +401,7 @@ export default function AdminAnalytics() {
       // --- Advanced Analytics RPCs (load in background, non-blocking) ---
       const p_location_id = isAllLocations ? null : activeLocationId;
 
-      Promise.all([
+      Promise.allSettled([
         supabase.rpc('analytics_forecasting', { 
           p_brand_id: activeBrandId, 
           p_start_date: start.toISOString(), 
@@ -417,31 +421,30 @@ export default function AdminAnalytics() {
           p_location_id
         }),
         supabase.from('products').select('id', { count: 'exact' }).eq('brand_id', activeBrandId).or('cost.eq.0,cost.is.null')
-      ]).then(([forecastingRes, revPashRes, cohortsRes, integrityRes]) => {
-        const rpcErrors = [forecastingRes.error, revPashRes.error, cohortsRes.error].filter(Boolean);
-        if (rpcErrors.length > 0) {
-          console.error('RPC Errors:', rpcErrors);
-        }
+      ]).then((advResults) => {
+        const [forecastingRes, revPashRes, cohortsRes, integrityRes] = advResults.map(r => 
+          r.status === 'fulfilled' ? r.value : { data: null, error: r.reason }
+        );
+
         setAdvancedData({
           forecasting: forecastingRes.data,
           revPash: revPashRes.data || [],
           cohorts: cohortsRes.data || {}
         });
-        const totalOrders = ordersRes.data?.length || 0;
-        const identifiedOrders = ordersRes.data?.filter(o => o.customer_phone && o.customer_phone !== '').length || 0;
+
+        const totalOrders = (ordersRes.data || []).length;
+        const identifiedOrders = (ordersRes.data || []).filter(o => o.customer_phone && o.customer_phone !== '').length;
+        
         setIntegrityStats({
           missingCosts: integrityRes.count || 0,
           identifiedPct: totalOrders > 0 ? (identifiedOrders / totalOrders) * 100 : 0
         });
-      }).catch(err => {
-        console.error('Error fetching advanced analytics:', err);
       });
 
     } catch (err) {
       console.error('Error fetching intelligence data:', err);
-      toast.error('Ocurrió un error al cargar la analítica.');
+      toast.error('Ocurrió un error crítico al cargar la analítica.');
     } finally {
-
       setLoading(false);
       setTimeout(() => setIsReady(true), 200);
     }

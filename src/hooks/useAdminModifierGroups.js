@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { toast } from '../components/Toast';
 
-export const useAdminModifierGroups = () => {
+export const useAdminModifierGroups = (locationId) => {
   const [modifierGroups, setModifierGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const { activeBrand } = useAuth();
@@ -17,22 +17,54 @@ export const useAdminModifierGroups = () => {
     
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      let query = supabase
         .from('modifier_groups')
         .select(`
           *,
           options:modifier_options!modifier_options_group_id_fkey(*)
         `)
-        .eq('brand_id', activeBrandId)
-        .order('created_at', { ascending: true });
+        .eq('brand_id', activeBrandId);
+
+      // If a specific location is selected, filter by the junction table
+      if (locationId && locationId !== 'all') {
+        const { data: linkedGroups, error: linkError } = await supabase
+          .from('location_modifier_groups')
+          .select('modifier_group_id')
+          .eq('location_id', locationId);
+
+        if (linkError) throw linkError;
+        
+        const linkedIds = (linkedGroups || []).map(l => l.modifier_group_id);
+        
+        if (linkedIds.length === 0) {
+          setModifierGroups([]);
+          setLoading(false);
+          return;
+        }
+
+        query = query.in('id', linkedIds);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: true });
 
       if (error) throw error;
       
-      // Fetch products to count usage
+      // Fetch products to count usage (global + location-specific)
       const { data: productsData } = await supabase
         .from('products')
-        .select('modifier_groups')
+        .select('id, modifier_groups')
         .eq('brand_id', activeBrandId);
+
+      // If location selected, fetch which products are linked to it
+      let linkedProductIds = null;
+      if (locationId && locationId !== 'all') {
+        const { data: linkedProds } = await supabase
+          .from('location_product_status')
+          .select('product_id')
+          .eq('location_id', locationId);
+        linkedProductIds = new Set((linkedProds || []).map(lp => lp.product_id));
+      }
 
       // Order options by sort_order and add usage count
       const sortedData = (data || []).map(group => {
@@ -40,9 +72,19 @@ export const useAdminModifierGroups = () => {
           Array.isArray(p.modifier_groups) && p.modifier_groups.includes(group.id)
         ).length;
 
+        // Count how many products LINKED to this location use this modifier group
+        const linkedUsageCount = linkedProductIds
+          ? (productsData || []).filter(p =>
+              Array.isArray(p.modifier_groups) &&
+              p.modifier_groups.includes(group.id) &&
+              linkedProductIds.has(p.id)
+            ).length
+          : usageCount;
+
         return {
           ...group,
           usage_count: usageCount,
+          linked_usage_count: linkedUsageCount,
           options: (group.options || []).sort((a, b) => a.sort_order - b.sort_order)
         };
       });
@@ -54,7 +96,15 @@ export const useAdminModifierGroups = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeBrandId]);
+  }, [activeBrandId, locationId]);
+
+  useEffect(() => {
+    if (activeBrandId) {
+      fetchModifierGroups();
+    } else {
+      setLoading(false);
+    }
+  }, [activeBrandId, fetchModifierGroups]);
 
   const duplicateGroup = async (group) => {
     try {
@@ -77,6 +127,13 @@ export const useAdminModifierGroups = () => {
         .single();
 
       if (groupError) throw groupError;
+
+      // If we are in a specific location, link it automatically
+      if (locationId && locationId !== 'all') {
+        await supabase
+          .from('location_modifier_groups')
+          .insert([{ location_id: locationId, modifier_group_id: newGroup.id }]);
+      }
 
       // 2. Clone the options
       if (group.options && group.options.length > 0) {
@@ -118,6 +175,14 @@ export const useAdminModifierGroups = () => {
         .select()
         .single();
       if (error) throw error;
+
+      // If we are in a specific location, link it automatically
+      if (locationId && locationId !== 'all') {
+        await supabase
+          .from('location_modifier_groups')
+          .insert([{ location_id: locationId, modifier_group_id: data.id }]);
+      }
+
       toast.success('Grupo creado');
       fetchModifierGroups();
       return data;
@@ -145,16 +210,30 @@ export const useAdminModifierGroups = () => {
 
   const deleteGroup = async (id) => {
     try {
-      const { error } = await supabase
-        .from('modifier_groups')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-      toast.success('Grupo eliminado');
+      // If we are in a specific location, just unlink
+      if (locationId && locationId !== 'all') {
+        const { error } = await supabase
+          .from('location_modifier_groups')
+          .delete()
+          .eq('location_id', locationId)
+          .eq('modifier_group_id', id);
+        
+        if (error) throw error;
+        toast.success('Grupo desvinculado de esta sede');
+      } else {
+        // If "Todas las sedes", delete permanently
+        const { error } = await supabase
+          .from('modifier_groups')
+          .delete()
+          .eq('id', id);
+        if (error) throw error;
+        toast.success('Grupo eliminado permanentemente');
+      }
+      
       fetchModifierGroups();
       return true;
     } catch (err) {
-      toast.error('Error al eliminar grupo');
+      toast.error('Error al eliminar/desvincular grupo');
       return false;
     }
   };

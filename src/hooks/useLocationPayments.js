@@ -7,7 +7,10 @@ export function useLocationPayments(locationId) {
   const [error, setError] = useState(null);
 
   const fetchLocationPayments = useCallback(async () => {
-    if (!locationId) return;
+    if (!locationId || locationId === 'all') {
+      setLoading(false);
+      return;
+    }
     
     setLoading(true);
     try {
@@ -34,6 +37,10 @@ export function useLocationPayments(locationId) {
   }, [fetchLocationPayments]);
 
   const togglePaymentMethod = async (paymentMethodId, isActive) => {
+    if (!locationId || locationId === 'all') {
+      return { data: null, error: new Error('Please select a specific location first') };
+    }
+
     try {
       // Check if it already exists
       const existing = locationPayments.find(lp => lp.payment_method_id === paymentMethodId);
@@ -86,6 +93,10 @@ export function useLocationPayments(locationId) {
   };
 
   const updateLocationPaymentConfig = async (paymentMethodId, config) => {
+    if (!locationId || locationId === 'all') {
+      return { data: null, error: new Error('Please select a specific location first') };
+    }
+
     try {
       const { data, error } = await supabase
         .from('location_payment_methods')

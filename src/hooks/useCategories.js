@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
@@ -16,16 +16,17 @@ export const useCategories = () => {
   const { activeBrand } = useAuth();
   const activeBrandId = activeBrand?.id;
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async (locationId = 'all') => {
     try {
       setLoading(true);
-      console.log('Fetching categories...');
+      console.log('Fetching categories for location:', locationId);
       
       let query = supabase
         .from('categories')
         .select(`
           *,
-          items:products(id, is_active, stock_status)
+          items:products(id, is_active, stock_status, category_id),
+          location_categories!left(*)
         `);
 
       if (activeBrandId) {
@@ -39,16 +40,41 @@ export const useCategories = () => {
         throw error;
       }
 
-      // Process counts
-      const enrichedData = (data || []).map(cat => {
+      // Fetch location-specific product links if a location is active
+      let linkedProductIds = null;
+      if (locationId && locationId !== 'all') {
+        const { data: lps } = await supabase
+          .from('location_product_status')
+          .select('product_id')
+          .eq('location_id', locationId);
+        linkedProductIds = new Set((lps || []).map(r => r.product_id));
+      }
+
+      // Filter and process counts
+      let filteredData = data || [];
+      
+      // If a specific location is active, filter to only show linked categories
+      if (locationId && locationId !== 'all') {
+        filteredData = filteredData.filter(cat => 
+          cat.location_categories?.some(lc => lc.location_id === locationId)
+        );
+      }
+
+      const enrichedData = filteredData.map(cat => {
         const items = cat.items || [];
         const total_products = items.length;
         const active_products = items.filter(p => p.is_active && p.stock_status !== 'out').length;
+
+        // Count products linked to this specific location
+        const linked_products = linkedProductIds
+          ? items.filter(p => linkedProductIds.has(p.id)).length
+          : null;
         
         return {
           ...cat,
           total_products,
-          active_products
+          active_products,
+          linked_products
         };
       });
 
@@ -61,7 +87,7 @@ export const useCategories = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeBrandId]);
 
   useEffect(() => {
     if (activeBrandId) {
@@ -175,5 +201,5 @@ export const useCategories = () => {
     }
   };
 
-  return { categories, loading, error, createCategory, updateCategory, deleteCategory, updateCategoryOrders };
+  return { categories, loading, error, createCategory, updateCategory, deleteCategory, updateCategoryOrders, fetchCategories };
 };

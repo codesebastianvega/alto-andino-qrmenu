@@ -4,12 +4,17 @@ import { useIngredientCategories } from '../hooks/useIngredientCategories';
 import { useAdminProviders } from '../hooks/useAdminProviders';
 import { useLocations } from '../hooks/useLocations';
 import { useLocationInventory } from '../hooks/useLocationInventory';
+import { useLinkCatalog } from '../hooks/useLinkCatalog';
+import { LinkCatalogModal } from '../components/admin/LinkCatalogModal';
+import { ShoppingListBoard } from '../components/admin/ShoppingListBoard';
 import {
   PageHeader, PrimaryButton, SecondaryButton, Badge,
   TableContainer, Th, SearchInput, SelectInput,
   Modal, ModalHeader, FormField, TextInput
 } from '../components/admin/ui';
 import { Icon } from '@iconify-icon/react';
+import { useLocation } from '../context/LocationContext';
+import { Link as LinkIcon } from 'lucide-react';
 
 const TrashIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -26,8 +31,13 @@ const TABS = [
 ];
 
 export default function AdminModifiers() {
+  const { activeLocationId } = useLocation();
   const [activeTab, setActiveTab] = useState('inventario');
-  const { ingredients } = useAdminIngredients();
+  const { ingredients, fetchIngredients } = useAdminIngredients();
+
+  useEffect(() => {
+    fetchIngredients(activeLocationId);
+  }, [activeLocationId, fetchIngredients]);
 
   return (
     <div className="p-8 w-full max-w-[1600px] mx-auto space-y-8 animate-fade-in">
@@ -49,10 +59,10 @@ export default function AdminModifiers() {
         ))}
       </div>
 
-      {activeTab === 'inventario'    && <InsumosTab />}
+      {activeTab === 'inventario'    && <InsumosTab activeLocationId={activeLocationId} />}
       {activeTab === 'categorias'    && <CategoriasTab ingredients={ingredients} />}
       {activeTab === 'proveedores'   && <ProveedoresTab ingredients={ingredients} />}
-      {activeTab === 'lista_compras' && <ListaComprasTab />}
+      {activeTab === 'lista_compras' && <ListaComprasTab activeLocationId={activeLocationId} />}
     </div>
   );
 }
@@ -60,16 +70,15 @@ export default function AdminModifiers() {
 // ═══════════════════════════════════════════════════════
 // TAB LISTA COMPRAS
 // ═══════════════════════════════════════════════════════
-import { ShoppingListBoard } from '../components/admin/ShoppingListBoard';
 
-function ListaComprasTab() {
+function ListaComprasTab({ activeLocationId }) {
   const { ingredients, fetchIngredients } = useAdminIngredients();
   const { providers, fetchProviders } = useAdminProviders();
 
   useEffect(() => {
-    fetchIngredients();
+    fetchIngredients(activeLocationId);
     fetchProviders();
-  }, [fetchIngredients, fetchProviders]);
+  }, [activeLocationId, fetchIngredients, fetchProviders]);
 
   return (
     <div className="animate-fade-in">
@@ -81,7 +90,7 @@ function ListaComprasTab() {
 // ═══════════════════════════════════════════════════════
 // TAB 1 — INVENTARIO
 // ═══════════════════════════════════════════════════════
-function InsumosTab() {
+function InsumosTab({ activeLocationId }) {
   const {
     ingredients, loading, fetchIngredients,
     createIngredient, updateIngredient, deleteIngredient, toggleIngredientStatus
@@ -98,10 +107,13 @@ function InsumosTab() {
   // inlineEdit: { id, purchase_price, purchase_quantity, purchase_unit, usage_unit }
   const [inlineEdit,    setInlineEdit]    = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const { activeLocation, isAllLocations } = useLocation();
 
   // Per-location inventory state
   const { locations } = useLocations();
   const { saveInventory, fetchInventory } = useLocationInventory();
+  const { linkItem, unlinkItem } = useLinkCatalog();
   const [locationInventory, setLocationInventory] = useState({}); // { [locId]: { stock_quantity, min_stock } }
 
   const emptyForm = {
@@ -112,7 +124,10 @@ function InsumosTab() {
   };
   const [form, setForm] = useState(emptyForm);
 
-  useEffect(() => { fetchIngredients(); fetchProviders(); }, [fetchIngredients, fetchProviders]);
+  useEffect(() => { 
+    fetchIngredients(activeLocationId); 
+    fetchProviders(); 
+  }, [activeLocationId, fetchIngredients, fetchProviders]);
 
   const unitCost = useMemo(() =>
     (parseFloat(form.purchase_price) || 0) / (parseFloat(form.purchase_quantity) || 1),
@@ -235,7 +250,7 @@ function InsumosTab() {
     e.preventDefault();
     const savedItem = editing
       ? await updateIngredient(editing.id, form)
-      : await createIngredient(form);
+      : await createIngredient(form, activeLocationId);
     
     if (savedItem) {
       // Save location-specific inventory
@@ -251,6 +266,21 @@ function InsumosTab() {
       }
 
       setIsOpen(false);
+    }
+  };
+
+  const handleLinkIngredients = async (selectedIds) => {
+    for (const id of selectedIds) {
+      await linkItem('inventory', activeLocationId, id);
+    }
+    fetchIngredients(activeLocationId);
+    setIsLinkModalOpen(false);
+  };
+
+  const handleUnlinkIngredient = async (id) => {
+    if (window.confirm('¿Desvincular este insumo de esta sede?')) {
+      await unlinkItem('inventory', activeLocationId, id);
+      fetchIngredients(activeLocationId);
     }
   };
 
@@ -441,10 +471,21 @@ function InsumosTab() {
             <Icon icon="heroicons:chevron-down" className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
         </div>
-        <PrimaryButton onClick={openCreate} className="h-11 px-6 w-full lg:w-auto">
-          <Icon icon="heroicons:plus-circle" className="text-xl mr-2" />
-          Nuevo Insumo
-        </PrimaryButton>
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+          {!isAllLocations && (
+            <button
+              onClick={() => setIsLinkModalOpen(true)}
+              className="flex items-center justify-center gap-2 px-4 h-11 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-bold transition-all border border-indigo-100 shadow-sm w-full sm:w-auto"
+            >
+              <LinkIcon size={18} />
+              Vincular del Catálogo
+            </button>
+          )}
+          <PrimaryButton onClick={openCreate} className="h-11 px-6 w-full sm:w-auto">
+            <Icon icon="heroicons:plus-circle" className="text-xl mr-2" />
+            Nuevo Insumo
+          </PrimaryButton>
+        </div>
       </div>
 
       <TableContainer className="rounded-[1.5rem] border border-gray-100 shadow-sm overflow-hidden bg-white">
@@ -694,6 +735,15 @@ function InsumosTab() {
                         className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all shadow-sm hover:shadow-md bg-white border border-transparent hover:border-rose-100">
                         <Icon icon="heroicons:trash" className="text-lg" />
                       </button>
+                      {!isAllLocations && (
+                        <button
+                          onClick={() => handleUnlinkIngredient(item.id)}
+                          title="Desvincular de esta sede"
+                          className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all shadow-sm hover:shadow-md bg-white border border-transparent hover:border-amber-100"
+                        >
+                          <Icon icon="heroicons:link-slash" className="text-lg" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -935,6 +985,18 @@ function InsumosTab() {
           </form>
         </Modal>
       )}
+
+      {/* Catalog Link Modal */}
+      <LinkCatalogModal 
+        isOpen={isLinkModalOpen}
+        onClose={() => {
+          setIsLinkModalOpen(false);
+          fetchIngredients(activeLocationId);
+        }}
+        type="inventory"
+        locationId={activeLocationId}
+        locationName={activeLocation?.name || 'Sede'}
+      />
     </>
   );
 }
@@ -1432,6 +1494,7 @@ function ProveedoresTab({ ingredients = [] }) {
           </div>
         </Modal>
       )}
+
     </div>
   );
 }

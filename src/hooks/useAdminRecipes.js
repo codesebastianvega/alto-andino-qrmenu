@@ -9,7 +9,7 @@ export function useAdminRecipes() {
   const { activeBrand } = useAuth();
   const activeBrandId = activeBrand?.id;
 
-  const fetchRecipes = useCallback(async () => {
+  const fetchRecipes = useCallback(async (locationId = 'all') => {
     try {
       setLoading(true);
       let query = supabase
@@ -20,7 +20,8 @@ export function useAdminRecipes() {
             ingredient_id,
             quantity,
             ingredients (name, unit_cost, usage_unit)
-          )
+          ),
+          location_recipes!left(*)
         `);
 
       if (activeBrandId) {
@@ -31,7 +32,15 @@ export function useAdminRecipes() {
         .order('name');
       
       if (error) throw error;
-      setRecipes(data || []);
+
+      let filteredData = data || [];
+      if (locationId && locationId !== 'all') {
+        filteredData = filteredData.filter(recipe => 
+          recipe.location_recipes?.some(lr => lr.location_id === locationId)
+        );
+      }
+
+      setRecipes(filteredData);
     } catch (err) {
       console.error('Error fetching recipes:', err);
       toast('Error al cargar recetas');

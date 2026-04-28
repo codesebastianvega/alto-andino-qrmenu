@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
@@ -24,6 +25,7 @@ import AdminWebContent from '../../pages/AdminWebContent';
 import AdminBusinessProfile from '../../pages/AdminBusinessProfile';
 import AdminProfile from '../../pages/AdminProfile';
 import ContextBreadcrumb from './ContextBreadcrumb';
+import { Badge } from './ui';
 import LockOverlay from './LockOverlay';
 import { useMenuData } from '../../context/MenuDataContext';
 import Toast from '../Toast';
@@ -193,7 +195,7 @@ export default function AdminLayout() {
   };
 
   const { user: authUser, profile, loading: authLoading, isFeatureLocked, activeBrand, activePlan } = useAuth();
-  const { activeLocationId, isAllLocations } = useLocations();
+  const { activeLocationId, activeLocation, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id || profile?.brand_id;
   const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState(getInitialPage); 
@@ -254,15 +256,29 @@ export default function AdminLayout() {
     }
   }, [authUser, profile, authLoading]);
 
-  // Sync page state with URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    let changed = false;
+
     if (params.get('admin_page') !== currentPage) {
       params.set('admin_page', currentPage);
+      changed = true;
+    }
+
+    if (!isAllLocations && activeLocationId && params.get('location_id') !== activeLocationId) {
+      params.set('location_id', activeLocationId);
+      changed = true;
+    } else if (isAllLocations && params.has('location_id')) {
+      params.delete('location_id');
+      params.delete('sede_id');
+      changed = true;
+    }
+
+    if (changed) {
       const targetPath = activeBrand?.slug ? `/${activeBrand.slug}/` : window.location.pathname;
       window.history.replaceState(null, '', `${targetPath}?${params.toString()}${window.location.hash}`);
     }
-  }, [currentPage, activeBrand]);
+  }, [currentPage, activeBrand, activeLocationId, isAllLocations]);
 
   // Control estricto de acceso a páginas según rol
   useEffect(() => {
@@ -761,7 +777,28 @@ export default function AdminLayout() {
              
              <div className="h-6 w-px bg-gray-200 hidden sm:block" />
 
-             <h2 className="text-lg font-bold text-gray-900 tracking-tight">{currentItemLabel}</h2>
+             <div className="flex items-center gap-3">
+               <h2 className="text-lg font-bold text-gray-900 tracking-tight">{currentItemLabel}</h2>
+               <AnimatePresence mode="wait">
+                 {!isAllLocations && activeLocation && (
+                   <motion.div
+                     key={activeLocation.id}
+                     initial={{ opacity: 0, x: -10, scale: 0.9 }}
+                     animate={{ opacity: 1, x: 0, scale: 1 }}
+                     exit={{ opacity: 0, scale: 0.9 }}
+                     className="flex items-center"
+                   >
+                     <Badge variant="indigo">
+                       <div className="flex items-center gap-1">
+                         <MapPin size={10} className="text-indigo-400" />
+                         <span>{activeLocation.name}</span>
+                       </div>
+                     </Badge>
+                   </motion.div>
+                 )}
+               </AnimatePresence>
+             </div>
+
              {activePlan && (
                <div className="flex items-center gap-2 px-2.5 py-1 bg-brand-primary/5 border border-brand-primary/10 rounded-full">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />

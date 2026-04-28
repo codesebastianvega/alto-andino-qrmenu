@@ -9,12 +9,18 @@ import { useAllergens } from '../hooks/useAllergens';
 import { formatCOP } from '../utils/money';
 import ProductForm from '../components/admin/ProductForm';
 import { useLocationOverrides } from '../hooks/useLocationOverrides';
+import { useRestaurantSettings } from '../hooks/useRestaurantSettings';
 import BulkCostEditor from '../components/admin/BulkCostEditor';
 import AAImage from '../components/ui/AAImage';
 import {
   PageHeader, PrimaryButton, Badge,
   TableContainer, Th, SearchInput, SelectInput
 } from '../components/admin/ui';
+import { useLocation } from '../context/LocationContext';
+import { LinkCatalogModal } from '../components/admin/LinkCatalogModal';
+import { Link as LinkIcon } from 'lucide-react';
+import { useMenuData } from '../context/MenuDataContext';
+import { Eye, EyeOff, Clock, AlertTriangle } from 'lucide-react';
 
 const STOCK_BADGE = {
   in:  { label: 'Disponible', variant: 'green' },
@@ -32,6 +38,7 @@ const DragHandle = () => (
 );
 
 export default function AdminProducts() {
+  const { activeLocationId, isAllLocations, activeLocation } = useLocation();
   const { 
     products, 
     loading: loadingProd, 
@@ -41,21 +48,43 @@ export default function AdminProducts() {
     toggleActive, 
     toggleStock, 
     reorderProducts,
-    bulkUpdateCosts 
+    bulkUpdateCosts,
+    refreshProducts: fetchProducts 
   } = useAdminProducts();
-  const { categories, loading: loadingCats } = useCategories();
+  const { 
+    categories, 
+    loading: loadingCats, 
+    fetchCategories 
+  } = useCategories();
+  const { refetchMenuData, locations } = useMenuData();
+
+  useEffect(() => {
+    // Always fetch all categories for the brand to populate filters and form
+    fetchCategories('all');
+  }, [fetchCategories]);
+
+  // Sync location filter when activeLocationId changes from the header
+  useEffect(() => {
+    setLocationFilter(activeLocationId || 'all');
+  }, [activeLocationId]);
+
   const { activePlan } = useAuth();
   const { withinLimit } = usePlan();
   const { recipes, fetchRecipes } = useAdminRecipes();
-  const { modifierGroups, fetchModifierGroups } = useAdminModifierGroups();
+  const { modifierGroups, fetchModifierGroups } = useAdminModifierGroups(activeLocationId);
   const { allergens, loading: loadingAllergens } = useAllergens();
   const { saveProductOverrides } = useLocationOverrides();
-
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('all');
-  const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'active', 'hidden'
   const [attrFilter, setAttrFilter] = useState('all'); // 'all', 'upsell', 'no_kitchen', 'packaging'
   const [marginFilter, setMarginFilter] = useState('all'); // 'all', 'high', 'med', 'low'
+  const [brandFilter, setBrandFilter] = useState('all');
+  const [locationFilter, setLocationFilter] = useState(activeLocationId || 'all'); // 'all' or location_id
+  const [showUnassigned, setShowUnassigned] = useState(false); // To show products not yet in this location
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  
+  const { settings } = useRestaurantSettings();
+  const brandConcepts = settings?.brand_concepts || [];
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -126,6 +155,52 @@ export default function AdminProducts() {
     setOverIdx(null);
   };
 
+  /* ─── Visibility Status Helper ─── */
+  const getVisibilityStatus = useCallback((product) => {
+    if (locationFilter === 'all') return { status: 'no_filter', label: '—', icon: null, color: '' };
+
+    // 1. Check product linked to this location
+    const locStatus = product.location_product_status?.find(s => s.location_id === locationFilter);
+    if (!locStatus || locStatus.is_active === false) {
+      return { status: 'not_linked', label: 'No vinculado', icon: EyeOff, color: 'text-red-500 bg-red-50 border-red-100' };
+    }
+
+    // 2. Check category linked to this location
+    const cat = categories.find(c => c.id === product.category_id);
+    if (!cat) {
+      return { status: 'no_category', label: 'Sin categoría', icon: AlertTriangle, color: 'text-orange-500 bg-orange-50 border-orange-100' };
+    }
+    const catLinked = cat.location_categories?.some(lc => lc.location_id === locationFilter && lc.is_active !== false);
+    if (!catLinked) {
+      return { status: 'cat_not_linked', label: 'Cat. no vinculada', icon: AlertTriangle, color: 'text-orange-500 bg-orange-50 border-orange-100' };
+    }
+
+    // 3. Dayparting check on the category
+    const now = new Date();
+    const currentDay = now.getDay();
+    const config = cat.visibility_config || {};
+    const allowedDays = config.days || [0, 1, 2, 3, 4, 5, 6];
+    if (!allowedDays.includes(currentDay)) {
+      return { status: 'day_blocked', label: 'Fuera de día', icon: Clock, color: 'text-blue-500 bg-blue-50 border-blue-100' };
+    }
+    if (cat.available_from || cat.available_to) {
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const parseTime = (t) => { if (!t) return null; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+      const from = parseTime(cat.available_from);
+      const to = parseTime(cat.available_to);
+      if (from !== null && to !== null) {
+        const inRange = from < to
+          ? (currentMinutes >= from && currentMinutes <= to)
+          : (currentMinutes >= from || currentMinutes <= to);
+        if (!inRange) {
+          return { status: 'time_blocked', label: 'Fuera de horario', icon: Clock, color: 'text-blue-500 bg-blue-50 border-blue-100' };
+        }
+      }
+    }
+
+    return { status: 'visible', label: 'Visible', icon: Eye, color: 'text-green-600 bg-green-50 border-green-100' };
+  }, [locationFilter, categories]);
+
   if (loadingProd || loadingCats) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-400 text-sm font-medium">
@@ -160,12 +235,24 @@ export default function AdminProducts() {
       }
     }
 
-    // Visibility Filtering
-    let matchVisibility = true;
-    if (activeFilter === 'active') matchVisibility = p.is_active;
-    else if (activeFilter === 'hidden') matchVisibility = !p.is_active;
+    // Brand Concept Filtering
+    const matchBrand = brandFilter === 'all' || p.brand_concept === brandFilter;
 
-    return matchSearch && matchCat && matchAttr && matchMargin && matchVisibility;
+    // Location Filtering (The core of the Master Catalog concept)
+    let matchLocation = true;
+    if (locationFilter !== 'all') {
+      const locStatus = p.location_product_status?.find(s => s.location_id === locationFilter);
+      // Strict 'Empty by Default' rule:
+      const isAssigned = locStatus && locStatus.is_active === true;
+
+      if (showUnassigned) {
+        matchLocation = !isAssigned; // Show only products NOT in this location
+      } else {
+        matchLocation = isAssigned;  // Show only products IN this location
+      }
+    }
+
+    return matchSearch && matchCat && matchAttr && matchMargin && matchBrand && matchLocation;
   }).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
   const handleEdit   = (p) => { setEditingProduct(p); setIsFormOpen(true); setConfirmDelete(null); };
@@ -183,9 +270,13 @@ export default function AdminProducts() {
       const productId = editingProduct?.id || result.id;
       if (productId && overrides) {
         const structuredOverrides = {
-          prices: overrides
-            .filter(o => o.price !== null)
-            .map(o => ({ location_id: o.location_id, price: o.price })),
+          prices: overrides.map(o => {
+            const parsed = typeof o.price === 'string' ? parseFloat(o.price) : o.price;
+            return { 
+              location_id: o.location_id, 
+              price: (parsed === '' || parsed === null || isNaN(parsed)) ? null : parsed
+            };
+          }),
           status: overrides.map(o => ({
             location_id: o.location_id,
             is_active: o.is_active,
@@ -196,6 +287,8 @@ export default function AdminProducts() {
       }
       setIsFormOpen(false);
       setEditingProduct(null);
+      // Ensure preview updates
+      if (refetchMenuData) refetchMenuData();
     }
   };
 
@@ -319,8 +412,8 @@ export default function AdminProducts() {
       </PageHeader>
 
       <div className="flex flex-col gap-4 bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div className="flex-1 w-full max-w-xl group relative">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-4">
+          <div className="flex-1 min-w-[300px] group relative">
             <SearchInput
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -328,19 +421,86 @@ export default function AdminProducts() {
             />
           </div>
           
-          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            <div className="w-full sm:w-48">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="w-44">
               <SelectInput value={catFilter} onChange={e => setCatFilter(e.target.value)}>
                 <option value="all">Todas las categorías</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </SelectInput>
             </div>
+            <div className="w-40">
+              <SelectInput value={brandFilter} onChange={e => setBrandFilter(e.target.value)}>
+                <option value="all">Concepto: Todos</option>
+                {brandConcepts.map(bc => (
+                  <option key={bc} value={bc}>{bc}</option>
+                ))}
+              </SelectInput>
+            </div>
+
+            <div className="w-48">
+              <SelectInput value={locationFilter} onChange={e => {
+                setLocationFilter(e.target.value);
+                setShowUnassigned(false);
+              }}>
+                <option value="all">Sede: Catálogo Maestro</option>
+                {locations.map(loc => (
+                  <option key={loc.id} value={loc.id}>Sede: {loc.name}</option>
+                ))}
+              </SelectInput>
+            </div>
+
+
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100">
+              <span className="text-[10px] font-bold text-gray-400 uppercase mr-1">Atributos:</span>
+              {[
+                { id: 'all', label: 'Todos' },
+                { id: 'upsell', label: '✨' },
+                { id: 'no_kitchen', label: '❄️' },
+                { id: 'packaging', label: '📦' },
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setAttrFilter(f.id)}
+                  title={f.label === 'Todos' ? 'Todos' : f.label}
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-[14px] transition-all border ${
+                    attrFilter === f.id 
+                    ? 'bg-[#2f4131] text-white border-[#2f4131]' 
+                    : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'
+                  }`}
+                >
+                  {f.id === 'all' ? 'All' : f.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100">
+              <span className="text-[10px] font-bold text-gray-400 uppercase mr-1">Margen:</span>
+              {[
+                { id: 'all', label: 'Todos' },
+                { id: 'high', label: '📈' },
+                { id: 'med', label: '📊' },
+                { id: 'low', label: '⚠️' },
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setMarginFilter(f.id)}
+                  title={f.label === 'Todos' ? 'Todos' : f.label}
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-[14px] transition-all border ${
+                    marginFilter === f.id 
+                    ? 'bg-[#2f4131] text-white border-[#2f4131]' 
+                    : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'
+                  }`}
+                >
+                  {f.id === 'all' ? 'All' : f.label}
+                </button>
+              ))}
+            </div>
             
-            <div className="flex items-center gap-2 w-full sm:w-auto ml-auto lg:ml-0">
+            <div className="flex items-center gap-2">
                {catFilter !== 'all' && (
                 <button 
                   onClick={enterReorderMode}
-                  className="flex-1 sm:flex-initial px-4 py-2.5 text-[13px] font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-all flex items-center justify-center gap-2"
+                  className="px-4 py-2.5 text-[13px] font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-all flex items-center justify-center gap-2"
                 >
                   <DragHandle />
                   Ordenar
@@ -348,92 +508,22 @@ export default function AdminProducts() {
               )}
               <button 
                 onClick={() => setIsBulkEditorOpen(true)}
-                className="flex-1 sm:flex-initial px-4 py-2.5 text-[13px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
+                className="px-4 py-2.5 text-[13px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                Editor de Costos
+                Costos
               </button>
             </div>
-          </div>
-        </div>
 
-        {/* Operational Filters Row */}
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-4 pt-4 border-t border-gray-50">
-          {/* Visibilidad */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-1">Visibilidad:</span>
-            <div className="flex gap-1.5">
-              {[
-                { id: 'all', label: 'Todos' },
-                { id: 'active', label: '✅ Activos' },
-                { id: 'hidden', label: '👁️ Ocultos' },
-              ].map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => setActiveFilter(f.id)}
-                  className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all border ${
-                    activeFilter === f.id 
-                    ? 'bg-[#2f4131] text-white border-[#2f4131] shadow-md shadow-[#2f4131]/10' 
-                    : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="h-4 w-px bg-gray-100 hidden sm:block" />
-
-          {/* Atributos */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-1">Atributos:</span>
-            <div className="flex gap-1.5">
-              {[
-                { id: 'all', label: 'Todos' },
-                { id: 'upsell', label: '✨ Upsell' },
-                { id: 'no_kitchen', label: '❄️ Sin Cocina' },
-                { id: 'packaging', label: '📦 Empaque' },
-              ].map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => setAttrFilter(f.id)}
-                  className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all border ${
-                    attrFilter === f.id 
-                    ? 'bg-[#2f4131] text-white border-[#2f4131] shadow-md shadow-[#2f4131]/10' 
-                    : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="h-4 w-px bg-gray-100 hidden sm:block" />
-
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-1">Rentabilidad:</span>
-            <div className="flex gap-1.5">
-              {[
-                { id: 'all', label: 'Todos' },
-                { id: 'high', label: '📈 Alta', color: 'text-green-600' },
-                { id: 'med', label: '📊 Media', color: 'text-orange-500' },
-                { id: 'low', label: '⚠️ Baja', color: 'text-red-500' },
-              ].map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => setMarginFilter(f.id)}
-                  className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all border ${
-                    marginFilter === f.id 
-                    ? 'bg-[#2f4131] text-white border-[#2f4131] shadow-md shadow-[#2f4131]/10' 
-                    : `bg-white ${f.color || 'text-gray-500'} border-gray-100 hover:bg-gray-50`
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
+            {locationFilter !== 'all' && (
+              <button 
+                onClick={() => setIsLinkModalOpen(true)}
+                className="px-4 py-2.5 text-[13px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
+              >
+                <LinkIcon size={14} />
+                Vincular de Catálogo
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -463,6 +553,7 @@ export default function AdminProducts() {
               <Th>Stock</Th>
               <Th>Atributos</Th>
               <Th>Receta</Th>
+              {locationFilter !== 'all' && <Th>Menú Público</Th>}
               <Th>Actualizado</Th>
               <Th>Estado</Th>
               <Th right>Acciones</Th>
@@ -478,7 +569,7 @@ export default function AdminProducts() {
               // Inline delete confirmation row
               if (isDelConf) return (
                 <tr key={product.id}>
-                  <td colSpan={13} className="px-5 py-3 bg-red-50">
+                  <td colSpan={locationFilter !== 'all' ? 14 : 13} className="px-5 py-3 bg-red-50">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-red-700">
                         ¿Eliminar <strong>"{product.name}"</strong>? Esta acción no se puede deshacer.
@@ -535,7 +626,26 @@ export default function AdminProducts() {
 
                   {/* Precio */}
                   <td className="px-5 py-3.5 whitespace-nowrap">
-                    <p className="text-sm font-bold text-gray-900 tabular-nums">{formatCOP(product.price)}</p>
+                    {(() => {
+                      // If a specific location is filtered, look for an override
+                      const locPrice = (locationFilter !== 'all') 
+                        ? product.location_product_prices?.find(lp => lp.location_id === locationFilter)?.price 
+                        : null;
+                      
+                      const displayPrice = locPrice !== null && locPrice !== undefined ? locPrice : product.price;
+                      const isOverridden = locPrice !== null && locPrice !== undefined;
+
+                      return (
+                        <div className="flex flex-col">
+                          <p className="text-sm font-bold text-gray-900 tabular-nums">
+                            {formatCOP(displayPrice)}
+                          </p>
+                          {isOverridden && (
+                            <span className="text-[9px] font-bold text-blue-500 uppercase tracking-tight">Precio de sede</span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
 
                   {/* Costo */}
@@ -612,6 +722,23 @@ export default function AdminProducts() {
                     )}
                   </td>
 
+                  {/* Menú Público — Visibility Helper */}
+                  {locationFilter !== 'all' && (() => {
+                    const vis = getVisibilityStatus(product);
+                    const Icon = vis.icon;
+                    return (
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <span
+                          title={vis.label}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all ${vis.color}`}
+                        >
+                          {Icon && <Icon size={13} strokeWidth={2.5} />}
+                          {vis.label}
+                        </span>
+                      </td>
+                    );
+                  })()}
+
                   {/* Actualizado */}
                   <td className="px-5 py-3.5 whitespace-nowrap">
                     <span className="text-[11px] text-gray-500 font-medium">
@@ -652,7 +779,7 @@ export default function AdminProducts() {
             
             {filtered.length === 0 && (
               <tr>
-                <td colSpan="13" className="px-5 py-16 text-center text-gray-400 text-sm font-medium">
+                <td colSpan={locationFilter !== 'all' ? 14 : 13} className="px-5 py-16 text-center text-gray-400 text-sm font-medium">
                   {search || catFilter !== 'all' || attrFilter !== 'all' || marginFilter !== 'all'
                     ? 'Sin resultados para los filtros actuales.'
                     : 'Aún no hay productos. Crea el primero.'}
@@ -669,6 +796,7 @@ export default function AdminProducts() {
           product={editingProduct}
           categories={categories}
           recipes={recipes}
+          modifierGroups={modifierGroups}
           allergens={allergens}
           onSave={handleSave}
           onCancel={() => { setIsFormOpen(false); setEditingProduct(null); }}
@@ -685,6 +813,19 @@ export default function AdminProducts() {
           onCancel={() => setIsBulkEditorOpen(false)}
         />
       )}
+
+      {/* Catalog Link Modal */}
+      <LinkCatalogModal 
+        isOpen={isLinkModalOpen}
+        onClose={() => {
+          setIsLinkModalOpen(false);
+          fetchProducts(activeLocationId);
+          if (refetchMenuData) refetchMenuData();
+        }}
+        type="product"
+        locationId={activeLocationId}
+        locationName={activeLocation?.name || 'Sede'}
+      />
     </div>
   );
 }

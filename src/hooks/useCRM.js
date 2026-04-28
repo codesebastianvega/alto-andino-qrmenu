@@ -127,11 +127,28 @@ export function useCRM() {
 
     // Calculate final metrics and segments
     const now = new Date();
-    return Object.values(customerMap).map(c => {
+    const processedCustomers = Object.values(customerMap).map(c => {
       const lastVisitDate = new Date(c.lastVisit);
       const daysSinceLastVisit = Math.floor((now - lastVisitDate) / (1000 * 60 * 60 * 24));
+      c.daysSinceLastVisit = daysSinceLastVisit;
       
       c.avgTicket = c.ordersCount > 0 ? c.ltv / c.ordersCount : 0;
+
+      // Churn Risk Calculation
+      // If they have multiple orders, we can see their frequency
+      if (c.ordersCount >= 2) {
+        const firstVisitDate = new Date(c.firstVisit);
+        const totalDaysRange = Math.floor((lastVisitDate - firstVisitDate) / (1000 * 60 * 60 * 24));
+        const avgGap = totalDaysRange / (c.ordersCount - 1);
+        c.avgOrderGap = avgGap;
+        
+        // Churn risk grows as daysSinceLastVisit exceeds avgGap
+        // Risk = 100% if daysSinceLastVisit is 3x their average gap
+        const riskFactor = avgGap > 0 ? daysSinceLastVisit / (avgGap * 3) : 0;
+        c.churnRisk = Math.min(Math.round(riskFactor * 100), 100);
+      } else {
+        c.churnRisk = daysSinceLastVisit > 30 ? 70 : 20; // Default for single-order or lead
+      }
 
       // Favorite product calculation
       const productCounts = {};
@@ -144,9 +161,8 @@ export function useCRM() {
         });
       });
 
-      const favoriteProduct = Object.entries(productCounts)
+      c.favoriteProduct = Object.entries(productCounts)
         .sort(([, a], [, b]) => b - a)[0]?.[0] || 'N/A';
-
 
       // Calculate orders in time windows
       const ordersLastMonth = c.orderHistory.filter(o => 
@@ -159,7 +175,7 @@ export function useCRM() {
         new Date(o.created_at) > new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
       ).length;
 
-      // Segmentation logic (4.2 in task.md)
+      // Segmentation logic (Legacy)
       if (c.source === 'lead' && c.ordersCount === 0) {
         c.segment = 'prospecto';
       } else if (daysSinceLastVisit > 45) {
@@ -178,6 +194,45 @@ export function useCRM() {
 
       return c;
     });
+
+    // --- RFM SCORING (Quintiles) ---
+    // Sort and score Recency (Inverted: lower days = higher score)
+    const sortedByRecency = [...processedCustomers].sort((a, b) => a.daysSinceLastVisit - b.daysSinceLastVisit);
+    // Sort and score Frequency
+    const sortedByFreq = [...processedCustomers].sort((a, b) => b.ordersCount - a.ordersCount);
+    // Sort and score Monetary
+    const sortedByMonetary = [...processedCustomers].sort((a, b) => b.ltv - a.ltv);
+
+    const getScore = (index, total) => {
+      const percentile = (index / total) * 100;
+      if (percentile <= 20) return 5;
+      if (percentile <= 40) return 4;
+      if (percentile <= 60) return 3;
+      if (percentile <= 80) return 2;
+      return 1;
+    };
+
+    const totalCount = processedCustomers.length;
+    
+    // Assign scores and detect Whales (Top 20% by Monetary)
+    processedCustomers.forEach(customer => {
+      const rIndex = sortedByRecency.findIndex(c => c.phone === customer.phone);
+      const fIndex = sortedByFreq.findIndex(c => c.phone === customer.phone);
+      const mIndex = sortedByMonetary.findIndex(c => c.phone === customer.phone);
+
+      customer.rfm = {
+        r: getScore(rIndex, totalCount),
+        f: getScore(fIndex, totalCount),
+        m: getScore(mIndex, totalCount)
+      };
+      
+      customer.rfmScore = Math.round((customer.rfm.r + customer.rfm.f + customer.rfm.m) / 3);
+      
+      // Pareto Rule: Top 20% of customers by Monetary value are "Whales"
+      customer.isWhale = mIndex < (totalCount * 0.2);
+    });
+
+    return processedCustomers;
   }, [orders, leads]);
 
   const stats = useMemo(() => {

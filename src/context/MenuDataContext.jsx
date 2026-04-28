@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import { useAuth } from './AuthContext';
 import { useBrand } from './BrandContext';
@@ -6,10 +7,14 @@ import { useBrand } from './BrandContext';
 const MenuDataContext = createContext({});
 
 export const MenuDataProvider = ({ children }) => {
-  const [categories, setCategories] = useState([]);
+  const location = useLocation();
   const [allCategories, setAllCategories] = useState([]);
-  const [productsByCategory, setProductsByCategory] = useState({});
-  const [modifiers, setModifiers] = useState({});
+  const [rawProducts, setRawProducts] = useState([]);
+  const [locationPrices, setLocationPrices] = useState([]);
+  const [locationStatus, setLocationStatus] = useState([]);
+  const [locationCategories, setLocationCategories] = useState([]);
+  const [locationModLinks, setLocationModLinks] = useState([]);
+  const [currentLocationId, setCurrentLocationId] = useState(sessionStorage.getItem("aa_current_location_id"));
   const [rawModifierGroups, setRawModifierGroups] = useState([]);
   const [experiences, setExperiences] = useState([]);
   const [banners, setBanners] = useState([]);
@@ -25,14 +30,50 @@ export const MenuDataProvider = ({ children }) => {
   const { brand: currentBrand, loadingBrand } = useBrand();
   const activeBrandId = currentBrand?.id ?? null;
 
+  // React to URL changes for location parameter
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const locParam = params.get('loc');
+    
+    if (locParam) {
+      // Check if it's a UUID or a slug
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(locParam);
+      
+      if (isUUID) {
+        setCurrentLocationId(locParam);
+        sessionStorage.setItem("aa_current_location_id", locParam);
+      } else if (locations.length > 0) {
+        // Resolve slug
+        const resolvedLoc = locations.find(l => l.slug === locParam);
+        if (resolvedLoc) {
+          setCurrentLocationId(resolvedLoc.id);
+          sessionStorage.setItem("aa_current_location_id", resolvedLoc.id);
+        }
+      } else if (!locations.length && !loading) {
+        // If locations haven't loaded yet, we'll try again when they do
+        // This is handled by adding 'locations' to the dependency array below
+      }
+    } else {
+      // Fallback to session if no param
+      const savedId = sessionStorage.getItem("aa_current_location_id");
+      if (savedId) setCurrentLocationId(savedId);
+    }
+  }, [location.search, locations, loading]);
+
+  // Expose the current location object for convenience
+  const currentLocation = useMemo(() => {
+    return locations.find(l => l.id === currentLocationId) || null;
+  }, [locations, currentLocationId]);
+
   // Fetch menu data for a given brand
   const fetchMenuData = useCallback(async (brandId) => {
     setLoading(true);
     // Clear old state immediately to avoid "ghost" data from other brands
-    setCategories([]);
     setAllCategories([]);
-    setProductsByCategory({});
-    setModifiers({});
+    setRawProducts([]);
+    setLocationPrices([]);
+    setLocationStatus([]);
+    setLocationModLinks([]);
     setRawModifierGroups([]);
     setExperiences([]);
     setBanners([]);
@@ -45,9 +86,8 @@ export const MenuDataProvider = ({ children }) => {
 
     try {
       // Helper to add brand filter when needed
-      // When brandId is known, filter explicitly — this handles multi-tenancy for admin panel
       const brandFilter = (query) => {
-        if (!brandId) return query.limit(0); // Safely return nothing if no brand is active
+        if (!brandId) return query.limit(0); 
         return query.eq('brand_id', brandId);
       };
 
@@ -57,103 +97,38 @@ export const MenuDataProvider = ({ children }) => {
       );
       if (catError) throw catError;
 
-      // Filter categories by dayparting
-      const activeCats = (cats || []).filter(cat => {
-        if (cat.is_active === false) return false;
-        const now = new Date();
-        const currentDay = now.getDay();
-        const config = cat.visibility_config || {};
-        const allowedDays = config.days || [0,1,2,3,4,5,6];
-        if (!allowedDays.includes(currentDay)) return false;
-        if (!cat.available_from && !cat.available_to) return true;
-        const currentMinutes = now.getHours() * 60 + now.getMinutes();
-        const parseTime = (t) => { if (!t) return null; const [h,m] = t.split(':').map(Number); return h*60+m; };
-        const from = parseTime(cat.available_from);
-        const to = parseTime(cat.available_to);
-        if (from !== null && to !== null) {
-          return from < to ? (currentMinutes >= from && currentMinutes <= to) : (currentMinutes >= from || currentMinutes <= to);
-        }
-        if (from !== null) return currentMinutes >= from;
-        if (to !== null) return currentMinutes <= to;
-        return true;
-      });
+      if (catError) throw catError;
 
-      // Fetch modifiers (NEW logic)
+      // Fetch modifiers
       const { data: mods } = await brandFilter(
         supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(id, group_id, name, price, sort_order, created_at, nested_group_id, image_url, emoji, ingredient_id)')
       );
-      const modGroups = {};
-      (mods || []).forEach(group => {
-        const groupName = group.name;
-        const options = (group.modifier_options || []).map(opt => ({
-          ...opt,
-          id: opt.id,
-          name: opt.name,
-          price: opt.price || 0,
-          emoji: opt.emoji,
-          image_url: opt.image_url,
-          group: groupName,
-          groupId: group.id,
-          ingredient_id: opt.ingredient_id
-        })).sort((a, b) => a.sort_order - b.sort_order);
-        // Index by BOTH name and UUID so lookups work with either format
-        modGroups[groupName] = options;
-        modGroups[group.id] = options;
-      });
-      setModifiers(modGroups);
       setRawModifierGroups(mods || []);
 
-      // Fetch experiences
-      const { data: exp } = await brandFilter(
-        supabase.from('experiences').select('*').eq('is_active', true).order('created_at', { ascending: false })
-      );
-      setExperiences(exp || []);
+      // Fetch experiences, allergens, locations, banners, settings...
+      const [expRes, allgsRes, locsRes, bnrsRes, hSettRes, rSettRes] = await Promise.all([
+        brandFilter(supabase.from('experiences').select('*').eq('is_active', true).order('created_at', { ascending: false })),
+        brandFilter(supabase.from('allergens').select('*').order('name')),
+        brandFilter(supabase.from('locations').select('*').eq('is_active', true).order('is_main', { ascending: false })),
+        brandFilter(supabase.from('promo_banners').select('*').eq('is_active', true).order('sort_order', { ascending: true })),
+        brandFilter(supabase.from('home_settings').select('*').limit(1)),
+        brandFilter(supabase.from('restaurant_settings').select('*').limit(1))
+      ]);
 
-      // Fetch allergens
-      const { data: allgs } = await brandFilter(
-        supabase.from('allergens').select('*').order('name')
-      );
-      setAllergens(allgs || []);
-
-      // Fetch locations
-      const { data: locs } = await brandFilter(
-        supabase.from('locations').select('*').eq('is_active', true).order('is_main', { ascending: false })
-      );
-      setLocations(locs || []);
-
-      // Fetch banners
-      const { data: bnrs } = await brandFilter(
-        supabase.from('promo_banners').select('*').eq('is_active', true).order('sort_order', { ascending: true })
-      );
-      setBanners(bnrs || []);
-
-      // Fetch home_settings
-      const { data: hSettings } = await brandFilter(
-        supabase.from('home_settings').select('*').limit(1)
-      );
-      setHomeSettings(hSettings?.[0] || null);
-
-      // Fetch restaurant_settings (branding)
-      const { data: rSettings } = await brandFilter(
-        supabase.from('restaurant_settings').select('*').limit(1)
-      );
-      setRestaurantSettings(rSettings?.[0] || null);
+      setExperiences(expRes.data || []);
+      setAllergens(allgsRes.data || []);
+      setLocations(locsRes.data || []);
+      setBanners(bnrsRes.data || []);
+      setHomeSettings(hSettRes.data?.[0] || null);
+      setRestaurantSettings(rSettRes.data?.[0] || null);
 
       // Fetch Brand and Plan Features
       if (brandId) {
-        const { data: brandData } = await supabase
-          .from('brands')
-          .select('*, plans(*)')
-          .eq('id', brandId)
-          .single();
-        
+        const { data: brandData } = await supabase.from('brands').select('*, plans(*)').eq('id', brandId).single();
         if (brandData) {
           setBrand(brandData);
           if (brandData.plan_id) {
-            const { data: features } = await supabase
-              .from('plan_features')
-              .select('*')
-              .eq('plan_id', brandData.plan_id);
+            const { data: features } = await supabase.from('plan_features').select('*').eq('plan_id', brandData.plan_id);
             setPlanFeatures(features || []);
           }
         }
@@ -164,45 +139,35 @@ export const MenuDataProvider = ({ children }) => {
         supabase.from('products').select('*, categories:category_id (slug)').eq('is_active', true).order('sort_order', { ascending: true })
       );
       if (prodError) throw prodError;
+      setRawProducts(products || []);
 
-      const grouped = {};
-      (products || []).forEach(product => {
-        const catSlug = product.categories?.slug || 'otros';
-        const normalizedProduct = {
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          desc: product.description || '',
-          description: product.description || '',
-          tags: product.tags || [],
-          stock_status: product.stock_status || 'in',
-          image: product.image_url,
-          image_url: product.image_url,
-          variants: product.variants || [],
-          modifierGroups: product.modifier_groups || [],
-          configOptions: product.config_options || {},
-          is_upsell: product.is_upsell || false,
-          requires_kitchen: product.requires_kitchen ?? true,
-          subcategory: product.subcategory,
-          categorySlug: catSlug,
-          is_addon: product.is_addon,
-          _supabase: product
-        };
+      // Fetch location-specific overrides SAFELY
+      // These tables DO NOT have brand_id, so we filter by location_ids
+      if (locsRes.data?.length > 0) {
+        const locationIds = locsRes.data.map(l => l.id);
+        const [pricesRes, statusRes, catLinksRes, modLinksRes] = await Promise.all([
+          supabase.from('location_product_prices').select('*').in('location_id', locationIds),
+          supabase.from('location_product_status').select('*').in('location_id', locationIds),
+          supabase.from('location_categories').select('*').in('location_id', locationIds),
+          supabase.from('location_modifier_groups').select('*').in('location_id', locationIds)
+        ]);
 
-        // All products go into the categorical map if they are NOT addons
-        if (product.is_addon !== true) {
-          if (!grouped[catSlug]) grouped[catSlug] = [];
-          grouped[catSlug].push(normalizedProduct);
-        }
-      });
+        if (pricesRes.error) console.error('Error fetching location prices:', pricesRes.error);
+        if (statusRes.error) console.error('Error fetching location status:', statusRes.error);
+        if (catLinksRes.error) console.error('Error fetching location cat links:', catLinksRes.error);
+        if (modLinksRes.error) console.error('Error fetching location mod links:', modLinksRes.error);
+
+        setLocationPrices(pricesRes.data || []);
+        setLocationStatus(statusRes.data || []);
+        setLocationCategories(catLinksRes.data || []);
+        setLocationModLinks(modLinksRes.data || []);
+      }
 
       setAllCategories(cats || []);
-      setCategories(activeCats);
-      setProductsByCategory(grouped);
 
-      console.log('✅ MenuData cargado para brand:', brandId || 'anónimo', {
+      console.log('✅ MenuData fetched for brand:', brandId || 'anonymous', {
         cats: cats?.length || 0,
-        products: products?.length || 0,
+        products: products?.length || 0
       });
 
     } catch (err) {
@@ -212,21 +177,149 @@ export const MenuDataProvider = ({ children }) => {
     }
   }, []);
 
+  // Compute modifiers reactively and filter by location
+  const modifiers = useMemo(() => {
+    const modGroups = {};
+    const filteredGroups = (rawModifierGroups || []).filter(group => {
+      if (!currentLocationId) return true; // Brand level view shows all
+      return (locationModLinks || []).some(link => 
+        link.modifier_group_id === group.id && link.location_id === currentLocationId
+      );
+    });
+
+    filteredGroups.forEach(group => {
+      const groupName = group.name;
+      const options = (group.modifier_options || []).map(opt => ({
+        ...opt,
+        id: opt.id,
+        name: opt.name,
+        price: opt.price || 0,
+        emoji: opt.emoji,
+        image_url: opt.image_url,
+        group: groupName,
+        groupId: group.id,
+        ingredient_id: opt.ingredient_id
+      })).sort((a, b) => a.sort_order - b.sort_order);
+      modGroups[groupName] = options;
+      modGroups[group.id] = options;
+    });
+    return modGroups;
+  }, [rawModifierGroups, locationModLinks, currentLocationId]);
+
+  // Compute productsByCategory reactively
+  const productsByCategory = useMemo(() => {
+    const grouped = {};
+    (rawProducts || []).forEach(product => {
+      // Apply location status override
+      if (currentLocationId) {
+        const locStatus = (locationStatus || []).find(ls => ls.product_id === product.id && ls.location_id === currentLocationId);
+        
+        // NEW STRICT STRATEGY: Whitelist only. 
+        // A product MUST have an entry in location_product_status AND be active to appear.
+        if (!locStatus || locStatus.is_active === false) {
+          return;
+        }
+      }
+
+      const catSlug = product.categories?.slug || 'otros';
+      
+      // Apply location price override
+      let finalPrice = product.price;
+      if (currentLocationId) {
+        const locPrice = (locationPrices || []).find(lp => lp.product_id === product.id && lp.location_id === currentLocationId);
+        if (locPrice && locPrice.price !== null) {
+          finalPrice = locPrice.price;
+        }
+      }
+
+      const normalizedProduct = {
+        id: product.id,
+        name: product.name,
+        price: finalPrice,
+        desc: product.description || '',
+        description: product.description || '',
+        tags: product.tags || [],
+        stock_status: product.stock_status || 'in',
+        image: product.image_url,
+        image_url: product.image_url,
+        variants: product.variants || [],
+        modifierGroups: product.modifier_groups || [],
+        configOptions: product.config_options || {},
+        is_upsell: product.is_upsell || false,
+        requires_kitchen: product.requires_kitchen ?? true,
+        subcategory: product.subcategory,
+        categorySlug: catSlug,
+        is_addon: product.is_addon,
+        _supabase: product
+      };
+
+      if (product.is_addon !== true) {
+        if (!grouped[catSlug]) grouped[catSlug] = [];
+        grouped[catSlug].push(normalizedProduct);
+      }
+    });
+    return grouped;
+  }, [rawProducts, locationPrices, locationStatus, currentLocationId]);
+
+  // Compute categories reactively (Dayparting + Has Products)
+  const categories = useMemo(() => {
+    return (allCategories || []).filter(cat => {
+      // 1. Basic active status
+      if (cat.is_active === false) return false;
+
+      // 2. Filter by location (Strict Whitelist + Has Products)
+      if (currentLocationId) {
+        // Must be explicitly linked to location and active
+        const locCat = (locationCategories || []).find(lc => lc.category_id === cat.id && lc.location_id === currentLocationId);
+        if (!locCat || locCat.is_active === false) return false;
+
+        // Also must have products linked to this location
+        const productsInCat = productsByCategory[cat.slug] || [];
+        if (productsInCat.length === 0) return false;
+      }
+
+      // 3. Dayparting logic
+      const now = new Date();
+      const currentDay = now.getDay();
+      const config = cat.visibility_config || {};
+      const allowedDays = config.days || [0, 1, 2, 3, 4, 5, 6];
+      if (!allowedDays.includes(currentDay)) return false;
+      if (!cat.available_from && !cat.available_to) return true;
+      
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const parseTime = (t) => { 
+        if (!t) return null; 
+        const [h, m] = t.split(':').map(Number); 
+        return h * 60 + m; 
+      };
+      const from = parseTime(cat.available_from);
+      const to = parseTime(cat.available_to);
+      
+      if (from !== null && to !== null) {
+        return from < to 
+          ? (currentMinutes >= from && currentMinutes <= to) 
+          : (currentMinutes >= from || currentMinutes <= to);
+      }
+      if (from !== null) return currentMinutes >= from;
+      if (to !== null) return currentMinutes <= to;
+      
+      return true;
+    });
+  }, [allCategories, productsByCategory, currentLocationId]);
+
   // Trigger fetch when brand changes (resolved from URL slug or session)
   const lastFetchedBrandRef = React.useRef(null);
   
   useEffect(() => {
     if (loadingBrand) return; 
     
-    // Safety: if brandId is the same as last one successfully fetched, don't re-trigger heavy fetch
-    // Unless it's the very first load
-    if (activeBrandId === lastFetchedBrandRef.current && categories.length > 0) {
+    if (activeBrandId === lastFetchedBrandRef.current && allCategories.length > 0) {
       return;
     }
 
     lastFetchedBrandRef.current = activeBrandId;
     fetchMenuData(activeBrandId);
-  }, [activeBrandId, loadingBrand, fetchMenuData, categories.length]);
+  }, [activeBrandId, loadingBrand, fetchMenuData, allCategories.length]);
 
   // Real-time branding and home settings updates
   useEffect(() => {
@@ -297,13 +390,16 @@ export const MenuDataProvider = ({ children }) => {
     locations,
     loading,
     activeBrandId,
+    currentLocation,
+    currentLocationId,
     refetchMenuData: () => fetchMenuData(activeBrandId),
     hasFeature: (key) => planFeatures?.find(f => f.feature_key === key)?.is_included ?? false,
   }), [
     categories, allCategories, productsByCategory, getProductsByCategory, getAllProducts, 
     getModifiers, modifiers, rawModifierGroups, experiences, banners, allergens, 
-    homeSettings, restaurantSettings, brand, planFeatures, locations, loading, activeBrandId, fetchMenuData
+    homeSettings, restaurantSettings, brand, planFeatures, locations, loading, activeBrandId, currentLocation, currentLocationId, fetchMenuData
   ]);
+
 
   return (
     <MenuDataContext.Provider value={value}>

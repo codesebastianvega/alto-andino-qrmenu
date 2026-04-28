@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAdminModifierGroups } from '../hooks/useAdminModifierGroups';
 import { useAdminIngredients } from '../hooks/useAdminIngredients';
 import { useIngredientCategories } from '../hooks/useIngredientCategories';
@@ -6,13 +6,18 @@ import { PageHeader, PrimaryButton, SecondaryButton, Modal, ModalHeader, FormFie
 import { Icon } from '@iconify-icon/react';
 import EmojiPicker from 'emoji-picker-react';
 import { toast } from '../components/Toast';
+import { useLocation } from '../context/LocationContext';
+import { LinkCatalogModal } from '../components/admin/LinkCatalogModal';
+import { Link as LinkIcon, AlertTriangle, CheckCircle } from 'lucide-react';
 
 export default function AdminModifierGroups() {
-  const { modifierGroups, fetchModifierGroups, createGroup, updateGroup, deleteGroup, duplicateGroup, createOption, updateOption, deleteOption } = useAdminModifierGroups();
+  const { activeLocationId, isAllLocations, activeLocation } = useLocation();
+  const { modifierGroups, fetchModifierGroups, createGroup, updateGroup, deleteGroup, duplicateGroup, createOption, updateOption, deleteOption } = useAdminModifierGroups(activeLocationId);
   const { ingredients, fetchIngredients } = useAdminIngredients();
   const { categories } = useIngredientCategories();
   
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
   const [groupForm, setGroupForm] = useState({ name: '', description: '', is_required: false, min_select: 0, max_select: 1, is_submodifier: false });
   const [activeTab, setActiveTab] = useState('main');
@@ -33,8 +38,8 @@ export default function AdminModifierGroups() {
 
   useEffect(() => {
     fetchModifierGroups();
-    fetchIngredients();
-  }, [fetchModifierGroups, fetchIngredients]);
+    fetchIngredients(activeLocationId);
+  }, [fetchModifierGroups, fetchIngredients, activeLocationId]);
 
   const handleOpenGroup = (group = null) => {
     if (group) {
@@ -119,25 +124,21 @@ export default function AdminModifierGroups() {
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <div className="relative group min-w-[300px]">
-              <Icon 
-                icon="heroicons:magnifying-glass" 
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#2f4131] transition-colors" 
-              />
-              <input 
-                type="text" 
-                placeholder="Buscar grupo..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2f4131]/20 focus:bg-white transition-all shadow-sm group-hover:border-gray-200"
-              />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              {!isAllLocations && (
+                <button
+                  onClick={() => setIsLinkModalOpen(true)}
+                  className="flex items-center justify-center gap-2 px-4 h-[42px] bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-bold transition-all border border-indigo-100 shadow-sm w-full sm:w-auto"
+                >
+                  <LinkIcon size={18} />
+                  Vincular del Catálogo
+                </button>
+              )}
+              <PrimaryButton onClick={() => handleOpenGroup()} className="h-[42px] px-6">
+                <Icon icon="heroicons:plus-circle" className="text-xl mr-2" />
+                Crear Grupo
+              </PrimaryButton>
             </div>
-            <PrimaryButton onClick={() => handleOpenGroup()} className="h-[42px] px-6">
-              <Icon icon="heroicons:plus-circle" className="text-xl mr-2" />
-              Crear Grupo
-            </PrimaryButton>
-          </div>
         </div>
 
         <div className="flex bg-gray-50 p-1.5 mb-8 rounded-2xl w-fit mx-auto border border-gray-100">
@@ -203,6 +204,20 @@ export default function AdminModifierGroups() {
                     <Icon icon="heroicons:shopping-bag" />
                     {group.usage_count} {group.usage_count === 1 ? 'Producto' : 'Productos'}
                   </span>
+                )}
+                {/* Location-specific visibility helper */}
+                {!isAllLocations && (
+                  group.linked_usage_count > 0 ? (
+                    <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm flex items-center gap-1">
+                      <CheckCircle size={12} />
+                      En uso
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-amber-50 text-amber-600 border border-amber-100 shadow-sm flex items-center gap-1">
+                      <AlertTriangle size={12} />
+                      Sin uso en sede
+                    </span>
+                  )
                 )}
               </div>
 
@@ -494,6 +509,15 @@ export default function AdminModifierGroups() {
             </div>
           </form>
         </Modal>
+      )}
+      {isLinkModalOpen && (
+        <LinkCatalogModal
+          isOpen={isLinkModalOpen}
+          onClose={() => setIsLinkModalOpen(false)}
+          type="modifier_group"
+          locationId={activeLocationId}
+          locationName={activeLocation?.name}
+        />
       )}
     </div>
   );

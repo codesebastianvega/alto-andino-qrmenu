@@ -6,9 +6,13 @@ import { Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButto
 import { Icon } from '@iconify-icon/react';
 import { useLocations } from '../../hooks/useLocations';
 import { useLocationOverrides } from '../../hooks/useLocationOverrides';
+import { useRestaurantSettings } from '../../hooks/useRestaurantSettings';
 
-export default function ProductForm({ product, categories, recipes = [], allergens = [], onSave, onCancel }) {
-  const { rawModifierGroups = [] } = useMenuData();
+export default function ProductForm({ product, categories, recipes = [], allergens = [], modifierGroups: propModifierGroups, onSave, onCancel }) {
+  const { rawModifierGroups: contextModifierGroups = [] } = useMenuData();
+  const rawModifierGroups = propModifierGroups || contextModifierGroups;
+  const { settings } = useRestaurantSettings();
+  const brandConcepts = settings?.brand_concepts || [];
   const mainGroups = rawModifierGroups.filter(g => !g.is_submodifier);
   const subGroups = rawModifierGroups.filter(g => g.is_submodifier);
 
@@ -45,7 +49,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
     category_id: '', stock_status: 'in', image_url: '',
     tags: [], is_active: true, is_addon: false,
     variants: [], modifier_groups: [], config_options: {}, recipe_id: null, packaging_fee: '',
-    is_upsell: false, requires_kitchen: true, subcategory: '',
+    is_upsell: false, requires_kitchen: true, subcategory: '', brand_concept: '',
   });
   const [targetMargin, setTargetMargin] = useState(35);
   const [manageGroups, setManageGroups] = useState(false);
@@ -55,20 +59,40 @@ export default function ProductForm({ product, categories, recipes = [], allerge
 
   // --- Location Overrides ---
   const { locations } = useLocations();
-  const { fetchProductOverrides } = useLocationOverrides();
+  const { getProductOverrides } = useLocationOverrides();
   const [locationOverrides, setLocationOverrides] = useState([]);
 
   useEffect(() => {
-    if (product?.id) {
-      const loadOverrides = async () => {
-        const data = await fetchProductOverrides(product.id);
-        setLocationOverrides(data);
-      };
+    const loadOverrides = async () => {
+      let prices = [];
+      let status = [];
+      
+      if (product?.id) {
+        const overrides = await getProductOverrides(product.id);
+        prices = overrides.prices || [];
+        status = overrides.status || [];
+      }
+      
+      // Always merge with all locations to ensure they all show up
+      const merged = locations.map(loc => {
+        const p = prices.find(price => price.location_id === loc.id);
+        const s = status.find(st => st.location_id === loc.id);
+        return {
+          location_id: loc.id,
+          price: p ? p.price : '',
+          is_active: s ? s.is_active : false, // Default to false if not linked
+          stock_status: s ? s.stock_status : 'in',
+          is_linked: !!s // New field to track if it's actually linked in DB
+        };
+      });
+      
+      setLocationOverrides(merged);
+    };
+    
+    if (locations.length > 0) {
       loadOverrides();
-    } else {
-      setLocationOverrides([]);
     }
-  }, [product?.id]);
+  }, [product?.id, locations]);
 
   const handleOverrideChange = (locationId, field, value) => {
     setLocationOverrides(prev => {
@@ -79,8 +103,9 @@ export default function ProductForm({ product, categories, recipes = [], allerge
         // Initialize with default values if not present
         return [...prev, { 
           location_id: locationId, 
-          is_active: true, 
+          is_active: field === 'is_active' ? value : false, 
           stock_status: 'in', 
+          is_linked: field === 'is_active' && value === true, // If they activate it, we consider it linked-to-be
           [field]: value 
         }];
       }
@@ -132,6 +157,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
         is_upsell: product.is_upsell ?? false,
         requires_kitchen: product.requires_kitchen ?? true,
         subcategory: product.subcategory || '',
+        brand_concept: product.brand_concept || '',
       });
     }
   }, [product]);
@@ -215,7 +241,8 @@ export default function ProductForm({ product, categories, recipes = [], allerge
       price: parseFloat(formData.price), 
       cost: parseFloat(formData.cost) || 0, 
       packaging_fee: parseFloat(formData.packaging_fee) || 0,
-      subcategory: formData.subcategory || null
+      subcategory: formData.subcategory || null,
+      brand_concept: formData.brand_concept || null
     }, normalizedOverrides);
   };
 
@@ -304,6 +331,30 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                     )}
                   </FormField>
                 </div>
+                <div className="md:col-span-3">
+                  <FormField label="Concepto de Marca">
+                    {brandConcepts.length > 0 ? (
+                      <select 
+                        name="brand_concept" 
+                        value={formData.brand_concept} 
+                        onChange={handleChange}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none"
+                      >
+                        <option value="">Seleccionar concepto...</option>
+                        {brandConcepts.map(concept => (
+                          <option key={concept} value={concept}>{concept}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <TextInput 
+                        name="brand_concept" 
+                        value={formData.brand_concept} 
+                        onChange={handleChange} 
+                        placeholder="Ej. Restaurante, Café, etc." 
+                      />
+                    )}
+                  </FormField>
+                </div>
                 {/* --- SECCIÓN: DISPONIBILIDAD POR SEDE --- */}
                 <div className="md:col-span-3">
                   <section className="bg-white border border-gray-100 rounded-2xl p-6 mb-4">
@@ -318,16 +369,44 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                         <h3 className="text-base font-bold text-gray-900">Disponibilidad por Sede</h3>
                         <p className="text-xs text-gray-500">Configura precios y visibilidad específicos para cada punto de venta.</p>
                       </div>
+                      <div className="ml-auto">
+                        <select
+                          value={formData.visibility_mode || 'all'}
+                          onChange={(e) => setFormData(prev => ({ ...prev, visibility_mode: e.target.value }))}
+                          className="text-xs border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#2f4131]/10 text-gray-700 font-medium"
+                        >
+                          <option value="all">Todas las sedes (por defecto)</option>
+                          <option value="specific">Sedes específicas (Whitelist)</option>
+                        </select>
+                      </div>
                     </div>
 
                     <div className="space-y-4">
                       {locations.map(loc => {
-                        const override = locationOverrides[loc.id] || { is_active: true, stock_status: 'in', price: '' };
+                        const locOverride = locationOverrides.find(o => o.location_id === loc.id);
+                        const isLinked = locOverride?.is_linked;
+                        
+                        // Determinar si está activo basado en el modo y si existe registro
+                        const isActive = locOverride?.is_active || false;
+                        
+                        const override = locOverride || { 
+                          is_active: false, 
+                          stock_status: 'in', 
+                          price: '',
+                          is_linked: false
+                        };
                         return (
                           <div key={loc.id} className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border border-gray-50 bg-gray-50/30">
-                            <div className="flex items-center gap-3 min-w-[150px]">
-                              <div className={`w-2 h-2 rounded-full ${override.is_active ? 'bg-green-500' : 'bg-gray-300'}`} />
-                              <span className="text-sm font-semibold text-gray-900">{loc.name}</span>
+                            <div className="flex items-center gap-3 min-w-[180px]">
+                              <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-gray-300'}`} />
+                              <div className="flex flex-col">
+                                <span className="text-sm font-semibold text-gray-900 leading-tight">{loc.name}</span>
+                                {isLinked ? (
+                                  <span className="text-[9px] font-bold text-green-600 uppercase tracking-wider">Vinculado</span>
+                                ) : (
+                                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">No vinculado</span>
+                                )}
+                              </div>
                             </div>
 
                             <div className="flex items-center gap-6">
@@ -335,7 +414,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                               <div className="flex items-center gap-2">
                                 <span className="text-[11px] font-medium text-gray-500 uppercase">Visible</span>
                                 <Switch
-                                  checked={override.is_active}
+                                  checked={isActive}
                                   onChange={(val) => handleOverrideChange(loc.id, 'is_active', val)}
                                   size="sm"
                                 />
@@ -348,7 +427,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
                                   <input
                                     type="number"
-                                    placeholder="Base"
+                                    placeholder={formData.price || '0'}
                                     value={override.price}
                                     onChange={(e) => handleOverrideChange(loc.id, 'price', e.target.value)}
                                     className="w-28 pl-6 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none"

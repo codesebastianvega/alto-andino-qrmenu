@@ -40,6 +40,7 @@ export function useLocationOverrides() {
   }
 
   async function getInventoryOverrides(locationId) {
+    if (!locationId || locationId === 'all') return [];
     try {
       const { data, error } = await supabase
         .from('location_inventory')
@@ -82,16 +83,31 @@ export function useLocationOverrides() {
       const promises = [];
       
       if (overrides.prices?.length) {
-        promises.push(
-          supabase.from('location_product_prices').upsert(
-            overrides.prices.map(p => ({
-              product_id: productId,
-              location_id: p.location_id,
-              price: p.price
-            })),
-            { onConflict: 'location_id,product_id' }
-          )
-        );
+        // Separate prices to upsert vs prices to delete
+        const validPrices = overrides.prices.filter(p => p.price !== null && p.price !== undefined && p.price !== '');
+        const pricesToDelete = overrides.prices.filter(p => p.price === null || p.price === undefined || p.price === '');
+
+        if (validPrices.length > 0) {
+          promises.push(
+            supabase.from('location_product_prices').upsert(
+              validPrices.map(p => ({
+                product_id: productId,
+                location_id: p.location_id,
+                price: p.price
+              })),
+              { onConflict: 'location_id,product_id' }
+            )
+          );
+        }
+
+        if (pricesToDelete.length > 0) {
+          promises.push(
+            supabase.from('location_product_prices')
+              .delete()
+              .eq('product_id', productId)
+              .in('location_id', pricesToDelete.map(p => p.location_id))
+          );
+        }
       }
 
       if (overrides.status?.length) {
@@ -114,6 +130,7 @@ export function useLocationOverrides() {
 
       return { error: null };
     } catch (err) {
+      console.error('Error saving product overrides:', err);
       return { error: err };
     } finally {
       setLoading(false);
@@ -121,6 +138,7 @@ export function useLocationOverrides() {
   }
 
   async function updateLocationStock(locationId, ingredientId, stock_quantity) {
+    if (!locationId || locationId === 'all') return { data: null, error: new Error('Please select a specific location first') };
     try {
       const { data, error } = await supabase
         .from('location_inventory')

@@ -50,6 +50,20 @@ export function SecondaryButton({ onClick, children, type = 'button', className 
   );
 }
 
+/** Transparent ghost button */
+export function GhostButton({ onClick, children, type = 'button', className = '', disabled = false }) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`px-5 py-2.5 bg-transparent text-gray-500 rounded-xl text-sm font-semibold hover:bg-gray-100 hover:text-gray-700 active:scale-[0.98] transition-all disabled:opacity-50 ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 /** Small badge pill */
 export function Badge({ children, variant = 'gray' }) {
   const styles = {
@@ -173,13 +187,17 @@ export function Switch({ checked, onChange, disabled = false }) {
 }
 
 /** Modal overlay + container */
-export function Modal({ children, onClose, wide = false }) {
+export function Modal({ children, onClose, isOpen = true, wide = false, maxWidth = '' }) {
+  if (!isOpen) return null;
+  
+  const widthClass = maxWidth || (wide ? 'max-w-4xl' : 'max-w-xl');
+
   return (
     <div
       className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6 overflow-y-auto"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div className={`bg-white rounded-2xl w-full shadow-2xl my-auto transition-all ${wide ? 'max-w-4xl' : 'max-w-xl'} animate-in fade-in zoom-in-95 duration-200`}>
+      <div className={`bg-white rounded-2xl w-full shadow-2xl my-auto transition-all ${widthClass} animate-in fade-in zoom-in-95 duration-200`}>
         {children}
       </div>
     </div>

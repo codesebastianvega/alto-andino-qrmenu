@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../config/supabase';
-import { toast } from 'react-hot-toast';
+import { toast } from '../components/Toast';
 
 export const useLocationInventory = () => {
   const [loading, setLoading] = useState(false);

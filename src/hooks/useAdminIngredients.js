@@ -9,12 +9,12 @@ export function useAdminIngredients() {
   const { activeBrand } = useAuth();
   const activeBrandId = activeBrand?.id;
 
-  const fetchIngredients = useCallback(async () => {
+  const fetchIngredients = useCallback(async (locationId = 'all') => {
     setLoading(true);
     try {
       let query = supabase
         .from('ingredients')
-        .select('*');
+        .select('*, location_inventory!left(*)');
 
       if (activeBrandId) {
         query = query.eq('brand_id', activeBrandId);
@@ -24,7 +24,16 @@ export function useAdminIngredients() {
         .order('name');
 
       if (error) throw error;
-      setIngredients(data || []);
+      
+      let filteredData = data || [];
+      // If we are in a specific location, filter the list to only items linked to that location
+      if (locationId && locationId !== 'all') {
+        filteredData = filteredData.filter(ingredient => 
+          ingredient.location_inventory?.some(li => li.location_id === locationId)
+        );
+      }
+
+      setIngredients(filteredData);
     } catch (err) {
       console.error('Error fetching ingredients:', err);
       toast('Error al cargar insumos');
@@ -35,13 +44,15 @@ export function useAdminIngredients() {
 
   useEffect(() => {
     if (activeBrandId) {
+      // By default, if the hook is initialized without context, fetch all for the brand
+      // Components should call fetchIngredients(activeLocationId) in their own useEffect
       fetchIngredients();
     } else {
       setLoading(false);
     }
   }, [activeBrandId, fetchIngredients]);
 
-  const createIngredient = async (ingredientData) => {
+  const createIngredient = async (ingredientData, locationId = 'all') => {
     try {
       const purchasePrice = parseFloat(ingredientData.purchase_price) || 0;
       const purchaseQuantity = parseFloat(ingredientData.purchase_quantity) || 1;
@@ -78,8 +89,27 @@ export function useAdminIngredients() {
         console.error('Supabase create ingredient error:', error);
         throw error;
       }
+
+      // Automatically link to the active location if applicable
+      if (locationId && locationId !== 'all') {
+        const { error: linkError } = await supabase
+          .from('location_inventory')
+          .insert([{
+            location_id: locationId,
+            ingredient_id: data.id,
+            stock_quantity: cleanData.stock_current,
+            min_stock: cleanData.stock_min
+          }]);
+        
+        if (linkError) {
+          console.error('Error linking ingredient to location:', linkError);
+          // We don't throw here to avoid failing the whole creation, 
+          // but the item might not show up in the current filtered view.
+        }
+      }
+
       toast('Insumo creado correctamente');
-      fetchIngredients();
+      fetchIngredients(locationId); // Refresh with current filter
       return data;
     } catch (err) {
       console.error('Error in useAdminIngredients createIngredient:', err);

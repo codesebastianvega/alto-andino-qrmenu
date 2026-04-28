@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
@@ -15,18 +15,29 @@ export const useAdminProducts = () => {
   const { activeBrand } = useAuth();
   const activeBrandId = activeBrand?.id;
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async (locationId = 'all') => {
     try {
       setLoading(true);
+      
       let query = supabase
         .from('products')
         .select(`
           *,
-          category:categories(name, slug)
+          category:categories(name, slug),
+          location_product_status(*),
+          location_product_prices(*)
         `);
 
       if (activeBrandId) {
         query = query.eq('brand_id', activeBrandId);
+      }
+
+      // If a specific location is selected, we only show products linked to it
+      if (locationId && locationId !== 'all') {
+        // We use a join-like filter via inner join on location_product_status
+        // In Supabase, we can filter by the presence of a related record
+        query = query.not('location_product_status', 'is', null)
+                     .eq('location_product_status.location_id', locationId);
       }
 
       const { data, error } = await query
@@ -34,17 +45,29 @@ export const useAdminProducts = () => {
         .order('name');
       
       if (error) throw error;
-      setProducts(data || []);
+
+      // Filter results to ensure that when a location is active, 
+      // ONLY products that actually have a record for that location are shown.
+      let filteredData = data || [];
+      if (locationId && locationId !== 'all') {
+        filteredData = filteredData.filter(p => 
+          p.location_product_status?.some(s => s.location_id === locationId)
+        );
+      }
+
+      setProducts(filteredData);
     } catch (err) {
       console.error('Error fetching products:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeBrandId]);
 
   useEffect(() => {
     if (activeBrandId) {
+      // We don't automatically know the location here if we want to keep the hook independent
+      // But we can fetch with 'all' by default or let the component call refreshProducts(locationId)
       fetchProducts();
     } else {
       setLoading(false);
@@ -74,8 +97,9 @@ export const useAdminProducts = () => {
         config_options: productData.config_options || {},
         is_upsell: productData.is_upsell || false,
         requires_kitchen: productData.requires_kitchen ?? true,
-        packaging_fee: parseFloat(productData.packaging_fee) || 0,
+         packaging_fee: parseFloat(productData.packaging_fee) || 0,
         subcategory: productData.subcategory || null,
+        brand_concept: productData.brand_concept || null,
         brand_id: activeBrandId,
         updated_at: new Date().toISOString()
       };
@@ -122,8 +146,9 @@ export const useAdminProducts = () => {
         config_options: productData.config_options || {},
         is_upsell: productData.is_upsell || false,
         requires_kitchen: productData.requires_kitchen ?? true,
-        packaging_fee: parseFloat(productData.packaging_fee) || 0,
+         packaging_fee: parseFloat(productData.packaging_fee) || 0,
         subcategory: productData.subcategory || null,
+        brand_concept: productData.brand_concept || null,
         brand_id: activeBrandId,
         updated_at: new Date().toISOString()
       };

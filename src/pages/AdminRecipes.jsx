@@ -2,12 +2,16 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../config/supabase';
 import { toast } from '../components/Toast';
 import { useAdminIngredients } from '../hooks/useAdminIngredients';
+import { useAdminRecipes } from '../hooks/useAdminRecipes';
 import {
   PageHeader, PrimaryButton, SecondaryButton, Badge,
   FormField, TextInput, SearchInput
 } from '../components/admin/ui';
 import { useAuth } from '../context/AuthContext';
 import { Icon } from '@iconify-icon/react';
+import { useLocation } from '../context/LocationContext';
+import { LinkCatalogModal } from '../components/admin/LinkCatalogModal';
+import { Link as LinkIcon } from 'lucide-react';
 
 const TrashIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -25,9 +29,10 @@ const ViewListIcon = () => (
 );
 
 export default function AdminRecipes() {
-  const [recipes,      setRecipes]      = useState([]);
-  const [loading,      setLoading]      = useState(true);
+  const { activeLocationId, activeLocation, isAllLocations } = useLocation();
+  const { recipes, loading, fetchRecipes } = useAdminRecipes();
   const [isModalOpen,  setIsModalOpen]  = useState(false);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'critical' | 'healthy' | 'investment'
@@ -43,29 +48,10 @@ export default function AdminRecipes() {
 
   useEffect(() => { 
     if (brandId) {
-      fetchData(); 
-      fetchIngredients(); 
+      fetchRecipes(activeLocationId); 
+      fetchIngredients(activeLocationId); 
     }
-  }, [brandId, fetchIngredients]);
-
-  const fetchData = async () => {
-    if (!brandId) return;
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('recipes')
-        .select(`*, recipe_ingredients(id, ingredient_id, quantity, ingredients(name, unit_cost, usage_unit))`)
-        .eq('brand_id', brandId)
-        .order('name');
-      if (error) throw error;
-      setRecipes(data || []);
-    } catch (err) {
-      console.error(err);
-      toast('Error al cargar recetas');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [brandId, activeLocationId, fetchRecipes, fetchIngredients]);
 
   const handleOpenModal = (recipe = null) => {
     if (recipe) {
@@ -180,6 +166,20 @@ export default function AdminRecipes() {
         const { data: newRec, error } = await supabase.from('recipes').insert([recipeData]).select().single();
         if (error) throw error;
         recipeId = newRec.id;
+
+        // Automatically link to current location if specified
+        if (activeLocationId && activeLocationId !== 'all') {
+          const { error: linkError } = await supabase
+            .from('location_recipes')
+            .insert([{
+              location_id: activeLocationId,
+              recipe_id: recipeId
+            }]);
+          
+          if (linkError) {
+            console.error('Error linking recipe to location:', linkError);
+          }
+        }
       }
 
       if (formData.ingredients.length > 0) {
@@ -201,7 +201,7 @@ export default function AdminRecipes() {
 
       toast(editingRecipe ? 'Receta actualizada' : 'Receta creada');
       setIsModalOpen(false);
-      fetchData();
+      fetchRecipes(activeLocationId);
     } catch (err) {
       console.error('Error in handleSave:', err);
       toast('Error al guardar: ' + err.message);
@@ -211,7 +211,7 @@ export default function AdminRecipes() {
   const handleDelete = async (id) => {
     const { error } = await supabase.from('recipes').delete().eq('id', id).eq('brand_id', brandId);
     if (error) { toast('Error al eliminar'); return; }
-    setRecipes(prev => prev.filter(r => r.id !== id));
+    fetchRecipes(activeLocationId);
     toast('Receta eliminada');
   };
 
@@ -331,6 +331,15 @@ export default function AdminRecipes() {
         subtitle="Optimiza tu menú con fichas técnicas precisas y márgenes en tiempo real."
       >
         <div className="flex items-center gap-4">
+          {!isAllLocations && (
+            <button
+              onClick={() => setIsLinkModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-bold transition-all border border-indigo-100 shadow-sm"
+            >
+              <LinkIcon size={18} />
+              Vincular del Catálogo
+            </button>
+          )}
           <div className="flex bg-gray-100/80 backdrop-blur-md p-1.5 rounded-[1.25rem] border border-gray-200">
             <button 
               onClick={() => setViewMode('grid')}
@@ -752,6 +761,17 @@ export default function AdminRecipes() {
           </div>
         </div>
       )}
+      {/* Catalog Link Modal */}
+      <LinkCatalogModal 
+        isOpen={isLinkModalOpen}
+        onClose={() => {
+          setIsLinkModalOpen(false);
+          fetchRecipes(activeLocationId);
+        }}
+        type="recipe"
+        locationId={activeLocationId}
+        locationName={activeLocation?.name || 'Sede'}
+      />
     </div>
   );
 }

@@ -8,14 +8,35 @@ export const LocationProvider = ({ children }) => {
   const { activeBrand } = useAuth();
   const { locations, loading: locationsLoading } = useLocationsHook();
   
+  // Helper to get location from URL
+  const getUrlLocationId = () => {
+    const params = new URLSearchParams(window.location.search);
+    // Support both location_id and sede_id as aliases
+    return params.get('location_id') || params.get('sede_id') || null;
+  };
+
   // State for the active location ID (either a UUID or 'all')
   const [activeLocationId, setActiveLocationId] = useState(() => {
+    // 1. Check URL first (Priority)
+    const urlLoc = getUrlLocationId();
+    if (urlLoc) return urlLoc;
+
+    // 2. Check LocalStorage
     if (!activeBrand) return 'all';
     return localStorage.getItem(`aa_active_loc_${activeBrand.id}`) || 'all';
   });
 
-  // Sync state when activeBrand changes
+  // Sync state when activeBrand changes or URL changes
   useEffect(() => {
+    const urlLoc = getUrlLocationId();
+    if (urlLoc) {
+      setActiveLocationId(urlLoc);
+      if (activeBrand) {
+        localStorage.setItem(`aa_active_loc_${activeBrand.id}`, urlLoc);
+      }
+      return;
+    }
+
     if (activeBrand) {
       const stored = localStorage.getItem(`aa_active_loc_${activeBrand.id}`);
       setActiveLocationId(stored || 'all');
@@ -24,11 +45,45 @@ export const LocationProvider = ({ children }) => {
     }
   }, [activeBrand]);
 
+  // Handle URL parameter changes specifically
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const urlLoc = getUrlLocationId();
+      if (urlLoc && urlLoc !== activeLocationId) {
+        setActiveLocationId(urlLoc);
+        if (activeBrand) {
+          localStorage.setItem(`aa_active_loc_${activeBrand.id}`, urlLoc);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handleUrlChange);
+    // Also check on hash changes as some navigations might happen there
+    window.addEventListener('hashchange', handleUrlChange);
+    
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('hashchange', handleUrlChange);
+    };
+  }, [activeBrand, activeLocationId]);
+
   const switchLocation = useCallback((id) => {
     setActiveLocationId(id);
     if (activeBrand) {
       localStorage.setItem(`aa_active_loc_${activeBrand.id}`, id);
     }
+
+    // Sync with URL
+    const params = new URLSearchParams(window.location.search);
+    if (id === 'all') {
+      params.delete('location_id');
+      params.delete('sede_id');
+    } else {
+      params.set('location_id', id);
+    }
+    
+    const newPath = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
+    window.history.replaceState(null, '', newPath);
   }, [activeBrand]);
 
   // Derive the active location object

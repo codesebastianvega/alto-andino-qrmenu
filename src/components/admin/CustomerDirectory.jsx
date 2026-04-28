@@ -52,7 +52,14 @@ export default function CustomerDirectory() {
       const matchesSearch = 
         (c.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
         c.phone.includes(searchTerm);
-      const matchesFilter = filterSegment === 'all' || c.segment === filterSegment;
+      
+      let matchesFilter = true;
+      if (filterSegment === 'whales') {
+        matchesFilter = c.isWhale;
+      } else if (filterSegment !== 'all') {
+        matchesFilter = c.segment === filterSegment;
+      }
+      
       return matchesSearch && matchesFilter;
     }).sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
   }, [customers, searchTerm, filterSegment]);
@@ -124,6 +131,15 @@ export default function CustomerDirectory() {
           >
             Todos
           </button>
+          <button 
+            onClick={() => setFilterSegment('whales')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+              filterSegment === 'whales' ? 'bg-amber-400 text-black border-2 border-amber-500' : 'bg-amber-400/10 text-amber-400 border border-amber-500/20'
+            }`}
+          >
+            <Star className="w-3 h-3 fill-current" />
+            Top 20% (Whales)
+          </button>
           {Object.entries(SEGMENTS).map(([key, cfg]) => (
             <button 
               key={key}
@@ -146,9 +162,10 @@ export default function CustomerDirectory() {
             <thead>
               <tr className="border-b border-white/5">
                 <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Cliente</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Segmento</th>
+                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Inteligencia RFM</th>
+                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest text-center">Salud / Riesgo</th>
                 <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest text-center">Pedidos</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">LTV</th>
+                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">LTV Total</th>
                 <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Última Visita</th>
                 <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest"></th>
               </tr>
@@ -156,6 +173,8 @@ export default function CustomerDirectory() {
             <tbody className="divide-y divide-white/5">
               {filteredCustomers.map((customer) => {
                 const seg = SEGMENTS[customer.segment];
+                const riskColor = customer.churnRisk > 70 ? 'text-red-400' : customer.churnRisk > 40 ? 'text-orange-400' : 'text-emerald-400';
+                
                 return (
                   <tr 
                     key={customer.phone}
@@ -164,13 +183,25 @@ export default function CustomerDirectory() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full ${seg.bg} flex items-center justify-center border ${seg.border}`}>
-                          <span className={`text-[13px] font-black ${seg.color}`}>
-                            {customer.name?.charAt(0).toUpperCase() || '?'}
-                          </span>
+                        <div className="relative">
+                          <div className={`w-10 h-10 rounded-full ${seg.bg} flex items-center justify-center border ${seg.border}`}>
+                            <span className={`text-[13px] font-black ${seg.color}`}>
+                              {customer.name?.charAt(0).toUpperCase() || '?'}
+                            </span>
+                          </div>
+                          {customer.isWhale && (
+                            <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-0.5 border-2 border-[#0a0a0a]">
+                              <Star className="w-2.5 h-2.5 text-black fill-current" />
+                            </div>
+                          )}
                         </div>
                         <div>
-                          <p className="text-white font-bold text-sm tracking-tight">{customer.name || 'Sin nombre'}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-white font-bold text-sm tracking-tight">{customer.name || 'Sin nombre'}</p>
+                            {customer.isWhale && (
+                              <span className="text-[8px] bg-amber-400/10 text-amber-400 border border-amber-400/20 px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Whale</span>
+                            )}
+                          </div>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <Phone className="w-3 h-3 text-gray-500" />
                             <span className="text-[11px] text-gray-500 font-medium">{customer.phone}</span>
@@ -179,9 +210,34 @@ export default function CustomerDirectory() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ${seg.bg} ${seg.color} border ${seg.border}`}>
-                        <seg.icon className="w-3 h-3" />
-                        <span className="text-[9px] font-black uppercase tracking-tight">{seg.label}</span>
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <div 
+                              key={s} 
+                              className={`w-1.5 h-1.5 rounded-full ${s <= customer.rfmScore ? 'bg-purple-400' : 'bg-white/10'}`} 
+                            />
+                          ))}
+                          <span className="text-[10px] text-purple-400 font-black ml-1">v{customer.rfmScore}</span>
+                        </div>
+                        <div className="flex gap-2 text-[8px] font-bold text-gray-500 uppercase">
+                          <span>R:{customer.rfm.r}</span>
+                          <span>F:{customer.rfm.f}</span>
+                          <span>M:{customer.rfm.m}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full transition-all duration-1000 ${customer.churnRisk > 70 ? 'bg-red-500' : customer.churnRisk > 40 ? 'bg-orange-500' : 'bg-emerald-500'}`}
+                            style={{ width: `${100 - customer.churnRisk}%` }}
+                          />
+                        </div>
+                        <span className={`text-[10px] font-black uppercase ${riskColor}`}>
+                          {customer.churnRisk > 70 ? 'Alto Riesgo' : customer.churnRisk > 40 ? 'En Alerta' : 'Saludable'}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">

@@ -45,10 +45,14 @@ export default function CustomerProfileModal({ customer, isOpen, onClose }) {
     const phone = customer.phone.replace(/\D/g, '');
     let message = "";
     
+    const isVIP = customer.isWhale;
+    const days = customer.daysSinceLastVisit;
+    const name = customer.name?.split(' ')[0] || '';
+
     if (type === 'feedback') {
-      message = `Hola ${customer.name || ''}! 👋 Te escribimos de parte de Aluna. ¿Qué tal estuvo tu experiencia con nosotros hoy? ¡Nos encantaría saber tu opinión!`;
+      message = `Hola ${name}! 👋 ${isVIP ? 'Como uno de nuestros clientes más especiales, ' : ''}te escribimos de parte de Alto Andino. ¿Qué tal estuvo tu experiencia con nosotros hoy? ¡Nos encantaría saber tu opinión!`;
     } else if (type === 'recovery') {
-      message = `Hola ${customer.name || ''}! 🤗 Te extrañamos en Aluna. Queremos invitarte a que vuelvas pronto, ¡puedes reclamar un postre de cortesía en tu próxima visita!`;
+      message = `Hola ${name}! 🤗 Te extrañamos en Alto Andino (hace ${days} días no nos vemos). Queremos invitarte a que vuelvas pronto${isVIP ? ', tenemos una mesa VIP lista para ti' : ''}, ¡puedes reclamar un postre de cortesía en tu próxima visita!`;
     }
 
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
@@ -85,9 +89,17 @@ export default function CustomerProfileModal({ customer, isOpen, onClose }) {
                   </span>
                 </div>
                 <div>
-                  <h2 className="text-3xl font-black text-white tracking-tight leading-none mb-2">
-                    {customer.name || 'Sin nombre'}
-                  </h2>
+                  <div className="flex items-center gap-3 mb-1">
+                    <h2 className="text-3xl font-black text-white tracking-tight leading-none">
+                      {customer.name || 'Sin nombre'}
+                    </h2>
+                    {customer.isWhale && (
+                      <div className="flex items-center gap-1 bg-amber-400 text-black px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider animate-pulse">
+                        <Star className="w-2.5 h-2.5 fill-current" />
+                        Whale
+                      </div>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-2 items-center">
                     <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${seg.bg} ${seg.color} border ${seg.border}`}>
                       <seg.icon className="w-3.5 h-3.5" />
@@ -132,7 +144,7 @@ export default function CustomerProfileModal({ customer, isOpen, onClose }) {
                   className="flex items-center gap-4 p-5 rounded-3xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all group text-left"
                 >
                   <div className="p-3 rounded-2xl bg-blue-500/20 text-blue-400">
-                    <Star className="w-6 h-6" />
+                    <Zap className="w-6 h-6" />
                   </div>
                   <div>
                     <p className="text-blue-400 font-black text-[11px] uppercase tracking-widest">Recuperar Cliente</p>
@@ -140,6 +152,96 @@ export default function CustomerProfileModal({ customer, isOpen, onClose }) {
                   </div>
                   <ChevronRight className="w-5 h-5 text-blue-500/40 ml-auto group-hover:translate-x-1 transition-transform" />
                 </button>
+              </div>
+
+              {/* Intelligence Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <GlassCard className="p-6 border-purple-500/20 bg-purple-500/5">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-xl bg-purple-500/20">
+                        <TrendingUp className="w-4 h-4 text-purple-400" />
+                      </div>
+                      <h3 className="text-sm font-black text-white uppercase tracking-widest">Inteligencia RFM</h3>
+                    </div>
+                    <span className="text-xl font-black text-purple-400">v{customer.rfmScore}</span>
+                  </div>
+
+                  <div className="space-y-4">
+                    {[
+                      { label: 'Recencia', val: customer.rfm.r, color: 'bg-blue-400', desc: 'Días desde última compra' },
+                      { label: 'Frecuencia', val: customer.rfm.f, color: 'bg-emerald-400', desc: 'Número total de pedidos' },
+                      { label: 'Monetario', val: customer.rfm.m, color: 'bg-amber-400', desc: 'Valor total gastado (LTV)' }
+                    ].map((item) => (
+                      <div key={item.label} className="flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{item.label}</p>
+                          <p className="text-[8px] text-gray-600 font-medium">{item.desc}</p>
+                        </div>
+                        <div className="flex gap-1">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <div 
+                              key={s} 
+                              className={`w-2 h-2 rounded-full ${s <= item.val ? item.color : 'bg-white/10'}`} 
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </GlassCard>
+
+                <GlassCard className="p-6 border-blue-500/20 bg-blue-500/5">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-xl bg-blue-500/20">
+                        <Zap className="w-4 h-4 text-blue-400" />
+                      </div>
+                      <h3 className="text-sm font-black text-white uppercase tracking-widest">Salud del Cliente</h3>
+                    </div>
+                    <span className={`text-xs font-black uppercase ${
+                      customer.churnRisk > 70 ? 'text-red-400' : customer.churnRisk > 40 ? 'text-orange-400' : 'text-emerald-400'
+                    }`}>
+                      {customer.churnRisk > 70 ? 'Alto Riesgo' : customer.churnRisk > 40 ? 'En Alerta' : 'Saludable'}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col items-center justify-center pt-2">
+                    <div className="relative w-32 h-32 flex items-center justify-center">
+                      <svg className="w-full h-full transform -rotate-90">
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="58"
+                          stroke="currentColor"
+                          strokeWidth="8"
+                          fill="transparent"
+                          className="text-white/5"
+                        />
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="58"
+                          stroke="currentColor"
+                          strokeWidth="8"
+                          fill="transparent"
+                          strokeDasharray={364.4}
+                          strokeDashoffset={364.4 * (customer.churnRisk / 100)}
+                          className={`transition-all duration-1000 ${
+                            customer.churnRisk > 70 ? 'text-red-500' : customer.churnRisk > 40 ? 'text-orange-500' : 'text-emerald-500'
+                          }`}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-2xl font-black text-white">{100 - customer.churnRisk}%</span>
+                        <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">Score Salud</span>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-center text-gray-500 font-medium mt-4 max-w-[150px]">
+                      Probabilidad de abandono basada en frecuencia histórica.
+                    </p>
+                  </div>
+                </GlassCard>
               </div>
 
               {/* Key Metrics */}
