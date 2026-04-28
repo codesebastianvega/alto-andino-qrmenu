@@ -99,7 +99,7 @@ export default function App() {
   const cart = useCart();
   const [showPOSCustomerModal, setShowPOSCustomerModal] = useState(false);
   const [hasDismissedCustomerModal, setHasDismissedCustomerModal] = useState(false);
-  const { categories: dbCategories, restaurantSettings, homeSettings, loading: menuLoading } = useMenuData();
+  const { categories: dbCategories, restaurantSettings, homeSettings, loading: menuLoading, currentLocation } = useMenuData();
 
   // ✅ View Detection & UI States (Moved up to avoid initialization errors)
   const searchParams = useMemo(() => new URLSearchParams(window.location.search), [window.location.search]);
@@ -133,30 +133,36 @@ export default function App() {
 
   useEffect(() => {
     // En el panel de admin, priorizamos el nombre de la marca de la sesión
-    // En el menú público, priorizamos la configuración de branding de la base de datos
+    // En el menú público, priorizamos la sede (si hay una activa) o la marca
     let brandName = "Aluna";
+    let newTitle = "Aluna";
     
     if (isNewAdminPanel) {
       brandName = activeBrand?.name || "Administración";
+      newTitle = brandName;
     } else {
       brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
-    }
-
-    // Si estamos en la landing global o portal, forzar Aluna
-    if ((isLandingView || currentHash.startsWith('#portal')) && !brand_slug) {
-      brandName = "Aluna";
+      
+      // Si estamos en la landing global o portal, forzar Aluna
+      if ((isLandingView || currentHash.startsWith('#portal')) && !brand_slug) {
+        brandName = "Aluna";
+        newTitle = currentHash.startsWith('#portal') ? `Portal | ${brandName}` : brandName;
+      } else {
+        // En vista pública de un restaurante, usar la sede activa si existe
+        newTitle = currentLocation ? currentLocation.name : brandName;
+      }
     }
       
-    document.title = currentHash.startsWith('#portal') ? `Portal | ${brandName}` : brandName;
+    document.title = newTitle;
 
     // Update favicon
-    const faviconUrl = restaurantSettings?.favicon_url || "/favicon.ico";
+    const faviconUrl = isNewAdminPanel ? (activeBrand?.favicon_url || activeBrand?.logo_url || "/favicon.ico") : (restaurantSettings?.favicon_url || "/favicon.ico");
     const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
     link.type = 'image/x-icon';
     link.rel = 'shortcut icon';
     link.href = faviconUrl;
     document.getElementsByTagName('head')[0].appendChild(link);
-  }, [restaurantSettings, activeBrand, isLandingView, brand_slug]);
+  }, [restaurantSettings, activeBrand, isLandingView, brand_slug, currentHash, isNewAdminPanel, currentLocation]);
 
   const isValidCat = (cat) => cat === "todos" || dbCategories.some(c => c.slug === cat);
 

@@ -229,7 +229,7 @@ export default function AdminBranding({ isEmbedded = false }) {
           subtitle={`Ajusta la apariencia visual de ${activeBrand?.name || 'tu marca'}.`}
         >
           <PrimaryButton onClick={handleSaveSettings} disabled={isSubmittingSettings}>
-             {isSubmittingSettings ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Icon icon="solar:check-read-linear" className="w-4 h-4 mr-2" />}
+             {isSubmittingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon icon="solar:check-read-linear" className="w-4 h-4" />}
              Guardar Todo
           </PrimaryButton>
         </PageHeader>

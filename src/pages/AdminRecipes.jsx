@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { Icon } from '@iconify-icon/react';
 import { useLocation } from '../context/LocationContext';
 import { LinkCatalogModal } from '../components/admin/LinkCatalogModal';
-import { Link as LinkIcon } from 'lucide-react';
+import { Link as LinkIcon, Lightbulb, X } from 'lucide-react';
 
 const TrashIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -36,11 +36,19 @@ export default function AdminRecipes() {
   const [editingRecipe, setEditingRecipe] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'critical' | 'healthy' | 'investment'
+  const [showTip, setShowTip] = useState(() => {
+    try { return localStorage.getItem('recipes_tip_dismissed') !== 'true'; } catch { return true; }
+  });
 
   const { ingredients: allIngredients, fetchIngredients } = useAdminIngredients();
   const [searchTerm, setSearchTerm] = useState('');
   const { activeBrand } = useAuth();
   const brandId = activeBrand?.id;
+
+  const dismissTip = () => {
+    setShowTip(false);
+    try { localStorage.setItem('recipes_tip_dismissed', 'true'); } catch {}
+  };
 
   const [formData, setFormData] = useState({
     name: '', description: '', target_price: 0, ingredients: []
@@ -360,7 +368,7 @@ export default function AdminRecipes() {
             onClick={() => handleOpenModal()}
             className="rounded-2xl px-6 py-3 h-auto text-sm font-bold shadow-lg shadow-indigo-100"
           >
-            <Icon icon="heroicons:plus-circle" className="text-xl mr-2" />
+            <Icon icon="heroicons:plus-circle" className="text-xl" />
             Crear Receta
           </PrimaryButton>
         </div>
@@ -379,6 +387,27 @@ export default function AdminRecipes() {
               <Icon icon="heroicons:x-mark" className="text-sm" />
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ── Onboarding Tip Banner */}
+      {showTip && recipes.length > 0 && (
+        <div className="mb-8 bg-gradient-to-r from-indigo-50 via-violet-50 to-purple-50 rounded-[2rem] border border-indigo-100/60 p-6 flex items-start gap-5 shadow-sm animate-fadeUp relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-200/10 rounded-full -mr-20 -mt-20" />
+          <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center shrink-0 shadow-inner">
+            <Lightbulb size={22} className="text-indigo-600" />
+          </div>
+          <div className="flex-1 min-w-0 relative z-10">
+            <p className="text-sm font-black text-gray-900 uppercase tracking-tight mb-1">💡 ¿Sabías que las recetas son opcionales?</p>
+            <p className="text-[13px] text-gray-500 font-medium leading-relaxed">
+              Puedes vender productos sin receta, pero crear <strong className="text-gray-700">fichas técnicas</strong> te permite 
+              controlar costos de producción, calcular márgenes reales y llevar la contabilidad de tu cocina de forma organizada. 
+              <span className="text-indigo-600 font-bold">El flujo ideal es: Crear insumos → Armar recetas → Vincular a productos.</span>
+            </p>
+          </div>
+          <button onClick={dismissTip} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-white/60 rounded-xl transition-all shrink-0">
+            <X size={16} />
+          </button>
         </div>
       )}
 
@@ -535,14 +564,45 @@ export default function AdminRecipes() {
       )}
 
       {recipes.length === 0 && (
-        <div className="mt-12 py-40 bg-white glass-glow rounded-[4rem] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-gray-300 shadow-2xl shadow-gray-50/50 animate-fadeUp">
-          <div className="w-24 h-24 bg-gray-50 rounded-[2.5rem] flex items-center justify-center mb-6">
-            <Icon icon="heroicons:book-open" className="text-5xl" />
+        <div className="mt-12 py-16 bg-white glass-glow rounded-[4rem] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center shadow-2xl shadow-gray-50/50 animate-fadeUp">
+          <div className="w-24 h-24 bg-indigo-50 rounded-[2.5rem] flex items-center justify-center mb-6">
+            <Icon icon="heroicons:book-open" className="text-5xl text-indigo-400" />
           </div>
           <h3 className="text-2xl font-black text-gray-900 mb-2 uppercase tracking-tight">Recetario Vacío</h3>
-          <p className="text-base font-medium max-w-sm text-center">Comienza creando tu primera ficha técnica para controlar los costos de tu cocina.</p>
-          <PrimaryButton onClick={() => handleOpenModal()} className="mt-8 rounded-2xl px-10 py-4 h-auto text-sm font-black shadow-xl shadow-indigo-100 uppercase tracking-widest">
-            Comenzar Ahora
+          <p className="text-base text-gray-400 font-medium max-w-md text-center mb-8">
+            Las recetas no son obligatorias para vender, pero te permiten controlar costos y márgenes de cada plato.
+          </p>
+
+          {/* Step-by-step flow guide */}
+          <div className="flex items-center gap-4 mb-10 flex-wrap justify-center">
+            <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 px-5 py-3 rounded-2xl">
+              <div className="w-8 h-8 bg-emerald-500 text-white rounded-xl flex items-center justify-center text-xs font-black">1</div>
+              <div>
+                <p className="text-[11px] font-black text-emerald-700 uppercase tracking-wider">Crear Insumos</p>
+                <p className="text-[10px] text-emerald-500 font-medium">Registra tus materias primas</p>
+              </div>
+            </div>
+            <Icon icon="heroicons:arrow-right" className="text-gray-300 text-xl hidden sm:block" />
+            <div className="flex items-center gap-3 bg-indigo-50 border border-indigo-100 px-5 py-3 rounded-2xl">
+              <div className="w-8 h-8 bg-indigo-500 text-white rounded-xl flex items-center justify-center text-xs font-black">2</div>
+              <div>
+                <p className="text-[11px] font-black text-indigo-700 uppercase tracking-wider">Armar Recetas</p>
+                <p className="text-[10px] text-indigo-500 font-medium">Combina insumos con cantidades</p>
+              </div>
+            </div>
+            <Icon icon="heroicons:arrow-right" className="text-gray-300 text-xl hidden sm:block" />
+            <div className="flex items-center gap-3 bg-violet-50 border border-violet-100 px-5 py-3 rounded-2xl">
+              <div className="w-8 h-8 bg-violet-500 text-white rounded-xl flex items-center justify-center text-xs font-black">3</div>
+              <div>
+                <p className="text-[11px] font-black text-violet-700 uppercase tracking-wider">Vincular a Productos</p>
+                <p className="text-[10px] text-violet-500 font-medium">Calcula márgenes automáticamente</p>
+              </div>
+            </div>
+          </div>
+
+          <PrimaryButton onClick={() => handleOpenModal()} className="rounded-2xl px-10 py-4 h-auto text-sm font-black shadow-xl shadow-indigo-100 uppercase tracking-widest">
+            <Icon icon="heroicons:plus-circle" className="text-xl" />
+            Crear Primera Receta
           </PrimaryButton>
         </div>
       )}

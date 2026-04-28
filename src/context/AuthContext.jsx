@@ -171,6 +171,7 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, [fetchProfile]);
 
+
   // Switch the active brand being managed
   const switchBrand = useCallback(async (brand) => {
     // Clear current state immediately to prevent "feature leaks" during brand switch

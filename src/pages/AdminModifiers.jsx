@@ -14,7 +14,7 @@ import {
 } from '../components/admin/ui';
 import { Icon } from '@iconify-icon/react';
 import { useLocation } from '../context/LocationContext';
-import { Link as LinkIcon } from 'lucide-react';
+import { Link as LinkIcon, Lightbulb, X } from 'lucide-react';
 
 const TrashIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -109,6 +109,14 @@ function InsumosTab({ activeLocationId }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const { activeLocation, isAllLocations } = useLocation();
+  const [showInvTip, setShowInvTip] = useState(() => {
+    try { return localStorage.getItem('inventory_tip_dismissed') !== 'true'; } catch { return true; }
+  });
+
+  const dismissInvTip = () => {
+    setShowInvTip(false);
+    try { localStorage.setItem('inventory_tip_dismissed', 'true'); } catch {}
+  };
 
   // Per-location inventory state
   const { locations } = useLocations();
@@ -439,6 +447,27 @@ function InsumosTab({ activeLocationId }) {
         </div>
       </div>
 
+      {/* Onboarding Tip Banner */}
+      {showInvTip && (
+        <div className="mb-8 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 rounded-[2rem] border border-emerald-100/60 p-6 flex items-start gap-5 shadow-sm animate-slide-up relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-200/10 rounded-full -mr-20 -mt-20" />
+          <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center shrink-0 shadow-inner">
+            <Lightbulb size={22} className="text-emerald-600" />
+          </div>
+          <div className="flex-1 min-w-0 relative z-10">
+            <p className="text-sm font-black text-gray-900 uppercase tracking-tight mb-1">🪨 Gestión de Insumos por Sede</p>
+            <p className="text-[13px] text-gray-500 font-medium leading-relaxed">
+              Los insumos se crean a nivel de marca y se <strong className="text-gray-700">vinculan automáticamente a la sede activa</strong>. 
+              Si necesitas un insumo en otra sede, usa <strong className="text-gray-700">"Vincular del Catálogo"</strong>. 
+              <span className="text-emerald-600 font-bold">Registrar costos aquí permite calcular márgenes reales en tus recetas y productos.</span>
+            </p>
+          </div>
+          <button onClick={dismissInvTip} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-white/60 rounded-xl transition-all shrink-0">
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex flex-col lg:flex-row items-center justify-between gap-6 mb-8 bg-white p-6 rounded-[1.5rem] shadow-sm border border-gray-100">
         <div className="flex flex-col sm:flex-row items-center gap-4 flex-1 w-full lg:w-auto">
@@ -482,7 +511,7 @@ function InsumosTab({ activeLocationId }) {
             </button>
           )}
           <PrimaryButton onClick={openCreate} className="h-11 px-6 w-full sm:w-auto">
-            <Icon icon="heroicons:plus-circle" className="text-xl mr-2" />
+            <Icon icon="heroicons:plus-circle" className="text-xl" />
             Nuevo Insumo
           </PrimaryButton>
         </div>

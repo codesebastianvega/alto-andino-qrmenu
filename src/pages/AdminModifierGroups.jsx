@@ -135,7 +135,7 @@ export default function AdminModifierGroups() {
                 </button>
               )}
               <PrimaryButton onClick={() => handleOpenGroup()} className="h-[42px] px-6">
-                <Icon icon="heroicons:plus-circle" className="text-xl mr-2" />
+                <Icon icon="heroicons:plus-circle" className="text-xl" />
                 Crear Grupo
               </PrimaryButton>
             </div>

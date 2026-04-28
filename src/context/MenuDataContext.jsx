@@ -65,6 +65,8 @@ export const MenuDataProvider = ({ children }) => {
     return locations.find(l => l.id === currentLocationId) || null;
   }, [locations, currentLocationId]);
 
+
+
   // Fetch menu data for a given brand
   const fetchMenuData = useCallback(async (brandId) => {
     setLoading(true);

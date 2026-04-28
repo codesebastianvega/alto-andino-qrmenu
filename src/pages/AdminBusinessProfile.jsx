@@ -131,7 +131,7 @@ export default function AdminBusinessProfile({ isEmbedded = false }) {
           subtitle={`Gestiona la información pública y legal de ${activeBrand?.name || 'tu marca'}.`}
         >
           <PrimaryButton onClick={handleSaveProfile} disabled={isSubmitting}>
-             {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Icon icon="solar:check-read-linear" className="w-4 h-4 mr-2" />}
+             {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon icon="solar:check-read-linear" className="w-4 h-4" />}
              Guardar Todo
           </PrimaryButton>
         </PageHeader>
