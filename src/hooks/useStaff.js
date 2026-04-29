@@ -31,7 +31,8 @@ export function useStaff() {
       }
 
       if (!isAllLocations && activeLocationId) {
-        query = query.eq('location_id', activeLocationId);
+        // Staff that has access to all locations OR has this specific location in their list
+        query = query.or(`access_all_locations.eq.true,location_ids.cs.{"${activeLocationId}"}`);
       }
 
       const { data, error: fetchError } = await query
@@ -98,6 +99,76 @@ export function useStaff() {
     }
   }
 
+  // --- Shift Management ---
+
+  async function getActiveShift(staffId) {
+    try {
+      const { data, error } = await supabase
+        .from('shifts')
+        .select('*')
+        .eq('staff_id', staffId)
+        .is('clock_out', null)
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return { data, error: null };
+    } catch (err) {
+      return { data: null, error: err };
+    }
+  }
+
+  async function clockIn(staffId, locationId) {
+    try {
+      // Check if already has an active shift
+      const { data: activeShift } = await getActiveShift(staffId);
+      if (activeShift) return { data: activeShift, error: null };
+
+      const { data, error } = await supabase
+        .from('shifts')
+        .insert([{
+          staff_id: staffId,
+          location_id: locationId,
+          brand_id: activeBrandId,
+          clock_in: new Date().toISOString()
+        }])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return { data, error: null };
+    } catch (err) {
+      return { data: null, error: err };
+    }
+  }
+
+  async function clockOut(staffId) {
+    try {
+      const { data: activeShift } = await getActiveShift(staffId);
+      if (!activeShift) return { error: 'No active shift found' };
+
+      const clockOutTime = new Date();
+      const clockInTime = new Date(activeShift.clock_in);
+      const totalMinutes = Math.round((clockOutTime - clockInTime) / 60000);
+
+      const { data, error } = await supabase
+        .from('shifts')
+        .update({
+          clock_out: clockOutTime.toISOString(),
+          total_minutes: totalMinutes,
+          is_active: false
+        })
+        .eq('id', activeShift.id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return { data, error: null };
+    } catch (err) {
+      return { error: err };
+    }
+  }
+
   return {
     staffList,
     loading,
@@ -105,6 +176,10 @@ export function useStaff() {
     refresh: fetchStaff,
     createStaff,
     updateStaff,
-    deleteStaff
+    deleteStaff,
+    clockIn,
+    clockOut,
+    getActiveShift
   };
 }
+

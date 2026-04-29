@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useLocations } from '../hooks/useLocations';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
@@ -22,6 +23,52 @@ export default function AdminSedes({ isEmbedded = false }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [qrLocation, setQrLocation] = useState(null);
+
+  const [hours, setHours] = useState([]);
+  const [loadingHours, setLoadingHours] = useState(false);
+
+  const fetchHours = async (locationId = null) => {
+    setLoadingHours(true);
+    try {
+      let query = supabase
+        .from('business_hours')
+        .select('*')
+        .eq('brand_id', activeBrand?.id);
+
+      if (locationId) {
+        query = query.eq('location_id', locationId);
+      } else {
+        query = query.is('location_id', null);
+      }
+
+      const { data, error } = await query.order('day_of_week', { ascending: true });
+      if (error) throw error;
+      
+      let loadedHours = data || [];
+      if (loadedHours.length === 0) {
+        loadedHours = Array.from({ length: 7 }, (_, i) => ({
+          day_of_week: i,
+          open_time: '08:00',
+          close_time: '22:00',
+          is_closed: false
+        }));
+      } else if (!locationId) {
+        loadedHours = loadedHours.map(h => ({ ...h, id: undefined, location_id: undefined }));
+      }
+      setHours(loadedHours);
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al cargar horarios');
+    } finally {
+      setLoadingHours(false);
+    }
+  };
+
+  const handleUpdateHour = (index, field, value) => {
+    const newHours = [...hours];
+    newHours[index] = { ...newHours[index], [field]: value };
+    setHours(newHours);
+  };
 
   // Global brand payment methods
   const { paymentMethods: brandPaymentMethods } = usePaymentMethods();
@@ -49,6 +96,7 @@ export default function AdminSedes({ isEmbedded = false }) {
 
   const handleOpenModal = (loc = null) => {
     setActiveTab('info');
+    fetchHours(loc?.id);
     const mainLocation = locations.find(l => l.is_main);
     
     if (loc) {
@@ -88,15 +136,50 @@ export default function AdminSedes({ isEmbedded = false }) {
     setIsSubmitting(true);
     try {
       let res;
+      let locationId;
       if (editingLocation) {
         res = await updateLocation(editingLocation.id, form);
         if (res.error) throw res.error;
+        locationId = editingLocation.id;
         toast.success('Sede actualizada');
       } else {
         res = await createLocation(form);
         if (res.error) throw res.error;
+        locationId = res.data?.id;
         toast.success('Sede creada correctamente');
       }
+
+      if (locationId && hours.length > 0) {
+        const toUpdate = [];
+        const toInsert = [];
+
+        hours.forEach(h => {
+          const payload = {
+            brand_id: activeBrand.id,
+            location_id: locationId,
+            day_of_week: h.day_of_week,
+            open_time: h.open_time,
+            close_time: h.close_time,
+            is_closed: h.is_closed,
+            updated_at: new Date().toISOString()
+          };
+          if (h.id) {
+            toUpdate.push({ ...payload, id: h.id });
+          } else {
+            toInsert.push(payload);
+          }
+        });
+
+        if (toInsert.length > 0) {
+          const { error } = await supabase.from('business_hours').insert(toInsert);
+          if (error) console.error("Error inserting hours:", error);
+        }
+        if (toUpdate.length > 0) {
+          const { error } = await supabase.from('business_hours').upsert(toUpdate, { onConflict: 'id' });
+          if (error) console.error("Error updating hours:", error);
+        }
+      }
+
       setIsModalOpen(false);
     } catch (err) {
       console.error(err);
@@ -325,18 +408,18 @@ export default function AdminSedes({ isEmbedded = false }) {
       {isModalOpen && createPortal(
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xl flex items-center justify-center p-4 z-[9999] animate-in fade-in duration-300">
             <div className="bg-white rounded-[3rem] w-full max-w-2xl shadow-[0_40px_120px_-20px_rgba(0,0,0,0.2)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-5 duration-300 flex flex-col max-h-[90vh]">
-              <div className="px-10 pt-8 pb-4 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center shrink-0">
+              <div className="px-4 sm:px-10 pt-6 sm:pt-8 pb-4 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center shrink-0">
                  <div>
-                    <h3 className="text-2xl font-black text-gray-900 tracking-tight italic uppercase">{editingLocation ? 'Gestionar Sede' : 'Nueva Sede'}</h3>
-                    <p className="text-[12px] text-gray-500 font-medium italic mt-1 uppercase tracking-tight">Parametrización operativa por punto de venta.</p>
+                    <h3 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight italic uppercase">{editingLocation ? 'Gestionar Sede' : 'Nueva Sede'}</h3>
+                    <p className="text-[10px] sm:text-[12px] text-gray-500 font-medium italic mt-1 uppercase tracking-tight">Parametrización operativa por punto de venta.</p>
                  </div>
-                 <button onClick={() => setIsModalOpen(false)} className="w-12 h-12 rounded-full hover:bg-rose-50 flex items-center justify-center text-gray-300 hover:text-rose-500 transition-all border border-gray-100 hover:border-rose-100">
-                    <Icon icon="solar:close-circle-bold" width="32" />
+                 <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full hover:bg-rose-50 flex items-center justify-center text-gray-300 hover:text-rose-500 transition-all border border-gray-100 hover:border-rose-100 shrink-0 ml-4">
+                    <Icon icon="solar:close-circle-bold" className="text-2xl sm:text-3xl" />
                  </button>
               </div>
 
               {/* Tabs Navigation */}
-              <div className="flex px-10 gap-8 border-b border-gray-50 bg-gray-50/30 shrink-0">
+              <div className="flex px-4 sm:px-10 gap-4 sm:gap-8 border-b border-gray-50 bg-gray-50/30 shrink-0 overflow-x-auto custom-scrollbar">
                 {[
                   { id: 'info', label: 'Información', icon: 'solar:info-circle-bold' },
                   { id: 'hours', label: 'Horarios', icon: 'solar:clock-circle-bold' },
@@ -347,7 +430,7 @@ export default function AdminSedes({ isEmbedded = false }) {
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 py-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${
+                    className={`flex items-center gap-2 py-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all whitespace-nowrap ${
                       activeTab === tab.id 
                         ? 'border-indigo-600 text-indigo-600' 
                         : 'border-transparent text-gray-400 hover:text-gray-600'
@@ -359,7 +442,8 @@ export default function AdminSedes({ isEmbedded = false }) {
                 ))}
               </div>
 
-              <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-10 space-y-8 custom-scrollbar">
+              <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                 <div className="flex-1 overflow-y-auto p-4 sm:p-10 space-y-8 custom-scrollbar">
                  {activeTab === 'info' && (
                     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -448,20 +532,65 @@ export default function AdminSedes({ isEmbedded = false }) {
                  )}
 
                  {activeTab === 'hours' && (
-                   <div className="flex flex-col items-center justify-center py-10 text-center animate-in fade-in slide-in-from-right-4 duration-300">
-                     <div className="w-20 h-20 rounded-[2rem] bg-indigo-50 flex items-center justify-center text-indigo-600 mb-6">
-                        <Icon icon="solar:clock-circle-bold-duotone" width="40" />
+                   <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                     <div className="mb-6">
+                       <h4 className="text-lg font-black text-gray-900 uppercase italic tracking-tight">Horarios de la Sede</h4>
+                       <p className="text-[12px] text-gray-400 font-medium mt-1">Configura los horarios específicos para esta ubicación.</p>
                      </div>
-                     <h4 className="text-lg font-black text-gray-900 uppercase italic tracking-tight">Gestión de Horarios</h4>
-                     <p className="text-sm text-gray-400 mt-2 max-w-[300px] font-medium leading-relaxed uppercase tracking-tighter">
-                       {editingLocation 
-                        ? "Configura los horarios específicos para esta sede. Por defecto hereda los de la marca." 
-                        : "Los horarios se heredarán automáticamente de la sede principal al crearla."}
-                     </p>
-                     <div className="mt-8 px-6 py-3 bg-amber-50 rounded-2xl border border-amber-100 flex items-center gap-3">
-                        <Icon icon="solar:info-circle-bold" className="text-amber-500" />
-                        <span className="text-[10px] font-black text-amber-600 uppercase tracking-tight">Próximamente: Editor visual de horarios por sede</span>
-                     </div>
+                     {loadingHours ? (
+                       <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+                     ) : (
+                       <div className="space-y-2">
+                         {hours.map((h, index) => {
+                           const isClosed = h.is_closed;
+                           return (
+                             <div key={h.day_of_week} 
+                               className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-2xl border transition-all gap-4 group ${
+                                 isClosed 
+                                   ? 'bg-gray-50/50 border-gray-100 opacity-60 grayscale' 
+                                   : 'bg-white border-gray-100 hover:border-indigo-100 hover:shadow-sm'
+                               }`}>
+                               
+                               <div className="flex items-center gap-4">
+                                 <div className={`w-10 font-black text-[12px] uppercase tracking-wider italic ${isClosed ? 'text-gray-400' : 'text-gray-900'}`}>
+                                   {['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][h.day_of_week]?.substring(0, 3)}
+                                 </div>
+                                 <div className="flex items-center gap-1">
+                                   <input 
+                                     type="time" 
+                                     value={h.open_time || '08:00'} 
+                                     onChange={(e) => handleUpdateHour(index, 'open_time', e.target.value)}
+                                     disabled={isClosed}
+                                     className="bg-gray-50 border-none rounded-lg px-2 py-1.5 text-[13px] font-black text-gray-700 focus:bg-white focus:ring-2 focus:ring-indigo-50 outline-none disabled:opacity-30 tabular-nums w-20 text-center"
+                                   />
+                                   <span className="text-gray-200 text-xs">—</span>
+                                   <input 
+                                     type="time" 
+                                     value={h.close_time || '22:00'} 
+                                     onChange={(e) => handleUpdateHour(index, 'close_time', e.target.value)}
+                                     disabled={isClosed}
+                                     className="bg-gray-50 border-none rounded-lg px-2 py-1.5 text-[13px] font-black text-gray-700 focus:bg-white focus:ring-2 focus:ring-indigo-50 outline-none disabled:opacity-30 tabular-nums w-20 text-center"
+                                   />
+                                 </div>
+                               </div>
+
+                               <button 
+                                 type="button"
+                                 onClick={() => handleUpdateHour(index, 'is_closed', !isClosed)}
+                                 className={`w-full sm:w-auto justify-center px-4 py-2 rounded-xl border text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${
+                                   isClosed 
+                                     ? 'bg-rose-50 border-rose-100 text-rose-500 shadow-rose-50/50' 
+                                     : 'bg-emerald-50 border-emerald-100 text-emerald-600 shadow-emerald-50/50'
+                                 }`}
+                               >
+                                 <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isClosed ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                                 {isClosed ? 'Cerrado' : 'Abierto'}
+                               </button>
+                             </div>
+                           );
+                         })}
+                       </div>
+                     )}
                    </div>
                  )}
 
@@ -618,11 +747,12 @@ export default function AdminSedes({ isEmbedded = false }) {
                    </div>
                  )}
 
-                 <div className="pt-8 border-t border-gray-100 flex gap-4 shrink-0">
-                    <SecondaryButton type="button" onClick={() => setIsModalOpen(false)} className="flex-1 rounded-[1.5rem] py-5 border-gray-100 font-black uppercase tracking-widest text-[11px] text-gray-400">
+                 </div>
+                 <div className="p-4 sm:p-10 sm:pt-6 pt-4 border-t border-gray-100 bg-white flex flex-col sm:flex-row gap-4 shrink-0 z-10">
+                    <SecondaryButton type="button" onClick={() => setIsModalOpen(false)} className="flex-1 rounded-[1.5rem] py-4 sm:py-5 border-gray-100 font-black uppercase tracking-widest text-[11px] text-gray-400">
                        Cancelar
                     </SecondaryButton>
-                    <PrimaryButton type="submit" disabled={isSubmitting} className="flex-[2] rounded-[1.5rem] py-5 shadow-2xl shadow-indigo-100 font-black uppercase tracking-widest text-[11px]">
+                    <PrimaryButton type="submit" disabled={isSubmitting} className="flex-[2] rounded-[1.5rem] py-4 sm:py-5 shadow-2xl shadow-indigo-100 font-black uppercase tracking-widest text-[11px]">
                        {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (
                          <div className="flex items-center justify-center gap-3">
                            <Icon icon="solar:diskette-bold-duotone" className="text-xl" />

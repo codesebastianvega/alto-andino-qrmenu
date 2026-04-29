@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useStaff } from '../../hooks/useStaff';
+import { useLocations } from '../../context/LocationContext';
 
 const RoleColors = {
   admin: 'bg-[#4a6741] text-white',
   waiter: 'bg-blue-600 text-white',
   kitchen: 'bg-orange-600 text-white',
   cashier: 'bg-purple-600 text-white',
+  promoter: 'bg-rose-500 text-white',
 };
 
 const RoleNames = {
@@ -13,10 +15,12 @@ const RoleNames = {
   waiter: 'Mesero',
   kitchen: 'Cocina',
   cashier: 'Caja',
+  promoter: 'Impulsador',
 };
 
 export default function AdminPinLogin({ onLogin }) {
-  const { staffList, loading, error } = useStaff();
+  const { staffList, loading, error, clockIn } = useStaff();
+  const { activeLocationId, isAllLocations } = useLocations();
   const [selectedUser, setSelectedUser] = useState(null);
   const [pin, setPin] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -58,6 +62,14 @@ export default function AdminPinLogin({ onLogin }) {
     if (!selectedUser) return;
 
     if (pin === selectedUser.pin) {
+      // Registrar inicio de turno (Clock In)
+      // Usamos la sede activa si existe, de lo contrario la primera asignada al usuario
+      const targetLocationId = (!isAllLocations && activeLocationId) 
+        ? activeLocationId 
+        : (selectedUser.location_ids?.[0] || null);
+
+      clockIn(selectedUser.id, targetLocationId);
+      
       sessionStorage.setItem('aa_admin_session', JSON.stringify(selectedUser));
       onLogin(selectedUser);
     } else {

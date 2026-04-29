@@ -18,14 +18,16 @@ const RoleNames = {
   admin: 'Administrador',
   waiter: 'Mesero / POS',
   kitchen: 'Cocina',
-  cashier: 'Caja'
+  cashier: 'Caja',
+  promoter: 'Impulsador'
 };
 
 const RoleIcons = {
   admin: 'solar:shield-user-bold',
   waiter: 'solar:user-bold',
   kitchen: 'solar:chef-hat-bold',
-  cashier: 'solar:cassette-bold'
+  cashier: 'solar:cassette-bold',
+  promoter: 'solar:flag-bold'
 };
 
 const RoleColors = {
@@ -56,6 +58,13 @@ const RoleColors = {
     light: 'bg-emerald-50',
     border: 'border-emerald-100',
     accent: 'text-emerald-600'
+  },
+  promoter: {
+    bg: 'bg-rose-500',
+    text: 'text-white',
+    light: 'bg-rose-50',
+    border: 'border-rose-100',
+    accent: 'text-rose-600'
   }
 };
 
@@ -69,10 +78,12 @@ export default function AdminStaff({ isEmbedded = false }) {
 
   const [formData, setFormData] = useState({ 
     name: '', 
-    role: 'waiter', 
+    role: 'kitchen', 
     pin: '',
-    location_id: '',
-    is_active: true
+    location_ids: [],
+    access_all_locations: false,
+    is_active: true,
+    commission_rate: 0
   });
 
   const openModal = (staff = null) => {
@@ -80,19 +91,24 @@ export default function AdminStaff({ isEmbedded = false }) {
       setEditingStaff(staff);
       setFormData({ 
         name: staff.name || '', 
-        role: staff.role || 'waiter', 
+        role: staff.role || 'kitchen', 
         pin: staff.pin || '',
-        location_id: staff.location_id || '',
-        is_active: staff.is_active ?? true
+        location_ids: staff.location_ids || [],
+        access_all_locations: staff.access_all_locations || false,
+        is_active: staff.is_active ?? true,
+        commission_rate: staff.commission_rate || 0
       });
     } else {
       setEditingStaff(null);
+      const defaultLocs = (!isAllLocations && activeLocationId) ? [activeLocationId] : [];
       setFormData({ 
         name: '', 
-        role: 'waiter', 
+        role: 'kitchen', 
         pin: '',
-        location_id: (!isAllLocations && activeLocationId) ? activeLocationId : (locations.find(l => l.is_main)?.id || (locations[0]?.id || '')),
-        is_active: true
+        location_ids: defaultLocs,
+        access_all_locations: isAllLocations,
+        is_active: true,
+        commission_rate: 0
       });
     }
     setIsModalOpen(true);
@@ -173,8 +189,12 @@ export default function AdminStaff({ isEmbedded = false }) {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-        {(isAllLocations ? staffList : staffList.filter(s => s.location_id === activeLocationId)).map((staff) => {
-          const locName = locations.find(l => l.id === staff.location_id)?.name || 'Sin asignar';
+        {staffList.map((staff) => {
+          const assignedLocs = staff.access_all_locations 
+            ? 'Todas las sedes' 
+            : (staff.location_ids?.length > 0 
+                ? locations.filter(l => staff.location_ids.includes(l.id)).map(l => l.name).join(', ')
+                : 'Sin asignar');
           const roleCfg = RoleColors[staff.role] || RoleColors.waiter;
           
           return (
@@ -200,6 +220,11 @@ export default function AdminStaff({ isEmbedded = false }) {
                     <span className={`text-[10px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-lg ${roleCfg.light} ${roleCfg.accent}`}>
                       {RoleNames[staff.role]}
                     </span>
+                    {staff.role === 'promoter' && staff.commission_rate > 0 && (
+                      <span className="ml-2 text-[10px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-lg bg-rose-100 text-rose-600">
+                        {staff.commission_rate}% Com.
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -209,8 +234,8 @@ export default function AdminStaff({ isEmbedded = false }) {
                       <Building2 size={16} />
                     </div>
                     <div>
-                       <p className="text-[9px] font-black text-gray-300 uppercase leading-none mb-1">Sede de Operación</p>
-                       <p className="text-[13px] text-gray-700 font-black">{locName}</p>
+                       <p className="text-[9px] font-black text-gray-300 uppercase leading-none mb-1">Sedes de Operación</p>
+                       <p className="text-[13px] text-gray-700 font-black truncate max-w-[200px]" title={assignedLocs}>{assignedLocs}</p>
                     </div>
                   </div>
 
@@ -304,35 +329,82 @@ export default function AdminStaff({ isEmbedded = false }) {
                           ))}
                        </SelectInput>
                     </FormField>
+
+                    {formData.role === 'promoter' && (
+                       <FormField label="Comisión por Venta (%)">
+                          <TextInput 
+                             type="number"
+                             step="0.01"
+                             min="0"
+                             max="100"
+                             value={formData.commission_rate} 
+                             onChange={(e) => setFormData({...formData, commission_rate: parseFloat(e.target.value) || 0})} 
+                             placeholder="Ej. 5.0"
+                             className="text-lg font-black py-4 px-5 rounded-2xl bg-rose-50 border-rose-100 focus:bg-white focus:border-rose-300"
+                          />
+                       </FormField>
+                    )}
                  </div>
 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <FormField label="Asignación de Sede">
-                       <SelectInput 
-                          value={formData.location_id} 
-                          onChange={(e) => setFormData({...formData, location_id: e.target.value})}
-                          className="font-bold py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white"
-                       >
-                          <option value="">Seleccionar Local...</option>
-                          {locations.map(loc => (
-                             <option key={loc.id} value={loc.id}>{loc.name} {loc.is_main ? '🏛️' : ''}</option>
-                          ))}
-                       </SelectInput>
-                    </FormField>
+                    <div className="space-y-6">
+                        <div className={`p-6 rounded-[2rem] border-2 transition-all cursor-pointer group ${formData.access_all_locations ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-xl shadow-indigo-50' : 'bg-white border-gray-100 hover:border-gray-200 text-gray-500'}`}
+                            onClick={() => setFormData({...formData, access_all_locations: !formData.access_all_locations})}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${formData.access_all_locations ? 'bg-indigo-500 text-white' : 'bg-gray-50 text-gray-300'}`}>
+                                    <Icon icon="solar:global-bold" className="text-xl" />
+                                </div>
+                                <div className="flex-1">
+                                    <span className="block text-[11px] font-black uppercase tracking-widest leading-none mb-1">Acceso Global</span>
+                                    <span className="text-[9px] font-bold uppercase italic opacity-60">Visible en todas las sedes</span>
+                                </div>
+                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${formData.access_all_locations ? 'bg-indigo-500 border-white rotate-0' : 'bg-transparent border-gray-200 rotate-45'}`}>
+                                    {formData.access_all_locations && <Icon icon="solar:check-read-bold" className="text-white text-[10px]" />}
+                                </div>
+                            </div>
+                        </div>
+
+                        {!formData.access_all_locations && (
+                            <FormField label="Asignar Sedes Específicas">
+                                <div className="grid grid-cols-1 gap-2 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {locations.map(loc => {
+                                        const isSelected = formData.location_ids?.includes(loc.id);
+                                        return (
+                                            <div 
+                                                key={loc.id}
+                                                onClick={() => {
+                                                    const newIds = isSelected
+                                                        ? formData.location_ids.filter(id => id !== loc.id)
+                                                        : [...(formData.location_ids || []), loc.id];
+                                                    setFormData({...formData, location_ids: newIds});
+                                                }}
+                                                className={`p-3 rounded-xl border flex items-center gap-3 cursor-pointer transition-all ${isSelected ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-sm' : 'bg-gray-50 border-gray-100 text-gray-400 hover:border-gray-200'}`}
+                                            >
+                                                <div className={`w-2 h-2 rounded-full ${isSelected ? 'bg-blue-500 animate-pulse' : 'bg-gray-200'}`} />
+                                                <span className="text-[11px] font-black uppercase tracking-tighter truncate">{loc.name}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </FormField>
+                        )}
+                    </div>
+
                     <FormField label="PIN de Seguridad (4 dígitos)">
-                       <div className="relative">
-                          <TextInput 
-                            value={formData.pin} 
-                            onChange={(e) => setFormData({...formData, pin: e.target.value.replace(/\D/g, '')})} 
-                            placeholder="Ej. 1234"
-                            maxLength={4}
-                            required
-                            className="font-mono text-center tracking-[1em] font-black text-2xl py-4 pr-4 pl-10 rounded-2xl bg-gray-50 border-indigo-100 text-indigo-600 focus:bg-white transition-all shadow-inner"
-                          />
-                          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-300">
-                             <Icon icon="solar:lock-password-bold" width="20" />
-                          </div>
-                       </div>
+                        <div className="relative">
+                           <TextInput 
+                             value={formData.pin} 
+                             onChange={(e) => setFormData({...formData, pin: e.target.value.replace(/\D/g, '')})} 
+                             placeholder="Ej. 1234"
+                             maxLength={4}
+                             required
+                             className="font-mono text-center tracking-[1em] font-black text-2xl py-4 pr-4 pl-10 rounded-2xl bg-gray-50 border-indigo-100 text-indigo-600 focus:bg-white transition-all shadow-inner"
+                           />
+                           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-300">
+                              <Icon icon="solar:lock-password-bold" width="20" />
+                           </div>
+                        </div>
                     </FormField>
                  </div>
 
