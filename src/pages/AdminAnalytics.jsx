@@ -369,7 +369,7 @@ export default function AdminAnalytics() {
           orders!inner ( id, brand_id, created_at, location_id )
         `)
           .eq('orders.brand_id', activeBrandId)
-          .match(filterObj)
+          .match(!isAllLocations && activeLocationId ? { 'orders.location_id': activeLocationId } : {})
           .gte('created_at', start.toISOString())
           .order('created_at', { ascending: false })
       ]);
