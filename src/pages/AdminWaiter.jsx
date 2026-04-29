@@ -21,7 +21,7 @@ const toast = {
 
 export default function AdminWaiter() {
   const { profile, activeBrand } = useAuth();
-  const { activeLocationId, isAllLocations } = useLocations();
+  const { activeLocationId, isAllLocations, switchLocation } = useLocations();
   const { staffList } = useStaff();
   const [tables, setTables] = useState([]);
   const [areas, setAreas] = useState([]);
@@ -160,7 +160,7 @@ export default function AdminWaiter() {
   const proceedWithTable = (table) => {
     sessionStorage.setItem("aa_current_mesa", table.table_number);
     sessionStorage.setItem("aa_current_table_id", table.id);
-    sessionStorage.setItem("aa_current_location_id", table.location_id);
+    switchLocation(table.location_id);
     sessionStorage.setItem("aa_pos_mode", "true");
     sessionStorage.removeItem("aa_manual_type");
     window.location.hash = "#menu";
@@ -169,7 +169,7 @@ export default function AdminWaiter() {
   const handleManualOrder = (type = 'takeaway') => {
     sessionStorage.removeItem("aa_current_mesa");
     if (activeLocationId && !isAllLocations) {
-      sessionStorage.setItem("aa_current_location_id", activeLocationId);
+      switchLocation(activeLocationId);
     }
     sessionStorage.setItem("aa_manual_type", type);
     sessionStorage.setItem("aa_pos_mode", "true");

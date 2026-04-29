@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useParams, Navigate, useLocation } from "react-router-dom";
 import { useMenuData } from "./context/MenuDataContext";
 import { useBrand } from "./context/BrandContext";
+import { useLocation as useAppLocation } from "./context/LocationContext";
 import { Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "./config/supabase";
@@ -89,6 +90,7 @@ export default function App() {
   const [openGuide, setOpenGuide] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("todos");
   const location = useLocation();
+  const { activeLocation } = useAppLocation();
   const [currentHash, setCurrentHash] = useState(location.hash);
 
   useEffect(() => {
@@ -179,11 +181,6 @@ export default function App() {
     const mesa = params.get("mesa");
     if (mesa) {
       sessionStorage.setItem("aa_current_mesa", mesa);
-    }
-
-    const loc = params.get("loc");
-    if (loc) {
-      sessionStorage.setItem("aa_current_location_id", loc);
     }
   }, []);
 
@@ -383,7 +380,7 @@ export default function App() {
       <AnimatePresence>
         {showWelcome && (
           <BrandWelcome 
-            brandName={activeBrand?.name}
+            brandName={activeLocation?.name || activeBrand?.name}
             logoUrl={restaurantSettings?.logo_url}
             bgUrl={homeSettings?.welcome_bg_img}
             mesa={new URLSearchParams(window.location.search).get('mesa')}

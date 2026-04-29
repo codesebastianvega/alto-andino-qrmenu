@@ -11,7 +11,7 @@ import {
 
 import { 
   Plus, LayoutGrid, MapPin, QrCode, Edit3, Trash2, 
-  ChevronRight, Layers, Table
+  ChevronRight, Layers, Table, ExternalLink
 } from 'lucide-react';
 
 const toast = {
@@ -20,8 +20,8 @@ const toast = {
 };
 
 export default function AdminTables({ isEmbedded = false }) {
-  const { profile } = useAuth();
-  const { activeLocationId, isAllLocations } = useLocations();
+  const { profile, activeBrand } = useAuth();
+  const { activeLocationId, isAllLocations, locations } = useLocations();
   const [tables, setTables] = useState([]);
   const [loadingTables, setLoadingTables] = useState(false);
   
@@ -29,6 +29,7 @@ export default function AdminTables({ isEmbedded = false }) {
   const [editingTable, setEditingTable] = useState(null);
   const [tableForm, setTableForm] = useState({ table_number: '', area_id: '' });
   const [isSubmittingTable, setIsSubmittingTable] = useState(false);
+  const [modalTab, setModalTab] = useState('datos');
 
   // Areas Management
   const [areas, setAreas] = useState([]);
@@ -36,9 +37,6 @@ export default function AdminTables({ isEmbedded = false }) {
   const [isAreaModalOpen, setIsAreaModalOpen] = useState(false);
   const [newAreaName, setNewAreaName] = useState('');
   const [isSubmittingArea, setIsSubmittingArea] = useState(false);
-
-  // QR Modal
-  const [qrTable, setQrTable] = useState(null);
 
   useEffect(() => {
     if (profile?.brand_id) {
@@ -142,6 +140,7 @@ export default function AdminTables({ isEmbedded = false }) {
       area_id: '',
       location_id: isAllLocations ? '' : activeLocationId 
     });
+    setModalTab('datos');
     setIsFormOpen(true);
   };
 
@@ -151,6 +150,17 @@ export default function AdminTables({ isEmbedded = false }) {
       table_number: table.table_number,
       area_id: table.area_id || ''
     });
+    setModalTab('datos');
+    setIsFormOpen(true);
+  };
+
+  const openQr = (table) => {
+    setEditingTable(table);
+    setTableForm({ 
+      table_number: table.table_number,
+      area_id: table.area_id || ''
+    });
+    setModalTab('qr');
     setIsFormOpen(true);
   };
 
@@ -227,7 +237,11 @@ export default function AdminTables({ isEmbedded = false }) {
   };
 
   const getTableUrl = (table) => {
-    return `${window.location.origin}?mesa=${encodeURIComponent(table.table_number)}&loc=${table.location_id}`;
+    const slug = activeBrand?.slug;
+    const baseUrl = window.location.origin;
+    return slug 
+      ? `${baseUrl}/${slug}/?mesa=${encodeURIComponent(table.table_number)}&loc=${table.location_id}`
+      : `${baseUrl}?mesa=${encodeURIComponent(table.table_number)}&loc=${table.location_id}`;
   };
 
   const handleCopyUrl = (table) => {
@@ -236,7 +250,7 @@ export default function AdminTables({ isEmbedded = false }) {
   };
 
   const handleDownloadQr = () => {
-    const svg = document.getElementById(`qr-code-${qrTable.id}`);
+    const svg = document.getElementById(`qr-code-${editingTable.id}`);
     const svgData = new XMLSerializer().serializeToString(svg);
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
@@ -249,7 +263,7 @@ export default function AdminTables({ isEmbedded = false }) {
       ctx.drawImage(img, 20, 20); // Draw image with 20px offset for padding
       const pngFile = canvas.toDataURL("image/png");
       const downloadLink = document.createElement("a");
-      downloadLink.download = `QR_Mesa_${qrTable.table_number}.png`;
+      downloadLink.download = `QR_Mesa_${editingTable.table_number}.png`;
       downloadLink.href = pngFile;
       downloadLink.click();
     };
@@ -355,7 +369,7 @@ export default function AdminTables({ isEmbedded = false }) {
                 </td>
                 <td className="px-6 py-6 text-right">
                   <div className="flex justify-end items-center gap-2">
-                    <button onClick={() => setQrTable(table)}
+                    <button onClick={() => openQr(table)}
                       className="p-2.5 text-indigo-600 hover:bg-white hover:shadow-md hover:border-indigo-100 rounded-2xl transition-all border border-transparent flex items-center gap-2 font-bold text-[11px] uppercase tracking-wider">
                       <QrCode size={18} />
                       <span className="hidden sm:inline">QR</span>
@@ -380,108 +394,159 @@ export default function AdminTables({ isEmbedded = false }) {
       {isFormOpen && (
         <Modal onClose={() => setIsFormOpen(false)}>
           <ModalHeader 
-            title={editingTable ? 'Editar Mesa' : 'Nueva Mesa'} 
-            subtitle="Identifica la mesa para luego vincularla a un código QR."
+            title={editingTable ? `Gestionar Mesa — ${editingTable.table_number}` : 'Nueva Mesa'} 
+            subtitle={editingTable ? 'Edita la configuración o descarga el código QR de esta mesa.' : 'Identifica la mesa para luego vincularla a un código QR.'}
             onClose={() => setIsFormOpen(false)} 
           />
-          <form onSubmit={handleSaveTable} className="p-7 space-y-6">
-            <div className="space-y-4">
-              <FormField>
-                <label className="block text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">Identificador de Mesa</label>
-                <TextInput
-                  value={tableForm.table_number}
-                  onChange={(e) => setTableForm({ ...tableForm, table_number: e.target.value })}
-                  placeholder="Ej. Mesa 1, Sala Principal, VIP..."
-                  required
-                />
-              </FormField>
 
-              {isAllLocations && !editingTable && (
-                <FormField label="Sede">
-                  <SelectInput
-                    value={tableForm.location_id || ''}
-                    onChange={(e) => setTableForm({ ...tableForm, location_id: e.target.value, area_id: '' })}
+          {/* Tabs — solo visibles en modo edición */}
+          {editingTable && (
+            <div className="flex px-7 gap-1 border-b border-gray-100 bg-gray-50/50">
+              {[
+                { id: 'datos', label: 'Datos', icon: <Edit3 size={14} /> },
+                { id: 'qr', label: 'QR & Enlace', icon: <QrCode size={14} /> }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setModalTab(tab.id)}
+                  className={`flex items-center gap-2 px-5 py-3.5 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${
+                    modalTab === tab.id 
+                      ? 'border-[#2f4131] text-[#2f4131]' 
+                      : 'border-transparent text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Tab: Datos */}
+          {(modalTab === 'datos' || !editingTable) && (
+            <form onSubmit={handleSaveTable} className="p-7 space-y-6">
+              <div className="space-y-4">
+                <FormField>
+                  <label className="block text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">Identificador de Mesa</label>
+                  <TextInput
+                    value={tableForm.table_number}
+                    onChange={(e) => setTableForm({ ...tableForm, table_number: e.target.value })}
+                    placeholder="Ej. Mesa 1, Sala Principal, VIP..."
                     required
+                  />
+                </FormField>
+
+                {isAllLocations && !editingTable && (
+                  <FormField label="Sede">
+                    <SelectInput
+                      value={tableForm.location_id || ''}
+                      onChange={(e) => setTableForm({ ...tableForm, location_id: e.target.value, area_id: '' })}
+                      required
+                    >
+                      <option value="">Seleccionar Sede...</option>
+                      {locations.map(loc => (
+                        <option key={loc.id} value={loc.id}>{loc.name}</option>
+                      ))}
+                    </SelectInput>
+                  </FormField>
+                )}
+
+                <FormField label="Salón / Entorno">
+                  <SelectInput
+                    value={tableForm.area_id}
+                    onChange={(e) => setTableForm({ ...tableForm, area_id: e.target.value })}
                   >
-                    <option value="">Seleccionar Sede...</option>
-                    {locations.map(loc => (
-                      <option key={loc.id} value={loc.id}>{loc.name}</option>
+                    <option value="">Sin salón específico</option>
+                    {areas.map(area => (
+                      <option key={area.id} value={area.id}>
+                        {area.name} {isAllLocations && area.locations?.name ? `(${area.locations.name})` : ''}
+                      </option>
                     ))}
                   </SelectInput>
                 </FormField>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <div className="flex-1">
+                  <SecondaryButton 
+                    onClick={() => setIsFormOpen(false)}
+                    className="w-full justify-center"
+                  >
+                    Cancelar
+                  </SecondaryButton>
+                </div>
+                <div className="flex-1">
+                  <PrimaryButton 
+                    type="submit" 
+                    disabled={isSubmittingTable}
+                    className="w-full justify-center"
+                  >
+                    {isSubmittingTable ? 'Guardando...' : editingTable ? 'Guardar Cambios' : 'Crear Mesa'}
+                  </PrimaryButton>
+                </div>
+              </div>
+            </form>
+          )}
+
+          {/* Tab: QR & Enlace */}
+          {modalTab === 'qr' && editingTable && (
+            <div className="p-7 flex flex-col items-center justify-center space-y-6">
+              {/* Sede info */}
+              {editingTable.locations?.name && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-xl border border-gray-100 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                  <MapPin size={12} />
+                  {editingTable.locations.name}
+                </div>
               )}
 
-              <FormField label="Salón / Entorno">
-                <SelectInput
-                  value={tableForm.area_id}
-                  onChange={(e) => setTableForm({ ...tableForm, area_id: e.target.value })}
-                >
-                  <option value="">Sin salón específico</option>
-                  {areas.map(area => (
-                    <option key={area.id} value={area.id}>
-                      {area.name} {isAllLocations && area.locations?.name ? `(${area.locations.name})` : ''}
-                    </option>
-                  ))}
-                </SelectInput>
-              </FormField>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <div className="flex-1">
-                <SecondaryButton 
-                  onClick={() => setIsFormOpen(false)}
-                  className="w-full justify-center"
-                >
-                  Cancelar
-                </SecondaryButton>
+              {/* QR Code */}
+              <div className="bg-white p-5 rounded-2xl shadow-lg shadow-gray-100 border border-gray-100">
+                <QRCode 
+                  id={`qr-code-${editingTable.id}`}
+                  value={getTableUrl(editingTable)} 
+                  size={220}
+                  level="H"
+                  className="w-full h-auto"
+                />
               </div>
-              <div className="flex-1">
-                <PrimaryButton 
-                  type="submit" 
-                  disabled={isSubmittingTable}
-                  className="w-full justify-center"
+
+              {/* URL preview */}
+              <div className="w-full max-w-sm bg-gray-50 rounded-xl border border-gray-100 p-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1.5">Enlace del Menú</p>
+                <p className="text-[11px] font-mono text-gray-600 break-all leading-relaxed select-all">{getTableUrl(editingTable)}</p>
+              </div>
+              
+              {/* Action buttons */}
+              <div className="flex flex-col gap-3 w-full max-w-sm">
+                {/* Ver Menú — abre en nueva pestaña */}
+                <a 
+                  href={getTableUrl(editingTable)} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2.5 w-full px-6 py-3.5 bg-[#2f4131] text-white rounded-xl font-bold text-[12px] uppercase tracking-widest shadow-lg shadow-[#2f4131]/20 hover:bg-[#3d5440] hover:shadow-xl active:scale-[0.98] transition-all"
                 >
-                  {isSubmittingTable ? 'Guardando...' : editingTable ? 'Guardar Cambios' : 'Crear Mesa'}
-                </PrimaryButton>
+                  <ExternalLink size={16} />
+                  Ver Menú
+                </a>
+
+                <div className="flex gap-3">
+                  <PrimaryButton onClick={handleDownloadQr} className="flex-1 justify-center text-[11px]">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Descargar QR
+                  </PrimaryButton>
+                  <SecondaryButton onClick={() => handleCopyUrl(editingTable)} className="flex-1 justify-center text-[11px]">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                    Copiar URL
+                  </SecondaryButton>
+                </div>
               </div>
             </div>
-          </form>
-        </Modal>
-      )}
-
-      {qrTable && (
-        <Modal onClose={() => setQrTable(null)}>
-          <ModalHeader 
-            title={`Código QR - ${qrTable.table_number}`}
-            subtitle="Los clientes pueden escanear este código para abrir el menú de esta mesa."
-            onClose={() => setQrTable(null)} 
-          />
-          <div className="p-8 flex flex-col items-center justify-center">
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
-              <QRCode 
-                id={`qr-code-${qrTable.id}`}
-                value={getTableUrl(qrTable)} 
-                size={220}
-                level="H"
-                className="w-full h-auto"
-              />
-            </div>
-            
-            <div className="flex flex-col gap-3 w-full max-w-sm">
-              <PrimaryButton onClick={handleDownloadQr} className="w-full justify-center">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Descargar QR (PNG)
-              </PrimaryButton>
-              <SecondaryButton onClick={() => handleCopyUrl(qrTable)} className="w-full justify-center">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                </svg>
-                Copiar Enlace Directo
-              </SecondaryButton>
-            </div>
-          </div>
+          )}
         </Modal>
       )}
 

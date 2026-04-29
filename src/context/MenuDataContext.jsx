@@ -3,18 +3,19 @@ import { useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabase';
 import { useAuth } from './AuthContext';
 import { useBrand } from './BrandContext';
+import { useLocation as useAppLocation } from './LocationContext';
 
 const MenuDataContext = createContext({});
 
 export const MenuDataProvider = ({ children }) => {
-  const location = useLocation();
+  const routerLocation = useLocation();
+  const { activeLocationId } = useAppLocation();
   const [allCategories, setAllCategories] = useState([]);
   const [rawProducts, setRawProducts] = useState([]);
   const [locationPrices, setLocationPrices] = useState([]);
   const [locationStatus, setLocationStatus] = useState([]);
   const [locationCategories, setLocationCategories] = useState([]);
   const [locationModLinks, setLocationModLinks] = useState([]);
-  const [currentLocationId, setCurrentLocationId] = useState(sessionStorage.getItem("aa_current_location_id"));
   const [rawModifierGroups, setRawModifierGroups] = useState([]);
   const [experiences, setExperiences] = useState([]);
   const [banners, setBanners] = useState([]);
@@ -30,40 +31,10 @@ export const MenuDataProvider = ({ children }) => {
   const { brand: currentBrand, loadingBrand } = useBrand();
   const activeBrandId = currentBrand?.id ?? null;
 
-  // React to URL changes for location parameter
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const locParam = params.get('loc');
-    
-    if (locParam) {
-      // Check if it's a UUID or a slug
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(locParam);
-      
-      if (isUUID) {
-        setCurrentLocationId(locParam);
-        sessionStorage.setItem("aa_current_location_id", locParam);
-      } else if (locations.length > 0) {
-        // Resolve slug
-        const resolvedLoc = locations.find(l => l.slug === locParam);
-        if (resolvedLoc) {
-          setCurrentLocationId(resolvedLoc.id);
-          sessionStorage.setItem("aa_current_location_id", resolvedLoc.id);
-        }
-      } else if (!locations.length && !loading) {
-        // If locations haven't loaded yet, we'll try again when they do
-        // This is handled by adding 'locations' to the dependency array below
-      }
-    } else {
-      // Fallback to session if no param
-      const savedId = sessionStorage.getItem("aa_current_location_id");
-      if (savedId) setCurrentLocationId(savedId);
-    }
-  }, [location.search, locations, loading]);
-
   // Expose the current location object for convenience
   const currentLocation = useMemo(() => {
-    return locations.find(l => l.id === currentLocationId) || null;
-  }, [locations, currentLocationId]);
+    return locations.find(l => l.id === activeLocationId) || null;
+  }, [locations, activeLocationId]);
 
 
 
@@ -97,8 +68,6 @@ export const MenuDataProvider = ({ children }) => {
       const { data: cats, error: catError } = await brandFilter(
         supabase.from('categories').select('*').eq('is_active', true).order('sort_order', { ascending: true })
       );
-      if (catError) throw catError;
-
       if (catError) throw catError;
 
       // Fetch modifiers
@@ -183,9 +152,9 @@ export const MenuDataProvider = ({ children }) => {
   const modifiers = useMemo(() => {
     const modGroups = {};
     const filteredGroups = (rawModifierGroups || []).filter(group => {
-      if (!currentLocationId) return true; // Brand level view shows all
+      if (!activeLocationId || activeLocationId === 'all') return true; // Brand level view shows all
       return (locationModLinks || []).some(link => 
-        link.modifier_group_id === group.id && link.location_id === currentLocationId
+        link.modifier_group_id === group.id && link.location_id === activeLocationId
       );
     });
 
@@ -206,18 +175,24 @@ export const MenuDataProvider = ({ children }) => {
       modGroups[group.id] = options;
     });
     return modGroups;
-  }, [rawModifierGroups, locationModLinks, currentLocationId]);
+  }, [rawModifierGroups, locationModLinks, activeLocationId]);
 
   // Compute productsByCategory reactively
   const productsByCategory = useMemo(() => {
     const grouped = {};
+
+    // Pre-compute: productos asignados a la sede activa
+    const locStatusForActive = (activeLocationId && activeLocationId !== 'all')
+      ? (locationStatus || []).filter(ls => ls.location_id === activeLocationId)
+      : [];
+    const hasLocProductConfig = locStatusForActive.length > 0;
+
     (rawProducts || []).forEach(product => {
-      // Apply location status override
-      if (currentLocationId) {
-        const locStatus = (locationStatus || []).find(ls => ls.product_id === product.id && ls.location_id === currentLocationId);
-        
-        // NEW STRICT STRATEGY: Whitelist only. 
-        // A product MUST have an entry in location_product_status AND be active to appear.
+      // Apply location product status override (Estrategia Híbrida)
+      if (activeLocationId && activeLocationId !== 'all' && hasLocProductConfig) {
+        // Modo estricto: la sede tiene productos asignados,
+        // solo mostrar los que están explícitamente activos.
+        const locStatus = locStatusForActive.find(ls => ls.product_id === product.id);
         if (!locStatus || locStatus.is_active === false) {
           return;
         }
@@ -227,8 +202,8 @@ export const MenuDataProvider = ({ children }) => {
       
       // Apply location price override
       let finalPrice = product.price;
-      if (currentLocationId) {
-        const locPrice = (locationPrices || []).find(lp => lp.product_id === product.id && lp.location_id === currentLocationId);
+      if (activeLocationId && activeLocationId !== 'all') {
+        const locPrice = (locationPrices || []).find(lp => lp.product_id === product.id && lp.location_id === activeLocationId);
         if (locPrice && locPrice.price !== null) {
           finalPrice = locPrice.price;
         }
@@ -261,24 +236,31 @@ export const MenuDataProvider = ({ children }) => {
       }
     });
     return grouped;
-  }, [rawProducts, locationPrices, locationStatus, currentLocationId]);
+  }, [rawProducts, locationPrices, locationStatus, activeLocationId]);
 
-  // Compute categories reactively (Dayparting + Has Products)
+  // Compute categories reactively (Dayparting + Has Products + Location Filter)
   const categories = useMemo(() => {
+    // Pre-compute: categorías asignadas a la sede activa
+    const locCatsForActive = (activeLocationId && activeLocationId !== 'all')
+      ? (locationCategories || []).filter(lc => lc.location_id === activeLocationId)
+      : [];
+    const hasLocCatConfig = locCatsForActive.length > 0;
+
     return (allCategories || []).filter(cat => {
       // 1. Basic active status
       if (cat.is_active === false) return false;
 
-      // 2. Filter by location (Strict Whitelist + Has Products)
-      if (currentLocationId) {
-        // Must be explicitly linked to location and active
-        const locCat = (locationCategories || []).find(lc => lc.category_id === cat.id && lc.location_id === currentLocationId);
+      // 2. ESTRATEGIA HÍBRIDA de sede:
+      //    Si la sede tiene categorías asignadas → modo estricto (solo esas).
+      //    Si NO tiene ninguna asignación → mostrar todas las de la marca.
+      if (activeLocationId && activeLocationId !== 'all' && hasLocCatConfig) {
+        const locCat = locCatsForActive.find(lc => lc.category_id === cat.id);
         if (!locCat || locCat.is_active === false) return false;
-
-        // Also must have products linked to this location
-        const productsInCat = productsByCategory[cat.slug] || [];
-        if (productsInCat.length === 0) return false;
       }
+
+      // 3. Must have products in this category
+      const productsInCat = productsByCategory[cat.slug] || [];
+      if (productsInCat.length === 0) return false;
 
       // 3. Dayparting logic
       const now = new Date();
@@ -307,7 +289,7 @@ export const MenuDataProvider = ({ children }) => {
       
       return true;
     });
-  }, [allCategories, productsByCategory, currentLocationId]);
+  }, [allCategories, productsByCategory, activeLocationId, locationCategories]);
 
   // Trigger fetch when brand changes (resolved from URL slug or session)
   const lastFetchedBrandRef = React.useRef(null);
@@ -393,13 +375,13 @@ export const MenuDataProvider = ({ children }) => {
     loading,
     activeBrandId,
     currentLocation,
-    currentLocationId,
+    currentLocationId: activeLocationId,
     refetchMenuData: () => fetchMenuData(activeBrandId),
     hasFeature: (key) => planFeatures?.find(f => f.feature_key === key)?.is_included ?? false,
   }), [
     categories, allCategories, productsByCategory, getProductsByCategory, getAllProducts, 
     getModifiers, modifiers, rawModifierGroups, experiences, banners, allergens, 
-    homeSettings, restaurantSettings, brand, planFeatures, locations, loading, activeBrandId, currentLocation, currentLocationId, fetchMenuData
+    homeSettings, restaurantSettings, brand, planFeatures, locations, loading, activeBrandId, currentLocation, activeLocationId, fetchMenuData
   ]);
 
 
@@ -411,3 +393,4 @@ export const MenuDataProvider = ({ children }) => {
 };
 
 export const useMenuData = () => useContext(MenuDataContext);
+

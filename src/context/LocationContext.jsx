@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation as useRouterLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { useLocations as useLocationsHook } from '../hooks/useLocations';
 
@@ -7,77 +8,76 @@ const LocationContext = createContext({});
 export const LocationProvider = ({ children }) => {
   const { activeBrand } = useAuth();
   const { locations, loading: locationsLoading } = useLocationsHook();
+  const routerLocation = useRouterLocation();
   
   // Helper to get location from URL
-  const getUrlLocationId = () => {
+  const getUrlLocationId = useCallback(() => {
     const params = new URLSearchParams(window.location.search);
-    // Support both location_id and sede_id as aliases
-    return params.get('location_id') || params.get('sede_id') || null;
-  };
+    // Support 'loc' used in QR links and 'location_id' used in admin/other links
+    return params.get('loc') || params.get('location_id') || params.get('sede_id') || null;
+  }, []);
 
   // State for the active location ID (either a UUID or 'all')
   const [activeLocationId, setActiveLocationId] = useState(() => {
-    // 1. Check URL first (Priority)
-    const urlLoc = getUrlLocationId();
+    // 1. Check URL first (Highest Priority for QR/Direct links)
+    const urlLoc = new URLSearchParams(window.location.search).get('loc') || 
+                   new URLSearchParams(window.location.search).get('location_id');
     if (urlLoc) return urlLoc;
 
-    // 2. Check LocalStorage
-    if (!activeBrand) return 'all';
-    return localStorage.getItem(`aa_active_loc_${activeBrand.id}`) || 'all';
+    // 2. Check SessionStorage (Session priority, like from Waiter view)
+    const sessionLoc = sessionStorage.getItem("aa_current_location_id");
+    if (sessionLoc) return sessionLoc;
+
+    // 3. Check LocalStorage (User preference)
+    if (activeBrand) {
+      return localStorage.getItem(`aa_active_loc_${activeBrand.id}`) || 'all';
+    }
+    
+    return 'all';
   });
 
-  // Sync state when activeBrand changes or URL changes
+  // Sync state with URL and Storage
   useEffect(() => {
     const urlLoc = getUrlLocationId();
-    if (urlLoc) {
+    
+    if (urlLoc && urlLoc !== activeLocationId) {
       setActiveLocationId(urlLoc);
+      sessionStorage.setItem("aa_current_location_id", urlLoc);
       if (activeBrand) {
         localStorage.setItem(`aa_active_loc_${activeBrand.id}`, urlLoc);
       }
-      return;
-    }
-
-    if (activeBrand) {
+    } else if (!urlLoc && activeBrand) {
+      // If no URL param, but we have a brand, check if we need to restore from storage
       const stored = localStorage.getItem(`aa_active_loc_${activeBrand.id}`);
-      setActiveLocationId(stored || 'all');
-    } else {
-      setActiveLocationId('all');
-    }
-  }, [activeBrand]);
-
-  // Handle URL parameter changes specifically
-  useEffect(() => {
-    const handleUrlChange = () => {
-      const urlLoc = getUrlLocationId();
-      if (urlLoc && urlLoc !== activeLocationId) {
-        setActiveLocationId(urlLoc);
-        if (activeBrand) {
-          localStorage.setItem(`aa_active_loc_${activeBrand.id}`, urlLoc);
-        }
+      const session = sessionStorage.getItem("aa_current_location_id");
+      const target = session || stored || 'all';
+      
+      if (target !== activeLocationId) {
+        setActiveLocationId(target);
       }
-    };
+    }
+  }, [activeBrand, getUrlLocationId, routerLocation.search, routerLocation.hash]);
 
-    window.addEventListener('popstate', handleUrlChange);
-    // Also check on hash changes as some navigations might happen there
-    window.addEventListener('hashchange', handleUrlChange);
-    
-    return () => {
-      window.removeEventListener('popstate', handleUrlChange);
-      window.removeEventListener('hashchange', handleUrlChange);
-    };
-  }, [activeBrand, activeLocationId]);
-
+  // Handle manual location switching
   const switchLocation = useCallback((id) => {
     setActiveLocationId(id);
+    
+    // Update Storages
+    if (id === 'all') {
+      sessionStorage.removeItem("aa_current_location_id");
+    } else {
+      sessionStorage.setItem("aa_current_location_id", id);
+    }
+
     if (activeBrand) {
       localStorage.setItem(`aa_active_loc_${activeBrand.id}`, id);
     }
 
-    // Sync with URL
+    // Update URL to keep it in sync
     const params = new URLSearchParams(window.location.search);
     if (id === 'all') {
       params.delete('location_id');
-      params.delete('sede_id');
+      params.delete('loc');
     } else {
       params.set('location_id', id);
     }
@@ -86,13 +86,24 @@ export const LocationProvider = ({ children }) => {
     window.history.replaceState(null, '', newPath);
   }, [activeBrand]);
 
+  // Listen for storage changes (e.g. if another tab or component updates storage)
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === "aa_current_location_id" && e.newValue !== activeLocationId) {
+        setActiveLocationId(e.newValue || 'all');
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [activeLocationId]);
+
   // Derive the active location object
   const activeLocation = useMemo(() => {
-    if (activeLocationId === 'all') return null;
+    if (!activeLocationId || activeLocationId === 'all') return null;
     return locations.find(loc => loc.id === activeLocationId) || null;
   }, [activeLocationId, locations]);
 
-  // Loading state (only true if we are waiting for initial locations)
+  // Loading state
   const loading = activeBrand ? locationsLoading : false;
 
   const value = {
@@ -119,5 +130,5 @@ export const useLocation = () => {
   return context;
 };
 
-// Alias to support plural naming used in standard admin pages
 export const useLocations = useLocation;
+
