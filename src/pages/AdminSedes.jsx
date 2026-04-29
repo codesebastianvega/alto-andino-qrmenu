@@ -5,9 +5,10 @@ import { useLocations } from '../hooks/useLocations';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useLocationPayments } from '../hooks/useLocationPayments';
 import { toast as toastFn } from '../components/Toast';
-import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton } from '../components/admin/ui';
+import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton, Modal, ModalHeader } from '../components/admin/ui';
 import { Icon } from '@iconify/react';
-import { Loader2, MapPin, Phone, Building2, ExternalLink, Trash2 } from 'lucide-react';
+import { Loader2, MapPin, Phone, Building2, ExternalLink, Trash2, QrCode } from 'lucide-react';
+import QRCode from "react-qr-code";
 
 const toast = {
   success: (msg, opts) => toastFn.success(msg, { duration: 2500, ...opts }),
@@ -15,11 +16,12 @@ const toast = {
 };
 
 export default function AdminSedes({ isEmbedded = false }) {
-  const { isFeatureLocked } = useAuth();
+  const { isFeatureLocked, activeBrand } = useAuth();
   const { locations, loading, createLocation, updateLocation, deleteLocation } = useLocations();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
+  const [qrLocation, setQrLocation] = useState(null);
 
   // Global brand payment methods
   const { paymentMethods: brandPaymentMethods } = usePaymentMethods();
@@ -114,6 +116,38 @@ export default function AdminSedes({ isEmbedded = false }) {
       console.error(err);
       toast.error('No se pudo eliminar la sede');
     }
+  };
+
+  const getLocationUrl = (location) => {
+    const slug = activeBrand?.slug;
+    const baseUrl = window.location.origin;
+    return slug ? `${baseUrl}/${slug}/?loc=${location.id}` : `${baseUrl}?loc=${location.id}`;
+  };
+
+  const handleCopyLocationUrl = (location) => {
+    navigator.clipboard.writeText(getLocationUrl(location));
+    toast.success('Enlace de la sede copiado al portapapeles');
+  };
+
+  const handleDownloadLocationQr = () => {
+    const svg = document.getElementById(`qr-code-location-${qrLocation.id}`);
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width + 40; // Add padding
+      canvas.height = img.height + 40;
+      ctx.fillStyle = "white"; // White background
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 20, 20); // Draw image with 20px offset for padding
+      const pngFile = canvas.toDataURL("image/png");
+      const downloadLink = document.createElement("a");
+      downloadLink.download = `QR_Sede_${qrLocation.name.replace(/\s+/g, '_')}.png`;
+      downloadLink.href = pngFile;
+      downloadLink.click();
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
   };
 
   const isMultiLocationLocked = isFeatureLocked('multi_location');
@@ -251,16 +285,27 @@ export default function AdminSedes({ isEmbedded = false }) {
                   </button>
                </div>
 
-               {loc.maps_url && (
-                  <a 
-                    href={loc.maps_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="w-11 h-11 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-500 hover:text-white hover:scale-110 active:scale-90 transition-all shadow-lg shadow-emerald-100/50"
-                  >
-                    <ExternalLink size={18} />
-                  </a>
-               )}
+               <div className="flex gap-2">
+                 <button 
+                    onClick={() => setQrLocation(loc)} 
+                    className="w-11 h-11 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-500 hover:text-white hover:scale-110 active:scale-90 transition-all shadow-lg shadow-indigo-100/50"
+                    title="Generar QR de la Sede"
+                 >
+                    <QrCode size={18} />
+                 </button>
+
+                 {loc.maps_url && (
+                    <a 
+                      href={loc.maps_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="w-11 h-11 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-500 hover:text-white hover:scale-110 active:scale-90 transition-all shadow-lg shadow-emerald-100/50"
+                      title="Abrir en Google Maps"
+                    >
+                      <ExternalLink size={18} />
+                    </a>
+                 )}
+               </div>
             </div>
           </div>
         ))}
@@ -590,6 +635,42 @@ export default function AdminSedes({ isEmbedded = false }) {
            </div>
         </div>,
         document.body
+      )}
+
+      {qrLocation && (
+        <Modal onClose={() => setQrLocation(null)}>
+          <ModalHeader 
+            title={`Código QR - ${qrLocation.name}`}
+            subtitle="Los clientes pueden escanear este código para acceder al menú de esta sede."
+            onClose={() => setQrLocation(null)} 
+          />
+          <div className="p-8 flex flex-col items-center justify-center">
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
+              <QRCode 
+                id={`qr-code-location-${qrLocation.id}`}
+                value={getLocationUrl(qrLocation)} 
+                size={220}
+                level="H"
+                className="w-full h-auto"
+              />
+            </div>
+            
+            <div className="flex flex-col gap-3 w-full max-w-sm">
+              <PrimaryButton onClick={handleDownloadLocationQr} className="w-full justify-center">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Descargar QR (PNG)
+              </PrimaryButton>
+              <SecondaryButton onClick={() => handleCopyLocationUrl(qrLocation)} className="w-full justify-center">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                Copiar Enlace Directo
+              </SecondaryButton>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );
