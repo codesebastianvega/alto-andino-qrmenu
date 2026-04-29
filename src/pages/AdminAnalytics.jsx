@@ -304,6 +304,8 @@ export default function AdminAnalytics() {
         prevStart = new Date(0);
       }
       const filterObj = !isAllLocations && activeLocationId ? { location_id: activeLocationId } : {};
+      console.log('AdminAnalytics Debug - filterObj:', filterObj);
+      console.log('AdminAnalytics Debug - Date Range:', { start, prevStart, prevEnd });
 
       const results = await Promise.allSettled([
         // 0. Current Period Orders
@@ -378,6 +380,10 @@ export default function AdminAnalytics() {
         r.status === 'fulfilled' ? r.value : { data: [], error: r.reason }
       );
 
+      console.log('AdminAnalytics Debug - Raw Results:', {
+        ordersRes, leadsRes, eventsRes, prevOrdersRes, prevLeadsRes, prevEventsRes, pmRes, productsRes, paymentsRes
+      });
+
       setData({
         orders: ordersRes.data || [],
         leads: leadsRes.data || [],
@@ -385,6 +391,20 @@ export default function AdminAnalytics() {
         paymentMethods: pmRes.data || [],
         payments: paymentsRes.data || []
       });
+
+      console.log('AdminAnalytics Debug - Fetch Results:', {
+        orders: ordersRes.data?.length,
+        leads: leadsRes.data?.length,
+        events: eventsRes.data?.length,
+        payments: paymentsRes.data?.length,
+        activeBrandId,
+        activeLocationId,
+        isAllLocations
+      });
+
+      if (ordersRes.error) console.error('AdminAnalytics Error - Orders Query:', ordersRes.error);
+      if (leadsRes.error) console.error('AdminAnalytics Error - Leads Query:', leadsRes.error);
+      if (eventsRes.error) console.error('AdminAnalytics Error - Events Query:', eventsRes.error);
 
       setAllProducts(productsRes.data || []);
 
@@ -431,6 +451,16 @@ export default function AdminAnalytics() {
           revPash: revPashRes.data || [],
           cohorts: cohortsRes.data || {}
         });
+
+        console.log('AdminAnalytics Debug - Advanced Data:', {
+          forecasting: !!forecastingRes.data,
+          revPash: revPashRes.data?.length,
+          cohorts: Object.keys(cohortsRes.data || {}).length
+        });
+
+        if (forecastingRes.error) console.error('AdminAnalytics Error - Forecasting RPC:', forecastingRes.error);
+        if (revPashRes.error) console.error('AdminAnalytics Error - RevPASH RPC:', revPashRes.error);
+        if (cohortsRes.error) console.error('AdminAnalytics Error - Cohorts RPC:', cohortsRes.error);
 
         const totalOrders = (ordersRes.data || []).length;
         const identifiedOrders = (ordersRes.data || []).filter(o => o.customer_phone && o.customer_phone !== '').length;
@@ -564,6 +594,14 @@ export default function AdminAnalytics() {
       const delivered = orders.filter(o => o.status === 'delivered');
       const cancelled = orders.filter(o => o.status === 'cancelled');
       
+      console.log('AdminAnalytics Debug - calc scope:', {
+        ordersCount: orders.length,
+        deliveredCount: delivered.length,
+        cancelledCount: cancelled.length,
+        statusSample: orders.length > 0 ? orders[0].status : 'no orders',
+        sampleOrder: delivered.length > 0 ? delivered[0] : null
+      });
+      
       let revenue = 0;
       let cost = 0;
       let discount = 0;
@@ -610,6 +648,15 @@ export default function AdminAnalytics() {
 
     const current = calc(currentOrders, currentLeads);
     const prev = calc(prevOrders, prevLeads);
+
+    console.log('AdminAnalytics Debug - biStats:', {
+      currentOrders: currentOrders.length,
+      currentDelivered: currentOrders.filter(o => o.status === 'delivered').length,
+      currentRevenue: current.revenue,
+      prevOrders: prevOrders.length,
+      prevDelivered: prevOrders.filter(o => o.status === 'delivered').length,
+      prevRevenue: prev.revenue
+    });
 
     const getDiff = (curr, old) => {
       if (!old || old === 0) return curr > 0 ? 100 : 0;
