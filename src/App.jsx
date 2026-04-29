@@ -182,6 +182,12 @@ export default function App() {
     if (mesa) {
       sessionStorage.setItem("aa_current_mesa", mesa);
     }
+
+    // Capture fulfillment flow from smart links
+    const flow = params.get("flow") || params.get("type");
+    if (flow) {
+      sessionStorage.setItem("aa_fulfillment_flow", flow);
+    }
   }, []);
 
 
@@ -262,10 +268,16 @@ export default function App() {
     setHasDismissedCustomerModal(true);
   };
 
-  const handleStartExperience = () => {
+  const handleStartExperience = (flow) => {
     // Guardar timestamp en localStorage para no volver a mostrar en 24h
     const key = `aluna_welcome_${activeBrand?.slug || brand_slug}`;
     localStorage.setItem(key, String(Date.now()));
+    
+    // Guardar el flujo seleccionado (dine_in, takeaway, delivery)
+    if (flow) {
+      sessionStorage.setItem("aa_fulfillment_flow", flow);
+    }
+    
     setShowWelcome(false);
   };
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Utensils, ArrowRight, Sparkles } from 'lucide-react';
+import { Utensils, ArrowRight, Sparkles, ShoppingBag, Truck } from 'lucide-react';
 
 export default function BrandWelcome({ brandName, logoUrl, bgUrl, mesa, onStart }) {
   return (
@@ -70,24 +70,80 @@ export default function BrandWelcome({ brandName, logoUrl, bgUrl, mesa, onStart 
         </motion.div>
 
         {/* Action & Footer (Bottom) */}
-        <div className="w-full flex flex-col items-center gap-12 md:gap-16">
-          <motion.button
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ delay: 1.2, duration: 0.5 }}
-            onClick={onStart}
-            className="group relative w-full md:w-96 py-4 md:py-5 bg-white rounded-full flex items-center justify-center gap-3 shadow-2xl transition-all hover:bg-[#fafafa]"
-          >
-            <span className="text-[#1A1A1A] font-bold text-sm md:text-base tracking-wider">
-              ABRIR MENÚ
-            </span>
-            <ArrowRight className="text-[#1A1A1A] w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            
-            {/* Subtle Glow Effect */}
-            <div className="absolute inset-0 rounded-full bg-white/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity -z-10" />
-          </motion.button>
+        <div className="w-full flex flex-col items-center gap-6 md:gap-10">
+          {!mesa ? (
+            <div className="flex flex-col gap-3 w-full md:w-96">
+              <motion.button
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ delay: 1.0, duration: 0.5 }}
+                onClick={() => onStart('dine_in')}
+                className="group relative w-full py-4 bg-white rounded-2xl flex items-center justify-between px-6 shadow-xl transition-all hover:bg-[#fafafa]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#E6B05C]/10 flex items-center justify-center">
+                    <Utensils size={16} className="text-[#E6B05C]" />
+                  </div>
+                  <span className="text-[#1A1A1A] font-bold text-sm tracking-wide">PEDIR EN MESA</span>
+                </div>
+                <ArrowRight size={16} className="text-neutral-300 group-hover:translate-x-1 transition-transform" />
+              </motion.button>
+
+              <motion.button
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ delay: 1.2, duration: 0.5 }}
+                onClick={() => onStart('takeaway')}
+                className="group relative w-full py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl flex items-center justify-between px-6 shadow-xl transition-all hover:bg-white/20"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                    <ShoppingBag size={16} className="text-white" />
+                  </div>
+                  <span className="text-white font-bold text-sm tracking-wide">PARA LLEVAR</span>
+                </div>
+                <ArrowRight size={16} className="text-white/30 group-hover:translate-x-1 transition-transform" />
+              </motion.button>
+
+              <motion.button
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ delay: 1.4, duration: 0.5 }}
+                onClick={() => onStart('delivery')}
+                className="group relative w-full py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl flex items-center justify-between px-6 shadow-xl transition-all hover:bg-white/20"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                    <Truck size={16} className="text-white" />
+                  </div>
+                  <span className="text-white font-bold text-sm tracking-wide">DOMICILIO</span>
+                </div>
+                <ArrowRight size={16} className="text-white/30 group-hover:translate-x-1 transition-transform" />
+              </motion.button>
+            </div>
+          ) : (
+            <motion.button
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ delay: 1.2, duration: 0.5 }}
+              onClick={() => onStart('dine_in')}
+              className="group relative w-full md:w-96 py-4 md:py-5 bg-white rounded-full flex items-center justify-center gap-3 shadow-2xl transition-all hover:bg-[#fafafa]"
+            >
+              <span className="text-[#1A1A1A] font-bold text-sm md:text-base tracking-wider">
+                ABRIR MENÚ
+              </span>
+              <ArrowRight className="text-[#1A1A1A] w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              <div className="absolute inset-0 rounded-full bg-white/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity -z-10" />
+            </motion.button>
+          )}
 
           <motion.p
             initial={{ opacity: 0 }}
@@ -99,6 +155,7 @@ export default function BrandWelcome({ brandName, logoUrl, bgUrl, mesa, onStart 
           </motion.p>
         </div>
       </div>
+
 
       {/* Side Decoration */}
       <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-black to-transparent pointer-events-none" />

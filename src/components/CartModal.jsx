@@ -126,15 +126,15 @@ export default function CartModal({ open, onClose }) {
   } = cart;
 
   const { brandSlug } = useParams();
-  const { getAllProducts, hasFeature, activeBrandId } = useMenuData();
+  const { getAllProducts, hasFeature, activeBrandId, currentLocation: contextLocation, locations } = useMenuData();
   const { paymentMethods, loading: loadingPayments } = usePaymentMethods(activeBrandId);
   
   // Localized Settings & Payments
   const [currentLocationId, setCurrentLocationId] = useState(null);
-  const [currentLocation, setCurrentLocation] = useState(null);
+  const [localLocation, setLocalLocation] = useState(null);
   const { locationPayments, loading: loadingLocPayments } = useLocationPayments(currentLocationId);
 
-  const { locations } = useMenuData();
+  const currentLocation = localLocation || contextLocation;
   const mesa = getTable();
 
   // Resolve Location from Table
@@ -152,7 +152,7 @@ export default function CartModal({ open, onClose }) {
         if (tableData?.location_id) {
           setCurrentLocationId(tableData.location_id);
           const loc = locations.find(l => l.id === tableData.location_id);
-          if (loc) setCurrentLocation(loc);
+          if (loc) setLocalLocation(loc);
         }
       } catch (err) {
         console.error("Error resolving location:", err);
@@ -193,7 +193,10 @@ export default function CartModal({ open, onClose }) {
 
   // Fulfillment states
   const initialMesa = getTable();
-  const [fulfillmentType, setFulfillmentType] = useState(initialMesa ? 'dine_in' : 'takeaway');
+  const flowFromSession = sessionStorage.getItem("aa_fulfillment_flow");
+  const [fulfillmentType, setFulfillmentType] = useState(
+    initialMesa ? 'dine_in' : (flowFromSession || 'takeaway')
+  );
   const [scheduledTime, setScheduledTime] = useState("");
   const isPOSMode = sessionStorage.getItem("aa_pos_mode") === "true";
   const manualType = sessionStorage.getItem("aa_manual_type");
@@ -212,10 +215,14 @@ export default function CartModal({ open, onClose }) {
 
   // Si estamos en POS y es manual (Takeaway/Delivery), forzamos el tipo
   useEffect(() => {
+    const flowFromSession = sessionStorage.getItem("aa_fulfillment_flow");
+
     if (isPOSMode && manualType) {
       setFulfillmentType(manualType);
     } else if (initialMesa) {
       setFulfillmentType('dine_in');
+    } else if (flowFromSession) {
+      setFulfillmentType(flowFromSession);
     }
 
     // Load customer from session if set by Admin (Waiter)
@@ -653,6 +660,49 @@ export default function CartModal({ open, onClose }) {
           <div className="flex-1 overflow-hidden flex flex-col md:flex-row relative">
             {/* Left Column (Items) */}
             <div className="flex-1 overflow-y-auto bg-neutral-50/50 sm:bg-white relative flex flex-col">
+              
+              {/* Fulfillment Type Selector (Only if not in POS mode or if allowed) */}
+              {!isPOSMode && items.length > 0 && (
+                <div className="px-4 pt-4 sm:px-6">
+                  <div className="flex p-1 bg-neutral-100 rounded-xl mb-4">
+                    {[
+                      { id: 'dine_in', label: 'En mesa', icon: 'heroicons:utensils' },
+                      { id: 'takeaway', label: 'Llevar', icon: 'heroicons:shopping-bag' },
+                      { id: 'delivery', label: 'Domicilio', icon: 'heroicons:truck' }
+                    ].map((type) => (
+                      <button
+                        key={type.id}
+                        onClick={() => setFulfillmentType(type.id)}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-lg transition-all ${
+                          fulfillmentType === type.id 
+                            ? 'bg-white text-neutral-900 shadow-sm ring-1 ring-black/5' 
+                            : 'text-neutral-500 hover:text-neutral-700'
+                        }`}
+                      >
+                        <Icon icon={type.icon} className="text-lg" />
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Delivery Radius Information */}
+                  {fulfillmentType === 'delivery' && currentLocation?.delivery_radius_km && (
+                    <div className="mb-4 bg-[#cba258]/10 border border-[#cba258]/20 rounded-xl p-3 flex items-start gap-3">
+                      <div className="bg-[#cba258] p-1.5 rounded-lg flex-shrink-0">
+                        <Icon icon="heroicons:information-circle" className="text-white text-lg" />
+                      </div>
+                      <div>
+                        <p className="text-[13px] text-[#8a6d3b] font-bold leading-snug">
+                          Cobertura de Domicilios
+                        </p>
+                        <p className="text-xs text-[#8a6d3b]/80 font-medium mt-0.5">
+                          Estamos entregando en un radio de <span className="font-bold text-[#8a6d3b]">{currentLocation.delivery_radius_km}km</span> desde esta sede.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             {items.length ? (
               <div className="flex flex-col">
                 {items.map((it, idx) => {
