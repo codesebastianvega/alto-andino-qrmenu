@@ -4,6 +4,7 @@ import AdminSedes from './AdminSedes';
 import AdminPaymentMethods from './AdminPaymentMethods';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useLocations } from '../context/LocationContext';
 import { toast as toastFn } from '../components/Toast';
 import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton } from '../components/admin/ui';
 import { Icon } from '@iconify/react';
@@ -16,6 +17,7 @@ const toast = {
 
 export default function AdminSettings() {
   const { isFeatureLocked, activePlan, activeBrand } = useAuth();
+  const { activeLocationId, isAllLocations } = useLocations();
   const [activeTab, setActiveTab] = useState('general');
   const [settings, setSettings] = useState(null);
   const [loadingSettings, setLoadingSettings] = useState(false);
@@ -40,20 +42,27 @@ export default function AdminSettings() {
       fetchSettings();
       fetchHours();
     }
-  }, [activeBrand?.id]);
+  }, [activeBrand?.id, activeLocationId, isAllLocations]);
 
   const fetchSettings = async () => {
     if (!activeBrand?.id) return;
     setLoadingSettings(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('restaurant_settings')
         .select('*')
-        .eq('brand_id', activeBrand.id)
-        .limit(1)
-        .single();
+        .eq('brand_id', activeBrand.id);
+
+      if (!isAllLocations && activeLocationId) {
+        query = query.eq('location_id', activeLocationId);
+      } else {
+        query = query.is('location_id', null);
+      }
+
+      const { data, error } = await query.limit(1).single();
       
       if (error && error.code !== 'PGRST116') throw error;
+      
       if (data) {
         setSettings(data);
         setSettingsForm({
@@ -65,6 +74,18 @@ export default function AdminSettings() {
           target_prep_time_mins: data.target_prep_time_mins ?? 15,
           inactivity_threshold_mins: data.inactivity_threshold_mins ?? 30,
           hide_sales_from_staff: data.hide_sales_from_staff ?? false,
+        });
+      } else {
+        setSettings(null);
+        setSettingsForm({
+          whatsapp_number_orders: '',
+          is_service_fee_enabled: false,
+          service_fee_percentage: 10,
+          pay_before_service: false,
+          payment_requirement_stage: 'none',
+          target_prep_time_mins: 15,
+          inactivity_threshold_mins: 30,
+          hide_sales_from_staff: false
         });
       }
     } catch (err) {
@@ -79,13 +100,30 @@ export default function AdminSettings() {
     if (!activeBrand?.id) return;
     setLoadingHours(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('business_hours')
         .select('*')
-        .eq('brand_id', activeBrand.id)
-        .order('day_of_week', { ascending: true });
+        .eq('brand_id', activeBrand.id);
+
+      if (!isAllLocations && activeLocationId) {
+        query = query.eq('location_id', activeLocationId);
+      } else {
+        query = query.is('location_id', null);
+      }
+
+      const { data, error } = await query.order('day_of_week', { ascending: true });
       if (error) throw error;
-      setHours(data || []);
+      
+      let loadedHours = data || [];
+      if (loadedHours.length === 0) {
+        loadedHours = Array.from({ length: 7 }, (_, i) => ({
+          day_of_week: i,
+          open_time: '08:00',
+          close_time: '22:00',
+          is_closed: false
+        }));
+      }
+      setHours(loadedHours);
     } catch (err) {
       console.error(err);
       toast.error('Error al cargar horarios');
@@ -100,6 +138,7 @@ export default function AdminSettings() {
     try {
       const payload = {
         brand_id: activeBrand.id,
+        ...(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : { location_id: null }),
         whatsapp_number_orders: settingsForm.whatsapp_number_orders,
         is_service_fee_enabled: settingsForm.is_service_fee_enabled,
         service_fee_percentage: settingsForm.service_fee_percentage,
@@ -111,9 +150,19 @@ export default function AdminSettings() {
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase
-        .from('restaurant_settings')
-        .upsert(payload, { onConflict: 'brand_id' });
+      let error;
+      if (settings?.id) {
+        const { error: updateErr } = await supabase
+          .from('restaurant_settings')
+          .update(payload)
+          .eq('id', settings.id);
+        error = updateErr;
+      } else {
+        const { error: insertErr } = await supabase
+          .from('restaurant_settings')
+          .insert([payload]);
+        error = insertErr;
+      }
 
       if (error) throw error;
       
@@ -136,20 +185,37 @@ export default function AdminSettings() {
   const handleSaveHours = async () => {
     setIsSubmittingHours(true);
     try {
-      const { error } = await supabase.from('business_hours').upsert(
-        hours.map(h => ({
-          id: h.id, // Include ID for existing rows
+      const toUpdate = [];
+      const toInsert = [];
+
+      hours.forEach(h => {
+        const payload = {
           brand_id: activeBrand.id,
+          ...(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : { location_id: null }),
           day_of_week: h.day_of_week,
           open_time: h.open_time,
           close_time: h.close_time,
           is_closed: h.is_closed,
-          updated_at: new Date()
-        })),
-        { onConflict: 'brand_id, day_of_week' }
-      );
-      if (error) throw error;
+          updated_at: new Date().toISOString()
+        };
+        if (h.id) {
+          toUpdate.push({ ...payload, id: h.id });
+        } else {
+          toInsert.push(payload);
+        }
+      });
+
+      if (toInsert.length > 0) {
+        const { error } = await supabase.from('business_hours').insert(toInsert);
+        if (error) throw error;
+      }
+      if (toUpdate.length > 0) {
+        const { error } = await supabase.from('business_hours').upsert(toUpdate, { onConflict: 'id' });
+        if (error) throw error;
+      }
+
       toast.success('Horarios actualizados');
+      fetchHours();
     } catch (err) {
       console.error(err);
       toast.error('Error guardando horarios');
@@ -197,9 +263,9 @@ export default function AdminSettings() {
         </div>
 
         {/* ── Floating Tab Navigation (Vision OS Style) */}
-        <div className="sticky top-6 z-[40] animate-fadeUp" style={{ animationDelay: '100ms' }}>
-          <div className="flex items-center justify-center">
-            <div className="glass-glow bg-white/80 backdrop-blur-2xl p-1.5 rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50 flex items-center gap-1 min-w-fit">
+        <div className="relative z-10 animate-fadeUp w-full" style={{ animationDelay: '100ms' }}>
+          <div className="overflow-x-auto no-scrollbar pb-2 -mb-2 w-full">
+            <div className="flex w-max mx-auto bg-white/80 backdrop-blur-2xl p-1.5 rounded-[2rem] border border-white/60 shadow-xl shadow-gray-200/30 gap-1 glass-glow">
               {TABS.map((tab) => {
                 const isLocked = tab.feature && isFeatureLocked(tab.feature);
                 const isActive = activeTab === tab.id;
@@ -490,7 +556,7 @@ export default function AdminSettings() {
                         const isClosed = h.is_closed;
                         return (
                           <div key={h.day_of_week} 
-                            className={`flex items-center justify-between p-4 rounded-2xl border transition-all group ${
+                            className={`flex flex-col xl:flex-row items-start xl:items-center justify-between p-4 rounded-2xl border transition-all gap-4 group ${
                               isClosed 
                                 ? 'bg-gray-50/50 border-gray-100 opacity-60 grayscale' 
                                 : 'bg-white border-gray-100 hover:border-indigo-100 hover:shadow-sm'
@@ -521,7 +587,7 @@ export default function AdminSettings() {
 
                             <button 
                               onClick={() => handleUpdateHour(index, 'is_closed', !isClosed)}
-                              className={`px-4 py-2 rounded-xl border text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${
+                              className={`w-full xl:w-auto justify-center px-4 py-2 rounded-xl border text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${
                                 isClosed 
                                   ? 'bg-rose-50 border-rose-100 text-rose-500 shadow-rose-50/50' 
                                   : 'bg-emerald-50 border-emerald-100 text-emerald-600 shadow-emerald-50/50'
