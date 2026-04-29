@@ -504,8 +504,8 @@ export default function AdminRecipes() {
                 </div>
 
                 <div className="space-y-2 mb-8 flex-1">
-                  {ingredients.slice(0, 3).map(ri => (
-                    <div key={ri.id} className="flex justify-between items-center bg-gray-50/50 group-hover:bg-white border border-transparent group-hover:border-gray-100 rounded-xl px-3 py-2 transition-all shrink-0">
+                  {ingredients.slice(0, 3).map((ri, index) => (
+                    <div key={ri.ingredient_id || index} className="flex justify-between items-center bg-gray-50/50 group-hover:bg-white border border-transparent group-hover:border-gray-100 rounded-xl px-3 py-2 transition-all shrink-0">
                       <span className="text-[12px] text-gray-600 font-bold truncate max-w-[120px]">{ri.ingredients?.name}</span>
                       <span className="text-[10px] text-gray-400 font-black tabular-nums">×{ri.quantity}</span>
                     </div>
