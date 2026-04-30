@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify-icon/react';
 import { useExperiences } from '../hooks/useExperiences';
+import { useAuth } from '../context/AuthContext';
 
 const TYPE_LABELS = {
   event: { label: 'Evento', icon: 'heroicons:sparkles', color: 'text-purple-600 bg-purple-50' },
@@ -16,12 +17,28 @@ const EMPTY_FORM = {
   price: '', capacity: 10, duration_minutes: 60, image_url: '',
   includes: [], location: '', is_active: true, dates: [],
 };
-
 export default function AdminExperiences() {
+  const { isFeatureLocked } = useAuth();
   const {
     experiences, loading, createExperience, updateExperience, deleteExperience, toggleActive,
     fetchBookings, fetchAllBookings, updateBooking,
   } = useExperiences();
+
+  if (isFeatureLocked('experiences')) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-12 text-center">
+        <div className="max-w-md">
+          <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Icon icon="heroicons:lock-closed" className="w-8 h-8 text-amber-500" />
+          </div>
+          <h2 className="text-xl font-bold text-zinc-900 mb-2">Módulo Restringido</h2>
+          <p className="text-zinc-500">
+            Tu plan actual no incluye el módulo de Experiencias. Por favor, contacta a soporte o actualiza tu plan para acceder.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const [activeTab, setActiveTab] = useState('experiencias'); // 'experiencias' | 'leads'
   const [allLeads, setAllLeads] = useState([]);

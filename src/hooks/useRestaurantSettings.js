@@ -21,8 +21,7 @@ export const useRestaurantSettings = () => {
         }
 
         const { data, error } = await query
-          .limit(1)
-          .single();
+          .maybeSingle();
 
         if (error && error.code !== 'PGRST116') throw error;
         setSettings(data || {});

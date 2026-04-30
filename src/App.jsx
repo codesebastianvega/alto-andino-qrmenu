@@ -55,7 +55,7 @@ const OrderStatus = lazy(() => import("./pages/OrderStatus"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const AlunaLanding = lazy(() => import("./pages/AlunaLanding"));
 const ExperiencesPage = lazy(() => import("./pages/ExperiencesPage"));
-const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+// const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const AdminOnboarding = lazy(() => import("./pages/AdminOnboarding"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/auth/RegisterPage"));
@@ -122,7 +122,6 @@ export default function App() {
   const isSpecialPlatformView = 
     currentHash.startsWith('#portal') || 
     currentHash === '#experiencias' || 
-    currentHash === '#perfil' || 
     currentHash === '#login' || 
     currentHash === '#registro';
 
@@ -429,11 +428,12 @@ export default function App() {
           </Suspense>
         )}
 
-        {currentHash === '#perfil' && (
+        {/* Profile page hidden for MVP */}
+        {/* currentHash === '#perfil' && (
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
             <ProfilePage />
           </Suspense>
-        )}
+        ) */}
 
         {currentHash === '#login' && (
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>

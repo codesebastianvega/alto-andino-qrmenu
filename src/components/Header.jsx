@@ -33,14 +33,12 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
     { id: 'inicio', label: 'Inicio', hash: '#inicio' },
     { id: 'menu', label: 'Menú', hash: '#menu' },
     { id: 'experiencias', label: 'Experiencias', hash: '#experiencias' },
-    { id: 'perfil', label: 'Perfil', hash: '#perfil' },
   ];
 
   // Determine which tab is active
   const getActiveTab = () => {
     if (currentHash === '#menu') return 'menu';
     if (currentHash === '#experiencias') return 'experiencias';
-    if (currentHash === '#perfil') return 'perfil';
     if (!currentHash || currentHash === '' || currentHash === '#' || currentHash === '#inicio') return 'inicio';
     return 'inicio';
   };
@@ -155,20 +153,7 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
             )}
           </button>
 
-          {/* Sign in / Profile */}
-          <a
-            href="#perfil"
-            className={`hidden sm:flex items-center gap-2 pl-2.5 pr-4 py-1.5 rounded-full transition-all text-xs font-bold ${
-              activeTabId === 'perfil'
-                ? 'bg-brand-primary text-white shadow-md'
-                : 'bg-brand-primary text-white hover:opacity-90 shadow-sm'
-            }`}
-          >
-            <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
-              <User size={10} className="text-white" />
-            </div>
-            <span>Mi Cuenta</span>
-          </a>
+
         </div>
       </nav>
     </>

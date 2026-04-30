@@ -60,9 +60,9 @@
 - [x] **4.3 QR Generator por Sede:** Lógica para generar códigos QR que apunten a la URL de la marca con el parámetro de sede pre-cargado.
 - [x] **4.4 Independencia Operativa:** Refactor de `business_hours` para soportar horarios específicos por cada sede física.
 - [x] **4.5 Finanzas Segmentadas:** Permitir configuración de métodos de pago (Nequi, Daviplata, etc) independientes por sede.
-- [ ] **4.6 Logística Local (Geofencing):** Definición de radio de entrega (km) por sede para el control de domicilios.
-- [ ] **4.7 Live Pulse Dashboard:** Indicadores de ocupación (mesas) y carga (cocina) visibles en la tarjeta de cada sede.
-- [ ] **4.8 Simulador de Roles (Dev Mode):** Herramienta para testing rápido de permisos entre Owner, Admin, Mesero y Cocina.
+- [ ] **4.6 Logística Local (Geofencing) [POST-MVP]:** Definición de radio de entrega (km) por sede para el control de domicilios.
+- [ ] **4.7 Live Pulse Dashboard [POST-MVP]:** Indicadores de ocupación (mesas) y carga (cocina) visibles en la tarjeta de cada sede.
+- [ ] **4.8 Simulador de Roles (Dev Mode) [POST-MVP]:** Herramienta para testing rápido de permisos entre Owner, Admin, Mesero y Cocina.
 
 ---
 
@@ -71,13 +71,13 @@
 - [x] **5.1 Arquitectura de Stock por Sede:**
     - [x] Implementar CRUD de stock en `location_inventory` vinculado a `location_id`.
     - [x] Vista en `AdminProducts` / `AdminRecipes`: Desglose de existencias por sede activa.
-- [ ] **5.2 Movimientos de Inventario:**
+- [ ] **5.2 Movimientos de Inventario [POST-MVP]:**
     - [ ] Registro de entradas/salidas de insumos con trazabilidad por sede.
     - [ ] Historial de ajustes manuales (merma, error de conteo).
-- [ ] **5.3 Alertas de Stock Bajo:**
+- [ ] **5.3 Alertas de Stock Bajo [POST-MVP]:**
     - [ ] Configuración de umbrales mínimos por producto y por sede.
     - [ ] Notificaciones en el Dashboard cuando el stock local es crítico.
-- [ ] **5.4 Valoración de Inventario Local:**
+- [ ] **5.4 Valoración de Inventario Local [POST-MVP]:**
     - [ ] Cálculo del valor del inventario basado en los costos de compra de cada sede.
 
 ---
@@ -110,15 +110,15 @@
 ## 🟦 FASE 9: Plan Esencial (Landing + Experiencias)
 > Valor agregado para marcas que crecen.
 - [ ] **9.1 Activación de Landing Page:** Habilitar la personalización de la página de inicio de la marca.
-- [ ] **9.2 Módulo de Experiencias:** Permitir la creación de eventos, promociones y historias tipo Instagram.
+- [ ] **9.2 Módulo de Experiencias [POST-MVP]:** Permitir la creación de eventos, promociones y historias tipo Instagram.
 - [ ] **9.3 Analíticas Básicas:** Acceso a métricas de visitas y productos más vistos.
 
 ---
 
 ## 🟦 FASE 10: Plan Pro (Inteligencia Operativa)
 > Control total para negocios establecidos.
-- [ ] **10.1 Analíticas Avanzadas:** Filtros de tiempo, ticket promedio y rendimiento por mesero.
-- [ ] **10.2 IA Flash Integration:** El asistente de IA responde preguntas sobre ventas y stock.
+- [ ] **10.1 Analíticas Avanzadas [POST-MVP]:** Filtros de tiempo, ticket promedio y rendimiento por mesero.
+- [ ] **10.2 IA Flash Integration [POST-MVP]:** El asistente de IA responde preguntas sobre ventas y stock.
 - [x] **10.3 Gestión de Recetas y Costos (Híbrido):**
     - [x] **Definición Global (Marca):** Crear recetas estándar compartidas por todas las sedes.
     - [x] **Ejecución Local (Sede):** Descuento automático de stock de la sede correspondiente al vender un producto.
@@ -128,41 +128,41 @@
 
 ## 🟦 FASE 11: Plan Enterprise (Custom Tech)
 > Personalización y features únicas.
-- [ ] **11.1 Whitelabel Parcial:** Opción de ocultar "Potenciado por Aluna".
-- [ ] **11.2 API Access:** Permitir que el cliente use sus propias llaves de OpenAI/Google para la IA.
-- [ ] **11.3 Dominios Propios:** Soporte técnico para apuntar dominios personalizados a su menú.
+- [ ] **11.1 Whitelabel Parcial [POST-MVP]:** Opción de ocultar "Potenciado por Aluna".
+- [ ] **11.2 API Access [POST-MVP]:** Permitir que el cliente use sus propias llaves de OpenAI/Google para la IA.
+- [ ] **11.3 Dominios Propios [POST-MVP]:** Soporte técnico para apuntar dominios personalizados a su menú.
 
 ---
 
 ## 🟦 FASE 12: Dashboard de Analíticas Localizadas
 > Ver cómo rinde cada sucursal de forma independiente.
-- [ ] **12.1 Comparativa entre Sedes:** Gráficos que comparan ventas de Sede A vs Sede B.
-- [ ] **12.2 Reportes de Exportación:** Generar PDFs/CSVs con el rendimiento segmentado por sede.
+- [ ] **12.1 Comparativa entre Sedes [POST-MVP]:** Gráficos que comparan ventas de Sede A vs Sede B.
+- [ ] **12.2 Reportes de Exportación [POST-MVP]:** Generar PDFs/CSVs con el rendimiento segmentado por sede.
 
 ---
 
 ## 🟦 FASE 13: Notificaciones & Alertas en Tiempo Real
 > Informar al staff y al dueño sobre eventos críticos.
 - [ ] **13.1 Notificaciones de Pedido:** Alerts sonoros y visuales segmentados por `location_id`.
-- [ ] **13.2 Alertas de Gestión:** Notificar al Owner cuando una marca se queda sin stock o cuando llega una reseña negativa.
+- [ ] **13.2 Alertas de Gestión [POST-MVP]:** Notificar al Owner cuando una marca se queda sin stock o cuando llega una reseña negativa.
 
 ---
 
 ## 🟦 FASE 14: IA Nivel 1 — Lite (Sugerencias Básicas)
-- [ ] **14.1 IA en el Menú:** Sugerencias inteligentes al cliente basadas en el JSON del menú.
-- [ ] **14.2 IA de Redacción:** Ayuda al dueño a escribir descripciones de platos atractivas.
+- [ ] **14.1 IA en el Menú [POST-MVP]:** Sugerencias inteligentes al cliente basadas en el JSON del menú.
+- [ ] **14.2 IA de Redacción [POST-MVP]:** Ayuda al dueño a escribir descripciones de platos atractivas.
 
 ---
 
 ## 🟦 FASE 15: IA Nivel 2 — Flash (Data Insight)
-- [ ] **15.1 Chat con tus Datos:** Bot en el Dashboard para preguntar "¿Cuál fue mi mejor hora el sábado pasado?".
-- [ ] **15.2 Predicciones Simple:** Proyectar ventas basadas en el histórico de la sede.
+- [ ] **15.1 Chat con tus Datos [POST-MVP]:** Bot en el Dashboard para preguntar "¿Cuál fue mi mejor hora el sábado pasado?".
+- [ ] **15.2 Predicciones Simple [POST-MVP]:** Proyectar ventas basadas en el histórico de la sede.
 
 ---
 
 ## 🟦 FASE 16: IA Nivel 3 — Custom Enterprise
-- [ ] **16.1 Panel de Modelos:** El cliente selecciona si quiere usar GPT-4, Gemini o Claude (usando sus propias llaves).
-- [ ] **16.2 Entrenamiento Local:** (Concepto) IA que "aprende" del tono de voz de la marca específica.
+- [ ] **16.1 Panel de Modelos [POST-MVP]:** El cliente selecciona si quiere usar GPT-4, Gemini o Claude (usando sus propias llaves).
+- [ ] **16.2 Entrenamiento Local [POST-MVP]:** (Concepto) IA que "aprende" del tono de voz de la marca específica.
 
 ---
 
@@ -175,13 +175,13 @@
 
 ## 🟦 FASE 18: Seguridad & Auditoría Multi-Tenant
 - [ ] **18.1 Revisión de RLS (Supabase):** Asegurar que NADIE pueda ver datos de otra marca aunque inyecten IDs.
-- [ ] **18.2 Logs de Acceso:** Historial de quién hizo qué en el panel administrativo.
+- [ ] **18.2 Logs de Acceso [POST-MVP]:** Historial de quién hizo qué en el panel administrativo.
 
 ---
 
 ## 🟦 FASE 19: Marketplace & Add-ons
-- [ ] **19.1 Tienda de Extensiones:** Activar/Desactivar módulos (ej: Solo CRM, Solo Inventario).
-- [ ] **19.2 Sistema de Facturación SaaS:** Integración con pasarela de pagos para el cobro del plan mensual.
+- [ ] **19.1 Tienda de Extensiones [POST-MVP]:** Activar/Desactivar módulos (ej: Solo CRM, Solo Inventario).
+- [ ] **19.2 Sistema de Facturación SaaS [POST-MVP]:** Integración con pasarela de pagos para el cobro del plan mensual.
 
 ---
 

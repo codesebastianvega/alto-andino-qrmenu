@@ -5,7 +5,6 @@ export default function BottomTabBar({ currentHash }) {
     { id: 'inicio', label: 'Inicio', icon: '🏠', hash: '#inicio' },
     { id: 'menu', label: 'Menú', icon: '🍽️', hash: '#menu' },
     { id: 'experiencias', label: 'Experiencias', icon: '✨', hash: '#experiencias' },
-    { id: 'perfil', label: 'Perfil', icon: '👤', hash: '#perfil' },
   ];
 
   // Default to menu if no hash or unrecognizable hash (like #order/123 or #admin)

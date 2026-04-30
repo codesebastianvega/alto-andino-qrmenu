@@ -168,7 +168,7 @@ const CARTA_ITEMS = [
   { id: 'products',        label: 'Carta Principal',   Icon: Icons.Products, roles: ADMIN_ROLES },
   { id: 'categories',      label: 'Categorías',         Icon: Icons.Categories, roles: ADMIN_ROLES },
   { id: 'modifier_groups', label: 'Extras y Opciones', Icon: Icons.Modifiers, roles: ADMIN_ROLES },
-  { id: 'experiences',     label: 'Experiencias',      Icon: Icons.Experiences, roles: ADMIN_ROLES },
+  { id: 'experiences',     label: 'Experiencias',      Icon: Icons.Experiences, roles: ADMIN_ROLES, feature: 'experiences' },
   { id: 'tables',          label: 'Mesas y QRs',       Icon: Icons.Tables, roles: ADMIN_ROLES },
 ];
 
@@ -180,7 +180,7 @@ const PROD_ITEMS = [
 const ADMIN_ITEMS = [
   { id: 'settings',   label: 'Ajustes de Operación', Icon: Icons.Settings, roles: ADMIN_ROLES },
   { id: 'business_profile', label: 'Perfil Comercial', Icon: Icons.Business, roles: ADMIN_ROLES },
-  { id: 'profile',    label: 'Mi Perfil Admin', Icon: Icons.Profile, roles: ADMIN_ROLES },
+  // { id: 'profile',    label: 'Mi Perfil Admin', Icon: Icons.Profile, roles: ADMIN_ROLES },
 ];
 
 const WEB_ITEMS = [
@@ -206,6 +206,16 @@ export default function AdminLayout() {
   const [lockedFeatureName, setLockedFeatureName] = useState('');
   
   const { restaurantSettings } = useMenuData();
+
+  useEffect(() => {
+    // Check if current page is locked on load
+    const allItems = [...ESTRATEGIA_ITEMS, ...OPERACION_ITEMS, ...CARTA_ITEMS, ...PROD_ITEMS, ...ADMIN_ITEMS, ...WEB_ITEMS];
+    const currentItem = allItems.find(item => item.id === currentPage);
+    if (currentItem?.feature && isFeatureLocked(currentItem.feature)) {
+      setLockedFeatureName(currentItem.label);
+      setShowUpgradeModal(true);
+    }
+  }, [currentPage, isFeatureLocked]);
 
   const handleSelectPage = (pageId, label, featureKey) => {
     if (featureKey && isFeatureLocked(featureKey)) {
@@ -878,6 +888,7 @@ export default function AdminLayout() {
             planNeeded={
               lockedFeatureName === 'Identidad Visual' ? 'Emprendedor' : 
               (lockedFeatureName === 'Gestión Web' || lockedFeatureName === 'Dashboard' || lockedFeatureName === 'Personal / Staff') ? 'Esencial' : 
+              lockedFeatureName === 'Experiencias' ? 'Profesional' :
               'Profesional'
             }
           />
