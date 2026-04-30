@@ -50,9 +50,9 @@ export default function CustomerProfileModal({ customer, isOpen, onClose }) {
     const name = customer.name?.split(' ')[0] || '';
 
     if (type === 'feedback') {
-      message = `Hola ${name}! 👋 ${isVIP ? 'Como uno de nuestros clientes más especiales, ' : ''}te escribimos de parte de Alto Andino. ¿Qué tal estuvo tu experiencia con nosotros hoy? ¡Nos encantaría saber tu opinión!`;
+      message = `Hola ${name}! 👋 ${isVIP ? 'Como uno de nuestros clientes más especiales, ' : ''}te escribimos de parte de Aluna. ¿Qué tal estuvo tu experiencia con nosotros hoy? ¡Nos encantaría saber tu opinión!`;
     } else if (type === 'recovery') {
-      message = `Hola ${name}! 🤗 Te extrañamos en Alto Andino (hace ${days} días no nos vemos). Queremos invitarte a que vuelvas pronto${isVIP ? ', tenemos una mesa VIP lista para ti' : ''}, ¡puedes reclamar un postre de cortesía en tu próxima visita!`;
+      message = `Hola ${name}! 🤗 Te extrañamos en Aluna (hace ${days} días no nos vemos). Queremos invitarte a que vuelvas pronto${isVIP ? ', tenemos una mesa VIP lista para ti' : ''}, ¡puedes reclamar un postre de cortesía en tu próxima visita!`;
     }
 
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;

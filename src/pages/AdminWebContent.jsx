@@ -1250,7 +1250,7 @@ export default function AdminWebContent() {
                              value={data.concierge_prompt_template || ''}
                              onChange={(e) => setData({ ...data, concierge_prompt_template: e.target.value })}
                              className="relative w-full bg-[#0a0a0a] border border-white/10 rounded-2xl p-5 text-xs font-mono text-emerald-400 h-40 focus:ring-2 focus:ring-emerald-500/40 outline-none scrollbar-thin resize-none"
-                             placeholder="Eres un sumiller experto y conocedor de la carta de Alto Andino..."
+                             placeholder="Eres un sumiller experto y conocedor de la carta de Aluna..."
                            />
                         </div>
                       </FormField>

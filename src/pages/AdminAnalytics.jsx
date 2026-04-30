@@ -2678,7 +2678,7 @@ export default function AdminAnalytics() {
            <div className="flex justify-between items-start border-b-2 border-gray-900 pb-8 mb-12">
               <div>
                  <h1 className="text-4xl font-black uppercase tracking-tighter text-gray-900">Reporte Ejecutivo BI</h1>
-                 <p className="text-xl font-bold text-gray-400 uppercase mt-2 tracking-widest">{activeBrand?.name || 'Alto Andino'}</p>
+                 <p className="text-xl font-bold text-gray-400 uppercase mt-2 tracking-widest">{activeBrand?.name || 'Aluna'}</p>
               </div>
               <div className="text-right">
                  <p className="text-[10px] font-black uppercase text-gray-400">Rango de Análisis</p>
@@ -2769,7 +2769,7 @@ export default function AdminAnalytics() {
            </div>
 
            <div className="mt-auto pt-16 text-[9px] font-black text-gray-300 uppercase italic text-center tracking-[0.2em] border-t border-gray-50">
-              Intelligence Node /// Alto Andino Executive BI /// Confidencial
+              Intelligence Node /// Aluna Executive BI /// Confidencial
            </div>
         </div>,
         document.body

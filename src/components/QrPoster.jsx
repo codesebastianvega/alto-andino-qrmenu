@@ -5,7 +5,7 @@ import { useMenuData } from "../context/MenuDataContext";
 
 export default function QrPoster({ url }) {
   const { restaurantSettings } = useMenuData();
-  const logoUrl = restaurantSettings?.logo_url || "/logoalto.png";
+  const logoUrl = restaurantSettings?.logo_url || "/favicon.png";
   // Lee ?t= de la URL para “Mesa”
   const params =
     typeof window !== "undefined"
@@ -44,7 +44,7 @@ export default function QrPoster({ url }) {
       <div className="w-full max-w-md rounded-3xl border bg-white p-6 text-center shadow-xl print:border-0 print:shadow-none">
         <AAImage
           src={logoUrl}
-          alt="Alto Andino"
+          alt="Aluna"
           className="mx-auto mb-3 h-20 w-20 object-contain"
           priority
         />

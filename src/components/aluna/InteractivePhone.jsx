@@ -15,11 +15,11 @@ export default function InteractivePhone() {
         <div className="w-2 h-2 rounded-full bg-[#0A0A0A] border border-white/5"></div>
       </div>
 
-      {/* Iframe del Menú Real de Alto Andino */}
+      {/* Iframe del Menú Real de Aluna */}
       <div className="w-full h-full relative z-10 bg-[#F5F5F7]">
         <iframe
-          src="/alto-andino/?demo=1#menu"
-          title="Menú Real Alto Andino"
+          src="/?demo=1#menu"
+          title="Menú Digital Aluna"
           className="border-none absolute left-0"
           style={{ 
             top: '0px',
