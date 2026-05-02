@@ -225,7 +225,7 @@ export default function LoginPage() {
                     onClick={async () => {
                       await supabase.auth.signInWithOAuth({
                         provider: 'google',
-                        options: { redirectTo: window.location.origin + '/' },
+                        options: { redirectTo: window.location.origin + '/#portal' },
                       });
                     }}
                     className="w-full flex items-center justify-center gap-3 py-3 bg-stone-50 border border-stone-200 rounded-2xl hover:bg-white hover:border-[#D4A853]/50 hover:shadow-sm transition-all group"

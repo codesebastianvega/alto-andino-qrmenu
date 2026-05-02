@@ -99,6 +99,23 @@ export default function App() {
 
   const [query, setQuery] = useState("");
   const cart = useCart();
+
+  // ✅ Redirección automática al portal para usuarios autenticados
+  useEffect(() => {
+    // Si el usuario está autenticado y tenemos su perfil cargado
+    if (profile && !authLoading) {
+      const hash = window.location.hash;
+      
+      // Si estamos en una ruta de "entrada" (landing, login, registro o callback de auth)
+      // y NO es una ruta de marca específica (brand_slug no existe)
+      const isAuthPath = hash === '#login' || hash === '#registro' || hash === '' || hash === '#inicio' || hash.startsWith('#access_token') || hash.startsWith('#error');
+      
+      if (isAuthPath && !brand_slug) {
+        console.log("Redirecting authenticated user to portal...");
+        window.location.hash = '#portal';
+      }
+    }
+  }, [profile, authLoading, brand_slug]);
   const [showPOSCustomerModal, setShowPOSCustomerModal] = useState(false);
   const [hasDismissedCustomerModal, setHasDismissedCustomerModal] = useState(false);
   const { categories: dbCategories, restaurantSettings, homeSettings, loading: menuLoading, currentLocation } = useMenuData();
@@ -123,10 +140,14 @@ export default function App() {
     currentHash.startsWith('#portal') || 
     currentHash === '#experiencias' || 
     currentHash === '#login' || 
-    currentHash === '#registro';
+    currentHash === '#registro' ||
+    currentHash.startsWith('#access_token') ||
+    currentHash.startsWith('#error_description') ||
+    currentHash.startsWith('#error=');
 
   const isAuthView = currentHash === "#login" || 
                      currentHash === "#registro" || 
+                     currentHash.startsWith('#access_token') ||
                      window.location.pathname.startsWith('/login') || 
                      window.location.pathname.startsWith('/registro');
   
@@ -416,9 +437,18 @@ export default function App() {
           </Suspense>
         )}
 
-        {currentHash.startsWith('#portal') && profile && (
+        {(currentHash.startsWith('#portal') || currentHash.startsWith('#access_token')) && (
           <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
-            <GlobalPortal />
+            {profile ? (
+              <GlobalPortal />
+            ) : (
+              <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                  <Loader2 className="animate-spin text-[#7db87a] w-8 h-8" />
+                  <p className="text-stone-400 text-xs font-medium animate-pulse">Iniciando sesión...</p>
+                </div>
+              </div>
+            )}
           </Suspense>
         )}
 
