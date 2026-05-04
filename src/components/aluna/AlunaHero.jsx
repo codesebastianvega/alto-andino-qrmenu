@@ -7,52 +7,57 @@ import { useAuth } from "../../context/AuthContext";
 export default function AlunaHero() {
   const { profile } = useAuth();
   return (
-    <section className="pt-4 px-4 md:px-6 pb-12">
+    <section className="pt-0 px-0 md:pt-4 md:px-6 pb-0 md:pb-12">
       {/* Contenedor principal con bordes redondeados */}
-      <div className="w-full relative rounded-[40px] overflow-hidden bg-[#0A0A0A] min-h-[90vh] flex items-center shadow-2xl border border-white/10">
+      <div className="w-full relative rounded-none md:rounded-[40px] overflow-hidden bg-[#0A0A0A] min-h-[100dvh] md:min-h-[90vh] flex items-center md:shadow-2xl border-none md:border md:border-white/10">
 
         {/* Gradiente superpuesto */}
         <div className="absolute inset-0 bg-gradient-to-br from-black/95 via-black/40 to-transparent"></div>
 
         {/* Contenido (Grid de 2 columnas) */}
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 lg:px-20 py-12 md:py-20 grid md:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 lg:px-20 pt-2 pb-12 md:py-20 grid md:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
 
           {/* Columna Izquierda */}
-          <FadeIn direction="right">
-            <div className="max-w-2xl">
+          <FadeIn direction="up">
+            <div className="max-w-3xl flex flex-col items-center text-center md:items-start md:text-left mx-auto md:mx-0">
+              {/* Brand Title */}
+              <div className="text-white text-5xl md:text-6xl mb-10 tracking-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                Aluna
+              </div>
+
               {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-medium tracking-wide uppercase mb-8">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-medium tracking-wide uppercase mb-12">
                 <Sparkles className="w-4 h-4 text-[#D4A853]" />
                 La nueva era gastronómica
               </div>
 
               {/* Título Principal */}
-              <h1 className="text-[56px] md:text-[80px] leading-[0.95] text-white mb-8 tracking-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>
+              <h1 className="text-[42px] md:text-[80px] leading-[0.95] text-white mb-8 tracking-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>
                 Diseñando espacios <br />
                 <span className="italic text-[#D4A853] font-light">digitales</span> que inspiran.
               </h1>
 
               {/* Párrafo */}
-              <p className="text-lg md:text-xl text-gray-300 mb-10 leading-relaxed font-light max-w-lg">
+              <p className="text-base md:text-xl text-gray-300 mb-8 md:mb-10 leading-relaxed font-light max-w-lg">
                 Elevamos la gastronomía al mundo digital. Menús interactivos, pedidos fluidos y experiencias que cautivan a tus comensales desde el primer clic.
               </p>
 
               {/* Botones */}
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto px-4 sm:px-0">
                 {profile ? (
-                  <MagneticButton>
-                    <Link to="/#portal" className="bg-[#D4A853] text-black px-10 py-4 rounded-full text-sm font-bold hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#D4A853]/20">
+                  <MagneticButton className="w-full sm:w-auto">
+                    <Link to="/#portal" className="bg-[#D4A853] text-black px-10 py-4 rounded-full text-sm font-bold hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#D4A853]/20 w-full sm:w-auto">
                       Gestionar mis Marcas
                     </Link>
                   </MagneticButton>
                 ) : (
-                  <MagneticButton>
-                    <Link to="/registro" className="bg-white text-[#1A1A1A] px-10 py-4 rounded-full text-sm font-semibold hover:bg-gray-100 transition-all flex items-center justify-center gap-2 shadow-xl">
+                  <MagneticButton className="w-full sm:w-auto">
+                    <Link to="/registro" className="bg-white text-[#1A1A1A] px-10 py-4 rounded-full text-sm font-semibold hover:bg-gray-100 transition-all flex items-center justify-center gap-2 shadow-xl w-full sm:w-auto">
                       Comienza Hoy
                     </Link>
                   </MagneticButton>
                 )}
-                <Link to="/aluna?demo=1" className="bg-transparent border border-white/30 text-white px-8 py-4 rounded-full text-sm font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2">
+                <Link to="/aluna?demo=1" className="bg-transparent border border-white/30 text-white px-8 py-4 rounded-full text-sm font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2 w-full sm:w-auto">
                   Ver Demo
                 </Link>
               </div>

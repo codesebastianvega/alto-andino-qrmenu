@@ -80,13 +80,13 @@ export default function AlunaNavbar() {
       <a
         href="#"
         onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-        className="text-xl tracking-tight text-white px-4 hidden md:block"
+        className="text-xl tracking-tight text-white px-4"
         style={{ fontFamily: "'DM Serif Display', serif" }}
       >
         Aluna
       </a>
 
-      <div className="w-[1px] h-6 bg-white/20 mx-2 hidden md:block" />
+      <div className="w-[1px] h-6 bg-white/20 mx-2" />
 
       {/* Nav links */}
       <div className="flex items-center gap-1 sm:gap-2 px-2 overflow-x-auto scrollbar-hide">
