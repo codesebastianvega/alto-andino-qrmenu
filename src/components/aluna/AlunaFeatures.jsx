@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 
 const CARDS = [
@@ -33,9 +33,7 @@ export default function AlunaFeatures() {
   const [activeSlide, setActiveSlide] = useState(0);
 
   const handleScroll = (e) => {
-    // Calculamos qué tarjeta está activa basándonos en el scroll
     const scrollLeft = e.target.scrollLeft;
-    // El ancho de cada tarjeta más el gap (aprox)
     const itemWidth = e.target.scrollWidth / CARDS.length;
     const newIndex = Math.round(scrollLeft / itemWidth);
     if (newIndex >= 0 && newIndex < CARDS.length) {
@@ -44,57 +42,53 @@ export default function AlunaFeatures() {
   };
 
   return (
-    <section id="beneficios" className="pt-24 pb-12 bg-white overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 mb-8 md:mb-12 text-center md:text-left">
-        <h2 className="text-4xl md:text-5xl text-[#1A1A1A] max-w-2xl leading-tight mb-4 mx-auto md:mx-0" style={{ fontFamily: "'DM Serif Display', serif" }}>
+    <section id="beneficios" className="pt-24 pb-24 bg-white overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 mb-16 md:mb-20 text-center md:text-left">
+        <h2 className="text-4xl md:text-5xl text-[#1A1A1A] max-w-4xl leading-[1.1] mb-8 mx-auto md:mx-0" style={{ fontFamily: "'DM Serif Display', serif" }}>
           Mucho más que un menú. El ecosistema completo para tu restaurante.
         </h2>
-        <p className="text-gray-500 text-lg md:text-xl max-w-2xl font-light mx-auto md:mx-0">
+        <p className="text-gray-500 text-xl md:text-2xl max-w-3xl font-light mx-auto md:mx-0 leading-relaxed">
           Explora los servicios y beneficios diseñados para aumentar tu rentabilidad y digitalizar tu local con elegancia.
         </p>
       </div>
 
-      {/* Horizontal Scroll Container */}
-      <div 
-        className="flex gap-4 md:gap-6 overflow-x-auto pb-8 pt-4 px-4 md:px-6 hide-scrollbar snap-x snap-mandatory scroll-smooth"
-        onScroll={handleScroll}
-      >
-        {CARDS.map((card, idx) => (
-          <div 
-            key={idx} 
-            // Altura reducida a h-[400px] md:h-[460px] para que no sean excesivamente largas
-            className="relative w-[80vw] sm:w-[300px] md:w-[340px] h-[400px] md:h-[460px] snap-center md:snap-start bg-[#F7F7F5] rounded-[40px] p-6 md:p-8 flex flex-col justify-between shrink-0 border border-black/5 hover:border-black/10 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group overflow-hidden"
-          >
-            {/* Pequeña muesca simulando la parte superior de un celular */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-4 bg-white/50 rounded-b-xl border border-t-0 border-black/5"></div>
-
-            <div className="mt-4">
-              <div className="inline-block px-4 py-2 rounded-full bg-white text-[#2D6A4F] text-xs font-bold uppercase tracking-wider mb-6 md:mb-8 shadow-sm group-hover:bg-[#2D6A4F] group-hover:text-white transition-colors duration-300">
-                {card.highlight}
+      {/* Grid en Desktop, Slider en Mobile */}
+      <div className="overflow-x-auto hide-scrollbar snap-x snap-mandatory pb-12">
+        <div className="flex gap-6 px-4 md:px-[calc((100vw-1280px)/2+24px)] min-w-max">
+          {CARDS.map((card, idx) => (
+            <motion.div 
+              key={idx} 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: idx * 0.1 }}
+              className="relative w-[300px] md:w-[340px] snap-center bg-[#F9F9F7] rounded-3xl p-8 md:p-10 flex flex-col justify-between shrink-0 border border-black/[0.03] hover:shadow-xl transition-all duration-500 group"
+            >
+              <div>
+                <div className="inline-block px-4 py-1.5 rounded-full bg-white text-[#2D6A4F] text-[10px] font-bold uppercase tracking-wider mb-8 shadow-sm group-hover:bg-[#2D6A4F] group-hover:text-white transition-colors duration-300">
+                  {card.highlight}
+                </div>
+                <h3 className="text-3xl text-[#1A1A1A] mb-6 leading-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                  {card.title}
+                </h3>
+                <p className="text-gray-500 leading-relaxed text-base">
+                  {card.desc}
+                </p>
               </div>
-              <h3 className="text-2xl md:text-3xl lg:text-4xl text-[#1A1A1A] mb-3 md:mb-4 leading-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>
-                {card.title}
-              </h3>
-              <p className="text-gray-600 leading-relaxed text-base md:text-lg">
-                {card.desc}
-              </p>
-            </div>
-            
-            {/* Pequeña línea decorativa que crece al hacer hover (simulando barra Home iOS) */}
-            <div className="w-12 group-hover:w-[60%] mx-auto transition-all duration-500 h-1 bg-[#D4A853] rounded-full" />
-          </div>
-        ))}
+              
+              <div className="w-12 group-hover:w-20 transition-all duration-500 h-1 bg-[#D4A853] rounded-full mt-8" />
+            </motion.div>
+          ))}
+        </div>
       </div>
 
-      {/* Paginación Visual */}
-      <div className="flex justify-center items-center gap-2 mt-4 md:mt-8">
+      {/* Paginación solo en Mobile */}
+      <div className="flex md:hidden justify-center items-center gap-2 mt-8">
         {CARDS.map((_, idx) => (
           <div 
             key={`dot-${idx}`}
             className={`h-1.5 rounded-full transition-all duration-300 ${
-              activeSlide === idx 
-                ? "w-8 bg-[#2D6A4F]" // Activo: pastilla verde oscuro
-                : "w-2 bg-gray-200"  // Inactivo: puntito gris
+              activeSlide === idx ? "w-8 bg-[#2D6A4F]" : "w-2 bg-gray-200"
             }`}
           />
         ))}

@@ -53,17 +53,8 @@ export default function AlunaContact() {
                 <ArrowRight className="w-5 h-5 -rotate-45" />
               </div>
               <div>
-                <div className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Escríbenos</div>
-                <a href="mailto:hola@aluna.com" className="text-lg font-medium text-[#1A1A1A] hover:text-[#2D6A4F] transition-colors">hola@aluna.com</a>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-[#F7F7F5] flex items-center justify-center text-[#1A1A1A]">
-                <ArrowRight className="w-5 h-5 -rotate-45" />
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Llámanos</div>
-                <a href="tel:+573001234567" className="text-lg font-medium text-[#1A1A1A] hover:text-[#2D6A4F] transition-colors">+57 300 123 4567</a>
+                <div className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">WhatsApp</div>
+                <a href="https://wa.me/573222285900" target="_blank" rel="noopener noreferrer" className="text-lg font-medium text-[#1A1A1A] hover:text-[#2D6A4F] transition-colors">+57 322 228 5900</a>
               </div>
             </div>
           </div>
