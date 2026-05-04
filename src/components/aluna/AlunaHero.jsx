@@ -57,7 +57,7 @@ export default function AlunaHero() {
                     </Link>
                   </MagneticButton>
                 )}
-                <Link to="/aluna?demo=1" className="bg-transparent border border-white/30 text-white px-8 py-4 rounded-full text-sm font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2 w-full sm:w-auto">
+                <Link to="/alto-andino?demo=1#menu" className="bg-transparent border border-white/30 text-white px-8 py-4 rounded-full text-sm font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2 w-full sm:w-auto">
                   Ver Demo
                 </Link>
               </div>

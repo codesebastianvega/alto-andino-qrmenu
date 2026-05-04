@@ -100,7 +100,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               />
 
               {/* Compatibility: If a hash is used at root without slug (old style), redirect or handler can be added here */}
-              <Route path="/aluna" element={<Navigate to="/" replace />} />
+              <Route path="/aluna" element={<Navigate to="/alto-andino?demo=1" replace />} />
             </Routes>
           </LocationProvider>
         </AuthProvider>
