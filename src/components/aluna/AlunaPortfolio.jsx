@@ -1,19 +1,19 @@
 export default function AlunaPortfolio() {
   return (
-    <section id="portafolio" className="py-32 px-6 md:px-12 lg:px-20 bg-white">
+    <section id="portafolio" className="pt-12 pb-32 px-6 md:px-12 lg:px-20 bg-white">
       <div className="max-w-7xl mx-auto">
         
         {/* ENCABEZADO: Título, descripción y botón */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-center md:items-end mb-16 gap-6 text-center md:text-left">
           <div className="max-w-2xl">
-            <h2 className="text-5xl md:text-6xl text-[#1A1A1A] mb-6 leading-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>
+            <h2 className="text-4xl md:text-5xl text-[#1A1A1A] mb-6 leading-tight mx-auto md:mx-0" style={{ fontFamily: "'DM Serif Display', serif" }}>
               Portafolio Destacado
             </h2>
-            <p className="text-[#6B7280] text-lg lg:text-xl font-light leading-relaxed">
+            <p className="text-[#6B7280] text-lg lg:text-xl font-light leading-relaxed mx-auto md:mx-0">
               Proyectos que redefinen la interacción entre comensales y restaurantes con la tecnología de Aluna.
             </p>
           </div>
-          <button className="border border-[#1A1A1A] text-[#1A1A1A] px-8 py-3.5 rounded-full text-sm font-semibold tracking-wide hover:bg-[#1A1A1A] hover:text-white transition-all duration-300">
+          <button className="w-full md:w-auto border border-[#1A1A1A] text-[#1A1A1A] px-8 py-3.5 rounded-full text-sm font-semibold tracking-wide hover:bg-[#1A1A1A] hover:text-white transition-all duration-300">
             Ver todos los proyectos
           </button>
         </div>

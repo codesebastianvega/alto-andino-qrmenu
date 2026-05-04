@@ -44,12 +44,12 @@ export default function AlunaFeatures() {
   };
 
   return (
-    <section id="beneficios" className="py-24 bg-white overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 mb-8 md:mb-12">
-        <h2 className="text-4xl md:text-5xl text-[#1A1A1A] max-w-2xl leading-tight mb-4" style={{ fontFamily: "'DM Serif Display', serif" }}>
+    <section id="beneficios" className="pt-24 pb-12 bg-white overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 mb-8 md:mb-12 text-center md:text-left">
+        <h2 className="text-4xl md:text-5xl text-[#1A1A1A] max-w-2xl leading-tight mb-4 mx-auto md:mx-0" style={{ fontFamily: "'DM Serif Display', serif" }}>
           Mucho más que un menú. El ecosistema completo para tu restaurante.
         </h2>
-        <p className="text-gray-500 text-lg md:text-xl max-w-2xl font-light">
+        <p className="text-gray-500 text-lg md:text-xl max-w-2xl font-light mx-auto md:mx-0">
           Explora los servicios y beneficios diseñados para aumentar tu rentabilidad y digitalizar tu local con elegancia.
         </p>
       </div>

@@ -43,7 +43,7 @@ export default function AlunaContact() {
     <section id="contacto" className="py-32 px-6 md:px-12 lg:px-20 bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
         <FadeIn direction="right">
-          <h2 className="text-5xl text-[#1A1A1A] mb-6 leading-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>¿Listo para dar el siguiente paso?</h2>
+          <h2 className="text-4xl md:text-5xl text-[#1A1A1A] mb-6 leading-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>¿Listo para dar el siguiente paso?</h2>
           <p className="text-[#6B7280] text-lg leading-relaxed mb-10 max-w-md">
             Déjanos tus datos y nuestro equipo se pondrá en contacto contigo para diseñar una propuesta a la medida de tu restaurante.
           </p>

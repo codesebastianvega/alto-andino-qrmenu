@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { motion, useScroll, useMotionValueEvent, useTransform } from "framer-motion";
+import { Icon } from "@iconify/react";
 
 const STEPS = [
   {
@@ -85,13 +86,13 @@ export default function AlunaHowItWorks() {
                 }}
                 transition={{ duration: 0.5, ease: "easeInOut" }}
               >
-                <div className="text-[#D4A853] text-2xl md:text-3xl mb-4" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                <div className="text-[#D4A853] text-2xl md:text-4xl mb-6" style={{ fontFamily: "'DM Serif Display', serif" }}>
                   {s.id}
                 </div>
-                <h3 className="text-4xl md:text-5xl lg:text-7xl text-white mb-6 leading-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                <h3 className="text-4xl md:text-6xl lg:text-7xl text-white mb-8 leading-[1.1]" style={{ fontFamily: "'DM Serif Display', serif" }}>
                   {s.title}
                 </h3>
-                <p className="text-gray-300 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto">
+                <p className="text-gray-300 text-lg md:text-2xl lg:text-3xl leading-relaxed max-w-4xl mx-auto font-light">
                   {s.desc}
                 </p>
               </motion.div>
@@ -116,11 +117,11 @@ export default function AlunaHowItWorks() {
             Sigue bajando
           </span>
           <motion.div 
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-            className="w-5 h-8 md:w-6 md:h-10 border-2 border-white/30 rounded-full flex justify-center pt-1 md:pt-1.5"
+            animate={{ y: [0, 10, 0] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="text-[#D4A853]/80"
           >
-            <div className="w-1 h-2 bg-[#D4A853] rounded-full" />
+            <Icon icon="lucide:chevrons-down" className="text-2xl md:text-3xl" />
           </motion.div>
         </motion.div>
 

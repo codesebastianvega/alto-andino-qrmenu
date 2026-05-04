@@ -209,6 +209,7 @@ export default function CartModal({ open, onClose }) {
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastOrderId, setLastOrderId] = useState("");
   const [isPaid, setIsPaid] = useState(false);
+  const [whatsappLink, setWhatsappLink] = useState("");
 
   const isLeadRequired = !isPOSMode && (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' || fulfillmentType === 'scheduled');
   const isLeadValid = !isLeadRequired || (customerName?.trim() && customerPhone?.trim());
@@ -471,7 +472,7 @@ export default function CartModal({ open, onClose }) {
       localStorage.setItem("aa_active_order", orderData.id);
       setLastOrderId(orderData.id);
 
-      // --- WHATSAPP REDIRECTION (Aluna Localization) ---
+      // --- WHATSAPP LINK GENERATION (Aluna Localization) ---
       // SKIP in POS mode to avoid interrupting staff workflow
       if (hasFeature('whatsapp_orders') && !isPOSMode) {
         const whatsappNumber = currentLocation?.whatsapp || settings?.whatsapp_number_orders;
@@ -490,12 +491,10 @@ export default function CartModal({ open, onClose }) {
             `Ver pedido en: ${window.location.origin}/${brandSlug}/#order/${orderData.id}`
           );
           
-          // Delay redirection slightly to allow state updates to finish
-          setTimeout(() => {
-            window.location.href = `https://wa.me/${cleanPhone}?text=${message}`;
-          }, 1000);
+          setWhatsappLink(`https://wa.me/${cleanPhone}?text=${message}`);
         }
       }
+      // -----------------------------------------------
       // -----------------------------------------------
 
       if (typeof clearCart === 'function') {
@@ -531,6 +530,7 @@ export default function CartModal({ open, onClose }) {
     setIsPaid(false);
     setPaymentMethod("cash");
     setShowFulfillmentSelector(false);
+    setWhatsappLink("");
     sessionStorage.removeItem("aa_current_customer");
   };
 
@@ -597,7 +597,249 @@ export default function CartModal({ open, onClose }) {
     return MILK_OPTIONS.find((m) => m.id === milkId)?.label || milkId;
   };
 
+  const renderCheckoutFooter = (idSuffix = "") => {
+    if (items.length === 0) return null;
+    const toggleId = `paid-toggle-${idSuffix}`;
+    return (
+      <div className="flex-shrink-0 bg-white border-t border-neutral-100 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] transition-all">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-neutral-100/60 border-dashed">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-sm text-neutral-500 font-medium">Subtotal</span>
+            <span className="text-sm font-semibold text-neutral-700">{formatCOP(total)}</span>
+          </div>
+          {packagingFeeTotal > 0 && (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery') && (
+            <div className="flex justify-between items-center mb-1 animate-in fade-in slide-in-from-right-2">
+              <span className="text-sm text-neutral-500 font-medium">Empaque</span>
+              <span className="text-sm font-semibold text-neutral-700">{formatCOP(packagingFeeTotal)}</span>
+            </div>
+          )}
+          {isTipEnabled && (
+            <div className="flex justify-between items-center mb-1">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <div className="relative flex items-center">
+                  <input 
+                    type="checkbox" 
+                    checked={includeTip} 
+                    onChange={(e) => setIncludeTip(e.target.checked)}
+                    className="w-4 h-4 text-[#2f4131] bg-gray-100 border-gray-300 rounded focus:ring-[#2f4131] cursor-pointer"
+                  />
+                </div>
+                <span className="text-sm text-neutral-500 font-medium group-hover:text-neutral-700 transition-colors">
+                  Incluir servicio voluntario ({tipPercentage}%)
+                </span>
+              </label>
+              <span className="text-sm font-semibold text-neutral-700">
+                {includeTip ? formatCOP(serviceFeeAmount) : '-'}
+              </span>
+            </div>
+          )}
+          {!isTipEnabled && (
+            <div className="flex justify-between items-center text-sm text-neutral-400">
+              <span>Sin costo de servicio</span>
+              <span>-</span>
+            </div>
+          )}
+        </div>
+        
+        <div
+          className="px-4 pt-3 pb-3 sm:px-6 sm:pt-4 sm:pb-4"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 16px)" }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-base sm:text-lg font-bold text-neutral-900">Total</span>
+            <span className="text-2xl sm:text-3xl font-black tracking-tight text-[#2f4131]">
+              {formatCOP(fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount)}
+            </span>
+          </div>
+          
+          <div className="flex flex-col gap-2.5">
+            {!showFulfillmentSelector && !initialMesa && !isPOSMode ? (
+              <button
+                type="button"
+                onClick={() => setShowFulfillmentSelector(true)}
+                disabled={!items.length}
+                className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] hover:bg-[#202c21] text-white shadow-[#2f4131]/20 hover:-translate-y-0.5 transition-all active:scale-[0.98]"
+              >
+                <Icon icon="heroicons:sparkles" className="text-xl" />
+                Confirmar Pedido
+              </button>
+            ) : !showFulfillmentSelector && (initialMesa || isPOSMode) ? (
+              <button
+                type="button"
+                onClick={handleConfirmOrder}
+                disabled={isSubmitting || !items.length || !isLeadValid}
+                className={`flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg transition-all active:scale-[0.98] ${
+                  !isLeadValid || isSubmitting
+                  ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
+                  : "bg-[#2f4131] hover:bg-[#202c21] text-white shadow-[#2f4131]/20 hover:-translate-y-0.5"
+                }`}
+              >
+                {isSubmitting ? (
+                  <Icon icon="line-md:loading-loop" className="text-xl" />
+                ) : (
+                  <>
+                    <Icon icon="heroicons:sparkles" className="text-xl" />
+                    Confirmar Pedido
+                  </>
+                )}
+              </button>
+            ) : (
+              <div className="flex flex-col gap-3 animate-in slide-in-from-bottom-4 duration-300">
+                {/* Fulfillment Picker */}
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'dine_in', label: 'En Mesa', icon: 'heroicons:map-pin' },
+                    { id: 'takeaway', label: 'Para Llevar', icon: 'heroicons:shopping-bag' },
+                    { id: 'delivery', label: 'Domicilio', icon: 'heroicons:truck' },
+                    { id: 'scheduled', label: 'Programado', icon: 'heroicons:calendar' }
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setFulfillmentType(opt.id)}
+                      className={`flex flex-col items-center justify-center py-2.5 rounded-xl border-2 transition-all gap-1 ${
+                        fulfillmentType === opt.id 
+                          ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-sm scale-[1.02]" 
+                          : "border-neutral-100 bg-neutral-50 text-neutral-500 grayscale opacity-70"
+                      }`}
+                    >
+                      <Icon icon={opt.icon} className="text-xl" />
+                      <span className="text-[10px] font-bold uppercase">{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {fulfillmentType === 'scheduled' && (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest px-1">Fecha y Hora</label>
+                    <input 
+                      type="datetime-local" 
+                      value={scheduledTime}
+                      onChange={e => setScheduledTime(e.target.value)}
+                      className="w-full h-11 px-4 rounded-xl border border-neutral-200 text-sm font-medium focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131] transition-all bg-white"
+                    />
+                  </div>
+                )}
+
+                {/* Unified Customer Leads Section */}
+                {isLeadRequired && (
+                  <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 shadow-sm animate-in slide-in-from-top-2 space-y-3">
+                    <div className="flex items-center justify-between px-1">
+                      <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Datos de Contacto</label>
+                      <span className="text-[10px] font-bold text-amber-500 bg-white px-2 py-0.5 rounded-full border border-amber-100">REQUERIDO</span>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                       <div className="flex items-center gap-2 bg-white px-3 h-11 rounded-xl border border-amber-200 focus-within:ring-2 focus-within:ring-amber-200/50 transition-all">
+                          <Icon icon="heroicons:user" className="text-amber-400" />
+                          <input 
+                            type="text" 
+                            placeholder="Nombre Completo"
+                            value={customerName || ""}
+                            onChange={e => setCustomerName(e.target.value)}
+                            className="flex-1 h-full text-sm font-semibold text-neutral-800 placeholder:text-neutral-300 outline-none bg-transparent"
+                          />
+                       </div>
+                       <div className="flex items-center gap-2 bg-white px-3 h-11 rounded-xl border border-amber-200 focus-within:ring-2 focus-within:ring-amber-200/50 transition-all">
+                          <Icon icon="heroicons:phone" className="text-amber-400" />
+                          <input 
+                            type="tel" 
+                            placeholder="Celular / WhatsApp"
+                            value={customerPhone || ""}
+                            onChange={e => setCustomerPhone(e.target.value)}
+                            className="flex-1 h-full text-sm font-semibold text-neutral-800 placeholder:text-neutral-300 outline-none bg-transparent"
+                          />
+                       </div>
+                    </div>
+                  </div>
+                )}
+                
+                {isPOSMode && (
+                  <div className="flex flex-col gap-3 p-4 bg-neutral-50 rounded-2xl border border-neutral-200">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor={toggleId} className={`text-xs font-black cursor-pointer transition-colors uppercase tracking-widest ${isPaid ? 'text-emerald-600' : 'text-neutral-500'}`}>
+                        {isPaid ? "PAGO RECIBIDO" : "PENDIENTE DE PAGO"}
+                      </label>
+                      <div className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          id={toggleId}
+                          type="checkbox"
+                          checked={isPaid}
+                          onChange={(e) => setIsPaid(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                      </div>
+                    </div>
+
+                    {isPaid && (
+                      <div className="pt-3 border-t border-neutral-200 animate-in fade-in slide-in-from-top-2">
+                        <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Método de Pago</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {activeMethods.length > 0 ? (
+                            activeMethods.map(method => (
+                              <button
+                                key={method.id}
+                                type="button"
+                                onClick={() => setPaymentMethod(method.id)}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all ${
+                                  paymentMethod === method.id 
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm' 
+                                    : 'bg-white border-neutral-200 text-neutral-500 hover:border-neutral-300'
+                                }`}
+                              >
+                                <Icon icon={method.icon || 'heroicons:banknotes'} className="text-sm" />
+                                {method.name}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="col-span-2 py-2 text-center text-[10px] text-neutral-400 bg-neutral-50 rounded-lg border border-dashed border-neutral-200 uppercase font-black">
+                              Sin métodos de pago
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowFulfillmentSelector(false)}
+                    className="w-12 h-14 flex items-center justify-center rounded-2xl bg-neutral-100 text-neutral-500 hover:bg-neutral-200 transition-colors"
+                  >
+                    <Icon icon="heroicons:arrow-left" className="text-xl" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmOrder}
+                    disabled={isSubmitting || !isLeadValid}
+                    className={`flex-1 h-14 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 ${
+                      !isLeadValid || isSubmitting
+                      ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
+                      : "bg-[#2f4131] text-white shadow-[#2f4131]/20"
+                    }`}
+                  >
+                    {isSubmitting ? (
+                      <Icon icon="line-md:loading-loop" className="text-xl" />
+                    ) : (
+                      <>
+                        <Icon icon="heroicons:sparkles" className="text-xl" />
+                        Confirmar Pedido
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
+
     <Portal>
       <>
         <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4">
@@ -922,245 +1164,18 @@ export default function CartModal({ open, onClose }) {
               </div>
 
               {/* Footer fijo (Receipt Style) */}
-              <div className="flex-shrink-0 bg-white border-t border-neutral-100 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] transition-all">
-                <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-neutral-100/60 border-dashed">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm text-neutral-500 font-medium">Subtotal</span>
-                    <span className="text-sm font-semibold text-neutral-700">{formatCOP(total)}</span>
-                  </div>
-                  {packagingFeeTotal > 0 && (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery') && (
-                    <div className="flex justify-between items-center mb-1 animate-in fade-in slide-in-from-right-2">
-                      <span className="text-sm text-neutral-500 font-medium">Empaque</span>
-                      <span className="text-sm font-semibold text-neutral-700">{formatCOP(packagingFeeTotal)}</span>
-                    </div>
-                  )}
-                  {isTipEnabled && (
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="flex items-center gap-2 cursor-pointer group">
-                        <div className="relative flex items-center">
-                          <input 
-                            type="checkbox" 
-                            checked={includeTip} 
-                            onChange={(e) => setIncludeTip(e.target.checked)}
-                            className="w-4 h-4 text-[#2f4131] bg-gray-100 border-gray-300 rounded focus:ring-[#2f4131] cursor-pointer"
-                          />
-                        </div>
-                        <span className="text-sm text-neutral-500 font-medium group-hover:text-neutral-700 transition-colors">
-                          Incluir servicio voluntario ({tipPercentage}%)
-                        </span>
-                      </label>
-                      <span className="text-sm font-semibold text-neutral-700">
-                        {includeTip ? formatCOP(serviceFeeAmount) : '-'}
-                      </span>
-                    </div>
-                  )}
-                  {!isTipEnabled && (
-                    <div className="flex justify-between items-center text-sm text-neutral-400">
-                      <span>Sin costo de servicio</span>
-                      <span>-</span>
-                    </div>
-                  )}
-                </div>
-                
-                <div
-                  className="px-4 pt-3 pb-3 sm:px-6 sm:pt-4 sm:pb-4"
-                  style={{ paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 16px)" }}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-base sm:text-lg font-bold text-neutral-900">Total</span>
-                    <span className="text-2xl sm:text-3xl font-black tracking-tight text-[#2f4131]">
-                      {formatCOP(fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount)}
-                    </span>
-                  </div>
-                  
-                  <div className="flex flex-col gap-2.5">
-                    {!showFulfillmentSelector && !initialMesa && !isPOSMode ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowFulfillmentSelector(true)}
-                        disabled={!items.length}
-                        className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] hover:bg-[#202c21] text-white shadow-[#2f4131]/20 hover:-translate-y-0.5 transition-all active:scale-[0.98]"
-                      >
-                        Siguiente: Tipo de Pedido
-                        <Icon icon="heroicons:arrow-right" className="text-xl" />
-                      </button>
-                    ) : !showFulfillmentSelector && (initialMesa || isPOSMode) ? (
-                      <button
-                        type="button"
-                        onClick={handleConfirmOrder}
-                        disabled={isSubmitting || !items.length || !isLeadValid}
-                        className={`flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg transition-all active:scale-[0.98] ${
-                          !isLeadValid || isSubmitting
-                          ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
-                          : "bg-[#2f4131] hover:bg-[#202c21] text-white shadow-[#2f4131]/20 hover:-translate-y-0.5"
-                        }`}
-                      >
-                        {isSubmitting ? (
-                          <Icon icon="line-md:loading-loop" className="text-xl" />
-                        ) : (
-                          <>
-                            <Icon icon="heroicons:sparkles" className="text-xl" />
-                            {isPOSMode ? "Confirmar y Comandar" : "Confirmar Pedido"}
-                          </>
-                        )}
-                      </button>
-                    ) : (
-                      <div className="flex flex-col gap-3 animate-in slide-in-from-bottom-4 duration-300">
-                        {/* Fulfillment Picker */}
-                        <div className="grid grid-cols-2 gap-2">
-                          {[
-                            { id: 'dine_in', label: 'En Mesa', icon: 'heroicons:map-pin' },
-                            { id: 'takeaway', label: 'Para Llevar', icon: 'heroicons:shopping-bag' },
-                            { id: 'delivery', label: 'Domicilio', icon: 'heroicons:truck' },
-                            { id: 'scheduled', label: 'Programado', icon: 'heroicons:calendar' }
-                          ].map(opt => (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              onClick={() => setFulfillmentType(opt.id)}
-                              className={`flex flex-col items-center justify-center py-2.5 rounded-xl border-2 transition-all gap-1 ${
-                                fulfillmentType === opt.id 
-                                  ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-sm scale-[1.02]" 
-                                  : "border-neutral-100 bg-neutral-50 text-neutral-500 grayscale opacity-70"
-                              }`}
-                            >
-                              <Icon icon={opt.icon} className="text-xl" />
-                              <span className="text-[10px] font-bold uppercase">{opt.label}</span>
-                            </button>
-                          ))}
-                        </div>
-
-                        {fulfillmentType === 'scheduled' && (
-                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest px-1">Fecha y Hora</label>
-                            <input 
-                              type="datetime-local" 
-                              value={scheduledTime}
-                              onChange={e => setScheduledTime(e.target.value)}
-                              className="w-full h-11 px-4 rounded-xl border border-neutral-200 text-sm font-medium focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131] transition-all bg-white"
-                            />
-                          </div>
-                        )}
-
-                        {/* Unified Customer Leads Section */}
-                        {isLeadRequired && (
-                          <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 shadow-sm animate-in slide-in-from-top-2 space-y-3">
-                            <div className="flex items-center justify-between px-1">
-                              <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Datos de Contacto</label>
-                              <span className="text-[10px] font-bold text-amber-500 bg-white px-2 py-0.5 rounded-full border border-amber-100">REQUERIDO</span>
-                            </div>
-                            <div className="grid grid-cols-1 gap-2">
-                               <div className="flex items-center gap-2 bg-white px-3 h-11 rounded-xl border border-amber-200 focus-within:ring-2 focus-within:ring-amber-200/50 transition-all">
-                                  <Icon icon="heroicons:user" className="text-amber-400" />
-                                  <input 
-                                    type="text" 
-                                    placeholder="Nombre Completo"
-                                    value={customerName || ""}
-                                    onChange={e => setCustomerName(e.target.value)}
-                                    className="flex-1 h-full text-sm font-semibold text-neutral-800 placeholder:text-neutral-300 outline-none bg-transparent"
-                                  />
-                               </div>
-                               <div className="flex items-center gap-2 bg-white px-3 h-11 rounded-xl border border-amber-200 focus-within:ring-2 focus-within:ring-amber-200/50 transition-all">
-                                  <Icon icon="heroicons:phone" className="text-amber-400" />
-                                  <input 
-                                    type="tel" 
-                                    placeholder="Celular / WhatsApp"
-                                    value={customerPhone || ""}
-                                    onChange={e => setCustomerPhone(e.target.value)}
-                                    className="flex-1 h-full text-sm font-semibold text-neutral-800 placeholder:text-neutral-300 outline-none bg-transparent"
-                                  />
-                               </div>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {isPOSMode && (
-                          <div className="flex flex-col gap-3 p-4 bg-neutral-50 rounded-2xl border border-neutral-200">
-                            <div className="flex items-center justify-between">
-                              <label htmlFor="paid-toggle" className={`text-xs font-black cursor-pointer transition-colors uppercase tracking-widest ${isPaid ? 'text-emerald-600' : 'text-neutral-500'}`}>
-                                {isPaid ? "PAGO RECIBIDO" : "PENDIENTE DE PAGO"}
-                              </label>
-                              <div className="relative inline-flex items-center cursor-pointer">
-                                <input 
-                                  id="paid-toggle"
-                                  type="checkbox"
-                                  checked={isPaid}
-                                  onChange={(e) => setIsPaid(e.target.checked)}
-                                  className="sr-only peer"
-                                />
-                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-                              </div>
-                            </div>
-
-                            {isPaid && (
-                              <div className="pt-3 border-t border-neutral-200 animate-in fade-in slide-in-from-top-2">
-                                <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Método de Pago</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                  {activeMethods.length > 0 ? (
-                                    activeMethods.map(method => (
-                                      <button
-                                        key={method.id}
-                                        type="button"
-                                        onClick={() => setPaymentMethod(method.id)}
-                                        className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all ${
-                                          paymentMethod === method.id 
-                                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm' 
-                                            : 'bg-white border-neutral-200 text-neutral-500 hover:border-neutral-300'
-                                        }`}
-                                      >
-                                        <Icon icon={method.icon || 'heroicons:banknotes'} className="text-sm" />
-                                        {method.name}
-                                      </button>
-                                    ))
-                                  ) : (
-                                    <div className="col-span-2 py-2 text-center text-[10px] text-neutral-400 bg-neutral-50 rounded-lg border border-dashed border-neutral-200 uppercase font-black">
-                                      Sin métodos de pago
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setShowFulfillmentSelector(false)}
-                            className="w-12 h-14 flex items-center justify-center rounded-2xl bg-neutral-100 text-neutral-500 hover:bg-neutral-200 transition-colors"
-                          >
-                            <Icon icon="heroicons:arrow-left" className="text-xl" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleConfirmOrder}
-                            disabled={isSubmitting || !isLeadValid}
-                            className={`flex-1 h-14 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 ${
-                              !isLeadValid || isSubmitting
-                              ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
-                              : "bg-[#2f4131] text-white shadow-[#2f4131]/20"
-                            }`}
-                          >
-                            {isSubmitting ? (
-                              <Icon icon="line-md:loading-loop" className="text-xl" />
-                            ) : (
-                              <>
-                                <Icon icon="heroicons:sparkles" className="text-xl" />
-                                {isPOSMode ? "Confirmar y Comandar" : "Confirmar Pedido"}
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              {renderCheckoutFooter('desktop')}
             </div>
           )}
+
+          {/* Mobile Fixed Footer */}
+          <div className="md:hidden flex-shrink-0">
+            {renderCheckoutFooter('mobile')}
           </div>
+        </div>
           
           {/* Full-drawer Success View */}
+
           {showSuccess && (
             <div className="absolute inset-0 z-[200] bg-white flex flex-col items-center justify-start sm:justify-center p-8 text-center animate-in fade-in zoom-in duration-300 rounded-t-[28px] sm:rounded-[32px] overflow-y-auto overflow-x-hidden min-h-[500px]">
                 <div className="flex flex-col items-center justify-center py-6 sm:py-10 px-6 text-center space-y-6 sm:space-y-8 animate-in fade-in zoom-in duration-300 w-full max-w-md mx-auto">
@@ -1170,7 +1185,7 @@ export default function CartModal({ open, onClose }) {
                     
                     <div className="space-y-2">
                       <h2 className="text-3xl sm:text-4xl font-black text-gray-900 leading-tight">
-                        {isPOSMode ? "¡Pedido Comandado!" : "¡Pedido Recibido!"}
+                        {isPOSMode ? "¡Pedido Confirmado!" : "¡Pedido Recibido!"}
                       </h2>
                       <p className="text-gray-500 font-medium text-lg">
                         Tu pedido <span className="text-gray-900 font-black text-xl">#{lastOrderId ? lastOrderId.slice(-4).toUpperCase() : ""}</span> ha sido registrado.
@@ -1254,6 +1269,17 @@ export default function CartModal({ open, onClose }) {
                         Seguir Mi Pedido
                         <Icon icon="solar:arrow-right-line-duotone" />
                       </button>
+
+                      {/* WhatsApp Option for Non-DineIn orders */}
+                      {(!isPOSMode && fulfillmentType !== 'dine_in' && whatsappLink) && (
+                        <button
+                          onClick={() => window.open(whatsappLink, '_blank')}
+                          className="w-full bg-[#25D366] text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg shadow-[#25D366]/20 hover:bg-[#128C7E]"
+                        >
+                          <Icon icon="logos:whatsapp-icon" className="text-xl" />
+                          Enviar copia del pedido a WhatsApp
+                        </button>
+                      )}
                       
                       <button
                         onClick={() => {

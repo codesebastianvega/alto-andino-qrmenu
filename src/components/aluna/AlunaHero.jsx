@@ -15,7 +15,7 @@ export default function AlunaHero() {
         <div className="absolute inset-0 bg-gradient-to-br from-black/95 via-black/40 to-transparent"></div>
 
         {/* Contenido (Grid de 2 columnas) */}
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 lg:px-20 pt-2 pb-12 md:py-20 grid md:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
+        <div className="relative z-10 w-full max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 pt-2 pb-12 md:py-20 grid md:grid-cols-2 gap-8 lg:gap-16 items-center">
 
           {/* Columna Izquierda */}
           <FadeIn direction="up">
@@ -32,7 +32,7 @@ export default function AlunaHero() {
               </div>
 
               {/* Título Principal */}
-              <h1 className="text-[42px] md:text-[80px] leading-[0.95] text-white mb-8 tracking-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>
+              <h1 className="text-5xl md:text-7xl leading-[0.95] text-white mb-8 tracking-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>
                 Diseñando espacios <br />
                 <span className="italic text-[#D4A853] font-light">digitales</span> que inspiran.
               </h1>
