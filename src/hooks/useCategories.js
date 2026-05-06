@@ -53,12 +53,8 @@ export const useCategories = () => {
       // Filter and process counts
       let filteredData = data || [];
       
-      // If a specific location is active, filter to only show linked categories
-      if (locationId && locationId !== 'all') {
-        filteredData = filteredData.filter(cat => 
-          cat.location_categories?.some(lc => lc.location_id === locationId)
-        );
-      }
+      // We no longer filter results strictly. If a category exists in the brand, 
+      // it's visible in the admin list unless specifically deactivated for that location in the future.
 
       const enrichedData = filteredData.map(cat => {
         const items = cat.items || [];
@@ -90,12 +86,33 @@ export const useCategories = () => {
   }, [activeBrandId]);
 
   useEffect(() => {
-    if (activeBrandId) {
-      fetchCategories();
-    } else {
+    if (!activeBrandId) {
       setLoading(false);
+      return;
     }
-  }, [activeBrandId]);
+
+    fetchCategories();
+
+    // Real-time listener
+    const channel = supabase
+      .channel(`admin-categories-${activeBrandId}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'categories',
+        filter: `brand_id=eq.${activeBrandId}`
+      }, () => fetchCategories())
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'location_categories'
+      }, () => fetchCategories())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeBrandId, fetchCategories]);
 
   // Create new category
   const createCategory = async (categoryData) => {

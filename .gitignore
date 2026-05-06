@@ -1,4 +1,33 @@
 node_modules
 dist
 .env
+.env.local
+.env.*.local
 .DS_Store
+
+# Private notes and credentials
+secrets/
+credentials.txt
+schema_dump.sql
+supabase/.temp/
+
+# Agent and IDE skills
+.agents/
+.claude/
+skills-lock.json
+
+# Local and temporary folders
+archive/
+scratch/
+revisarfeatures/
+.vscode/
+schema_recreated.sql
+scripts/
+.vercel/
+*.log
+.temp/
+backup/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

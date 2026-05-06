@@ -152,7 +152,13 @@ export const MenuDataProvider = ({ children }) => {
   const modifiers = useMemo(() => {
     const modGroups = {};
     const filteredGroups = (rawModifierGroups || []).filter(group => {
-      if (!activeLocationId || activeLocationId === 'all') return true; // Brand level view shows all
+      if (!activeLocationId || activeLocationId === 'all') return true; 
+      if (!locationModLinks || locationModLinks.length === 0) return true; // Brand fallback
+
+      // check if the location HAS any mod links at all. If yes, we check for THIS group.
+      const locHasAnyLinks = (locationModLinks || []).some(link => link.location_id === activeLocationId);
+      if (!locHasAnyLinks) return true; // Inherit all if none configured for this location
+
       return (locationModLinks || []).some(link => 
         link.modifier_group_id === group.id && link.location_id === activeLocationId
       );
@@ -190,10 +196,11 @@ export const MenuDataProvider = ({ children }) => {
     (rawProducts || []).forEach(product => {
       // Apply location product status override (Estrategia Híbrida)
       if (activeLocationId && activeLocationId !== 'all' && hasLocProductConfig) {
-        // Modo estricto: la sede tiene productos asignados,
-        // solo mostrar los que están explícitamente activos.
+        // Modo estricto: la sede tiene productos asignados.
+        // Si el producto no tiene registro, lo mostramos por defecto (Herencia).
+        // Si tiene registro, respetamos su estado is_active.
         const locStatus = locStatusForActive.find(ls => ls.product_id === product.id);
-        if (!locStatus || locStatus.is_active === false) {
+        if (locStatus && locStatus.is_active === false) {
           return;
         }
       }
@@ -255,7 +262,7 @@ export const MenuDataProvider = ({ children }) => {
       //    Si NO tiene ninguna asignación → mostrar todas las de la marca.
       if (activeLocationId && activeLocationId !== 'all' && hasLocCatConfig) {
         const locCat = locCatsForActive.find(lc => lc.category_id === cat.id);
-        if (!locCat || locCat.is_active === false) return false;
+        if (locCat && locCat.is_active === false) return false;
       }
 
       // 3. Must have products in this category
@@ -305,11 +312,12 @@ export const MenuDataProvider = ({ children }) => {
     fetchMenuData(activeBrandId);
   }, [activeBrandId, loadingBrand, fetchMenuData, allCategories.length]);
 
-  // Real-time branding and home settings updates
+  // Real-time menu data updates
   useEffect(() => {
     if (!activeBrandId) return;
 
-    const channel = supabase.channel(`content-changes-${activeBrandId}`)
+    // Listen for branding and settings changes
+    const settingsChannel = supabase.channel(`settings-changes-${activeBrandId}`)
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
@@ -327,8 +335,26 @@ export const MenuDataProvider = ({ children }) => {
         if (payload.new) setHomeSettings(payload.new);
       })
       .subscribe();
-    return () => supabase.removeChannel(channel);
-  }, [activeBrandId]);
+
+    // Listen for menu content changes (wildcard for brand_id tables)
+    // For tables WITHOUT brand_id (location overrides), we listen to all and filter in JS if needed
+    // but usually, these changes are specific enough that a refresh is fine.
+    const menuChannel = supabase.channel(`menu-changes-${activeBrandId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchMenuData(activeBrandId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => fetchMenuData(activeBrandId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'modifier_groups' }, () => fetchMenuData(activeBrandId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'modifier_options' }, () => fetchMenuData(activeBrandId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'location_product_prices' }, () => fetchMenuData(activeBrandId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'location_product_status' }, () => fetchMenuData(activeBrandId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'location_categories' }, () => fetchMenuData(activeBrandId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'location_modifier_groups' }, () => fetchMenuData(activeBrandId))
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(settingsChannel);
+      supabase.removeChannel(menuChannel);
+    };
+  }, [activeBrandId, fetchMenuData]);
 
   // Inject CSS Variables for Dynamic Theming
   useEffect(() => {

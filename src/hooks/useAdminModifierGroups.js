@@ -37,13 +37,12 @@ export const useAdminModifierGroups = (locationId) => {
         
         const linkedIds = (linkedGroups || []).map(l => l.modifier_group_id);
         
-        if (linkedIds.length === 0) {
-          setModifierGroups([]);
-          setLoading(false);
-          return;
+        if (linkedIds.length > 0) {
+          query = query.in('id', linkedIds);
+        } else {
+          // If no groups are linked to the location, we show ALL brand groups (Inherit)
+          // instead of showing nothing.
         }
-
-        query = query.in('id', linkedIds);
       }
 
       const { data, error } = await query.order('created_at', { ascending: true });
@@ -99,11 +98,37 @@ export const useAdminModifierGroups = (locationId) => {
   }, [activeBrandId, locationId]);
 
   useEffect(() => {
-    if (activeBrandId) {
-      fetchModifierGroups();
-    } else {
+    if (!activeBrandId) {
       setLoading(false);
+      return;
     }
+
+    fetchModifierGroups();
+
+    // Real-time listener
+    const channel = supabase
+      .channel(`admin-modifiers-${activeBrandId}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'modifier_groups',
+        filter: `brand_id=eq.${activeBrandId}`
+      }, () => fetchModifierGroups())
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'modifier_options'
+      }, () => fetchModifierGroups())
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'location_modifier_groups'
+      }, () => fetchModifierGroups())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [activeBrandId, fetchModifierGroups]);
 
   const duplicateGroup = async (group) => {

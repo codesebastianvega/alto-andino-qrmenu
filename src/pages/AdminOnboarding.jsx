@@ -86,8 +86,8 @@ export default function AdminOnboarding() {
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `logo_${Date.now()}.${fileExt}`;
-      const filePath = `brand_logos/${fileName}`;
+      const fileName = `${activeBrand.id}/logo_${Date.now()}.${fileExt}`;
+      const filePath = `branding/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('products') // Using products bucket as it exists

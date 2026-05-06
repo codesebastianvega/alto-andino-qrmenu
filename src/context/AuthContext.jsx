@@ -185,10 +185,13 @@ export const AuthProvider = ({ children }) => {
         .update({ brand_id: brand.id })
         .eq('id', user.id);
       
-      if (!error) {
-        // Update local profile state as well
-        setProfile(prev => ({ ...prev, brand_id: brand.id }));
+      if (error) {
+        console.error('[AuthContext] Error syncing brand to profile:', error);
+        throw error; // Rethrow to let the UI (e.g., BrandSwitcher) handle it
       }
+      
+      // Update local profile state as well
+      setProfile(prev => ({ ...prev, brand_id: brand.id }));
     }
 
     // 2. Local State

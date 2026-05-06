@@ -341,12 +341,21 @@ export default function AdminLayout() {
         schema: 'public', 
         table: 'orders',
         filter: `brand_id=eq.${activeBrandId}`
-      }, () => {
+      }, (payload) => {
+        console.log('AdminLayout: Realtime change detected', payload.eventType);
         // Al recibir cualquier cambio en la marca, re-consultamos el conteo 
-        // (el fetch ya filtra por sede correctamente)
-        fetchPendingCount();
+        // Añadimos un pequeño delay para asegurar que la DB haya terminado la escritura
+        setTimeout(() => {
+          fetchPendingCount();
+        }, 800);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('AdminLayout: Realtime subscribed for brand', activeBrandId);
+        } else {
+          console.warn('AdminLayout: Realtime subscription status:', status);
+        }
+      });
 
     return () => supabase.removeChannel(channel);
   }, [activeBrandId, activeLocationId, isAllLocations]);

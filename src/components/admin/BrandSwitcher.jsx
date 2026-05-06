@@ -67,9 +67,16 @@ export default function BrandSwitcher() {
   const otherBrands = ownedBrands.filter((b) => b.id !== activeBrand.id);
 
   const handleSwitch = async (brand) => {
-    setOpen(false);
-    await switchBrand(brand);
-    window.location.href = `/${brand.slug}/#admin`;
+    try {
+      setOpen(false);
+      await switchBrand(brand);
+      window.location.href = `/${brand.slug}/#admin`;
+    } catch (err) {
+      console.error('[BrandSwitcher] Switch failed:', err);
+      // We don't have toast directly here, but the error is logged. 
+      // AuthContext handles the error throw.
+      alert('Error al cambiar de marca. Por favor, intenta de nuevo.');
+    }
   };
 
   const handleGoToPortal = () => {

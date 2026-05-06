@@ -247,7 +247,8 @@ export default function AdminOrders() {
       }
 
       if (filterDate) {
-        query = query.gte('created_at', filterDate);
+        // Mostrar pedidos de hoy O pedidos pendientes de días anteriores
+        query = query.or(`created_at.gte.${filterDate},status.not.in.(delivered,cancelled)`);
       }
 
       if (!isAllLocations && activeLocationId) {

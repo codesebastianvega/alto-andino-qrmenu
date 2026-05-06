@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
@@ -19,7 +19,7 @@ const FONT_OPTIONS = [
   { label: 'Montserrat (Geométrico)', value: 'Montserrat' },
 ];
 
-export default function AdminBranding({ isEmbedded = false }) {
+const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, ref) {
   const { activeBrand, activePlan, isFeatureLocked, refreshProfile, user } = useAuth();
   const [settings, setSettings] = useState(null);
   const [loadingSettings, setLoadingSettings] = useState(false);
@@ -146,7 +146,8 @@ export default function AdminBranding({ isEmbedded = false }) {
       };
 
       const brandPayload = {
-        name: settingsForm.business_name
+        name: settingsForm.business_name,
+        logo_url: settingsForm.logo_url || null
       };
 
       const [settingsRes, brandRes] = await Promise.all([
@@ -168,6 +169,11 @@ export default function AdminBranding({ isEmbedded = false }) {
       setIsSubmittingSettings(false);
     }
   };
+
+  // Expose save function to parent via ref
+  useImperativeHandle(ref, () => ({
+    save: handleSaveSettings
+  }), [activeBrand, settingsForm, user]);
 
   // Plan gating logic - Lock advanced features for "Emprendedor" plan
   const isLocked = isFeatureLocked('branding');
@@ -586,7 +592,7 @@ export default function AdminBranding({ isEmbedded = false }) {
       </div>
     </div>
   );
-}
+});
 
 function ColorInput({ label, value, onChange, disabled = false, isPremium = false }) {
   return (
@@ -627,3 +633,5 @@ function ColorInput({ label, value, onChange, disabled = false, isPremium = fals
     </div>
   );
 }
+
+export default AdminBranding;

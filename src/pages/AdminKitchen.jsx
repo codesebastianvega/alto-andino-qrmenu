@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { useLocations } from '../context/LocationContext';
+import { useRestaurantSettings } from '../hooks/useRestaurantSettings';
 
 const playNotificationSound = () => {
     try {
@@ -63,16 +64,16 @@ export default function AdminKitchen() {
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   const [viewMode, setViewMode] = useState('tower'); // 'tower' | 'batch' | 'all'
-  const [restaurantSettings, setRestaurantSettings] = useState(null);
+  const { settings: restaurantSettings } = useRestaurantSettings();
 
   const { activeBrand } = useAuth();
   const { activeLocationId, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id;
 
-  const fetchKitchenOrders = useCallback(async () => {
+  const fetchKitchenOrders = useCallback(async (isSilent = false) => {
     if (!activeBrandId) return;
     try {
-      setLoading(true);
+      if (!isSilent) setLoading(true);
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -108,19 +109,6 @@ export default function AdminKitchen() {
     }
   }, [activeBrandId, isAllLocations, activeLocationId]);
 
-  // Fetch Restaurant Settings
-  useEffect(() => {
-    const fetchSettings = async () => {
-      if (!activeBrandId) return;
-      const { data, error } = await supabase
-        .from('restaurant_settings')
-        .select('*')
-        .eq('brand_id', activeBrandId)
-        .single();
-      if (!error && data) setRestaurantSettings(data);
-    };
-    fetchSettings();
-  }, [activeBrandId]);
 
   const batchOrders = React.useMemo(() => {
     const batches = {};
@@ -486,6 +474,7 @@ export default function AdminKitchen() {
         table: 'orders',
         filter: `brand_id=eq.${activeBrandId}`
       }, (payload) => {
+        console.log('AdminKitchen: Realtime order change:', payload.eventType, payload.new?.id || payload.old?.id);
         // Filtrado manual por sede debido a limitaciones de un solo filtro en Realtime de Supabase
         const isTargetLocation = isAllLocations || (payload.new && payload.new.location_id === activeLocationId);
         if (!isTargetLocation) return;
@@ -493,18 +482,47 @@ export default function AdminKitchen() {
         if (payload.eventType === 'INSERT') {
             if (['new', 'preparing'].includes(payload.new.status)) {
                 playNotificationSound();
-                toast('¡Nuevo pedido para cocina!');
-                fetchKitchenOrders();
+                toast('¡Nuevo pedido para cocina!', {
+                  icon: '🔥',
+                  style: {
+                    borderRadius: '1rem',
+                    background: '#1e293b',
+                    color: '#fff',
+                    border: '1px solid rgba(16, 185, 129, 0.2)'
+                  }
+                });
+                // Pequeño delay para asegurar que los joins estén listos en la DB
+                setTimeout(() => fetchKitchenOrders(true), 1000);
             }
         } else if (payload.eventType === 'UPDATE') {
-            if (!['new', 'preparing'].includes(payload.new.status)) {
-                // Si cambió a un estado que no es de cocina, lo quitamos
+            const isKitchenRelevant = ['new', 'preparing'].includes(payload.new.status);
+            
+            if (!isKitchenRelevant) {
+                // If it's no longer for kitchen, remove it immediately
                 setOrders(prev => prev.filter(o => o.id !== payload.new.id));
             } else {
-                fetchKitchenOrders();
+                // If it IS kitchen relevant, we need to make sure we have the full object (joins)
+                // We update local state first for immediate UI response if we already have it
+                setOrders(prev => {
+                    const existingOrder = prev.find(o => o.id === payload.new.id);
+                    if (existingOrder) {
+                        // Merge update with existing order to preserve joins (locations, tables, items)
+                        return prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o);
+                    } else {
+                        // If it's new to the kitchen view (e.g. status changed from 'ready' back to 'preparing')
+                        // we must fetch it to get the items/joins
+                        setTimeout(() => fetchKitchenOrders(true), 500);
+                        return prev;
+                    }
+                });
+                
+                // If the status actually changed to something kitchen-relevant, maybe play sound?
+                if (payload.old && payload.old.status !== payload.new.status) {
+                    playNotificationSound();
+                }
             }
-        } else {
-            fetchKitchenOrders();
+        } else if (payload.eventType === 'DELETE') {
+            setOrders(prev => prev.filter(o => o.id !== payload.old.id));
         }
       })
       .on('postgres_changes', { 
@@ -512,10 +530,19 @@ export default function AdminKitchen() {
         schema: 'public', 
         table: 'order_items',
         filter: itemsFilter
-      }, () => {
-        fetchKitchenOrders();
+      }, (payload) => {
+        console.log('AdminKitchen: Realtime items change:', payload.eventType);
+        // Cuando cambian los items, necesitamos recargar para ver modificaciones/notas nuevas
+        // pero lo hacemos con un pequeño delay y de forma silenciosa
+        setTimeout(() => fetchKitchenOrders(true), 800);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('AdminKitchen: Realtime subscribed for brand', activeBrandId);
+        } else {
+          console.warn('AdminKitchen: Realtime subscription status:', status);
+        }
+      });
 
     return () => {
       if (channel) supabase.removeChannel(channel);

@@ -268,10 +268,11 @@ async function migrate() {
     }
 
     const products = DATA[catSlug].map(p => {
-       const { desc, ...rest } = p;
+       const { desc, group, ...rest } = p;
        return {
          ...rest,
          description: desc || p.description,
+         subcategory: group || null,
          category_id: catId,
          is_active: true,
          stock_status: 'in'

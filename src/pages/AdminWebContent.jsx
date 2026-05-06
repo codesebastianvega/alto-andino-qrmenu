@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useMenuData } from '../context/MenuDataContext';
@@ -25,6 +25,7 @@ export default function AdminWebContent() {
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState(getInitialTab);
+  const brandingRef = useRef(null);
 
   // Sync tab with URL
   useEffect(() => {
@@ -210,6 +211,16 @@ export default function AdminWebContent() {
   const handleSave = async () => {
     setSubmitting(true);
     try {
+      // If on branding tab, delegate save to AdminBranding component
+      if (activeTab === 'branding') {
+        if (brandingRef.current?.save) {
+          await brandingRef.current.save();
+        }
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2500);
+        return;
+      }
+
       const payload = {
         hero_h1: data.hero_h1 || null,
         hero_subtitle: data.hero_subtitle || null,
@@ -331,12 +342,12 @@ export default function AdminWebContent() {
     setUploadingImage(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-      const filePath = `landing_images/${fileName}`;
+      const fileName = `${activeBrand.id}/landing_${field}_${Date.now()}.${fileExt}`;
+      const filePath = `branding/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('products')
-        .upload(filePath, file);
+        .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
@@ -1323,7 +1334,7 @@ export default function AdminWebContent() {
         {/* TAB 5: BRANDING & BANNERS */}
         {activeTab === 'branding' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <AdminBranding isEmbedded={true} />
+            <AdminBranding ref={brandingRef} isEmbedded={true} />
           </div>
         )}
       </div>

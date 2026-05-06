@@ -32,13 +32,9 @@ export const useAdminProducts = () => {
         query = query.eq('brand_id', activeBrandId);
       }
 
-      // If a specific location is selected, we only show products linked to it
-      if (locationId && locationId !== 'all') {
-        // We use a join-like filter via inner join on location_product_status
-        // In Supabase, we can filter by the presence of a related record
-        query = query.not('location_product_status', 'is', null)
-                     .eq('location_product_status.location_id', locationId);
-      }
+      // We no longer filter out products that don't have a status record for the location.
+      // Instead, we fetch all and let the UI handle the "Inherit" state.
+      // if (locationId && locationId !== 'all') { ... }
 
       const { data, error } = await query
         .order('sort_order', { ascending: true })
@@ -46,16 +42,9 @@ export const useAdminProducts = () => {
       
       if (error) throw error;
 
-      // Filter results to ensure that when a location is active, 
-      // ONLY products that actually have a record for that location are shown.
-      let filteredData = data || [];
-      if (locationId && locationId !== 'all') {
-        filteredData = filteredData.filter(p => 
-          p.location_product_status?.some(s => s.location_id === locationId)
-        );
-      }
-
-      setProducts(filteredData);
+      // If a product exists in the brand, it's visible in the admin list.
+      const fetchedProducts = data || [];
+      setProducts(fetchedProducts);
     } catch (err) {
       console.error('Error fetching products:', err);
       setError(err.message);
@@ -65,14 +54,52 @@ export const useAdminProducts = () => {
   }, [activeBrandId]);
 
   useEffect(() => {
-    if (activeBrandId) {
-      // We don't automatically know the location here if we want to keep the hook independent
-      // But we can fetch with 'all' by default or let the component call refreshProducts(locationId)
-      fetchProducts();
-    } else {
+    if (!activeBrandId) {
       setLoading(false);
+      return;
     }
-  }, [activeBrandId]);
+
+    fetchProducts();
+
+    // Real-time listener for products
+    const channel = supabase
+      .channel(`admin-products-${activeBrandId}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'products',
+        filter: `brand_id=eq.${activeBrandId}`
+      }, (payload) => {
+        console.log('Realtime: Product change detected', payload);
+        fetchProducts();
+      })
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'location_product_prices'
+      }, (payload) => {
+        console.log('Realtime: Price override change detected', payload);
+        fetchProducts();
+      })
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'location_product_status'
+      }, (payload) => {
+        console.log('Realtime: Status override change detected', payload);
+        fetchProducts();
+      })
+      .subscribe((status) => {
+        console.log(`Realtime: Subscription status for products: ${status}`);
+        if (status === 'CHANNEL_ERROR') {
+          console.error('Realtime: Channel error detected for products');
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeBrandId, fetchProducts]);
 
   const createProduct = async (productData) => {
     try {
