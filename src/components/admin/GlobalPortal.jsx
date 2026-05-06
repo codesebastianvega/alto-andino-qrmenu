@@ -125,7 +125,7 @@ function DeleteBrandModal({ brand, onClose, onDeleted }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
@@ -135,9 +135,9 @@ function DeleteBrandModal({ brand, onClose, onDeleted }) {
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.95, y: 20, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="relative w-full max-w-sm"
+        className="relative w-full max-w-sm mt-auto md:mt-0"
       >
-        <div className="bg-[#111] border border-red-500/20 rounded-[2rem] p-8 shadow-2xl overflow-hidden">
+        <div className="bg-[#111] border border-red-500/20 rounded-t-[2rem] md:rounded-[2rem] p-6 md:p-8 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-500/10 blur-[50px] rounded-full pointer-events-none" />
 
           <AnimatePresence mode="wait">
@@ -240,7 +240,7 @@ function NewBrandModal({ onClose, onCreated }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4"
       onClick={(e) => e.target === e.currentTarget && !success && onClose()}
     >
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
@@ -250,9 +250,9 @@ function NewBrandModal({ onClose, onCreated }) {
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.95, y: 20, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="relative w-full max-w-lg"
+        className="relative w-full max-w-lg mt-auto md:mt-0"
       >
-        <div className="bg-[#111] border border-white/10 rounded-[2rem] p-8 shadow-2xl overflow-hidden">
+        <div className="bg-[#111] border border-white/10 rounded-t-[2rem] md:rounded-[2rem] p-6 md:p-8 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
           <div className="absolute -top-20 -right-20 w-48 h-48 bg-[#7db87a]/12 blur-[60px] rounded-full pointer-events-none" />
 
           {/* Header */}
@@ -486,7 +486,7 @@ export default function GlobalPortal() {
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
           {/* Header */}
-          <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16 px-2">
+          <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 md:mb-16 px-2">
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7db87a] to-[#5a9c57] flex items-center justify-center shadow-lg shadow-[#7db87a]/20">
@@ -531,20 +531,11 @@ export default function GlobalPortal() {
                   handleBrandSelect(brand);
                 }}
               >
-                {/* Delete button (hover reveal) */}
-                <button
-                  onClick={(e) => { e.stopPropagation(); setBrandToDelete(brand); }}
-                  className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-red-500/0 hover:bg-red-500/20 border border-red-500/0 hover:border-red-500/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200"
-                  title="Eliminar marca"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                </button>
-
                 {/* Glow overlay */}
-                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-[32px] pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-[24px] md:rounded-[32px] pointer-events-none" />
 
                 <div
-                  className="h-full bg-white/5 border border-white/10 backdrop-blur-xl rounded-[32px] p-8 flex flex-col transition-all group-hover:bg-white/[0.08] group-hover:border-white/20 group-hover:scale-[1.02] active:scale-[0.98]"
+                  className="h-full bg-white/5 border border-white/10 backdrop-blur-xl rounded-[24px] md:rounded-[32px] p-5 md:p-8 flex flex-col transition-all group-hover:bg-white/[0.08] group-hover:border-white/20 group-hover:scale-[1.02] active:scale-[0.98]"
                 >
                   {/* Brand Identity */}
                   <div className="flex items-start justify-between mb-8">
@@ -566,6 +557,15 @@ export default function GlobalPortal() {
                           </span>
                         </div>
                       )}
+                      
+                      {/* Delete button (inline with badges) */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setBrandToDelete(brand); }}
+                        className="w-8 h-8 md:w-8 md:h-8 rounded-full bg-red-500/10 md:bg-red-500/0 hover:bg-red-500/20 border border-red-500/20 md:border-red-500/0 hover:border-red-500/30 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-200 ml-1"
+                        title="Eliminar marca"
+                      >
+                        <Trash2 className="w-4 h-4 md:w-3.5 md:h-3.5 text-red-400" />
+                      </button>
                     </div>
                   </div>
 
@@ -594,7 +594,7 @@ export default function GlobalPortal() {
 
                   {/* Footer Action */}
                   <div className="mt-6 flex items-center justify-between text-[#7db87a]">
-                    <span className="text-sm font-bold opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all duration-300">
+                    <span className="text-sm font-bold opacity-100 md:opacity-0 md:group-hover:opacity-100 transform translate-x-0 md:translate-x-[-10px] md:group-hover:translate-x-0 transition-all duration-300">
                       Gestionar Negocio
                     </span>
                     <div className="w-10 h-10 rounded-full bg-[#7db87a] flex items-center justify-center shadow-lg shadow-[#7db87a]/20 text-black">
@@ -611,9 +611,9 @@ export default function GlobalPortal() {
               onClick={() => setShowNewBrandModal(true)}
               className="group relative cursor-pointer"
             >
-              <div className="absolute inset-0 rounded-[32px] bg-gradient-to-br from-[#7db87a]/0 to-[#7db87a]/0 group-hover:from-[#7db87a]/20 group-hover:to-blue-500/10 transition-all duration-500 pointer-events-none" />
+              <div className="absolute inset-0 rounded-[24px] md:rounded-[32px] bg-gradient-to-br from-[#7db87a]/0 to-[#7db87a]/0 group-hover:from-[#7db87a]/20 group-hover:to-blue-500/10 transition-all duration-500 pointer-events-none" />
 
-              <div className="h-full min-h-[280px] border-2 border-dashed border-white/10 rounded-[32px] p-8 flex flex-col items-center justify-center text-center transition-all group-hover:border-[#7db87a]/40 group-hover:bg-[#7db87a]/5 active:scale-[0.98]">
+              <div className="h-full min-h-[160px] md:min-h-[280px] border-2 border-dashed border-white/10 rounded-[24px] md:rounded-[32px] p-6 md:p-8 flex flex-col items-center justify-center text-center transition-all group-hover:border-[#7db87a]/40 group-hover:bg-[#7db87a]/5 active:scale-[0.98]">
                 <motion.div
                   whileHover={{ scale: 1.1, rotate: 15 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 20 }}
