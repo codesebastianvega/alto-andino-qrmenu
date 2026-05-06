@@ -29,8 +29,6 @@ export default function AlunaFooter() {
             <h4 className="font-semibold text-lg mb-6">Compañía</h4>
             <ul className="space-y-4 text-gray-400 text-sm">
               <li><a href="#nosotros" className="hover:text-white transition-colors">Sobre Nosotros</a></li>
-              <li><a href="#servicios" className="hover:text-white transition-colors">Servicios</a></li>
-              <li><a href="#portafolio" className="hover:text-white transition-colors">Portafolio</a></li>
               <li><a href="#contacto" className="hover:text-white transition-colors">Contacto</a></li>
             </ul>
           </div>

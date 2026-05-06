@@ -66,6 +66,10 @@ const TermsPage = lazy(() => import("./pages/legal/TermsPage"));
 const PrivacyPage = lazy(() => import("./pages/legal/PrivacyPage"));
 const CookiesPage = lazy(() => import("./pages/legal/CookiesPage"));
 
+// Company Pages
+const AboutPage = lazy(() => import("./pages/company/AboutPage"));
+const ContactPage = lazy(() => import("./pages/company/ContactPage"));
+
 import { useAuth } from "./context/AuthContext";
 import BottomTabBar from "./components/navigation/BottomTabBar";
 const CustomerSearch = lazy(() => import("./components/admin/CustomerSearch"));
@@ -147,11 +151,13 @@ export default function App() {
     currentHash === '#login' || 
     currentHash === '#registro' ||
     currentHash.startsWith('#access_token') ||
-    currentHash.startsWith('#error_description') ||
+    currentHash === '#error_description' ||
     currentHash.startsWith('#error=') ||
     currentHash === '#terminos' ||
     currentHash === '#privacidad' ||
-    currentHash === '#cookies';
+    currentHash === '#cookies' ||
+    currentHash === '#nosotros' ||
+    currentHash === '#contacto';
 
   const isAuthView = currentHash === "#login" || 
                      currentHash === "#registro" || 
@@ -500,6 +506,18 @@ export default function App() {
         {currentHash === '#cookies' && (
           <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
             <CookiesPage />
+          </Suspense>
+        )}
+
+        {currentHash === '#nosotros' && (
+          <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
+            <AboutPage />
+          </Suspense>
+        )}
+
+        {currentHash === '#contacto' && (
+          <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
+            <ContactPage />
           </Suspense>
         )}
 
