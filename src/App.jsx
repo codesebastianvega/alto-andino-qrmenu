@@ -61,6 +61,11 @@ const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/auth/RegisterPage"));
 const GlobalPortal = lazy(() => import("./components/admin/GlobalPortal"));
 
+// Legal Pages
+const TermsPage = lazy(() => import("./pages/legal/TermsPage"));
+const PrivacyPage = lazy(() => import("./pages/legal/PrivacyPage"));
+const CookiesPage = lazy(() => import("./pages/legal/CookiesPage"));
+
 import { useAuth } from "./context/AuthContext";
 import BottomTabBar from "./components/navigation/BottomTabBar";
 const CustomerSearch = lazy(() => import("./components/admin/CustomerSearch"));
@@ -143,7 +148,10 @@ export default function App() {
     currentHash === '#registro' ||
     currentHash.startsWith('#access_token') ||
     currentHash.startsWith('#error_description') ||
-    currentHash.startsWith('#error=');
+    currentHash.startsWith('#error=') ||
+    currentHash === '#terminos' ||
+    currentHash === '#privacidad' ||
+    currentHash === '#cookies';
 
   const isAuthView = currentHash === "#login" || 
                      currentHash === "#registro" || 
@@ -474,6 +482,24 @@ export default function App() {
         {currentHash === '#registro' && (
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
             <RegisterPage />
+          </Suspense>
+        )}
+
+        {currentHash === '#terminos' && (
+          <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
+            <TermsPage />
+          </Suspense>
+        )}
+        
+        {currentHash === '#privacidad' && (
+          <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
+            <PrivacyPage />
+          </Suspense>
+        )}
+        
+        {currentHash === '#cookies' && (
+          <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
+            <CookiesPage />
           </Suspense>
         )}
 

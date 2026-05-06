@@ -38,9 +38,9 @@ export default function AlunaFooter() {
           <div>
             <h4 className="font-semibold text-lg mb-6">Legal</h4>
             <ul className="space-y-4 text-gray-400 text-sm">
-              <li><a href="#" className="hover:text-white transition-colors">Términos y Condiciones</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Política de Privacidad</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Cookies</a></li>
+              <li><a href="#terminos" className="hover:text-white transition-colors">Términos y Condiciones</a></li>
+              <li><a href="#privacidad" className="hover:text-white transition-colors">Política de Privacidad</a></li>
+              <li><a href="#cookies" className="hover:text-white transition-colors">Cookies</a></li>
             </ul>
           </div>
         </div>
