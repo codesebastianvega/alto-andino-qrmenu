@@ -149,19 +149,24 @@ const Icons = {
       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/>
     </svg>
   ),
+  Cash: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="18" cy="6" r="3" fill="currentColor" opacity="0.3"/>
+    </svg>
+  ),
 };
 
 const ADMIN_ROLES = ['admin', 'owner', 'superadmin', 'encargado'];
 
 const ESTRATEGIA_ITEMS = [
-  { id: 'analytics', label: 'Inteligencia', roles: ADMIN_ROLES, feature: 'advanced_analytics' }
+  { id: 'analytics', label: 'Inteligencia', Icon: Icons.Strategy, roles: ADMIN_ROLES, feature: 'advanced_analytics' }
 ];
 
 const OPERACION_ITEMS = [
-  { id: 'orders',     label: 'Pedidos',         roles: [...ADMIN_ROLES, 'waiter'] },
-  { id: 'kitchen',    label: 'Cocina',          roles: [...ADMIN_ROLES, 'kitchen'], feature: 'kitchen_display' },
-  { id: 'waiter',     label: 'Toma de Pedidos', roles: [...ADMIN_ROLES, 'waiter'] },
-  { id: 'operations', label: 'Turno & Caja',    roles: ADMIN_ROLES },
+  { id: 'orders',     label: 'Pedidos',         Icon: Icons.Orders, roles: [...ADMIN_ROLES, 'waiter'] },
+  { id: 'kitchen',    label: 'Cocina',          Icon: Icons.Kitchen, roles: [...ADMIN_ROLES, 'kitchen'], feature: 'kitchen_display' },
+  { id: 'waiter',     label: 'Toma de Pedidos', Icon: Icons.Waiter, roles: [...ADMIN_ROLES, 'waiter'] },
+  { id: 'operations', label: 'Turno & Caja',    Icon: Icons.Cash, roles: ADMIN_ROLES },
 ];
 
 const CARTA_ITEMS = [
@@ -204,6 +209,7 @@ export default function AdminLayout() {
   const [preparingOrdersCount, setPreparingOrdersCount] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [lockedFeatureName, setLockedFeatureName] = useState('');
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   
   const { restaurantSettings } = useMenuData();
 
@@ -474,7 +480,7 @@ export default function AdminLayout() {
     <div className="flex min-h-screen bg-[#F4F4F2]" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* ── Sidebar ────────────────────────────────────────────────────── */}
       <aside
-        className={`fixed left-0 top-0 bottom-0 bg-[#0F170F] border-r border-white/5 flex flex-col z-50 transition-all duration-300 ${
+        className={`hidden lg:flex fixed left-0 top-0 bottom-0 bg-[#0F170F] border-r border-white/5 flex-col z-50 transition-all duration-300 ${
           isCollapsed ? 'w-20' : 'w-[240px]'
         }`}
       >
@@ -788,17 +794,19 @@ export default function AdminLayout() {
       {/* ── Main Content ────────────────────────────────────────────────── */}
       <main
         className={`flex-1 transition-all duration-300 ${
-          isCollapsed ? 'ml-20' : 'ml-[240px]'
-        }`}
+          isCollapsed ? 'lg:ml-20' : 'lg:ml-[240px]'
+        } pb-[72px] lg:pb-0`}
       >
-        <header className="h-16 bg-white border-b border-gray-200/60 sticky top-0 z-40 flex items-center justify-between px-8 shadow-sm shadow-black/[0.02]">
-          <div className="flex items-center gap-6">
-             {/* Context ContextBreadcrumb (Brand > Sede) */}
-             <ContextBreadcrumb />
+        <header className="h-16 bg-white border-b border-gray-200/60 sticky top-0 z-40 flex items-center justify-between px-4 lg:px-8 shadow-sm shadow-black/[0.02]">
+           <div className="flex items-center gap-3 lg:gap-6">
+             {/* Context ContextBreadcrumb (Brand > Sede) replaces Hamburger on Mobile */}
+             <div className="block">
+               <ContextBreadcrumb />
+             </div>
              
-             <div className="h-6 w-px bg-gray-200 hidden sm:block" />
+             <div className="h-6 w-px bg-gray-200 hidden lg:block" />
 
-             <div className="flex items-center gap-3">
+             <div className="items-center gap-3 hidden lg:flex">
                <h2 className="text-lg font-bold text-gray-900 tracking-tight">{currentItemLabel}</h2>
                <AnimatePresence mode="wait">
                  {!isAllLocations && activeLocation && (
@@ -821,13 +829,13 @@ export default function AdminLayout() {
              </div>
 
              {activePlan && (
-               <div className="flex items-center gap-2 px-2.5 py-1 bg-brand-primary/5 border border-brand-primary/10 rounded-full">
+               <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 bg-brand-primary/5 border border-brand-primary/10 rounded-full">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
                   <span className="text-[10px] font-bold text-brand-primary uppercase tracking-wider">Plan {activePlan.name}</span>
                </div>
              )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3">
             <div 
               className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => setCurrentPage('profile')}
@@ -905,6 +913,193 @@ export default function AdminLayout() {
           />
         </div>
       </main>
+
+      {/* ── Mobile Drawer ────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {isMobileDrawerOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="fixed inset-0 bg-black/60 z-[60] lg:hidden"
+              onClick={() => setIsMobileDrawerOpen(false)}
+            />
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed top-0 left-0 bottom-0 w-[280px] bg-[#0F170F] z-[70] flex flex-col lg:hidden overflow-hidden shadow-2xl"
+            >
+              <div className="flex items-center justify-between h-16 px-5 border-b border-white/10 shrink-0">
+                <div className="flex items-center gap-3">
+                   <div className="w-8 h-8 flex items-center justify-center shrink-0 drop-shadow-md">
+                     <img src={logoUrl} alt="Logo" className="w-full h-full object-contain filter brightness-0 invert" />
+                   </div>
+                   <div className="flex flex-col">
+                     <span className="text-white font-bold text-[14px] truncate">{restaurantName}</span>
+                     {activePlan && (
+                       <div className="flex items-center gap-1">
+                         <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
+                         <span className="text-[10px] text-brand-primary font-bold uppercase tracking-wider">Plan {activePlan.name}</span>
+                       </div>
+                     )}
+                   </div>
+                </div>
+                <button 
+                  onClick={() => setIsMobileDrawerOpen(false)}
+                  className="p-2 -mr-2 text-white/50 hover:text-white rounded-lg"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar pt-4 px-4 pb-20 space-y-5">
+                {ADMIN_ROLES.includes(user.role) && (
+                  <NavSection title="Estrategia" items={ESTRATEGIA_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
+                )}
+                
+                <NavSection title="Operación" items={OPERACION_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
+                
+                {ADMIN_ROLES.includes(user.role) && (
+                  <>
+                    <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
+                    <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
+                    <NavSection title="Administración de Staff & Locales" items={ADMIN_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
+                    <NavSection title="Presencia Web" items={WEB_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
+                  </>
+                )}
+              </div>
+
+              {/* Mobile Drawer User Profile & Logout */}
+              <div className="p-4 border-t border-white/10 bg-[#0A0A0A] shrink-0">
+                <div className="flex items-center justify-between">
+                  <div 
+                    className="flex items-center gap-3 cursor-pointer"
+                    onClick={() => {
+                      setCurrentPage('profile');
+                      setIsMobileDrawerOpen(false);
+                    }}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center overflow-hidden shrink-0">
+                      {profile?.avatar_url ? (
+                        <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-[13px] font-bold text-brand-primary">
+                          {(profile?.full_name || user.email)?.[0].toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[14px] font-medium text-white truncate max-w-[150px]">
+                        {profile?.full_name || user.email}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] text-brand-primary font-medium">Ver perfil</span>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-brand-primary">
+                          <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={async () => {
+                      sessionStorage.removeItem('aa_admin_session');
+                      if (user?.auth_session) {
+                        await supabase.auth.signOut();
+                        // Redirect to landing to avoid falling back to the current brand's menu
+                        window.location.href = '/'; 
+                      } else {
+                        setUser(null);
+                      }
+                    }}
+                    className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-red-500/20 hover:text-red-500 transition-colors cursor-pointer text-white/70 shrink-0"
+                    title="Cerrar sesión"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                      <polyline points="16 17 21 12 16 7"></polyline>
+                      <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Mobile Bottom Navigation ─────────────────────────────────────── */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[45] lg:hidden pb-safe-bottom">
+        <div className="flex items-center justify-around h-[72px] px-2">
+          {/* Turno & Caja */}
+          {ADMIN_ROLES.includes(user.role) && (
+            <button 
+              onClick={() => handleSelectPage('operations', 'Turno & Caja')}
+              className={`flex flex-col items-center justify-center w-full h-full gap-1 ${currentPage === 'operations' ? 'text-brand-primary' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <Icons.Cash />
+              <span className="text-[10px] font-medium">Caja</span>
+            </button>
+          )}
+
+          {/* POS / Waiter */}
+          {user.role !== 'kitchen' && (
+            <button 
+              onClick={() => handleSelectPage('waiter', 'Toma de Pedidos')}
+              className={`flex flex-col items-center justify-center w-full h-full gap-1 ${currentPage === 'waiter' ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <Icons.Waiter />
+              <span className="text-[10px] font-medium">POS</span>
+            </button>
+          )}
+
+          {/* Orders */}
+          {user.role !== 'kitchen' && (
+            <button 
+              onClick={() => handleSelectPage('orders', 'Pedidos')}
+              className={`flex flex-col items-center justify-center w-full h-full gap-1 ${currentPage === 'orders' ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <div className="relative">
+                <Icons.Orders />
+              </div>
+              <span className="text-[10px] font-medium">Pedidos</span>
+            </button>
+          )}
+
+          {/* Kitchen */}
+          {user.role !== 'waiter' && (
+            <button 
+              onClick={() => handleSelectPage('kitchen', 'Cocina', 'kitchen_display')}
+              className={`flex flex-col items-center justify-center w-full h-full gap-1 ${currentPage === 'kitchen' ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <div className="relative">
+                <Icons.Kitchen />
+                {(newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white" />}
+              </div>
+              <span className="text-[10px] font-medium">Cocina</span>
+            </button>
+          )}
+
+          {/* More Menu (Opens Drawer) */}
+          <button 
+            onClick={() => setIsMobileDrawerOpen(true)}
+            className="flex flex-col items-center justify-center w-full h-full gap-1 text-gray-400 hover:text-gray-600"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="1"></circle>
+              <circle cx="19" cy="12" r="1"></circle>
+              <circle cx="5" cy="12" r="1"></circle>
+            </svg>
+            <span className="text-[10px] font-medium">Menú</span>
+          </button>
+        </div>
+      </div>
+
       <Toast />
     </div>
   );
