@@ -352,6 +352,8 @@ export default function AdminLayout() {
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           console.log('AdminLayout: Realtime subscribed for brand', activeBrandId);
+        } else if (status === 'CLOSED') {
+          console.log('AdminLayout: Realtime connection closed');
         } else {
           console.warn('AdminLayout: Realtime subscription status:', status);
         }

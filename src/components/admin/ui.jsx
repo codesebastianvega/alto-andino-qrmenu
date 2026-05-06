@@ -134,10 +134,10 @@ export function SelectInput({ value, onChange, children, ...props }) {
 }
 
 /** Standard form field */
-export function FormField({ label, children }) {
+export function FormField({ label, children, htmlFor }) {
   return (
     <div>
-      <label className="block text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">
+      <label htmlFor={htmlFor} className="block text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">
         {label}
       </label>
       {children}

@@ -261,8 +261,10 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
             
             <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="space-y-6">
-                <FormField label="Nombre del Negocio">
+                <FormField label="Nombre del Negocio" htmlFor="business_name">
                   <TextInput
+                    id="business_name"
+                    name="business_name"
                     value={settingsForm.business_name}
                     onChange={(e) => setSettingsForm({ ...settingsForm, business_name: e.target.value })}
                     placeholder="Ej. Mi Restaurante Gourmet"
@@ -271,6 +273,7 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
 
                 <div className="relative">
                     <FormField 
+                      htmlFor="favicon_url"
                       label={
                         <div className="flex items-center justify-between w-full">
                           <span>Favicon (Pestaña Navegador)</span>
@@ -285,6 +288,8 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
                     <div className="space-y-3">
                         <div className="flex gap-2">
                         <TextInput
+                            id="favicon_url"
+                            name="favicon_url"
                             disabled={isAdvancedLocked}
                             value={settingsForm.favicon_url}
                             onChange={(e) => setSettingsForm({ ...settingsForm, favicon_url: e.target.value })}
@@ -595,10 +600,11 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
 });
 
 function ColorInput({ label, value, onChange, disabled = false, isPremium = false }) {
+  const inputId = label.toLowerCase().replace(/[^a-z0-9]/g, '-');
   return (
     <div className={`group relative ${disabled ? 'cursor-not-allowed' : ''}`}>
        <div className="flex items-center justify-between mb-2">
-            <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">{label}</label>
+            <label htmlFor={`color-${inputId}`} className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">{label}</label>
             {isPremium && (
                 <div className="flex items-center gap-1 text-[8px] font-black text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 uppercase tracking-tighter italic">
                    PRO
@@ -608,6 +614,8 @@ function ColorInput({ label, value, onChange, disabled = false, isPremium = fals
        <div className={`flex items-center gap-2 ${disabled ? 'pointer-events-none opacity-40' : ''}`}>
           <div className="relative shrink-0">
             <input 
+              id={`color-${inputId}`}
+              name={`color-${inputId}`}
               type="color" 
               value={value} 
               disabled={disabled}
@@ -618,6 +626,8 @@ function ColorInput({ label, value, onChange, disabled = false, isPremium = fals
           </div>
           <div className="relative flex-1">
              <TextInput 
+               id={`text-${inputId}`}
+               name={`text-${inputId}`}
                value={value} 
                disabled={disabled}
                onChange={(e) => onChange(e.target.value)}
