@@ -7,7 +7,7 @@ export default function AlunaFooter() {
         <div className="grid md:grid-cols-4 gap-12 mb-16">
           <div className="md:col-span-2">
             <a href="/" className="text-4xl tracking-tight text-white flex items-center gap-3 mb-6" style={{ fontFamily: "'DM Serif Display', serif" }}>
-              <img src="/aluna-logo.png" alt="Aluna Logo" className="h-12 w-auto object-contain brightness-0 invert" />
+              <img src="/aluna-logo.png" alt="Aluna Logo" className="h-16 w-auto object-contain brightness-0 invert" />
               Aluna
             </a>
             <p className="text-gray-400 max-w-sm leading-relaxed mb-8">
@@ -47,7 +47,7 @@ export default function AlunaFooter() {
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500">
           <p>© {new Date().getFullYear()} Aluna. Todos los derechos reservados.</p>
           <div className="flex items-center justify-center">
-            Diseñado por <img src="/uxio.png" alt="uxio" className="h-8 object-contain mx-1.5" /> by sietech
+            Diseñado por <img src="/uxio.png" alt="uxio" className="h-12 object-contain mx-1.5" /> by sietech
           </div>
         </div>
       </div>
