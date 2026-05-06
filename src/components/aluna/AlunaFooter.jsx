@@ -7,7 +7,7 @@ export default function AlunaFooter() {
         <div className="grid md:grid-cols-4 gap-12 mb-16">
           <div className="md:col-span-2">
             <a href="/" className="text-4xl tracking-tight text-white flex items-center gap-3 mb-6" style={{ fontFamily: "'DM Serif Display', serif" }}>
-              <img src="/aluna-logo.png" alt="Aluna Logo" className="h-10 w-auto object-contain" />
+              <img src="/aluna-logo.png" alt="Aluna Logo" className="h-12 w-auto object-contain brightness-0 invert" />
               Aluna
             </a>
             <p className="text-gray-400 max-w-sm leading-relaxed mb-8">
