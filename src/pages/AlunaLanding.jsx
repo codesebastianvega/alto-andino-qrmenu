@@ -9,6 +9,7 @@ import AlunaPricing from "../components/aluna/AlunaPricing";
 import AlunaFAQ from "../components/aluna/AlunaFAQ";
 import AlunaContact from "../components/aluna/AlunaContact";
 import AlunaFooter from "../components/aluna/AlunaFooter";
+import CookieConsent from "../components/aluna/CookieConsent";
 
 export default function AlunaLanding() {
   useEffect(() => {
@@ -44,6 +45,7 @@ export default function AlunaLanding() {
       <AlunaFAQ />
       <AlunaContact />
       <AlunaFooter />
+      <CookieConsent />
     </div>
   );
 }

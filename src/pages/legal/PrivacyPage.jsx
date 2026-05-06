@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import AlunaNavbar from '../../components/aluna/AlunaNavbar';
 import AlunaFooter from '../../components/aluna/AlunaFooter';
+import CookieConsent from '../../components/aluna/CookieConsent';
 
 export default function PrivacyPage() {
   useEffect(() => {
@@ -65,6 +66,7 @@ export default function PrivacyPage() {
       </main>
 
       <AlunaFooter />
+      <CookieConsent />
     </div>
   );
 }
