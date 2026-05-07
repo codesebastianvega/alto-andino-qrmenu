@@ -5,6 +5,42 @@ export function useLocationOverrides() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  async function upsertWithFallback(table, rows, onConflict, conflictKeys) {
+    if (!rows?.length) return { error: null };
+
+    const attempt = await supabase.from(table).upsert(rows, { onConflict });
+    if (!attempt.error) return { error: null };
+
+    const needsFallback =
+      attempt.error.code === '42P10' ||
+      attempt.error.message?.includes('no unique or exclusion constraint');
+
+    if (!needsFallback) {
+      return { error: attempt.error };
+    }
+
+    for (const row of rows) {
+      const match = conflictKeys.reduce((query, key) => query.eq(key, row[key]), supabase.from(table).select('id').limit(1));
+      const existing = await match.maybeSingle();
+      if (existing.error) return { error: existing.error };
+
+      if (existing.data?.id) {
+        const { error: updateError } = await supabase
+          .from(table)
+          .update(row)
+          .eq('id', existing.data.id);
+        if (updateError) return { error: updateError };
+      } else {
+        const { error: insertError } = await supabase
+          .from(table)
+          .insert([row]);
+        if (insertError) return { error: insertError };
+      }
+    }
+
+    return { error: null };
+  }
+
   async function getCategoryOverrides(categoryId) {
     try {
       const { data, error } = await supabase
@@ -58,16 +94,16 @@ export function useLocationOverrides() {
     if (!overrides?.length) return { error: null };
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('location_categories')
-        .upsert(
-          overrides.map(o => ({
-            category_id: categoryId,
-            location_id: o.location_id,
-            is_active: o.is_active
-          })),
-          { onConflict: 'location_id,category_id' }
-        );
+      const { error } = await upsertWithFallback(
+        'location_categories',
+        overrides.map(o => ({
+          category_id: categoryId,
+          location_id: o.location_id,
+          is_active: o.is_active
+        })),
+        'location_id,category_id',
+        ['location_id', 'category_id']
+      );
       if (error) throw error;
       return { error: null };
     } catch (err) {
@@ -89,13 +125,15 @@ export function useLocationOverrides() {
 
         if (validPrices.length > 0) {
           promises.push(
-            supabase.from('location_product_prices').upsert(
+            upsertWithFallback(
+              'location_product_prices',
               validPrices.map(p => ({
                 product_id: productId,
                 location_id: p.location_id,
                 price: p.price
               })),
-              { onConflict: 'location_id,product_id' }
+              'location_id,product_id',
+              ['location_id', 'product_id']
             )
           );
         }
@@ -112,14 +150,16 @@ export function useLocationOverrides() {
 
       if (overrides.status?.length) {
         promises.push(
-          supabase.from('location_product_status').upsert(
+          upsertWithFallback(
+            'location_product_status',
             overrides.status.map(s => ({
               product_id: productId,
               location_id: s.location_id,
               is_active: s.is_active,
               stock_status: s.stock_status
             })),
-            { onConflict: 'location_id,product_id' }
+            'location_id,product_id',
+            ['location_id', 'product_id']
           )
         );
       }
@@ -140,20 +180,25 @@ export function useLocationOverrides() {
   async function updateLocationStock(locationId, ingredientId, stock_quantity) {
     if (!locationId || locationId === 'all') return { data: null, error: new Error('Please select a specific location first') };
     try {
-      const { data, error } = await supabase
-        .from('location_inventory')
-        .upsert(
-          {
-            location_id: locationId,
-            ingredient_id: ingredientId,
-            stock_quantity
-          },
-          { onConflict: 'location_id,ingredient_id' }
-        )
-        .select()
-        .single();
-      
+      const row = {
+        location_id: locationId,
+        ingredient_id: ingredientId,
+        stock_quantity
+      };
+      const { error } = await upsertWithFallback(
+        'location_inventory',
+        [row],
+        'location_id,ingredient_id',
+        ['location_id', 'ingredient_id']
+      );
       if (error) throw error;
+      const { data, error: fetchError } = await supabase
+        .from('location_inventory')
+        .select('*')
+        .eq('location_id', locationId)
+        .eq('ingredient_id', ingredientId)
+        .maybeSingle();
+      if (fetchError) throw fetchError;
       return { data, error: null };
     } catch (err) {
       return { data: null, error: err };
