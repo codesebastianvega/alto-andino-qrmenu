@@ -6,28 +6,7 @@ import { useLocation as useAppLocation } from "./context/LocationContext";
 import { Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "./config/supabase";
-
-// --- ANALYTICS HELPER ---
-const trackEvent = async (eventName, metadata = {}) => {
-  try {
-    const sessionId = localStorage.getItem('aluna_session_id') || crypto.randomUUID();
-    if (!localStorage.getItem('aluna_session_id')) {
-      localStorage.setItem('aluna_session_id', sessionId);
-    }
-
-    const { error } = await supabase.from('analytics_events').insert([{
-      event_name: eventName,
-      session_id: sessionId,
-      user_agent: navigator.userAgent,
-      metadata: metadata,
-      table_id: metadata.tableId || null
-    }]);
-    
-    if (error) console.error('Error tracking event:', error);
-  } catch (e) {
-    console.warn('Tracking failed:', e);
-  }
-};
+import { trackAnalyticsEvent } from "./utils/analytics";
 
 // --- COMPONENTES ---
 import BrandWelcome from "./components/BrandWelcome";
@@ -256,7 +235,10 @@ export default function App() {
       // --- ANALYTICS TRACKING ---
       const hasVisited = sessionStorage.getItem('aluna_tracked_visit');
       if (!hasVisited) {
-        trackEvent('menu_visit', { brandId: activeBrand.id });
+        trackAnalyticsEvent('menu_visit', {
+          brandId: activeBrand.id,
+          locationId: activeLocation?.id || currentLocation?.id || null,
+        });
         sessionStorage.setItem('aluna_tracked_visit', 'true');
       }
 
@@ -264,7 +246,12 @@ export default function App() {
       if (mesa) {
         const hasTrackedScan = sessionStorage.getItem('aluna_tracked_qr');
         if (!hasTrackedScan) {
-          trackEvent('qr_scan', { brandId: activeBrand.id, tableId: mesa });
+          trackAnalyticsEvent('qr_scan', {
+            brandId: activeBrand.id,
+            locationId: activeLocation?.id || currentLocation?.id || null,
+            tableId: mesa,
+            qrTable: mesa,
+          });
           sessionStorage.setItem('aluna_tracked_qr', 'true');
         }
       }

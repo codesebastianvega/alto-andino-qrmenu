@@ -15,23 +15,7 @@ import { translateGroup } from "@/utils/formatters";
 import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useLocationPayments } from "@/hooks/useLocationPayments";
-
-// --- ANALYTICS HELPER ---
-const trackEvent = async (eventName, metadata = {}) => {
-  try {
-    const sessionId = localStorage.getItem('aluna_session_id');
-    const { error } = await supabase.from('analytics_events').insert([{
-      event_name: eventName,
-      session_id: sessionId,
-      user_agent: navigator.userAgent,
-      metadata: metadata,
-      table_id: metadata.tableId || null
-    }]);
-    if (error) console.error('Error tracking event:', error);
-  } catch (e) {
-    console.warn('Tracking failed:', e);
-  }
-};
+import { trackAnalyticsEvent } from "@/utils/analytics";
 
 
 const toast = {
@@ -503,9 +487,11 @@ export default function CartModal({ open, onClose }) {
       setShowSuccess(true);
       
       // Track Conversion
-      trackEvent('order_completed', { 
-        orderId: orderData.id, 
+      trackAnalyticsEvent('order_completed', {
+        orderId: orderData.id,
         brandId: activeBrandId,
+        locationId: orderLocationId || null,
+        tableId: tableId || mesa || null,
         total: finalTotal,
         fulfillmentType: fulfillmentType,
         paymentMethod: paymentMethod || 'unspecified'
