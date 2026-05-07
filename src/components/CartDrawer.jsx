@@ -59,6 +59,36 @@ const getLocationId = (brandId) => {
   }
 };
 
+const getTableCandidates = (rawTable) => {
+  const original = String(rawTable || "").trim();
+  if (!original) return [];
+
+  const normalized = original.replace(/^mesa\s+/i, "").trim();
+  return [...new Set([original, normalized].filter(Boolean))];
+};
+
+const findTableRecord = async ({ mesa, brandId, locationId }) => {
+  const candidates = getTableCandidates(mesa);
+  if (!candidates.length || !brandId) return null;
+
+  for (const candidate of candidates) {
+    let query = supabase
+      .from('restaurant_tables')
+      .select('id, location_id')
+      .eq('table_number', candidate)
+      .eq('brand_id', brandId);
+
+    if (locationId) {
+      query = query.eq('location_id', locationId);
+    }
+
+    const { data } = await query.maybeSingle();
+    if (data) return data;
+  }
+
+  return null;
+};
+
 // Using shared translateGroup from utils/formatters.js
 
 const buildWaText = ({ items = [], total = 0, note = "", brandName = "Aluna" }) => {
@@ -180,29 +210,22 @@ export default function CartDrawer({ open, onClose }) {
     try {
       const mesa = getTable();
       
-      // 1. Get exact table_id and location_id if dine_in
-      let tableId = null;
-      let orderLocationId = getLocationId(activeBrand?.id);
+        // 1. Get exact table_id and location_id if dine_in
+        let tableId = null;
+        let orderLocationId = getLocationId(activeBrand?.id);
 
-      if (fulfillmentType === 'dine_in' && mesa) {
-        let query = supabase.from('restaurant_tables')
-          .select('id, location_id')
-          .eq('table_number', mesa)
-          .eq('brand_id', activeBrand?.id);
+        if (fulfillmentType === 'dine_in' && mesa) {
+          const tableData = await findTableRecord({
+            mesa,
+            brandId: activeBrand?.id,
+            locationId: orderLocationId
+          });
 
-        // If we have a location context (from URL/Session), use it as a constraint
-        // to avoid ambiguity between "Mesa 1" in different sedes.
-        if (orderLocationId) {
-          query = query.eq('location_id', orderLocationId);
+          if (tableData) {
+            tableId = tableData.id;
+            if (tableData.location_id) orderLocationId = tableData.location_id;
+          }
         }
-
-        const { data: tableData } = await query.maybeSingle();
-
-        if (tableData) {
-          tableId = tableData.id;
-          if (tableData.location_id) orderLocationId = tableData.location_id;
-        }
-      }
 
       // 2. Insert Order
       const finalTotal = fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount;

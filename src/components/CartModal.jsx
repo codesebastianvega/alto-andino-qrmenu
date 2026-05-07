@@ -59,6 +59,36 @@ const getLocationId = (brandId) => {
   }
 };
 
+const getTableCandidates = (rawTable) => {
+  const original = String(rawTable || "").trim();
+  if (!original) return [];
+
+  const normalized = original.replace(/^mesa\s+/i, "").trim();
+  return [...new Set([original, normalized].filter(Boolean))];
+};
+
+const findTableRecord = async ({ mesa, brandId, locationId }) => {
+  const candidates = getTableCandidates(mesa);
+  if (!candidates.length || !brandId) return null;
+
+  for (const candidate of candidates) {
+    let query = supabase
+      .from('restaurant_tables')
+      .select('id, location_id')
+      .eq('table_number', candidate)
+      .eq('brand_id', brandId);
+
+    if (locationId) {
+      query = query.eq('location_id', locationId);
+    }
+
+    const { data } = await query.maybeSingle();
+    if (data) return data;
+  }
+
+  return null;
+};
+
 const renderOptionsPills = (opts) => {
   if (!opts) return null;
   const parts = [];
@@ -126,12 +156,11 @@ export default function CartModal({ open, onClose }) {
     const resolveLocation = async () => {
       if (!mesa || !activeBrandId) return;
       try {
-        const { data: tableData } = await supabase
-          .from('restaurant_tables')
-          .select('location_id')
-          .eq('table_number', mesa)
-          .eq('brand_id', activeBrandId)
-          .maybeSingle();
+        const tableData = await findTableRecord({
+          mesa,
+          brandId: activeBrandId,
+          locationId: null
+        });
 
         if (tableData?.location_id) {
           setCurrentLocationId(tableData.location_id);
@@ -289,18 +318,11 @@ export default function CartModal({ open, onClose }) {
 
       // If we have a table number but not an ID, or if we want to confirm location from table
       if (fulfillmentType === 'dine_in' && mesa) {
-        let query = supabase.from('restaurant_tables')
-          .select('id, location_id')
-          .eq('table_number', mesa)
-          .eq('brand_id', activeBrandId);
-
-        // If we have a location context (from URL/Session), use it as a constraint
-        // to avoid ambiguity between "Mesa 1" in different sedes.
-        if (orderLocationId) {
-          query = query.eq('location_id', orderLocationId);
-        }
-
-        const { data: tableData } = await query.maybeSingle();
+        const tableData = await findTableRecord({
+          mesa,
+          brandId: activeBrandId,
+          locationId: orderLocationId
+        });
 
         if (tableData) {
           tableId = tableData.id;
