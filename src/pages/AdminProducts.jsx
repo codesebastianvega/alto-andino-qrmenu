@@ -37,6 +37,22 @@ const DragHandle = () => (
   </svg>
 );
 
+const normalizeBrandConcepts = (concepts = []) =>
+  concepts
+    .map((concept) => {
+      if (typeof concept === 'string') {
+        return { value: concept, label: concept };
+      }
+
+      if (concept && typeof concept === 'object') {
+        const label = concept.name || concept.label || concept.id || '';
+        return label ? { value: label, label } : null;
+      }
+
+      return null;
+    })
+    .filter(Boolean);
+
 export default function AdminProducts() {
   const { activeLocationId, isAllLocations, activeLocation } = useLocation();
   const { 
@@ -84,7 +100,7 @@ export default function AdminProducts() {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   
   const { settings } = useRestaurantSettings();
-  const brandConcepts = settings?.brand_concepts || [];
+  const brandConceptOptions = normalizeBrandConcepts(settings?.brand_concepts || []);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -431,8 +447,8 @@ export default function AdminProducts() {
             <div className="w-40">
               <SelectInput value={brandFilter} onChange={e => setBrandFilter(e.target.value)}>
                 <option value="all">Concepto: Todos</option>
-                {brandConcepts.map(bc => (
-                  <option key={bc} value={bc}>{bc}</option>
+                {brandConceptOptions.map(concept => (
+                  <option key={concept.value} value={concept.value}>{concept.label}</option>
                 ))}
               </SelectInput>
             </div>

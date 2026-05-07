@@ -8,11 +8,27 @@ import { useLocations } from '../../hooks/useLocations';
 import { useLocationOverrides } from '../../hooks/useLocationOverrides';
 import { useRestaurantSettings } from '../../hooks/useRestaurantSettings';
 
+const normalizeBrandConcepts = (concepts = []) =>
+  concepts
+    .map((concept) => {
+      if (typeof concept === 'string') {
+        return { value: concept, label: concept };
+      }
+
+      if (concept && typeof concept === 'object') {
+        const label = concept.name || concept.label || concept.id || '';
+        return label ? { value: label, label } : null;
+      }
+
+      return null;
+    })
+    .filter(Boolean);
+
 export default function ProductForm({ product, categories, recipes = [], allergens = [], modifierGroups: propModifierGroups, onSave, onCancel }) {
   const { rawModifierGroups: contextModifierGroups = [] } = useMenuData();
   const rawModifierGroups = propModifierGroups || contextModifierGroups;
   const { settings } = useRestaurantSettings();
-  const brandConcepts = settings?.brand_concepts || [];
+  const brandConceptOptions = normalizeBrandConcepts(settings?.brand_concepts || []);
   const mainGroups = rawModifierGroups.filter(g => !g.is_submodifier);
   const subGroups = rawModifierGroups.filter(g => g.is_submodifier);
 
@@ -333,7 +349,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                 </div>
                 <div className="md:col-span-3">
                   <FormField label="Concepto de Marca">
-                    {brandConcepts.length > 0 ? (
+                    {brandConceptOptions.length > 0 ? (
                       <select 
                         name="brand_concept" 
                         value={formData.brand_concept} 
@@ -341,8 +357,8 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none"
                       >
                         <option value="">Seleccionar concepto...</option>
-                        {brandConcepts.map(concept => (
-                          <option key={concept} value={concept}>{concept}</option>
+                        {brandConceptOptions.map(concept => (
+                          <option key={concept.value} value={concept.value}>{concept.label}</option>
                         ))}
                       </select>
                     ) : (
