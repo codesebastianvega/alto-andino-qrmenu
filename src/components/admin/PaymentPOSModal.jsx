@@ -292,9 +292,10 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
                 await supabase.from('order_items').update({ quantity: item.quantity - qtyToPay }).eq('id', item.id);
                 const { id, created_at, products, ...rest } = item;
                 await supabase.from('order_items').insert([{
-                    ...rest,
-                    quantity: qtyToPay,
-                    is_paid: true
+                  ...rest,
+                  brand_id: rest.brand_id || order.brand_id || activeBrand.id,
+                  quantity: qtyToPay,
+                  is_paid: true
                 }]);
             }
         }

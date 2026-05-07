@@ -227,14 +227,15 @@ export default function CartDrawer({ open, onClose }) {
       if (orderError) throw orderError;
 
       // 3. Insert Order Items
-      const orderItemsToInsert = items.map(it => ({
-        order_id: orderData.id,
-        product_id: it.productId || it.id, 
-        quantity: it.qty || 1,
-        unit_price: getItemUnit(it),
-        modifiers: it.options || {},
-        notes: it.note || ''
-      }));
+        const orderItemsToInsert = items.map(it => ({
+          order_id: orderData.id,
+          product_id: it.productId || it.id,
+          brand_id: activeBrand?.id,
+          quantity: it.qty || 1,
+          unit_price: getItemUnit(it),
+          modifiers: it.options || {},
+          notes: it.note || ''
+        }));
 
       const { error: itemsError } = await supabase.from('order_items')
         .insert(orderItemsToInsert);

@@ -421,7 +421,8 @@ export default function CartModal({ open, onClose }) {
         
         return {
           order_id: orderData.id,
-          product_id: validatedPid, 
+          product_id: validatedPid,
+          brand_id: activeBrandId,
           quantity: it.qty || 1,
           unit_price: getItemUnit(it),
           modifiers: it.options || {},
