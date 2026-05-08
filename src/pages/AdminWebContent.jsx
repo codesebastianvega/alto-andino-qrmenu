@@ -7,6 +7,7 @@ import { PrimaryButton, SecondaryButton, FormField, TextInput, PageHeader, Switc
 import { Icon } from '@iconify-icon/react';
 import { Loader2, Sparkles, Home, BookOpen, Layers, Palette, Cpu, Settings, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
 import AdminBranding from './AdminBranding';
+import { validateImageSize } from '../utils/images';
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 2000 }),
@@ -338,6 +339,8 @@ export default function AdminWebContent() {
   const handleImageUpload = async (e, field) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!validateImageSize(file, toast)) return;
 
     setUploadingImage(true);
     try {

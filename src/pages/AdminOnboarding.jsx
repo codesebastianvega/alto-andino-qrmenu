@@ -15,6 +15,8 @@ import {
   Zap,
   Briefcase
 } from 'lucide-react';
+import { toast } from '../components/Toast';
+import { validateImageSize } from '../utils/images';
 
 export default function AdminOnboarding() {
   const { activeBrand } = useAuth();
@@ -82,6 +84,11 @@ export default function AdminOnboarding() {
   const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!validateImageSize(file, toast)) {
+      setError(`La imagen excede el límite de tamaño permitido.`);
+      return;
+    }
 
     setUploading(true);
     try {

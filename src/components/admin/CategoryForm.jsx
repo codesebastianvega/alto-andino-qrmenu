@@ -4,7 +4,8 @@ import { Icon } from '@iconify-icon/react';
 import { supabase } from '../../config/supabase';
 import { useLocations } from '../../hooks/useLocations';
 import { useLocationOverrides } from '../../hooks/useLocationOverrides';
-import { Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButton } from './ui';
+import { Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButton, ImageGuidance } from './ui';
+import { convertDriveLink } from '../../utils/images';
 
 export default function CategoryForm({ category, onSave, onCancel }) {
   const { locations } = useLocations();
@@ -96,7 +97,57 @@ export default function CategoryForm({ category, onSave, onCancel }) {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    let newValue = type === 'checkbox' ? checked : value;
+
+    // Auto-convert Google Drive links if the field is banner_image_url
+    if (name === 'banner_image_url' && typeof newValue === 'string') {
+      const converted = convertDriveLink(newValue);
+      if (converted !== newValue) {
+        newValue = converted;
+        // Since we don't have a direct toast import here, we can just use setFormData
+        // or add a toast if available. ProductForm already has it.
+      }
+    }
+
+    setFormData(prev => ({ ...prev, [name]: newValue }));
+  };
+
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useState(null);
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check size (1MB limit)
+    if (file.size > 1024 * 1024) {
+      alert('La imagen es muy pesada (máx 1MB). Por favor comprímela.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `category-banners/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('images')
+        .getPublicUrl(filePath);
+
+      setFormData(prev => ({ ...prev, banner_image_url: publicUrl }));
+    } catch (err) {
+      console.error('Error uploading image:', err);
+      alert('Error al subir la imagen');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleSubmit = (e) => {
@@ -237,8 +288,58 @@ export default function CategoryForm({ category, onSave, onCancel }) {
             <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 pb-1 border-b border-gray-100">
               Personalización visual
             </p>
-            <FormField label="URL imagen de banner">
-              <TextInput name="banner_image_url" value={formData.banner_image_url} onChange={handleChange} placeholder="https://…" />
+            <FormField label="Imagen de banner">
+              <div className="space-y-4">
+                {formData.banner_image_url && (
+                  <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-100 border border-gray-100">
+                    <img src={formData.banner_image_url} alt="Banner Preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setFormData(p => ({ ...p, banner_image_url: '' }))}
+                      className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg transition-all"
+                    >
+                      <Icon icon="heroicons:trash" className="text-xs" />
+                    </button>
+                  </div>
+                )}
+
+                <ImageGuidance />
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Subir archivo directo</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={isUploading}
+                    className="block w-full text-sm text-gray-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-full file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-[#2f4131]/10 file:text-[#2f4131]
+                      hover:file:bg-[#2f4131]/20 transition-all cursor-pointer disabled:opacity-50"
+                  />
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 bg-gray-50 border border-gray-100 rounded-lg">
+                    <Icon icon="solar:shield-warning-bold-duotone" className="text-amber-500 text-xs" />
+                    <span className="text-[10px] text-gray-500">Límite: <span className="font-bold">1.0 MB</span> (Recomendamos comprimir o usar link)</span>
+                  </div>
+                </div>
+
+                {isUploading && (
+                  <p className="text-[11px] text-[#2f4131] font-medium animate-pulse">Subiendo imagen...</p>
+                )}
+
+                <div className="pt-2 border-t border-gray-50">
+                  <p className="text-[11px] font-bold text-gray-500 uppercase tracking-tight mb-2">O ingresa la URL manualmente (Recomendado)</p>
+                  <TextInput 
+                    name="banner_image_url" 
+                    value={formData.banner_image_url} 
+                    onChange={handleChange} 
+                    placeholder="https://images.unsplash.com/…" 
+                    disabled={isUploading}
+                  />
+                </div>
+              </div>
             </FormField>
             <FormField label="Título del banner">
               <TextInput name="banner_title" value={formData.banner_title} onChange={handleChange} placeholder="Ej. Combos Especiales" />

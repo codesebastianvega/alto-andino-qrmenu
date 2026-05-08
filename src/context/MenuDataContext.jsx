@@ -58,62 +58,57 @@ export const MenuDataProvider = ({ children }) => {
     setLocations([]);
 
     try {
+      if (!brandId) {
+        setLoading(false);
+        return;
+      }
+
       // Helper to add brand filter when needed
-      const brandFilter = (query) => {
-        if (!brandId) return query.limit(0); 
-        return query.eq('brand_id', brandId);
-      };
+      const brandFilter = (query) => query.eq('brand_id', brandId);
 
-      // Fetch categories
-      const { data: cats, error: catError } = await brandFilter(
-        supabase.from('categories').select('*').eq('is_active', true).order('sort_order', { ascending: true })
-      );
-      if (catError) throw catError;
-
-      // Fetch modifiers
-      const { data: mods } = await brandFilter(
-        supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(id, group_id, name, price, sort_order, created_at, nested_group_id, image_url, emoji, ingredient_id)')
-      );
-      setRawModifierGroups(mods || []);
-
-      // Fetch experiences, allergens, locations, banners, settings...
-      const [expRes, allgsRes, locsRes, bnrsRes, hSettRes, rSettRes] = await Promise.all([
+      // 1. Fetch all brand-level data in PARALLEL
+      const [
+        catsRes,
+        modsRes,
+        expRes,
+        allgsRes,
+        locsRes,
+        bnrsRes,
+        hSettRes,
+        rSettRes,
+        brandRes,
+        prodsRes
+      ] = await Promise.all([
+        brandFilter(supabase.from('categories').select('*').eq('is_active', true).order('sort_order', { ascending: true })),
+        brandFilter(supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(id, group_id, name, price, sort_order, created_at, nested_group_id, image_url, emoji, ingredient_id)')),
         brandFilter(supabase.from('experiences').select('*').eq('is_active', true).order('created_at', { ascending: false })),
         brandFilter(supabase.from('allergens').select('*').order('name')),
         brandFilter(supabase.from('locations').select('*').eq('is_active', true).order('is_main', { ascending: false })),
         brandFilter(supabase.from('promo_banners').select('*').eq('is_active', true).order('sort_order', { ascending: true })),
         brandFilter(supabase.from('home_settings').select('*').limit(1)),
-        brandFilter(supabase.from('restaurant_settings').select('*').limit(1))
+        brandFilter(supabase.from('restaurant_settings').select('*').limit(1)),
+        supabase.from('brands').select('*, plans(*, plan_features(*))').eq('id', brandId).single(),
+        brandFilter(supabase.from('products').select('*, categories:category_id (slug)').eq('is_active', true).order('sort_order', { ascending: true }))
       ]);
 
+      // Set brand and plan features from the joined query
+      if (brandRes.data) {
+        setBrand(brandRes.data);
+        const features = brandRes.data.plans?.plan_features || [];
+        setPlanFeatures(features);
+      }
+
+      setAllCategories(catsRes.data || []);
+      setRawModifierGroups(modsRes.data || []);
       setExperiences(expRes.data || []);
       setAllergens(allgsRes.data || []);
       setLocations(locsRes.data || []);
       setBanners(bnrsRes.data || []);
       setHomeSettings(hSettRes.data?.[0] || null);
       setRestaurantSettings(rSettRes.data?.[0] || null);
+      setRawProducts(prodsRes.data || []);
 
-      // Fetch Brand and Plan Features
-      if (brandId) {
-        const { data: brandData } = await supabase.from('brands').select('*, plans(*)').eq('id', brandId).single();
-        if (brandData) {
-          setBrand(brandData);
-          if (brandData.plan_id) {
-            const { data: features } = await supabase.from('plan_features').select('*').eq('plan_id', brandData.plan_id);
-            setPlanFeatures(features || []);
-          }
-        }
-      }
-
-      // Fetch products
-      const { data: products, error: prodError } = await brandFilter(
-        supabase.from('products').select('*, categories:category_id (slug)').eq('is_active', true).order('sort_order', { ascending: true })
-      );
-      if (prodError) throw prodError;
-      setRawProducts(products || []);
-
-      // Fetch location-specific overrides SAFELY
-      // These tables DO NOT have brand_id, so we filter by location_ids
+      // 2. Fetch location-specific overrides (only if locations exist)
       if (locsRes.data?.length > 0) {
         const locationIds = locsRes.data.map(l => l.id);
         const [pricesRes, statusRes, catLinksRes, modLinksRes] = await Promise.all([
@@ -123,26 +118,16 @@ export const MenuDataProvider = ({ children }) => {
           supabase.from('location_modifier_groups').select('*').in('location_id', locationIds)
         ]);
 
-        if (pricesRes.error) console.error('Error fetching location prices:', pricesRes.error);
-        if (statusRes.error) console.error('Error fetching location status:', statusRes.error);
-        if (catLinksRes.error) console.error('Error fetching location cat links:', catLinksRes.error);
-        if (modLinksRes.error) console.error('Error fetching location mod links:', modLinksRes.error);
-
         setLocationPrices(pricesRes.data || []);
         setLocationStatus(statusRes.data || []);
         setLocationCategories(catLinksRes.data || []);
         setLocationModLinks(modLinksRes.data || []);
       }
 
-      setAllCategories(cats || []);
-
-      console.log('✅ MenuData fetched for brand:', brandId || 'anonymous', {
-        cats: cats?.length || 0,
-        products: products?.length || 0
-      });
+      console.log('✅ MenuData Parallel Fetch Complete');
 
     } catch (err) {
-      console.error('Error fetching menu data:', err);
+      console.error('❌ MenuData Fetch Error:', err);
     } finally {
       setLoading(false);
     }
@@ -304,13 +289,12 @@ export const MenuDataProvider = ({ children }) => {
   useEffect(() => {
     if (loadingBrand) return; 
     
-    if (activeBrandId === lastFetchedBrandRef.current && allCategories.length > 0) {
-      return;
-    }
+    // Solo disparar fetch si el brandId cambió (o si es la primera carga)
+    if (activeBrandId === lastFetchedBrandRef.current) return;
 
     lastFetchedBrandRef.current = activeBrandId;
     fetchMenuData(activeBrandId);
-  }, [activeBrandId, loadingBrand, fetchMenuData, allCategories.length]);
+  }, [activeBrandId, loadingBrand, fetchMenuData]);
 
   // Real-time menu data updates
   useEffect(() => {
@@ -339,11 +323,32 @@ export const MenuDataProvider = ({ children }) => {
     // Listen for menu content changes (wildcard for brand_id tables)
     // For tables WITHOUT brand_id (location overrides), we listen to all and filter in JS if needed
     // but usually, these changes are specific enough that a refresh is fine.
+    // Listen for menu content changes
     const menuChannel = supabase.channel(`menu-changes-${activeBrandId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchMenuData(activeBrandId))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => fetchMenuData(activeBrandId))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'modifier_groups' }, () => fetchMenuData(activeBrandId))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'modifier_options' }, () => fetchMenuData(activeBrandId))
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'products',
+        filter: `brand_id=eq.${activeBrandId}`
+      }, () => fetchMenuData(activeBrandId))
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'categories',
+        filter: `brand_id=eq.${activeBrandId}`
+      }, () => fetchMenuData(activeBrandId))
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'modifier_groups',
+        filter: `brand_id=eq.${activeBrandId}`
+      }, () => fetchMenuData(activeBrandId))
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'modifier_options' 
+        // modifier_options doesn't have brand_id, but it's linked to groups
+      }, () => fetchMenuData(activeBrandId))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'location_product_prices' }, () => fetchMenuData(activeBrandId))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'location_product_status' }, () => fetchMenuData(activeBrandId))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'location_categories' }, () => fetchMenuData(activeBrandId))

@@ -2,7 +2,8 @@ import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'rea
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
-import { PageHeader, PrimaryButton, FormField, TextInput } from '../components/admin/ui';
+import { validateImageSize } from '../utils/images';
+import { PageHeader, PrimaryButton, FormField, TextInput, ImageGuidance } from '../components/admin/ui';
 import { Icon } from '@iconify/react';
 import { Loader2, Upload, Palette, Type } from 'lucide-react';
 
@@ -189,6 +190,8 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!validateImageSize(file, toast)) return;
+
     if (type === 'logo') setUploadingLogo(true);
     else setUploadingFavicon(true);
 
@@ -301,6 +304,7 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
                             {!isAdvancedLocked && <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'favicon')} disabled={uploadingFavicon} />}
                         </label>
                         </div>
+                        <ImageGuidance />
                     </div>
                     </FormField>
                 </div>
@@ -322,6 +326,9 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
                     </div>
                     <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'logo')} disabled={uploadingLogo} />
                  </label>
+                 <div className="w-full">
+                    <ImageGuidance />
+                 </div>
               </div>
             </div>
           </section>
@@ -506,6 +513,7 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
                                 onChange={(e) => updateConcept(concept.id, 'image_url', e.target.value)}
                                 placeholder="https://..."
                               />
+                              <ImageGuidance />
                             </FormField>
                           </div>
                         </div>

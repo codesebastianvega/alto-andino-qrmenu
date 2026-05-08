@@ -30,6 +30,65 @@ function slugify(s = "") {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 }
+// Máximo tamaño permitido: 1MB (recomendado para web y para evitar llenar almacenamiento)
+export const MAX_IMAGE_SIZE = 1 * 1024 * 1024; 
+
+/**
+ * Verifica si una URL es externa (Unsplash, Google, etc.)
+ * @param {string} url La URL a verificar
+ * @returns {boolean} True si es externa
+ */
+export const isExternalUrl = (url) => {
+  if (!url) return false;
+  return url.startsWith('http') || url.startsWith('https');
+};
+
+/**
+ * Convierte un link de Google Drive (compartir) a un link directo de imagen.
+ * @param {string} url La URL a convertir
+ * @returns {string} La URL convertida o la original si no es de Drive
+ */
+export const convertDriveLink = (url) => {
+  if (!url) return url;
+  
+  // Formato: https://drive.google.com/file/d/FILE_ID/view...
+  const driveMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (driveMatch && driveMatch[1]) {
+    return `https://drive.google.com/uc?export=view&id=${driveMatch[1]}`;
+  }
+  
+  // Formato: https://drive.google.com/open?id=FILE_ID
+  const driveOpenMatch = url.match(/id=([a-zA-Z0-9_-]+)/);
+  if (url.includes('drive.google.com') && driveOpenMatch && driveOpenMatch[1]) {
+    return `https://drive.google.com/uc?export=view&id=${driveOpenMatch[1]}`;
+  }
+
+  return url;
+};
+
+/**
+ * Valida si el archivo de imagen excede el tamaño máximo permitido.
+ * @param {File} file El archivo a validar
+ * @param {Function} toast El sistema de notificaciones (opcional)
+ * @returns {boolean} True si es válido, False si excede el tamaño
+ */
+export const validateImageSize = (file, toast = null) => {
+  if (!file) return false;
+  if (file.size > MAX_IMAGE_SIZE) {
+    const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    const limitMB = (MAX_IMAGE_SIZE / (1024 * 1024)).toFixed(0);
+    const errorMsg = `La imagen es demasiado grande (${sizeMB}MB). El límite es de ${limitMB}MB.`;
+    
+    if (toast && typeof toast.error === 'function') {
+      toast.error(errorMsg);
+    } else {
+      alert(errorMsg);
+    }
+    return false;
+  }
+  return true;
+};
+
 
 export const IMAGE_MAP = {
   // === Desayunos ===

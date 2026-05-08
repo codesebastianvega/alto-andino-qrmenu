@@ -19,6 +19,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/supabase';
 import { toast } from '../components/Toast';
+import { ImageGuidance } from '../components/admin/ui';
+import { validateImageSize } from '../utils/images';
 
 export default function AdminProfile() {
   const { user, profile, signOut, refreshProfile } = useAuth();
@@ -109,6 +111,13 @@ export default function AdminProfile() {
       }
 
       const file = event.target.files[0];
+      
+      // Validar tamaño de imagen (1MB)
+      if (!validateImageSize(file, toast)) {
+        setUploading(false);
+        return;
+      }
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
@@ -203,9 +212,13 @@ export default function AdminProfile() {
             </label>
           </div>
 
-          <div className="flex-1 text-center md:text-left space-y-2">
-            <h1 className="text-3xl font-extrabold tracking-tight text-[#1A2421]">Mi Perfil</h1>
-            <p className="text-gray-500 font-medium">Gestiona tu identidad y seguridad en la plataforma Aluna.</p>
+          <div className="flex-1 text-center md:text-left space-y-4">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-extrabold tracking-tight text-[#1A2421]">Mi Perfil</h1>
+              <p className="text-gray-500 font-medium">Gestiona tu identidad y seguridad en la plataforma Aluna.</p>
+            </div>
+            
+            <ImageGuidance />
             <div className="flex flex-wrap justify-center md:justify-start gap-3 mt-4">
               <span className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-1.5 rounded-full text-xs font-bold border border-green-100 shadow-sm">
                 <ShieldCheck size={14} /> Dueño / Administrador

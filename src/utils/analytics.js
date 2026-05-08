@@ -37,27 +37,39 @@ export const trackAnalyticsEvent = async (eventName, metadata = {}) => {
     ...safeMetadata
   } = metadata;
 
-  if (!brandId) return;
+  // CRITICAL: Ensure we have a brandId, otherwise RLS will fail
+  if (!brandId) {
+    console.debug("[Analytics] Skipping event: Missing brandId", eventName);
+    return;
+  }
 
   try {
     const sessionId = getOrCreateSessionId();
+    const finalLocationId = locationId || getStoredLocationId();
 
     const { error } = await supabase.from("analytics_events").insert([
       {
         event_name: eventName,
         session_id: sessionId,
-        user_agent: navigator.userAgent,
+        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
         metadata: safeMetadata,
         table_id: tableId,
         brand_id: brandId,
-        location_id: locationId || getStoredLocationId(),
+        location_id: finalLocationId,
       },
     ]);
 
     if (error) {
-      console.warn("Analytics tracking skipped:", error.message || error);
+      // If it's an RLS error, it's likely a configuration issue on the DB side
+      if (error.code === '42501') {
+        console.error(`[Analytics] RLS Violation for event "${eventName}". 
+          Ensure table "analytics_events" has public INSERT policy.
+          Current Project: ${import.meta.env.VITE_SUPABASE_URL}`);
+      } else {
+        console.warn(`[Analytics] Error tracking "${eventName}":`, error.message);
+      }
     }
-  } catch (error) {
-    console.warn("Analytics tracking failed:", error);
+  } catch (err) {
+    console.error("[Analytics] Fatal error:", err);
   }
 };

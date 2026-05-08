@@ -2,11 +2,18 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useMenuData } from '../../context/MenuDataContext';
 import { supabase } from '../../config/supabase';
-import { Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButton, Switch } from './ui';
+import { Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButton, Switch, ImageGuidance } from './ui';
 import { Icon } from '@iconify-icon/react';
 import { useLocations } from '../../hooks/useLocations';
 import { useLocationOverrides } from '../../hooks/useLocationOverrides';
 import { useRestaurantSettings } from '../../hooks/useRestaurantSettings';
+import { validateImageSize, convertDriveLink } from '../../utils/images';
+import { toast as toastFn } from '../Toast';
+
+const toast = {
+  success: (msg) => toastFn(msg, { type: 'success' }),
+  error: (msg) => toastFn(msg, { type: 'error' }),
+};
 
 const normalizeBrandConcepts = (concepts = []) =>
   concepts
@@ -180,7 +187,18 @@ export default function ProductForm({ product, categories, recipes = [], allerge
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    let newValue = type === 'checkbox' ? checked : value;
+    
+    // Auto-convert Google Drive links if the field is image_url
+    if (name === 'image_url' && typeof newValue === 'string') {
+      const converted = convertDriveLink(newValue);
+      if (converted !== newValue) {
+        newValue = converted;
+        toast.success('Link de Google Drive convertido automáticamente');
+      }
+    }
+    
+    setFormData(prev => ({ ...prev, [name]: newValue }));
   };
 
   const toggleModifierGroup = (groupId) => {
@@ -210,6 +228,8 @@ export default function ProductForm({ product, categories, recipes = [], allerge
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!validateImageSize(file, toast)) return;
 
     try {
       setIsUploading(true);
@@ -914,20 +934,29 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                 </div>
               )}
               
-              <div className="flex flex-col gap-3">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  ref={fileInputRef}
-                  disabled={isUploading}
-                  className="block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-full file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-violet-50 file:text-violet-700
-                    hover:file:bg-violet-100 transition-all cursor-pointer disabled:opacity-50"
-                />
+              <div className="flex flex-col gap-4 mt-2">
+                <ImageGuidance />
+                
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Subir archivo directo</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    ref={fileInputRef}
+                    disabled={isUploading}
+                    className="block w-full text-sm text-gray-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-full file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-violet-50 file:text-violet-700
+                      hover:file:bg-violet-100 transition-all cursor-pointer disabled:opacity-50"
+                  />
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 bg-gray-50 border border-gray-100 rounded-lg">
+                    <Icon icon="solar:shield-warning-bold-duotone" className="text-amber-500 text-xs" />
+                    <span className="text-[10px] text-gray-500">Límite: <span className="font-bold">1.0 MB</span> (Recomendamos comprimir o usar link)</span>
+                  </div>
+                </div>
                 
                 {isUploading && (
                   <p className="text-[11px] text-violet-600 font-medium animate-pulse">
@@ -935,7 +964,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                   </p>
                 )}
 
-                <FormField label="O ingresa la URL manualmente">
+                <FormField label="O ingresa la URL manualmente (Recomendado)">
                   <TextInput type="text" name="image_url" value={formData.image_url} onChange={handleChange}
                     placeholder="https://images.unsplash.com/…  o  /img/products/mi-foto.jpg" disabled={isUploading} />
                 </FormField>
