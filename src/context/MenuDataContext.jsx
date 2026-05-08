@@ -21,10 +21,8 @@ export const MenuDataProvider = ({ children }) => {
   const [banners, setBanners] = useState([]);
   const [allergens, setAllergens] = useState([]);
   const [homeSettings, setHomeSettings] = useState(null);
-  const [restaurantSettings, setRestaurantSettings] = useState(null);
-  const [brand, setBrand] = useState(null);
-  const [planFeatures, setPlanFeatures] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [businessHours, setBusinessHours] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Get brand information from BrandContext (which resolves slug/session)
@@ -56,6 +54,7 @@ export const MenuDataProvider = ({ children }) => {
     setBrand(null);
     setPlanFeatures([]);
     setLocations([]);
+    setBusinessHours([]);
 
     try {
       if (!brandId) {
@@ -77,7 +76,8 @@ export const MenuDataProvider = ({ children }) => {
         hSettRes,
         rSettRes,
         brandRes,
-        prodsRes
+        prodsRes,
+        hoursRes
       ] = await Promise.all([
         brandFilter(supabase.from('categories').select('*').eq('is_active', true).order('sort_order', { ascending: true })),
         brandFilter(supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(id, group_id, name, price, sort_order, created_at, nested_group_id, image_url, emoji, ingredient_id)')),
@@ -88,7 +88,8 @@ export const MenuDataProvider = ({ children }) => {
         brandFilter(supabase.from('home_settings').select('*').limit(1)),
         brandFilter(supabase.from('restaurant_settings').select('*').limit(1)),
         supabase.from('brands').select('*, plans(*, plan_features(*))').eq('id', brandId).single(),
-        brandFilter(supabase.from('products').select('*, categories:category_id (slug)').eq('is_active', true).order('sort_order', { ascending: true }))
+        brandFilter(supabase.from('products').select('*, categories:category_id (slug)').eq('is_active', true).order('sort_order', { ascending: true })),
+        brandFilter(supabase.from('business_hours').select('*'))
       ]);
 
       // Set brand and plan features from the joined query
@@ -107,6 +108,7 @@ export const MenuDataProvider = ({ children }) => {
       setHomeSettings(hSettRes.data?.[0] || null);
       setRestaurantSettings(rSettRes.data?.[0] || null);
       setRawProducts(prodsRes.data || []);
+      setBusinessHours(hoursRes.data || []);
 
       // 2. Fetch location-specific overrides (only if locations exist)
       if (locsRes.data?.length > 0) {
@@ -172,20 +174,33 @@ export const MenuDataProvider = ({ children }) => {
   const productsByCategory = useMemo(() => {
     const grouped = {};
 
-    // Pre-compute: productos asignados a la sede activa
-    const locStatusForActive = (activeLocationId && activeLocationId !== 'all')
-      ? (locationStatus || []).filter(ls => ls.location_id === activeLocationId)
-      : [];
-    const hasLocProductConfig = locStatusForActive.length > 0;
+    // 1. Create Maps for O(1) lookups of location overrides
+    // This avoids using .find() or .filter() inside the product loop
+    const statusMap = new Map();
+    if (activeLocationId && activeLocationId !== 'all') {
+      (locationStatus || []).forEach(ls => {
+        if (ls.location_id === activeLocationId) {
+          statusMap.set(ls.product_id, ls.is_active);
+        }
+      });
+    }
+
+    const priceMap = new Map();
+    if (activeLocationId && activeLocationId !== 'all') {
+      (locationPrices || []).forEach(lp => {
+        if (lp.location_id === activeLocationId) {
+          priceMap.set(lp.product_id, lp.price);
+        }
+      });
+    }
+
+    const hasLocProductConfig = statusMap.size > 0;
 
     (rawProducts || []).forEach(product => {
-      // Apply location product status override (Estrategia Híbrida)
+      // Apply location product status override
       if (activeLocationId && activeLocationId !== 'all' && hasLocProductConfig) {
-        // Modo estricto: la sede tiene productos asignados.
-        // Si el producto no tiene registro, lo mostramos por defecto (Herencia).
-        // Si tiene registro, respetamos su estado is_active.
-        const locStatus = locStatusForActive.find(ls => ls.product_id === product.id);
-        if (locStatus && locStatus.is_active === false) {
+        const isActiveOverride = statusMap.get(product.id);
+        if (isActiveOverride === false) {
           return;
         }
       }
@@ -195,9 +210,9 @@ export const MenuDataProvider = ({ children }) => {
       // Apply location price override
       let finalPrice = product.price;
       if (activeLocationId && activeLocationId !== 'all') {
-        const locPrice = (locationPrices || []).find(lp => lp.product_id === product.id && lp.location_id === activeLocationId);
-        if (locPrice && locPrice.price !== null) {
-          finalPrice = locPrice.price;
+        const locPrice = priceMap.get(product.id);
+        if (locPrice !== undefined && locPrice !== null) {
+          finalPrice = locPrice;
         }
       }
 
@@ -401,6 +416,7 @@ export const MenuDataProvider = ({ children }) => {
     homeSettings,
     restaurantSettings,
     brand,
+    businessHours,
     planFeatures,
     locations,
     loading,

@@ -16,6 +16,7 @@ import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useLocationPayments } from "@/hooks/useLocationPayments";
 import { trackAnalyticsEvent } from "@/utils/analytics";
+import { isRestaurantOpen } from "@/utils/businessHours";
 
 
 const toast = {
@@ -140,7 +141,7 @@ export default function CartModal({ open, onClose }) {
   } = cart;
 
   const { brandSlug } = useParams();
-  const { getAllProducts, hasFeature, activeBrandId, currentLocation: contextLocation, locations } = useMenuData();
+  const { getAllProducts, hasFeature, activeBrandId, currentLocation: contextLocation, locations, businessHours } = useMenuData();
   const { paymentMethods, loading: loadingPayments } = usePaymentMethods(activeBrandId);
   
   // Localized Settings & Payments
@@ -215,8 +216,14 @@ export default function CartModal({ open, onClose }) {
   const manualType = sessionStorage.getItem("aa_manual_type");
 
   const [paymentMethod, setPaymentMethod] = useState("");
-  const [customerName, setCustomerName] = useState(isPOSMode ? "Mostrador" : "");
-  const [customerPhone, setCustomerPhone] = useState(isPOSMode ? "0000000" : "");
+  const [customerName, setCustomerName] = useState(() => {
+    if (isPOSMode) return "Mostrador";
+    return localStorage.getItem("aa_customer_name") || "";
+  });
+  const [customerPhone, setCustomerPhone] = useState(() => {
+    if (isPOSMode) return "0000000";
+    return localStorage.getItem("aa_customer_phone") || "";
+  });
   const [customerId, setCustomerId] = useState(null);
   const [showFulfillmentSelector, setShowFulfillmentSelector] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -300,6 +307,22 @@ export default function CartModal({ open, onClose }) {
 
   const handleConfirmOrder = async (e) => {
     e.preventDefault();
+
+    // 0. Validate Business Hours (Skip for POS mode)
+    if (!isPOSMode) {
+      // Filter hours for current location if applicable
+      const relevantHours = businessHours.filter(h => 
+        !h.location_id || h.location_id === currentLocationId
+      );
+      
+      const { isOpen, message } = isRestaurantOpen(relevantHours);
+      if (!isOpen) {
+        toast.error(message || "Lo sentimos, el restaurante está cerrado en este momento.");
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       // Validate lead info for POS (Defaults are handled in state initialization)
@@ -408,6 +431,17 @@ export default function CartModal({ open, onClose }) {
         if (orderError) throw orderError;
         orderData = newOrder;
         console.log("✅ Nueva orden creada:", orderData.id);
+
+        // Update table status to occupied if it's a new dine-in order
+        if (tableId && fulfillmentType === 'dine_in') {
+          try {
+            await supabase.from('restaurant_tables')
+              .update({ is_occupied: true })
+              .eq('id', tableId);
+          } catch (tabErr) {
+            console.error("Error updating table status:", tabErr);
+          }
+        }
       }
 
       // 3. Insert Order Items (Including requires_kitchen logic)
@@ -744,9 +778,10 @@ export default function CartModal({ open, onClose }) {
                             type="text" 
                             placeholder="Nombre Completo"
                             value={customerName || ""}
-                            onChange={e => setCustomerName(e.target.value)}
-                            className="flex-1 h-full text-sm font-semibold text-neutral-800 placeholder:text-neutral-300 outline-none bg-transparent"
-                          />
+                            onChange={e => {
+                              setCustomerName(e.target.value);
+                              localStorage.setItem("aa_customer_name", e.target.value);
+                            }}
                        </div>
                        <div className="flex items-center gap-2 bg-white px-3 h-11 rounded-xl border border-amber-200 focus-within:ring-2 focus-within:ring-amber-200/50 transition-all">
                           <Icon icon="heroicons:phone" className="text-amber-400" />
@@ -754,9 +789,10 @@ export default function CartModal({ open, onClose }) {
                             type="tel" 
                             placeholder="Celular / WhatsApp"
                             value={customerPhone || ""}
-                            onChange={e => setCustomerPhone(e.target.value)}
-                            className="flex-1 h-full text-sm font-semibold text-neutral-800 placeholder:text-neutral-300 outline-none bg-transparent"
-                          />
+                            onChange={e => {
+                              setCustomerPhone(e.target.value);
+                              localStorage.setItem("aa_customer_phone", e.target.value);
+                            }}
                        </div>
                     </div>
                   </div>

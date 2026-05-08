@@ -24,8 +24,8 @@ export const LocationProvider = ({ children }) => {
                    new URLSearchParams(window.location.search).get('location_id');
     if (urlLoc) return urlLoc;
 
-    // 2. Check SessionStorage (Session priority, like from Waiter view)
-    const sessionLoc = sessionStorage.getItem("aa_current_location_id");
+    // 2. Check LocalStorage (User preference / Session persistence)
+    const sessionLoc = localStorage.getItem("aa_current_location_id");
     if (sessionLoc) return sessionLoc;
 
     // 3. Check LocalStorage (User preference)
@@ -42,14 +42,14 @@ export const LocationProvider = ({ children }) => {
     
     if (urlLoc && urlLoc !== activeLocationId) {
       setActiveLocationId(urlLoc);
-      sessionStorage.setItem("aa_current_location_id", urlLoc);
+      localStorage.setItem("aa_current_location_id", urlLoc);
       if (activeBrand) {
         localStorage.setItem(`aa_active_loc_${activeBrand.id}`, urlLoc);
       }
     } else if (!urlLoc && activeBrand) {
       // If no URL param, but we have a brand, check if we need to restore from storage
       const stored = localStorage.getItem(`aa_active_loc_${activeBrand.id}`);
-      const session = sessionStorage.getItem("aa_current_location_id");
+      const session = localStorage.getItem("aa_current_location_id");
       const target = session || stored || 'all';
       
       if (target !== activeLocationId) {
@@ -64,9 +64,9 @@ export const LocationProvider = ({ children }) => {
     
     // Update Storages
     if (id === 'all') {
-      sessionStorage.removeItem("aa_current_location_id");
+      localStorage.removeItem("aa_current_location_id");
     } else {
-      sessionStorage.setItem("aa_current_location_id", id);
+      localStorage.setItem("aa_current_location_id", id);
     }
 
     if (activeBrand) {

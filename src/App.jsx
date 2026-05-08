@@ -144,7 +144,7 @@ export default function App() {
                      window.location.pathname.startsWith('/login') || 
                      window.location.pathname.startsWith('/registro');
   
-  const isOrderingMode = isMenuView || !!sessionStorage.getItem("aa_current_mesa") || searchParams.get("mesa");
+  const isOrderingMode = isMenuView || !!localStorage.getItem("aa_current_mesa") || searchParams.get("mesa");
 
   useEffect(() => {
     // En el panel de admin, priorizamos el nombre de la marca de la sesión
@@ -193,13 +193,13 @@ export default function App() {
 
     const mesa = params.get("mesa");
     if (mesa) {
-      sessionStorage.setItem("aa_current_mesa", mesa);
+      localStorage.setItem("aa_current_mesa", mesa);
     }
 
     // Capture fulfillment flow from smart links
     const flow = params.get("flow") || params.get("type");
     if (flow) {
-      sessionStorage.setItem("aa_fulfillment_flow", flow);
+      localStorage.setItem("aa_fulfillment_flow", flow);
     }
   }, []);
 
@@ -233,18 +233,18 @@ export default function App() {
       }
 
       // --- ANALYTICS TRACKING ---
-      const hasVisited = sessionStorage.getItem('aluna_tracked_visit');
+      const hasVisited = localStorage.getItem('aluna_tracked_visit');
       if (!hasVisited) {
         trackAnalyticsEvent('menu_visit', {
           brandId: activeBrand.id,
           locationId: activeLocation?.id || currentLocation?.id || null,
         });
-        sessionStorage.setItem('aluna_tracked_visit', 'true');
+        localStorage.setItem('aluna_tracked_visit', 'true');
       }
 
       const mesa = new URLSearchParams(window.location.search).get('mesa');
       if (mesa) {
-        const hasTrackedScan = sessionStorage.getItem('aluna_tracked_qr');
+        const hasTrackedScan = localStorage.getItem('aluna_tracked_qr');
         if (!hasTrackedScan) {
           trackAnalyticsEvent('qr_scan', {
             brandId: activeBrand.id,
@@ -252,7 +252,7 @@ export default function App() {
             tableId: mesa,
             qrTable: mesa,
           });
-          sessionStorage.setItem('aluna_tracked_qr', 'true');
+          localStorage.setItem('aluna_tracked_qr', 'true');
         }
       }
     } else {
@@ -296,7 +296,7 @@ export default function App() {
     
     // Guardar el flujo seleccionado (dine_in, takeaway, delivery)
     if (flow) {
-      sessionStorage.setItem("aa_fulfillment_flow", flow);
+      localStorage.setItem("aa_fulfillment_flow", flow);
     }
     
     setShowWelcome(false);

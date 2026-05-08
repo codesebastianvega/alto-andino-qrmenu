@@ -27,10 +27,14 @@ const asArray = (v) => (Array.isArray(v) ? v : []);
 
 // normaliza opciones para comparar items iguales
 function optionsKey(opts) {
-  if (!opts) return "";
-  const entries = Object.entries(opts).map(([k, v]) => [k, Array.isArray(v) ? [...v].sort() : v]);
-  entries.sort(([a], [b]) => a.localeCompare(b));
-  return JSON.stringify(entries);
+  if (!opts || Object.keys(opts).length === 0) return "";
+  // Sort keys to ensure consistent comparison
+  const sortedKeys = Object.keys(opts).sort();
+  const parts = sortedKeys.map(k => {
+    const v = opts[k];
+    return `${k}:${Array.isArray(v) ? [...v].sort().join(',') : v}`;
+  });
+  return parts.join('|');
 }
 
 // Asegura que el item tenga campos consistentes para comparación y visualización
@@ -84,28 +88,35 @@ export function CartProvider({ children }) {
 
   const [note, setNote] = useState("");
 
-  // Persiste siempre como array (en idle para no bloquear UI)
+  // Persist always
+  const saveCart = (itemsToSave) => {
+    if (!hasWindow) return;
+    try {
+      const json = JSON.stringify(asArray(itemsToSave));
+      window.localStorage.setItem(STORAGE_KEY, json);
+    } catch (err) {
+      console.error("Error saving cart to localStorage:", err);
+    }
+  };
+
   useEffect(() => {
     if (!hasWindow) return;
-    const json = JSON.stringify(asArray(items));
-    let cancel = null;
-    if (typeof window.requestIdleCallback === "function") {
-      const id = window.requestIdleCallback(() => {
-        try {
-          window.localStorage.setItem(STORAGE_KEY, json);
-        } catch {}
-      });
-      cancel = () => window.cancelIdleCallback?.(id);
-    } else {
-      const tid = setTimeout(() => {
-        try {
-          window.localStorage.setItem(STORAGE_KEY, json);
-        } catch {}
-      }, 0);
-      cancel = () => setTimeout(() => cancel?.(), 0); // Mocking cancel for completeness
-      return () => clearTimeout(tid);
-    }
-    return cancel;
+    saveCart(items);
+
+    // Ensure save on page leave for mobile reliability
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        saveCart(items);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handleVisibilityChange);
+    };
   }, [items, hasWindow]);
 
   // API segura (siempre parte de un array)
