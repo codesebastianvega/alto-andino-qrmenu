@@ -11,27 +11,24 @@ import { useMenuData } from "@/context/MenuDataContext";
 {/* Las imagenes de producto se configuran en src/utils/images.js.
     Coloca las fotos en /public/img/products y mapea claves en IMAGE_MAP. */}
 
-export default function ProductCard({ item, onAdd, onQuickView, variant = "standard", isHero = false }) {
+const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard", isHero = false, allergens = [] }) => {
   if (!item) return null;
 
   const productId = item.id || slugify(item.name);
   
-  // Get allergens from context
-  const { allergens = [] } = useMenuData() || {};
-
   // Find emojis for the tags the product has
-  const productAllergens = (item.tags || []).map(tagName => {
+  const productAllergens = React.useMemo(() => (item.tags || []).map(tagName => {
     return allergens.find(a => a.name === tagName && a.type !== 'diet');
-  }).filter(Boolean);
+  }).filter(Boolean), [item.tags, allergens]);
 
-  const productDiets = (item.tags || []).map(tagName => {
+  const productDiets = React.useMemo(() => (item.tags || []).map(tagName => {
     return allergens.find(a => a.name === tagName && a.type === 'diet');
-  }).filter(Boolean);
+  }).filter(Boolean), [item.tags, allergens]);
   
   // Use stock_status from database (Supabase)
   const isOut = item.stock_status === 'out';
   
-  const product = {
+  const product = React.useMemo(() => ({
     ...item,
     productId,
     id: isOut ? undefined : productId,
@@ -42,7 +39,7 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
     price: item.price,
     image: item.image || item.image_url,
     image_url: item.image_url || item.image,
-  };
+  }), [item, productId, isOut]);
 
   const imageSrc = getProductImage(product);
   const [imgLoaded, setImgLoaded] = React.useState(false);
@@ -50,7 +47,7 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
     setImgLoaded(false);
   }, [imageSrc]);
 
-  const handleQuickView = () => onQuickView?.(product);
+  const handleQuickView = React.useCallback(() => onQuickView?.(product), [onQuickView, product]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -220,4 +217,6 @@ export default function ProductCard({ item, onAdd, onQuickView, variant = "stand
       </div>
     </article>
   );
-}
+});
+
+export default ProductCard;

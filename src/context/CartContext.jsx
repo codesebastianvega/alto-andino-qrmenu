@@ -198,12 +198,12 @@ export function CartProvider({ children }) {
   useEffect(() => {
     const onUndo = () => {
       try {
-        const raw = sessionStorage.getItem("aa_last_order");
+      const raw = localStorage.getItem("aa_last_order");
         if (!raw) return;
         const snap = JSON.parse(raw);
         snap.items?.forEach((it) => addItem?.(it));
         setNote?.(snap.note || "");
-        sessionStorage.removeItem("aa_last_order");
+        localStorage.removeItem("aa_last_order");
         document.dispatchEvent(
           new CustomEvent("aa:toast", {
             detail: { message: "Carrito restaurado" },

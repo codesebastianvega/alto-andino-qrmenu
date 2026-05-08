@@ -23,6 +23,9 @@ export const MenuDataProvider = ({ children }) => {
   const [homeSettings, setHomeSettings] = useState(null);
   const [locations, setLocations] = useState([]);
   const [businessHours, setBusinessHours] = useState([]);
+  const [restaurantSettings, setRestaurantSettings] = useState(null);
+  const [brand, setBrand] = useState(null);
+  const [planFeatures, setPlanFeatures] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Get brand information from BrandContext (which resolves slug/session)
@@ -379,22 +382,30 @@ export const MenuDataProvider = ({ children }) => {
   // Inject CSS Variables for Dynamic Theming
   useEffect(() => {
     if (!restaurantSettings) return;
-    const root = document.documentElement;
-    const colors = {
-      '--color-brand-primary': restaurantSettings.primary_color || '#2f4131',
-      '--color-brand-secondary': restaurantSettings.theme_secondary || '#7db87a',
-      '--color-brand-bg': restaurantSettings.theme_background || '#f9f8f6',
-      '--color-brand-card': restaurantSettings.theme_card_bg || '#ffffff',
-      '--color-brand-text': restaurantSettings.theme_text || '#2c3e2d',
-      '--color-brand-footer': restaurantSettings.theme_footer_bg || '#2f4131',
-    };
-    Object.entries(colors).forEach(([k, v]) => root.style.setProperty(k, v));
+    try {
+      const root = document.documentElement;
+      const colors = {
+        '--color-brand-primary': restaurantSettings.primary_color || '#2f4131',
+        '--color-brand-secondary': restaurantSettings.theme_secondary || '#7db87a',
+        '--color-brand-bg': restaurantSettings.theme_background || '#f9f8f6',
+        '--color-brand-card': restaurantSettings.theme_card_bg || '#ffffff',
+        '--color-brand-text': restaurantSettings.theme_text || '#2c3e2d',
+        '--color-brand-footer': restaurantSettings.theme_footer_bg || '#2f4131',
+      };
+      Object.entries(colors).forEach(([k, v]) => root.style.setProperty(k, v));
 
-    const faviconUrl = restaurantSettings.favicon_url || '/favicon.png';
-    let link = document.querySelector("link[rel~='icon']");
-    if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
-    link.type = 'image/png';
-    link.href = faviconUrl;
+      const faviconUrl = restaurantSettings.favicon_url || '/favicon.png';
+      let link = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.type = 'image/png';
+      link.href = faviconUrl;
+    } catch (err) {
+      console.error('Error applying theme/favicon:', err);
+    }
   }, [restaurantSettings]);
 
   const getProductsByCategory = useCallback((slug) => productsByCategory[slug] || [], [productsByCategory]);

@@ -19,7 +19,8 @@ export function isRestaurantOpen(businessHours) {
   const todayHours = businessHours.find(h => h.day_of_week === dayOfWeek);
 
   if (!todayHours) {
-    return { isOpen: false, message: "No hay horario definido para hoy." }; 
+    console.warn("No business hours defined for today.");
+    return { isOpen: false, message: "Lo sentimos, no hay horario de atención definido para hoy." }; 
   }
 
   if (todayHours.is_closed) {

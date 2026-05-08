@@ -14,6 +14,8 @@ function norm(s = "") {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+import { useMenuData } from "@/context/MenuDataContext";
+
 export default function ProductSection({
   id,
   title,
@@ -31,8 +33,11 @@ export default function ProductSection({
   variant = "standard", // standard, simple-list, grid, wide-grid, bento-grid, masonry
   heroId = null, // ID of the product to show as hero/featured
   renderEmpty,
+  allergens: propAllergens,
 }) {
   const { addItem } = useCart();
+  const { allergens: contextAllergens = [] } = useMenuData() || {};
+  const allergens = propAllergens || contextAllergens;
 
   const filterItems = (arr = []) =>
     arr.filter((item) => {
@@ -126,12 +131,13 @@ export default function ProductSection({
           {arr.map((item, i) => {
             const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
             return (
-              <div key={safeItem?.id || `${keySeed}-${i}`} className="min-w-[160px] max-w-[160px] sm:min-w-[200px] sm:max-w-[200px]">
+              <div key={safeItem?.id || `${keySeed}-${i}`} className="min-w-[160px] max-w-[160px] sm:min-w-[200px] sm:max-w-[200px] [content-visibility:auto] [contain-intrinsic-size:200px]">
                 <ProductCard
                   item={safeItem}
                   variant="standard"
                   onAdd={(payload) => addItem(payload)}
                   onQuickView={onQuickView}
+                  allergens={allergens}
                 />
               </div>
             );
@@ -144,12 +150,13 @@ export default function ProductSection({
           {arr.map((item, i) => {
             const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
             return (
-              <div key={safeItem?.id || `${keySeed}-${i}`} className="break-inside-avoid mb-4">
+              <div key={safeItem?.id || `${keySeed}-${i}`} className="break-inside-avoid mb-4 [content-visibility:auto] [contain-intrinsic-size:300px]">
                 <ProductCard
                   item={safeItem}
                   variant="standard"
                   onAdd={(payload) => addItem(payload)}
                   onQuickView={onQuickView}
+                  allergens={allergens}
                 />
               </div>
             );
@@ -172,7 +179,7 @@ export default function ProductSection({
           return (
             <div 
               key={safeItem?.id || `${keySeed}-${i}`}
-              className={isHero && variant === "bento-grid" ? "col-span-2 row-span-2" : ""}
+              className={`${isHero && variant === "bento-grid" ? "col-span-2 row-span-2" : ""} [content-visibility:auto] [contain-intrinsic-size:200px]`}
             >
               <ProductCard
                 item={safeItem}
@@ -180,6 +187,7 @@ export default function ProductSection({
                 isHero={isHero}
                 onAdd={(payload) => addItem(payload)}
                 onQuickView={onQuickView}
+                allergens={allergens}
               />
             </div>
           );
