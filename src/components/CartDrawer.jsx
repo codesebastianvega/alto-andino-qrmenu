@@ -13,6 +13,7 @@ import { translateGroup } from "@/utils/formatters";
 import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";
 import { useAuth } from "@/context/AuthContext";
 import { useMenuData } from "@/context/MenuDataContext";
+import { isRestaurantOpen } from "@/utils/businessHours";
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 3000 }),
@@ -155,7 +156,7 @@ const renderOptionsPills = (opts) => {
 
 export default function CartDrawer({ open, onClose }) {
   const cart = useCart?.() || {};
-  const { restaurantSettings } = useMenuData();
+  const { restaurantSettings, businessHours } = useMenuData();
   const { activeBrand } = useAuth();
   
   const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
@@ -208,6 +209,14 @@ export default function CartDrawer({ open, onClose }) {
     
     setIsSubmitting(true);
     try {
+      // 0. Check Business Hours
+      const { isOpen, message } = isRestaurantOpen(businessHours);
+      if (!isOpen) {
+        toast.error(message);
+        setIsSubmitting(false);
+        return;
+      }
+
       const mesa = getTable();
       
         // 1. Get exact table_id and location_id if dine_in
@@ -224,6 +233,11 @@ export default function CartDrawer({ open, onClose }) {
           if (tableData) {
             tableId = tableData.id;
             if (tableData.location_id) orderLocationId = tableData.location_id;
+            
+            // Mark table as occupied
+            await supabase.from('restaurant_tables')
+              .update({ status: 'occupied' })
+              .eq('id', tableId);
           }
         }
 
