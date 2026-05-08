@@ -185,6 +185,7 @@ export default function OrderStatus({ orderId }) {
     new: { label: 'Recibido', icon: <CheckCircle2 size={48} />, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100', glow: 'bg-blue-500/15', text: 'text-blue-600', step: 2 },
     preparing: { label: 'En Cocina', icon: <ChefHat size={48} />, color: 'text-yellow-600', bg: 'bg-[#FFF9E6]', border: 'border-[#F8E5A0]', glow: 'bg-[#E6B05C]/20', text: 'text-yellow-700', step: 3 },
     ready: { label: '¡Listo!', icon: <ShoppingBag size={48} />, color: 'text-green-500', bg: 'bg-green-50', border: 'border-green-100', glow: 'bg-green-500/15', text: 'text-green-600', step: 4 },
+    on_table: { label: 'En Mesa', icon: <ShoppingBag size={48} />, color: 'text-purple-500', bg: 'bg-purple-50', border: 'border-purple-100', glow: 'bg-purple-500/15', text: 'text-purple-600', step: 4 },
     delivered: { label: 'Finalizado', icon: <Home size={48} />, color: 'text-[#4A7856]', bg: 'bg-[#EAF1EC]', border: 'border-[#4A7856]/20', glow: 'bg-[#4A7856]/15', text: 'text-[#4A7856]', step: 5 }
   };
 
@@ -230,7 +231,7 @@ export default function OrderStatus({ orderId }) {
       
       {/* HEADER NAVBAR */}
       <nav className="bg-white px-6 py-4 flex items-center gap-4 sticky top-0 z-50 border-b border-black/5 shadow-sm">
-        <button onClick={() => window.location.href = '/'} className="w-10 h-10 shrink-0 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-colors text-black/70">
+        <button onClick={() => window.location.hash = '#menu'} className="w-10 h-10 shrink-0 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-colors text-black/70">
           <ArrowLeft size={20} />
         </button>
         <div className="min-w-0">
