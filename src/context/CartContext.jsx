@@ -86,14 +86,22 @@ export function CartProvider({ children }) {
     return parsed;
   });
 
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(() => {
+    if (!hasWindow) return "";
+    return window.localStorage.getItem(`${STORAGE_KEY}_note`) || "";
+  });
 
   // Persist always
-  const saveCart = (itemsToSave) => {
+  const saveCart = (itemsToSave, noteToSave) => {
     if (!hasWindow) return;
     try {
-      const json = JSON.stringify(asArray(itemsToSave));
-      window.localStorage.setItem(STORAGE_KEY, json);
+      if (itemsToSave !== undefined) {
+        const json = JSON.stringify(asArray(itemsToSave));
+        window.localStorage.setItem(STORAGE_KEY, json);
+      }
+      if (noteToSave !== undefined) {
+        window.localStorage.setItem(`${STORAGE_KEY}_note`, String(noteToSave));
+      }
     } catch (err) {
       console.error("Error saving cart to localStorage:", err);
     }
@@ -101,12 +109,12 @@ export function CartProvider({ children }) {
 
   useEffect(() => {
     if (!hasWindow) return;
-    saveCart(items);
+    saveCart(items, note);
 
     // Ensure save on page leave for mobile reliability
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        saveCart(items);
+        saveCart(items, note);
       }
     };
 
@@ -117,7 +125,7 @@ export function CartProvider({ children }) {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", handleVisibilityChange);
     };
-  }, [items, hasWindow]);
+  }, [items, note, hasWindow]);
 
   // API segura (siempre parte de un array)
   function addItem(payload) {

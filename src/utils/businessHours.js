@@ -6,9 +6,9 @@
  */
 export function isRestaurantOpen(businessHours) {
   if (!businessHours || businessHours.length === 0) {
-    // If no hours are defined, assume open but log warning
-    console.warn("No business hours defined. Assuming open.");
-    return { isOpen: true, message: "" };
+    // If no hours are defined, assume CLOSED for safety
+    console.warn("No business hours defined.");
+    return { isOpen: false, message: "El horario de atención no está definido." };
   }
 
   const now = new Date();
@@ -19,7 +19,7 @@ export function isRestaurantOpen(businessHours) {
   const todayHours = businessHours.find(h => h.day_of_week === dayOfWeek);
 
   if (!todayHours) {
-    return { isOpen: true, message: "" }; // Fallback if day not found
+    return { isOpen: false, message: "No hay horario definido para hoy." }; 
   }
 
   if (todayHours.is_closed) {

@@ -207,10 +207,17 @@ export default function CartModal({ open, onClose }) {
 
   // Fulfillment states
   const initialMesa = getTable();
-  const flowFromSession = sessionStorage.getItem("aa_fulfillment_flow");
+  const flowFromStorage = localStorage.getItem("aa_fulfillment_flow");
   const [fulfillmentType, setFulfillmentType] = useState(
-    initialMesa ? 'dine_in' : (flowFromSession || 'takeaway')
+    initialMesa ? 'dine_in' : (flowFromStorage || 'takeaway')
   );
+
+  // Sync fulfillmentType to storage
+  useEffect(() => {
+    if (fulfillmentType) {
+      localStorage.setItem("aa_fulfillment_flow", fulfillmentType);
+    }
+  }, [fulfillmentType]);
   const [scheduledTime, setScheduledTime] = useState("");
   const isPOSMode = sessionStorage.getItem("aa_pos_mode") === "true";
   const manualType = sessionStorage.getItem("aa_manual_type");
@@ -236,14 +243,14 @@ export default function CartModal({ open, onClose }) {
 
   // Si estamos en POS y es manual (Takeaway/Delivery), forzamos el tipo
   useEffect(() => {
-    const flowFromSession = sessionStorage.getItem("aa_fulfillment_flow");
+    const flowFromStorage = localStorage.getItem("aa_fulfillment_flow");
 
     if (isPOSMode && manualType) {
       setFulfillmentType(manualType);
     } else if (initialMesa) {
       setFulfillmentType('dine_in');
-    } else if (flowFromSession) {
-      setFulfillmentType(flowFromSession);
+    } else if (flowFromStorage) {
+      setFulfillmentType(flowFromStorage);
     }
 
     // Load customer from session if set by Admin (Waiter)
@@ -310,9 +317,9 @@ export default function CartModal({ open, onClose }) {
 
     // 0. Validate Business Hours (Skip for POS mode)
     if (!isPOSMode) {
-      // Filter hours for current location if applicable
+      // Filter hours for current location or global (location_id is null)
       const relevantHours = businessHours.filter(h => 
-        !h.location_id || h.location_id === currentLocationId
+        !h.location_id || (currentLocationId && h.location_id === currentLocationId)
       );
       
       const { isOpen, message } = isRestaurantOpen(relevantHours);
@@ -431,16 +438,17 @@ export default function CartModal({ open, onClose }) {
         if (orderError) throw orderError;
         orderData = newOrder;
         console.log("✅ Nueva orden creada:", orderData.id);
+      }
 
-        // Update table status to occupied if it's a new dine-in order
-        if (tableId && fulfillmentType === 'dine_in') {
-          try {
-            await supabase.from('restaurant_tables')
-              .update({ is_occupied: true })
-              .eq('id', tableId);
-          } catch (tabErr) {
-            console.error("Error updating table status:", tabErr);
-          }
+      // Update table status to occupied if it's a dine-in order (always, even if merged)
+      if (tableId && fulfillmentType === 'dine_in') {
+        try {
+          await supabase.from('restaurant_tables')
+            .update({ is_occupied: true })
+            .eq('id', tableId);
+          console.log("✅ Mesa marcada como ocupada:", tableId);
+        } catch (tabErr) {
+          console.error("Error updating table status:", tabErr);
         }
       }
 
