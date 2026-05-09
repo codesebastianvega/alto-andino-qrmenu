@@ -339,7 +339,7 @@ export function ImageGuidance() {
         className="inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-600 hover:text-blue-700 transition-colors bg-blue-50 px-2.5 py-1.5 rounded-xl border border-blue-100/50"
       >
         <Icon icon="solar:info-circle-bold-duotone" className="text-sm" />
-        {showTutorial ? 'Ocultar guía de imágenes' : 'Ver guía: Límite 1MB y Google Drive'}
+        {showTutorial ? 'Ocultar guía de imágenes' : 'Ver guía: Límite 4MB y Google Drive'}
       </button>
 
       {showTutorial && (
@@ -377,7 +377,7 @@ export function ImageGuidance() {
                 <Icon icon="solar:upload-bold-duotone" className="text-blue-500 text-sm" />
               </div>
               <p className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">
-                2. Subir Archivo (Máx 1MB)
+                2. Subir Archivo (Máx 4MB)
               </p>
             </div>
             <p className="text-[10px] text-gray-500 leading-relaxed mb-3">
@@ -386,7 +386,7 @@ export function ImageGuidance() {
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100">
                 <Icon icon="solar:shield-warning-bold-duotone" className="text-amber-500 text-sm" />
-                <span className="text-[10px] font-bold text-gray-600">Límite estricto: 1.0 MB</span>
+                <span className="text-[10px] font-bold text-gray-600">Límite estricto: 4.0 MB</span>
               </div>
               <a 
                 href="https://tinyjpg.com" 

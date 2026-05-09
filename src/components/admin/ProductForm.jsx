@@ -7,7 +7,7 @@ import { Icon } from '@iconify-icon/react';
 import { useLocations } from '../../hooks/useLocations';
 import { useLocationOverrides } from '../../hooks/useLocationOverrides';
 import { useRestaurantSettings } from '../../hooks/useRestaurantSettings';
-import { validateImageSize, convertDriveLink } from '../../utils/images';
+import { validateImageSize, convertDriveLink, compressAndWebp } from '../../utils/images';
 import { toast as toastFn } from '../Toast';
 
 const toast = {
@@ -78,6 +78,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
   const [manageGroups, setManageGroups] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [uploadStats, setUploadStats] = useState(null);
   const fileInputRef = useRef(null);
 
   // --- Location Overrides ---
@@ -229,32 +230,69 @@ export default function ProductForm({ product, categories, recipes = [], allerge
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Aunque comprimamos, validamos el tamaño inicial por seguridad (ahora 4MB)
     if (!validateImageSize(file, toast)) return;
 
     try {
       setIsUploading(true);
-      const fileExt = file.name.split('.').pop();
-      // Generate a unique file name
-      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+      setUploadStats(null);
+      
+      const originalSize = file.size;
+
+      // 1. Comprimir y convertir a WebP en el cliente
+      const compressedFile = await compressAndWebp(file);
+      const finalSize = compressedFile.size;
+      
+      // 2. Preparar ruta (forzar .webp)
+      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.webp`;
       const filePath = `${fileName}`;
 
+      // 3. Subir a Supabase con Cache Control agresivo (1 año)
       const { error: uploadError } = await supabase.storage
         .from('products')
-        .upload(filePath, file);
+        .upload(filePath, compressedFile, {
+          cacheControl: '31536000',
+          upsert: false
+        });
 
       if (uploadError) throw uploadError;
 
+      // 4. Obtener URL pública
       const { data } = supabase.storage
         .from('products')
         .getPublicUrl(filePath);
 
-      setFormData(prev => ({ ...prev, image_url: data.publicUrl }));
+      const newImageUrl = data.publicUrl;
+
+      // 5. Lógica de limpieza: Borrar imagen anterior si existía
+      if (formData.image_url && formData.image_url.includes('supabase.co')) {
+        try {
+          const parts = formData.image_url.split('/');
+          const oldFileName = parts[parts.length - 1];
+          
+          if (oldFileName) {
+            await supabase.storage
+              .from('products')
+              .remove([oldFileName]);
+          }
+        } catch (cleanupError) {
+          console.warn('Error limpiando imagen antigua:', cleanupError);
+        }
+      }
+
+      setFormData(prev => ({ ...prev, image_url: newImageUrl }));
+      setUploadStats({
+        original: (originalSize / 1024).toFixed(1),
+        final: (finalSize / 1024).toFixed(1),
+        reduction: (((originalSize - finalSize) / originalSize) * 100).toFixed(0)
+      });
+      
+      toast.success('Imagen optimizada y subida correctamente');
     } catch (error) {
       console.error('Error uploading image:', error);
-      alert('Error subiendo imagen. Intenta de nuevo.');
+      toast.error('Error subiendo imagen. Intenta de nuevo.');
     } finally {
       setIsUploading(false);
-      // Reset input so the same file could be selected again if needed
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -918,6 +956,32 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                 </div>
               )}
 
+              {uploadStats && (
+                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 animate-in fade-in slide-in-from-top-2 duration-500">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2 text-emerald-700">
+                      <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <Icon icon="lucide:zap" className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider">Imagen Optimizada</span>
+                    </div>
+                    <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-full text-[10px] font-black">
+                      -{uploadStats.reduction}% de peso
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white/50 rounded-xl p-2.5 border border-emerald-100/50">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight mb-0.5">Antes</p>
+                      <p className="text-xs font-bold text-gray-600">{uploadStats.original} KB</p>
+                    </div>
+                    <div className="bg-white/50 rounded-xl p-2.5 border border-emerald-100/50">
+                      <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-tight mb-0.5">Después (WebP)</p>
+                      <p className="text-xs font-bold text-emerald-700">{uploadStats.final} KB</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Unsplash page link warning */}
               {isUnsplashPageLink(formData.image_url) && (
                 <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl mb-3">
@@ -939,23 +1003,31 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                 
                 <div className="space-y-2">
                   <label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Subir archivo directo</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    ref={fileInputRef}
-                    disabled={isUploading}
-                    className="block w-full text-sm text-gray-500
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-full file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-violet-50 file:text-violet-700
-                      hover:file:bg-violet-100 transition-all cursor-pointer disabled:opacity-50"
-                  />
-                  <div className="flex items-center gap-2 px-2.5 py-1.5 bg-gray-50 border border-gray-100 rounded-lg">
-                    <Icon icon="solar:shield-warning-bold-duotone" className="text-amber-500 text-xs" />
-                    <span className="text-[10px] text-gray-500">Límite: <span className="font-bold">1.0 MB</span> (Recomendamos comprimir o usar link)</span>
-                  </div>
+                  <label className={`group relative flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
+                    isUploading ? 'bg-gray-50 border-gray-100 cursor-not-allowed' : 'border-violet-100 bg-violet-50/30 hover:border-violet-300 hover:bg-violet-50'
+                  }`}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      ref={fileInputRef}
+                      disabled={isUploading}
+                      className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                    />
+                    <div className="flex flex-col items-center text-center">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 transition-transform ${
+                        isUploading ? 'bg-gray-200 text-gray-400 animate-pulse' : 'bg-violet-100 text-violet-600 group-hover:scale-110'
+                      }`}>
+                        <Icon icon={isUploading ? "lucide:loader-2" : "lucide:upload-cloud"} className={`text-xl ${isUploading ? 'animate-spin' : ''}`} />
+                      </div>
+                      <p className={`text-sm font-bold ${isUploading ? 'text-gray-400' : 'text-gray-700'}`}>
+                        {isUploading ? 'Subiendo e incorporando...' : 'Seleccionar imagen'}
+                      </p>
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        JPG, PNG o WebP hasta <span className="font-bold text-gray-500">4.0 MB</span>
+                      </p>
+                    </div>
+                  </label>
                 </div>
                 
                 {isUploading && (

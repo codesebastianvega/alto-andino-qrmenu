@@ -1,11 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Icon } from '@iconify-icon/react';
 import { supabase } from '../../config/supabase';
 import { useLocations } from '../../hooks/useLocations';
 import { useLocationOverrides } from '../../hooks/useLocationOverrides';
 import { Modal, ModalHeader, FormField, TextInput, PrimaryButton, SecondaryButton, ImageGuidance } from './ui';
-import { convertDriveLink } from '../../utils/images';
+import { convertDriveLink, validateImageSize, compressAndWebp } from '../../utils/images';
+import { toast as toastFn } from '../Toast';
+
+const toast = {
+  success: (msg) => toastFn(msg, { type: 'success' }),
+  error: (msg) => toastFn(msg, { type: 'error' }),
+};
 
 export default function CategoryForm({ category, onSave, onCancel }) {
   const { locations } = useLocations();
@@ -113,38 +119,52 @@ export default function CategoryForm({ category, onSave, onCancel }) {
   };
 
   const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useState(null);
+  const [uploadStats, setUploadStats] = useState(null);
+  const fileInputRef = useRef(null);
 
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check size (1MB limit)
-    if (file.size > 1024 * 1024) {
-      alert('La imagen es muy pesada (máx 1MB). Por favor comprímela.');
-      return;
-    }
+    // Aunque comprimamos, validamos el tamaño inicial por seguridad (ahora 4MB)
+    if (!validateImageSize(file, toast)) return;
 
     setIsUploading(true);
+    setUploadStats(null);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
+      const originalSize = file.size;
+      // 1. Comprimir y convertir a WebP en el cliente
+      const compressedFile = await compressAndWebp(file);
+      const finalSize = compressedFile.size;
+      
+      // 2. Preparar ruta (forzar .webp)
+      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.webp`;
       const filePath = `category-banners/${fileName}`;
 
+      // 3. Subir a Supabase con Cache Control agresivo (1 año)
       const { error: uploadError } = await supabase.storage
-        .from('images')
-        .upload(filePath, file);
+        .from('products')
+        .upload(filePath, compressedFile, {
+          cacheControl: '31536000',
+          upsert: false
+        });
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('images')
+        .from('products')
         .getPublicUrl(filePath);
 
       setFormData(prev => ({ ...prev, banner_image_url: publicUrl }));
+      setUploadStats({
+        original: (originalSize / 1024).toFixed(1),
+        final: (finalSize / 1024).toFixed(1),
+        reduction: (((originalSize - finalSize) / originalSize) * 100).toFixed(0)
+      });
+      toast.success('Imagen optimizada y subida correctamente');
     } catch (err) {
       console.error('Error uploading image:', err);
-      alert('Error al subir la imagen');
+      toast.error('Error al subir la imagen');
     } finally {
       setIsUploading(false);
     }
@@ -305,29 +325,60 @@ export default function CategoryForm({ category, onSave, onCancel }) {
 
                 <ImageGuidance />
 
+                {uploadStats && (
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 animate-in fade-in slide-in-from-top-2 duration-500">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2 text-emerald-700">
+                        <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
+                          <Icon icon="lucide:zap" className="w-3.5 h-3.5" />
+                        </div>
+                        <span className="text-[11px] font-bold uppercase tracking-wider">Imagen Optimizada</span>
+                      </div>
+                      <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-full text-[10px] font-black">
+                        -{uploadStats.reduction}% de peso
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-white/50 rounded-xl p-2.5 border border-emerald-100/50">
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight mb-0.5">Antes</p>
+                        <p className="text-xs font-bold text-gray-600">{uploadStats.original} KB</p>
+                      </div>
+                      <div className="bg-white/50 rounded-xl p-2.5 border border-emerald-100/50">
+                        <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-tight mb-0.5">Después (WebP)</p>
+                        <p className="text-xs font-bold text-emerald-700">{uploadStats.final} KB</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Subir archivo directo</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    disabled={isUploading}
-                    className="block w-full text-sm text-gray-500
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-full file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-[#2f4131]/10 file:text-[#2f4131]
-                      hover:file:bg-[#2f4131]/20 transition-all cursor-pointer disabled:opacity-50"
-                  />
-                  <div className="flex items-center gap-2 px-2.5 py-1.5 bg-gray-50 border border-gray-100 rounded-lg">
-                    <Icon icon="solar:shield-warning-bold-duotone" className="text-amber-500 text-xs" />
-                    <span className="text-[10px] text-gray-500">Límite: <span className="font-bold">1.0 MB</span> (Recomendamos comprimir o usar link)</span>
-                  </div>
+                  <label className={`group relative flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
+                    isUploading ? 'bg-gray-50 border-gray-100 cursor-not-allowed' : 'border-[#2f4131]/10 bg-[#2f4131]/5 hover:border-[#2f4131]/30 hover:bg-[#2f4131]/10'
+                  }`}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      ref={fileInputRef}
+                      disabled={isUploading}
+                      className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                    />
+                    <div className="flex flex-col items-center text-center">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 transition-transform ${
+                        isUploading ? 'bg-gray-200 text-gray-400 animate-pulse' : 'bg-[#2f4131]/10 text-[#2f4131] group-hover:scale-110'
+                      }`}>
+                        <Icon icon={isUploading ? "lucide:loader-2" : "lucide:upload-cloud"} className={`text-xl ${isUploading ? 'animate-spin' : ''}`} />
+                      </div>
+                      <p className={`text-sm font-bold ${isUploading ? 'text-gray-400' : 'text-gray-700'}`}>
+                        {isUploading ? 'Subiendo e incorporando...' : 'Seleccionar imagen'}
+                      </p>
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        JPG, PNG o WebP hasta <span className="font-bold text-gray-500">4.0 MB</span>
+                      </p>
+                    </div>
+                  </label>
                 </div>
-
-                {isUploading && (
-                  <p className="text-[11px] text-[#2f4131] font-medium animate-pulse">Subiendo imagen...</p>
-                )}
 
                 <div className="pt-2 border-t border-gray-50">
                   <p className="text-[11px] font-bold text-gray-500 uppercase tracking-tight mb-2">O ingresa la URL manualmente (Recomendado)</p>

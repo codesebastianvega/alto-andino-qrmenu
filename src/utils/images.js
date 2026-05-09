@@ -1,4 +1,31 @@
 // src/utils/images.js
+import imageCompression from 'browser-image-compression';
+
+/**
+ * Comprime una imagen y la convierte a formato WebP.
+ * @param {File} file El archivo original
+ * @returns {Promise<File>} El archivo comprimido en formato WebP
+ */
+export const compressAndWebp = async (file) => {
+  const options = {
+    maxSizeMB: 0.2, // 200KB
+    maxWidthOrHeight: 1200,
+    useWebWorker: true,
+    fileType: 'image/webp',
+    initialQuality: 0.8
+  };
+
+  try {
+    const compressedFile = await imageCompression(file, options);
+    // Asegurarnos de que el nombre termine en .webp
+    const fileName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+    return new File([compressedFile], `${fileName}.webp`, { type: 'image/webp' });
+  } catch (error) {
+    console.error('Error comprimiendo imagen:', error);
+    return file; // Si falla, devolvemos el original
+  }
+};
+
 // Guía para subir y enlazar imágenes de producto
 //
 // Dónde subirlas
@@ -31,7 +58,7 @@ function slugify(s = "") {
     .replace(/(^-|-$)/g, "");
 }
 // Máximo tamaño permitido: 1MB (recomendado para web y para evitar llenar almacenamiento)
-export const MAX_IMAGE_SIZE = 1 * 1024 * 1024; 
+export const MAX_IMAGE_SIZE = 4 * 1024 * 1024; 
 
 /**
  * Verifica si una URL es externa (Unsplash, Google, etc.)
