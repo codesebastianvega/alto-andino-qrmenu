@@ -8,21 +8,32 @@ export function useLocationOverrides() {
   async function upsertWithFallback(table, rows, onConflict, conflictKeys) {
     if (!rows?.length) return { error: null };
 
+    // Try standard upsert first
     const attempt = await supabase.from(table).upsert(rows, { onConflict });
     if (!attempt.error) return { error: null };
 
+    // Detect if error is due to missing unique constraint (PostgreSQL 42P10 or generic 400 if PostgREST complains about on_conflict)
     const needsFallback =
       attempt.error.code === '42P10' ||
-      attempt.error.message?.includes('no unique or exclusion constraint');
+      attempt.error.status === 400 ||
+      attempt.error.message?.toLowerCase().includes('no unique or exclusion constraint');
 
     if (!needsFallback) {
+      console.error(`[upsertWithFallback] Error on ${table}:`, attempt.error);
       return { error: attempt.error };
     }
 
+    console.warn(`[upsertWithFallback] Falling back to manual upsert for ${table}`);
+
+    // Manual fallback: check each row
     for (const row of rows) {
       const match = conflictKeys.reduce((query, key) => query.eq(key, row[key]), supabase.from(table).select('id').limit(1));
       const existing = await match.maybeSingle();
-      if (existing.error) return { error: existing.error };
+      
+      if (existing.error) {
+        console.error(`[upsertWithFallback] Search error on ${table}:`, existing.error);
+        return { error: existing.error };
+      }
 
       if (existing.data?.id) {
         const { error: updateError } = await supabase
