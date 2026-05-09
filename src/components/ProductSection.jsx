@@ -1,5 +1,5 @@
 // src/components/ProductSection.jsx
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useState, useRef } from "react";
 import { useCart } from "@/context/CartContext";
 import Section from "./Section";
 import ProductCard from "./ProductCard";
@@ -88,7 +88,7 @@ export default function ProductSection({
   const headerNode =
     typeof renderHeader === "function"
       ? (
-          <div className="mb-3 sm:mb-4">{renderHeader({ hasResults: count > 0 })}</div>
+          <div className="-mx-5 sm:-mx-6 md:-mx-8 lg:mx-0">{renderHeader({ hasResults: count > 0 })}</div>
         )
       : null;
 
@@ -127,22 +127,64 @@ export default function ProductSection({
       gridClasses += " grid-cols-1";
       cardVariant = "minimal";
     } else if (variant === "horizontal-slider") {
+      const scrollRef = useRef(null);
+      const [scrollProgress, setScrollProgress] = useState(0);
+
+      const handleScroll = () => {
+        if (!scrollRef.current) return;
+        const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+        const maxScroll = scrollWidth - clientWidth;
+        if (maxScroll > 0) {
+          setScrollProgress(scrollLeft / maxScroll);
+        }
+      };
+
+      // Total dots: let's say 1 dot per item, capped at a reasonable number
+      const dotCount = Math.min(arr.length, 8);
+
       return (
-        <div className="flex overflow-x-auto gap-4 pb-4 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 scroll-smooth">
-          {arr.map((item, i) => {
-            const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
-            return (
-              <div key={safeItem?.id || `${keySeed}-${i}`} className="min-w-[160px] max-w-[160px] sm:min-w-[200px] sm:max-w-[200px] [content-visibility:auto] [contain-intrinsic-size:200px]">
-                <ProductCard
-                  item={safeItem}
-                  variant="standard"
-                  onAdd={(payload) => addItem(payload)}
-                  onQuickView={onQuickView}
-                  allergens={allergens}
-                />
-              </div>
-            );
-          })}
+        <div className="relative group/slider">
+          <div 
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="flex overflow-x-auto gap-4 pb-6 pt-4 no-scrollbar -mx-5 px-5 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8 lg:mx-0 lg:px-0 scroll-smooth snap-x snap-mandatory scroll-pl-5 sm:scroll-pl-6 md:scroll-pl-8"
+          >
+            {arr.map((item, i) => {
+              const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
+              return (
+                <div 
+                  key={safeItem?.id || `${keySeed}-${i}`} 
+                  className="min-w-[200px] max-w-[200px] sm:min-w-[240px] sm:max-w-[240px] snap-start [content-visibility:auto] [contain-intrinsic-size:240px]"
+                >
+                  <ProductCard
+                    item={safeItem}
+                    variant="standard"
+                    onAdd={(payload) => addItem(payload)}
+                    onQuickView={onQuickView}
+                    allergens={allergens}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          
+          {/* Indicador de scroll (puntos) */}
+          {arr.length > 1 && (
+            <div className="flex justify-center items-center gap-1.5 mt-2">
+              {Array.from({ length: dotCount }).map((_, i) => {
+                // Map current progress to which dot should be active
+                const isActive = Math.round(scrollProgress * (dotCount - 1)) === i;
+                return (
+                  <div 
+                    key={i}
+                    className={`h-1 rounded-full transition-all duration-300 ${
+                      isActive ? "w-4 bg-[#2f4131]" : "w-1.5 bg-[#2f4131]/20"
+                    }`}
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
       );
     } else if (variant === "masonry") {

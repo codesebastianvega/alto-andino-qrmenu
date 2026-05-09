@@ -23,7 +23,7 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
   const basePrice = product?.price || 0;
 
   return (
-    <div className="-mx-4 px-4 sm:-mx-6 sm:px-6 mb-8 mt-2">
+    <div className="-mx-5 sm:-mx-6 md:-mx-8 lg:mx-0 px-5 sm:px-6 md:px-8 mb-8 mt-2">
       <div 
         className="relative h-44 sm:h-52 md:h-64 overflow-hidden rounded-[32px] ring-1 ring-black/5 shadow-xl transition-all duration-500 hover:shadow-2xl hover:shadow-black/10 group"
         style={isFloating ? { 
