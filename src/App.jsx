@@ -191,9 +191,16 @@ export default function App() {
     const p = params.get("cat");
     if (p && isValidCat(p)) setSelectedCategory(p);
 
-    const mesa = params.get("mesa");
+    const mesa = params.get("mesa") || params.get("t");
     if (mesa) {
       localStorage.setItem("aa_current_mesa", mesa);
+      // Keep sessionStorage for legacy or specific session-only needs, but localStorage is primary
+      sessionStorage.setItem("aa_current_mesa", mesa);
+    }
+
+    const locId = params.get("l") || params.get("location");
+    if (locId) {
+      localStorage.setItem("aa_current_location_id", locId);
     }
 
     // Capture fulfillment flow from smart links

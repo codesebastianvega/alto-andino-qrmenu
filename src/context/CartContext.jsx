@@ -1,5 +1,6 @@
 // src/context/CartContext.jsx
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
+import { useBrand } from "./BrandContext";
 
 const toastEvent = (message) => {
   try {
@@ -7,13 +8,13 @@ const toastEvent = (message) => {
   } catch {}
 };
 
-export const getItemUnit = (it) =>
+const getItemUnit = (it) =>
   Number(String(it?.price ?? it?.unitPrice ?? it?.priceEach).replace(/[^\d.-]/g, "")) || 0;
 
 const CartCtx = createContext(null);
 
 export const useCart = () => useContext(CartCtx);
-const STORAGE_KEY = "aa_cart";
+const BASE_STORAGE_KEY = "aa_cart";
 
 function safeParse(json, fallback) {
   try {
@@ -74,41 +75,50 @@ function normalize(items) {
 
 export function CartProvider({ children }) {
   const hasWindow = typeof window !== "undefined";
-  // Lee el storage y sanea: si no es array, borra y arranca vacío
-  const [items, setItems] = useState(() => {
-    if (!hasWindow) return [];
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    const parsed = safeParse(raw, []);
-    if (!Array.isArray(parsed)) {
-      window.localStorage.removeItem(STORAGE_KEY);
-      return [];
-    }
-    return parsed;
-  });
+  const { brand } = useBrand() || {};
+  const brandId = brand?.id;
 
-  const [note, setNote] = useState(() => {
-    if (!hasWindow) return "";
-    return window.localStorage.getItem(`${STORAGE_KEY}_note`) || "";
-  });
+  // Key remains stable for a given brand
+  const currentKey = useMemo(() => 
+    brandId ? `${BASE_STORAGE_KEY}_${brandId}` : BASE_STORAGE_KEY
+  , [brandId]);
+
+  const [items, setItems] = useState([]);
+  const [note, setNote] = useState("");
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load brand-specific data
+  useEffect(() => {
+    if (!hasWindow) return;
+    
+    const raw = window.localStorage.getItem(currentKey);
+    const parsed = safeParse(raw, []);
+    setItems(Array.isArray(parsed) ? parsed : []);
+
+    const rawNote = window.localStorage.getItem(`${currentKey}_note`);
+    setNote(rawNote || "");
+    
+    setIsLoaded(true);
+  }, [currentKey, hasWindow]);
 
   // Persist always
-  const saveCart = (itemsToSave, noteToSave) => {
-    if (!hasWindow) return;
+  const saveCart = useCallback((itemsToSave, noteToSave) => {
+    if (!hasWindow || !isLoaded) return;
     try {
       if (itemsToSave !== undefined) {
         const json = JSON.stringify(asArray(itemsToSave));
-        window.localStorage.setItem(STORAGE_KEY, json);
+        window.localStorage.setItem(currentKey, json);
       }
       if (noteToSave !== undefined) {
-        window.localStorage.setItem(`${STORAGE_KEY}_note`, String(noteToSave));
+        window.localStorage.setItem(`${currentKey}_note`, String(noteToSave));
       }
     } catch (err) {
       console.error("Error saving cart to localStorage:", err);
     }
-  };
+  }, [currentKey, hasWindow, isLoaded]);
 
   useEffect(() => {
-    if (!hasWindow) return;
+    if (!hasWindow || !isLoaded) return;
     saveCart(items, note);
 
     // Ensure save on page leave for mobile reliability
@@ -118,14 +128,32 @@ export function CartProvider({ children }) {
       }
     };
 
+    // Cross-tab sync: if cart changes in another tab, update this one
+    const handleStorageChange = (e) => {
+      if (e.key === currentKey) {
+        const nextItems = safeParse(e.newValue, []);
+        if (Array.isArray(nextItems)) {
+          setItems(nextItems);
+        }
+      }
+      if (e.key === `${currentKey}_note`) {
+        setNote(e.newValue || "");
+      }
+    };
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("pagehide", handleVisibilityChange);
+    window.addEventListener("beforeunload", handleVisibilityChange);
+    window.addEventListener("storage", handleStorageChange);
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleVisibilityChange);
+      window.removeEventListener("storage", handleStorageChange);
     };
-  }, [items, note, hasWindow]);
+  }, [items, note, hasWindow, isLoaded, currentKey, saveCart]);
+
 
   // API segura (siempre parte de un array)
   function addItem(payload) {

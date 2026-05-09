@@ -412,6 +412,13 @@ export const MenuDataProvider = ({ children }) => {
   const getModifiers = useCallback((group) => modifiers[group] || [], [modifiers]);
   const getAllProducts = useCallback(() => Object.values(productsByCategory).flat(), [productsByCategory]);
 
+  const currentBusinessHours = useMemo(() => {
+    if (!activeLocationId || activeLocationId === 'all') {
+      return businessHours.filter(h => !h.location_id);
+    }
+    return businessHours.filter(h => h.location_id === activeLocationId);
+  }, [businessHours, activeLocationId]);
+
   const value = useMemo(() => ({
     categories,
     allCategories,
@@ -428,6 +435,7 @@ export const MenuDataProvider = ({ children }) => {
     restaurantSettings,
     brand,
     businessHours,
+    currentBusinessHours,
     planFeatures,
     locations,
     loading,
@@ -439,7 +447,8 @@ export const MenuDataProvider = ({ children }) => {
   }), [
     categories, allCategories, productsByCategory, getProductsByCategory, getAllProducts, 
     getModifiers, modifiers, rawModifierGroups, experiences, banners, allergens, 
-    homeSettings, restaurantSettings, brand, planFeatures, locations, loading, activeBrandId, currentLocation, activeLocationId, fetchMenuData
+    homeSettings, restaurantSettings, brand, planFeatures, locations, loading, activeBrandId, currentLocation, activeLocationId, fetchMenuData,
+    currentBusinessHours, businessHours
   ]);
 
 

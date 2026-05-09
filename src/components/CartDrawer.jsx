@@ -30,9 +30,11 @@ const getTable = () => {
     const fromUrl = sp.get("mesa") || sp.get("t");
     if (fromUrl) return fromUrl;
 
-    const sess = sessionStorage.getItem("aa_current_mesa");
-    if (sess) return sess;
+    // Standardized localStorage key from App.jsx
+    const persisted = localStorage.getItem("aa_current_mesa");
+    if (persisted) return persisted;
 
+    // Fallback to legacy keys
     for (const k of ["aa_table", "aa_table_num", "aa_t", "mesa", "table"]) {
       const v = localStorage.getItem(k);
       if (v) return v;
@@ -43,16 +45,15 @@ const getTable = () => {
   }
 };
 
-const getLocationId = (brandId) => {
+const getLocationId = () => {
   try {
-    // 1. Priority: URL parameter (most specific)
     const params = new URLSearchParams(window.location.search);
-    const urlLoc = params.get("loc");
+    const urlLoc = params.get("loc") || params.get("l") || params.get("location");
     if (urlLoc) return urlLoc;
 
-    // 2. Session storage: set by App.jsx or previous selection
-    const sess = sessionStorage.getItem("aa_current_location_id");
-    if (sess) return sess;
+    // Standardized localStorage key from App.jsx
+    const persisted = localStorage.getItem("aa_current_location_id");
+    if (persisted) return persisted;
     
     return "";
   } catch {
@@ -65,8 +66,10 @@ const getTableCandidates = (rawTable) => {
   if (!original) return [];
 
   const normalized = original.replace(/^mesa\s+/i, "").trim();
-  return [...new Set([original, normalized].filter(Boolean))];
+  const prefixed = `Mesa ${normalized}`;
+  return [...new Set([original, normalized, prefixed].filter(Boolean))];
 };
+
 
 const findTableRecord = async ({ mesa, brandId, locationId }) => {
   const candidates = getTableCandidates(mesa);
@@ -156,9 +159,10 @@ const renderOptionsPills = (opts) => {
 
 export default function CartDrawer({ open, onClose }) {
   const cart = useCart?.() || {};
-  const { restaurantSettings, businessHours } = useMenuData();
+  const { restaurantSettings, currentBusinessHours, activeBrandId } = useMenuData();
   const { activeBrand } = useAuth();
   
+  const brandId = activeBrandId || activeBrand?.id;
   const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
 
   const {
@@ -210,7 +214,7 @@ export default function CartDrawer({ open, onClose }) {
     setIsSubmitting(true);
     try {
       // 0. Check Business Hours
-      const { isOpen, message } = isRestaurantOpen(businessHours);
+      const { isOpen, message } = isRestaurantOpen(currentBusinessHours);
       if (!isOpen) {
         toast.error(message);
         setIsSubmitting(false);
@@ -219,34 +223,32 @@ export default function CartDrawer({ open, onClose }) {
 
       const mesa = getTable();
       
-        // 1. Get exact table_id and location_id if dine_in
-        let tableId = null;
-        let orderLocationId = getLocationId(activeBrand?.id);
+      // 1. Get exact table_id and location_id if dine_in
+      let tableId = null;
+      let orderLocationId = getLocationId();
 
-        if (fulfillmentType === 'dine_in' && mesa) {
-          const tableData = await findTableRecord({
-            mesa,
-            brandId: activeBrand?.id,
-            locationId: orderLocationId
-          });
+      if (fulfillmentType === 'dine_in' && mesa) {
+        const tableData = await findTableRecord({
+          mesa,
+          brandId: brandId,
+          locationId: orderLocationId
+        });
 
-          if (tableData) {
-            tableId = tableData.id;
-            if (tableData.location_id) orderLocationId = tableData.location_id;
-            
-            // Mark table as occupied
-            await supabase.from('restaurant_tables')
-              .update({ status: 'occupied' })
-              .eq('id', tableId);
-          }
+        if (tableData) {
+          tableId = tableData.id;
+          if (tableData.location_id) orderLocationId = tableData.location_id;
+        } else {
+          console.warn('Table record not found for mesa:', mesa);
         }
+
+      }
 
       // 2. Insert Order
       const finalTotal = fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount;
 
       const { data: orderData, error: orderError } = await supabase.from('orders')
         .insert([{
-          brand_id: activeBrand?.id,
+          brand_id: brandId,
           location_id: orderLocationId || null,
           status: (fulfillmentType === 'dine_in' || fulfillmentType === 'takeaway') ? 'new' : 'waiting_payment',
           origin: fulfillmentType === 'dine_in' ? 'table' : (fulfillmentType === 'takeaway' ? 'takeaway' : 'whatsapp'),
@@ -267,7 +269,7 @@ export default function CartDrawer({ open, onClose }) {
         const orderItemsToInsert = items.map(it => ({
           order_id: orderData.id,
           product_id: it.productId || it.id,
-          brand_id: activeBrand?.id,
+          brand_id: brandId,
           quantity: it.qty || 1,
           unit_price: getItemUnit(it),
           modifiers: it.options || {},
@@ -627,15 +629,29 @@ export default function CartDrawer({ open, onClose }) {
                 
                 <div className="flex flex-col gap-2.5">
                   {!showFulfillmentSelector ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowFulfillmentSelector(true)}
-                      disabled={!items.length}
-                      className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] hover:bg-[#202c21] text-white shadow-[#2f4131]/20 hover:-translate-y-0.5 transition-all active:scale-[0.98]"
-                    >
-                      Siguiente: Tipo de Pedido
-                      <Icon icon="heroicons:arrow-right" className="text-xl" />
-                    </button>
+                    <div className="flex flex-col gap-2">
+                      {!isRestaurantOpen(currentBusinessHours).isOpen && (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100">
+                          <Icon icon="heroicons:clock" className="text-lg" />
+                          <span>{isRestaurantOpen(currentBusinessHours).message}</span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowFulfillmentSelector(true)}
+                        disabled={!items.length || !isRestaurantOpen(currentBusinessHours).isOpen}
+                        className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] hover:bg-[#202c21] text-white shadow-[#2f4131]/20 hover:-translate-y-0.5 transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale disabled:hover:translate-y-0"
+                      >
+                        {isRestaurantOpen(currentBusinessHours).isOpen ? (
+                          <>
+                            Siguiente: Tipo de Pedido
+                            <Icon icon="heroicons:arrow-right" className="text-xl" />
+                          </>
+                        ) : (
+                          "Restaurante Cerrado"
+                        )}
+                      </button>
+                    </div>
                   ) : (
                     <div className="flex flex-col gap-3 animate-in slide-in-from-bottom-4 duration-300">
                       {/* Fulfillment Picker */}
