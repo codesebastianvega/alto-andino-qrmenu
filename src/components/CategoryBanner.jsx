@@ -1,15 +1,18 @@
 import React from "react";
 import { formatCOP } from "@/utils/money";
 import AAImage from "@/components/ui/AAImage";
-import { PILL_XS, PILL_SM } from "./Buttons";
 
 export default function CategoryBanner({ category, product, onOpenBuilder }) {
-  // 1. Prioritize Category Fields
+  // 1. Configuration
+  const config = category?.visibility_config || {};
+  const style = config.banner_style || 'floating'; // 'floating' | 'background'
+  const isFloating = style === 'floating';
+
+  // 2. Fields
   const title = category?.banner_title || product?.name || category?.name;
   const description = category?.banner_description || product?.desc || "Elige tus ingredientes favoritos y crea una combinación única.";
   const accentColor = category?.accent_color || "#2f4131";
   
-  // 2. Identify Type for fallbacks
   const isBowl = product?.tags?.includes('bowl') || category?.slug === 'bowls';
   const isSandwich = product?.tags?.includes('sandwich') || category?.slug === 'sandwiches';
   
@@ -20,80 +23,95 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
   const basePrice = product?.price || 0;
 
   return (
-    <div className="-mx-4 px-4 sm:-mx-6 sm:px-6 mb-8">
+    <div className="-mx-4 px-4 sm:-mx-6 sm:px-6 mb-8 mt-2">
       <div 
-        className="relative h-40 overflow-hidden rounded-[32px] ring-1 ring-black/5 shadow-xl sm:h-48 md:h-60"
-        style={{ 
+        className="relative h-44 sm:h-52 md:h-64 overflow-hidden rounded-[32px] ring-1 ring-black/5 shadow-xl transition-all duration-500 hover:shadow-2xl hover:shadow-black/10 group"
+        style={isFloating ? { 
           background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc, #1a2b1d)` 
-        }}
+        } : {}}
       >
-        
-        {/* Animated Background Element */}
-        <div className="absolute inset-0 opacity-10 pointer-events-none">
-           <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        </div>
-
-        {/* Promo Image */}
-        <AAImage
-          src={imageSrc}
-          alt={title}
-          className={`pointer-events-none absolute z-10 animate-[spin_60s_linear_infinite] object-contain drop-shadow-2xl transition-all duration-700
-            ${isBowl ? 'bottom-[-10px] right-2 w-48 sm:w-64 md:w-80' : 'bottom-0 right-4 w-40 sm:w-56 md:w-72'}
-          `}
-        />
-
-        {/* Content */}
-        <div className="absolute inset-0 flex flex-col justify-center pl-6 pr-44 sm:pl-10 sm:pr-60">
-          <div className="space-y-1 sm:space-y-2">
-            <span className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em]">
-               {category?.icon} {category?.name || 'Recomendado'}
-            </span>
-            <h3 className="text-2xl font-black text-white sm:text-3xl md:text-4xl leading-tight tracking-tight">
-              {title}
-            </h3>
-            <p className="text-xs sm:text-sm text-white/80 max-w-xs leading-relaxed font-medium line-clamp-2 sm:line-clamp-none">
-              {description}
-            </p>
-          </div>
-          
-          <div className="mt-5 flex items-center gap-3">
-             {onOpenBuilder ? (
-               <button
-                  type="button"
-                  onClick={onOpenBuilder}
-                  className={`
-                    bg-white text-[#2f4131] font-black text-[10px] sm:text-xs uppercase tracking-widest
-                    rounded-2xl shadow-lg hover:scale-105 active:scale-95 transition-all
-                    ${PILL_XS} sm:${PILL_SM}
-                  `}
-                >
-                  Empezar a Crear
-                </button>
-             ) : (
-                <div className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-xl text-white font-black text-[9px] uppercase tracking-widest">
-                  Explorar Selección
-                </div>
-             )}
-              <div className="hidden sm:flex items-center gap-1.5 opacity-60">
-                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                 <span className="text-[10px] font-bold text-white uppercase tracking-widest">En Vivo</span>
-              </div>
-          </div>
-        </div>
-
-        {/* Floating Price Pill */}
-        {basePrice > 0 && (
-          <div className={`
-            absolute left-6 top-6 z-20 bg-white/10 backdrop-blur-md text-white border border-white/10
-            font-black text-[9px] sm:text-[10px] uppercase tracking-widest
-            grid place-items-center shadow-2xl rounded-xl
-            ${PILL_XS} sm:${PILL_SM}
-          `}>
-            Desde {formatCOP(basePrice)}
+        {/* BACKGROUND LAYER */}
+        {!isFloating ? (
+          <>
+            <img 
+              src={imageSrc} 
+              alt={title} 
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent z-10" />
+          </>
+        ) : (
+          <div className="absolute inset-0 opacity-10 pointer-events-none z-0">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           </div>
         )}
 
+        {/* FLOATING SPINNER (Only for floating style) */}
+        {isFloating && (
+          <AAImage
+            src={imageSrc}
+            alt={title}
+            className={`pointer-events-none absolute z-20 animate-[spin_60s_linear_infinite] object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-700
+              ${isBowl 
+                ? 'bottom-[-10px] right-[-10px] w-40 sm:bottom-[-10px] sm:right-2 sm:w-64 md:w-80' 
+                : 'bottom-0 right-[-10px] w-32 sm:bottom-0 sm:right-4 sm:w-56 md:w-72'}
+            `}
+          />
+        )}
+
+        {/* SHARED CONTENT OVERLAY */}
+        <div className="absolute inset-0 z-30 flex flex-col justify-center pl-5 pr-24 sm:pl-12 sm:pr-64">
+          <div className="space-y-2 sm:space-y-4">
+            {/* Integrated Category Chip - Hidden on Mobile */}
+            <div className="hidden sm:flex flex-wrap items-center gap-2">
+              <div className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full border border-white/10 w-fit">
+                <span className="text-[9px] font-black text-white uppercase tracking-widest flex items-center gap-1.5">
+                   {category?.icon} {category?.name || 'Recomendado'}
+                </span>
+              </div>
+              {basePrice > 0 && (
+                <div className="px-3 py-1 bg-black/20 backdrop-blur-sm rounded-full border border-white/5 w-fit">
+                  <span className="text-[9px] font-black text-white/90 uppercase tracking-widest">
+                    Desde {formatCOP(basePrice)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-xl font-black text-white sm:text-3xl md:text-4xl leading-tight tracking-tight drop-shadow-lg">
+                {title}
+              </h3>
+              <p className="text-[11px] sm:text-sm text-white/80 max-w-xs sm:max-w-md leading-relaxed font-medium line-clamp-2 sm:line-clamp-none drop-shadow-md">
+                {description}
+              </p>
+            </div>
+          </div>
+          
+          {(onOpenBuilder || config.banner_badge) && (
+            <div className="mt-4 sm:mt-6 flex flex-wrap items-center gap-3">
+               {onOpenBuilder && (
+                 <button
+                    type="button"
+                    onClick={onOpenBuilder}
+                    className="bg-white text-[#2f4131] font-black text-[9px] sm:text-xs uppercase tracking-widest rounded-2xl shadow-lg hover:scale-105 active:scale-95 transition-all px-5 py-2.5 sm:px-10 sm:py-3.5"
+                  >
+                    Empezar a Crear
+                  </button>
+               )}
+                
+                {/* Integrated Specialty Chip - Visible on all devices */}
+                {config.banner_badge && (
+                  <div className="flex items-center gap-1.5 px-3 py-2 bg-black/20 backdrop-blur-md rounded-full text-white font-black text-[9px] uppercase tracking-widest border border-white/10">
+                     <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.5)]" />
+                     {config.banner_badge}
+                  </div>
+                )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+

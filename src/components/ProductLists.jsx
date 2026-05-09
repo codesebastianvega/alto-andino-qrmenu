@@ -171,10 +171,22 @@ export default function ProductLists({
         categoryGroups = groupsToRender;
       }
 
-      let element = null;
+      const visConfig = cat.visibility_config || {};
+      const bannerProduct = getBannerProductForCategory(cat.slug);
+      
+      // Use explicit show_banner from config, or fallback to existing logic
+      const showBanner = visConfig.show_banner !== false && (cat.banner_image_url || bannerProduct) && !query;
+      const bannerStyle = visConfig.banner_style || 'floating';
 
-      // Generic dynamic section for everything
-      element = (
+      const bannerEl = showBanner ? (
+        <CategoryBanner 
+          category={cat}
+          product={bannerProduct} 
+          onOpenBuilder={bannerProduct ? () => onQuickView(bannerProduct) : undefined} 
+        />
+      ) : null;
+
+      const element = (
         <ProductSection
           id={cat.slug}
           title={cat.name}
@@ -185,6 +197,7 @@ export default function ProductLists({
           heroId={config.hero_featured_product_id}
           onCount={(n) => setCount(cat.slug, n)}
           onQuickView={onQuickView}
+          renderHeader={showBanner ? () => bannerEl : undefined}
         />
       );
 
@@ -207,22 +220,6 @@ export default function ProductLists({
     selectedDiets
   ]);
   const renderPanel = (s, inTodos = false) => {
-    const category = categories.find(c => c.id === s.id);
-    const bannerProduct = getBannerProductForCategory(s.id);
-    
-    // Show banner if we have custom category banner OR a creator product
-    const showBanner = (category?.banner_image_url || bannerProduct) && !query;
-    
-    const banner = showBanner ? (
-      <div className="mb-6 px-4 sm:px-0">
-        <CategoryBanner 
-          category={category}
-          product={bannerProduct} 
-          onOpenBuilder={bannerProduct ? () => onQuickView(bannerProduct) : undefined} 
-        />
-      </div>
-    ) : null;
-
     return (
       <div
         key={s.id}
@@ -237,7 +234,6 @@ export default function ProductLists({
             {categories.find((c) => c.id === s.id)?.label || s.id}
           </span>
         )}
-        {banner}
         {s.element}
       </div>
     );

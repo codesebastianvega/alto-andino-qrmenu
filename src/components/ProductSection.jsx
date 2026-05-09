@@ -34,6 +34,7 @@ export default function ProductSection({
   heroId = null, // ID of the product to show as hero/featured
   renderEmpty,
   allergens: propAllergens,
+  hideTitle = false,
 }) {
   const { addItem } = useCart();
   const { allergens: contextAllergens = [] } = useMenuData() || {};
@@ -164,7 +165,7 @@ export default function ProductSection({
         </div>
       );
     } else if (variant === "bento-grid") {
-      gridClasses = "grid grid-cols-2 md:grid-cols-4 gap-4 auto-rows-min md:auto-rows-[180px]";
+      gridClasses = "grid grid-cols-2 md:grid-cols-4 gap-4 auto-rows-auto";
     } else {
       gridClasses += " grid-cols-2 lg:grid-cols-3";
     }
@@ -197,7 +198,7 @@ export default function ProductSection({
   };
 
   return (
-    <Section id={`section-${id}`} title={title} count={displayCount}>
+    <Section id={`section-${id}`} title={title} count={displayCount} hideTitle={hideTitle}>
       {headerNode}
 
       {count

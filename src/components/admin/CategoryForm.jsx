@@ -71,10 +71,13 @@ export default function CategoryForm({ category, onSave, onCancel }) {
       days: [0,1,2,3,4,5,6], 
       subcategories: [], 
       section_type: 'standard',
-      is_hero: false,
+      show_in_hero: false,
       hero_featured_product_id: '',
       hero_rating: '5.0',
-      hero_prep_time: '15 mins'
+      hero_prep_time: '15 mins',
+      show_banner: true,
+      banner_style: 'floating',
+      banner_badge: ''
     }
   });
   const [categoryProducts, setCategoryProducts] = useState([]);
@@ -92,10 +95,13 @@ export default function CategoryForm({ category, onSave, onCancel }) {
           days: [0,1,2,3,4,5,6], 
           subcategories: [], 
           section_type: 'standard',
-          is_hero: false,
+          show_in_hero: false,
           hero_featured_product_id: '',
           hero_rating: '5.0',
-          hero_prep_time: '15 mins'
+          hero_prep_time: '15 mins',
+          show_banner: true,
+          banner_style: 'floating',
+          banner_badge: ''
         }
       });
       
@@ -272,6 +278,13 @@ export default function CategoryForm({ category, onSave, onCancel }) {
 
           {/* CARD 1: IDENTIDAD */}
           <BentoCard title="Identidad & Disponibilidad">
+            <FormField label="Icono Visual">
+              <IconPicker 
+                value={formData.icon} 
+                onChange={(e) => setFormData(prev => ({ ...prev, icon: e.target.value }))} 
+              />
+            </FormField>
+
             <FormField label="Nombre de la categoría">
               <TextInput 
                 required 
@@ -291,22 +304,14 @@ export default function CategoryForm({ category, onSave, onCancel }) {
               />
             </FormField>
             
-            <div className="grid grid-cols-2 gap-4">
-              <FormField label="Icono Visual">
-                <IconPicker 
-                  value={formData.icon} 
-                  onChange={(e) => setFormData(prev => ({ ...prev, icon: e.target.value }))} 
-                />
-              </FormField>
-              <FormField label="Orden en Menú">
-                <TextInput 
-                  type="number" 
-                  name="sort_order" 
-                  value={formData.sort_order} 
-                  onChange={handleChange} 
-                />
-              </FormField>
-            </div>
+            <FormField label="Orden en Menú">
+              <TextInput 
+                type="number" 
+                name="sort_order" 
+                value={formData.sort_order} 
+                onChange={handleChange} 
+              />
+            </FormField>
 
             <div className="pt-4 border-t border-gray-100 mt-4">
               <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Horario de Servicio</p>
@@ -423,9 +428,21 @@ export default function CategoryForm({ category, onSave, onCancel }) {
             </FormField>
 
             <div className="space-y-4 pt-4 border-t border-gray-100 mt-2">
-              <FormField label="Título en Banner">
-                <TextInput name="banner_title" value={formData.banner_title} onChange={handleChange} placeholder="Ej. Lo más pedido" />
-              </FormField>
+              <div className="flex flex-col gap-4">
+                <FormField label="Título en Banner">
+                  <TextInput name="banner_title" value={formData.banner_title} onChange={handleChange} placeholder="Ej. Lo más pedido" />
+                </FormField>
+                <FormField label="Etiqueta Especial (Badge)">
+                  <TextInput 
+                    placeholder="Ej. Especialidad" 
+                    value={formData.visibility_config?.banner_badge || ''} 
+                    onChange={(e) => setFormData(p => ({ 
+                      ...p, 
+                      visibility_config: { ...p.visibility_config, banner_badge: e.target.value } 
+                    }))} 
+                  />
+                </FormField>
+              </div>
               <FormField label="Resumen / Descripción">
                 <textarea 
                   name="banner_description" 
@@ -436,6 +453,79 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                   className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none resize-none transition-all" 
                 />
               </FormField>
+            </div>
+            
+            <div className="pt-6 border-t border-gray-100 mt-6 space-y-6">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${formData.visibility_config?.show_banner !== false ? 'bg-[#2f4131] text-white' : 'bg-gray-200 text-gray-400'}`}>
+                    <Icon icon={formData.visibility_config?.show_banner !== false ? "lucide:image" : "lucide:image-off"} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-black text-gray-800 uppercase tracking-tight">Activar Banner</p>
+                      <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-black uppercase rounded-lg border border-amber-200">Pro</span>
+                    </div>
+                    <p className="text-[10px] text-gray-500 font-medium">Mostrar destacados de categoría</p>
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setFormData(p => ({ 
+                    ...p, 
+                    visibility_config: { ...p.visibility_config, show_banner: p.visibility_config?.show_banner === false } 
+                  }))}
+                  className={`w-11 h-6 rounded-full transition-colors relative ${formData.visibility_config?.show_banner !== false ? 'bg-[#2f4131]' : 'bg-gray-300'}`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${formData.visibility_config?.show_banner !== false ? 'left-6' : 'left-1'}`} />
+                </button>
+              </div>
+
+              {formData.visibility_config?.show_banner !== false && (
+                <div className="animate-in fade-in slide-in-from-top-2 space-y-4">
+                  <FormField label="Tipo de Banner">
+                    <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
+                      <button
+                        type="button"
+                        onClick={() => setFormData(p => ({ 
+                          ...p, 
+                          visibility_config: { ...p.visibility_config, banner_style: 'floating' } 
+                        }))}
+                        className={`py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                          (formData.visibility_config?.banner_style || 'floating') === 'floating'
+                            ? 'bg-white text-[#2f4131] shadow-sm'
+                            : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        Flotante (Spinner)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(p => ({ 
+                          ...p, 
+                          visibility_config: { ...p.visibility_config, banner_style: 'background' } 
+                        }))}
+                        className={`py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                          formData.visibility_config?.banner_style === 'background'
+                            ? 'bg-white text-[#2f4131] shadow-sm'
+                            : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        Fondo (Header)
+                      </button>
+                    </div>
+                  </FormField>
+
+                  <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl flex gap-3">
+                    <Icon icon="lucide:info" className="text-blue-500 mt-0.5 shrink-0" />
+                    <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
+                      {(formData.visibility_config?.banner_style || 'floating') === 'floating' 
+                        ? 'Ideal para platos o productos redondos con fondo transparente (PNG). El banner flotará después del título de la sección.'
+                        : 'Ideal para fotos de ambiente o composiciones. El banner ocupará todo el ancho y contendrá el título de la categoría.'}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </BentoCard>
 
@@ -529,14 +619,14 @@ export default function CategoryForm({ category, onSave, onCancel }) {
             </BentoCard>
 
             <div className={`p-5 rounded-2xl border-2 transition-all ${
-              formData.visibility_config?.is_hero 
+              formData.visibility_config?.show_in_hero 
                 ? 'bg-[#2f4131]/5 border-[#2f4131]/20' 
                 : 'bg-gray-50/50 border-transparent'
             }`}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${formData.visibility_config?.is_hero ? 'bg-[#2f4131] text-white' : 'bg-gray-200 text-gray-400'}`}>
-                    <Icon icon="lucide:star" className={formData.visibility_config?.is_hero ? 'animate-pulse' : ''} />
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${formData.visibility_config?.show_in_hero ? 'bg-[#2f4131] text-white' : 'bg-gray-200 text-gray-400'}`}>
+                    <Icon icon="lucide:star" className={formData.visibility_config?.show_in_hero ? 'animate-pulse' : ''} />
                   </div>
                   <div>
                     <p className="text-xs font-black text-gray-800 uppercase tracking-tight">Home Hero</p>
@@ -545,14 +635,14 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                 </div>
                 <button 
                   type="button" 
-                  onClick={() => setFormData(p => ({ ...p, visibility_config: { ...p.visibility_config, is_hero: !p.visibility_config?.is_hero } }))}
-                  className={`w-10 h-5 rounded-full relative transition-all shadow-inner ${formData.visibility_config?.is_hero ? 'bg-[#2f4131]' : 'bg-gray-200'}`}
+                  onClick={() => setFormData(p => ({ ...p, visibility_config: { ...p.visibility_config, show_in_hero: !p.visibility_config?.show_in_hero } }))}
+                  className={`w-10 h-5 rounded-full relative transition-all shadow-inner ${formData.visibility_config?.show_in_hero ? 'bg-[#2f4131]' : 'bg-gray-200'}`}
                 >
-                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${formData.visibility_config?.is_hero ? 'left-5' : 'left-0.5'}`} />
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${formData.visibility_config?.show_in_hero ? 'left-5' : 'left-0.5'}`} />
                 </button>
               </div>
               
-              {formData.visibility_config?.is_hero && (
+              {formData.visibility_config?.show_in_hero && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
                   <FormField label="Producto Destacado">
                     <select 
@@ -566,7 +656,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                       ))}
                     </select>
                   </FormField>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-3">
                     <FormField label="Rating">
                       <TextInput 
                         placeholder="4.9" 

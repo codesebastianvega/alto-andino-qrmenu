@@ -357,12 +357,12 @@ export default function AdminCategories() {
                                   onClick={() => updateCategory(cat.id, { 
                                     visibility_config: { 
                                       ...(cat.visibility_config || {}), 
-                                      is_hero: !cat.visibility_config?.is_hero 
+                                      show_in_hero: !cat.visibility_config?.show_in_hero 
                                     } 
                                   })}
-                                  className={`p-1.5 rounded-lg transition-all ${cat.visibility_config?.is_hero ? 'bg-amber-50 text-amber-500' : 'text-gray-300 hover:text-gray-400'}`}
+                                  className={`p-1.5 rounded-lg transition-all ${cat.visibility_config?.show_in_hero ? 'bg-amber-50 text-amber-500' : 'text-gray-300 hover:text-gray-400'}`}
                                 >
-                                  <Icon icon={cat.visibility_config?.is_hero ? "heroicons:star-20-solid" : "heroicons:star"} className="text-xl" />
+                                  <Icon icon={cat.visibility_config?.show_in_hero ? "heroicons:star-20-solid" : "heroicons:star"} className="text-xl" />
                                 </button>
                               </td>
                               <td className="px-5 py-3.5">
