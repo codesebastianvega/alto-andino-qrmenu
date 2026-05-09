@@ -5,6 +5,7 @@ import { useBrand } from "./context/BrandContext";
 import { useLocation as useAppLocation } from "./context/LocationContext";
 import { Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import LoadingScreen from "./components/ui/LoadingScreen";
 import { supabase } from "./config/supabase";
 import { trackAnalyticsEvent } from "./utils/analytics";
 
@@ -362,12 +363,7 @@ export default function App() {
 
 
   if (authLoading || loadingBrand || (brand_slug && menuLoading)) {
-    return (
-      <div className="min-h-screen relative flex flex-col items-center justify-center bg-white gap-4">
-        <Loader2 className="w-12 h-12 text-brand-primary animate-spin" />
-        <p className="text-brand-text/50 font-medium animate-pulse text-sm">Preparando experiencia...</p>
-      </div>
-    );
+    return <LoadingScreen mode="splash" brandLogo={activeBrand?.logo_url || restaurantSettings?.logo_url} />;
   }
 
   // Si se especificó un slug pero no se encontró la marca
@@ -377,7 +373,7 @@ export default function App() {
 
   if (isOnboardingView) {
     return (
-      <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
+      <Suspense fallback={<LoadingScreen mode="splash" />}>
         <div className="relative min-h-screen">
           <AdminOnboarding />
         </div>
@@ -391,7 +387,7 @@ export default function App() {
 
   if (orderTrackingId) {
     return (
-      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-neutral-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
+      <Suspense fallback={<LoadingScreen mode="skeleton" />}>
         <OrderStatus orderId={orderTrackingId} />
       </Suspense>
     );
@@ -436,7 +432,7 @@ export default function App() {
 
         {/* Si es vista Landing Y (no estamos en modo pedido O es un hash explícito #inicio) */}
         {(isExplicitInicio || (isLandingView && !isOrderingMode)) && (
-          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
+          <Suspense fallback={<LoadingScreen mode="skeleton" />}>
             {brand_slug ? (
               <LandingPage />
             ) : (
@@ -446,22 +442,17 @@ export default function App() {
         )}
 
         {(currentHash.startsWith('#portal') || currentHash.startsWith('#access_token')) && (
-          <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
+          <Suspense fallback={<LoadingScreen mode="splash" />}>
             {profile ? (
               <GlobalPortal />
             ) : (
-              <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                  <Loader2 className="animate-spin text-[#7db87a] w-8 h-8" />
-                  <p className="text-stone-400 text-xs font-medium animate-pulse">Iniciando sesión...</p>
-                </div>
-              </div>
+              <LoadingScreen mode="splash" />
             )}
           </Suspense>
         )}
 
         {currentHash === '#experiencias' && (
-          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
+          <Suspense fallback={<LoadingScreen mode="skeleton" />}>
             <ExperiencesPage />
           </Suspense>
         )}
@@ -474,43 +465,43 @@ export default function App() {
         ) */}
 
         {currentHash === '#login' && (
-          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
+          <Suspense fallback={<LoadingScreen mode="skeleton" />}>
             <LoginPage />
           </Suspense>
         )}
 
         {currentHash === '#registro' && (
-          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div></div>}>
+          <Suspense fallback={<LoadingScreen mode="skeleton" />}>
             <RegisterPage />
           </Suspense>
         )}
 
         {currentHash === '#terminos' && (
-          <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
+          <Suspense fallback={<LoadingScreen mode="splash" />}>
             <TermsPage />
           </Suspense>
         )}
         
         {currentHash === '#privacidad' && (
-          <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
+          <Suspense fallback={<LoadingScreen mode="splash" />}>
             <PrivacyPage />
           </Suspense>
         )}
         
         {currentHash === '#cookies' && (
-          <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
+          <Suspense fallback={<LoadingScreen mode="splash" />}>
             <CookiesPage />
           </Suspense>
         )}
 
         {currentHash === '#nosotros' && (
-          <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
+          <Suspense fallback={<LoadingScreen mode="splash" />}>
             <AboutPage />
           </Suspense>
         )}
 
         {currentHash === '#contacto' && (
-          <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="animate-spin text-[#7db87a]" /></div>}>
+          <Suspense fallback={<LoadingScreen mode="splash" />}>
             <ContactPage />
           </Suspense>
         )}

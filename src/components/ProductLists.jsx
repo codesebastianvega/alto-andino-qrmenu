@@ -22,6 +22,7 @@ import AAImage from "./ui/AAImage";
 import { Icon } from "@iconify-icon/react";
 import { categoryIcons } from "../data/categoryIcons";
 import CategoryBanner from "./CategoryBanner";
+import LoadingScreen from "./ui/LoadingScreen";
 
 export default function ProductLists({
   query,
@@ -366,12 +367,7 @@ export default function ProductLists({
 
   const dynamicDiets = useMemo(() => allergens.filter(a => a.type === 'diet'), [allergens]);
 
-  if (menuLoading) return (
-    <div className="flex flex-col items-center justify-center p-20 space-y-4 text-center">
-      <div className="w-10 h-10 border-4 border-[#2f4131]/20 border-t-[#2f4131] rounded-full animate-spin" />
-      <p className="text-[10px] font-black uppercase tracking-widest text-[#2f4131]/60">Cargando Experiencias...</p>
-    </div>
-  );
+  if (menuLoading) return <LoadingScreen mode="skeleton" />;
 
   return (
     <>

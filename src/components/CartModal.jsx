@@ -790,6 +790,8 @@ export default function CartModal({ open, onClose }) {
                               setCustomerName(e.target.value);
                               localStorage.setItem("aa_customer_name", e.target.value);
                             }}
+                            className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium placeholder:text-amber-300"
+                          />
                        </div>
                        <div className="flex items-center gap-2 bg-white px-3 h-11 rounded-xl border border-amber-200 focus-within:ring-2 focus-within:ring-amber-200/50 transition-all">
                           <Icon icon="heroicons:phone" className="text-amber-400" />
@@ -801,6 +803,8 @@ export default function CartModal({ open, onClose }) {
                               setCustomerPhone(e.target.value);
                               localStorage.setItem("aa_customer_phone", e.target.value);
                             }}
+                            className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium placeholder:text-amber-300"
+                          />
                        </div>
                     </div>
                   </div>

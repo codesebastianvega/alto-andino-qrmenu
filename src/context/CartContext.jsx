@@ -8,7 +8,7 @@ const toastEvent = (message) => {
   } catch {}
 };
 
-const getItemUnit = (it) =>
+export const getItemUnit = (it) =>
   Number(String(it?.price ?? it?.unitPrice ?? it?.priceEach).replace(/[^\d.-]/g, "")) || 0;
 
 const CartCtx = createContext(null);

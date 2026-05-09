@@ -798,16 +798,17 @@ export default function AdminLayout() {
         } pb-[72px] lg:pb-0`}
       >
         <header className="h-16 bg-white border-b border-gray-200/60 sticky top-0 z-40 flex items-center justify-between px-4 lg:px-8 shadow-sm shadow-black/[0.02]">
-           <div className="flex items-center gap-3 lg:gap-6">
-             {/* Context ContextBreadcrumb (Brand > Sede) replaces Hamburger on Mobile */}
-             <div className="block">
-               <ContextBreadcrumb />
-             </div>
-             
-             <div className="h-6 w-px bg-gray-200 hidden lg:block" />
+            <div className="flex items-center gap-3 lg:gap-6">
+              {/* Context Breadcrumb - Visible ONLY on Desktop here */}
+              <div className="hidden lg:block">
+                <ContextBreadcrumb />
+              </div>
+              
+              <div className="h-6 w-px bg-gray-200 hidden lg:block" />
 
-             <div className="items-center gap-3 hidden lg:flex">
-               <h2 className="text-lg font-bold text-gray-900 tracking-tight">{currentItemLabel}</h2>
+              {/* Title - Visible on BOTH Mobile and Desktop for consistency */}
+              <div className="flex items-center gap-3">
+                <h2 className="text-base lg:text-lg font-bold text-gray-900 tracking-tight">{currentItemLabel}</h2>
                <AnimatePresence mode="wait">
                  {!isAllLocations && activeLocation && (
                    <motion.div
@@ -930,7 +931,7 @@ export default function AdminLayout() {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 left-0 bottom-0 w-[280px] bg-[#0F170F] z-[70] flex flex-col lg:hidden overflow-hidden shadow-2xl"
+              className="fixed top-0 left-0 bottom-0 w-[320px] bg-[#0F170F] z-[70] flex flex-col lg:hidden overflow-hidden shadow-2xl"
             >
               <div className="flex items-center justify-between h-16 px-5 border-b border-white/10 shrink-0">
                 <div className="flex items-center gap-3">
@@ -959,6 +960,11 @@ export default function AdminLayout() {
               </div>
 
               <div className="flex-1 overflow-y-auto custom-scrollbar pt-4 px-4 pb-20 space-y-5">
+                {/* Brand/Location Selectors for Mobile - Simplified without extra wrap */}
+                <div className="mb-8">
+                  <ContextBreadcrumb />
+                </div>
+
                 {ADMIN_ROLES.includes(user.role) && (
                   <NavSection title="Estrategia" items={ESTRATEGIA_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
                 )}

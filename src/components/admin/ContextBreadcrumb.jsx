@@ -89,7 +89,7 @@ export default function ContextBreadcrumb() {
   const royalIndigo = '#6366f1'; // Premium Executive Indigo
 
   return (
-    <div ref={dropdownRef} className="flex items-center gap-2 py-1 select-none">
+    <div ref={dropdownRef} className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-2 py-1 select-none w-full lg:w-auto">
       
       {/* ── Brand Selector (Dynamic Glassmorphism) ───────────────────── */}
       <div className="relative">
@@ -102,10 +102,10 @@ export default function ContextBreadcrumb() {
             borderColor: `${activeBrandColor}40`,
             boxShadow: openDropdown === 'brand' ? `0 0 20px ${activeBrandColor}15` : 'none'
           }}
-          className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl border backdrop-blur-md transition-all duration-300 group`}
+          className={`flex items-center gap-2.5 px-3 py-2 lg:py-1.5 rounded-xl border backdrop-blur-md transition-all duration-300 group w-full lg:w-auto`}
         >
           <BrandAvatar brand={activeBrand} size={24} />
-          <span className="text-[14px] font-extrabold text-gray-900 tracking-tight">
+          <span className="text-[14px] font-extrabold text-white lg:text-gray-900 tracking-tight">
             {activeBrand.name}
           </span>
           <motion.div
@@ -122,10 +122,10 @@ export default function ContextBreadcrumb() {
               initial={{ opacity: 0, y: 12, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.95 }}
-              className="absolute left-0 top-[calc(100%+10px)] z-[100] w-[300px] bg-white/70 backdrop-blur-2xl rounded-2xl border border-white shadow-2xl shadow-black/10 overflow-hidden"
+              className="absolute left-0 right-0 lg:right-auto top-[calc(100%+12px)] z-[100] w-full lg:w-[320px] bg-[#1A1A1A] lg:bg-white/80 backdrop-blur-2xl rounded-2xl border border-white/20 lg:border-white shadow-2xl shadow-black/80 overflow-hidden"
             >
-              <div className="p-2 space-y-1">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-3 py-2">
+              <div className="p-2.5 space-y-1.5">
+                <p className="text-[11px] font-black text-white/40 lg:text-gray-400 uppercase tracking-[0.2em] px-3 py-2">
                   Tus Marcas
                 </p>
                 {ownedBrands.map((brand) => {
@@ -135,40 +135,46 @@ export default function ContextBreadcrumb() {
                     <button
                       key={brand.id}
                       onClick={() => handleBrandSwitch(brand)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all relative group ${
-                        isSelected ? 'bg-white/40 shadow-sm' : 'hover:bg-white/40'
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all relative group ${
+                        isSelected 
+                          ? 'bg-white text-gray-900 shadow-xl' 
+                          : 'text-white hover:bg-white/10'
                       }`}
                     >
-                      <BrandAvatar brand={brand} size={32} />
+                      <BrandAvatar brand={brand} size={36} />
                       <div className="flex-1 text-left min-w-0">
-                        <p className="text-sm font-bold truncate leading-tight text-gray-800">{brand.name}</p>
-                        <p className="text-[10px] text-gray-500 capitalize mt-0.5">{brand.business_type || 'Negocio'}</p>
+                        <p className={`text-[14px] font-bold truncate leading-tight ${isSelected ? 'text-gray-900' : 'text-white'}`}>
+                          {brand.name}
+                        </p>
+                        <p className={`text-[11px] font-medium capitalize mt-1 ${isSelected ? 'text-gray-500' : 'text-white/50'}`}>
+                          {brand.business_type || 'Negocio'}
+                        </p>
                       </div>
                       {isSelected ? (
                         <div 
-                          className="w-6 h-6 rounded-lg flex items-center justify-center transition-all"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all shadow-sm"
                           style={{ backgroundColor: `${brandColor}20`, color: brandColor }}
                         >
-                          <Check size={14} strokeWidth={3} />
+                          <Check size={16} strokeWidth={3} />
                         </div>
                       ) : (
-                        <div className="w-6 h-6 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <ArrowRight size={14} className="text-gray-300" />
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ArrowRight size={16} className="text-white/40" />
                         </div>
                       )}
                     </button>
                   );
                 })}
               </div>
-              <div className="p-2 border-t border-gray-100/50 bg-gray-50/30">
+              <div className="p-2 border-t border-white/10 lg:border-gray-100/50 bg-white/5 lg:bg-gray-50/30">
                 <button
                   onClick={() => window.location.href = '/?new=1'}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-gray-500 hover:text-brand-primary hover:bg-white/80 transition-all group"
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-white/10 lg:hover:bg-gray-50 transition-colors text-white/80 lg:text-gray-600"
                 >
-                  <div className="w-8 h-8 rounded-lg border border-dashed border-gray-300 group-hover:border-brand-primary/40 flex items-center justify-center">
-                    <Plus size={14} />
+                  <div className="w-9 h-9 rounded-lg border border-dashed border-white/30 lg:border-gray-300 flex items-center justify-center">
+                    <Plus size={18} />
                   </div>
-                  <span className="text-sm font-semibold">Nueva Marca</span>
+                  <span className="text-sm font-bold">Añadir Nueva Marca</span>
                 </button>
               </div>
             </motion.div>
@@ -176,7 +182,7 @@ export default function ContextBreadcrumb() {
         </AnimatePresence>
       </div>
 
-      <ChevronRight size={14} className="text-gray-300 mx-0.5" />
+      <ChevronRight size={14} className="text-gray-300 mx-0.5 hidden lg:block" />
 
       {/* ── Location Selector (Coral Blue Glass) ────────────────────── */}
       <div className="relative">
@@ -185,26 +191,26 @@ export default function ContextBreadcrumb() {
           whileTap={{ scale: 0.98 }}
           onClick={() => toggleDropdown('location')}
           style={{ 
-            backgroundColor: `${royalIndigo}15`,
-            borderColor: `${royalIndigo}35`,
-            boxShadow: openDropdown === 'location' ? `0 0 20px ${royalIndigo}15` : 'none'
+            backgroundColor: `${royalIndigo}20`,
+            borderColor: `${royalIndigo}40`,
+            boxShadow: openDropdown === 'location' ? `0 0 20px ${royalIndigo}20` : 'none'
           }}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border backdrop-blur-md transition-all duration-300 group`}
+          className={`flex items-center gap-3 px-4 py-2.5 lg:py-1.5 rounded-xl border backdrop-blur-md transition-all duration-300 group w-full lg:w-auto shadow-sm`}
         >
           <div 
             className="w-6 h-6 rounded-lg flex items-center justify-center transition-all"
-            style={{ backgroundColor: `${royalIndigo}20`, color: royalIndigo }}
+            style={{ backgroundColor: `${royalIndigo}40`, color: '#FFFFFF' }}
           >
             {isAllLocations ? <Building2 size={13} /> : <MapPin size={13} />}
           </div>
-          <span className="text-[14px] font-bold text-gray-800 tracking-tight">
+          <span className="text-[14px] font-extrabold text-white lg:text-gray-800 tracking-tight">
             {isAllLocations ? 'Todas las Sedes' : activeLocation?.name || 'Seleccionar Sede'}
           </span>
           <motion.div
             animate={{ rotate: openDropdown === 'location' ? 180 : 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
           >
-            <ChevronDown size={14} className="text-gray-400 group-hover:text-gray-600 transition-colors" />
+            <ChevronDown size={14} className="text-white/60 lg:text-gray-400 group-hover:text-white transition-colors" />
           </motion.div>
         </motion.button>
 
@@ -214,34 +220,41 @@ export default function ContextBreadcrumb() {
               initial={{ opacity: 0, y: 12, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.95 }}
-              className="absolute left-0 top-[calc(100%+10px)] z-[100] w-[260px] bg-white/70 backdrop-blur-2xl rounded-2xl border border-white shadow-2xl shadow-black/10 overflow-hidden"
+              className="absolute left-0 right-0 lg:right-auto top-[calc(100%+12px)] z-[100] w-full lg:w-[280px] bg-[#1A1A1A] lg:bg-white/80 backdrop-blur-2xl rounded-2xl border border-white/20 lg:border-white shadow-2xl shadow-black/80 overflow-hidden"
             >
-              <div className="p-2 space-y-1">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-3 py-2">
-                  Sedes disponibles
+              <div className="p-2.5 space-y-1.5">
+                <p className="text-[11px] font-black text-white/40 lg:text-gray-400 uppercase tracking-[0.2em] px-3 py-2">
+                  Tus Sedes
                 </p>
                 
                 {/* Option: All Locations */}
                 <button
                   onClick={() => handleLocationSwitch('all')}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group ${
-                    isAllLocations ? 'bg-white/40 shadow-sm' : 'hover:bg-white/40'
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${
+                    isAllLocations 
+                      ? 'bg-white text-gray-900 shadow-xl' 
+                      : 'text-white hover:bg-white/10'
                   }`}
                 >
                   <div 
-                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
-                    style={{ backgroundColor: `${royalIndigo}20`, color: royalIndigo }}
+                    className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+                      isAllLocations ? 'bg-brand-primary/10 text-brand-primary' : 'bg-white/10 text-white/70'
+                    }`}
                   >
-                    <Building2 size={16} />
+                    <Building2 size={18} />
                   </div>
-                  <div className="flex-1 text-left">
-                    <p className="text-sm font-bold text-gray-800">Todas las Sedes</p>
-                    <p className="text-[10px] text-gray-500">Vista consolidada</p>
+                  <div className="flex-1 text-left min-w-0">
+                    <p className={`text-[14px] font-bold truncate ${isAllLocations ? 'text-gray-900' : 'text-white'}`}>
+                      Todas las Sedes
+                    </p>
+                    <p className={`text-[11px] ${isAllLocations ? 'text-gray-500' : 'text-white/50'}`}>
+                      Vista consolidada
+                    </p>
                   </div>
-                  {isAllLocations && <Check size={14} style={{ color: royalIndigo }} />}
+                  {isAllLocations && <Check size={16} className="text-brand-primary" strokeWidth={3} />}
                 </button>
 
-                <div className="h-px bg-gray-100/50 my-1 mx-2" />
+                <div className="h-px bg-white/10 lg:bg-gray-100/50 my-1.5 mx-2" />
 
                 {locations.map((loc) => {
                   const isSelected = loc.id === activeLocationId;
@@ -249,36 +262,39 @@ export default function ContextBreadcrumb() {
                     <button
                       key={loc.id}
                       onClick={() => handleLocationSwitch(loc.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group ${
-                        isSelected ? 'bg-white/40 shadow-sm' : 'hover:bg-white/40'
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${
+                        isSelected 
+                          ? 'bg-white text-gray-900 shadow-xl' 
+                          : 'text-white hover:bg-white/10'
                       }`}
                     >
                       <div 
-                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
-                        style={{ 
-                          backgroundColor: isSelected ? `${royalIndigo}20` : 'rgba(0,0,0,0.05)', 
-                          color: isSelected ? royalIndigo : 'rgba(0,0,0,0.4)' 
-                        }}
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+                          isSelected ? 'bg-brand-primary/10 text-brand-primary' : 'bg-white/10 text-white/70'
+                        }`}
                       >
-                        <MapPin size={16} />
+                        <MapPin size={18} />
                       </div>
                       <div className="flex-1 text-left min-w-0">
-                        <p className="text-sm font-bold truncate leading-tight text-gray-800">{loc.name}</p>
-                        <p className="text-[10px] text-gray-500 truncate capitalize">{loc.city || 'Ubicación'}</p>
+                        <p className={`text-[14px] font-bold truncate leading-tight ${isSelected ? 'text-gray-900' : 'text-white'}`}>
+                          {loc.name}
+                        </p>
+                        <p className={`text-[11px] truncate capitalize ${isSelected ? 'text-gray-500' : 'text-white/50'}`}>
+                          {loc.city || 'Ubicación'}
+                        </p>
                       </div>
-                      {isSelected && <Check size={14} style={{ color: royalIndigo }} />}
+                      {isSelected && <Check size={16} className="text-brand-primary" strokeWidth={3} />}
                     </button>
                   );
                 })}
               </div>
               
-              <div className="p-2 border-t border-gray-100/50 bg-gray-50/30 text-center">
+              <div className="p-3 border-t border-white/10 lg:border-gray-100/50 bg-white/5 lg:bg-gray-50/30 text-center">
                  <button 
                   onClick={() => setOpenDropdown(null)}
-                  style={{ color: royalIndigo }}
-                  className="text-[11px] font-black opacity-80 hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 mx-auto py-1 tracking-wider uppercase"
+                  className="text-[12px] font-black tracking-wider uppercase text-brand-primary hover:brightness-110 transition-all flex items-center justify-center gap-2 mx-auto"
                  >
-                   Gestionar Sedes <ChevronRight size={12} />
+                   Gestionar Sedes <ChevronRight size={14} />
                  </button>
               </div>
             </motion.div>
