@@ -23,9 +23,9 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
   const basePrice = product?.price || 0;
 
   return (
-    <div className="-mx-5 sm:-mx-6 md:-mx-8 lg:mx-0 px-5 sm:px-6 md:px-8 mb-8 mt-2">
+    <div className="mb-8 mt-2">
       <div 
-        className="relative h-44 sm:h-52 md:h-64 overflow-hidden rounded-[32px] ring-1 ring-black/5 shadow-xl transition-all duration-500 hover:shadow-2xl hover:shadow-black/10 group"
+        className="relative h-40 sm:h-52 md:h-64 overflow-hidden rounded-3xl sm:rounded-[32px] ring-1 ring-black/5 shadow-xl transition-all duration-500 hover:shadow-2xl hover:shadow-black/10 group"
         style={isFloating ? { 
           background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc, #1a2b1d)` 
         } : {}}
@@ -53,15 +53,15 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
             alt={title}
             className={`pointer-events-none absolute z-20 animate-[spin_60s_linear_infinite] object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-700
               ${isBowl 
-                ? 'bottom-[-10px] right-[-10px] w-40 sm:bottom-[-10px] sm:right-2 sm:w-64 md:w-80' 
-                : 'bottom-0 right-[-10px] w-32 sm:bottom-0 sm:right-4 sm:w-56 md:w-72'}
+                ? 'bottom-[-10px] right-[-10px] w-36 sm:bottom-[-10px] sm:right-2 sm:w-64 md:w-80' 
+                : 'bottom-0 right-[-10px] w-28 sm:bottom-0 sm:right-4 sm:w-56 md:w-72'}
             `}
           />
         )}
 
         {/* SHARED CONTENT OVERLAY */}
-        <div className="absolute inset-0 z-30 flex flex-col justify-center pl-5 pr-24 sm:pl-12 sm:pr-64">
-          <div className="space-y-2 sm:space-y-4">
+        <div className="absolute inset-0 z-30 flex flex-col justify-center pl-6 pr-20 sm:pl-12 sm:pr-64">
+          <div className="space-y-1.5 sm:space-y-4">
             {/* Integrated Category Chip - Hidden on Mobile */}
             <div className="hidden sm:flex flex-wrap items-center gap-2">
               <div className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full border border-white/10 w-fit">
@@ -78,11 +78,11 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
               )}
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-0.5 sm:space-y-1">
               <h3 className="text-xl font-black text-white sm:text-3xl md:text-4xl leading-tight tracking-tight drop-shadow-lg">
                 {title}
               </h3>
-              <p className="text-[11px] sm:text-sm text-white/80 max-w-xs sm:max-w-md leading-relaxed font-medium line-clamp-2 sm:line-clamp-none drop-shadow-md">
+              <p className="text-[10px] sm:text-sm text-white/80 max-w-[180px] sm:max-w-md leading-relaxed font-medium line-clamp-2 sm:line-clamp-none drop-shadow-md">
                 {description}
               </p>
             </div>

@@ -88,7 +88,7 @@ export default function ProductSection({
   const headerNode =
     typeof renderHeader === "function"
       ? (
-          <div className="-mx-5 sm:-mx-6 md:-mx-8 lg:mx-0">{renderHeader({ hasResults: count > 0 })}</div>
+          <div className="mb-2">{renderHeader({ hasResults: count > 0 })}</div>
         )
       : null;
 
