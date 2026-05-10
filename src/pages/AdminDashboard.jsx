@@ -210,7 +210,6 @@ export default function AdminDashboard() {
       ) : (
         <div className="space-y-6">
           {/* KPI Cards */}
-            </div>
 
             {/* Plan Usage Card */}
             {maxOrders !== -1 && (
@@ -267,8 +266,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
-          </div>
-
+          
           {/* Charts Row 1 */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="col-span-1 lg:col-span-2 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">

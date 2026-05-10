@@ -176,6 +176,40 @@ export default function AlunaPricing() {
               ))}
             </div>
 
+            {/* AI Add-on Section */}
+            <FadeIn delay={0.2} className="mt-20 max-w-4xl mx-auto">
+              <div className="bg-[#2D6A4F]/5 border border-[#2D6A4F]/20 rounded-[32px] p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 shadow-sm">
+                <div className="w-20 h-20 rounded-2xl bg-[#2D6A4F] flex items-center justify-center text-white shrink-0 shadow-lg shadow-[#2D6A4F]/20">
+                  <Cpu className="w-10 h-10" />
+                </div>
+                <div className="flex-1 text-center md:text-left">
+                  <div className="inline-flex items-center gap-2 text-[#2D6A4F] text-[10px] font-bold px-3 py-1 rounded-full bg-[#2D6A4F]/10 uppercase tracking-wider mb-4">
+                    <Sparkles size={12} /> Add-on Opcional
+                  </div>
+                  <h3 className="text-2xl md:text-3xl text-[#1A1A1A] mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                    Conserje Gastronómico con IA
+                  </h3>
+                  <p className="text-[#6B7280] text-base mb-2">
+                    Automatiza pedidos, recomienda platos y responde preguntas de tus clientes 24/7.
+                  </p>
+                  <p className="text-[#2D6A4F] font-bold text-sm uppercase tracking-wide">
+                    Incluye un límite de 1.000 interacciones de IA al mes.
+                  </p>
+                </div>
+                <div className="text-center md:text-right shrink-0">
+                  <div className="text-3xl md:text-4xl text-[#1A1A1A] mb-4" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                    $49.900<span className="text-sm font-sans text-[#6B7280]">/mes</span>
+                  </div>
+                  <Link 
+                    to="/contacto?addon=ia"
+                    className="inline-flex items-center justify-center px-6 py-3 bg-[#1A1A1A] text-white rounded-full text-sm font-bold hover:bg-[#2f4131] transition-all"
+                  >
+                    Me interesa
+                  </Link>
+                </div>
+              </div>
+            </FadeIn>
+
             {enterprisePlan && (
               <FadeIn delay={0.3} className="mt-32">
                 <div className="relative rounded-[48px] overflow-hidden shadow-2xl max-w-7xl mx-auto border border-white/5 bg-[#0A0A0A]">

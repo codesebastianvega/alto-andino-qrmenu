@@ -30,6 +30,7 @@ const PLAN_IDS = {
   emprendedor: 'c782ae70-f342-448a-81f2-05a5cfd3ed83',
   esencial:    '64b69a3f-cba9-4569-84ea-4154f9fe1e95',
   profesional: 'ed869093-1a43-4bc1-94d6-ed773e1af1df',
+  premium:     '3b641b96-602a-4633-912c-2d7e9a4e1d76',
   enterprise:  '282dc250-c791-4a7d-a4ab-d0d107fc2550',
 };
 
@@ -37,8 +38,10 @@ const PLAN_LABELS = {
   emprendedor: { name: 'Emprendedor',     color: '#6B7280' },
   esencial:    { name: 'Esencial',        color: '#2D6A4F' },
   profesional: { name: 'Profesional ⭐',  color: '#1d4ed8' },
+  premium:     { name: 'Premium 💎',      color: '#fbbf24' },
   enterprise:  { name: 'Enterprise',      color: '#7c3aed' },
 };
+
 
 const BUSINESS_TYPES = [
   { value: 'restaurant',   label: 'Restaurante',  Icon: Store     },
