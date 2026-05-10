@@ -124,8 +124,13 @@ export default function AlunaPricing() {
                       <p className={`text-sm md:text-base mb-6 md:mb-8 ${isPopular ? 'text-gray-400' : 'text-[#6B7280]'}`}>
                         {plan.description}
                       </p>
-                      <div className={`text-4xl md:text-6xl mb-6 md:mb-8 ${isPopular ? 'text-white' : 'text-[#1A1A1A]'}`} style={{ fontFamily: "'DM Serif Display', serif" }}>
-                        ${plan.price_monthly.toLocaleString()}<span className={`text-base md:text-lg font-sans ${isPopular ? 'text-gray-400' : 'text-[#6B7280]'}`}>/mes</span>
+                      <div className={`mb-6 md:mb-8`}>
+                        <div className={`text-4xl md:text-6xl ${isPopular ? 'text-white' : 'text-[#1A1A1A]'}`} style={{ fontFamily: "'DM Serif Display', serif" }}>
+                          ${plan.price_monthly.toLocaleString()}<span className={`text-base md:text-lg font-sans ${isPopular ? 'text-gray-400' : 'text-[#6B7280]'}`}>/mes</span>
+                        </div>
+                        <div className={`text-xs md:text-sm font-medium mt-2 uppercase tracking-wider ${isPopular ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                          {plan.max_orders_per_month ? `Hasta ${plan.max_orders_per_month.toLocaleString()} pedidos / mes` : 'Pedidos Ilimitados'}
+                        </div>
                       </div>
                       <div className="flex-1 overflow-hidden">
                         <ul className="space-y-3 md:space-y-4 mb-6 md:mb-8">
