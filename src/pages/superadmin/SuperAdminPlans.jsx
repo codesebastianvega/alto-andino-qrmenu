@@ -43,7 +43,8 @@ export default function SuperAdminPlans() {
           price_monthly: editingPlan.price_monthly,
           description: editingPlan.description,
           is_highlighted: editingPlan.is_highlighted,
-          cta_text: editingPlan.cta_text
+          cta_text: editingPlan.cta_text,
+          max_orders_per_month: editingPlan.max_orders_per_month
         })
         .eq('id', editingPlan.id);
       
@@ -182,6 +183,13 @@ export default function SuperAdminPlans() {
                     {!currentData.is_custom_pricing && <span className="text-lg font-sans text-[#6B7280]">/mes</span>}
                   </div>
                 )}
+                {!isEditing && (
+                  <div className="mt-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    {plan.max_orders_per_month 
+                      ? `Límite: ${plan.max_orders_per_month.toLocaleString()} pedidos/mes` 
+                      : 'Pedidos Ilimitados'}
+                  </div>
+                )}
               </div>
 
               {/* Toggles extra properties on edit */}
@@ -202,6 +210,16 @@ export default function SuperAdminPlans() {
                       type="text"
                       value={currentData.cta_text || ''}
                       onChange={(e) => setEditingPlan({ ...editingPlan, cta_text: e.target.value })}
+                      className="border border-gray-200 rounded px-3 py-1.5 w-full bg-white"
+                    />
+                  </div>
+                  <div>
+                    <span className="block text-gray-600 mb-1 text-xs uppercase font-bold">Límite de Pedidos / Mes:</span>
+                    <input
+                      type="number"
+                      placeholder="Ej: 500 (0 = Ilimitado)"
+                      value={currentData.max_orders_per_month || ''}
+                      onChange={(e) => setEditingPlan({ ...editingPlan, max_orders_per_month: e.target.value ? Number(e.target.value) : null })}
                       className="border border-gray-200 rounded px-3 py-1.5 w-full bg-white"
                     />
                   </div>

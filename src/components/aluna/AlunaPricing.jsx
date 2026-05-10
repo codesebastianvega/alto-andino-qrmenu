@@ -91,7 +91,8 @@ export default function AlunaPricing() {
               className={`flex md:grid gap-6 md:gap-8 pb-12 md:pb-0 overflow-x-auto md:overflow-x-visible hide-scrollbar snap-x snap-mandatory ${
                 standardPlans.length === 1 ? 'md:grid-cols-1 max-w-sm mx-auto' : 
                 standardPlans.length === 2 ? 'md:grid-cols-2 max-w-4xl mx-auto' : 
-                'md:grid-cols-3 max-w-6xl mx-auto'
+                standardPlans.length === 3 ? 'md:grid-cols-3 max-w-6xl mx-auto' :
+                'md:grid-cols-2 lg:grid-cols-4 max-w-7xl mx-auto'
               }`}
               onScroll={handleScroll}
             >

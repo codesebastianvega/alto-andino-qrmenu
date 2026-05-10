@@ -1,44 +1,67 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useMenuData } from '../context/MenuDataContext';
 
 /**
  * usePlan — returns the current brand's plan details and feature flags.
+ * Supports both Admin (via useAuth) and Customer (via useMenuData or manual brandId).
  *
  * Usage:
- *   const { plan, can, loading } = usePlan();
+ *   const { plan, can, isWithinOrderLimit } = usePlan();
  *   if (!can('analytics')) return <UpgradePrompt />;
  */
-export function usePlan() {
+export function usePlan(manualBrandId = null) {
   const { profile } = useAuth();
+  const menuData = useMenuData();
+  
+  // Resolve brandId: Priority Manual > Auth Profile > Menu Data
+  const brandId = manualBrandId || profile?.brand_id || menuData?.activeBrandId;
+
   const [plan, setPlan] = useState(null);
   const [features, setFeatures] = useState({});
+  const [ordersThisMonth, setOrdersThisMonth] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!profile?.brand_id) { setLoading(false); return; }
+    if (!brandId) { 
+      if (!manualBrandId && !profile?.brand_id && !menuData?.loading) {
+        setLoading(false);
+      }
+      return; 
+    }
 
-    const fetchPlan = async () => {
+    const fetchData = async () => {
       try {
-        // Get brand's plan
-        const { data: brand } = await supabase
-          .from('brands')
-          .select('plan_id, plans(*)')
-          .eq('id', profile.brand_id)
-          .maybeSingle();
+        setLoading(true);
+        // 1. Get brand's plan and order count in parallel
+        const [brandRes, orderCountRes] = await Promise.all([
+          supabase
+            .from('brands')
+            .select('plan_id, has_ai_addon, plans(*)')
+            .eq('id', brandId)
+            .maybeSingle(),
+          supabase.rpc('get_monthly_order_count', { p_brand_id: brandId })
+        ]);
 
-        if (!brand?.plans) { setLoading(false); return; }
+        const brand = brandRes.data;
+        const orderCount = orderCountRes.data || 0;
+        setOrdersThisMonth(orderCount);
+
+        if (!brand?.plans) { 
+          setLoading(false); 
+          return; 
+        }
 
         const planData = brand.plans;
-        setPlan(planData);
+        setPlan({ ...planData, has_ai_addon: brand.has_ai_addon });
 
-        // Get plan features
+        // 2. Get plan features
         const { data: featureRows } = await supabase
           .from('plan_features')
           .select('feature_key, is_included')
           .eq('plan_id', planData.id);
 
-        // Build a map: { analytics: true, web_management: false, ... }
         const featureMap = {};
         (featureRows || []).forEach(f => {
           featureMap[f.feature_key] = f.is_included;
@@ -46,30 +69,26 @@ export function usePlan() {
         setFeatures(featureMap);
 
       } catch (err) {
-        console.error('Error loading plan:', err);
+        console.error('Error loading plan or order count:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPlan();
-  }, [profile?.brand_id]);
+    fetchData();
+  }, [brandId, manualBrandId]);
 
   /**
    * can('feature_key') — returns true if the plan includes the feature.
-   * Superadmins and owners always have full access.
    */
   const can = (featureKey) => {
     if (!plan) return false;
-    // Unlimited access for custom/enterprise plans
     if (plan.is_custom_pricing) return true;
     return features[featureKey] ?? false;
   };
 
   /**
    * withinLimit('max_products', currentCount) — checks count-based limits.
-   * Returns true if the user is still within their plan limit.
-   * null = unlimited.
    */
   const withinLimit = (limitKey, currentCount) => {
     if (!plan) return true;
@@ -79,12 +98,21 @@ export function usePlan() {
     return currentCount < limit;
   };
 
+  // Order limit logic: Allow unlimited if null, undefined, or -1.
+  const isWithinOrderLimit = (plan?.max_orders_per_month === null || plan?.max_orders_per_month === undefined || plan?.max_orders_per_month === -1)
+    ? true
+    : ordersThisMonth < plan.max_orders_per_month;
+
   return {
     plan,
     features,
     can,
     withinLimit,
     loading,
+    ordersThisMonth,
+    isWithinOrderLimit,
+    hasAiAddon: plan?.has_ai_addon ?? false,
+    maxOrders: plan?.max_orders_per_month || null,
     planName: plan?.name || 'Emprendedor',
     planSlug: plan?.slug || 'emprendedor',
     maxProducts: plan?.max_products ?? null,

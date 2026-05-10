@@ -15,6 +15,7 @@ import { translateGroup } from "@/utils/formatters";
 import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useLocationPayments } from "@/hooks/useLocationPayments";
+import { usePlan } from "@/hooks/usePlan";
 import { trackAnalyticsEvent } from "@/utils/analytics";
 import { isRestaurantOpen } from "@/utils/businessHours";
 
@@ -143,6 +144,7 @@ export default function CartModal({ open, onClose }) {
   const { brandSlug } = useParams();
   const { getAllProducts, hasFeature, activeBrandId, currentLocation: contextLocation, locations, businessHours } = useMenuData();
   const { paymentMethods, loading: loadingPayments } = usePaymentMethods(activeBrandId);
+  const { isWithinOrderLimit } = usePlan(activeBrandId);
   
   // Localized Settings & Payments
   const [currentLocationId, setCurrentLocationId] = useState(null);
@@ -328,6 +330,13 @@ export default function CartModal({ open, onClose }) {
         setIsSubmitting(false);
         return;
       }
+    }
+
+    // 0.1 Validate Order Limit (Skip for POS mode)
+    if (!isWithinOrderLimit && !isPOSMode) {
+      toast.error("Capacidad máxima de pedidos alcanzada. Por favor, contacta directamente con el establecimiento.");
+      setIsSubmitting(false);
+      return;
     }
 
     setIsSubmitting(true);
@@ -704,7 +713,21 @@ export default function CartModal({ open, onClose }) {
           </div>
           
           <div className="flex flex-col gap-2.5">
-            {!showFulfillmentSelector && !initialMesa && !isPOSMode ? (
+            {(!isWithinOrderLimit && !isPOSMode) ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2">
+                <div className="bg-amber-100 p-2 rounded-full text-amber-600 flex-shrink-0">
+                  <Icon icon="heroicons:exclamation-triangle" className="text-xl" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-amber-900 leading-tight">
+                    Capacidad máxima alcanzada
+                  </p>
+                  <p className="text-xs text-amber-700 mt-1 font-medium leading-relaxed">
+                    Lo sentimos, este restaurante ha completado su cupo mensual de pedidos. Por favor, contacta directamente con el establecimiento para realizar tu pedido.
+                  </p>
+                </div>
+              </div>
+            ) : !showFulfillmentSelector && !initialMesa && !isPOSMode ? (
               <button
                 type="button"
                 onClick={() => setShowFulfillmentSelector(true)}
@@ -867,25 +890,34 @@ export default function CartModal({ open, onClose }) {
                   >
                     <Icon icon="heroicons:arrow-left" className="text-xl" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleConfirmOrder}
-                    disabled={isSubmitting || !isLeadValid}
-                    className={`flex-1 h-14 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 ${
-                      !isLeadValid || isSubmitting
-                      ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
-                      : "bg-[#2f4131] text-white shadow-[#2f4131]/20"
-                    }`}
-                  >
-                    {isSubmitting ? (
-                      <Icon icon="line-md:loading-loop" className="text-xl" />
-                    ) : (
-                      <>
-                        <Icon icon="heroicons:sparkles" className="text-xl" />
-                        Confirmar Pedido
-                      </>
-                    )}
-                  </button>
+                  {!isWithinOrderLimit && !isPOSMode ? (
+                    <div className="flex-1 bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center gap-3">
+                      <Icon icon="heroicons:exclamation-circle" className="text-amber-600 text-xl" />
+                      <span className="text-[11px] font-bold text-amber-800 leading-tight">
+                        Límite mensual alcanzado. Contacta al restaurante.
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleConfirmOrder}
+                      disabled={isSubmitting || !isLeadValid}
+                      className={`flex-1 h-14 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 ${
+                        !isLeadValid || isSubmitting
+                        ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
+                        : "bg-[#2f4131] text-white shadow-[#2f4131]/20"
+                      }`}
+                    >
+                      {isSubmitting ? (
+                        <Icon icon="line-md:loading-loop" className="text-xl" />
+                      ) : (
+                        <>
+                          <Icon icon="heroicons:sparkles" className="text-xl" />
+                          Confirmar Pedido
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
