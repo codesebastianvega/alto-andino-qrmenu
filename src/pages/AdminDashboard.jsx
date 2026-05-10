@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useLocation } from '../context/LocationContext';
+import { usePlan } from '../hooks/usePlan';
 import { Icon } from '@iconify-icon/react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -17,6 +18,7 @@ export default function AdminDashboard() {
   const { activeBrand } = useAuth();
   const { activeLocationId, isAllLocations } = useLocation();
   const activeBrandId = activeBrand?.id;
+  const { ordersThisMonth, maxOrders, isWithinOrderLimit, planName } = usePlan(activeBrandId);
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -208,65 +210,63 @@ export default function AdminDashboard() {
       ) : (
         <div className="space-y-6">
           {/* KPI Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
-              <div className="flex justify-between items-start mb-2">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-tight">Ingresos Totales</p>
-                <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <Icon icon="heroicons:banknotes" className="text-lg" />
-                </div>
-              </div>
-              <div>
-                <p className="text-2xl lg:text-3xl font-black text-gray-900">{formatCurrency(stats.revenue)}</p>
-                <p className="text-[10px] font-bold text-gray-400 mt-1">{stats.orderCount} pedidos finalizados</p>
-              </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
-              <div className="flex justify-between items-start mb-2">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-tight">Ticket Promedio</p>
-                <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Icon icon="heroicons:receipt-percent" className="text-lg" />
+            {/* Plan Usage Card */}
+            {maxOrders !== -1 && (
+              <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between overflow-hidden relative">
+                {/* Background Decor */}
+                <div className="absolute -right-4 -bottom-4 opacity-[0.03] text-gray-900 pointer-events-none">
+                  <Icon icon="heroicons:sparkles" width="120" />
                 </div>
-              </div>
-              <div>
-                <p className="text-2xl lg:text-3xl font-black text-gray-900">{formatCurrency(stats.avgTicket)}</p>
-                <p className="text-[10px] font-bold text-gray-400 mt-1">Por pedido finalizado</p>
-              </div>
-            </div>
+                
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-tight">Uso del Plan</p>
+                    <p className="text-[10px] font-black text-[#2f4131] uppercase mt-0.5">{planName}</p>
+                  </div>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${!isWithinOrderLimit ? 'bg-red-50 text-red-600' : 'bg-[#2f4131]/10 text-[#2f4131]'}`}>
+                    <Icon icon={!isWithinOrderLimit ? "heroicons:exclamation-triangle" : "heroicons:rocket-launch"} className="text-lg" />
+                  </div>
+                </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
-              <div className="flex justify-between items-start mb-2">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-tight">Tiempo Promedio</p>
-                <div className="w-8 h-8 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center">
-                  <Icon icon="heroicons:clock" className="text-lg" />
+                <div className="mt-2">
+                  <div className="flex justify-between items-end mb-1.5">
+                    <p className="text-2xl lg:text-3xl font-black text-gray-900">
+                      {ordersThisMonth} 
+                      <span className="text-sm text-gray-400 font-bold ml-1">/ {maxOrders}</span>
+                    </p>
+                    <p className={`text-[10px] font-bold ${!isWithinOrderLimit ? 'text-red-500' : 'text-gray-400'}`}>
+                      {maxOrders > 0 ? Math.round((ordersThisMonth / maxOrders) * 100) : 0}%
+                    </p>
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-1000 ease-out rounded-full ${
+                        maxOrders > 0 && (ordersThisMonth / maxOrders) > 0.9 ? 'bg-red-500' : maxOrders > 0 && (ordersThisMonth / maxOrders) > 0.7 ? 'bg-amber-500' : 'bg-[#2f4131]'
+                      }`}
+                      style={{ width: `${maxOrders > 0 ? Math.min(100, (ordersThisMonth / maxOrders) * 100) : 0}%` }}
+                    />
+                  </div>
+                  
+                  {!isWithinOrderLimit ? (
+                    <p className="text-[9px] text-red-500 font-bold mt-2 animate-pulse uppercase">
+                      Límite alcanzado - Pedidos bloqueados
+                    </p>
+                  ) : maxOrders > 0 && (ordersThisMonth / maxOrders) > 0.8 ? (
+                    <p className="text-[9px] text-amber-600 font-bold mt-2 uppercase">
+                      Casi al límite - Considera subir de plan
+                    </p>
+                  ) : (
+                    <p className="text-[9px] text-gray-400 font-bold mt-2 uppercase">
+                      Pedidos este mes
+                    </p>
+                  )}
                 </div>
               </div>
-              <div>
-                <p className="text-2xl lg:text-3xl font-black text-gray-900">{stats.avgTime} <span className="text-lg text-gray-500 font-bold">min</span></p>
-                <p className="text-[10px] font-bold text-gray-400 mt-1">Desde recibido hasta finalizado</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
-              <div className="flex justify-between items-start mb-2">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-tight">Flujo de Pedidos</p>
-                <div className="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
-                  <Icon icon="heroicons:arrow-trending-up" className="text-lg" />
-                </div>
-              </div>
-              <div className="flex items-end gap-3 mt-1">
-                <div>
-                  <p className="text-2xl lg:text-3xl font-black text-gray-900 leading-none">{stats.pendingCount}</p>
-                  <p className="text-[10px] font-bold text-orange-500 mt-1">Pendientes</p>
-                </div>
-                <div className="h-8 w-px bg-gray-200"></div>
-                <div>
-                  <p className="text-xl font-black text-gray-600 leading-none">{stats.cancelledCount}</p>
-                  <p className="text-[10px] font-bold text-red-500 mt-1">Cancelados</p>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Charts Row 1 */}
