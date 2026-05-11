@@ -384,8 +384,9 @@ export default function AdminLayout() {
       const roleMatch = item.roles.includes(user.role);
       if (!roleMatch) return false;
 
-      // Feature Gating: If the item has a required feature, hide it completely if not allowed
-      if (item.feature && !can(item.feature)) return false;
+      // Feature Gating: Modules are always visible for upselling (Teasers)
+      // We block navigation in handleSelectPage instead of filtering here
+
 
       return true;
     });
@@ -504,7 +505,7 @@ export default function AdminLayout() {
 
           <div className="flex-1 overflow-y-auto custom-scrollbar pt-5 px-4 space-y-6">
               {/* 1. SECCION ESTRATEGIA (Aura Insight Glass Card) */}
-              {ADMIN_ROLES.includes(user.role) && can('advanced_analytics') && (
+              {ADMIN_ROLES.includes(user.role) && (
               <div className="space-y-3">
                 <motion.button 
                   whileHover={{ scale: 1.01, y: -1 }}
@@ -514,7 +515,7 @@ export default function AdminLayout() {
                     currentPage === 'analytics' 
                     ? 'bg-white/[0.08] shadow-lg shadow-brand-primary/5' 
                     : 'bg-white/[0.02] hover:bg-white/[0.04]'
-                  } ${!can('advanced_analytics') && !isCollapsed ? 'opacity-90' : ''}`}
+                  } ${!can('advanced_analytics') && !isCollapsed ? 'opacity-70 grayscale-[0.4]' : ''}`}
                 >
                   {/* --- PREMIUM GLASS NEURO ENVELOPE --- */}
                   <div className="absolute inset-0 backdrop-blur-xl pointer-events-none" />
@@ -656,14 +657,14 @@ export default function AdminLayout() {
                 )}
 
                 {/* Cocina Card */}
-                {user.role !== 'waiter' && can('kitchen_display') && (
+                {user.role !== 'waiter' && (
                 <button 
                   onClick={() => handleSelectPage('kitchen', 'Cocina', 'kitchen_display')}
                   className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
                     currentPage === 'kitchen' 
                     ? 'bg-gradient-to-r from-orange-900/40 to-orange-950/40 border-orange-500/20 ring-1 ring-orange-500/20 shadow-lg shadow-orange-950/40' 
                     : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                  } ${!can('kitchen_display') ? 'opacity-60' : ''}`}
+                  } ${!can('kitchen_display') ? 'opacity-70 grayscale-[0.4]' : ''}`}
                 >
                   <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'kitchen' ? 'bg-orange-400/20 text-orange-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
@@ -779,6 +780,16 @@ export default function AdminLayout() {
 
           {/* User Section / Collapse toggle */}
           <div className="mt-auto border-t border-white/5 bg-black/10">
+             <button
+               onClick={() => {
+                 setLockedFeatureName('Mi Plan');
+                 setShowUpgradeModal(true);
+               }}
+               className={`flex items-center gap-2.5 px-5 py-3 text-[13px] font-bold text-amber-400 hover:text-amber-300 hover:bg-white/5 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
+             >
+                <span className="shrink-0 text-base">⭐</span>
+                {!isCollapsed && <span>Mi Plan / Upgrade</span>}
+             </button>
              <a
                href={activeBrand?.slug ? `/${activeBrand.slug}/` : "/"}
                className={`flex items-center gap-2.5 px-5 py-3 text-[13px] font-medium text-white/40 hover:text-white/70 hover:bg-white/5 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
@@ -1086,7 +1097,7 @@ export default function AdminLayout() {
           )}
 
           {/* Kitchen */}
-          {user.role !== 'waiter' && can('kitchen_display') && (
+          {user.role !== 'waiter' && (
             <button 
               onClick={() => handleSelectPage('kitchen', 'Cocina', 'kitchen_display')}
               className={`flex flex-col items-center justify-center w-full h-full gap-1 ${currentPage === 'kitchen' ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'}`}
