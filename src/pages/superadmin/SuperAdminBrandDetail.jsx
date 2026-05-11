@@ -25,7 +25,7 @@ export default function SuperAdminBrandDetail() {
       
       const { data: plansData, error: plansError } = await supabase
         .from('plans')
-        .select('id, name')
+        .select('*')
         .order('sort_order');
 
       const { data: settingsData } = await supabase
@@ -67,6 +67,7 @@ export default function SuperAdminBrandDetail() {
           name: brand.name,
           slug: brand.slug,
           plan_id: brand.plan_id,
+          has_ai_addon: brand.has_ai_addon,
           city: brand.city,
           country: brand.country,
           address: brand.address,
@@ -153,18 +154,63 @@ export default function SuperAdminBrandDetail() {
               </div>
             </div>
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Plan de Suscripción</label>
-              <select
-                value={brand.plan_id || ''}
-                onChange={(e) => setBrand({...brand, plan_id: e.target.value})}
-                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              >
-                <option value="">-- Seleccionar Plan --</option>
-                {plans.map(plan => (
-                  <option key={plan.id} value={plan.id}>{plan.name}</option>
-                ))}
-              </select>
+            <div className="md:col-span-2 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Plan de Suscripción</label>
+                <select
+                  value={brand.plan_id || ''}
+                  onChange={(e) => setBrand({...brand, plan_id: e.target.value})}
+                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                >
+                  <option value="">-- Seleccionar Plan --</option>
+                  {plans.map(plan => (
+                    <option key={plan.id} value={plan.id}>{plan.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {brand.plan_id && (
+                <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {(() => {
+                    const selectedPlan = plans.find(p => p.id === brand.plan_id);
+                    if (!selectedPlan) return null;
+                    return (
+                      <>
+                        <div>
+                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Pedidos / Mes</p>
+                          <p className="text-sm font-bold text-gray-900">{selectedPlan.max_orders_per_month === -1 || !selectedPlan.max_orders_per_month ? 'Ilimitados' : selectedPlan.max_orders_per_month}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Productos</p>
+                          <p className="text-sm font-bold text-gray-900">{selectedPlan.max_products === -1 || !selectedPlan.max_products ? 'Ilimitados' : selectedPlan.max_products}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Categorías</p>
+                          <p className="text-sm font-bold text-gray-900">{selectedPlan.max_categories === -1 || !selectedPlan.max_categories ? 'Ilimitados' : selectedPlan.max_categories}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Administradores</p>
+                          <p className="text-sm font-bold text-gray-900">{selectedPlan.max_admins === -1 || !selectedPlan.max_admins ? 'Ilimitados' : selectedPlan.max_admins}</p>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                <input
+                  type="checkbox"
+                  id="has_ai_addon"
+                  checked={brand.has_ai_addon || false}
+                  onChange={(e) => setBrand({...brand, has_ai_addon: e.target.checked})}
+                  className="w-5 h-5 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="has_ai_addon" className="flex-1">
+                  <span className="block text-sm font-bold text-blue-900">Módulo de IA (Aluna AI)</span>
+                  <span className="block text-xs text-blue-700">Activa el asistente de IA para recomendaciones y chat con clientes.</span>
+                </label>
+              </div>
             </div>
 
             <div>
