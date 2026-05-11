@@ -14,6 +14,7 @@ import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";
 import { useAuth } from "@/context/AuthContext";
 import { useMenuData } from "@/context/MenuDataContext";
 import { isRestaurantOpen } from "@/utils/businessHours";
+import { usePlan } from "@/hooks/usePlan";
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 3000 }),
@@ -163,6 +164,8 @@ export default function CartDrawer({ open, onClose }) {
   const { activeBrand } = useAuth();
   
   const brandId = activeBrandId || activeBrand?.id;
+  const { isWithinOrderLimit } = usePlan(brandId);
+  const isPOSMode = sessionStorage.getItem("aa_pos_mode") === "true";
   const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
 
   const {
@@ -217,6 +220,13 @@ export default function CartDrawer({ open, onClose }) {
       const { isOpen, message } = isRestaurantOpen(currentBusinessHours);
       if (!isOpen) {
         toast.error(message);
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // 0.1 Validate Order Limit (Skip for POS mode)
+      if (!isWithinOrderLimit && !isPOSMode) {
+        toast.error("El restaurante ha alcanzado su límite de pedidos por este mes. Por favor, intenta de nuevo más tarde.");
         setIsSubmitting(false);
         return;
       }
@@ -628,7 +638,18 @@ export default function CartDrawer({ open, onClose }) {
                 </div>
                 
                 <div className="flex flex-col gap-2.5">
-                  {!showFulfillmentSelector ? (
+                  {(!isWithinOrderLimit && !isPOSMode) ? (
+                    <div className="bg-neutral-900 rounded-2xl p-5 flex items-start gap-3.5 animate-in fade-in slide-in-from-bottom-2 shadow-xl shadow-neutral-900/10">
+                      <div className="text-neutral-400 mt-0.5 flex-shrink-0">
+                        <Icon icon="heroicons:information-circle" className="text-2xl" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-neutral-100 leading-snug">
+                          El restaurante ha alcanzado su límite de pedidos por este mes. Por favor, intenta de nuevo más tarde.
+                        </p>
+                      </div>
+                    </div>
+                  ) : !showFulfillmentSelector ? (
                     <div className="flex flex-col gap-2">
                       {!isRestaurantOpen(currentBusinessHours).isOpen && (
                         <div className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100">

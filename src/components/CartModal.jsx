@@ -334,7 +334,7 @@ export default function CartModal({ open, onClose }) {
 
     // 0.1 Validate Order Limit (Skip for POS mode)
     if (!isWithinOrderLimit && !isPOSMode) {
-      toast.error("Capacidad máxima de pedidos alcanzada. Por favor, contacta directamente con el establecimiento.");
+      toast.error("El restaurante ha alcanzado su límite de pedidos por este mes. Por favor, intenta de nuevo más tarde.");
       setIsSubmitting(false);
       return;
     }
@@ -714,16 +714,13 @@ export default function CartModal({ open, onClose }) {
           
           <div className="flex flex-col gap-2.5">
             {(!isWithinOrderLimit && !isPOSMode) ? (
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2">
-                <div className="bg-amber-100 p-2 rounded-full text-amber-600 flex-shrink-0">
-                  <Icon icon="heroicons:exclamation-triangle" className="text-xl" />
+              <div className="bg-neutral-900 rounded-2xl p-5 flex items-start gap-3.5 animate-in fade-in slide-in-from-bottom-2 shadow-xl shadow-neutral-900/10">
+                <div className="text-neutral-400 mt-0.5 flex-shrink-0">
+                  <Icon icon="heroicons:information-circle" className="text-2xl" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-amber-900 leading-tight">
-                    Capacidad máxima alcanzada
-                  </p>
-                  <p className="text-xs text-amber-700 mt-1 font-medium leading-relaxed">
-                    Lo sentimos, este restaurante ha completado su cupo mensual de pedidos. Por favor, contacta directamente con el establecimiento para realizar tu pedido.
+                  <p className="text-sm font-semibold text-neutral-100 leading-snug">
+                    El restaurante ha alcanzado su límite de pedidos por este mes. Por favor, intenta de nuevo más tarde.
                   </p>
                 </div>
               </div>
@@ -891,10 +888,10 @@ export default function CartModal({ open, onClose }) {
                     <Icon icon="heroicons:arrow-left" className="text-xl" />
                   </button>
                   {!isWithinOrderLimit && !isPOSMode ? (
-                    <div className="flex-1 bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center gap-3">
-                      <Icon icon="heroicons:exclamation-circle" className="text-amber-600 text-xl" />
-                      <span className="text-[11px] font-bold text-amber-800 leading-tight">
-                        Límite mensual alcanzado. Contacta al restaurante.
+                    <div className="flex-1 bg-neutral-900 rounded-2xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 shadow-lg shadow-neutral-900/5">
+                      <Icon icon="heroicons:information-circle" className="text-neutral-400 text-xl flex-shrink-0" />
+                      <span className="text-[11px] font-semibold text-neutral-100 leading-tight">
+                        El restaurante ha alcanzado su límite de pedidos por este mes. Por favor, intenta de nuevo más tarde.
                       </span>
                     </div>
                   ) : (
