@@ -6,6 +6,7 @@ const LockOverlay = ({
   featureName = "esta función profesional", 
   isVisible, 
   onClose,
+  onUpgrade,
   planNeeded = "Esencial"
 }) => {
   if (!isVisible) return null;
@@ -63,7 +64,7 @@ const LockOverlay = ({
             {/* Action Buttons */}
             <div className="flex flex-col w-full gap-3">
               <button 
-                onClick={() => window.location.hash = '#plans'}
+                onClick={onUpgrade}
                 className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-lg hover:shadow-xl"
               >
                 <Crown className="w-5 h-5 fill-current" />

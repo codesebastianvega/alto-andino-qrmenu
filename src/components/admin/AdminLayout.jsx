@@ -27,6 +27,7 @@ import AdminProfile from '../../pages/AdminProfile';
 import ContextBreadcrumb from './ContextBreadcrumb';
 import { Badge } from './ui';
 import LockOverlay from './LockOverlay';
+import UpgradeModal from './UpgradeModal';
 import { useMenuData } from '../../context/MenuDataContext';
 import { usePlan } from '../../hooks/usePlan';
 import Toast from '../Toast';
@@ -210,6 +211,7 @@ export default function AdminLayout() {
   const [newOrdersCount, setNewOrdersCount] = useState(0);
   const [preparingOrdersCount, setPreparingOrdersCount] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showPlanSelector, setShowPlanSelector] = useState(false);
   const [lockedFeatureName, setLockedFeatureName] = useState('');
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   
@@ -780,11 +782,10 @@ export default function AdminLayout() {
 
           {/* User Section / Collapse toggle */}
           <div className="mt-auto border-t border-white/5 bg-black/10">
-             <button
-               onClick={() => {
-                 setLockedFeatureName('Mi Plan');
-                 setShowUpgradeModal(true);
-               }}
+              <button
+                onClick={() => {
+                  setShowPlanSelector(true);
+                }}
                className={`flex items-center gap-2.5 px-5 py-3 text-[13px] font-bold text-amber-400 hover:text-amber-300 hover:bg-white/5 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
              >
                 <span className="shrink-0 text-base">⭐</span>
@@ -923,6 +924,10 @@ export default function AdminLayout() {
           <LockOverlay 
             isVisible={showUpgradeModal}
             onClose={() => setShowUpgradeModal(false)}
+            onUpgrade={() => {
+              setShowUpgradeModal(false);
+              setShowPlanSelector(true);
+            }}
             featureName={lockedFeatureName}
             planNeeded={
               lockedFeatureName === 'Identidad Visual' ? 'Emprendedor' : 
@@ -930,6 +935,13 @@ export default function AdminLayout() {
               lockedFeatureName === 'Experiencias' ? 'Profesional' :
               'Profesional'
             }
+          />
+
+          {/* New Premium Upgrade Modal */}
+          <UpgradeModal 
+            isOpen={showPlanSelector} 
+            onClose={() => setShowPlanSelector(false)} 
+            currentPlanSlug={activePlan?.slug}
           />
         </div>
       </main>
