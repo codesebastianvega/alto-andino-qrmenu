@@ -28,6 +28,7 @@ import ContextBreadcrumb from './ContextBreadcrumb';
 import { Badge } from './ui';
 import LockOverlay from './LockOverlay';
 import { useMenuData } from '../../context/MenuDataContext';
+import { usePlan } from '../../hooks/usePlan';
 import Toast from '../Toast';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
@@ -174,12 +175,12 @@ const CARTA_ITEMS = [
   { id: 'categories',      label: 'Categorías',         Icon: Icons.Categories, roles: ADMIN_ROLES },
   { id: 'modifier_groups', label: 'Extras y Opciones', Icon: Icons.Modifiers, roles: ADMIN_ROLES },
   { id: 'experiences',     label: 'Experiencias',      Icon: Icons.Experiences, roles: ADMIN_ROLES, feature: 'experiences' },
-  { id: 'tables',          label: 'Mesas y QRs',       Icon: Icons.Tables, roles: ADMIN_ROLES },
+  { id: 'tables',          label: 'Mesas y QRs',       Icon: Icons.Tables, roles: ADMIN_ROLES, feature: 'table_management' },
 ];
 
 const PROD_ITEMS = [
   { id: 'recipes',   label: 'Recetas',      Icon: Icons.Recipes, roles: [...ADMIN_ROLES, 'kitchen'], feature: 'inventory' },
-  { id: 'inventory', label: 'Inventario',   Icon: Icons.Modifiers, roles: [...ADMIN_ROLES, 'kitchen'] },
+  { id: 'inventory', label: 'Inventario',   Icon: Icons.Modifiers, roles: [...ADMIN_ROLES, 'kitchen'], feature: 'inventory' },
 ];
 
 const ADMIN_ITEMS = [
@@ -199,7 +200,8 @@ export default function AdminLayout() {
     return params.get('admin_page') || 'orders';
   };
 
-  const { user: authUser, profile, loading: authLoading, isFeatureLocked, activeBrand, activePlan } = useAuth();
+  const { user: authUser, profile, loading: authLoading, activeBrand, activePlan } = useAuth();
+  const { can } = usePlan();
   const { activeLocationId, activeLocation, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id || profile?.brand_id;
   const [user, setUser] = useState(null);
@@ -217,14 +219,14 @@ export default function AdminLayout() {
     // Check if current page is locked on load
     const allItems = [...ESTRATEGIA_ITEMS, ...OPERACION_ITEMS, ...CARTA_ITEMS, ...PROD_ITEMS, ...ADMIN_ITEMS, ...WEB_ITEMS];
     const currentItem = allItems.find(item => item.id === currentPage);
-    if (currentItem?.feature && isFeatureLocked(currentItem.feature)) {
+    if (currentItem?.feature && !can(currentItem.feature)) {
       setLockedFeatureName(currentItem.label);
       setShowUpgradeModal(true);
     }
-  }, [currentPage, isFeatureLocked]);
+  }, [currentPage, can]);
 
   const handleSelectPage = (pageId, label, featureKey) => {
-    if (featureKey && isFeatureLocked(featureKey)) {
+    if (featureKey && !can(featureKey)) {
       setLockedFeatureName(label);
       setShowUpgradeModal(true);
       return;
@@ -379,7 +381,13 @@ export default function AdminLayout() {
     // If the user has a full admin role, they should see all items in these sections
     const allowed = items.filter(item => {
       if (!item.roles) return true;
-      return item.roles.includes(user.role);
+      const roleMatch = item.roles.includes(user.role);
+      if (!roleMatch) return false;
+
+      // Feature Gating: If the item has a required feature, hide it completely if not allowed
+      if (item.feature && !can(item.feature)) return false;
+
+      return true;
     });
     if (allowed.length === 0) return null;
 
@@ -396,7 +404,7 @@ export default function AdminLayout() {
           {allowed.map((item) => {
             const Icon = Icons[item.id.charAt(0).toUpperCase() + item.id.slice(1)] || item.Icon;
             const isActive = current === item.id;
-            const isLocked = item.feature && isFeatureLocked(item.feature);
+            const isLocked = item.feature && !can(item.feature);
             const hasAlert = missingAlerts[item.id] && !isActive; // Hide alert dot if we are already viewing the tab
             
             return (
@@ -496,7 +504,7 @@ export default function AdminLayout() {
 
           <div className="flex-1 overflow-y-auto custom-scrollbar pt-5 px-4 space-y-6">
               {/* 1. SECCION ESTRATEGIA (Aura Insight Glass Card) */}
-              {ADMIN_ROLES.includes(user.role) && (
+              {ADMIN_ROLES.includes(user.role) && can('advanced_analytics') && (
               <div className="space-y-3">
                 <motion.button 
                   whileHover={{ scale: 1.01, y: -1 }}
@@ -506,7 +514,7 @@ export default function AdminLayout() {
                     currentPage === 'analytics' 
                     ? 'bg-white/[0.08] shadow-lg shadow-brand-primary/5' 
                     : 'bg-white/[0.02] hover:bg-white/[0.04]'
-                  } ${isFeatureLocked('advanced_analytics') && !isCollapsed ? 'opacity-90' : ''}`}
+                  } ${!can('advanced_analytics') && !isCollapsed ? 'opacity-90' : ''}`}
                 >
                   {/* --- PREMIUM GLASS NEURO ENVELOPE --- */}
                   <div className="absolute inset-0 backdrop-blur-xl pointer-events-none" />
@@ -587,7 +595,7 @@ export default function AdminLayout() {
                           }`}>
                             Inteligencia
                           </p>
-                          {isFeatureLocked('advanced_analytics') && (
+                          {!can('advanced_analytics') && (
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500/60 shrink-0">
                               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                             </svg>
@@ -648,20 +656,20 @@ export default function AdminLayout() {
                 )}
 
                 {/* Cocina Card */}
-                {user.role !== 'waiter' && (
+                {user.role !== 'waiter' && can('kitchen_display') && (
                 <button 
                   onClick={() => handleSelectPage('kitchen', 'Cocina', 'kitchen_display')}
                   className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
                     currentPage === 'kitchen' 
                     ? 'bg-gradient-to-r from-orange-900/40 to-orange-950/40 border-orange-500/20 ring-1 ring-orange-500/20 shadow-lg shadow-orange-950/40' 
                     : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                  } ${isFeatureLocked('kitchen_display') ? 'opacity-60' : ''}`}
+                  } ${!can('kitchen_display') ? 'opacity-60' : ''}`}
                 >
                   <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'kitchen' ? 'bg-orange-400/20 text-orange-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
                       <div className="relative">
                         <Icons.Kitchen />
-                        {!isFeatureLocked('kitchen_display') && (newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-ping" />}
+                        {can('kitchen_display') && (newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-ping" />}
                       </div>
                     </div>
                     {!isCollapsed && (
@@ -677,7 +685,7 @@ export default function AdminLayout() {
                           </div>
                           <p className="text-[9px] text-white/30 font-medium mt-1">Pantalla de Producción</p>
                         </div>
-                        {!isFeatureLocked('kitchen_display') && (newOrdersCount > 0 || preparingOrdersCount > 0) && (
+                        {can('kitchen_display') && (newOrdersCount > 0 || preparingOrdersCount > 0) && (
                           <div className="flex items-center gap-1">
                             {newOrdersCount > 0 && (
                               <motion.span 
@@ -1078,7 +1086,7 @@ export default function AdminLayout() {
           )}
 
           {/* Kitchen */}
-          {user.role !== 'waiter' && (
+          {user.role !== 'waiter' && can('kitchen_display') && (
             <button 
               onClick={() => handleSelectPage('kitchen', 'Cocina', 'kitchen_display')}
               className={`flex flex-col items-center justify-center w-full h-full gap-1 ${currentPage === 'kitchen' ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'}`}
