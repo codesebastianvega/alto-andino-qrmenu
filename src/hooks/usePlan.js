@@ -39,7 +39,7 @@ export function usePlan(manualBrandId = null) {
         const [brandRes, orderCountRes, productCountRes] = await Promise.all([
           supabase
             .from('brands')
-            .select('plan_id, has_ai_addon, plans(*)')
+            .select('plan_id, has_ai_addon, trial_ends_at, plans(*)')
             .eq('id', brandId)
             .maybeSingle(),
           supabase.rpc('get_monthly_order_count', { p_brand_id: brandId }),
@@ -63,7 +63,11 @@ export function usePlan(manualBrandId = null) {
         }
 
         const planData = brand.plans;
-        setPlan({ ...planData, has_ai_addon: brand.has_ai_addon });
+        setPlan({ 
+          ...planData, 
+          has_ai_addon: brand.has_ai_addon,
+          trial_ends_at: brand.trial_ends_at 
+        });
 
         // 2. Get plan features
         const { data: featureRows } = await supabase
@@ -88,9 +92,17 @@ export function usePlan(manualBrandId = null) {
   }, [brandId, manualBrandId]);
 
   /**
-   * can('feature_key') — returns true if the plan includes the feature.
+   * isTrialActive — returns true if the current date is before trial_ends_at.
+   */
+  const isTrialActive = plan?.trial_ends_at ? new Date(plan.trial_ends_at) > new Date() : false;
+
+  /**
+   * can('feature_key') — returns true if the plan includes the feature or trial is active.
    */
   const can = (featureKey) => {
+    // REGLA DE ORO: Si la prueba está activa, acceso total (Reverse Trial)
+    if (isTrialActive) return true;
+    
     if (!plan) return false;
     if (plan.is_custom_pricing) return true;
     return features[featureKey] ?? false;
@@ -100,6 +112,7 @@ export function usePlan(manualBrandId = null) {
    * withinLimit('max_products', currentCount) — checks count-based limits.
    */
   const withinLimit = (limitKey, currentCount) => {
+    if (isTrialActive) return true;
     if (!plan) return true;
     if (plan.is_custom_pricing) return true;
     const limit = plan[limitKey];
@@ -107,8 +120,8 @@ export function usePlan(manualBrandId = null) {
     return currentCount < limit;
   };
 
-  // Order limit logic: Allow unlimited if null, undefined, or -1.
-  const isWithinOrderLimit = (plan?.max_orders_per_month === null || plan?.max_orders_per_month === undefined || plan?.max_orders_per_month === -1)
+  // Order limit logic: Allow unlimited if null, undefined, -1, or trial is active.
+  const isWithinOrderLimit = isTrialActive || (plan?.max_orders_per_month === null || plan?.max_orders_per_month === undefined || plan?.max_orders_per_month === -1)
     ? true
     : ordersThisMonth < plan.max_orders_per_month;
 
@@ -121,13 +134,15 @@ export function usePlan(manualBrandId = null) {
     ordersThisMonth,
     productsCount,
     isWithinOrderLimit,
-    isWithinProductLimit: (plan?.max_products === null || plan?.max_products === undefined || plan?.max_products === -1)
+    isWithinProductLimit: isTrialActive || (plan?.max_products === null || plan?.max_products === undefined || plan?.max_products === -1)
       ? true
       : productsCount < plan.max_products,
     hasAiAddon: plan?.has_ai_addon ?? false,
-    maxOrders: plan?.max_orders_per_month || null,
+    isTrialActive,
+    trialEndsAt: plan?.trial_ends_at || null,
     planName: plan?.name || 'Emprendedor',
     planSlug: plan?.slug || 'emprendedor',
+    maxOrders: plan?.max_orders_per_month || null,
     maxProducts: plan?.max_products ?? null,
     maxCategories: plan?.max_categories ?? null,
     maxAdmins: plan?.max_admins ?? 1,
