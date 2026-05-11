@@ -21,6 +21,7 @@ export function usePlan(manualBrandId = null) {
   const [plan, setPlan] = useState(null);
   const [features, setFeatures] = useState({});
   const [ordersThisMonth, setOrdersThisMonth] = useState(0);
+  const [productsCount, setProductsCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,19 +35,27 @@ export function usePlan(manualBrandId = null) {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // 1. Get brand's plan and order count in parallel
-        const [brandRes, orderCountRes] = await Promise.all([
+        // 1. Get brand's plan, order count, and product count in parallel
+        const [brandRes, orderCountRes, productCountRes] = await Promise.all([
           supabase
             .from('brands')
             .select('plan_id, has_ai_addon, plans(*)')
             .eq('id', brandId)
             .maybeSingle(),
-          supabase.rpc('get_monthly_order_count', { p_brand_id: brandId })
+          supabase.rpc('get_monthly_order_count', { p_brand_id: brandId }),
+          supabase
+            .from('products')
+            .select('id', { count: 'exact', head: true })
+            .eq('brand_id', brandId)
+            .eq('is_addon', false)
         ]);
 
         const brand = brandRes.data;
         const orderCount = orderCountRes.data || 0;
+        const productCount = productCountRes.count || 0;
+
         setOrdersThisMonth(orderCount);
+        setProductsCount(productCount);
 
         if (!brand?.plans) { 
           setLoading(false); 
@@ -110,7 +119,11 @@ export function usePlan(manualBrandId = null) {
     withinLimit,
     loading,
     ordersThisMonth,
+    productsCount,
     isWithinOrderLimit,
+    isWithinProductLimit: (plan?.max_products === null || plan?.max_products === undefined || plan?.max_products === -1)
+      ? true
+      : productsCount < plan.max_products,
     hasAiAddon: plan?.has_ai_addon ?? false,
     maxOrders: plan?.max_orders_per_month || null,
     planName: plan?.name || 'Emprendedor',

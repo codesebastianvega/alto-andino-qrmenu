@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useAdminProducts } from '../hooks/useAdminProducts';
 import { useCategories } from '../hooks/useCategories';
 import { useAuth } from '../context/AuthContext';
@@ -85,7 +86,7 @@ export default function AdminProducts() {
   }, [activeLocationId]);
 
   const { activePlan } = useAuth();
-  const { withinLimit } = usePlan();
+  const { withinLimit, isWithinProductLimit, planName } = usePlan();
   const { recipes, fetchRecipes } = useAdminRecipes();
   const { modifierGroups, fetchModifierGroups } = useAdminModifierGroups(activeLocationId);
   const { allergens, loading: loadingAllergens } = useAllergens();
@@ -225,7 +226,7 @@ export default function AdminProducts() {
     );
   }
 
-  const isAtLimit = !withinLimit('max_products', products.length);
+  const isAtLimit = !isWithinProductLimit;
 
   const filtered = products.filter(p => {
     if (p.is_addon) return false;
@@ -426,6 +427,32 @@ export default function AdminProducts() {
           </PrimaryButton>
         </div>
       </PageHeader>
+
+      {/* Product Limit Banner */}
+      {!isWithinProductLimit && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-orange-100 rounded-[2rem] p-6 mb-2 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="flex items-center gap-4 text-center sm:text-left flex-col sm:flex-row">
+            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm text-orange-500 shrink-0">
+              <AlertTriangle size={24} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">
+                Límite de productos alcanzado
+              </h3>
+              <p className="text-xs text-gray-600 mt-0.5">
+                Has alcanzado el límite de productos de tu plan <span className="font-bold text-orange-600 uppercase">{planName}</span>. 
+                Mejora tu plan para seguir expandiendo tu menú.
+              </p>
+            </div>
+          </div>
+          <Link 
+            to="/admin/settings?tab=plan"
+            className="px-6 py-2.5 bg-gray-900 text-white text-[13px] font-bold rounded-xl hover:bg-gray-800 transition-all shadow-md shrink-0"
+          >
+            Ver Planes
+          </Link>
+        </div>
+      )}
 
       <div className="flex flex-col gap-4 bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-4">
