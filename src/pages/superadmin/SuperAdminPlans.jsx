@@ -44,7 +44,10 @@ export default function SuperAdminPlans() {
           description: editingPlan.description,
           is_highlighted: editingPlan.is_highlighted,
           cta_text: editingPlan.cta_text,
-          max_orders_per_month: editingPlan.max_orders_per_month
+          max_orders_per_month: editingPlan.max_orders_per_month || null,
+          max_products: editingPlan.max_products || null,
+          max_categories: editingPlan.max_categories || null,
+          max_admins: editingPlan.max_admins || null,
         })
         .eq('id', editingPlan.id);
       
@@ -184,10 +187,22 @@ export default function SuperAdminPlans() {
                   </div>
                 )}
                 {!isEditing && (
-                  <div className="mt-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    {plan.max_orders_per_month 
-                      ? `Límite: ${plan.max_orders_per_month.toLocaleString()} pedidos/mes` 
-                      : 'Pedidos Ilimitados'}
+                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                      {plan.max_orders_per_month ? `${plan.max_orders_per_month.toLocaleString()} pedidos/mes` : '∞ pedidos'}
+                    </span>
+                    <span className="text-xs text-gray-300">·</span>
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                      {plan.max_products ? `${plan.max_products} productos` : '∞ productos'}
+                    </span>
+                    <span className="text-xs text-gray-300">·</span>
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                      {plan.max_categories ? `${plan.max_categories} categ.` : '∞ categ.'}
+                    </span>
+                    <span className="text-xs text-gray-300">·</span>
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                      {plan.max_admins && plan.max_admins > 0 ? `${plan.max_admins} admins` : '∞ admins'}
+                    </span>
                   </div>
                 )}
               </div>
@@ -213,15 +228,47 @@ export default function SuperAdminPlans() {
                       className="border border-gray-200 rounded px-3 py-1.5 w-full bg-white"
                     />
                   </div>
-                  <div>
-                    <span className="block text-gray-600 mb-1 text-xs uppercase font-bold">Límite de Pedidos / Mes:</span>
-                    <input
-                      type="number"
-                      placeholder="Ej: 500 (0 = Ilimitado)"
-                      value={currentData.max_orders_per_month || ''}
-                      onChange={(e) => setEditingPlan({ ...editingPlan, max_orders_per_month: e.target.value ? Number(e.target.value) : null })}
-                      className="border border-gray-200 rounded px-3 py-1.5 w-full bg-white"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <span className="block text-gray-600 mb-1 text-xs uppercase font-bold">Pedidos / Mes <span className="text-gray-400 normal-case font-normal">(vacío = ∞)</span></span>
+                      <input
+                        type="number"
+                        placeholder="Ej: 800"
+                        value={currentData.max_orders_per_month || ''}
+                        onChange={(e) => setEditingPlan({ ...editingPlan, max_orders_per_month: e.target.value ? Number(e.target.value) : null })}
+                        className="border border-gray-200 rounded px-3 py-1.5 w-full bg-white text-sm"
+                      />
+                    </div>
+                    <div>
+                      <span className="block text-gray-600 mb-1 text-xs uppercase font-bold">Productos <span className="text-gray-400 normal-case font-normal">(vacío = ∞)</span></span>
+                      <input
+                        type="number"
+                        placeholder="Ej: 50"
+                        value={currentData.max_products || ''}
+                        onChange={(e) => setEditingPlan({ ...editingPlan, max_products: e.target.value ? Number(e.target.value) : null })}
+                        className="border border-gray-200 rounded px-3 py-1.5 w-full bg-white text-sm"
+                      />
+                    </div>
+                    <div>
+                      <span className="block text-gray-600 mb-1 text-xs uppercase font-bold">Categorías <span className="text-gray-400 normal-case font-normal">(vacío = ∞)</span></span>
+                      <input
+                        type="number"
+                        placeholder="Ej: 15"
+                        value={currentData.max_categories || ''}
+                        onChange={(e) => setEditingPlan({ ...editingPlan, max_categories: e.target.value ? Number(e.target.value) : null })}
+                        className="border border-gray-200 rounded px-3 py-1.5 w-full bg-white text-sm"
+                      />
+                    </div>
+                    <div>
+                      <span className="block text-gray-600 mb-1 text-xs uppercase font-bold">Admins <span className="text-gray-400 normal-case font-normal">(vacío = ∞)</span></span>
+                      <input
+                        type="number"
+                        placeholder="Ej: 3"
+                        value={currentData.max_admins || ''}
+                        onChange={(e) => setEditingPlan({ ...editingPlan, max_admins: e.target.value ? Number(e.target.value) : null })}
+                        className="border border-gray-200 rounded px-3 py-1.5 w-full bg-white text-sm"
+                      />
+                    </div>
                   </div>
                 </div>
               )}

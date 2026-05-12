@@ -66,6 +66,7 @@ export const AuthProvider = ({ children }) => {
         .from('brands')
         .select(`
           id, name, slug, logo_url, business_type, plan_id, onboarding_completed,
+          trial_ends_at, has_ai_addon,
           plans (name),
           restaurant_settings (primary_color)
         `)
@@ -88,6 +89,7 @@ export const AuthProvider = ({ children }) => {
             .from('brands')
             .select(`
               id, name, slug, logo_url, business_type, plan_id, onboarding_completed,
+              trial_ends_at, has_ai_addon,
               plans (name),
               restaurant_settings (primary_color)
             `)
@@ -132,13 +134,26 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const initialUser = session?.user ?? null;
-      setUser(initialUser);
-      if (initialUser) fetchProfile(initialUser.id);
-      else setLoading(false);
-    });
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const initialUser = session?.user ?? null;
+        setUser(initialUser);
+        if (initialUser) {
+          await fetchProfile(initialUser.id);
+        } else {
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Initial session check error:', err);
+        setLoading(false);
+      }
+    };
 
+    checkSession();
+  }, [fetchProfile]);
+
+  useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const newUser = session?.user ?? null;
       const prevUser = currentUserRef.current;

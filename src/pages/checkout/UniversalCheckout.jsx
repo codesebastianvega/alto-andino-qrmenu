@@ -18,6 +18,7 @@ import {
   Phone,
   Globe
 } from 'lucide-react';
+import { usePlan } from '../../hooks/usePlan';
 
 const PLAN_DATA = {
   emprendedor: {
@@ -76,12 +77,13 @@ export default function UniversalCheckout({ onSelectPage }) {
   const navigate = useNavigate();
   const { activeBrand, profile, user: authUser } = useAuth();
   const { restaurantSettings } = useMenuData();
+  const { startTrial } = usePlan();
   
   // Robust plan detection
   const planId = searchParams.get('plan') || new URLSearchParams(window.location.search).get('plan') || 'profesional';
   const plan = PLAN_DATA[planId] || PLAN_DATA.profesional;
 
-  const [selectedMethod, setSelectedMethod] = useState('whatsapp'); // whatsapp, card
+  const [selectedMethod, setSelectedMethod] = useState('trial'); // trial, whatsapp, card
   const [step, setStep] = useState('form'); // form, processing, success
   const [processingStatus, setProcessingStatus] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -133,17 +135,24 @@ export default function UniversalCheckout({ onSelectPage }) {
     setStep('processing');
     
     try {
-      const statuses = [
-        'Validando información del negocio...',
-        'Cifrando datos de contacto...',
-        'Configurando privilegios del Plan ' + plan.name + '...',
-        'Preparando entorno administrativo...',
-        '¡Todo listo!'
-      ];
-      
-      for (const status of statuses) {
-        setProcessingStatus(status);
-        await new Promise(resolve => setTimeout(resolve, 800));
+      if (selectedMethod === 'trial') {
+        setProcessingStatus('Activando tu periodo de prueba de 21 días...');
+        const { error } = await startTrial();
+        if (error) throw error;
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      } else {
+        const statuses = [
+          'Validando información del negocio...',
+          'Cifrando datos de contacto...',
+          'Configurando privilegios del Plan ' + plan.name + '...',
+          'Preparando entorno administrativo...',
+          '¡Todo listo!'
+        ];
+        
+        for (const status of statuses) {
+          setProcessingStatus(status);
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
       }
       setStep('success');
     } catch (err) {
@@ -312,20 +321,20 @@ export default function UniversalCheckout({ onSelectPage }) {
 
                   <div className="mb-12">
                     <h3 className="text-xs font-black uppercase tracking-widest text-white/40 mb-4 ml-1">Método de Activación</h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <button 
+                        onClick={() => setSelectedMethod('trial')}
+                        className={`flex flex-col items-center gap-3 p-5 rounded-2xl border transition-all ${selectedMethod === 'trial' ? 'bg-brand-primary/10 border-brand-primary text-brand-primary shadow-lg shadow-brand-primary/10' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/[0.08]'}`}
+                      >
+                        <Zap className="w-8 h-8" />
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-center">Prueba Gratis (21 Días)</span>
+                      </button>
                       <button 
                         onClick={() => setSelectedMethod('whatsapp')}
                         className={`flex flex-col items-center gap-3 p-5 rounded-2xl border transition-all ${selectedMethod === 'whatsapp' ? 'bg-brand-primary/10 border-brand-primary text-brand-primary shadow-lg shadow-brand-primary/10' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/[0.08]'}`}
                       >
                         <Icon icon="logos:whatsapp-icon" className="w-8 h-8" />
-                        <span className="text-[11px] font-bold uppercase tracking-widest">WhatsApp</span>
-                      </button>
-                      <button 
-                        disabled
-                        className="flex flex-col items-center gap-3 p-5 rounded-2xl border border-white/5 bg-white/[0.02] text-white/20 cursor-not-allowed opacity-50"
-                      >
-                        <Icon icon="logos:mastercard" className="w-8 h-8 grayscale" />
-                        <span className="text-[11px] font-bold uppercase tracking-widest">Tarjeta (Próximamente)</span>
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-center">Activar Plan Pago</span>
                       </button>
                     </div>
                   </div>
@@ -340,7 +349,7 @@ export default function UniversalCheckout({ onSelectPage }) {
                     ) : (
                       <>
                         <Zap className="w-6 h-6 fill-current" />
-                        Activar Plan {plan.name}
+                        {selectedMethod === 'trial' ? 'Comenzar Prueba Gratis' : `Activar Plan ${plan.name}`}
                       </>
                     )}
                   </button>
@@ -398,8 +407,9 @@ export default function UniversalCheckout({ onSelectPage }) {
               <div className="space-y-4 pt-6">
                 <button 
                   onClick={() => {
-                    // Si estamos en modo hash, usar el hash
-                    window.location.hash = '#admin';
+                    // Redirect to the actual brand dashboard if available
+                    const slug = activeBrand?.slug || profile?.brand_slug || '';
+                    window.location.href = slug ? `/admin/${slug}` : '/admin';
                   }}
                   className="w-full py-5 bg-white text-black rounded-[24px] font-black text-lg flex items-center justify-center gap-3 hover:bg-brand-primary transition-colors group"
                 >

@@ -369,57 +369,23 @@ export default function App() {
   }, [isNewAdminPanel, isOnboardingView, activeBrand]);
 
 
-  if (authLoading || loadingBrand || (brand_slug && menuLoading)) {
-    return <LoadingScreen mode="splash" brandLogo={activeBrand?.logo_url || restaurantSettings?.logo_url} />;
-  }
+  // Render loading screen if still authenticating or loading critical brand data
+  const isGlobalLoading = authLoading || loadingBrand || (brand_slug && menuLoading);
 
-  // Si se especificó un slug pero no se encontró la marca
-  if (brand_slug && !activeBrand && !loadingBrand) {
+  // We use a small internal state to handle the fade-out duration
+  const [actuallyDone, setActuallyDone] = useState(false);
+  useEffect(() => {
+    if (!isGlobalLoading) {
+      const timer = setTimeout(() => setActuallyDone(true), 100);
+      return () => clearTimeout(timer);
+    } else {
+      setActuallyDone(false);
+    }
+  }, [isGlobalLoading]);
+
+  // If we specify a slug but the brand is missing after loading
+  if (!isGlobalLoading && brand_slug && !activeBrand) {
     return <Navigate to="/" replace />;
-  }
-
-  if (isOnboardingView) {
-    return (
-      <Suspense fallback={<LoadingScreen mode="splash" />}>
-        <div className="relative min-h-screen">
-          <AdminOnboarding />
-        </div>
-      </Suspense>
-    );
-  }
-
-  // Standalone Checkout View - Priority over Admin
-  if (currentHash.startsWith('#checkout')) {
-    return (
-      <Suspense fallback={<LoadingScreen mode="splash" />}>
-        <UniversalCheckout />
-      </Suspense>
-    );
-  }
-
-  if (isNewAdminPanel) {
-    return <AdminLayout />;
-  }
-
-  if (orderTrackingId) {
-    return (
-      <Suspense fallback={<LoadingScreen mode="skeleton" />}>
-        <OrderStatus orderId={orderTrackingId} />
-      </Suspense>
-    );
-  }
-
-
-  const hasFloatingCartBar = cart.items && cart.items.length > 0;
-
-  // ✅ Modo menú normal
-  if (isQr) {
-    const publicUrl = PUBLIC_URL || window.location.origin;
-    return (
-      <Suspense fallback={<div />}>
-        <QrPoster url={publicUrl} />
-      </Suspense>
-    );
   }
 
   return (
@@ -429,21 +395,75 @@ export default function App() {
         backgroundColor: restaurantSettings?.theme_background || "#F5F5F7"
       }}
     >
-      <AnimatePresence>
-        {showWelcome && (
-          <BrandWelcome 
-            brandName={activeLocation?.name || activeBrand?.name}
-            logoUrl={restaurantSettings?.logo_url}
-            bgUrl={homeSettings?.welcome_bg_img}
-            mesa={new URLSearchParams(window.location.search).get('mesa')}
-            onStart={handleStartExperience}
-          />
+      <AnimatePresence mode="wait">
+        {!actuallyDone && (
+          <motion.div
+            key="global-loader"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="fixed inset-0 z-[9999]"
+          >
+            <LoadingScreen 
+              mode="splash" 
+              brandLogo={activeBrand?.logo_url || restaurantSettings?.logo_url} 
+            />
+          </motion.div>
         )}
       </AnimatePresence>
 
-      {!isDemo && !isAuthView && brand_slug && brand_slug !== 'anonimo' && (
-        <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />
-      )}
+      {actuallyDone && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4 }}
+          className="contents"
+        >
+          {/* Standalone Views (Portal, Onboarding, Checkout) */}
+          {isOnboardingView && (
+            <div className="relative min-h-screen">
+              <AdminOnboarding />
+            </div>
+          )}
+
+          {currentHash.startsWith('#checkout') && (
+            <UniversalCheckout />
+          )}
+
+          {isNewAdminPanel && !isOnboardingView && (
+            <AdminLayout />
+          )}
+
+          {orderTrackingId && (
+            <Suspense fallback={<LoadingScreen mode="skeleton" />}>
+              <OrderStatus orderId={orderTrackingId} />
+            </Suspense>
+          )}
+
+          {/* Public Views */}
+          {isQr && (
+            <Suspense fallback={<div />}>
+              <QrPoster url={PUBLIC_URL || window.location.origin} />
+            </Suspense>
+          )}
+
+          {!isOnboardingView && !currentHash.startsWith('#checkout') && !isNewAdminPanel && !orderTrackingId && !isQr && (
+            <>
+              <AnimatePresence>
+                {showWelcome && (
+                  <BrandWelcome 
+                    brandName={activeLocation?.name || activeBrand?.name}
+                    logoUrl={restaurantSettings?.logo_url}
+                    bgUrl={homeSettings?.welcome_bg_img}
+                    mesa={new URLSearchParams(window.location.search).get('mesa')}
+                    onStart={handleStartExperience}
+                  />
+                )}
+              </AnimatePresence>
+
+              {!isDemo && !isAuthView && brand_slug && brand_slug !== 'anonimo' && (
+                <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />
+              )}
 
 
         {/* Si es vista Landing Y (no estamos en modo pedido O es un hash explícito #inicio) */}
@@ -547,36 +567,41 @@ export default function App() {
           </main>
         )}
 
-        {!isDemo && brand_slug && <BottomTabBar currentHash={currentHash} />}
+          {!isDemo && brand_slug && <BottomTabBar currentHash={currentHash} />}
 
-        {/* Barra flotante y Drawer del carrito */}
-        <Suspense fallback={<div />}>
-          {brand_slug && <FloatingCartBar items={cart.items} total={cart.total} onOpen={() => setOpen(true)} />}
-        </Suspense>
-        <Suspense fallback={<div />}>
-          <CartModal open={open} onClose={() => setOpen(false)} />
-        </Suspense>
+          {/* Barra flotante y Drawer del carrito */}
+          <Suspense fallback={<div />}>
+            {brand_slug && <FloatingCartBar items={cart.items} total={cart.total} onOpen={() => setOpen(true)} />}
+          </Suspense>
+          <Suspense fallback={<div />}>
+            <CartModal open={open} onClose={() => setOpen(false)} />
+          </Suspense>
 
-        <Suspense fallback={<div />}>
-          <CustomerSearch 
-            open={showPOSCustomerModal}
-            onClose={() => {
-              setShowPOSCustomerModal(false);
-              setHasDismissedCustomerModal(true);
-            }}
-            onSelect={handlePOSCustomerSelect}
-            brandId={activeBrand?.id}
-          />
-        </Suspense>
+          <Suspense fallback={<div />}>
+            <CustomerSearch 
+              open={showPOSCustomerModal}
+              onClose={() => {
+                setShowPOSCustomerModal(false);
+                setHasDismissedCustomerModal(true);
+              }}
+              onSelect={handlePOSCustomerSelect}
+              brandId={activeBrand?.id}
+            />
+          </Suspense>
 
-        <Suspense fallback={<div />}>
-          <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
-            <Suspense fallback={<div />}>
-              <DietaryGuide />
-            </Suspense>
-          </GuideModal>
-        </Suspense>
-        <Toast />
+          <Suspense fallback={<div />}>
+            <GuideModal open={openGuide} onClose={() => setOpenGuide(false)}>
+              <Suspense fallback={<div />}>
+                <DietaryGuide />
+              </Suspense>
+            </GuideModal>
+          </Suspense>
+        </>
+      )}
+        </motion.div>
+      )}
+
+      <Toast />
     </div>
   );
 }

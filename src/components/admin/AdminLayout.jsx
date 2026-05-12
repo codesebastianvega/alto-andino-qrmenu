@@ -995,6 +995,8 @@ export default function AdminLayout() {
             onClose={() => setShowPlanSelector(false)} 
             currentPlanSlug={activePlan?.slug}
             onSelectPage={handleSelectPage}
+            startTrial={startTrial}
+            isTrialActive={isTrialActive}
           />
         </div>
       </main>
