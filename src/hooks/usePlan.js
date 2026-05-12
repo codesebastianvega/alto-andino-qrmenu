@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useMenuData } from '../context/MenuDataContext';
@@ -71,7 +71,7 @@ export function usePlan(manualBrandId = null) {
         const [brandRes, orderCountRes, productCountRes] = await Promise.all([
           supabase
             .from('brands')
-            .select('plan_id, has_ai_addon, plans(*)')
+            .select('plan_id, has_ai_addon, trial_ends_at, plans(*)')
             .eq('id', brandId)
             .maybeSingle(),
           supabase.rpc('get_monthly_order_count', { p_brand_id: brandId }),
@@ -97,7 +97,8 @@ export function usePlan(manualBrandId = null) {
         const planData = brand.plans;
         setPlan({ 
           ...planData, 
-          has_ai_addon: brand.has_ai_addon
+          has_ai_addon: brand.has_ai_addon,
+          trial_ends_at: brand.trial_ends_at
         });
 
         // 2. Get plan features
@@ -125,7 +126,10 @@ export function usePlan(manualBrandId = null) {
   /**
    * isTrialActive — returns true if the current date is before trial_ends_at.
    */
-  const isTrialActive = false;
+  const isTrialActive = useMemo(() => {
+    if (!plan?.trial_ends_at) return false;
+    return new Date(plan.trial_ends_at) > new Date();
+  }, [plan?.trial_ends_at]);
 
   /**
    * can('feature_key') — returns true if the plan includes the feature or trial is active.
@@ -193,6 +197,27 @@ export function usePlan(manualBrandId = null) {
     maxProducts: plan?.max_products ?? null,
     maxCategories: plan?.max_categories ?? null,
     maxAdmins: plan?.max_admins ?? 1,
+    /**
+     * startTrial — activates a 21-day trial for the current brand.
+     */
+    startTrial: async () => {
+      if (!brandId) return { error: 'No brand active' };
+      
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 21);
+
+      const { error } = await supabase
+        .from('brands')
+        .update({ trial_ends_at: trialEndsAt.toISOString() })
+        .eq('id', brandId);
+
+      if (!error) {
+        // Refresh plan data
+        setPlan(prev => prev ? { ...prev, trial_ends_at: trialEndsAt.toISOString() } : null);
+      }
+
+      return { error };
+    }
   };
 }
 

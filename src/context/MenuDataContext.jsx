@@ -41,6 +41,10 @@ export const MenuDataProvider = ({ children }) => {
 
   // Fetch menu data for a given brand
   const fetchMenuData = useCallback(async (brandId) => {
+    if (!brandId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     // Clear old state immediately to avoid "ghost" data from other brands
     setAllCategories([]);
@@ -305,13 +309,21 @@ export const MenuDataProvider = ({ children }) => {
   const lastFetchedBrandRef = React.useRef(null);
   
   useEffect(() => {
+    let isMounted = true;
     if (loadingBrand) return; 
     
     // Solo disparar fetch si el brandId cambió (o si es la primera carga)
     if (activeBrandId === lastFetchedBrandRef.current) return;
 
     lastFetchedBrandRef.current = activeBrandId;
-    fetchMenuData(activeBrandId);
+    
+    const doFetch = async () => {
+      await fetchMenuData(activeBrandId);
+    };
+
+    doFetch();
+
+    return () => { isMounted = false; };
   }, [activeBrandId, loadingBrand, fetchMenuData]);
 
   // Real-time menu data updates

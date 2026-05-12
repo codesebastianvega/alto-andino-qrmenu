@@ -40,6 +40,7 @@ const AdminOnboarding = lazy(() => import("./pages/AdminOnboarding"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/auth/RegisterPage"));
 const GlobalPortal = lazy(() => import("./components/admin/GlobalPortal"));
+const UniversalCheckout = lazy(() => import("./pages/checkout/UniversalCheckout"));
 
 // Legal Pages
 const TermsPage = lazy(() => import("./pages/legal/TermsPage"));
@@ -80,11 +81,7 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState("todos");
   const location = useLocation();
   const { activeLocation } = useAppLocation();
-  const [currentHash, setCurrentHash] = useState(location.hash);
-
-  useEffect(() => {
-    setCurrentHash(location.hash);
-  }, [location.hash]);
+  const currentHash = location.hash;
 
   const [query, setQuery] = useState("");
   const cart = useCart();
@@ -137,7 +134,8 @@ export default function App() {
     currentHash === '#privacidad' ||
     currentHash === '#cookies' ||
     currentHash === '#nosotros' ||
-    currentHash === '#contacto';
+    currentHash === '#contacto' ||
+    currentHash.startsWith('#checkout');
 
   const isAuthView = currentHash === "#login" || 
                      currentHash === "#registro" || 
@@ -333,18 +331,27 @@ export default function App() {
     
     // Ensure slug in URL matches intended brand ONLY if we are in a brand context or admin
     const shouldForceSlug = (brand_slug || isNewAdminPanel) && activeBrand?.slug;
+    const currentPath = url.pathname;
+    const targetPath = shouldForceSlug ? `/${activeBrand.slug}/` : currentPath;
 
-    if (shouldForceSlug) {
-      url.pathname = `/${activeBrand.slug}/`;
-    }
+    // Check if anything actually needs to change before calling replaceState
+    const currentCat = url.searchParams.get("cat") || "todos";
+    const needsSlugUpdate = shouldForceSlug && currentPath !== targetPath;
+    const needsCatUpdate = selectedCategory !== currentCat;
 
-    if (selectedCategory === "todos") {
-      url.searchParams.delete("cat");
-    } else {
-      url.searchParams.set("cat", selectedCategory);
+    if (needsSlugUpdate || needsCatUpdate) {
+      if (shouldForceSlug) {
+        url.pathname = targetPath;
+      }
+
+      if (selectedCategory === "todos") {
+        url.searchParams.delete("cat");
+      } else {
+        url.searchParams.set("cat", selectedCategory);
+      }
+      
+      window.history.replaceState(null, "", url);
     }
-    
-    window.history.replaceState(null, "", url);
   }, [FEATURE_TABS, selectedCategory, activeBrand, isNewAdminPanel, brand_slug]);
 
   // Dynamic counts are now handled internally by ProductLists component
@@ -377,6 +384,15 @@ export default function App() {
         <div className="relative min-h-screen">
           <AdminOnboarding />
         </div>
+      </Suspense>
+    );
+  }
+
+  // Standalone Checkout View - Priority over Admin
+  if (currentHash.startsWith('#checkout')) {
+    return (
+      <Suspense fallback={<LoadingScreen mode="splash" />}>
+        <UniversalCheckout />
       </Suspense>
     );
   }

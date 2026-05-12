@@ -208,7 +208,7 @@ export default function AdminLayout() {
   };
 
   const { user: authUser, profile, loading: authLoading, activeBrand, activePlan } = useAuth();
-  const { can, loading: planLoading } = usePlan();
+  const { can, loading: planLoading, isTrialActive, trialEndsAt, startTrial } = usePlan();
   const { activeLocationId, activeLocation, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id || profile?.brand_id;
   const [user, setUser] = useState(null);
@@ -244,6 +244,7 @@ export default function AdminLayout() {
       return;
     }
     setShowUpgradeModal(false);
+    setShowPlanSelector(false); // Close plan selector if it was open
     setCurrentPage(pageId);
   };
 
@@ -789,6 +790,47 @@ export default function AdminLayout() {
               </>
             )}
           </div>
+          
+          {/* Trial / Subscription Banner */}
+          {!planLoading && (
+            <div className={`px-4 mb-4 ${isCollapsed ? 'hidden' : ''}`}>
+              {isTrialActive ? (
+                <div className="p-4 rounded-2xl bg-brand-primary/10 border border-brand-primary/20 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-2 opacity-20">
+                    <Icons.Strategy />
+                  </div>
+                  <div className="relative z-10">
+                    <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] mb-1">Prueba Activa</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-xl font-black text-white">
+                        {Math.max(0, Math.ceil((new Date(trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24)))}
+                      </span>
+                      <span className="text-[10px] font-bold text-white/40 uppercase">días restantes</span>
+                    </div>
+                    <div className="mt-3 h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(Math.max(0, Math.ceil((new Date(trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24))) / 21) * 100}%` }}
+                        className="h-full bg-brand-primary"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : !activePlan && (
+                <button 
+                  onClick={async () => {
+                    const { error } = await startTrial();
+                    if (error) alert('Error al iniciar prueba: ' + error.message);
+                  }}
+                  className="w-full p-4 rounded-2xl bg-gradient-to-br from-brand-primary to-brand-secondary text-black hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-brand-primary/20 flex flex-col items-center gap-1 group"
+                >
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">Acceso Total Gratis</span>
+                  <span className="text-xs font-bold">Iniciar Prueba 21 Días</span>
+                  <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500 pointer-events-none" />
+                </button>
+              )}
+            </div>
+          )}
 
           {/* User Section / Collapse toggle */}
           <div className="mt-auto border-t border-white/5 bg-black/10">
@@ -929,7 +971,6 @@ export default function AdminLayout() {
           { currentPage === 'operations'  && <AdminOperations /> }
           { currentPage === 'business_profile' && <AdminBusinessProfile /> }
           { currentPage === 'profile'     && <AdminProfile /> }
-          { currentPage === 'checkout'    && <UniversalCheckout /> }
 
           {/* Feature Lock Overlay */}
           <LockOverlay 
@@ -953,6 +994,7 @@ export default function AdminLayout() {
             isOpen={showPlanSelector} 
             onClose={() => setShowPlanSelector(false)} 
             currentPlanSlug={activePlan?.slug}
+            onSelectPage={handleSelectPage}
           />
         </div>
       </main>

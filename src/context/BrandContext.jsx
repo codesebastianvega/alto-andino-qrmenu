@@ -13,6 +13,9 @@ export const BrandProvider = ({ children }) => {
   const location = useLocation();
 
   const resolveCurrentBrand = useCallback(async () => {
+    // Evitar múltiples resoluciones simultáneas
+    if (loadingBrand && brand) return; 
+
     try {
       setLoadingBrand(true);
       // 1. Resolvemos por slug de URL si está presente
@@ -66,16 +69,19 @@ export const BrandProvider = ({ children }) => {
           .single();
 
         if (!error && brandData) {
-          setBrand(brandData);
+          // Solo actualizar si la marca es diferente para evitar loops de renderizado
+          if (brand?.id !== brandData.id) {
+            setBrand(brandData);
 
-          if (brandData.plan_id) {
-            const { data: featuresData } = await supabase
-              .from('plan_features')
-              .select('*')
-              .eq('plan_id', brandData.plan_id)
-              .eq('is_included', true);
-            
-            setFeatures(featuresData || []);
+            if (brandData.plan_id) {
+              const { data: featuresData } = await supabase
+                .from('plan_features')
+                .select('*')
+                .eq('plan_id', brandData.plan_id)
+                .eq('is_included', true);
+              
+              setFeatures(featuresData || []);
+            }
           }
         }
       } else {
@@ -89,9 +95,12 @@ export const BrandProvider = ({ children }) => {
     }
   }, [brand_slug, location.hash, location.search, navigate]);
 
+  // 4. Estabilidad: Solo re-resolver si el slug cambia o el modo admin cambia
+  const isAdmin = location.hash.includes('#admin');
+  
   useEffect(() => {
     resolveCurrentBrand();
-  }, [resolveCurrentBrand]);
+  }, [brand_slug, isAdmin]); // Reducimos dependencias al mínimo necesario
 
   const hasFeature = (featureKey) => {
     if (!features || features.length === 0) return false;
