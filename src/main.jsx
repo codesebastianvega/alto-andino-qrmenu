@@ -25,6 +25,7 @@ const SuperAdminSettings = React.lazy(() => import("./pages/superadmin/SuperAdmi
 const LoginPage = React.lazy(() => import("./pages/auth/LoginPage.jsx"));
 const RegisterPage = React.lazy(() => import("./pages/auth/RegisterPage.jsx"));
 const CompleteProfilePage = React.lazy(() => import("./pages/auth/CompleteProfilePage.jsx"));
+const UniversalCheckout = React.lazy(() => import("./pages/checkout/UniversalCheckout.jsx"));
 
 ReactDOM.createRoot(document.getElementById("root")).render(
     <ErrorBoundary>
@@ -40,6 +41,22 @@ ReactDOM.createRoot(document.getElementById("root")).render(
                     <MenuDataProvider>
                       <CartProvider>
                         <App />
+                      </CartProvider>
+                    </MenuDataProvider>
+                  </BrandProvider>
+                }
+              />
+
+              {/* Global Checkout Route */}
+              <Route
+                path="/checkout"
+                element={
+                  <BrandProvider>
+                    <MenuDataProvider>
+                      <CartProvider>
+                        <React.Suspense fallback={<div />}>
+                          <UniversalCheckout />
+                        </React.Suspense>
                       </CartProvider>
                     </MenuDataProvider>
                   </BrandProvider>

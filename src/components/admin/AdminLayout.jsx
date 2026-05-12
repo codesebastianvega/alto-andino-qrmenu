@@ -28,6 +28,7 @@ import ContextBreadcrumb from './ContextBreadcrumb';
 import { Badge } from './ui';
 import LockOverlay from './LockOverlay';
 import UpgradeModal from './UpgradeModal';
+import UniversalCheckout from '../../pages/checkout/UniversalCheckout';
 import { useMenuData } from '../../context/MenuDataContext';
 import { usePlan } from '../../hooks/usePlan';
 import Toast from '../Toast';
@@ -198,7 +199,12 @@ export default function AdminLayout() {
   // Read page from URL or default to orders
   const getInitialPage = () => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('admin_page') || 'orders';
+    const adminPageParam = params.get('admin_page');
+    if (adminPageParam) return adminPageParam;
+    
+    if (window.location.pathname.includes('/checkout')) return 'checkout';
+    
+    return 'orders';
   };
 
   const { user: authUser, profile, loading: authLoading, activeBrand, activePlan } = useAuth();
@@ -923,6 +929,7 @@ export default function AdminLayout() {
           { currentPage === 'operations'  && <AdminOperations /> }
           { currentPage === 'business_profile' && <AdminBusinessProfile /> }
           { currentPage === 'profile'     && <AdminProfile /> }
+          { currentPage === 'checkout'    && <UniversalCheckout /> }
 
           {/* Feature Lock Overlay */}
           <LockOverlay 
