@@ -59,7 +59,7 @@ const PLAN_CARDS = [
     ]
   },
   {
-    id: 'elite',
+    id: 'premium',
     name: 'Premium',
     price: '249.900',
     color: 'from-purple-700/20 to-purple-900/20',

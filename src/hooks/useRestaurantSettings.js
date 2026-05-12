@@ -12,15 +12,12 @@ export const useRestaurantSettings = () => {
     const fetchSettings = async () => {
       try {
         setLoading(true);
-        let query = supabase
+        const { data, error } = await supabase
           .from('restaurant_settings')
-          .select('*');
-
-        if (activeBrandId) {
-          query = query.eq('brand_id', activeBrandId);
-        }
-
-        const { data, error } = await query
+          .select('*')
+          .eq('brand_id', activeBrandId)
+          .order('location_id', { ascending: true, nullsFirst: true })
+          .limit(1)
           .maybeSingle();
 
         if (error && error.code !== 'PGRST116') throw error;

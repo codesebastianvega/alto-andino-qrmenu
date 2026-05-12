@@ -202,7 +202,7 @@ export default function AdminLayout() {
   };
 
   const { user: authUser, profile, loading: authLoading, activeBrand, activePlan } = useAuth();
-  const { can } = usePlan();
+  const { can, loading: planLoading } = usePlan();
   const { activeLocationId, activeLocation, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id || profile?.brand_id;
   const [user, setUser] = useState(null);
@@ -218,16 +218,20 @@ export default function AdminLayout() {
   const { restaurantSettings } = useMenuData();
 
   useEffect(() => {
-    // Check if current page is locked on load
+    // Check if current page is locked on load (Wait for plan loading)
+    if (planLoading) return;
+
     const allItems = [...ESTRATEGIA_ITEMS, ...OPERACION_ITEMS, ...CARTA_ITEMS, ...PROD_ITEMS, ...ADMIN_ITEMS, ...WEB_ITEMS];
     const currentItem = allItems.find(item => item.id === currentPage);
     if (currentItem?.feature && !can(currentItem.feature)) {
       setLockedFeatureName(currentItem.label);
       setShowUpgradeModal(true);
     }
-  }, [currentPage, can]);
+  }, [currentPage, can, planLoading]);
 
   const handleSelectPage = (pageId, label, featureKey) => {
+    if (planLoading) return; // Prevent navigation while checking permissions
+
     if (featureKey && !can(featureKey)) {
       setLockedFeatureName(label);
       setShowUpgradeModal(true);
@@ -407,7 +411,7 @@ export default function AdminLayout() {
           {allowed.map((item) => {
             const Icon = Icons[item.id.charAt(0).toUpperCase() + item.id.slice(1)] || item.Icon;
             const isActive = current === item.id;
-            const isLocked = item.feature && !can(item.feature);
+            const isLocked = !planLoading && item.feature && !can(item.feature);
             const hasAlert = missingAlerts[item.id] && !isActive; // Hide alert dot if we are already viewing the tab
             
             return (
@@ -517,7 +521,7 @@ export default function AdminLayout() {
                     currentPage === 'analytics' 
                     ? 'bg-white/[0.08] shadow-lg shadow-brand-primary/5' 
                     : 'bg-white/[0.02] hover:bg-white/[0.04]'
-                  } ${!can('advanced_analytics') && !isCollapsed ? 'opacity-70 grayscale-[0.4]' : ''}`}
+                  } ${!planLoading && !can('advanced_analytics') && !isCollapsed ? 'opacity-70 grayscale-[0.4]' : ''}`}
                 >
                   {/* --- PREMIUM GLASS NEURO ENVELOPE --- */}
                   <div className="absolute inset-0 backdrop-blur-xl pointer-events-none" />
@@ -598,7 +602,7 @@ export default function AdminLayout() {
                           }`}>
                             Inteligencia
                           </p>
-                          {!can('advanced_analytics') && (
+                          {!planLoading && !can('advanced_analytics') && (
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500/60 shrink-0">
                               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                             </svg>
@@ -666,13 +670,13 @@ export default function AdminLayout() {
                     currentPage === 'kitchen' 
                     ? 'bg-gradient-to-r from-orange-900/40 to-orange-950/40 border-orange-500/20 ring-1 ring-orange-500/20 shadow-lg shadow-orange-950/40' 
                     : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                  } ${!can('kitchen_display') ? 'opacity-70 grayscale-[0.4]' : ''}`}
+                  } ${!planLoading && !can('kitchen_display') ? 'opacity-70 grayscale-[0.4]' : ''}`}
                 >
                   <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'kitchen' ? 'bg-orange-400/20 text-orange-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
                       <div className="relative">
                         <Icons.Kitchen />
-                        {can('kitchen_display') && (newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-ping" />}
+                        {!planLoading && can('kitchen_display') && (newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-ping" />}
                       </div>
                     </div>
                     {!isCollapsed && (
@@ -680,7 +684,7 @@ export default function AdminLayout() {
                         <div>
                           <div className="flex items-center gap-1.5">
                             <p className={`text-[13px] font-bold leading-none ${currentPage === 'kitchen' ? 'text-white' : 'text-white/60'}`}>Cocina</p>
-                            {!can('kitchen_display') && (
+                            {!planLoading && !can('kitchen_display') && (
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                               </svg>
@@ -688,7 +692,7 @@ export default function AdminLayout() {
                           </div>
                           <p className="text-[9px] text-white/30 font-medium mt-1">Pantalla de Producción</p>
                         </div>
-                        {can('kitchen_display') && (newOrdersCount > 0 || preparingOrdersCount > 0) && (
+                        {!planLoading && can('kitchen_display') && (newOrdersCount > 0 || preparingOrdersCount > 0) && (
                           <div className="flex items-center gap-1">
                             {newOrdersCount > 0 && (
                               <motion.span 
@@ -1116,7 +1120,7 @@ export default function AdminLayout() {
             >
               <div className="relative">
                 <Icons.Kitchen />
-                {(newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white" />}
+                {!planLoading && can('kitchen_display') && (newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white" />}
               </div>
               <span className="text-[10px] font-medium">Cocina</span>
             </button>

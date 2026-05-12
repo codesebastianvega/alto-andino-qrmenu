@@ -54,7 +54,13 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
     setLoadingSettings(true);
     try {
       const [settingsRes, brandRes] = await Promise.all([
-        supabase.from('restaurant_settings').select('*').eq('brand_id', activeBrand.id).maybeSingle(),
+        supabase
+          .from('restaurant_settings')
+          .select('*')
+          .eq('brand_id', activeBrand.id)
+          .order('location_id', { ascending: true, nullsFirst: true })
+          .limit(1)
+          .maybeSingle(),
         supabase.from('brands').select('name, logo_url').eq('id', activeBrand.id).single()
       ]);
 
