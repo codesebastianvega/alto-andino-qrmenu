@@ -3,6 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Check, X, Zap, ArrowRight, Clock, Users, Star } from 'lucide-react';
 
+const WHATSAPP_SUPPORT = '573222285900';
+const openWhatsApp = (msg) => {
+  window.open(`https://wa.me/${WHATSAPP_SUPPORT}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+};
+
+
 /* ── Global styles injected once ─────────────────────────────────── */
 const STYLES = `
 @keyframes aurora {
@@ -392,6 +398,7 @@ export default function UpgradeModal({ isOpen, onClose, currentPlanSlug, startTr
                         </div>
 
                         <button type="button"
+                          onClick={() => openWhatsApp('Hola, estoy interesado en el plan Enterprise de Aluna para mi restaurante. ¿Podrías darme más información?')}
                           className="w-full h-9 rounded-xl border border-amber-500/20 text-amber-400/80 hover:text-amber-300 hover:border-amber-400/30 hover:bg-amber-500/[0.05] text-xs font-semibold flex items-center justify-center gap-1.5 transition-all">
                           Contactar ventas <ArrowRight className="w-3.5 h-3.5" />
                         </button>
@@ -463,10 +470,11 @@ export default function UpgradeModal({ isOpen, onClose, currentPlanSlug, startTr
                             <span className="text-white/25 text-[10px]">/mes · a cualquier plan</span>
                           </div>
                           <button type="button"
-                            className="h-8 px-4 rounded-xl text-[11px] font-black text-black flex items-center gap-1.5 transition-all active:scale-[0.97] hover:opacity-90"
-                            style={{ background: 'linear-gradient(135deg,#4ade80,#22d3ee)' }}>
-                            Agregar ✨
-                          </button>
+                             onClick={() => openWhatsApp('Hola, quiero agregar el módulo de Aluna IA (+$49.900/mes) a mi plan actual. ¿Cómo lo activo?')}
+                             className="h-8 px-4 rounded-xl text-[11px] font-black text-black flex items-center gap-1.5 transition-all active:scale-[0.97] hover:opacity-90"
+                             style={{ background: 'linear-gradient(135deg,#4ade80,#22d3ee)' }}>
+                             Agregar ✨
+                           </button>
                         </div>
                       </div>
                     </motion.div>

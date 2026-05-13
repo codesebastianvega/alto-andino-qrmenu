@@ -32,6 +32,7 @@ import UniversalCheckout from '../../pages/checkout/UniversalCheckout';
 import { useMenuData } from '../../context/MenuDataContext';
 import { usePlan } from '../../hooks/usePlan';
 import Toast from '../Toast';
+import SupportFAB from './SupportFAB';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
 const Icons = {
@@ -791,74 +792,82 @@ export default function AdminLayout() {
             )}
           </div>
           
-          {/* Trial / Subscription Banner */}
-          {!planLoading && (
-            <div className={`px-4 mb-4 ${isCollapsed ? 'hidden' : ''}`}>
-              {isTrialActive ? (
-                <div className="p-4 rounded-2xl bg-brand-primary/10 border border-brand-primary/20 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-2 opacity-20">
-                    <Icons.Strategy />
+
+          {/* Bottom: Plan / Trial / Collapse */}
+          <div className="mt-auto border-t border-white/5 bg-black/10">
+
+            {/* Trial compact row */}
+            {!planLoading && isTrialActive && (() => {
+              const daysLeft = Math.max(0, Math.ceil((new Date(trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24)));
+              const pct = (daysLeft / 21) * 100;
+              return isCollapsed ? (
+                <div className="flex justify-center py-2">
+                  <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse" title={`Prueba: ${daysLeft} días`} />
+                </div>
+              ) : (
+                <div className="px-4 py-2.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[9px] font-black text-brand-primary uppercase tracking-[0.18em]">Prueba activa</span>
+                    <span className="text-[10px] font-bold text-white/60">{daysLeft} días</span>
                   </div>
-                  <div className="relative z-10">
-                    <p className="text-[10px] font-black text-brand-primary uppercase tracking-[0.2em] mb-1">Prueba Activa</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-xl font-black text-white">
-                        {Math.max(0, Math.ceil((new Date(trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24)))}
-                      </span>
-                      <span className="text-[10px] font-bold text-white/40 uppercase">días restantes</span>
-                    </div>
-                    <div className="mt-3 h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(Math.max(0, Math.ceil((new Date(trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24))) / 21) * 100}%` }}
-                        className="h-full bg-brand-primary"
-                      />
-                    </div>
+                  <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${pct}%` }}
+                      className="h-full bg-brand-primary rounded-full"
+                    />
                   </div>
                 </div>
-              ) : !activePlan && (
-                <button 
-                  onClick={async () => {
-                    const { error } = await startTrial();
-                    if (error) alert('Error al iniciar prueba: ' + error.message);
-                  }}
-                  className="w-full p-4 rounded-2xl bg-gradient-to-br from-brand-primary to-brand-secondary text-black hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-brand-primary/20 flex flex-col items-center gap-1 group"
-                >
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">Acceso Total Gratis</span>
-                  <span className="text-xs font-bold">Iniciar Prueba 21 Días</span>
-                  <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500 pointer-events-none" />
-                </button>
-              )}
-            </div>
-          )}
+              );
+            })()}
 
-          {/* User Section / Collapse toggle */}
-          <div className="mt-auto border-t border-white/5 bg-black/10">
+            {/* Trial start CTA (no plan, no active trial) */}
+            {!planLoading && !isTrialActive && !activePlan && !isCollapsed && (
               <button
-                onClick={() => {
-                  setShowPlanSelector(true);
+                onClick={async () => {
+                  const { error } = await startTrial();
+                  if (error) alert('Error al iniciar prueba: ' + error.message);
                 }}
-               className={`flex items-center gap-2.5 px-5 py-3 text-[13px] font-bold text-amber-400 hover:text-amber-300 hover:bg-white/5 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
-             >
-                <span className="shrink-0 text-base">⭐</span>
-                {!isCollapsed && <span>Mi Plan / Upgrade</span>}
-             </button>
-             <a
-               href={activeBrand?.slug ? `/${activeBrand.slug}/` : "/"}
-               className={`flex items-center gap-2.5 px-5 py-3 text-[13px] font-medium text-white/40 hover:text-white/70 hover:bg-white/5 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
-             >
-                <Icons.Home />
-                {!isCollapsed && <span>Ver Menú Público</span>}
-             </a>
-             <button
-               onClick={() => setIsCollapsed(!isCollapsed)}
-               className="w-full h-12 flex items-center px-5 gap-3 text-white/30 hover:text-white/60 transition-colors border-t border-white/5"
-             >
-               <span className="shrink-0">
-                 {isCollapsed ? <Icons.ChevronRight /> : <Icons.ChevronLeft />}
-               </span>
-               {!isCollapsed && <span className="text-[11px] font-bold uppercase tracking-widest">Colapsar Sidebar</span>}
-             </button>
+                className="w-full px-4 py-2.5 text-left group"
+              >
+                <div className="rounded-xl bg-gradient-to-r from-brand-primary/20 to-brand-secondary/10 border border-brand-primary/20 px-3 py-2 flex items-center gap-2 hover:from-brand-primary/30 transition-all">
+                  <span className="text-base">🚀</span>
+                  <div>
+                    <p className="text-[9px] font-black text-brand-primary uppercase tracking-[0.18em]">Acceso Total Gratis</p>
+                    <p className="text-[11px] font-semibold text-white/70">Iniciar prueba 21 días</p>
+                  </div>
+                </div>
+              </button>
+            )}
+
+            {/* Mi Plan / Upgrade */}
+            <button
+              onClick={() => setShowPlanSelector(true)}
+              className={`flex items-center gap-2.5 px-5 py-3 text-[13px] font-bold text-amber-400 hover:text-amber-300 hover:bg-white/5 transition-all w-full ${isCollapsed ? 'justify-center px-0' : ''}`}
+            >
+              <span className="shrink-0 text-base">⭐</span>
+              {!isCollapsed && <span>Mi Plan / Upgrade</span>}
+            </button>
+
+            {/* Ver Menú Público */}
+            <a
+              href={activeBrand?.slug ? `/${activeBrand.slug}/` : "/"}
+              className={`flex items-center gap-2.5 px-5 py-3 text-[13px] font-medium text-white/40 hover:text-white/70 hover:bg-white/5 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
+            >
+              <Icons.Home />
+              {!isCollapsed && <span>Ver Menú Público</span>}
+            </a>
+
+            {/* Collapse toggle */}
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="w-full h-12 flex items-center px-5 gap-3 text-white/30 hover:text-white/60 transition-colors border-t border-white/5"
+            >
+              <span className="shrink-0">
+                {isCollapsed ? <Icons.ChevronRight /> : <Icons.ChevronLeft />}
+              </span>
+              {!isCollapsed && <span className="text-[11px] font-bold uppercase tracking-widest">Colapsar Sidebar</span>}
+            </button>
           </div>
         </div>
       </aside>
@@ -1192,6 +1201,7 @@ export default function AdminLayout() {
         </div>
       </div>
 
+      <SupportFAB />
       <Toast />
     </div>
   );

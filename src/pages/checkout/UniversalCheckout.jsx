@@ -171,9 +171,9 @@ export default function UniversalCheckout({ onSelectPage }) {
         <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 blur-[150px] rounded-full" />
       </div>
 
-      <div className="relative min-h-screen flex flex-col items-center p-6 md:p-12">
+      <div className="relative min-h-screen flex flex-col items-center p-4 md:p-8">
         {/* Header Navigation */}
-        <div className="w-full max-w-6xl flex justify-between items-center mb-16 relative z-10">
+        <div className="w-full max-w-5xl flex justify-between items-center mb-8 relative z-10">
           <button 
             onClick={handleBack}
             className="flex items-center gap-2 text-white/50 hover:text-white transition-all text-sm font-medium group"
@@ -204,53 +204,53 @@ export default function UniversalCheckout({ onSelectPage }) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-12"
+              className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-8"
             >
               {/* Left Side: Summary */}
-              <div className="lg:col-span-5 space-y-8">
-                <div className="space-y-4">
-                  <span className="text-brand-primary font-black uppercase tracking-widest text-[11px] px-3 py-1 bg-brand-primary/10 rounded-full border border-brand-primary/20">
+              <div className="lg:col-span-5 space-y-5">
+                <div className="space-y-2">
+                  <span className="text-brand-primary font-black uppercase tracking-widest text-[10px] px-2.5 py-0.5 bg-brand-primary/10 rounded-full border border-brand-primary/20">
                     Suscripción Anual / Mensual
                   </span>
-                  <h1 className="text-5xl md:text-6xl font-black leading-[0.9] tracking-tighter">
+                  <h1 className="text-3xl md:text-4xl font-black leading-[1] tracking-tighter">
                     Activa tu Plan <br />
                     <span className="text-brand-primary">{plan.name}</span>
                   </h1>
                 </div>
 
-                <div className="p-8 rounded-[32px] bg-white/5 border border-white/10 backdrop-blur-xl relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <div className="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                     {plan.icon}
                   </div>
                   
-                  <div className="flex items-baseline gap-2 mb-6">
-                    <span className="text-4xl font-black">${plan.price}</span>
-                    <span className="text-white/40 text-sm font-bold uppercase tracking-widest">/ Mes</span>
+                  <div className="flex items-baseline gap-1.5 mb-4">
+                    <span className="text-2xl font-black">${plan.price}</span>
+                    <span className="text-white/40 text-xs font-bold uppercase tracking-widest">/ Mes</span>
                   </div>
 
-                  <ul className="space-y-4 mb-8">
+                  <ul className="space-y-2.5 mb-5">
                     {plan.features.map((feat, i) => (
-                      <li key={i} className="flex items-center gap-3 text-white/60">
-                        <div className="w-5 h-5 rounded-full bg-brand-primary/10 flex items-center justify-center shrink-0">
-                          <Check className="w-3 h-3 text-brand-primary" />
+                      <li key={i} className="flex items-center gap-2.5 text-white/60">
+                        <div className="w-4 h-4 rounded-full bg-brand-primary/10 flex items-center justify-center shrink-0">
+                          <Check className="w-2.5 h-2.5 text-brand-primary" />
                         </div>
-                        <span className="text-sm font-medium">{feat}</span>
+                        <span className="text-xs font-medium">{feat}</span>
                       </li>
                     ))}
                   </ul>
 
-                  <div className="pt-6 border-t border-white/10 flex items-center justify-between">
-                    <span className="text-white/40 text-xs font-bold uppercase tracking-widest">Estado</span>
-                    <span className="text-emerald-400 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                  <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+                    <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Estado</span>
+                    <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                       Disponible para Activación
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 text-blue-400">
-                  <Icon icon="solar:info-circle-bold" className="w-5 h-5 shrink-0" />
-                  <p className="text-xs leading-relaxed font-medium">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-500/5 border border-blue-500/10 text-blue-400">
+                  <Icon icon="solar:info-circle-bold" className="w-4 h-4 shrink-0" />
+                  <p className="text-[11px] leading-relaxed font-medium">
                     No se realizará ningún cargo automático hoy. El equipo comercial te contactará para formalizar la facturación.
                   </p>
                 </div>
@@ -258,83 +258,83 @@ export default function UniversalCheckout({ onSelectPage }) {
 
               {/* Right Side: Form */}
               <div className="lg:col-span-7">
-                <div className="p-8 md:p-12 rounded-[40px] bg-gradient-to-br from-white/[0.08] to-transparent border border-white/10 shadow-2xl relative overflow-hidden">
-                  <h2 className="text-2xl font-bold mb-8">Información de Contacto</h2>
+                <div className="p-6 rounded-2xl bg-gradient-to-br from-white/[0.08] to-transparent border border-white/10 shadow-2xl relative overflow-hidden">
+                  <h2 className="text-lg font-bold mb-5">Información de Contacto</h2>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-black uppercase tracking-widest text-white/40 ml-1">Nombre Completo</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-1">Nombre Completo</label>
                       <div className="relative group">
-                        <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-brand-primary transition-colors" />
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 group-focus-within:text-brand-primary transition-colors" />
                         <input 
                           type="text" 
                           value={formData.fullName}
                           onChange={e => setFormData({...formData, fullName: e.target.value})}
                           placeholder="Tu nombre..."
-                          className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:border-brand-primary/50 focus:bg-white/[0.08] transition-all"
+                          className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:border-brand-primary/50 focus:bg-white/[0.08] transition-all"
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-black uppercase tracking-widest text-white/40 ml-1">Correo Corporativo</label>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-1">Correo Corporativo</label>
                       <div className="relative group">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-brand-primary transition-colors" />
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 group-focus-within:text-brand-primary transition-colors" />
                         <input 
                           type="email" 
                           value={formData.email}
                           onChange={e => setFormData({...formData, email: e.target.value})}
                           placeholder="tu@negocio.com"
-                          className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:border-brand-primary/50 focus:bg-white/[0.08] transition-all"
+                          className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:border-brand-primary/50 focus:bg-white/[0.08] transition-all"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-black uppercase tracking-widest text-white/40 ml-1">Nombre del Negocio</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-1">Nombre del Negocio</label>
                       <div className="relative group">
-                        <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-brand-primary transition-colors" />
+                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 group-focus-within:text-brand-primary transition-colors" />
                         <input 
                           type="text" 
                           value={formData.businessName}
                           onChange={e => setFormData({...formData, businessName: e.target.value})}
                           placeholder="Restaurante..."
-                          className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:border-brand-primary/50 focus:bg-white/[0.08] transition-all"
+                          className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:border-brand-primary/50 focus:bg-white/[0.08] transition-all"
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-black uppercase tracking-widest text-white/40 ml-1">WhatsApp de Contacto</label>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-1">WhatsApp de Contacto</label>
                       <div className="relative group">
-                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-brand-primary transition-colors" />
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 group-focus-within:text-brand-primary transition-colors" />
                         <input 
                           type="tel" 
                           value={formData.whatsapp}
                           onChange={e => setFormData({...formData, whatsapp: e.target.value})}
                           placeholder="+57..."
-                          className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:border-brand-primary/50 focus:bg-white/[0.08] transition-all"
+                          className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:border-brand-primary/50 focus:bg-white/[0.08] transition-all"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="mb-12">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-white/40 mb-4 ml-1">Método de Activación</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="mb-5">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-3 ml-1">Método de Activación</h3>
+                    <div className="grid grid-cols-2 gap-3">
                       <button 
                         onClick={() => setSelectedMethod('trial')}
-                        className={`flex flex-col items-center gap-3 p-5 rounded-2xl border transition-all ${selectedMethod === 'trial' ? 'bg-brand-primary/10 border-brand-primary text-brand-primary shadow-lg shadow-brand-primary/10' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/[0.08]'}`}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${selectedMethod === 'trial' ? 'bg-brand-primary/10 border-brand-primary text-brand-primary shadow-lg shadow-brand-primary/10' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/[0.08]'}`}
                       >
-                        <Zap className="w-8 h-8" />
-                        <span className="text-[11px] font-bold uppercase tracking-widest text-center">Prueba Gratis (21 Días)</span>
+                        <Zap className="w-5 h-5" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-center">Prueba Gratis (21 Días)</span>
                       </button>
                       <button 
                         onClick={() => setSelectedMethod('whatsapp')}
-                        className={`flex flex-col items-center gap-3 p-5 rounded-2xl border transition-all ${selectedMethod === 'whatsapp' ? 'bg-brand-primary/10 border-brand-primary text-brand-primary shadow-lg shadow-brand-primary/10' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/[0.08]'}`}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${selectedMethod === 'whatsapp' ? 'bg-brand-primary/10 border-brand-primary text-brand-primary shadow-lg shadow-brand-primary/10' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/[0.08]'}`}
                       >
-                        <Icon icon="logos:whatsapp-icon" className="w-8 h-8" />
-                        <span className="text-[11px] font-bold uppercase tracking-widest text-center">Activar Plan Pago</span>
+                        <Icon icon="logos:whatsapp-icon" className="w-5 h-5" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-center">Activar Plan Pago</span>
                       </button>
                     </div>
                   </div>
@@ -342,13 +342,13 @@ export default function UniversalCheckout({ onSelectPage }) {
                   <button 
                     onClick={handleActivate}
                     disabled={!formData.fullName || !formData.email || isSubmitting}
-                    className="w-full py-5 bg-white text-black rounded-[24px] font-black text-lg flex items-center justify-center gap-3 hover:bg-brand-primary transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 shadow-xl shadow-white/10"
+                    className="w-full py-3.5 bg-white text-black rounded-xl font-black text-sm flex items-center justify-center gap-2 hover:bg-brand-primary transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 shadow-xl shadow-white/10"
                   >
                     {isSubmitting ? (
-                      <Icon icon="eos-icons:loading" className="w-6 h-6" />
+                      <Icon icon="eos-icons:loading" className="w-5 h-5" />
                     ) : (
                       <>
-                        <Zap className="w-6 h-6 fill-current" />
+                        <Zap className="w-4 h-4 fill-current" />
                         {selectedMethod === 'trial' ? 'Comenzar Prueba Gratis' : `Activar Plan ${plan.name}`}
                       </>
                     )}
