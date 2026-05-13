@@ -17,32 +17,73 @@ export const PLAN_LABELS = {
   emprendedor: { 
     name: 'Emprendedor',     
     color: '#6B7280',
-    price: 'Gratis',
-    desc: 'Para comenzar'
+    price: '29.900',
+    desc: 'Para comenzar',
+    icon: 'zap',
+    features: [
+      'Menú Digital Premium',
+      '20 Productos / 5 Categorías',
+      'Pedidos por WhatsApp',
+      'Subdominio aluna.menu/',
+      'Soporte Básico'
+    ]
   },
   esencial: { 
     name: 'Esencial',        
     color: '#2D6A4F',
-    price: '$29/mes',
-    desc: 'Landing + Experiencias'
+    price: '59.900',
+    desc: 'Landing + Experiencias',
+    icon: 'star',
+    features: [
+      'Todo lo de Emprendedor',
+      '50 Productos / 15 Categorías',
+      'Analíticas Básicas',
+      'Panel de Staff/Meseros',
+      'Landing Page Propia'
+    ]
   },
   profesional: { 
     name: 'Profesional ⭐',  
     color: '#1d4ed8',
-    price: '$79/mes',
-    desc: 'IA + Analíticas'
+    price: '129.900',
+    desc: 'IA + Analíticas',
+    icon: 'crown',
+    features: [
+      'Todo lo de Esencial',
+      'Productos Ilimitados',
+      'Gestión de Mesas con QR',
+      'Sistema de Cocina (KDS)',
+      'Gestión de Inventario',
+      'Analíticas Avanzadas'
+    ]
   },
   premium: { 
     name: 'Premium 💎',         
     color: '#fbbf24',
-    price: '$249k/mes',
-    desc: 'Negocios de alto volumen'
+    price: '249.900',
+    desc: 'Negocios de alto volumen',
+    icon: 'crown',
+    features: [
+      'Todo lo de Profesional',
+      'CRM de Clientes',
+      'Módulo de Fidelización',
+      'Multi-sede (Opcional)',
+      'Soporte Prioritario 24/7'
+    ]
   },
   enterprise: { 
     name: 'Enterprise',      
     color: '#7c3aed',
     price: 'Custom',
-    desc: 'Escala sin límites'
+    desc: 'Escala sin límites',
+    icon: 'building-2',
+    features: [
+      'Todo lo de Premium',
+      'Infraestructura Dedicada',
+      'SLA Garantizado',
+      'Integraciones Personalizadas',
+      'Account Manager Dedicado'
+    ]
   },
 };
 

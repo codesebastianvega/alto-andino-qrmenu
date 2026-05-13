@@ -19,57 +19,21 @@ import {
   Globe
 } from 'lucide-react';
 import { usePlan } from '../../hooks/usePlan';
+import { PLAN_IDS, PLAN_LABELS } from '../../config/plans';
 
-const PLAN_DATA = {
-  emprendedor: {
-    name: 'Emprendedor',
-    price: '29.900',
-    icon: <Zap className="w-6 h-6 text-amber-500" />,
-    features: [
-      'Menú Digital Premium',
-      '20 Productos / 5 Categorías',
-      'Pedidos por WhatsApp',
-      'Subdominio aluna.menu/',
-      'Soporte Básico'
-    ]
-  },
-  esencial: {
-    name: 'Esencial',
-    price: '59.900',
-    icon: <Star className="w-6 h-6 text-blue-400" />,
-    features: [
-      'Todo lo de Emprendedor',
-      '50 Productos / 15 Categorías',
-      'Analíticas Básicas',
-      'Panel de Staff/Meseros',
-      'Landing Page Propia'
-    ]
-  },
-  profesional: {
-    name: 'Profesional',
-    price: '129.900',
-    icon: <Crown className="w-6 h-6 text-emerald-400" />,
-    features: [
-      'Todo lo de Esencial',
-      'Productos Ilimitados',
-      'Gestión de Mesas con QR',
-      'Sistema de Cocina (KDS)',
-      'Gestión de Inventario',
-      'Analíticas Avanzadas'
-    ]
-  },
-  premium: {
-    name: 'Premium',
-    price: '249.900',
-    icon: <Crown className="w-6 h-6 text-purple-400" />,
-    features: [
-      'Todo lo de Profesional',
-      'CRM de Clientes',
-      'Módulo de Fidelización',
-      'Multi-sede (Opcional)',
-      'Soporte Prioritario 24/7'
-    ]
-  }
+const IconMap = {
+  zap: (className) => <Zap className={className} />,
+  star: (className) => <Star className={className} />,
+  crown: (className) => <Crown className={className} />,
+  'building-2': (className) => <Building2 className={className} />
+};
+
+const IconColorMap = {
+  emprendedor: "text-amber-500",
+  esencial: "text-blue-400",
+  profesional: "text-emerald-400",
+  premium: "text-purple-400",
+  enterprise: "text-brand-primary"
 };
 
 export default function UniversalCheckout({ onSelectPage }) {
@@ -80,8 +44,9 @@ export default function UniversalCheckout({ onSelectPage }) {
   const { startTrial } = usePlan();
   
   // Robust plan detection
-  const planId = searchParams.get('plan') || new URLSearchParams(window.location.search).get('plan') || 'profesional';
-  const plan = PLAN_DATA[planId] || PLAN_DATA.profesional;
+  const planSlug = searchParams.get('plan') || new URLSearchParams(window.location.search).get('plan') || 'profesional';
+  const plan = PLAN_LABELS[planSlug] || PLAN_LABELS.profesional;
+  const planIcon = IconMap[plan.icon]?.(`w-6 h-6 ${IconColorMap[planSlug] || 'text-brand-primary'}`);
 
   const [selectedMethod, setSelectedMethod] = useState('trial'); // trial, whatsapp, card
   const [step, setStep] = useState('form'); // form, processing, success
@@ -220,7 +185,7 @@ export default function UniversalCheckout({ onSelectPage }) {
 
                 <div className="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl relative overflow-hidden group">
                   <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                    {plan.icon}
+                    {planIcon}
                   </div>
                   
                   <div className="flex items-baseline gap-1.5 mb-4">
