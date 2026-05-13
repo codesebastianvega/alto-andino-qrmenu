@@ -1,40 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../config/supabase';
+import { PLAN_HIERARCHY, FEATURE_MIN_LEVEL } from '../config/plans';
 import { useAuth } from '../context/AuthContext';
 import { useMenuData } from '../context/MenuDataContext';
 
-/**
- * PLAN_HIERARCHY — defines the order of plans.
- */
-const PLAN_HIERARCHY = {
-  'emprendedor': 0,
-  'esencial': 1,
-  'profesional': 2,
-  'premium': 3,
-  'enterprise': 4
-};
-
-/**
- * FEATURE_MIN_LEVEL — Hardcoded fallback for features if DB table plan_features is missing entries.
- */
-const FEATURE_MIN_LEVEL = {
-  // Esencial features
-  'landing_page': 'esencial',
-  'staff_panel': 'esencial',
-  'analytics_basic': 'esencial',
-  
-  // Profesional features
-  'table_management': 'profesional',
-  'kitchen_display': 'profesional',
-  'inventory': 'profesional',
-  'advanced_analytics': 'profesional',
-  'experiences': 'profesional',
-  
-  // Premium features
-  'crm': 'premium',
-  'loyalty': 'premium',
-  'multi_sede': 'premium'
-};
 
 /**
  * usePlan — returns the current brand's plan details and feature flags.
@@ -71,7 +40,7 @@ export function usePlan(manualBrandId = null) {
         const [brandRes, orderCountRes, productCountRes] = await Promise.all([
           supabase
             .from('brands')
-            .select('plan_id, has_ai_addon, trial_ends_at, plans(*)')
+            .select('plan_id, has_ai_addon, trial_end_date, is_active, subscription_status, plans(*)')
             .eq('id', brandId)
             .maybeSingle(),
           supabase.rpc('get_monthly_order_count', { p_brand_id: brandId }),
@@ -98,7 +67,9 @@ export function usePlan(manualBrandId = null) {
         setPlan({ 
           ...planData, 
           has_ai_addon: brand.has_ai_addon,
-          trial_ends_at: brand.trial_ends_at
+          trial_end_date: brand.trial_end_date,
+          is_active: brand.is_active,
+          subscription_status: brand.subscription_status
         });
 
         // 2. Get plan features
@@ -127,9 +98,24 @@ export function usePlan(manualBrandId = null) {
    * isTrialActive — returns true if the current date is before trial_ends_at.
    */
   const isTrialActive = useMemo(() => {
-    if (!plan?.trial_ends_at) return false;
-    return new Date(plan.trial_ends_at) > new Date();
-  }, [plan?.trial_ends_at]);
+    if (!plan?.trial_end_date) return false;
+    // Only active if status is trialing OR if it's explicitly trial period
+    if (plan.subscription_status !== 'trialing' && plan.subscription_status !== 'trial') return false;
+    return new Date(plan.trial_end_date) > new Date();
+  }, [plan?.trial_end_date, plan?.subscription_status]);
+
+  /**
+   * trialDaysLeft — number of days remaining in trial.
+   */
+  const trialDaysLeft = useMemo(() => {
+    if (!plan?.trial_end_date) return 0;
+    const now = new Date();
+    const end = new Date(plan.trial_end_date);
+    const diff = end - now;
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }, [plan?.trial_end_date]);
+
+  const isSuspended = plan?.is_active === false;
 
   /**
    * can('feature_key') — returns true if the plan includes the feature or trial is active.
@@ -190,7 +176,10 @@ export function usePlan(manualBrandId = null) {
       : productsCount < plan.max_products,
     hasAiAddon: plan?.has_ai_addon ?? false,
     isTrialActive,
-    trialEndsAt: plan?.trial_ends_at || null,
+    trialEndDate: plan?.trial_end_date || null,
+    trialDaysLeft,
+    isSuspended,
+    subscriptionStatus: plan?.subscription_status || 'trialing',
     planName: plan?.name || 'Emprendedor',
     planSlug: plan?.slug || 'emprendedor',
     maxOrders: plan?.max_orders_per_month || null,
@@ -208,12 +197,15 @@ export function usePlan(manualBrandId = null) {
 
       const { error } = await supabase
         .from('brands')
-        .update({ trial_ends_at: trialEndsAt.toISOString() })
+        .update({ 
+          trial_end_date: trialEndsAt.toISOString(),
+          subscription_status: 'trialing'
+        })
         .eq('id', brandId);
 
       if (!error) {
         // Refresh plan data
-        setPlan(prev => prev ? { ...prev, trial_ends_at: trialEndsAt.toISOString() } : null);
+        setPlan(prev => prev ? { ...prev, trial_end_date: trialEndsAt.toISOString() } : null);
       }
 
       return { error };

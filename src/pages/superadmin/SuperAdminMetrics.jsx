@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Store, Users, DollarSign, Activity } from 'lucide-react';
+import { Store, Users, DollarSign, Activity, Clock, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../config/supabase';
 
 export default function SuperAdminMetrics() {
@@ -7,7 +7,9 @@ export default function SuperAdminMetrics() {
     totalBrands: 0,
     activeBrands: 0,
     mrr: 0, // Monthly Recurring Revenue
-    users: 0
+    users: 0,
+    inTrial: 0,
+    overdue: 0
   });
   const [loading, setLoading] = useState(true);
 
@@ -22,6 +24,8 @@ export default function SuperAdminMetrics() {
         .select(`
           id,
           is_active,
+          payment_verified,
+          trial_end_date,
           plan:plans(price_monthly)
         `);
       
@@ -31,14 +35,31 @@ export default function SuperAdminMetrics() {
 
       if (brandsError) throw brandsError;
 
+      const now = new Date();
       const activeBrands = brands.filter(b => b.is_active);
-      const mrr = activeBrands.reduce((sum, b) => sum + (b.plan?.price_monthly || 0), 0);
+      const mrr = brands
+        .filter(b => b.is_active && b.payment_verified)
+        .reduce((sum, b) => sum + (b.plan?.price_monthly || 0), 0);
+
+      const inTrialBrands = brands.filter(b => {
+        if (!b.trial_end_date) return false;
+        const trialEnd = new Date(b.trial_end_date);
+        return trialEnd > now && !b.payment_verified;
+      });
+
+      const overdueBrands = brands.filter(b => {
+        if (!b.trial_end_date) return false;
+        const trialEnd = new Date(b.trial_end_date);
+        return trialEnd < now && !b.payment_verified;
+      });
 
       setStats({
         totalBrands: brands.length,
         activeBrands: activeBrands.length,
         mrr,
-        users: usersCount || 0
+        users: usersCount || 0,
+        inTrial: inTrialBrands.length,
+        overdue: overdueBrands.length
       });
     } catch (error) {
       console.error('Error fetching metrics', error);
@@ -50,6 +71,8 @@ export default function SuperAdminMetrics() {
   const cards = [
     { title: 'Total Negocios', value: stats.totalBrands, icon: Store, color: 'text-blue-600', bg: 'bg-blue-50' },
     { title: 'Negocios Activos', value: stats.activeBrands, icon: Activity, color: 'text-green-600', bg: 'bg-green-50' },
+    { title: 'En Trial', value: stats.inTrial, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { title: 'Morosos', value: stats.overdue, icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50' },
     { title: 'MRR Estimado', value: `$${(stats.mrr / 1000).toFixed(0)}k`, icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { title: 'Usuarios Totales', value: stats.users, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
   ];
@@ -64,7 +87,7 @@ export default function SuperAdminMetrics() {
         </h1>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {cards.map((card, i) => (
           <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-[#E5E7EB]">
             <div className={`inline-flex p-3 rounded-xl ${card.bg} ${card.color} mb-4`}>

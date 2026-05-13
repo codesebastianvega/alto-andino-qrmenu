@@ -65,13 +65,12 @@ export const AuthProvider = ({ children }) => {
       const { data: brands } = await supabase
         .from('brands')
         .select(`
-          id, name, slug, logo_url, business_type, plan_id, onboarding_completed,
-          trial_ends_at, has_ai_addon,
+          id, name, slug, logo_url, business_type, plan_id, onboarding_completed, is_active,
+          trial_end_date, has_ai_addon,
           plans (name),
           restaurant_settings (primary_color)
         `)
         .eq('owner_id', userId)
-        .eq('is_active', true)
         .order('name');
 
       const userBrands = brands || [];
@@ -88,8 +87,8 @@ export const AuthProvider = ({ children }) => {
           const { data: staffBrand } = await supabase
             .from('brands')
             .select(`
-              id, name, slug, logo_url, business_type, plan_id, onboarding_completed,
-              trial_ends_at, has_ai_addon,
+              id, name, slug, logo_url, business_type, plan_id, onboarding_completed, is_active,
+              trial_end_date, has_ai_addon,
               plans (name),
               restaurant_settings (primary_color)
             `)

@@ -24,9 +24,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { FadeIn, SpotlightCard, MagneticButton } from '../../components/aluna/animations';
 
-const PLAN_IDS = {
-  emprendedor: 'c782ae70-f342-448a-81f2-05a5cfd3ed83',
-};
+import { PLAN_IDS, PLAN_LABELS, DEFAULT_PLAN_SLUG } from '../../config/plans';
 
 const BUSINESS_TYPES = [
   { value: 'restaurant',   label: 'Restaurante',  Icon: Store },
@@ -49,6 +47,8 @@ export default function CompleteProfilePage() {
 
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
+  const pendingPlan = sessionStorage.getItem('aluna_pending_plan') || DEFAULT_PLAN_SLUG;
+
   const [formData, setFormData] = useState({
     // Pre-llenamos si el usuario venía de /registro
     restaurantName: sessionStorage.getItem('aluna_pending_name') || '',
@@ -69,9 +69,9 @@ export default function CompleteProfilePage() {
   // Si ya tiene negocio, redirigir al panel
   useEffect(() => {
     if (!needsOnboarding && !loading && user) {
-      navigate('/', { replace: true });
+      navigate(`/admin/checkout?plan=${pendingPlan}`, { replace: true });
     }
-  }, [needsOnboarding, loading, user, navigate]);
+  }, [needsOnboarding, loading, user, navigate, pendingPlan]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -84,7 +84,7 @@ export default function CompleteProfilePage() {
     setLoading(true);
 
     try {
-      const planId = PLAN_IDS.emprendedor;
+      const planId = PLAN_IDS[pendingPlan] || PLAN_IDS[DEFAULT_PLAN_SLUG];
 
       // 1. Crear Brand
       const brandSlug = formData.restaurantName
@@ -137,7 +137,7 @@ export default function CompleteProfilePage() {
 
       // Refrescar el contexto y redirigir
       await refreshProfile(user.id);
-      setTimeout(() => navigate('/', { replace: true }), 2000);
+      setTimeout(() => navigate(`/admin/checkout?plan=${pendingPlan}`, { replace: true }), 2000);
 
     } catch (err) {
       setError(err.message || 'Error al crear el negocio.');
@@ -197,6 +197,23 @@ export default function CompleteProfilePage() {
             Cuéntanos sobre tu negocio.
           </p>
         </div>
+
+        {/* Plan badge */}
+        {PLAN_LABELS[pendingPlan] && (
+          <div className="flex justify-center mb-4">
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border"
+              style={{ 
+                borderColor: `${PLAN_LABELS[pendingPlan].color}50`, 
+                backgroundColor: `${PLAN_LABELS[pendingPlan].color}20`, 
+                color: PLAN_LABELS[pendingPlan].color 
+              }}
+            >
+              <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: PLAN_LABELS[pendingPlan].color }} />
+              Plan {PLAN_LABELS[pendingPlan].name}
+            </div>
+          </div>
+        )}
 
         <motion.div animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}} transition={{ duration: 0.4 }}>
           <SpotlightCard

@@ -24,23 +24,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { FadeIn, SpotlightCard, MagneticButton } from '../../components/aluna/animations';
 
-// ── Constantes ───────────────────────────────────────────────────────────────
-
-const PLAN_IDS = {
-  emprendedor: 'c782ae70-f342-448a-81f2-05a5cfd3ed83',
-  esencial:    '64b69a3f-cba9-4569-84ea-4154f9fe1e95',
-  profesional: 'ed869093-1a43-4bc1-94d6-ed773e1af1df',
-  premium:     '3b641b96-602a-4633-912c-2d7e9a4e1d76',
-  enterprise:  '282dc250-c791-4a7d-a4ab-d0d107fc2550',
-};
-
-const PLAN_LABELS = {
-  emprendedor: { name: 'Emprendedor',     color: '#6B7280' },
-  esencial:    { name: 'Esencial',        color: '#2D6A4F' },
-  profesional: { name: 'Profesional ⭐',  color: '#1d4ed8' },
-  premium:     { name: 'Premium 💎',      color: '#fbbf24' },
-  enterprise:  { name: 'Enterprise',      color: '#7c3aed' },
-};
+import { PLAN_IDS, PLAN_LABELS } from '../../config/plans';
 
 
 const BUSINESS_TYPES = [
@@ -94,8 +78,16 @@ export default function RegisterPage() {
   const isAlreadyLoggedIn = !!user;
 
   const getPlan = () => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('plan') || 'emprendedor';
+    let plan = null;
+    if (window.location.hash.includes('?')) {
+      const hashParams = new URLSearchParams(window.location.hash.split('?')[1]);
+      plan = hashParams.get('plan');
+    }
+    if (!plan) {
+      const params = new URLSearchParams(window.location.search);
+      plan = params.get('plan');
+    }
+    return plan || 'esencial';
   };
 
   const [selectedPlan] = useState(getPlan);
@@ -144,7 +136,7 @@ export default function RegisterPage() {
       const planId = PLAN_IDS[selectedPlan] || PLAN_IDS.emprendedor;
       await createBrand({ userId: user.id, name: formData.restaurantName, businessType: formData.businessType, planId });
       await refreshProfile(user.id);
-      setSuccess(true);
+      navigate(`/admin/checkout?plan=${selectedPlan}`);
     } catch (err) {
       setError(err.message);
       triggerShake();
@@ -174,10 +166,14 @@ export default function RegisterPage() {
       const newUser = authData?.user;
       if (!newUser) throw new Error('Error al registrar usuario');
 
-      const planId = PLAN_IDS[selectedPlan] || PLAN_IDS.emprendedor;
+      const planId = PLAN_IDS[selectedPlan] || PLAN_IDS.esencial;
       await createBrand({ userId: newUser.id, name: formData.restaurantName, businessType: formData.businessType, planId });
 
-      setSuccess(true);
+      if (authData?.session) {
+        navigate(`/admin/checkout?plan=${selectedPlan}`);
+      } else {
+        setSuccess(true);
+      }
     } catch (err) {
       setError(err.message || 'Error al completar el registro.');
       triggerShake();
@@ -237,16 +233,16 @@ export default function RegisterPage() {
             </p>
             {isNewAccount && (
               <p className="text-stone-500 text-sm mb-6 leading-relaxed">
-                Revisa tu correo para activar tu cuenta antes de ingresar.
+                Revisa tu correo para activar tu cuenta antes de ingresar. Una vez activada, podrás continuar al checkout.
               </p>
             )}
             <Link
-              to={isAlreadyLoggedIn ? '/#portal' : '/login'}
+              to={`/admin/checkout?plan=${selectedPlan}`}
               className="w-full group relative flex items-center justify-center gap-2 py-4 bg-stone-900 text-white font-bold rounded-2xl overflow-hidden transition-transform hover:scale-[1.02] active:scale-[0.98] shadow-lg mt-4"
             >
               <div className="absolute inset-0 bg-[#D4A853] translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
               <span className="relative z-10 flex items-center gap-2">
-                {isAlreadyLoggedIn ? 'Ver mis marcas' : 'Ir a Iniciar Sesión'} <ChevronRight className="w-4 h-4" />
+                {isAlreadyLoggedIn ? 'Continuar al Checkout' : 'Continuar al Checkout'} <ChevronRight className="w-4 h-4" />
               </span>
             </Link>
           </SpotlightCard>

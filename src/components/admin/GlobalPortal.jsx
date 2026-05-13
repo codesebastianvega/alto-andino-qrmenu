@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../config/supabase';
+import { PLAN_IDS, PLAN_LABELS } from '../../config/plans';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -26,36 +27,10 @@ import {
 } from 'lucide-react';
 
 // ── Planes disponibles ───────────────────────────────────────────────────────
-const PLANS = [
-  {
-    id: 'c782ae70-f342-448a-81f2-05a5cfd3ed83',
-    name: 'Emprendedor',
-    price: 'Gratis',
-    color: '#6B7280',
-    desc: 'Para comenzar',
-  },
-  {
-    id: '64b69a3f-cba9-4569-84ea-4154f9fe1e95',
-    name: 'Esencial',
-    price: '$29/mes',
-    color: '#2D6A4F',
-    desc: 'Landing + Experiencias',
-  },
-  {
-    id: 'ed869093-1a43-4bc1-94d6-ed773e1af1df',
-    name: 'Profesional ⭐',
-    price: '$79/mes',
-    color: '#1d4ed8',
-    desc: 'IA + Analíticas',
-  },
-  {
-    id: '282dc250-c791-4a7d-a4ab-d0d107fc2550',
-    name: 'Enterprise',
-    price: 'Custom',
-    color: '#7c3aed',
-    desc: 'Escala sin límites',
-  },
-];
+const PLANS = Object.keys(PLAN_IDS).map(slug => ({
+  id: PLAN_IDS[slug],
+  ...PLAN_LABELS[slug]
+}));
 
 // ── Tipos de negocio ─────────────────────────────────────────────────────────
 const BUSINESS_TYPES = [
@@ -209,7 +184,7 @@ function NewBrandModal({ onClose, onCreated }) {
   const { user } = useAuth();
   const [name, setName] = useState('');
   const [businessType, setBusinessType] = useState('restaurant');
-  const [selectedPlanId, setSelectedPlanId] = useState(PLANS[0].id);
+  const [selectedPlanId, setSelectedPlanId] = useState(PLAN_IDS.emprendedor);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);

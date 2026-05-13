@@ -74,18 +74,28 @@ export default function SuperAdminBrandDetail() {
           phone: brand.phone,
           email: brand.email,
           description: brand.description,
-          google_maps_url: brand.google_maps_url
+          google_maps_url: brand.google_maps_url,
+          payment_verified: brand.payment_verified,
+          trial_end_date: brand.trial_end_date,
+          is_active: brand.is_active
         })
         .eq('id', id);
       
       if (error) throw error;
 
-      try {
-        await supabase.from('restaurant_settings')
-          .update({ legal_name: brand.legal_name, legal_id: brand.legal_id })
-          .eq('brand_id', id);
-      } catch (e) {
-         console.warn("Legal fields not yet implemented in DB", e);
+      // Update legal fields in restaurant_settings
+      const { error: settingsError } = await supabase
+        .from('restaurant_settings')
+        .update({ 
+          legal_name: brand.legal_name, 
+          legal_id: brand.legal_id 
+        })
+        .eq('brand_id', id);
+      
+      if (settingsError) {
+        console.error('Error updating legal settings:', settingsError);
+        // We don't throw here to allow the brand update to be considered "saved" 
+        // even if legal settings fail, but we log it.
       }
 
       alert('Cambios guardados correctamente');
@@ -197,20 +207,6 @@ export default function SuperAdminBrandDetail() {
                   })()}
                 </div>
               )}
-
-              <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-2xl border border-blue-100">
-                <input
-                  type="checkbox"
-                  id="has_ai_addon"
-                  checked={brand.has_ai_addon || false}
-                  onChange={(e) => setBrand({...brand, has_ai_addon: e.target.checked})}
-                  className="w-5 h-5 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label htmlFor="has_ai_addon" className="flex-1">
-                  <span className="block text-sm font-bold text-blue-900">Módulo de IA (Aluna AI)</span>
-                  <span className="block text-xs text-blue-700">Activa el asistente de IA para recomendaciones y chat con clientes.</span>
-                </label>
-              </div>
             </div>
 
             <div>
@@ -282,6 +278,72 @@ export default function SuperAdminBrandDetail() {
                 className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none resize-none"
                 rows={3}
               />
+            </div>
+
+            <div className="md:col-span-2 pt-4 border-t border-gray-100 mt-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Facturación y Control de Acceso</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-200 shadow-sm hover:border-emerald-200 transition-colors">
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-sm">Pago Verificado</h4>
+                    <p className="text-xs text-gray-500 mt-0.5">Marca como pagado para desactivar mora</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={brand.payment_verified || false}
+                      onChange={(e) => setBrand({...brand, payment_verified: e.target.checked})}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-200 shadow-sm hover:border-emerald-200 transition-colors">
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-sm">Fin del Trial</h4>
+                    <p className="text-xs text-gray-500 mt-0.5">Límite del periodo de prueba</p>
+                  </div>
+                  <input
+                    type="date"
+                    value={brand.trial_end_date ? new Date(brand.trial_end_date).toISOString().split('T')[0] : ''}
+                    onChange={(e) => setBrand({...brand, trial_end_date: e.target.value})}
+                    className="px-3 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-100 shadow-sm hover:border-blue-200 transition-colors">
+                  <div>
+                    <h4 className="font-bold text-blue-900 text-sm">Módulo de IA</h4>
+                    <p className="text-xs text-blue-700 mt-0.5">Activa Aluna AI</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={brand.has_ai_addon || false}
+                      onChange={(e) => setBrand({...brand, has_ai_addon: e.target.checked})}
+                    />
+                    <div className="w-11 h-6 bg-blue-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-blue-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-red-50 rounded-xl border border-red-100 shadow-sm hover:border-red-200 transition-colors">
+                  <div>
+                    <h4 className="font-bold text-red-900 text-sm">Estado (Activa)</h4>
+                    <p className="text-xs text-red-700 mt-0.5">Suspender o activar el negocio</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={brand.is_active || false}
+                      onChange={(e) => setBrand({...brand, is_active: e.target.checked})}
+                    />
+                    <div className="w-11 h-6 bg-red-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-red-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                  </label>
+                </div>
+              </div>
             </div>
 
             <div className="md:col-span-2 pt-4 border-t border-gray-100 mt-4">
