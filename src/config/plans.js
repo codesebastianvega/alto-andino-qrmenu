@@ -45,7 +45,7 @@ export const PLAN_LABELS = {
   profesional: { 
     name: 'Profesional ⭐',  
     color: '#1d4ed8',
-    price: '129.900',
+    price: '149.900',
     desc: 'IA + Analíticas',
     icon: 'crown',
     features: [

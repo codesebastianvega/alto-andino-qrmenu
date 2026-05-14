@@ -33,6 +33,7 @@ import { useMenuData } from '../../context/MenuDataContext';
 import { usePlan } from '../../hooks/usePlan';
 import Toast from '../Toast';
 import SupportFAB from './SupportFAB';
+import AccountSuspendedOverlay from './AccountSuspendedOverlay';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
 const Icons = {
@@ -499,6 +500,8 @@ export default function AdminLayout() {
     return <AdminPinLogin onLogin={setUser} />;
   }
 
+  console.log('DEBUG ACTIVE BRAND:', activeBrand);
+
   return (
     <div className="flex min-h-screen bg-[#F4F4F2]" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* ── Sidebar ────────────────────────────────────────────────────── */}
@@ -797,26 +800,44 @@ export default function AdminLayout() {
           <div className="mt-auto border-t border-white/5 bg-black/10">
 
             {/* Trial compact row */}
-            {!planLoading && isTrialActive && (() => {
-              const daysLeft = Math.max(0, Math.ceil((new Date(trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24)));
-              const pct = (daysLeft / 21) * 100;
+            {!planLoading && activeBrand && (() => {
+              const daysLeft = activeBrand.trial_end_date ? Math.max(0, Math.ceil((new Date(activeBrand.trial_end_date) - new Date()) / (1000 * 60 * 60 * 24))) : 0;
+              const isPaid = activeBrand?.payment_verified === true || activeBrand?.payment_verified === 'true';
+              
+              if (isPaid) {
+                return isCollapsed ? (
+                  <div className="flex justify-center py-4 border-b border-white/5">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" title="Cuenta Activa" />
+                  </div>
+                ) : (
+                  <div className="px-4 py-3 border-b border-white/5 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider">Cuenta Activa</span>
+                  </div>
+                );
+              }
+
+              if (daysLeft > 0) {
+                return isCollapsed ? (
+                  <div className="flex justify-center py-4 border-b border-white/5">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" title={`Prueba: ${daysLeft} días`} />
+                  </div>
+                ) : (
+                  <div className="px-4 py-3 border-b border-white/5 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="text-[11px] font-bold text-amber-500 uppercase tracking-wider">Prueba Activa: {daysLeft} días</span>
+                  </div>
+                );
+              }
+
               return isCollapsed ? (
-                <div className="flex justify-center py-2">
-                  <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse" title={`Prueba: ${daysLeft} días`} />
+                <div className="flex justify-center py-4 border-b border-white/5">
+                  <div className="w-2 h-2 rounded-full bg-red-500" title="Pago Pendiente" />
                 </div>
               ) : (
-                <div className="px-4 py-2.5">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[9px] font-black text-brand-primary uppercase tracking-[0.18em]">Prueba activa</span>
-                    <span className="text-[10px] font-bold text-white/60">{daysLeft} días</span>
-                  </div>
-                  <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      className="h-full bg-brand-primary rounded-full"
-                    />
-                  </div>
+                <div className="px-4 py-3 border-b border-white/5 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-red-500" />
+                  <span className="text-[11px] font-bold text-red-500 uppercase tracking-wider">Pago Pendiente</span>
                 </div>
               );
             })()}
@@ -910,12 +931,32 @@ export default function AdminLayout() {
                </AnimatePresence>
              </div>
 
-             {activePlan && (
-               <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 bg-brand-primary/5 border border-brand-primary/10 rounded-full">
-                  <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
-                  <span className="text-[10px] font-bold text-brand-primary uppercase tracking-wider">Plan {activePlan.name}</span>
-               </div>
-             )}
+             {activeBrand && (() => {
+               const daysLeft = activeBrand.trial_end_date ? Math.max(0, Math.ceil((new Date(activeBrand.trial_end_date) - new Date()) / (1000 * 60 * 60 * 24))) : 0;
+               const isPaid = activeBrand?.payment_verified === true || activeBrand?.payment_verified === 'true';
+               if (isPaid) {
+                 return (
+                   <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Cuenta Activa</span>
+                   </div>
+                 );
+               }
+               if (daysLeft > 0) {
+                 return (
+                   <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full">
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Prueba Activa: {daysLeft} días</span>
+                   </div>
+                 );
+               }
+               return (
+                 <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 bg-red-500/10 border border-red-500/20 rounded-full">
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                    <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Pago Pendiente</span>
+                 </div>
+               );
+             })()}
           </div>
           <div className="hidden lg:flex items-center gap-3">
             <div 
@@ -1203,6 +1244,10 @@ export default function AdminLayout() {
 
       <SupportFAB />
       <Toast />
+
+      {activeBrand?.is_active === false && (
+        <AccountSuspendedOverlay brandName={restaurantName} />
+      )}
     </div>
   );
 }

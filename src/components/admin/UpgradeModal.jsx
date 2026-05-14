@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Check, X, Zap, ArrowRight, Clock, Users, Star } from 'lucide-react';
+import { PLAN_LABELS } from '../../config/plans';
 
 const WHATSAPP_SUPPORT = '573222285900';
 const openWhatsApp = (msg) => {
@@ -45,84 +46,27 @@ const STYLES = `
 `;
 
 /* ── Feature data ─────────────────────────────────────────────────── */
-const PLANS = [
-  {
-    id: 'emprendedor', name: 'Emprendedor', price: '29.900',
-    tagline: 'Para dar los primeros pasos',
-    limits: '60 pedidos · 20 productos · 5 categorías',
-    border: 'border-amber-500/20', dot: 'bg-amber-400', badge: null,
-    includes: [
-      'Menú QR digital',
-      'Subdominio propio (.aluna.app)',
-      'Pedidos por WhatsApp',
-      'Identidad visual básica',
-      'Sin comisión por pedido',
-      'Panel de administración',
-      'Soporte por email',
-    ],
-    excludes: [
-      'Panel de meseros',
-      'Analíticas de ventas',
-      'Landing page propia',
-      'Múltiples ubicaciones',
-    ],
-  },
-  {
-    id: 'esencial', name: 'Esencial', price: '59.900',
-    tagline: 'Herramientas para crecer',
-    limits: '250 pedidos · 50 productos · 15 categorías',
-    border: 'border-blue-500/20', dot: 'bg-blue-400', badge: null,
-    includes: [
-      'Todo lo de Emprendedor',
-      'Landing page propia',
-      'Panel de meseros',
-      'Analíticas básicas de ventas',
-    ],
-    excludes: [
-      'Mesas QR + sistema KDS cocina',
-      'Inventario y control de recetas',
-      'Analíticas avanzadas',
-      'Experiencias y fidelización',
-      'Múltiples ubicaciones',
-    ],
-  },
-  {
-    id: 'profesional', name: 'Profesional', price: '129.900',
-    tagline: 'El más completo del mercado',
-    limits: '800 pedidos · Productos ilimitados · 3 admins',
-    border: 'border-brand-primary/40', dot: 'bg-brand-primary', badge: 'Popular',
-    highlight: true,
-    includes: [
-      'Todo lo de Esencial',
-      'Productos y categorías ilimitados',
-      'Mesas QR + sistema KDS cocina',
-      'Inventario y control de recetas',
-      'Analíticas avanzadas',
-      'Experiencias y fidelización',
-      'Múltiples ubicaciones',
-      'Hasta 3 administradores',
-      'Marketplace Aluna',
-    ],
-    excludes: [
-      'Módulo IA (disponible como addon)',
-      'Soporte prioritario',
-    ],
-  },
-  {
-    id: 'premium', name: 'Premium', price: '249.900',
-    tagline: 'Para operaciones de alto volumen',
-    limits: '2.000 pedidos · Productos ilimitados · 5 admins',
-    border: 'border-purple-500/20', dot: 'bg-purple-400', badge: null,
-    includes: [
-      'Todo lo de Profesional',
-      '2.000 pedidos por mes',
-      'Hasta 5 administradores',
-      '🤖 Módulo IA incluido',
-      'Soporte prioritario',
-    ],
-    excludes: [],
-  },
-];
+const PLAN_KEYS = ['emprendedor', 'esencial', 'profesional', 'premium'];
+
+const PLAN_UI_CONFIG = {
+  emprendedor: { border: 'border-amber-500/20', highlight: false, limits: '60 pedidos · 20 productos' },
+  esencial: { border: 'border-blue-500/20', highlight: false, limits: '250 pedidos · 50 productos' },
+  profesional: { border: 'border-brand-primary/40', highlight: true, badge: 'Popular', limits: 'Pedidos y Productos ilimitados' },
+  premium: { border: 'border-purple-500/20', highlight: false, limits: 'Pedidos y Productos ilimitados' },
+};
+
+const PLANS = PLAN_KEYS.map(id => ({
+  id,
+  name: PLAN_LABELS[id].name,
+  price: PLAN_LABELS[id].price,
+  tagline: PLAN_LABELS[id].desc,
+  limits: PLAN_UI_CONFIG[id].limits,
+  border: PLAN_UI_CONFIG[id].border,
+  badge: PLAN_UI_CONFIG[id].badge,
+  highlight: PLAN_UI_CONFIG[id].highlight,
+  includes: PLAN_LABELS[id].features,
+  excludes: [] // we no longer use excludes as UniversalCheckout only uses includes/features
+}));
 
 const TRIAL_UNLOCKS = [
   'Landing page propia',

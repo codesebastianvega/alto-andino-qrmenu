@@ -24,7 +24,7 @@ export const BrandProvider = ({ children }) => {
       if (brand_slug) {
         const { data } = await supabase
           .from('brands')
-          .select('id, slug, name')
+          .select('id, slug, name, payment_verified, trial_end_date, is_active')
           .eq('slug', brand_slug)
           .maybeSingle();
         brandBySlug = data;
@@ -37,7 +37,7 @@ export const BrandProvider = ({ children }) => {
         if (session?.user) {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('brand_id, brand:brands(id, slug, name)')
+            .select('brand_id, brand:brands(id, slug, name, payment_verified, trial_end_date, is_active)')
             .eq('id', session.user.id)
             .maybeSingle();
             
@@ -64,7 +64,7 @@ export const BrandProvider = ({ children }) => {
       if (targetBrandId) {
         const { data: brandData, error } = await supabase
           .from('brands')
-          .select('*, plans(id, name)')
+          .select('*, payment_verified, trial_end_date, plans(id, name)')
           .eq('id', targetBrandId)
           .single();
 

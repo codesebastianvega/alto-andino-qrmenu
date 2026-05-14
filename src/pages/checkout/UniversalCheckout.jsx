@@ -28,13 +28,7 @@ const IconMap = {
   'building-2': (className) => <Building2 className={className} />
 };
 
-const IconColorMap = {
-  emprendedor: "text-amber-500",
-  esencial: "text-blue-400",
-  profesional: "text-emerald-400",
-  premium: "text-purple-400",
-  enterprise: "text-brand-primary"
-};
+// Colors are now handled directly from plan.color in plans.js
 
 export default function UniversalCheckout({ onSelectPage }) {
   const [searchParams] = useSearchParams();
@@ -46,7 +40,7 @@ export default function UniversalCheckout({ onSelectPage }) {
   // Robust plan detection
   const planSlug = searchParams.get('plan') || new URLSearchParams(window.location.search).get('plan') || 'profesional';
   const plan = PLAN_LABELS[planSlug] || PLAN_LABELS.profesional;
-  const planIcon = IconMap[plan.icon]?.(`w-6 h-6 ${IconColorMap[planSlug] || 'text-brand-primary'}`);
+  const planIcon = IconMap[plan.icon]?.(`w-6 h-6`) || <Zap className="w-6 h-6" />;
 
   const [selectedMethod, setSelectedMethod] = useState('trial'); // trial, whatsapp, card
   const [step, setStep] = useState('form'); // form, processing, success
@@ -184,7 +178,7 @@ export default function UniversalCheckout({ onSelectPage }) {
                 </div>
 
                 <div className="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity" style={{ color: plan.color }}>
                     {planIcon}
                   </div>
                   

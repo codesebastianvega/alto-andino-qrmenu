@@ -40,7 +40,7 @@ export function usePlan(manualBrandId = null) {
         const [brandRes, orderCountRes, productCountRes] = await Promise.all([
           supabase
             .from('brands')
-            .select('plan_id, has_ai_addon, trial_end_date, is_active, subscription_status, plans(*)')
+            .select('plan_id, has_ai_addon, trial_end_date, is_active, subscription_status, payment_verified, plans(*)')
             .eq('id', brandId)
             .maybeSingle(),
           supabase.rpc('get_monthly_order_count', { p_brand_id: brandId }),
@@ -69,7 +69,8 @@ export function usePlan(manualBrandId = null) {
           has_ai_addon: brand.has_ai_addon,
           trial_end_date: brand.trial_end_date,
           is_active: brand.is_active,
-          subscription_status: brand.subscription_status
+          subscription_status: brand.subscription_status,
+          payment_verified: brand.payment_verified
         });
 
         // 2. Get plan features
@@ -99,10 +100,12 @@ export function usePlan(manualBrandId = null) {
    */
   const isTrialActive = useMemo(() => {
     if (!plan?.trial_end_date) return false;
+    // If payment_verified is true, trial is immediately false
+    if (plan.payment_verified) return false;
     // Only active if status is trialing OR if it's explicitly trial period
     if (plan.subscription_status !== 'trialing' && plan.subscription_status !== 'trial') return false;
     return new Date(plan.trial_end_date) > new Date();
-  }, [plan?.trial_end_date, plan?.subscription_status]);
+  }, [plan?.trial_end_date, plan?.subscription_status, plan?.payment_verified]);
 
   /**
    * trialDaysLeft — number of days remaining in trial.
