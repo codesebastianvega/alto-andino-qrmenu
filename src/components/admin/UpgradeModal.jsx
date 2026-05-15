@@ -1,14 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Check, X, Zap, ArrowRight, Clock, Users, Star } from 'lucide-react';
-import { PLAN_LABELS } from '../../config/plans';
-
-const WHATSAPP_SUPPORT = '573222285900';
-const openWhatsApp = (msg) => {
-  window.open(`https://wa.me/${WHATSAPP_SUPPORT}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
-};
-
+import { Check, X, Zap, ArrowRight, Clock, Users, Star, ShoppingBag, Package, FolderOpen, MapPin } from 'lucide-react';
+import { supabase } from '../../config/supabase';
 
 /* ── Global styles injected once ─────────────────────────────────── */
 const STYLES = `
@@ -46,27 +40,28 @@ const STYLES = `
 `;
 
 /* ── Feature data ─────────────────────────────────────────────────── */
-const PLAN_KEYS = ['emprendedor', 'esencial', 'profesional', 'premium'];
 
 const PLAN_UI_CONFIG = {
-  emprendedor: { border: 'border-amber-500/20', highlight: false, limits: '60 pedidos · 20 productos' },
-  esencial: { border: 'border-blue-500/20', highlight: false, limits: '250 pedidos · 50 productos' },
-  profesional: { border: 'border-brand-primary/40', highlight: true, badge: 'Popular', limits: 'Pedidos y Productos ilimitados' },
-  premium: { border: 'border-purple-500/20', highlight: false, limits: 'Pedidos y Productos ilimitados' },
+  emprendedor: { border: 'border-amber-500/20', accent: '#F59E0B', highlight: false, badge: null },
+  esencial: { border: 'border-blue-500/20', accent: '#3B82F6', highlight: false, badge: null },
+  profesional: { border: 'border-brand-primary/40', accent: '#4ade80', highlight: true, badge: 'Popular' },
+  premium: { border: 'border-purple-500/20', accent: '#8B5CF6', highlight: false, badge: null },
+  default: { border: 'border-white/20', accent: '#6B7280', highlight: false, badge: null }
 };
 
-const PLANS = PLAN_KEYS.map(id => ({
-  id,
-  name: PLAN_LABELS[id].name,
-  price: PLAN_LABELS[id].price,
-  tagline: PLAN_LABELS[id].desc,
-  limits: PLAN_UI_CONFIG[id].limits,
-  border: PLAN_UI_CONFIG[id].border,
-  badge: PLAN_UI_CONFIG[id].badge,
-  highlight: PLAN_UI_CONFIG[id].highlight,
-  includes: PLAN_LABELS[id].features,
-  excludes: [] // we no longer use excludes as UniversalCheckout only uses includes/features
-}));
+const getUIConfig = (name) => {
+  const lowerName = name?.toLowerCase() || '';
+  if (lowerName.includes('emprendedor')) return PLAN_UI_CONFIG.emprendedor;
+  if (lowerName.includes('esencial')) return PLAN_UI_CONFIG.esencial;
+  if (lowerName.includes('profesional')) return PLAN_UI_CONFIG.profesional;
+  if (lowerName.includes('premium')) return PLAN_UI_CONFIG.premium;
+  return PLAN_UI_CONFIG.default;
+};
+
+const WHATSAPP_SUPPORT = '573222285900';
+const openWhatsApp = (msg) => {
+  window.open(`https://wa.me/${WHATSAPP_SUPPORT}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+};
 
 const TRIAL_UNLOCKS = [
   'Landing page propia',
@@ -86,6 +81,44 @@ export default function UpgradeModal({ isOpen, onClose, currentPlanSlug, startTr
   const navigate = useNavigate();
   const [trialLoading, setTrialLoading] = useState(false);
   const [trialDone, setTrialDone] = useState(false);
+  const [plans, setPlans] = useState([]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
+
+  React.useEffect(() => {
+    async function fetchPlans() {
+      if (!isOpen) return;
+      setLoadingPlans(true);
+      try {
+        const { data, error } = await supabase
+          .from('plans')
+          .select(`*, features:plan_features(*)`)
+          .order('price_monthly', { ascending: true });
+        
+        if (error) {
+          console.error('Supabase query error (UpgradeModal):', error);
+          throw error;
+        }
+
+        if (data && data.length > 0) {
+          setPlans(data.filter(p => !p.is_custom_pricing));
+        } else {
+          throw new Error('No plans returned from database');
+        }
+      } catch (err) {
+        console.error('Error fetching plans:', err);
+        // Fallback plans
+        setPlans([
+          { id: 'emprendedor', name: 'Emprendedor', price_monthly: 0, description: 'Comienza gratis', is_custom_pricing: false, features: [{is_included: true, display_name: 'Menú QR básico', sort_order: 1}] },
+          { id: 'esencial', name: 'Esencial', price_monthly: 29000, description: 'Para negocios locales', is_custom_pricing: false, features: [{is_included: true, display_name: 'Pedidos por WhatsApp', sort_order: 1}] },
+          { id: 'profesional', name: 'Profesional', price_monthly: 59000, description: 'Crecimiento sin límites', is_custom_pricing: false, features: [{is_included: true, display_name: 'Menú Digital + POS', sort_order: 1}] },
+          { id: 'premium', name: 'Premium', price_monthly: 129000, description: 'Todas las integraciones', is_custom_pricing: false, features: [{is_included: true, display_name: 'Analytics avanzados', sort_order: 1}] }
+        ]);
+      } finally {
+        setLoadingPlans(false);
+      }
+    }
+    fetchPlans();
+  }, [isOpen]);
 
   const handlePlan = (id) => { navigate(`?plan=${id}#checkout`); onClose?.(); };
 
@@ -227,87 +260,115 @@ export default function UpgradeModal({ isOpen, onClose, currentPlanSlug, startTr
                   </div>
 
                   {/* 4 Plan cards — 4 cols */}
-                  <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-                    {PLANS.map((plan, i) => {
-                      const isCurrent = currentPlanSlug === plan.id;
-                      return (
-                        <motion.div key={plan.id}
-                          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.06 }}
-                          className={`relative flex flex-col rounded-2xl border transition-all ${
-                            plan.highlight
-                              ? `${plan.border} bg-brand-primary/[0.05]`
-                              : isCurrent
-                                ? 'border-white/15 bg-white/[0.03]'
-                                : `${plan.border} bg-transparent hover:bg-white/[0.02]`
-                          }`}
-                        >
-                          {plan.badge && (
-                            <span className="absolute -top-2.5 left-4 text-[8px] font-black uppercase tracking-widest bg-brand-primary text-black px-2.5 py-0.5 rounded-full">
-                              {plan.badge}
-                            </span>
-                          )}
-                          {isCurrent && (
-                            <span className="absolute -top-2.5 left-4 text-[8px] font-bold uppercase tracking-widest bg-white/10 text-white/50 px-2.5 py-0.5 rounded-full border border-white/10">
-                              Tu plan
-                            </span>
-                          )}
-
-                          <div className="p-4 pb-0">
-                            <h3 className="text-white font-bold text-sm mb-0.5">{plan.name}</h3>
-                            <p className="text-white/25 text-[10px] mb-3">{plan.tagline}</p>
-                            <div className="flex items-baseline gap-0.5 mb-0.5">
-                              <span className="text-[1.4rem] font-black text-white tracking-tight">${plan.price}</span>
-                            </div>
-                            <p className="text-white/20 text-[9px] mb-4">/mes · {plan.limits}</p>
-                          </div>
-
-                          {/* Includes */}
-                          <div className="px-4 flex-1">
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-white/25 mb-2">Incluye</p>
-                            <ul className="space-y-1.5 mb-4">
-                              {plan.includes.map((f, fi) => (
-                                <li key={fi} className="flex items-start gap-1.5">
-                                  <Check className={`w-3 h-3 shrink-0 mt-0.5 ${plan.highlight ? 'text-brand-primary' : 'text-white/40'}`} />
-                                  <span className="text-white/55 text-[10px] leading-tight">{f}</span>
-                                </li>
-                              ))}
-                            </ul>
-
-                            {/* Excludes */}
-                            {plan.excludes.length > 0 && (
-                              <>
-                                <div className="h-px bg-white/[0.06] mb-3" />
-                                <p className="text-[9px] font-bold uppercase tracking-widest text-white/15 mb-2">No incluye</p>
-                                <ul className="space-y-1.5 mb-4">
-                                  {plan.excludes.map((f, fi) => (
-                                    <li key={fi} className="flex items-start gap-1.5">
-                                      <X className="w-3 h-3 text-white/15 shrink-0 mt-0.5" />
-                                      <span className="text-white/20 text-[10px] leading-tight line-through decoration-white/10">{f}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </>
+                  {loadingPlans ? (
+                    <div className="flex items-center justify-center py-20">
+                      <span className="w-8 h-8 border-2 border-brand-primary/20 border-t-brand-primary rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                      {plans.map((dbPlan, i) => {
+                        const isCurrent = currentPlanSlug === dbPlan.id || currentPlanSlug === dbPlan.name?.toLowerCase();
+                        const uiConfig = getUIConfig(dbPlan.name);
+                        
+                        return (
+                          <motion.div key={dbPlan.id}
+                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.06 }}
+                            className={`relative flex flex-col rounded-2xl border transition-all ${
+                              uiConfig.highlight
+                                ? `${uiConfig.border} bg-brand-primary/[0.05]`
+                                : isCurrent
+                                  ? 'border-white/15 bg-white/[0.03]'
+                                  : `${uiConfig.border} bg-transparent hover:bg-white/[0.02]`
+                            }`}
+                          >
+                            {uiConfig.badge && (
+                              <span className="absolute -top-2.5 left-4 text-[8px] font-black uppercase tracking-widest bg-brand-primary text-black px-2.5 py-0.5 rounded-full">
+                                {uiConfig.badge}
+                              </span>
                             )}
-                          </div>
+                            {isCurrent && (
+                              <span className="absolute -top-2.5 left-4 text-[8px] font-bold uppercase tracking-widest bg-white/10 text-white/50 px-2.5 py-0.5 rounded-full border border-white/10">
+                                Tu plan
+                              </span>
+                            )}
 
-                          <div className="p-4 pt-2">
-                            <button type="button" disabled={isCurrent} onClick={() => handlePlan(plan.id)}
-                              className={`w-full h-8 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all ${
-                                isCurrent
-                                  ? 'text-white/20 cursor-default'
-                                  : plan.highlight
-                                    ? 'bg-brand-primary text-black hover:opacity-90 active:scale-[0.98]'
-                                    : 'border border-white/[0.1] text-white/40 hover:text-white hover:border-white/20 hover:bg-white/[0.04] active:scale-[0.98]'
-                              }`}
-                            >
-                              {isCurrent ? 'Plan actual' : <>Seleccionar <ArrowRight className="w-3 h-3" /></>}
-                            </button>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
+                            <div className="p-4 pb-0">
+                              <h3 className="text-white font-bold text-sm mb-0.5">{dbPlan.name}</h3>
+                              <p className="text-white/25 text-[10px] mb-3 min-h-[28px]">{dbPlan.description}</p>
+                              <div className="flex items-baseline gap-0.5 mb-1">
+                                <span className="text-[1.5rem] font-black text-white tracking-tight">${dbPlan.price_monthly?.toLocaleString()}</span>
+                                <span className="text-white/20 text-[10px] ml-0.5">/mes</span>
+                              </div>
+
+                              {/* ── Limit pills ── */}
+                              <div className="flex flex-wrap gap-1 mb-4">
+                                {[
+                                  { icon: ShoppingBag, val: dbPlan.max_orders_per_month, fmt: (v) => v ? v.toLocaleString() : '∞', label: 'ped' },
+                                  { icon: Package, val: dbPlan.max_products, fmt: (v) => v || '∞', label: 'prod' },
+                                  { icon: FolderOpen, val: dbPlan.max_categories, fmt: (v) => v || '∞', label: 'cat' },
+                                  { icon: Users, val: dbPlan.max_admins, fmt: (v) => v && v > 0 ? v : '∞', label: 'adm' },
+                                  { icon: MapPin, val: dbPlan.max_locations, fmt: (v) => v && v > 0 ? v : '∞', label: v => v === 1 ? 'sede' : 'sedes' },
+                                ].map(({ icon: Icon, val, fmt, label }, pi) => (
+                                  <div key={pi} className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-semibold"
+                                    style={{ background: `${uiConfig.accent || '#4ade80'}15`, color: `${uiConfig.accent || '#4ade80'}cc`, border: `1px solid ${uiConfig.accent || '#4ade80'}20` }}
+                                  >
+                                    <Icon size={9} strokeWidth={2.5} />
+                                    <span>{fmt(val)}</span>
+                                    <span className="opacity-60 font-normal">{typeof label === 'function' ? label(val) : label}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* ── Divider ── */}
+                            <div className="mx-4 border-t border-white/[0.06]" />
+
+                            {/* Features */}
+                            <div className="px-4 pt-3 flex-1">
+                              <p className="text-[9px] font-bold uppercase tracking-widest text-white/25 mb-2">Características</p>
+                              <ul className="space-y-1.5 mb-4">
+                                {(dbPlan.features || [])
+                                  .sort((a,b) => {
+                                    if (a.is_included === b.is_included) return a.sort_order - b.sort_order;
+                                    return a.is_included ? -1 : 1;
+                                  })
+                                  .map((f, fi) => (
+                                  <li key={fi} className={`flex items-start gap-1.5 ${f.is_included ? '' : 'opacity-30'}`}>
+                                    {f.is_included ? (
+                                      <div className="w-3.5 h-3.5 rounded-[4px] flex items-center justify-center shrink-0 mt-px"
+                                        style={{ background: uiConfig.highlight ? 'rgba(74,222,128,0.25)' : `${uiConfig.accent || '#4ade80'}25` }}>
+                                        <Check className="w-2.5 h-2.5" style={{ color: uiConfig.highlight ? '#4ade80' : (uiConfig.accent || '#4ade80') }} strokeWidth={3} />
+                                      </div>
+                                    ) : (
+                                      <div className="w-3.5 h-3.5 rounded-[4px] flex items-center justify-center shrink-0 mt-px bg-white/[0.04]">
+                                        <X className="w-2.5 h-2.5 text-white/20" strokeWidth={2.5} />
+                                      </div>
+                                    )}
+                                    <span className={`text-[10px] leading-tight ${f.is_included ? 'text-white/75 font-medium' : 'text-white/25 line-through'}`}>{f.display_name}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+
+                            <div className="p-4 pt-2">
+                              <button type="button" disabled={isCurrent} onClick={() => handlePlan(dbPlan.id)}
+                                className={`w-full h-8 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all ${
+                                  isCurrent
+                                    ? 'text-white/20 cursor-default'
+                                    : uiConfig.highlight
+                                      ? 'bg-brand-primary text-black hover:opacity-90 active:scale-[0.98]'
+                                      : 'border border-white/[0.1] text-white/40 hover:text-white hover:border-white/20 hover:bg-white/[0.04] active:scale-[0.98]'
+                                }`}
+                              >
+                                {isCurrent ? 'Plan actual' : <>Seleccionar <ArrowRight className="w-3 h-3" /></>}
+                              </button>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   {/* Bottom 2-col: Enterprise + AI ────────────── */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">

@@ -19,7 +19,7 @@ import {
   Globe
 } from 'lucide-react';
 import { usePlan } from '../../hooks/usePlan';
-import { PLAN_IDS, PLAN_LABELS } from '../../config/plans';
+import { supabase } from '../../config/supabase';
 
 const IconMap = {
   zap: (className) => <Zap className={className} />,
@@ -28,7 +28,15 @@ const IconMap = {
   'building-2': (className) => <Building2 className={className} />
 };
 
-// Colors are now handled directly from plan.color in plans.js
+const getCheckoutUIConfig = (name) => {
+  const lowerName = name?.toLowerCase() || '';
+  if (lowerName.includes('emprendedor')) return { color: '#6B7280', icon: 'zap' };
+  if (lowerName.includes('esencial')) return { color: '#2D6A4F', icon: 'star' };
+  if (lowerName.includes('profesional')) return { color: '#1d4ed8', icon: 'crown' };
+  if (lowerName.includes('premium')) return { color: '#fbbf24', icon: 'crown' };
+  if (lowerName.includes('enterprise')) return { color: '#7c3aed', icon: 'building-2' };
+  return { color: '#4ade80', icon: 'zap' };
+};
 
 export default function UniversalCheckout({ onSelectPage }) {
   const [searchParams] = useSearchParams();
@@ -37,10 +45,11 @@ export default function UniversalCheckout({ onSelectPage }) {
   const { restaurantSettings } = useMenuData();
   const { startTrial } = usePlan();
   
+  const [plan, setPlan] = useState(null);
+  const [loadingPlan, setLoadingPlan] = useState(true);
+
   // Robust plan detection
-  const planSlug = searchParams.get('plan') || new URLSearchParams(window.location.search).get('plan') || 'profesional';
-  const plan = PLAN_LABELS[planSlug] || PLAN_LABELS.profesional;
-  const planIcon = IconMap[plan.icon]?.(`w-6 h-6`) || <Zap className="w-6 h-6" />;
+  const planParam = searchParams.get('plan') || new URLSearchParams(window.location.search).get('plan');
 
   const [selectedMethod, setSelectedMethod] = useState('trial'); // trial, whatsapp, card
   const [step, setStep] = useState('form'); // form, processing, success
@@ -55,6 +64,65 @@ export default function UniversalCheckout({ onSelectPage }) {
   });
 
   useEffect(() => {
+    async function fetchPlan() {
+      setLoadingPlan(true);
+      try {
+        let fetchedData = null;
+        if (planParam) {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(planParam);
+          if (isUuid) {
+            const { data, error } = await supabase.from('plans').select('*, features:plan_features(*)').eq('id', planParam).maybeSingle();
+            if (error) console.error('Supabase query error (UUID):', error);
+            fetchedData = data;
+          } else {
+            const { data, error } = await supabase.from('plans').select('*, features:plan_features(*)').ilike('name', `%${planParam}%`).limit(1);
+            if (error) console.error('Supabase query error (ilike):', error);
+            fetchedData = data?.[0];
+          }
+        } else {
+          const { data, error } = await supabase.from('plans').select('*, features:plan_features(*)').ilike('name', '%profesional%').limit(1);
+          if (error) console.error('Supabase query error (default):', error);
+          fetchedData = data?.[0];
+        }
+
+        if (fetchedData) {
+          const uiConfig = getCheckoutUIConfig(fetchedData.name);
+          const formattedFeatures = (fetchedData.features || [])
+            .filter(f => f.is_included)
+            .sort((a,b) => a.sort_order - b.sort_order)
+            .map(f => f.display_name);
+
+          setPlan({
+            ...fetchedData,
+            features: formattedFeatures,
+            price: fetchedData.price_monthly,
+            color: uiConfig.color,
+            icon: uiConfig.icon
+          });
+        } else {
+          throw new Error("No plan data found in database");
+        }
+      } catch (err) {
+        console.error('Error fetching plan:', err);
+        // Fallback Plan
+        const isEmprendedor = planParam?.toLowerCase().includes('emprendedor');
+        const isPremium = planParam?.toLowerCase().includes('premium');
+        
+        setPlan({ 
+          name: isEmprendedor ? 'Emprendedor' : isPremium ? 'Premium' : 'Profesional', 
+          price: isEmprendedor ? 0 : isPremium ? 129000 : 59000, 
+          features: ['Menú digital avanzado', 'Panel administrativo', 'Soporte prioritario'], 
+          color: isEmprendedor ? '#6B7280' : isPremium ? '#fbbf24' : '#1d4ed8', 
+          icon: isEmprendedor ? 'zap' : isPremium ? 'crown' : 'star' 
+        });
+      } finally {
+        setLoadingPlan(false);
+      }
+    }
+    fetchPlan();
+  }, [planParam]);
+
+  useEffect(() => {
     // Pre-fill data if user is logged in
     if (authUser || profile || activeBrand || restaurantSettings) {
       setFormData(prev => ({
@@ -66,6 +134,8 @@ export default function UniversalCheckout({ onSelectPage }) {
       }));
     }
   }, [authUser, profile, activeBrand, restaurantSettings]);
+
+  const planIcon = plan ? (IconMap[plan.icon]?.(`w-6 h-6`) || <Zap className="w-6 h-6" />) : <Zap className="w-6 h-6" />;
 
   const handleBack = () => {
     // If we came from admin, go back to admin
@@ -157,7 +227,17 @@ export default function UniversalCheckout({ onSelectPage }) {
         </div>
 
         <AnimatePresence mode="wait">
-          {step === 'form' && (
+          {loadingPlan ? (
+            <motion.div 
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="w-full flex justify-center items-center py-20"
+            >
+              <div className="w-12 h-12 border-4 border-brand-primary/20 border-t-brand-primary rounded-full animate-spin" />
+            </motion.div>
+          ) : step === 'form' && plan && (
             <motion.div 
               key="form"
               initial={{ opacity: 0, y: 20 }}
@@ -183,7 +263,7 @@ export default function UniversalCheckout({ onSelectPage }) {
                   </div>
                   
                   <div className="flex items-baseline gap-1.5 mb-4">
-                    <span className="text-2xl font-black">${plan.price}</span>
+                    <span className="text-2xl font-black">${plan.price?.toLocaleString()}</span>
                     <span className="text-white/40 text-xs font-bold uppercase tracking-widest">/ Mes</span>
                   </div>
 
