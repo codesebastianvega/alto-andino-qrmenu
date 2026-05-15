@@ -68,6 +68,9 @@ export default function SuperAdminBrandDetail() {
           slug: brand.slug,
           plan_id: brand.plan_id,
           has_ai_addon: brand.has_ai_addon,
+          ai_generation_limit: brand.ai_generation_limit,
+          addon_ai_analytics: brand.addon_ai_analytics,
+          addon_ai_agent: brand.addon_ai_agent,
           city: brand.city,
           country: brand.country,
           address: brand.address,
@@ -343,6 +346,59 @@ export default function SuperAdminBrandDetail() {
                     <div className="w-11 h-6 bg-red-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-red-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
                   </label>
                 </div>
+              </div>
+            </div>
+
+            <div className="md:col-span-2 pt-4 border-t border-gray-100 mt-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Módulos IA & Add-ons</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-purple-50 p-6 rounded-2xl border border-purple-100">
+                
+                <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-purple-200 shadow-sm hover:border-purple-300 transition-colors">
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-sm">Generación de IA (Base)</h4>
+                    <p className="text-xs text-gray-500 mt-0.5">Límite mensual (0 = ilimitado)</p>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    value={brand.ai_generation_limit || 0}
+                    onChange={(e) => setBrand({...brand, ai_generation_limit: parseInt(e.target.value) || 0})}
+                    className="w-24 px-3 py-1.5 text-sm font-bold text-center bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-purple-200 shadow-sm hover:border-purple-300 transition-colors">
+                  <div>
+                    <h4 className="font-bold text-purple-900 text-sm">IA Analytics</h4>
+                    <p className="text-xs text-purple-700 mt-0.5">Insights y reportes inteligentes</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={brand.addon_ai_analytics || false}
+                      onChange={(e) => setBrand({...brand, addon_ai_analytics: e.target.checked})}
+                    />
+                    <div className="w-11 h-6 bg-purple-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-purple-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-purple-200 shadow-sm hover:border-purple-300 transition-colors">
+                  <div>
+                    <h4 className="font-bold text-purple-900 text-sm">Agente IA (Chatbot)</h4>
+                    <p className="text-xs text-purple-700 mt-0.5">Asistente para el menú</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={brand.addon_ai_agent || false}
+                      onChange={(e) => setBrand({...brand, addon_ai_agent: e.target.checked})}
+                    />
+                    <div className="w-11 h-6 bg-purple-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-purple-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
+                </div>
+
               </div>
             </div>
 

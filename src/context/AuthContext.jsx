@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }) => {
         .from('brands')
         .select(`
           id, name, slug, logo_url, business_type, plan_id, onboarding_completed, is_active,
-          trial_end_date, has_ai_addon, payment_verified,
+          trial_end_date, has_ai_addon, payment_verified, ai_generation_limit, ai_generations_used, addon_ai_analytics, addon_ai_agent,
           plans (name),
           restaurant_settings (primary_color)
         `)
@@ -88,7 +88,7 @@ export const AuthProvider = ({ children }) => {
             .from('brands')
             .select(`
               id, name, slug, logo_url, business_type, plan_id, onboarding_completed, is_active,
-              trial_end_date, has_ai_addon, payment_verified,
+              trial_end_date, has_ai_addon, payment_verified, ai_generation_limit, ai_generations_used, addon_ai_analytics, addon_ai_agent,
               plans (name),
               restaurant_settings (primary_color)
             `)

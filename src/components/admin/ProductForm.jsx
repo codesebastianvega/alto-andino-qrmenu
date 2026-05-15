@@ -9,6 +9,8 @@ import { useLocationOverrides } from '../../hooks/useLocationOverrides';
 import { useRestaurantSettings } from '../../hooks/useRestaurantSettings';
 import { validateImageSize, convertDriveLink, compressAndWebp } from '../../utils/images';
 import { toast as toastFn } from '../Toast';
+import { useAuth } from '../../context/AuthContext';
+import { useGemini } from '../../hooks/useGemini';
 
 const toast = {
   success: (msg) => toastFn(msg, { type: 'success' }),
@@ -32,6 +34,8 @@ const normalizeBrandConcepts = (concepts = []) =>
     .filter(Boolean);
 
 export default function ProductForm({ product, categories, recipes = [], allergens = [], modifierGroups: propModifierGroups, onSave, onCancel }) {
+  const { activeBrand } = useAuth();
+  const { generateText, loading: isGeneratingText } = useGemini();
   const { rawModifierGroups: contextModifierGroups = [] } = useMenuData();
   const rawModifierGroups = propModifierGroups || contextModifierGroups;
   const { settings } = useRestaurantSettings();
@@ -297,6 +301,23 @@ export default function ProductForm({ product, categories, recipes = [], allerge
     }
   };
 
+  const handleGenerateAI = async () => {
+    if (!formData.name) {
+      toast.error('Por favor escribe el nombre del plato primero');
+      return;
+    }
+    const prompt = `Escribe una descripción muy apetitosa, comercial y corta para un plato de restaurante llamado '${formData.name}'. Enfócate en resaltar su sabor y calidad.`;
+    const generated = await generateText({ 
+      brandId: activeBrand?.id, 
+      prompt, 
+      actionType: 'dish_description' 
+    });
+    if (generated) {
+      setFormData(prev => ({ ...prev, description: generated }));
+      toast.success('Descripción generada con IA ✨');
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.name || !formData.price || !formData.category_id) {
@@ -516,7 +537,18 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                   </section>
                 </div>
 
-                <div className="md:col-span-3">
+                <div className="md:col-span-3 relative">
+                  <div className="absolute right-0 top-0 -mt-1 mr-1 z-10">
+                    <button 
+                      type="button" 
+                      onClick={handleGenerateAI}
+                      disabled={isGeneratingText}
+                      className="flex items-center gap-1.5 text-[11px] font-bold text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-100 px-2.5 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    >
+                      <Icon icon="heroicons:sparkles" className="text-sm" />
+                      {isGeneratingText ? 'Generando...' : 'Generar con IA'}
+                    </button>
+                  </div>
                   <FormField label="Descripción">
                     <textarea name="description" value={formData.description} onChange={handleChange} rows={3}
                       placeholder="Describe los sabores, texturas y por qué deberían pedirlo…"
