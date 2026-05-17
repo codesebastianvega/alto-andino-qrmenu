@@ -895,7 +895,7 @@ export default function AdminLayout() {
 
       {/* ── Main Content ────────────────────────────────────────────────── */}
       <main
-        className={`flex-1 transition-all duration-300 ${
+        className={`flex-1 flex flex-col min-w-0 w-full transition-all duration-300 ${
           isCollapsed ? 'lg:ml-20' : 'lg:ml-[240px]'
         } pb-[72px] lg:pb-0`}
       >
@@ -1001,7 +1001,7 @@ export default function AdminLayout() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative w-full max-w-full overflow-x-hidden">
           {currentPage === 'web'         && <AdminWebContent />}
           {currentPage === 'products'    && <AdminProducts />}
           {currentPage === 'categories'  && <AdminCategories />}
