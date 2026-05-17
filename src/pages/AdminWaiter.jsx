@@ -247,7 +247,7 @@ export default function AdminWaiter() {
   const deliveryCount = externalOrders.filter(o => o.fulfillment_type === 'delivery').length;
 
   return (
-    <div className="p-4 md:p-8 max-w-[1500px] mx-auto space-y-6 selection:bg-[#2f4131]/20 min-h-screen">
+    <div className="p-4 md:p-8 pb-28 max-w-[1500px] mx-auto space-y-6 selection:bg-[#2f4131]/20 min-h-screen">
       
       {/* HEADER POS COMPACTO */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white/70 backdrop-blur-2xl p-6 rounded-[2rem] border border-white/50 shadow-xl shadow-gray-200/30">
@@ -277,9 +277,9 @@ export default function AdminWaiter() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr,340px] gap-6">
+      <div className="flex flex-col lg:grid lg:grid-cols-[1fr,340px] gap-6">
         {/* LADO IZQUIERDO: GRID DE MESAS COMPACTO */}
-        <div className="space-y-4">
+        <div className="space-y-4 order-2 lg:order-1">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-2">
             <div className="flex items-center gap-2">
               <LayoutGrid size={18} className="text-[#2f4131]" />
@@ -411,46 +411,48 @@ export default function AdminWaiter() {
         </div>
 
         {/* LADO DERECHO: ACCIONES COMPACTAS */}
-        <div className="space-y-4">
+        <div className="space-y-4 order-1 lg:order-2">
            <div className="flex items-center gap-2 px-1">
               <Sparkles size={16} className="text-[#2f4131]" />
               <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Acciones Rápidas</h4>
            </div>
 
-           {/* Banner: Pedido para Llevar */}
-           <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => handleManualOrder('takeaway')}
-              className="w-full bg-[#2f4131] rounded-[2rem] p-5 text-white flex items-center gap-4 group transition-all shadow-xl shadow-[#2f4131]/20 overflow-hidden relative"
-           >
-              <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full translate-x-8 -translate-y-8 group-hover:scale-150 transition-transform duration-700 blur-xl" />
-              <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/10 shrink-0">
-                 <ShoppingBag size={20} className="text-white" />
-              </div>
-              <div className="text-left relative z-10">
-                 <h4 className="text-lg font-black leading-tight" style={{ fontFamily: 'Outfit' }}>Para Llevar</h4>
-                 <p className="text-[10px] text-white/60 font-medium uppercase tracking-widest">Pedido en counter</p>
-              </div>
-              <ArrowRight size={18} className="ml-auto text-white/40 group-hover:text-white transition-colors" />
-           </motion.button>
+           <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
+              {/* Banner: Pedido para Llevar */}
+              <motion.button 
+                 whileHover={{ scale: 1.02 }}
+                 whileTap={{ scale: 0.98 }}
+                 onClick={() => handleManualOrder('takeaway')}
+                 className="w-full bg-[#2f4131] rounded-[2rem] p-4 md:p-5 text-white flex items-center gap-4 group transition-all shadow-xl shadow-[#2f4131]/20 overflow-hidden relative"
+              >
+                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full translate-x-8 -translate-y-8 group-hover:scale-150 transition-transform duration-700 blur-xl" />
+                 <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/10 shrink-0">
+                    <ShoppingBag size={20} className="text-white" />
+                 </div>
+                 <div className="text-left relative z-10">
+                    <h4 className="text-lg font-black leading-tight" style={{ fontFamily: 'Outfit' }}>Para Llevar</h4>
+                    <p className="text-[10px] text-white/60 font-medium uppercase tracking-widest">Pedido en counter</p>
+                 </div>
+                 <ArrowRight size={18} className="ml-auto text-white/40 group-hover:text-white transition-colors" />
+              </motion.button>
 
-           {/* Banner: Domicilio */}
-           <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => handleManualOrder('delivery')}
-              className="w-full bg-white rounded-[2rem] p-5 border border-gray-100 flex items-center gap-4 group transition-all shadow-lg shadow-gray-200/40 overflow-hidden relative"
-           >
-              <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center border border-indigo-100 shrink-0">
-                 <Bike size={20} className="text-indigo-600" />
-              </div>
-              <div className="text-left">
-                 <h4 className="text-lg font-black text-gray-900 leading-tight" style={{ fontFamily: 'Outfit' }}>Domicilio</h4>
-                 <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest">Nueva entrega externa</p>
-              </div>
-              <ArrowRight size={18} className="ml-auto text-gray-200 group-hover:text-indigo-600 transition-colors" />
-           </motion.button>
+              {/* Banner: Domicilio */}
+              <motion.button 
+                 whileHover={{ scale: 1.02 }}
+                 whileTap={{ scale: 0.98 }}
+                 onClick={() => handleManualOrder('delivery')}
+                 className="w-full bg-white rounded-[2rem] p-4 md:p-5 border border-gray-100 flex items-center gap-4 group transition-all shadow-lg shadow-gray-200/40 overflow-hidden relative"
+              >
+                 <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center border border-indigo-100 shrink-0">
+                    <Bike size={20} className="text-indigo-600" />
+                 </div>
+                 <div className="text-left">
+                    <h4 className="text-lg font-black text-gray-900 leading-tight" style={{ fontFamily: 'Outfit' }}>Domicilio</h4>
+                    <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest">Nueva entrega externa</p>
+                 </div>
+                 <ArrowRight size={18} className="ml-auto text-gray-200 group-hover:text-indigo-600 transition-colors" />
+              </motion.button>
+           </div>
 
            {/* Metrics Card Compacto */}
            <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-xl shadow-gray-200/30 space-y-6">

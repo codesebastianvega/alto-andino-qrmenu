@@ -829,10 +829,10 @@ export default function AdminOrders() {
 
                 // Color themes per column
                 const themes = {
-                  new: 'from-blue-50/50 to-indigo-50/30 border-blue-100/50 shadow-blue-500/5',
-                  preparing: 'from-amber-50/50 to-orange-50/30 border-amber-100/50 shadow-amber-500/5',
-                  ready: 'from-emerald-50/50 to-teal-50/30 border-emerald-100/50 shadow-emerald-500/5',
-                  on_table: 'from-purple-50/50 to-fuchsia-50/30 border-purple-100/50 shadow-purple-500/5'
+                  new: 'from-blue-50/50 to-indigo-50/30 border-blue-200 shadow-blue-500/5',
+                  preparing: 'from-amber-50/50 to-orange-50/30 border-amber-200 shadow-amber-500/5',
+                  ready: 'from-emerald-50/50 to-teal-50/30 border-emerald-200 shadow-emerald-500/5',
+                  on_table: 'from-purple-50/50 to-fuchsia-50/30 border-purple-200 shadow-purple-500/5'
                 };
 
                 return (
