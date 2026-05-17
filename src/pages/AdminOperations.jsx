@@ -20,7 +20,7 @@ export default function AdminOperations() {
   const { orders, metrics, tablesWithStatus, areas, liveEvents, loading, refresh, updateTablePhysicalStatus } = useOperations();
 
   return (
-    <div className="p-4 md:p-8 max-w-[1700px] mx-auto min-h-screen">
+    <div className="p-4 md:p-8 pb-28 max-w-[1700px] mx-auto min-h-screen">
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="flex items-center justify-between mb-8">
         <div>

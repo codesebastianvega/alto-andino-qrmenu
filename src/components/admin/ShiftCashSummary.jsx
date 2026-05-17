@@ -60,16 +60,16 @@ const formatCOP = (val) =>
 
 function KPICard({ icon, iconBg, iconColor, label, value, sub, pulse = false }) {
   return (
-    <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col justify-between min-h-[110px] ${pulse ? 'ring-2 ring-green-300 ring-offset-1' : ''}`}>
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-tight">{label}</p>
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${iconBg}`}>
-          <Icon icon={icon} className={`text-lg ${iconColor}`} />
+    <div className={`bg-white rounded-xl md:rounded-2xl border border-gray-100 shadow-sm p-3 md:p-5 flex flex-col justify-between min-h-[90px] md:min-h-[110px] ${pulse ? 'ring-2 ring-green-300 ring-offset-1' : ''}`}>
+      <div className="flex items-center justify-between mb-2 md:mb-3">
+        <p className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest leading-tight">{label}</p>
+        <div className={`w-7 h-7 md:w-9 md:h-9 rounded-lg md:rounded-xl flex items-center justify-center ${iconBg} flex-shrink-0`}>
+          <Icon icon={icon} className={`text-sm md:text-lg ${iconColor}`} />
         </div>
       </div>
       <div>
-        <p className="text-2xl font-black text-gray-900 tracking-tight">{value}</p>
-        {sub && <p className="text-[10px] font-bold text-gray-400 mt-0.5">{sub}</p>}
+        <p className="text-lg md:text-2xl font-black text-gray-900 tracking-tight">{value}</p>
+        {sub && <p className="text-[8px] md:text-[10px] font-bold text-gray-400 mt-0.5">{sub}</p>}
       </div>
     </div>
   );

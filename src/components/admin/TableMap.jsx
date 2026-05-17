@@ -22,7 +22,7 @@ function TableTimer({ createdAt }) {
     'text-emerald-400';
 
   return (
-    <span className={`text-[11px] font-bold tabular-nums ${color}`}>
+    <span className={`text-[9px] md:text-[11px] font-bold tabular-nums ${color}`}>
       {mins >= 60
         ? `${Math.floor(mins / 60)}h ${mins % 60}m`
         : `${mins} min`}
@@ -123,7 +123,7 @@ const TableCard = React.forwardRef(({ table, onUpdateTableStatus }, ref) => {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className={`relative rounded-2xl border border-white/8 p-4 flex flex-col gap-3 transition-all duration-300
+      className={`relative rounded-2xl border border-white/8 p-3 md:p-5 flex flex-col justify-between gap-3 transition-all duration-300 min-w-0 h-full
         ${cfg.cardBg} ${cfg.ring} ring-1 shadow-lg ${cfg.glow}
         ${table.status === 'needs_billing' ? 'animate-pulse-slow' : ''}
       `}
@@ -146,39 +146,39 @@ const TableCard = React.forwardRef(({ table, onUpdateTableStatus }, ref) => {
       )}
 
       {/* Header: número + estado */}
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest leading-none mb-1">
+      <div className="flex items-start justify-between gap-2 min-w-0">
+        <div className="min-w-0 flex-1">
+          <p className="text-[8px] md:text-[10px] font-bold text-white/30 uppercase tracking-widest leading-none mb-1">
             Mesa
           </p>
-          <p className="text-3xl font-black text-white leading-none">
+          <p className="text-base sm:text-lg lg:text-xl font-black text-white leading-tight break-words line-clamp-2">
             {table.table_number}
           </p>
         </div>
 
-        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider ${cfg.badge}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot} ${table.status !== 'libre' ? 'animate-pulse' : ''}`} />
+        <div className={`flex items-center gap-1 md:gap-1.5 px-1.5 md:px-2.5 py-0.5 md:py-1 rounded-full border text-[8px] md:text-[10px] font-bold uppercase tracking-wider whitespace-nowrap shrink-0 ${cfg.badge}`}>
+          <span className={`w-1 md:w-1.5 h-1 md:h-1.5 rounded-full ${cfg.dot} ${table.status !== 'libre' ? 'animate-pulse' : ''}`} />
           {cfg.label}
         </div>
       </div>
 
-      <div className="flex-1 space-y-2">
+      <div className="flex-1 flex flex-col justify-between gap-2">
         {/* Tiempo + SLA (si está ocupada o hay orden) */}
         {(table.status !== 'libre' && table.status !== 'free') && (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/30">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-2.5 h-2.5 md:w-3 md:h-3 text-white/30">
                 <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
               </svg>
               <TableTimer createdAt={table.occupied_at || (order ? order.created_at : Date.now())} />
             </div>
             {slaAlert && (
-              <span className="text-[9px] font-black text-red-400 uppercase tracking-wider animate-pulse">
+              <span className="text-[8px] md:text-[9px] font-black text-red-400 uppercase tracking-wider animate-pulse">
                 ⚠ SLA
               </span>
             )}
             {slaWarn && !slaAlert && (
-              <span className="text-[9px] font-black text-orange-400 uppercase tracking-wider">
+              <span className="text-[8px] md:text-[9px] font-black text-orange-400 uppercase tracking-wider">
                 ⏱ Lento
               </span>
             )}
@@ -189,32 +189,32 @@ const TableCard = React.forwardRef(({ table, onUpdateTableStatus }, ref) => {
         {order ? (
           <>
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-white/40 font-medium">
+              <span className="text-[8px] md:text-[10px] text-white/40 font-medium">
                 {order.fulfillment_type === 'dine_in' ? 'Mesa' : 'Llevar'}
               </span>
               {order.order_items && (
-                <span className="text-[10px] text-white/30">
+                <span className="text-[8px] md:text-[10px] text-white/30">
                   · {order.order_items.length} ítem{order.order_items.length !== 1 ? 's' : ''}
                 </span>
               )}
             </div>
             {/* Total */}
             <div className="pt-1 border-t border-white/5 flex items-center justify-between">
-              <span className="text-[10px] text-white/30 font-medium uppercase tracking-wider">Total</span>
-              <span className="text-base font-black text-white">
+              <span className="text-[8px] md:text-[10px] text-white/30 font-medium uppercase tracking-wider">Total</span>
+              <span className="text-xs md:text-base font-black text-white">
                 ${total.toLocaleString('es-CO')}
               </span>
             </div>
           </>
         ) : (table.status === 'libre' || table.status === 'free') ? (
           <div className="flex-1 flex items-center justify-center py-2 h-full">
-             <span className="text-[11px] text-white/15 font-medium uppercase tracking-widest">
+             <span className="text-[8px] md:text-[10px] text-white/15 font-medium uppercase tracking-widest">
                Sin pedido
              </span>
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center py-2 h-full">
-            <span className="text-[11px] text-emerald-400/50 font-medium tracking-wide">
+            <span className="text-[8px] md:text-[10px] text-emerald-400/50 font-medium tracking-wide">
               Pedido Cerrado
             </span>
           </div>
@@ -226,7 +226,7 @@ const TableCard = React.forwardRef(({ table, onUpdateTableStatus }, ref) => {
         <button
           onClick={handleFreeTable}
           disabled={freeing}
-          className={`mt-2 w-full py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border flex justify-center items-center gap-2 shadow-sm
+          className={`mt-2 w-full py-1.5 md:py-2 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all border flex justify-center items-center gap-1.5 md:gap-2 shadow-sm
             ${table.status === 'sucia' 
               ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white' 
               : 'bg-orange-500/10 border-orange-500/20 text-orange-400 hover:bg-orange-500 hover:text-white'
@@ -237,9 +237,15 @@ const TableCard = React.forwardRef(({ table, onUpdateTableStatus }, ref) => {
           {freeing ? (
             'Procesando...'
           ) : table.status === 'sucia' ? (
-            <><span className="text-xs">✨</span> Marcar Limpia</>
+            <>
+              <span className="text-[10px] md:text-xs">✨</span>
+              <span>Marcar Limpia</span>
+            </>
           ) : (
-            <><span className="text-xs">🧹</span> Liberar Mesa</>
+            <>
+              <span className="text-[10px] md:text-xs">🧹</span>
+              <span>Liberar Mesa</span>
+            </>
           )}
         </button>
       )}
@@ -299,7 +305,7 @@ export default function TableMap({ tablesWithStatus = [], areas = [], loading = 
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 md:gap-4">
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="h-36 rounded-2xl bg-white/[0.03] border border-white/5 animate-pulse" />
         ))}
@@ -329,10 +335,10 @@ export default function TableMap({ tablesWithStatus = [], areas = [], loading = 
         {isAllLocations && locations.length > 1 && (
           <div className="flex flex-col gap-2">
             <span className="text-[10px] font-black text-white/20 uppercase tracking-widest pl-1">Filtrar por Sede</span>
-            <div className="flex items-center gap-1 p-1 bg-white/5 rounded-2xl w-fit overflow-x-auto no-scrollbar border border-white/5">
+            <div className="flex flex-nowrap items-center gap-1 p-1 bg-white/5 rounded-2xl w-fit max-w-full overflow-x-auto no-scrollbar border border-white/5">
               <button
                 onClick={() => setSelectedLocationId('all')}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap shrink-0 transition-all ${
                   selectedLocationId === 'all'
                     ? 'bg-white/10 text-white shadow-lg'
                     : 'text-white/30 hover:text-white/60'
@@ -344,7 +350,7 @@ export default function TableMap({ tablesWithStatus = [], areas = [], loading = 
                 <button
                   key={loc.id}
                   onClick={() => setSelectedLocationId(loc.id)}
-                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap shrink-0 transition-all ${
                     selectedLocationId === loc.id
                       ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 shadow-lg'
                       : 'text-white/30 hover:text-white/60 border border-transparent'
@@ -361,10 +367,10 @@ export default function TableMap({ tablesWithStatus = [], areas = [], loading = 
         {areas.length > 0 && (
           <div className="flex flex-col gap-2">
             <span className="text-[10px] font-black text-white/20 uppercase tracking-widest pl-1">Filtrar por Área</span>
-            <div className="flex items-center gap-1 p-1 bg-white/5 rounded-2xl w-fit overflow-x-auto no-scrollbar border border-white/5">
+            <div className="flex flex-nowrap items-center gap-1 p-1 bg-white/5 rounded-2xl w-fit max-w-full overflow-x-auto no-scrollbar border border-white/5">
               <button
                 onClick={() => setSelectedAreaId('all')}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap shrink-0 transition-all ${
                   selectedAreaId === 'all'
                     ? 'bg-white/10 text-white shadow-lg'
                     : 'text-white/30 hover:text-white/60'
@@ -378,7 +384,7 @@ export default function TableMap({ tablesWithStatus = [], areas = [], loading = 
                   <button
                     key={area.id}
                     onClick={() => setSelectedAreaId(area.id)}
-                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap shrink-0 transition-all ${
                       selectedAreaId === area.id
                         ? 'bg-[#2f4131] text-white shadow-lg border border-white/10'
                         : 'text-white/30 hover:text-white/60 border border-transparent'
@@ -426,7 +432,7 @@ export default function TableMap({ tablesWithStatus = [], areas = [], loading = 
         ) : (
           <motion.div
             layout
-            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3"
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 md:gap-4"
           >
             <AnimatePresence mode="popLayout">
               {filtered.map(table => (
