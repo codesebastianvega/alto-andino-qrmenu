@@ -32,7 +32,6 @@ import UniversalCheckout from '../../pages/checkout/UniversalCheckout';
 import { useMenuData } from '../../context/MenuDataContext';
 import { usePlan } from '../../hooks/usePlan';
 import Toast from '../Toast';
-import SupportFAB from './SupportFAB';
 import AccountSuspendedOverlay from './AccountSuspendedOverlay';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
@@ -1242,7 +1241,6 @@ export default function AdminLayout() {
         </div>
       </div>
 
-      <SupportFAB />
       <Toast />
 
       {activeBrand?.is_active === false && (

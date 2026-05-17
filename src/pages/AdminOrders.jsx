@@ -57,23 +57,23 @@ const DailyStats = ({ orders, range, onCancelledClick, onDeliveredClick }) => {
   const cancelled = orders.filter(o => o.status === 'cancelled');
   
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm transition-transform active:scale-95 cursor-default">
-        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Ventas {rangeLabels[range]}</p>
-        <p className="text-2xl font-black text-[#2f4131]">${revenue.toLocaleString()}</p>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-4 md:mb-8">
+      <div className="bg-white p-2.5 md:p-4 rounded-xl md:rounded-2xl border border-gray-100 shadow-sm transition-transform active:scale-95 cursor-default">
+        <p className="text-[9px] md:text-xs text-gray-500 font-black uppercase tracking-wider mb-0.5 md:mb-1">Ventas {rangeLabels[range]}</p>
+        <p className="text-lg md:text-2xl font-black text-[#2f4131] leading-none">${revenue.toLocaleString()}</p>
       </div>
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm transition-transform active:scale-95 cursor-default">
-        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Pedidos {rangeLabels[range]}</p>
-        <p className="text-2xl font-black text-gray-800">{orders.length}</p>
+      <div className="bg-white p-2.5 md:p-4 rounded-xl md:rounded-2xl border border-gray-100 shadow-sm transition-transform active:scale-95 cursor-default">
+        <p className="text-[9px] md:text-xs text-gray-500 font-black uppercase tracking-wider mb-0.5 md:mb-1">Pedidos {rangeLabels[range]}</p>
+        <p className="text-lg md:text-2xl font-black text-gray-800 leading-none">{orders.length}</p>
       </div>
       <button 
         onClick={onDeliveredClick}
-        className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm transition-all active:scale-95 hover:bg-emerald-50 hover:border-emerald-100 group text-left w-full relative overflow-hidden"
+        className="bg-white p-2.5 md:p-4 rounded-xl md:rounded-2xl border border-gray-100 shadow-sm transition-all active:scale-95 hover:bg-emerald-50 hover:border-emerald-100 group text-left w-full relative overflow-hidden"
       >
-        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1 group-hover:text-emerald-600 transition-colors">Finalizados</p>
-        <div className="flex items-center justify-between">
-          <p className="text-2xl font-black text-emerald-600">{delivered.length}</p>
-          <span className="text-[9px] font-black bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg border border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+        <p className="text-[9px] md:text-xs text-gray-500 font-black uppercase tracking-wider mb-0.5 md:mb-1 group-hover:text-emerald-600 transition-colors">Finalizados</p>
+        <div className="flex items-center justify-between gap-1">
+          <p className="text-lg md:text-2xl font-black text-emerald-600 leading-none">{delivered.length}</p>
+          <span className="text-[8px] md:text-[9px] font-black bg-emerald-50 text-emerald-600 px-1.5 md:px-2 py-0.5 md:py-1 rounded-lg border border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white transition-all whitespace-nowrap">
             VER TODO
           </span>
         </div>
@@ -81,12 +81,12 @@ const DailyStats = ({ orders, range, onCancelledClick, onDeliveredClick }) => {
 
       <button 
         onClick={onCancelledClick}
-        className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm transition-all active:scale-95 hover:bg-red-50 hover:border-red-100 group text-left w-full relative overflow-hidden"
+        className="bg-white p-2.5 md:p-4 rounded-xl md:rounded-2xl border border-gray-100 shadow-sm transition-all active:scale-95 hover:bg-red-50 hover:border-red-100 group text-left w-full relative overflow-hidden"
       >
-        <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1 group-hover:text-red-600 transition-colors">Cancelados</p>
-        <div className="flex items-center justify-between">
-          <p className="text-2xl font-black text-red-600">{cancelled.length}</p>
-          <span className="text-[9px] font-black bg-red-50 text-red-600 px-2 py-1 rounded-lg border border-red-100 group-hover:bg-red-600 group-hover:text-white transition-all">
+        <p className="text-[9px] md:text-xs text-gray-500 font-black uppercase tracking-wider mb-0.5 md:mb-1 group-hover:text-red-600 transition-colors">Cancelados</p>
+        <div className="flex items-center justify-between gap-1">
+          <p className="text-lg md:text-2xl font-black text-red-600 leading-none">{cancelled.length}</p>
+          <span className="text-[8px] md:text-[9px] font-black bg-red-50 text-red-600 px-1.5 md:px-2 py-0.5 md:py-1 rounded-lg border border-red-100 group-hover:bg-red-600 group-hover:text-white transition-all whitespace-nowrap">
             VER TODO
           </span>
         </div>
@@ -810,7 +810,7 @@ export default function AdminOrders() {
       ) : (
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="pb-8 h-[calc(100vh-280px)] min-h-[600px]">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 h-full items-stretch">
+            <div className="flex flex-nowrap md:grid md:grid-cols-4 gap-4 md:gap-8 h-[calc(100vh-280px)] min-h-[600px] items-start overflow-x-auto md:overflow-visible snap-x snap-mandatory pb-6 custom-scrollbar scroll-smooth">
               {ORDER_STATUSES.map((statusCol, index) => {
                 const fTypeWeights = { 'dine_in': 1, 'takeaway': 2, 'delivery': 3 };
                 
@@ -839,9 +839,7 @@ export default function AdminOrders() {
                   <Droppable key={`status-column-${statusCol.id}-${index}`} droppableId={statusCol.id} isCombineEnabled>
                   {(provided, snapshot) => (
                     <div 
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={`flex flex-col rounded-[2.5rem] p-6 border-2 transition-all duration-300 bg-gradient-to-b ${
+                      className={`min-w-[80vw] md:min-w-0 snap-center shrink-0 flex flex-col rounded-[2.5rem] p-4 md:p-6 border-2 transition-all duration-300 bg-gradient-to-b ${
                         snapshot.isDraggingOver 
                           ? 'bg-white/80 border-emerald-300 shadow-2xl' 
                           : `${themes[statusCol.id]} shadow-xl`
@@ -859,7 +857,11 @@ export default function AdminOrders() {
                         </span>
                       </div>
                       
-                      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-5">
+                      <div 
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-5"
+                      >
                         {colOrders.map((order, index) => {
                           const fl = getFulfillmentLabel(order.fulfillment_type);
                           return (
