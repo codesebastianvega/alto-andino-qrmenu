@@ -13,6 +13,7 @@ import {
   ArrowRight, Activity, TrendingUp, ShoppingBag, Bike
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { safeSessionStorage as sessionStorage } from '../utils/safeStorage';
 
 const toast = {
   success: (msg, opts) => toastFn.success(msg, { duration: 2500, ...opts }),

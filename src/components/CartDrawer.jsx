@@ -15,6 +15,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useMenuData } from "@/context/MenuDataContext";
 import { isRestaurantOpen } from "@/utils/businessHours";
 import { usePlan } from "@/hooks/usePlan";
+import { safeStorage as localStorage, safeSessionStorage as sessionStorage } from "@/utils/safeStorage";
+
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 3000 }),

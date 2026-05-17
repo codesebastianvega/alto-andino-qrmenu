@@ -18,6 +18,7 @@ import { useLocationPayments } from "@/hooks/useLocationPayments";
 import { usePlan } from "@/hooks/usePlan";
 import { trackAnalyticsEvent } from "@/utils/analytics";
 import { isRestaurantOpen } from "@/utils/businessHours";
+import { safeStorage as localStorage, safeSessionStorage as sessionStorage } from "@/utils/safeStorage";
 
 
 const toast = {

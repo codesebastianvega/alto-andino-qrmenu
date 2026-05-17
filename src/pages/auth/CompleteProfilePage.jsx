@@ -25,6 +25,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FadeIn, SpotlightCard, MagneticButton } from '../../components/aluna/animations';
 
 import { PLAN_IDS, PLAN_LABELS, DEFAULT_PLAN_SLUG } from '../../config/plans';
+import { safeSessionStorage as sessionStorage } from '../../utils/safeStorage';
+
 
 const BUSINESS_TYPES = [
   { value: 'restaurant',   label: 'Restaurante',  Icon: Store },

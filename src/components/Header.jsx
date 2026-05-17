@@ -5,6 +5,7 @@ import { getTableId } from "@/utils/table";
 import { Leaf, ShoppingBag, Search, User } from "lucide-react";
 import { useMenuData } from "../context/MenuDataContext";
 import { useAuth } from "../context/AuthContext";
+import { safeStorage as localStorage } from "../utils/safeStorage";
 
 export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, currentHash = '' }) {
   const [table, setTable] = useState("");

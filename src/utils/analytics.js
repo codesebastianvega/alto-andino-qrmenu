@@ -1,4 +1,5 @@
 import { supabase } from "@/config/supabase";
+import { safeStorage as localStorage, safeSessionStorage as sessionStorage } from "./safeStorage";
 
 const SESSION_KEY = "aluna_session_id";
 

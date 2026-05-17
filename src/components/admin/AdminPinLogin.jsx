@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useStaff } from '../../hooks/useStaff';
 import { useLocations } from '../../context/LocationContext';
+import { safeSessionStorage as sessionStorage } from '../../utils/safeStorage';
 
 const RoleColors = {
   admin: 'bg-[#4a6741] text-white',

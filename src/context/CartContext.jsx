@@ -1,6 +1,7 @@
 // src/context/CartContext.jsx
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
 import { useBrand } from "./BrandContext";
+import { safeStorage as localStorage } from "../utils/safeStorage";
 
 const toastEvent = (message) => {
   try {
@@ -91,11 +92,11 @@ export function CartProvider({ children }) {
   useEffect(() => {
     if (!hasWindow) return;
     
-    const raw = window.localStorage.getItem(currentKey);
+    const raw = localStorage.getItem(currentKey);
     const parsed = safeParse(raw, []);
     setItems(Array.isArray(parsed) ? parsed : []);
 
-    const rawNote = window.localStorage.getItem(`${currentKey}_note`);
+    const rawNote = localStorage.getItem(`${currentKey}_note`);
     setNote(rawNote || "");
     
     setIsLoaded(true);
@@ -107,10 +108,10 @@ export function CartProvider({ children }) {
     try {
       if (itemsToSave !== undefined) {
         const json = JSON.stringify(asArray(itemsToSave));
-        window.localStorage.setItem(currentKey, json);
+        localStorage.setItem(currentKey, json);
       }
       if (noteToSave !== undefined) {
-        window.localStorage.setItem(`${currentKey}_note`, String(noteToSave));
+        localStorage.setItem(`${currentKey}_note`, String(noteToSave));
       }
     } catch (err) {
       console.error("Error saving cart to localStorage:", err);

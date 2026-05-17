@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useLocation as useRouterLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { useLocations as useLocationsHook } from '../hooks/useLocations';
+import { safeStorage as localStorage } from '../utils/safeStorage';
 
 const LocationContext = createContext({});
 

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { safeStorage as localStorage } from '@/utils/safeStorage';
+
 
 export default function CookieConsent() {
   const [isVisible, setIsVisible] = useState(false);

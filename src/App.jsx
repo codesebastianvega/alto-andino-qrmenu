@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import LoadingScreen from "./components/ui/LoadingScreen";
 import { supabase } from "./config/supabase";
 import { trackAnalyticsEvent } from "./utils/analytics";
+import { safeStorage as localStorage, safeSessionStorage as sessionStorage } from "./utils/safeStorage";
 
 // --- COMPONENTES ---
 import BrandWelcome from "./components/BrandWelcome";
@@ -144,6 +145,7 @@ export default function App() {
                      window.location.pathname.startsWith('/registro');
   
   const isOrderingMode = isMenuView || !!localStorage.getItem("aa_current_mesa") || searchParams.get("mesa");
+  const hasFloatingCartBar = !!brand_slug && (cart?.items?.length || 0) > 0;
 
   useEffect(() => {
     // En el panel de admin, priorizamos el nombre de la marca de la sesión

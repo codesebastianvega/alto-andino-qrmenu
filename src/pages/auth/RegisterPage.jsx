@@ -25,6 +25,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FadeIn, SpotlightCard, MagneticButton } from '../../components/aluna/animations';
 
 import { PLAN_IDS, PLAN_LABELS } from '../../config/plans';
+import { safeSessionStorage as sessionStorage } from '../../utils/safeStorage';
+
 
 
 const BUSINESS_TYPES = [

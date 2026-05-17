@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { safeSessionStorage as sessionStorage } from '../../utils/safeStorage';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { useLocations } from '../../context/LocationContext';
