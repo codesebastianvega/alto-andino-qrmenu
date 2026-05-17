@@ -453,10 +453,25 @@ export default function CartModal({ open, onClose }) {
       // Update table status to occupied if it's a dine-in order (always, even if merged)
       if (tableId && fulfillmentType === 'dine_in') {
         try {
-          await supabase.from('restaurant_tables')
-            .update({ is_occupied: true })
-            .eq('id', tableId);
-          console.log("✅ Mesa marcada como ocupada:", tableId);
+          // Fetch current table status to avoid resetting the timer if already occupied
+          const { data: currentTable, error: fetchErr } = await supabase
+            .from('restaurant_tables')
+            .select('physical_status, occupied_at')
+            .eq('id', tableId)
+            .maybeSingle();
+
+          if (!fetchErr && currentTable) {
+            const updatePayload = { physical_status: 'ocupada' };
+            // Only update occupied_at if the table is not already marked occupied
+            if (currentTable.physical_status !== 'ocupada' || !currentTable.occupied_at) {
+              updatePayload.occupied_at = new Date().toISOString();
+            }
+
+            await supabase.from('restaurant_tables')
+              .update(updatePayload)
+              .eq('id', tableId);
+            console.log("✅ Mesa marcada como ocupada:", tableId, updatePayload);
+          }
         } catch (tabErr) {
           console.error("Error updating table status:", tabErr);
         }

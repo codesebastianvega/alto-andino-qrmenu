@@ -150,7 +150,9 @@ export default function AdminWaiter() {
       return;
     }
 
-    const isOccupied = activeOrders.some(o => o.table_id === table.id);
+    const isOccupied = activeOrders.some(o => o.table_id === table.id) || 
+                       table.physical_status === 'ocupada' || 
+                       table.physical_status === 'needs_billing';
     if (isOccupied) {
       setTableToConfirm(table);
       return;
