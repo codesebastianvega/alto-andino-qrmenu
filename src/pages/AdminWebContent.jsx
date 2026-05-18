@@ -406,12 +406,12 @@ export default function AdminWebContent() {
         </PageHeader>
 
         {/* Tabs Menu */}
-        <div className="flex flex-wrap gap-2 bg-gray-100/50 p-2 rounded-3xl w-max border border-gray-100 overflow-hidden shadow-inner">
+        <div className="flex flex-row overflow-x-auto no-scrollbar w-full sm:w-max border border-gray-100 bg-gray-100/50 p-2 rounded-3xl overflow-y-hidden shrink-0 whitespace-nowrap shadow-inner">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-3 px-6 py-3.5 rounded-2xl text-[11px] font-bold uppercase tracking-wider transition-all ${
+              className={`flex items-center gap-3 px-6 py-3.5 rounded-2xl text-[11px] font-bold uppercase tracking-wider transition-all shrink-0 ${
                 activeTab === tab.id 
                 ? 'bg-white text-gray-900 shadow-xl shadow-gray-200/50 ring-1 ring-gray-100 scale-[1.02]' 
                 : 'text-gray-400 hover:text-gray-600 hover:bg-white/50'
@@ -428,7 +428,7 @@ export default function AdminWebContent() {
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-500">
             {/* HERO SETTINGS */}
             <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden group hover:shadow-xl hover:shadow-gray-200/20 transition-all duration-500">
-              <div className="px-8 py-6 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
+              <div className="px-4 sm:px-8 py-6 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm">
                     <Icon icon="solar:crown-bold-duotone" className="text-2xl" />
@@ -440,7 +440,7 @@ export default function AdminWebContent() {
                 </div>
               </div>
 
-              <div className="p-8 space-y-8">
+              <div className="p-4 sm:p-8 space-y-8">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <div className="space-y-6">
                     <FormField 
@@ -982,7 +982,7 @@ export default function AdminWebContent() {
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-500">
             {/* HERO SETTINGS */}
             <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden group hover:shadow-xl hover:shadow-gray-200/20 transition-all duration-500">
-              <div className="px-8 py-6 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
+              <div className="px-4 sm:px-8 py-6 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-sm">
                     <Icon icon="solar:book-bookmark-bold-duotone" className="text-2xl" />
@@ -994,7 +994,7 @@ export default function AdminWebContent() {
                 </div>
               </div>
 
-              <div className="p-8">
+              <div className="p-4 sm:p-8">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                   {/* Form Side */}
                   <div className="space-y-6">
@@ -1049,7 +1049,7 @@ export default function AdminWebContent() {
                       )}
 
                       {/* Content Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex flex-col justify-end p-8">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex flex-col justify-end p-4 sm:p-8">
                         <h4 className="text-white text-2xl font-bold leading-tight mb-2 drop-shadow-md">
                           {data.menu_banner_title || 'Título del Menú'}
                         </h4>
@@ -1095,7 +1095,7 @@ export default function AdminWebContent() {
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-500">
             {/* HERO SETTINGS */}
             <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden group hover:shadow-xl hover:shadow-gray-200/20 transition-all duration-500">
-              <div className="px-8 py-6 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
+              <div className="px-4 sm:px-8 py-6 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 shadow-sm">
                     <Icon icon="solar:star-fall-bold-duotone" className="text-2xl" />
@@ -1107,7 +1107,7 @@ export default function AdminWebContent() {
                 </div>
               </div>
 
-              <div className="p-8">
+              <div className="p-4 sm:p-8">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                   {/* Form Side */}
                   <div className="space-y-6">
@@ -1162,7 +1162,7 @@ export default function AdminWebContent() {
                       )}
 
                       {/* Content Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-purple-950/60 via-transparent to-transparent flex flex-col justify-end p-8">
+                      <div className="absolute inset-0 bg-gradient-to-t from-purple-950/60 via-transparent to-transparent flex flex-col justify-end p-4 sm:p-8">
                         <h4 className="text-white text-2xl font-bold leading-tight mb-2 drop-shadow-md">
                           {data.experiences_h1 || 'Título de Experiencia'}
                         </h4>
@@ -1197,7 +1197,7 @@ export default function AdminWebContent() {
               <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] -mr-64 -mt-64 animate-pulse" />
               <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-600/5 rounded-full blur-[100px] -ml-48 -mb-48" />
               
-              <div className="relative z-10 p-10 lg:p-14 space-y-12">
+              <div className="relative z-10 p-4 sm:p-10 lg:p-14 space-y-12">
                 {/* Header AI */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                   <div className="space-y-4">
@@ -1228,7 +1228,7 @@ export default function AdminWebContent() {
 
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
                   {/* CONCIERGE BLOCK */}
-                  <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-[2.5rem] p-8 space-y-8 hover:bg-white/[0.05] transition-colors duration-500">
+                  <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-[2.5rem] p-4 sm:p-8 space-y-8 hover:bg-white/[0.05] transition-colors duration-500">
                     <div className="flex items-center gap-4">
                       <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-900/40">
                         <Icon icon="solar:chef-hat-heart-bold-duotone" className="text-white text-3xl" />
@@ -1279,7 +1279,7 @@ export default function AdminWebContent() {
                   </div>
 
                   {/* EVENT PLANNER BLOCK */}
-                  <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-[2.5rem] p-8 space-y-8 hover:bg-white/[0.05] transition-colors duration-500">
+                  <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-[2.5rem] p-4 sm:p-8 space-y-8 hover:bg-white/[0.05] transition-colors duration-500">
                     <div className="flex items-center gap-4">
                       <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-900/40">
                         <Icon icon="solar:magic-stick-3-bold-duotone" className="text-white text-3xl" />
@@ -1342,12 +1342,12 @@ export default function AdminWebContent() {
         )}
       </div>
 
-      {/* BOTÓN FLOTANTE DE GUARDADO */}
-      <div className="fixed bottom-8 right-8 z-50">
+      {/* BOTÓN DE GUARDADO ADAPTATIVO (STICKY FOOTER EN MÓVIL, FLOTANTE EN ESCRITORIO) */}
+      <div className="fixed bottom-0 left-0 right-0 md:bottom-8 md:right-8 md:left-auto z-40 md:z-50 bg-white/80 backdrop-blur-lg md:bg-transparent border-t border-gray-100 md:border-none p-4 md:p-0 flex md:block">
         <PrimaryButton 
           onClick={handleSave} 
           disabled={submitting}
-          className={`shadow-2xl px-10 py-4 scale-110 flex items-center gap-2 ${saved ? '!bg-green-600' : ''}`}
+          className={`shadow-2xl w-full md:w-auto px-10 py-4 scale-100 md:scale-110 flex items-center justify-center gap-2 ${saved ? '!bg-green-600' : ''}`}
         >
           {saved ? (
             <><Icon icon="heroicons:check-circle-solid" className="text-lg" /> ¡Guardado!</>
