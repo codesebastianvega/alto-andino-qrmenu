@@ -144,273 +144,369 @@ export default function AdminCategories() {
             </div>
           </div>
 
-      <DragDropContext onDragEnd={onDragEnd}>
-        <TableContainer>
-          <table className="w-full min-w-[600px] border-collapse">
-            <thead>
-              <tr>
-                <Th className="w-12 text-center">≡</Th>
-                <Th>Imagen</Th>
-                <Th>Nombre / Slug</Th>
-                <Th>Productos</Th>
-                {!isAllLocations && <Th>Menú Público</Th>}
-                <Th>Subcats</Th>
-                <Th>Diseño / Vista</Th>
-                <Th>Actualización</Th>
-                <Th>Hero</Th>
-                <Th>Estado</Th>
-                <Th right>Acciones</Th>
-              </tr>
-            </thead>
-            <Droppable droppableId="categories-list">
-              {(provided) => (
-                <tbody 
-                  className="divide-y divide-gray-50"
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                >
-                  {filtered.map((cat, index) => (
-                    <Draggable 
-                      key={cat.id} 
-                      draggableId={cat.id.toString()} 
-                      index={index}
-                      isDragDisabled={!!search}
-                    >
+        <DragDropContext onDragEnd={onDragEnd}>
+        {/* Desktop Table */}
+        <div className="hidden md:block">
+          <TableContainer>
+            <table className="w-full min-w-[600px] border-collapse">
+              <thead>
+                <tr>
+                  <Th className="w-12 text-center">≡</Th>
+                  <Th>Imagen</Th>
+                  <Th>Nombre / Slug</Th>
+                  <Th>Productos</Th>
+                  {!isAllLocations && <Th>Menú Público</Th>}
+                  <Th>Subcats</Th>
+                  <Th>Diseño / Vista</Th>
+                  <Th>Actualización</Th>
+                  <Th>Hero</Th>
+                  <Th>Estado</Th>
+                  <Th right>Acciones</Th>
+                </tr>
+              </thead>
+              <Droppable droppableId="categories-list">
+                {(provided) => (
+                  <tbody 
+                    className="divide-y divide-gray-50"
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                  >
+                    {filtered.map((cat, index) => (
+                      <Draggable 
+                        key={cat.id} 
+                        draggableId={cat.id.toString()} 
+                        index={index}
+                        isDragDisabled={!!search}
+                      >
+                        {(provided, snapshot) => (
+                          <tr 
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`group hover:bg-gray-50/60 transition-colors ${snapshot.isDragging ? 'bg-white shadow-lg ring-1 ring-black/5 z-50 relative' : ''}`}
+                            style={provided.draggableProps.style}
+                          >
+                            <td 
+                              className="px-5 py-3.5 w-12 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing"
+                              {...provided.dragHandleProps}
+                            >
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="9" cy="12" r="1"></circle>
+                                <circle cx="9" cy="5" r="1"></circle>
+                                <circle cx="9" cy="19" r="1"></circle>
+                                <circle cx="15" cy="12" r="1"></circle>
+                                <circle cx="15" cy="5" r="1"></circle>
+                                <circle cx="15" cy="19" r="1"></circle>
+                              </svg>
+                            </td>
+                            {confirmDeleteId === cat.id ? (
+                              <td colSpan={!isAllLocations ? 8 : 7} className="px-5 py-3 bg-red-50">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-sm font-medium text-red-700">¿Eliminar la categoría <strong>"{cat.name}"</strong>?</p>
+                                  <div className="flex gap-2">
+                                    <button onClick={() => handleDelete(cat.id)}
+                                      className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-[12px] font-semibold hover:bg-red-700 transition-all">
+                                      Eliminar
+                                    </button>
+                                    <button onClick={() => setConfirmDeleteId(null)}
+                                      className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-[12px] font-semibold hover:bg-gray-50 transition-all">
+                                      Cancelar
+                                    </button>
+                                  </div>
+                                </div>
+                              </td>
+                            ) : (
+                              <>
+                                <td className="px-5 py-3.5">
+                                  <div className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-100 overflow-hidden flex items-center justify-center text-xl">
+                                    {cat.image_url ? (
+                                      <img src={cat.image_url} alt="" className="w-full h-full object-cover" />
+                                    ) : cat.icon || '📁'}
+                                  </div>
+                                </td>
+                                <td className="px-5 py-3.5">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex flex-col">
+                                      <div className="flex items-center gap-1.5">
+                                        <Icon icon="heroicons:folder" className="text-gray-400 text-sm" />
+                                        <span className="text-sm font-extrabold text-gray-900 leading-tight">{cat.name}</span>
+                                      </div>
+                                      <span className="text-[10px] font-mono text-gray-400 uppercase tracking-tighter mt-1 bg-gray-50 w-fit px-1.5 rounded">{cat.slug}</span>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-5 py-3.5">
+                                  <div className="flex flex-col gap-1.5 min-w-[100px]">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-[10px] text-gray-400 font-bold uppercase whitespace-nowrap">
+                                        {!isAllLocations && cat.linked_products !== null
+                                          ? `${cat.linked_products} vinc.`
+                                          : `${cat.active_products || 0} / ${cat.total_products || 0}`
+                                        }
+                                      </span>
+                                      <Badge variant={(cat.active_products || 0) > 0 ? 'green' : 'gray'}>
+                                        {!isAllLocations && cat.linked_products !== null ? 'En sede' : 'Activos'}
+                                      </Badge>
+                                    </div>
+                                    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden flex">
+                                      {!isAllLocations && cat.linked_products !== null ? (
+                                        <div 
+                                          className={`h-full transition-all duration-500 ${cat.linked_products > 0 ? 'bg-indigo-500' : 'bg-gray-300'}`}
+                                          style={{ width: `${cat.total_products > 0 ? (cat.linked_products / cat.total_products) * 100 : 0}%` }}
+                                        />
+                                      ) : (
+                                        <>
+                                          <div 
+                                            className="h-full bg-green-500 transition-all duration-500" 
+                                            style={{ width: `${cat.total_products > 0 ? (cat.active_products / cat.total_products) * 100 : 0}%` }}
+                                          />
+                                          <div 
+                                            className="h-full bg-gray-300 transition-all duration-500" 
+                                            style={{ width: `${cat.total_products > 0 ? ((cat.total_products - cat.active_products) / cat.total_products) * 100 : 0}%` }}
+                                          />
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                                {!isAllLocations && (
+                                  <td className="px-5 py-3.5">
+                                    {(() => {
+                                      const isActive = cat.is_active !== false;
+                                      const hasLinkedProducts = (cat.linked_products ?? 0) > 0;
+                                      const isOrphan = isActive && !hasLinkedProducts;
+
+                                      if (!isActive) {
+                                        return (
+                                          <div className="flex items-center gap-1.5">
+                                            <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center">
+                                              <Eye size={11} className="text-gray-400" />
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-gray-400">Inactiva</span>
+                                          </div>
+                                        );
+                                      }
+                                      if (isOrphan) {
+                                        return (
+                                          <div className="flex items-center gap-1.5">
+                                            <div className="w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center">
+                                              <AlertTriangle size={11} className="text-amber-600" />
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-amber-600">Sin productos</span>
+                                          </div>
+                                        );
+                                      }
+                                      return (
+                                        <div className="flex items-center gap-1.5">
+                                          <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
+                                            <CheckCircle size={11} className="text-green-600" />
+                                          </div>
+                                          <span className="text-[10px] font-semibold text-green-600">Visible</span>
+                                        </div>
+                                      );
+                                    })()}
+                                  </td>
+                                )}
+                                <td className="px-5 py-3.5">
+                                  <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                    {(cat.visibility_config?.subcategories || []).slice(0, 3).map((sub, i) => (
+                                      <Badge key={i} variant="blue" className="!text-[9px] !px-1.5 !py-0.5 !font-bold">
+                                        {sub}
+                                      </Badge>
+                                    ))}
+                                    {(cat.visibility_config?.subcategories || []).length > 3 && (
+                                      <Badge variant="gray" className="!text-[9px] !px-1.5 !py-0.5 !font-bold">
+                                        +{(cat.visibility_config.subcategories.length - 3)}
+                                      </Badge>
+                                    )}
+                                    {(!cat.visibility_config?.subcategories || cat.visibility_config.subcategories.length === 0) && (
+                                      <span className="text-[10px] text-gray-300 italic font-medium">Sin subcat.</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-5 py-3.5 min-w-[140px]">
+                                  <SelectInput 
+                                    value={cat.visibility_config?.section_type || 'standard'}
+                                    onChange={(e) => updateCategory(cat.id, { 
+                                      visibility_config: { 
+                                        ...(cat.visibility_config || {}), 
+                                        section_type: e.target.value 
+                                      } 
+                                    })}
+                                    className="!py-1.5 !rounded-lg !text-[12px]"
+                                  >
+                                    <option value="standard">Estándar</option>
+                                    <option value="grid">Grid (Ample)</option>
+                                    <option value="grid-compact">Grid Compacto</option>
+                                    <option value="horizontal-slider">Slider Horizontal</option>
+                                    <option value="bento-grid">Bento Grid (Moderno)</option>
+                                    <option value="masonry">Pinterest / Masonry</option>
+                                    <option value="list-minimal">Lista Minimal</option>
+                                    <option value="simple-list">Lista Simple</option>
+                                  </SelectInput>
+                                </td>
+                                <td className="px-5 py-3.5">
+                                  <div className="flex flex-col">
+                                    <span className="text-[11px] font-medium text-gray-600">
+                                      {cat.updated_at ? new Date(cat.updated_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }) : '---'}
+                                    </span>
+                                    <span className="text-[10px] text-gray-400 italic">
+                                      {cat.updated_at ? new Date(cat.updated_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-5 py-3.5">
+                                  <button 
+                                    onClick={() => updateCategory(cat.id, { 
+                                      visibility_config: { 
+                                        ...(cat.visibility_config || {}), 
+                                        show_in_hero: !cat.visibility_config?.show_in_hero 
+                                      } 
+                                    })}
+                                    className={`p-1.5 rounded-lg transition-all ${cat.visibility_config?.show_in_hero ? 'bg-amber-50 text-amber-500' : 'text-gray-300 hover:text-gray-400'}`}
+                                  >
+                                    <Icon icon={cat.visibility_config?.show_in_hero ? "heroicons:star-20-solid" : "heroicons:star"} className="text-xl" />
+                                  </button>
+                                </td>
+                                <td className="px-5 py-3.5">
+                                  <Switch 
+                                    checked={cat.is_active !== false} 
+                                    onChange={(val) => updateCategory(cat.id, { is_active: val })}
+                                  />
+                                </td>
+                                <td className="px-5 py-3.5 text-right">
+                                  <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => handleEdit(cat)}
+                                      className="px-3 py-1.5 text-[12px] font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
+                                      Configurar
+                                    </button>
+                                    <button onClick={() => setConfirmDeleteId(cat.id)}
+                                      className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all">
+                                      <Icon icon="heroicons:trash" className="text-lg" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                    {filtered.length === 0 && (
+                      <tr><td colSpan={10} className="px-5 py-14 text-center">
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300">
+                            <Icon icon="heroicons:folder-open" className="text-2xl" />
+                          </div>
+                          <p className="text-sm text-gray-400 font-medium max-w-[280px] mx-auto">
+                            {search 
+                              ? 'No se encontraron categorías que coincidan con la búsqueda.' 
+                              : isAllLocations 
+                                ? 'Aún no has creado ninguna categoría en el catálogo maestro.'
+                                : 'Esta sede no tiene categorías vinculadas. Usa el botón superior para vincular categorías del catálogo maestro.'}
+                          </p>
+                        </div>
+                      </td></tr>
+                    )}
+                  </tbody>
+                )}
+              </Droppable>
+            </table>
+          </TableContainer>
+        </div>
+
+        {/* Mobile Cards (Reorderable) */}
+        <div className="md:hidden mt-4">
+          <Droppable droppableId="categories-list-mobile">
+            {(provided) => (
+              <div 
+                className="flex flex-col gap-3"
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+              >
+                {filtered.map((cat, index) => {
+                  const isDelConf = confirmDeleteId === cat.id;
+
+                  return (
+                    <Draggable key={cat.id} draggableId={`mobile-${cat.id}`} index={index} isDragDisabled={!!search}>
                       {(provided, snapshot) => (
-                        <tr 
+                        <div 
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          className={`group hover:bg-gray-50/60 transition-colors ${snapshot.isDragging ? 'bg-white shadow-lg ring-1 ring-black/5 z-50 relative' : ''}`}
+                          className={`bg-white rounded-[1.25rem] border border-gray-100 shadow-sm overflow-hidden transition-all ${snapshot.isDragging ? 'shadow-xl ring-2 ring-indigo-500/20 z-50' : ''}`}
                           style={provided.draggableProps.style}
                         >
-                          <td 
-                            className="px-5 py-3.5 w-12 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing"
-                            {...provided.dragHandleProps}
-                          >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="9" cy="12" r="1"></circle>
-                              <circle cx="9" cy="5" r="1"></circle>
-                              <circle cx="9" cy="19" r="1"></circle>
-                              <circle cx="15" cy="12" r="1"></circle>
-                              <circle cx="15" cy="5" r="1"></circle>
-                              <circle cx="15" cy="19" r="1"></circle>
-                            </svg>
-                          </td>
-                          {confirmDeleteId === cat.id ? (
-                            <td colSpan={!isAllLocations ? 8 : 7} className="px-5 py-3 bg-red-50">
-                              <div className="flex items-center justify-between">
-                                <p className="text-sm font-medium text-red-700">¿Eliminar la categoría <strong>"{cat.name}"</strong>?</p>
-                                <div className="flex gap-2">
-                                  <button onClick={() => handleDelete(cat.id)}
-                                    className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-[12px] font-semibold hover:bg-red-700 transition-all">
-                                    Eliminar
-                                  </button>
-                                  <button onClick={() => setConfirmDeleteId(null)}
-                                    className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-[12px] font-semibold hover:bg-gray-50 transition-all">
-                                    Cancelar
-                                  </button>
-                                </div>
+                          {isDelConf ? (
+                            <div className="bg-red-50 p-4 flex flex-col gap-3">
+                              <p className="text-sm font-bold text-red-700">¿Eliminar "{cat.name}"?</p>
+                              <div className="flex gap-2 mt-2">
+                                <button onClick={() => handleDelete(cat.id)} className="flex-1 py-2 bg-red-600 text-white rounded-xl text-xs font-black uppercase">Eliminar</button>
+                                <button onClick={() => setConfirmDeleteId(null)} className="flex-1 py-2 bg-white text-gray-600 border border-gray-200 rounded-xl text-xs font-black uppercase">Cancelar</button>
                               </div>
-                            </td>
+                            </div>
                           ) : (
-                            <>
-                              <td className="px-5 py-3.5">
-                                <div className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-100 overflow-hidden flex items-center justify-center text-xl">
+                            <div className="flex items-stretch">
+                              {/* Drag Handle Area */}
+                              <div 
+                                className="w-10 bg-gray-50 flex items-center justify-center border-r border-gray-100 text-gray-400 active:bg-gray-100 touch-none"
+                                {...provided.dragHandleProps}
+                              >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle>
+                                  <circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle>
+                                </svg>
+                              </div>
+                              
+                              {/* Card Content */}
+                              <div className="flex-1 p-3 flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center shrink-0">
                                   {cat.image_url ? (
                                     <img src={cat.image_url} alt="" className="w-full h-full object-cover" />
-                                  ) : cat.icon || '📁'}
+                                  ) : <span className="text-xl">{cat.icon || '📁'}</span>}
                                 </div>
-                              </td>
-                              <td className="px-5 py-3.5">
-                                <div className="flex items-center gap-3">
-                                  <div className="flex flex-col">
-                                    <div className="flex items-center gap-1.5">
-                                      <Icon icon="heroicons:folder" className="text-gray-400 text-sm" />
-                                      <span className="text-sm font-extrabold text-gray-900 leading-tight">{cat.name}</span>
-                                    </div>
-                                    <span className="text-[10px] font-mono text-gray-400 uppercase tracking-tighter mt-1 bg-gray-50 w-fit px-1.5 rounded">{cat.slug}</span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-5 py-3.5">
-                                <div className="flex flex-col gap-1.5 min-w-[100px]">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="text-[10px] text-gray-400 font-bold uppercase whitespace-nowrap">
-                                      {!isAllLocations && cat.linked_products !== null
-                                        ? `${cat.linked_products} vinc.`
-                                        : `${cat.active_products || 0} / ${cat.total_products || 0}`
-                                      }
-                                    </span>
-                                    <Badge variant={(cat.active_products || 0) > 0 ? 'green' : 'gray'}>
-                                      {!isAllLocations && cat.linked_products !== null ? 'En sede' : 'Activos'}
+                                
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-sm font-extrabold text-gray-900 leading-tight truncate">{cat.name}</h4>
+                                  <p className="text-[9px] font-mono text-gray-400 uppercase tracking-tighter mt-0.5">{cat.slug}</p>
+                                  <div className="flex items-center gap-2 mt-1.5">
+                                    <Badge variant={(cat.active_products || 0) > 0 ? 'green' : 'gray'} className="!text-[9px] !px-1.5 !py-0.5">
+                                      {!isAllLocations && cat.linked_products !== null 
+                                        ? `${cat.linked_products} en Sede` 
+                                        : `${cat.active_products || 0}/${cat.total_products || 0} Prod.`}
                                     </Badge>
-                                  </div>
-                                  <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden flex">
-                                    {!isAllLocations && cat.linked_products !== null ? (
-                                      <div 
-                                        className={`h-full transition-all duration-500 ${cat.linked_products > 0 ? 'bg-indigo-500' : 'bg-gray-300'}`}
-                                        style={{ width: `${cat.total_products > 0 ? (cat.linked_products / cat.total_products) * 100 : 0}%` }}
-                                      />
-                                    ) : (
-                                      <>
-                                        <div 
-                                          className="h-full bg-green-500 transition-all duration-500" 
-                                          style={{ width: `${cat.total_products > 0 ? (cat.active_products / cat.total_products) * 100 : 0}%` }}
-                                        />
-                                        <div 
-                                          className="h-full bg-gray-300 transition-all duration-500" 
-                                          style={{ width: `${cat.total_products > 0 ? ((cat.total_products - cat.active_products) / cat.total_products) * 100 : 0}%` }}
-                                        />
-                                      </>
+                                    {cat.visibility_config?.show_in_hero && (
+                                      <span className="text-[10px] text-amber-500 flex items-center gap-0.5 font-bold"><Icon icon="heroicons:star-20-solid" /> Hero</span>
                                     )}
                                   </div>
                                 </div>
-                              </td>
-                              {!isAllLocations && (
-                                <td className="px-5 py-3.5">
-                                  {(() => {
-                                    const isActive = cat.is_active !== false;
-                                    const hasLinkedProducts = (cat.linked_products ?? 0) > 0;
-                                    const isOrphan = isActive && !hasLinkedProducts;
 
-                                    if (!isActive) {
-                                      return (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center">
-                                            <Eye size={11} className="text-gray-400" />
-                                          </div>
-                                          <span className="text-[10px] font-semibold text-gray-400">Inactiva</span>
-                                        </div>
-                                      );
-                                    }
-                                    if (isOrphan) {
-                                      return (
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center">
-                                            <AlertTriangle size={11} className="text-amber-600" />
-                                          </div>
-                                          <span className="text-[10px] font-semibold text-amber-600">Sin productos</span>
-                                        </div>
-                                      );
-                                    }
-                                    return (
-                                      <div className="flex items-center gap-1.5">
-                                        <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
-                                          <CheckCircle size={11} className="text-green-600" />
-                                        </div>
-                                        <span className="text-[10px] font-semibold text-green-600">Visible</span>
-                                      </div>
-                                    );
-                                  })()}
-                                </td>
-                              )}
-                              <td className="px-5 py-3.5">
-                                <div className="flex flex-wrap gap-1 max-w-[200px]">
-                                  {(cat.visibility_config?.subcategories || []).slice(0, 3).map((sub, i) => (
-                                    <Badge key={i} variant="blue" className="!text-[9px] !px-1.5 !py-0.5 !font-bold">
-                                      {sub}
-                                    </Badge>
-                                  ))}
-                                  {(cat.visibility_config?.subcategories || []).length > 3 && (
-                                    <Badge variant="gray" className="!text-[9px] !px-1.5 !py-0.5 !font-bold">
-                                      +{(cat.visibility_config.subcategories.length - 3)}
-                                    </Badge>
-                                  )}
-                                  {(!cat.visibility_config?.subcategories || cat.visibility_config.subcategories.length === 0) && (
-                                    <span className="text-[10px] text-gray-300 italic font-medium">Sin subcat.</span>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-5 py-3.5 min-w-[140px]">
-                                <SelectInput 
-                                  value={cat.visibility_config?.section_type || 'standard'}
-                                  onChange={(e) => updateCategory(cat.id, { 
-                                    visibility_config: { 
-                                      ...(cat.visibility_config || {}), 
-                                      section_type: e.target.value 
-                                    } 
-                                  })}
-                                  className="!py-1.5 !rounded-lg !text-[12px]"
-                                >
-                                  <option value="standard">Estándar</option>
-                                  <option value="grid">Grid (Ample)</option>
-                                  <option value="grid-compact">Grid Compacto</option>
-                                  <option value="horizontal-slider">Slider Horizontal</option>
-                                  <option value="bento-grid">Bento Grid (Moderno)</option>
-                                  <option value="masonry">Pinterest / Masonry</option>
-                                  <option value="list-minimal">Lista Minimal</option>
-                                  <option value="simple-list">Lista Simple</option>
-                                </SelectInput>
-                              </td>
-                              <td className="px-5 py-3.5">
-                                <div className="flex flex-col">
-                                  <span className="text-[11px] font-medium text-gray-600">
-                                    {cat.updated_at ? new Date(cat.updated_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }) : '---'}
-                                  </span>
-                                  <span className="text-[10px] text-gray-400 italic">
-                                    {cat.updated_at ? new Date(cat.updated_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : ''}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-5 py-3.5">
-                                <button 
-                                  onClick={() => updateCategory(cat.id, { 
-                                    visibility_config: { 
-                                      ...(cat.visibility_config || {}), 
-                                      show_in_hero: !cat.visibility_config?.show_in_hero 
-                                    } 
-                                  })}
-                                  className={`p-1.5 rounded-lg transition-all ${cat.visibility_config?.show_in_hero ? 'bg-amber-50 text-amber-500' : 'text-gray-300 hover:text-gray-400'}`}
-                                >
-                                  <Icon icon={cat.visibility_config?.show_in_hero ? "heroicons:star-20-solid" : "heroicons:star"} className="text-xl" />
-                                </button>
-                              </td>
-                              <td className="px-5 py-3.5">
-                                <Switch 
-                                  checked={cat.is_active !== false} 
-                                  onChange={(val) => updateCategory(cat.id, { is_active: val })}
-                                />
-                              </td>
-                              <td className="px-5 py-3.5 text-right">
-                                <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => handleEdit(cat)}
-                                    className="px-3 py-1.5 text-[12px] font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
-                                    Configurar
+                                {/* Action Buttons */}
+                                <div className="flex flex-col gap-1 shrink-0">
+                                  <button onClick={() => handleEdit(cat)} className="w-8 h-8 flex items-center justify-center bg-blue-50 text-blue-600 rounded-lg border border-blue-100 active:scale-95">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                                   </button>
-                                  <button onClick={() => setConfirmDeleteId(cat.id)}
-                                    className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all">
-                                    <Icon icon="heroicons:trash" className="text-lg" />
+                                  <button onClick={() => setConfirmDeleteId(cat.id)} className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-lg border border-red-100 active:scale-95">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                                   </button>
                                 </div>
-                              </td>
-                            </>
+                              </div>
+                            </div>
                           )}
-                        </tr>
+                        </div>
                       )}
                     </Draggable>
-                  ))}
-                  {provided.placeholder}
-                  {filtered.length === 0 && (
-                    <tr><td colSpan={10} className="px-5 py-14 text-center">
-                      <div className="flex flex-col items-center justify-center gap-3">
-                        <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300">
-                          <Icon icon="heroicons:folder-open" className="text-2xl" />
-                        </div>
-                        <p className="text-sm text-gray-400 font-medium max-w-[280px] mx-auto">
-                          {search 
-                            ? 'No se encontraron categorías que coincidan con la búsqueda.' 
-                            : isAllLocations 
-                              ? 'Aún no has creado ninguna categoría en el catálogo maestro.'
-                              : 'Esta sede no tiene categorías vinculadas. Usa el botón superior para vincular categorías del catálogo maestro.'}
-                        </p>
-                      </div>
-                    </td></tr>
-                  )}
-                </tbody>
-              )}
-            </Droppable>
-          </table>
-        </TableContainer>
+                  );
+                })}
+                {provided.placeholder}
+                {filtered.length === 0 && (
+                  <div className="py-10 text-center bg-gray-50 rounded-2xl border border-gray-100">
+                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Sin resultados</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </Droppable>
+        </div>
       </DragDropContext>
         </div>
       ) : (
