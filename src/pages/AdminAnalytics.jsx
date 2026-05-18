@@ -64,7 +64,7 @@ const GlassCard = ({ children, className = "", noHover = false }) => (
 const TabButton = ({ active, onClick, icon: Icon, label }) => (
   <button
     onClick={onClick}
-    className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-[13px] font-bold transition-all duration-300 ${
+    className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-[13px] font-bold transition-all duration-300 whitespace-nowrap shrink-0 ${
       active 
         ? 'bg-[#1A1A1A] text-white shadow-[0_10px_20px_rgba(0,0,0,0.15)] scale-105' 
         : 'bg-white/50 text-gray-500 hover:bg-white hover:text-gray-900 border border-transparent'
@@ -1520,7 +1520,7 @@ export default function AdminAnalytics() {
       <DataIntegrityCard />
       
       {/* Prime KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="flex flex-row overflow-x-auto no-scrollbar gap-4 pb-4 snap-x -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-3 lg:grid-cols-6">
         {[
           { label: 'Ingresos Totales', val: formatCompactCurrency(stats.revenue), diff: biStats.diffs.revenue, icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
           { label: 'Pronóstico Cierre', val: formatCompactCurrency(advancedData.forecasting?.projected_sales || 0), diff: advancedData.forecasting?.deviation_pct, icon: TrendingUp, color: 'text-indigo-500', bg: 'bg-indigo-50' },
@@ -1529,7 +1529,7 @@ export default function AdminAnalytics() {
           { label: 'Ticket Promedio', val: formatCompactCurrency(stats.avgTicket), diff: biStats.diffs.ticket, icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50' },
           { label: 'Prospección', val: stats.leadCount, diff: biStats.diffs.leads, icon: Users, color: 'text-purple-500', bg: 'bg-purple-50' }
         ].map((item, i) => (
-          <GlassCard key={i} className="p-5">
+          <GlassCard key={i} className="p-5 shrink-0 snap-start w-[200px] md:w-auto">
             <div className="flex justify-between items-start mb-3">
               <div className={`w-9 h-9 rounded-xl ${item.bg} ${item.color} flex items-center justify-center`}>
                 <item.icon className="w-4.5 h-4.5" />
@@ -1543,7 +1543,7 @@ export default function AdminAnalytics() {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Sales Trend - Visual AreaChart */}
-        <GlassCard className="lg:col-span-3 p-8">
+        <GlassCard className="lg:col-span-3 p-5 md:p-8">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Pulso de Ventas</h3>
@@ -1576,7 +1576,7 @@ export default function AdminAnalytics() {
         </GlassCard>
 
         {/* Conversion Funnel - Moved Up */}
-        <GlassCard className="p-8 flex flex-col">
+        <GlassCard className="p-5 md:p-8 flex flex-col">
           <div className="flex justify-between items-center mb-8">
             <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Embudo de Ventas</h3>
             <div className="text-right">
@@ -1616,7 +1616,7 @@ export default function AdminAnalytics() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Recent Orders - Visual Feed - Expanded to 3 cols */}
-        <GlassCard className="lg:col-span-3 p-8">
+        <GlassCard className="lg:col-span-3 p-5 md:p-8">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Actividad Reciente</h3>
@@ -1667,7 +1667,7 @@ export default function AdminAnalytics() {
         </GlassCard>
 
         {/* Action Card - Operational Focus */}
-        <GlassCard className="p-8 flex flex-col justify-between border-gray-100/50 relative overflow-hidden group">
+        <GlassCard className="p-5 md:p-8 flex flex-col justify-between border-gray-100/50 relative overflow-hidden group">
           {/* Subtle Dynamic Background */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-emerald-50 rounded-full blur-[80px] opacity-60 group-hover:opacity-100 transition-all duration-700" />
           
@@ -1730,7 +1730,7 @@ export default function AdminAnalytics() {
       {/* High Intensity Insights - New Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* [NEW] Ciclo de Ventas Semanal (Revenue vs Avg Ticket) */}
-        <GlassCard className="lg:col-span-2 p-8">
+        <GlassCard className="lg:col-span-2 p-5 md:p-8">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Ciclo de Ventas Semanal</h3>
@@ -1789,7 +1789,7 @@ export default function AdminAnalytics() {
         </GlassCard>
 
         {/* [NEW] Mix de Canales (Radial Bar) */}
-        <GlassCard className="p-8">
+        <GlassCard className="p-5 md:p-8">
           <div className="flex justify-between items-center mb-8">
             <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Mix de Canales</h3>
             <div className="flex flex-col gap-1 items-end">
@@ -1836,7 +1836,7 @@ export default function AdminAnalytics() {
       {/* Row 3: Operational Depth */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Weekly Heatmap - Back to Wide */}
-        <GlassCard className="lg:col-span-3 p-8 overflow-hidden">
+        <GlassCard className="lg:col-span-3 p-5 md:p-8 overflow-hidden">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Mapa de Calor Semanal</h3>
@@ -1847,7 +1847,7 @@ export default function AdminAnalytics() {
         </GlassCard>
 
         {/* Mini Category Performance - Horizontal Bars (As requested/maintained) */}
-        <GlassCard className="p-8">
+        <GlassCard className="p-5 md:p-8">
           <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-8">Ranking Categorías</h3>
           <div className="space-y-4">
              {categoryStats.slice(0, 5).map((cat, i) => (
@@ -1872,7 +1872,7 @@ export default function AdminAnalytics() {
       {/* Distribution & Lists */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Payment Methods - Executive Stacked Bar */}
-        <GlassCard className="p-8">
+        <GlassCard className="p-5 md:p-8">
           <div className="flex justify-between items-center mb-8">
             <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Mix de Pagos</h3>
             <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md uppercase">Participación</span>
@@ -1915,7 +1915,7 @@ export default function AdminAnalytics() {
         </GlassCard>
 
         {/* Star Products - Vertical Bar Chart (Volume) */}
-        <GlassCard className="p-8">
+        <GlassCard className="p-5 md:p-8">
           <div className="flex justify-between items-center mb-8">
             <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Productos Estrella</h3>
             <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md uppercase">Volumen (Unidades)</span>
@@ -1955,7 +1955,7 @@ export default function AdminAnalytics() {
         </GlassCard>
 
         {/* Active Tables - Radar Chart */}
-        <GlassCard className="p-8">
+        <GlassCard className="p-5 md:p-8">
           <div className="flex justify-between items-center mb-8">
             <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Carga por Mesa</h3>
             <span className="text-[10px] font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md uppercase">Hotspots</span>
@@ -1986,7 +1986,7 @@ export default function AdminAnalytics() {
       {/* Advanced Performance Tab Section (Merged for visibility) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
          {/* RevPASH / Hourly Efficiency */}
-         <GlassCard className="p-8">
+         <GlassCard className="p-5 md:p-8">
             <div className="flex justify-between items-center mb-8">
                <div>
                   <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Eficiencia de Slot (RevPASH)</h3>
@@ -2010,7 +2010,7 @@ export default function AdminAnalytics() {
          </GlassCard>
 
          {/* Customer Retention / Cohorts */}
-         <GlassCard className="p-8">
+         <GlassCard className="p-5 md:p-8">
             <div className="flex justify-between items-center mb-8">
                <div>
                   <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Retención de Clientes</h3>
@@ -2157,7 +2157,7 @@ export default function AdminAnalytics() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* BCG Matrix Visualization */}
-          <GlassCard className="lg:col-span-2 p-8 h-[450px]">
+          <GlassCard className="lg:col-span-2 p-5 md:p-8 h-[450px]">
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Matriz de Portafolio (BCG)</h3>
@@ -2225,7 +2225,7 @@ export default function AdminAnalytics() {
           </GlassCard>
 
           {/* Data Integrity / Gaps in Costs */}
-          <GlassCard className="p-8 flex flex-col">
+          <GlassCard className="p-5 md:p-8 flex flex-col">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Integridad BI</h3>
               {bcgData.missingItems.length > 0 && <AlertCircle className="text-amber-500 animate-pulse" size={16} />}
@@ -2302,7 +2302,7 @@ export default function AdminAnalytics() {
 
         {/* Pareto row with Toggle (Revenue vs Quantity) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-           <GlassCard className="lg:col-span-2 p-8">
+           <GlassCard className="lg:col-span-2 p-5 md:p-8">
               <div className="flex justify-between items-start mb-8">
                  <div>
                     <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Análisis de Pareto (80/20)</h3>
@@ -2390,7 +2390,7 @@ export default function AdminAnalytics() {
               </div>
            </GlassCard>
 
-           <GlassCard className="p-8">
+           <GlassCard className="p-5 md:p-8">
               <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-2">Market Contribution</h3>
               <p className="text-[10px] font-bold text-gray-400 uppercase mb-6">Impacto en Utilidad Bruta</p>
               <div className="space-y-4">
@@ -2416,7 +2416,7 @@ export default function AdminAnalytics() {
 
         {/* Efficiency & Hotspots Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-           <GlassCard className="lg:col-span-2 p-8">
+           <GlassCard className="lg:col-span-2 p-5 md:p-8">
               <div className="flex justify-between items-center mb-8">
                  <div>
                     <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Staffing & Peak Hours</h3>
@@ -2464,7 +2464,7 @@ export default function AdminAnalytics() {
               </div>
            </GlassCard>
 
-           <GlassCard className="p-8">
+           <GlassCard className="p-5 md:p-8">
               <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-8">Volumen por Categoría</h3>
               <div className="space-y-6">
                  {categoryPopularity.slice(0, 5).map((cat, i) => (
@@ -2824,14 +2824,14 @@ export default function AdminAnalytics() {
   );
 
   return (
-    <div className="p-8 md:p-12 max-w-[1600px] mx-auto min-h-screen mesh-gradient-bg">
+    <div className="p-4 md:p-12 max-w-[1600px] mx-auto min-h-screen mesh-gradient-bg">
       <header className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-8">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
           <div className="flex items-center gap-3 mb-3">
              <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20">PREMIUM</span>
              <span className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em]">Vision Intelligence OS</span>
           </div>
-          <h1 className="text-5xl font-black text-[#1A1A1A] tracking-tighter leading-none">
+          <h1 className="text-3xl md:text-5xl font-black text-[#1A1A1A] tracking-tighter leading-none">
             Estrategia de Crecimiento
           </h1>
           <p className="text-gray-500 mt-4 font-semibold text-lg max-w-xl leading-relaxed">
@@ -2839,12 +2839,12 @@ export default function AdminAnalytics() {
           </p>
         </motion.div>
 
-        <div className="flex bg-white/60 backdrop-blur-md p-1.5 rounded-2xl border border-white/40 shadow-xl shadow-black/[0.03]">
+        <div className="flex flex-row overflow-x-auto no-scrollbar flex-nowrap bg-white/60 backdrop-blur-md p-1.5 rounded-2xl border border-white/40 shadow-xl shadow-black/[0.03] w-full md:w-auto">
           {['today', '7d', '30d', 'all'].map(t => (
             <button
               key={t}
               onClick={() => setDateRange(t)}
-              className={`px-6 py-2 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all ${
+              className={`px-6 py-2 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all shrink-0 ${
                 dateRange === t ? 'bg-[#1A1A1A] text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'
               }`}
             >
@@ -2855,7 +2855,7 @@ export default function AdminAnalytics() {
       </header>
 
       {/* Navigation Tabs */}
-      <div className="flex flex-wrap gap-3 mb-12 pb-6 border-b border-gray-100">
+      <div className="flex flex-row overflow-x-auto no-scrollbar flex-nowrap gap-3 mb-8 md:mb-12 pb-4 md:pb-6 border-b border-gray-100">
         <TabButton active={activeTab === 'resumen'} onClick={() => setActiveTab('resumen')} icon={Zap} label="Resumen" />
         <TabButton active={activeTab === 'analitica'} onClick={() => setActiveTab('analitica')} icon={TrendingUp} label="Analítica" />
         <TabButton active={activeTab === 'operaciones'} onClick={() => setActiveTab('operaciones')} icon={Database} label="Pedidos (Log)" />
