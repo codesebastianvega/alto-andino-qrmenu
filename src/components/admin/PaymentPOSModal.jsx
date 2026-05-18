@@ -107,6 +107,36 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
     return Math.max(0, total - paid);
   }, [order, waiveServiceFee]);
 
+  const originalSubtotal = useMemo(() => {
+    return order?.order_items?.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0) || 0;
+  }, [order]);
+
+  const currentServiceFee = useMemo(() => {
+    if (waiveServiceFee || !order.service_fee) return 0;
+    if (paymentMode === 'manual') return 0;
+
+    const selectedSubtotal = unpaidItems.reduce((sum, item) => {
+      const q = selectedQuantities[item.id] || 0;
+      return sum + (q * item.unit_price);
+    }, 0);
+
+    const remainingUnpaidSubtotal = unpaidItems.reduce((sum, item) => {
+      return sum + (item.quantity * item.unit_price);
+    }, 0);
+
+    // Safeguard: If paying all remaining items, service fee is the remaining order balance minus the selected subtotal
+    if (selectedSubtotal === remainingUnpaidSubtotal) {
+      const remainingFee = remainingOrderBalance - selectedSubtotal;
+      return Math.max(0, Math.round(remainingFee * 100) / 100);
+    }
+
+    if (originalSubtotal > 0) {
+      const fee = (selectedSubtotal / originalSubtotal) * Number(order.service_fee);
+      return Math.round(fee * 100) / 100;
+    }
+    return 0;
+  }, [paymentMode, selectedQuantities, unpaidItems, waiveServiceFee, order.service_fee, originalSubtotal, remainingOrderBalance]);
+
   // Total amount selected for THIS specific transaction session
   const amountToCover = useMemo(() => {
     if (paymentMode === 'manual') return parseFloat(manualAmount) || 0;
@@ -116,19 +146,12 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
       return sum + (q * item.unit_price);
     }, 0);
 
-    // If we are NOT splitting, we definitely include the service fee if available
-    // BUT only if we are paying the FULL balance of selected items.
-    // If the user chooses to waive it, we exclude it.
     if (!waiveServiceFee && order.service_fee > 0) {
-        // If not splitting, add full fee. 
-        // If splitting, we might want to add a proportional fee? 
-        // User says "servico adicional 10%", usually added to the total.
-        // Let's keep it simple: if not waving, add the tip.
-        subtotal += Number(order.service_fee);
+        subtotal += currentServiceFee;
     }
 
     return subtotal;
-  }, [paymentMode, manualAmount, selectedQuantities, unpaidItems, waiveServiceFee, order.service_fee]);
+  }, [paymentMode, manualAmount, selectedQuantities, unpaidItems, waiveServiceFee, order.service_fee, currentServiceFee]);
 
   const totalTendered = useMemo(() => {
     return tenders.reduce((sum, t) => sum + t.amount, 0);
@@ -175,8 +198,6 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
     const nextVal = !isSplitting;
     setIsSplitting(nextVal);
     
-    // Always reset to "all items selected" when turning splitting OFF
-    // or when turning it ON (as a starting point) 
     const allSelected = {};
     order?.order_items?.forEach(item => {
       if (!item.is_paid) allSelected[item.id] = item.quantity;
@@ -187,7 +208,6 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
   const addTender = () => {
     if (!currentMethod) return;
     
-    // The value from keypad is what we "intend" to pay or what we "received"
     const inputVal = parseFloat(receivedAmount) || 0;
     
     let amount = 0;
@@ -200,12 +220,9 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
          toast.error('Ingrese el monto recibido');
          return;
        }
-       // Cap the amount that actually counts towards the balance
        amount = Math.min(received, pendingThreshold);
        change = received - amount;
     } else {
-       // Electronic: typically received = amount, no change
-       // Default to pendingThreshold if input is 0
        amount = inputVal > 0 ? Math.min(inputVal, pendingThreshold) : pendingThreshold;
        received = amount;
        change = 0;
@@ -236,7 +253,6 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
   const handleFinalize = async () => {
     let finalTenders = [...tenders];
     
-    // Auto-tender if none registered and amount is valid
     if (finalTenders.length === 0) {
        if (amountToCover <= 0) {
          toast.error('No hay un monto válido para pagar');
@@ -266,7 +282,6 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
 
     setIsProcessing(true);
     try {
-      // 0. Update Service Fee and Customer Info
       const updates = {
         updated_at: new Date().toISOString(),
         customer_phone: customerPhone,
@@ -280,28 +295,46 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
 
       await supabase.from('orders').update(updates).eq('id', order.id);
 
-      // 1. Process Item Splitting
+      const coveredItemIds = [];
       if (paymentMode === 'items') {
         for (const item of unpaidItems) {
             const qtyToPay = selectedQuantities[item.id] || 0;
             if (qtyToPay <= 0) continue;
 
             if (qtyToPay === item.quantity) {
-                await supabase.from('order_items').update({ is_paid: true }).eq('id', item.id);
+                const { error: updError } = await supabase
+                  .from('order_items')
+                  .update({ is_paid: true })
+                  .eq('id', item.id);
+                if (updError) throw updError;
+                coveredItemIds.push(item.id);
             } else {
-                await supabase.from('order_items').update({ quantity: item.quantity - qtyToPay }).eq('id', item.id);
+                const { error: updError } = await supabase
+                  .from('order_items')
+                  .update({ quantity: item.quantity - qtyToPay })
+                  .eq('id', item.id);
+                if (updError) throw updError;
+                
                 const { id, created_at, products, ...rest } = item;
-                await supabase.from('order_items').insert([{
-                  ...rest,
-                  brand_id: rest.brand_id || order.brand_id || activeBrand.id,
-                  quantity: qtyToPay,
-                  is_paid: true
-                }]);
+                const { data: newRow, error: insError } = await supabase
+                  .from('order_items')
+                  .insert([{
+                    ...rest,
+                    brand_id: rest.brand_id || order.brand_id || activeBrand.id,
+                    quantity: qtyToPay,
+                    is_paid: true
+                  }])
+                  .select('id')
+                  .single();
+                
+                if (insError) throw insError;
+                if (newRow?.id) {
+                  coveredItemIds.push(newRow.id);
+                }
             }
         }
       }
 
-      // 2. Insert Tenders
       const totalChange = finalTenders.reduce((sum, t) => sum + t.change, 0);
       setLastTransactionChange(totalChange);
 
@@ -313,13 +346,12 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
         change_amount: t.change,
         payment_method_id: t.methodId,
         payment_method_name: t.name,
-        items_covered: paymentMode === 'items' ? Object.keys(selectedQuantities).filter(id => selectedQuantities[id] > 0) : null
+        items_covered: paymentMode === 'items' ? coveredItemIds : null
       }));
 
       const { error: pError } = await supabase.from('order_payments').insert(inserts);
       if (pError) throw pError;
 
-      // 3. Status Check: if everything is paid, move to 'new' if it was 'waiting_payment'
       const { data: updatedOrder } = await supabase.from('orders').select('total_amount, paid_amount, status').eq('id', order.id).single();
       if (updatedOrder && updatedOrder.paid_amount >= updatedOrder.total_amount - 1) {
           if (updatedOrder.status === 'waiting_payment') {
@@ -374,24 +406,24 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[70] flex items-end lg:items-center justify-center p-0 lg:p-4">
       <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-md" onClick={onClose}></div>
       
-      <div className="bg-white w-full max-w-7xl h-[90vh] rounded-[3rem] shadow-2xl overflow-hidden relative border border-white/20 flex flex-col animate-in zoom-in duration-300">
+      <div className="bg-white w-full max-w-7xl h-[95vh] lg:h-[90vh] rounded-t-[2.5rem] lg:rounded-[3rem] shadow-2xl overflow-hidden relative border border-white/20 flex flex-col animate-in slide-in-from-bottom-4 lg:zoom-in duration-300">
         
         {/* Header */}
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <div className="p-4 lg:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200">
-              <Icon icon="solar:calculator-minimalistic-bold" className="text-2xl text-white" />
+            <div className="h-10 w-10 lg:h-12 lg:w-12 bg-emerald-600 rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0">
+              <Icon icon="solar:calculator-minimalistic-bold" className="text-xl lg:text-2xl text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-gray-900 leading-none mb-1 uppercase tracking-tight">CAJA / PUNTO DE VENTA</h2>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Pedido #{order.id.slice(0,4)} • {customerName || order.customer_name || 'MOSTRADOR'}</p>
+              <h2 className="text-sm lg:text-xl font-black text-gray-900 leading-none mb-1 uppercase tracking-tight">CAJA / PUNTO DE VENTA</h2>
+              <p className="text-[9px] lg:text-xs font-bold text-gray-400 uppercase tracking-widest">PEDIDO #{order.id.slice(0,4)} • {customerName || order.customer_name || 'MOSTRADOR'}</p>
             </div>
           </div>
 
-          <div className="flex-1 max-w-sm mx-auto px-8">
+          <div className="hidden lg:block flex-1 max-w-sm mx-auto px-8">
             <div 
               onClick={() => setInputFocus('customer_phone')}
               className={`flex items-center gap-3 px-6 py-3 rounded-2xl border-2 transition-all cursor-pointer ${
@@ -435,47 +467,49 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
-            <div className="text-right">
-              <p className="text-xs font-black text-gray-400 uppercase tracking-widest leading-none mb-1">SALDO TOTAL ORDEN</p>
-              <p className="text-2xl font-black text-[#2f4131] leading-none">${remainingOrderBalance.toLocaleString()}</p>
+          <div className="flex items-center gap-4 lg:gap-6">
+            <div className="text-right hidden sm:block">
+              <p className="text-[9px] lg:text-xs font-black text-gray-400 uppercase tracking-widest leading-none mb-1">SALDO TOTAL ORDEN</p>
+              <p className="text-lg lg:text-2xl font-black text-[#2f4131] leading-none">${remainingOrderBalance.toLocaleString()}</p>
             </div>
             <button 
               onClick={onClose}
-              className="h-10 w-10 bg-white hover:bg-red-50 hover:text-red-500 rounded-full flex items-center justify-center transition-all text-gray-400 shadow-sm border border-gray-100"
+              className="h-8 w-8 lg:h-10 lg:w-10 bg-white hover:bg-red-50 hover:text-red-500 rounded-full flex items-center justify-center transition-all text-gray-400 shadow-sm border border-gray-100 shrink-0"
             >
-              <Icon icon="solar:close-circle-bold" className="text-2xl" />
+              <Icon icon="solar:close-circle-bold" className="text-xl lg:text-2xl" />
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
-               {/* Column 1: Items Selector (4/12) */}
-          <div className="lg:col-span-4 border-r border-gray-100 bg-gray-50/30 flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-gray-100 bg-white space-y-3">
+        {/* CONTENEDOR PRINCIPAL FLEX/GRID - Reordenado para Móvil */}
+        <div className="flex-1 overflow-y-auto lg:overflow-hidden flex flex-col lg:grid lg:grid-cols-12 custom-scrollbar">
+          
+          {/* COLUMNA 1: PRODUCTOS E INFORMACIÓN FINANCIERA (Orden 3 en Móvil, Orden 1 en Desktop) */}
+          <div className="order-1 lg:col-span-4 border-r border-gray-100 bg-gray-50/30 flex flex-col lg:overflow-hidden shrink-0 lg:shrink">
+            <div className="p-4 border-b border-gray-100 bg-white space-y-3 shrink-0">
                {/* Mode Switcher */}
                <div className="flex p-1 bg-gray-100 rounded-2xl">
                   <button 
                     onClick={() => { setPaymentMode('items'); setInputFocus('received'); }}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-tight transition-all flex items-center justify-center gap-2 ${
+                    className={`flex-1 py-2.5 rounded-xl text-[10px] lg:text-xs font-black uppercase tracking-tight transition-all flex items-center justify-center gap-2 ${
                         paymentMode === 'items' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-400'
                     }`}
                   >
-                        <Icon icon="solar:bag-heart-bold" className="text-lg" />
+                        <Icon icon="solar:bag-heart-bold" className="text-sm lg:text-lg" />
                         Productos
                   </button>
                   <button 
                     onClick={() => { setPaymentMode('manual'); setInputFocus('manual_amount'); }}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-tight transition-all flex items-center justify-center gap-2 ${
+                    className={`flex-1 py-2.5 rounded-xl text-[10px] lg:text-xs font-black uppercase tracking-tight transition-all flex items-center justify-center gap-2 ${
                         paymentMode === 'manual' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-400'
                     }`}
                   >
-                        <Icon icon="solar:pen-new-square-bold" className="text-lg" />
+                        <Icon icon="solar:pen-new-square-bold" className="text-sm lg:text-lg" />
                         Manual
                   </button>
               </div>
 
-              {/* Dividir Pago Toggle - More prominent as requested */}
+              {/* Dividir Pago Toggle */}
               {paymentMode === 'items' && (
                 <button 
                   onClick={toggleSplitting}
@@ -494,7 +528,8 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+            {/* Lista de Productos / Manual */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar min-h-[200px]">
               {paymentMode === 'items' ? (
                 unpaidItems.length > 0 ? unpaidItems.map(item => (
                   <div key={item.id} className={`p-4 rounded-[2rem] border-2 transition-all ${
@@ -505,7 +540,7 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
                           <p className="text-sm font-black text-gray-800 uppercase truncate">{item.products?.name}</p>
                           <p className="text-xs font-bold text-gray-400">${item.unit_price.toLocaleString()}</p>
                        </div>
-                       <div className="text-right">
+                       <div className="text-right shrink-0">
                           <p className="text-sm font-black text-gray-900">${((selectedQuantities[item.id] || 0) * item.unit_price).toLocaleString()}</p>
                           {isSplitting && (
                              <p className="text-[10px] font-bold text-emerald-600 uppercase">Cantidad: {selectedQuantities[item.id] || 0}</p>
@@ -565,7 +600,8 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
               )}
             </div>
             
-            <div className="p-6 bg-white border-t border-gray-100 space-y-4">
+            {/* AQUÍ ESTÁ TU PROPINA ORIGINAL INTACTA */}
+            <div className="p-4 lg:p-6 bg-white border-t border-gray-100 space-y-4 shrink-0">
                {/* Service Fee Toggle */}
                {order.service_fee > 0 && (
                  <button 
@@ -578,7 +614,13 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
                      <Icon icon="solar:heart-bold" className="text-xl" />
                      <div className="text-left">
                         <p className="text-xs font-black uppercase tracking-tight leading-none mb-1">Propina / Servicio (10%)</p>
-                        <p className="text-xs font-bold opacity-70">${Number(order.service_fee).toLocaleString()}</p>
+                        <p className="text-xs font-bold opacity-70">
+                          {paymentMode === 'items' && currentServiceFee !== Number(order.service_fee) ? (
+                            `$${currentServiceFee.toLocaleString()} (Total: $${Number(order.service_fee).toLocaleString()})`
+                          ) : (
+                            `$${Number(order.service_fee).toLocaleString()}`
+                          )}
+                        </p>
                      </div>
                    </div>
                    <div className={`h-6 w-11 rounded-full p-1 transition-colors ${!waiveServiceFee ? 'bg-orange-500' : 'bg-gray-300'}`}>
@@ -597,15 +639,16 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
             </div>
           </div>
 
-          {/* Column 2: Methods & Tenders (4/12) */}
-          <div className="lg:col-span-4 border-r border-gray-100 flex flex-col overflow-hidden bg-white">
-             <div className="p-6 overflow-y-auto flex-1 space-y-8 custom-scrollbar">
+          {/* COLUMNA 2: MÉTODOS DE PAGO (Orden 1 en Móvil, Orden 2 en Desktop) */}
+          <div className="order-2 lg:col-span-4 lg:border-r border-b lg:border-b-0 border-gray-100 flex flex-col overflow-visible lg:overflow-hidden bg-white shrink-0">
+             <div className="p-4 lg:p-6 overflow-y-visible lg:overflow-y-auto flex-1 space-y-4 lg:space-y-8 custom-scrollbar">
                 
                 <section>
-                  <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-5 flex items-center gap-2">
+                  <h3 className="text-[10px] lg:text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-3 lg:mb-5 flex items-center gap-2">
                     <Icon icon="solar:wallet-bold" className="text-base text-emerald-600" /> MÉTODOS DE PAGO
                   </h3>
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* Slider horizontal en móvil, Grid en escritorio */}
+                  <div className="flex overflow-x-auto lg:grid lg:grid-cols-2 gap-3 no-scrollbar pb-2 lg:pb-0">
                     {paymentMethods.map(method => (
                       <button
                         key={method.id}
@@ -614,20 +657,20 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
                            if (method.name.toLowerCase().includes('efectivo')) setInputFocus('received');
                            else setInputFocus('manual_amount');
                         }}
-                        className={`p-4 rounded-[1.5rem] border-2 transition-all flex flex-col items-center justify-center gap-2 group ${
+                        className={`p-3 lg:p-4 rounded-[1.25rem] lg:rounded-[1.5rem] border-2 transition-all flex flex-col items-center justify-center gap-2 group shrink-0 min-w-[110px] lg:min-w-0 ${
                           currentMethod?.id === method.id 
                             ? 'bg-[#2f4131] border-[#2f4131] text-white shadow-xl' 
                             : 'bg-white border-gray-100 text-gray-500 hover:border-emerald-200'
                         }`}
                       >
                         <Icon icon={method.icon || 'solar:card-2-bold'} className={`text-2xl ${currentMethod?.id === method.id ? 'text-emerald-400' : ''}`} />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-center">{method.name}</span>
+                        <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-widest text-center">{method.name}</span>
                       </button>
                     ))}
                   </div>
                 </section>
 
-                <section>
+                <section className="hidden lg:block">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
                       <Icon icon="solar:bill-list-bold" className="text-base" /> PAGOS REGISTRADOS
@@ -643,15 +686,15 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
                         <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-[#2f4131]">
                            <Icon icon="solar:bill-check-bold" className="text-xl" />
                         </div>
-                        <div className="flex-1">
-                           <p className="text-xs font-black text-gray-900 uppercase tracking-tight">{t.name}</p>
-                           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                        <div className="flex-1 min-w-0">
+                           <p className="text-xs font-black text-gray-900 uppercase tracking-tight truncate">{t.name}</p>
+                           <p className="text-[10px] lg:text-xs font-bold text-gray-400 uppercase tracking-widest">
                              RECIBIDO: ${t.received.toLocaleString()}
                            </p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right shrink-0">
                            <p className="text-sm font-black text-[#2f4131]">${t.amount.toLocaleString()}</p>
-                           <button onClick={() => removeTender(idx)} className="text-red-400 hover:text-red-600 transition-colors">
+                           <button onClick={() => removeTender(idx)} className="text-red-400 hover:text-red-600 transition-colors mt-1">
                              <Icon icon="solar:trash-bin-trash-bold" />
                            </button>
                         </div>
@@ -659,53 +702,53 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
                     )) : (
                       <div className="py-12 text-center opacity-30">
                         <Icon icon="solar:bill-list-bold" className="text-4xl mb-4 mx-auto" />
-                        <p className="text-xs font-black uppercase tracking-widest">Esperando primer pago...</p>
+                        <p className="text-[10px] lg:text-xs font-black uppercase tracking-widest">Esperando primer pago...</p>
                       </div>
                     )}
                   </div>
                 </section>
              </div>
 
-             <div className="p-6 bg-emerald-50 border-t border-emerald-100">
+             <div className="p-4 lg:p-6 bg-emerald-50 border-t border-emerald-100 shrink-0 hidden lg:block">
                 <div className="flex justify-between items-center mb-1">
-                   <p className="text-xs font-black text-emerald-700 uppercase tracking-widest">TOTAL PAGADO</p>
+                   <p className="text-[10px] lg:text-xs font-black text-emerald-700 uppercase tracking-widest">TOTAL PAGADO</p>
                    <p className="text-xl font-black text-emerald-900">${totalTendered.toLocaleString()}</p>
                 </div>
                 {pendingThreshold > 0 && (
                   <div className="flex justify-between items-center">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">RESTANTE</p>
-                    <p className="text-sm font-black text-orange-600">-${pendingThreshold.toLocaleString()}</p>
+                    <p className="text-[9px] lg:text-xs font-bold text-gray-400 uppercase tracking-widest">RESTANTE</p>
+                    <p className="text-[10px] lg:text-sm font-black text-orange-600">-${pendingThreshold.toLocaleString()}</p>
                   </div>
                 )}
              </div>
           </div>
 
-          {/* Column 3: Calculator (4/12) */}
-          <div className="lg:col-span-4 flex flex-col bg-gray-50/50">
-             <div className="p-8 flex-1 flex flex-col space-y-8">
+          {/* COLUMNA 3: CALCULADORA (Orden 2 en Móvil, Orden 3 en Desktop) */}
+          <div className="order-3 lg:col-span-4 flex flex-col bg-gray-50/50 shrink-0 z-10 shadow-[0_-5px_15px_rgba(0,0,0,0.03)] lg:shadow-none">
+             <div className="p-4 lg:p-8 flex-1 flex flex-col space-y-4 lg:space-y-8">
                 
                 {/* Visualizer */}
-                <div className="space-y-4">
+                <div className="space-y-2 lg:space-y-4">
                     <div className="flex justify-between items-end">
-                       <p className={`text-xs font-black uppercase tracking-[0.2em] transition-colors ${keypadTarget === 'received' ? 'text-blue-600' : 'text-gray-400'}`}>
+                       <p className={`text-[10px] lg:text-xs font-black uppercase tracking-[0.2em] transition-colors ${keypadTarget === 'received' ? 'text-blue-600' : 'text-gray-400'}`}>
                          {isCash ? 'INGRESAR EFECTIVO RECIBIDO' : 'CONFIRMAR MONTO ELECTRÓNICO'}
                        </p>
                     </div>
-                    <div className={`bg-white rounded-[2.5rem] p-8 border-2 transition-all shadow-xl text-right relative overflow-hidden group ${
-                      keypadTarget === 'received' ? 'border-blue-500 ring-4 ring-blue-50' : 'border-gray-100'
+                    <div className={`bg-white rounded-[1.5rem] lg:rounded-[2.5rem] p-4 lg:p-8 border-2 transition-all shadow-md lg:shadow-xl text-right relative overflow-hidden group ${
+                      keypadTarget === 'received' ? 'border-blue-500 ring-2 lg:ring-4 ring-blue-50' : 'border-gray-100'
                     }`}>
-                        <div className="absolute top-0 left-0 h-full w-2 bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <span className="absolute left-8 top-1/2 -translate-y-1/2 text-2xl font-black text-gray-200">$</span>
-                        <div className="text-2xl font-black text-gray-900 tracking-tighter">
+                        <div className="absolute top-0 left-0 h-full w-1.5 lg:w-2 bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <span className="absolute left-6 lg:left-8 top-1/2 -translate-y-1/2 text-xl lg:text-2xl font-black text-gray-200">$</span>
+                        <div className="text-2xl lg:text-4xl font-black text-gray-900 tracking-tighter">
                           {(parseFloat(receivedAmount) || (isCash ? 0 : pendingThreshold)).toLocaleString()}
                           {keypadTarget === 'received' && <span className="animate-pulse text-blue-500 ml-1">|</span>}
                         </div>
                     </div>
                     
                     {isCash && (
-                      <div className="flex items-center justify-between px-6">
-                         <p className="text-xs font-black text-gray-400 uppercase">CAMBIO ESTIMADO</p>
-                         <p className="text-2xl font-black text-emerald-600">
+                      <div className="flex items-center justify-between px-4 lg:px-6">
+                         <p className="text-[10px] lg:text-xs font-black text-gray-400 uppercase">CAMBIO ESTIMADO</p>
+                         <p className="text-xl lg:text-2xl font-black text-emerald-600">
                            ${Math.max(0, (parseFloat(receivedAmount) || 0) - pendingThreshold).toLocaleString()}
                          </p>
                       </div>
@@ -713,16 +756,16 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
                 </div>
 
                 {/* Keypad */}
-                <div className="flex-1 flex flex-col space-y-4">
+                <div className="flex-1 flex flex-col space-y-3 lg:space-y-4">
                    <div className="grid grid-cols-3 gap-2 flex-1">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, '0', '000', 'clear'].map((key) => (
                         <button
                           key={key}
                           onClick={() => handleKeyPress(key)}
-                          className={`rounded-2xl font-black text-xl transition-all active:scale-95 shadow-sm border border-gray-200 ${
+                          className={`rounded-xl lg:rounded-2xl py-2 lg:py-0 font-black text-lg lg:text-xl transition-all active:scale-95 shadow-sm border border-gray-200 flex items-center justify-center ${
                             key === 'clear' 
-                              ? 'bg-red-50 text-red-500 border-red-100 flex items-center justify-center' 
-                              : 'bg-white text-gray-800 hover:bg-white shadow-gray-100'
+                              ? 'bg-red-50 text-red-500 border-red-100' 
+                              : 'bg-white text-gray-800 hover:bg-gray-50'
                           }`}
                         >
                           {key === 'clear' ? <Icon icon="solar:backspace-bold" /> : key}
@@ -735,65 +778,61 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
                          <button 
                            key={v}
                            onClick={() => setReceivedAmount(v.toString())}
-                           className="flex-1 py-3 bg-white border border-blue-200 rounded-xl text-[10px] font-black text-blue-600 hover:bg-blue-50 transition-all active:scale-95 shadow-sm"
+                           className="flex-1 py-2.5 lg:py-3 bg-white border border-blue-200 rounded-xl text-[9px] lg:text-[10px] font-black text-blue-600 hover:bg-blue-50 transition-all active:scale-95 shadow-sm"
                          >
                             ${(v/1000)}K
                          </button>
                        ))}
                        <button 
                          onClick={() => setReceivedAmount(pendingThreshold.toString())}
-                         className="flex-[1.5] py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-100"
+                         className="flex-[1.5] py-2.5 lg:py-3 bg-blue-600 text-white rounded-xl text-[9px] lg:text-[10px] font-black hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-100"
                        >
                           TOTAL EXACTO
                        </button>
                    </div>
                 </div>
 
-                <div className="flex gap-4">
+                {/* Bottom Actions */}
+                <div className="flex gap-3 lg:gap-4 mt-2 lg:mt-0 pb-4 lg:pb-0">
                   {(isSplitting || tenders.length > 0) && (
                     <button
                       onClick={addTender}
                       disabled={(!isCash && pendingThreshold <= 0) || (isCash && (!receivedAmount || parseFloat(receivedAmount) <= 0))}
-                      className={`flex-1 py-6 rounded-[2rem] font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-2xl ${
+                      className={`flex-1 py-3.5 lg:py-6 rounded-[1.5rem] lg:rounded-[2rem] font-black text-xs lg:text-sm uppercase tracking-widest flex items-center justify-center gap-2 lg:gap-3 transition-all active:scale-95 shadow-lg lg:shadow-2xl ${
                         (!isCash && pendingThreshold <= 0) || (isCash && (!receivedAmount || parseFloat(receivedAmount) <= 0))
                           ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-transparent'
                           : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 hover:-translate-y-1'
                       }`}
                     >
-                      <Icon icon="solar:add-circle-bold" className="text-2xl" />
-                      AGREGAR PAGO
+                      <Icon icon="solar:add-circle-bold" className="text-xl lg:text-2xl" />
+                      <span className="hidden sm:inline">AGREGAR PAGO</span>
                     </button>
                   )}
+                  <button
+                    onClick={handleFinalize}
+                    disabled={isProcessing || amountToCover <= 0}
+                    className={`w-full py-3.5 lg:py-6 rounded-[1.5rem] lg:rounded-[2.5rem] font-black text-sm lg:text-xl flex items-center justify-center gap-2 lg:gap-3 transition-all active:scale-95 shadow-lg lg:shadow-2xl ${
+                      isProcessing || amountToCover <= 0
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
+                        : (tenders.length === 0 && !isSplitting)
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 hover:-translate-y-1'
+                          : 'bg-gray-900 border-2 border-emerald-500 hover:bg-black text-white shadow-emerald-200/50 hover:-translate-y-1'
+                    }`}
+                  >
+                    {isProcessing ? (
+                      <div className="animate-spin rounded-full h-6 w-6 lg:h-8 lg:w-8 border-b-2 border-white"></div>
+                    ) : (
+                      <>
+                        <Icon icon="solar:check-read-bold" className="text-xl lg:text-2xl" />
+                        COBRAR
+                      </>
+                    )}
+                  </button>
                 </div>
              </div>
-
-             <div className="p-6 bg-white border-t border-gray-100">
-                <button
-                  onClick={handleFinalize}
-                  disabled={isProcessing || amountToCover <= 0}
-                  className={`w-full py-6 rounded-[2.5rem] font-black text-xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-2xl ${
-                    isProcessing || amountToCover <= 0
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
-                      : (tenders.length === 0 && !isSplitting)
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 hover:-translate-y-1'
-                        : 'bg-gray-900 border-2 border-emerald-500 hover:bg-black text-white shadow-emerald-200/50 hover:-translate-y-1'
-                  }`}
-                >
-                  {isProcessing ? (
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                  ) : (
-                    <>
-                      <Icon icon="solar:check-read-bold" className="text-2xl" />
-                      FINALIZAR TRANSACCIÓN
-                    </>
-                  )}
-                </button>
-             </div>
           </div>
-
-        </div>
-
         </div>
       </div>
+    </div>
   );
 }
