@@ -1117,6 +1117,80 @@ export default function AdminLayout() {
                 )}
               </div>
 
+              {/* Mobile Drawer Plan Info / Billing / CTA */}
+              <div className="mt-auto border-t border-gray-100/20 p-4 bg-black/10 shrink-0 space-y-3">
+                {/* Trial compact row */}
+                {!planLoading && activeBrand && (() => {
+                  const daysLeft = activeBrand.trial_end_date ? Math.max(0, Math.ceil((new Date(activeBrand.trial_end_date) - new Date()) / (1000 * 60 * 60 * 24))) : 0;
+                  const isPaid = activeBrand?.payment_verified === true || activeBrand?.payment_verified === 'true';
+                  
+                  if (isPaid) {
+                    return (
+                      <div className="flex items-center gap-2 px-1">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider">Cuenta Activa</span>
+                      </div>
+                    );
+                  }
+
+                  if (daysLeft > 0) {
+                    return (
+                      <div className="flex items-center gap-2 px-1">
+                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                        <span className="text-[11px] font-bold text-amber-500 uppercase tracking-wider">Prueba Activa: {daysLeft} días</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="flex items-center gap-2 px-1">
+                      <div className="w-2 h-2 rounded-full bg-red-500" />
+                      <span className="text-[11px] font-bold text-red-500 uppercase tracking-wider">Pago Pendiente</span>
+                    </div>
+                  );
+                })()}
+
+                {/* Trial start CTA (no plan, no active trial) */}
+                {!planLoading && !isTrialActive && !activePlan && (
+                  <button
+                    onClick={async () => {
+                      const { error } = await startTrial();
+                      if (error) alert('Error al iniciar prueba: ' + error.message);
+                    }}
+                    className="w-full group text-left"
+                  >
+                    <div className="rounded-xl bg-gradient-to-r from-brand-primary/20 to-brand-secondary/10 border border-brand-primary/20 px-3 py-2 flex items-center gap-2 hover:from-brand-primary/30 transition-all">
+                      <span className="text-base">🚀</span>
+                      <div>
+                        <p className="text-[9px] font-black text-brand-primary uppercase tracking-[0.18em]">Acceso Total Gratis</p>
+                        <p className="text-[11px] font-semibold text-white/70">Iniciar prueba 21 días</p>
+                      </div>
+                    </div>
+                  </button>
+                )}
+
+                {/* Mi Plan / Upgrade */}
+                <button
+                  onClick={() => {
+                    setShowPlanSelector(true);
+                    setIsMobileDrawerOpen(false);
+                  }}
+                  className="flex items-center gap-2.5 px-4 py-2 rounded-xl hover:bg-white/5 text-[13px] font-bold text-amber-400 hover:text-amber-300 transition-all w-full text-left"
+                >
+                  <span className="shrink-0 text-base">⭐</span>
+                  <span>Mi Plan / Upgrade</span>
+                </button>
+
+                {/* Ver Menú Público */}
+                <a
+                  href={activeBrand?.slug ? `/${activeBrand.slug}/` : "/"}
+                  className="flex items-center gap-2.5 px-4 py-2 rounded-xl hover:bg-white/5 text-[13px] font-medium text-white/40 hover:text-white/70 transition-all w-full text-left"
+                >
+                  <Icons.Home />
+                  <span>Ver Menú Público</span>
+                </a>
+              </div>
+
               {/* Mobile Drawer User Profile & Logout */}
               <div className="p-4 border-t border-white/10 bg-[#0A0A0A] shrink-0">
                 <div className="flex items-center justify-between">
