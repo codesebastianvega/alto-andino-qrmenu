@@ -1256,10 +1256,12 @@ export default function AdminLayout() {
           {ADMIN_ROLES.includes(user.role) && (
             <button 
               onClick={() => handleSelectPage('operations', 'Turno & Caja')}
-              className={`flex flex-col items-center justify-center w-full h-full gap-1 ${currentPage === 'operations' ? 'text-brand-primary' : 'text-gray-400 hover:text-gray-600'}`}
+              className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'operations' ? 'text-brand-primary' : 'text-gray-400 hover:text-gray-600'}`}
             >
-              <Icons.Cash />
-              <span className="text-[10px] font-medium">Caja</span>
+              <div className="pointer-events-none flex items-center justify-center">
+                <Icons.Cash />
+              </div>
+              <span className="text-[10px] font-medium pointer-events-none">Caja</span>
             </button>
           )}
 
@@ -1267,10 +1269,12 @@ export default function AdminLayout() {
           {user.role !== 'kitchen' && (
             <button 
               onClick={() => handleSelectPage('waiter', 'Toma de Pedidos')}
-              className={`flex flex-col items-center justify-center w-full h-full gap-1 ${currentPage === 'waiter' ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600'}`}
+              className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'waiter' ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600'}`}
             >
-              <Icons.Waiter />
-              <span className="text-[10px] font-medium">POS</span>
+              <div className="pointer-events-none flex items-center justify-center">
+                <Icons.Waiter />
+              </div>
+              <span className="text-[10px] font-medium pointer-events-none">POS</span>
             </button>
           )}
 
@@ -1278,12 +1282,12 @@ export default function AdminLayout() {
           {user.role !== 'kitchen' && (
             <button 
               onClick={() => handleSelectPage('orders', 'Pedidos')}
-              className={`flex flex-col items-center justify-center w-full h-full gap-1 ${currentPage === 'orders' ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600'}`}
+              className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'orders' ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600'}`}
             >
-              <div className="relative">
+              <div className="relative pointer-events-none">
                 <Icons.Orders />
               </div>
-              <span className="text-[10px] font-medium">Pedidos</span>
+              <span className="text-[10px] font-medium pointer-events-none">Pedidos</span>
             </button>
           )}
 
@@ -1291,27 +1295,29 @@ export default function AdminLayout() {
           {user.role !== 'waiter' && (
             <button 
               onClick={() => handleSelectPage('kitchen', 'Cocina', 'kitchen_display')}
-              className={`flex flex-col items-center justify-center w-full h-full gap-1 ${currentPage === 'kitchen' ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'}`}
+              className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'kitchen' ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'}`}
             >
-              <div className="relative">
+              <div className="relative pointer-events-none">
                 <Icons.Kitchen />
-                {!planLoading && can('kitchen_display') && (newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white" />}
+                {!planLoading && can('kitchen_display') && (newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white pointer-events-none" />}
               </div>
-              <span className="text-[10px] font-medium">Cocina</span>
+              <span className="text-[10px] font-medium pointer-events-none">Cocina</span>
             </button>
           )}
 
           {/* More Menu (Opens Drawer) */}
           <button 
             onClick={() => setIsMobileDrawerOpen(true)}
-            className="flex flex-col items-center justify-center w-full h-full gap-1 text-gray-400 hover:text-gray-600"
+            className="flex flex-col items-center justify-center w-full h-full gap-1 text-gray-400 hover:text-gray-600 cursor-pointer"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="1"></circle>
-              <circle cx="19" cy="12" r="1"></circle>
-              <circle cx="5" cy="12" r="1"></circle>
-            </svg>
-            <span className="text-[10px] font-medium">Menú</span>
+            <div className="pointer-events-none flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="1"></circle>
+                <circle cx="19" cy="12" r="1"></circle>
+                <circle cx="5" cy="12" r="1"></circle>
+              </svg>
+            </div>
+            <span className="text-[10px] font-medium pointer-events-none">Menú</span>
           </button>
         </div>
       </div>
