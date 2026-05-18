@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAdminModifierGroups } from '../hooks/useAdminModifierGroups';
 import { useAdminIngredients } from '../hooks/useAdminIngredients';
 import { useIngredientCategories } from '../hooks/useIngredientCategories';
-import { PageHeader, PrimaryButton, SecondaryButton, Modal, ModalHeader, FormField, TextInput } from '../components/admin/ui';
+import { PageHeader, PrimaryButton, SecondaryButton, FormField, TextInput } from '../components/admin/ui';
 import { Icon } from '@iconify-icon/react';
 import EmojiPicker from 'emoji-picker-react';
 import { toast } from '../components/Toast';
@@ -40,6 +40,17 @@ export default function AdminModifierGroups() {
     fetchModifierGroups();
     fetchIngredients(activeLocationId);
   }, [fetchModifierGroups, fetchIngredients, activeLocationId]);
+
+  useEffect(() => {
+    if (isGroupModalOpen || isOptionModalOpen || isLinkModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isGroupModalOpen, isOptionModalOpen, isLinkModalOpen]);
 
   const handleOpenGroup = (group = null) => {
     if (group) {
@@ -141,17 +152,17 @@ export default function AdminModifierGroups() {
             </div>
         </div>
 
-        <div className="flex bg-gray-50 p-1.5 mb-8 rounded-2xl w-fit mx-auto border border-gray-100">
+        <div className="flex flex-row overflow-x-auto no-scrollbar bg-gray-50 p-1.5 mb-8 rounded-2xl w-full sm:w-fit mx-auto border border-gray-100">
           <button
             onClick={() => setActiveTab('main')}
-            className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'main' ? 'bg-white text-[#2f4131] shadow-md border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
+            className={`whitespace-nowrap shrink-0 px-4 sm:px-8 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'main' ? 'bg-white text-[#2f4131] shadow-md border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
           >
             <Icon icon="heroicons:list-bullet" className={activeTab === 'main' ? 'text-[#2f4131]' : 'text-gray-400'} />
             Modificadores Principales
           </button>
           <button
             onClick={() => setActiveTab('sub')}
-            className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'sub' ? 'bg-white text-[#2f4131] shadow-md border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
+            className={`whitespace-nowrap shrink-0 px-4 sm:px-8 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'sub' ? 'bg-white text-[#2f4131] shadow-md border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
           >
             <Icon icon="heroicons:tag" className={activeTab === 'sub' ? 'text-[#2f4131]' : 'text-gray-400'} />
             Sub-Modificadores (Atributos)
@@ -164,12 +175,12 @@ export default function AdminModifierGroups() {
             .filter(group => group.name.toLowerCase().includes(searchTerm.toLowerCase()))
             .map((group) => (
             <div key={group.id} className="group relative border border-gray-100 rounded-3xl p-6 bg-gray-50/50 flex flex-col h-full hover:bg-white hover:shadow-xl hover:shadow-[#2f4131]/5 transition-all duration-300 border-b-4 hover:border-b-[#2f4131]/20">
-              <div className="flex justify-between items-start mb-4">
-                <div className="min-w-0 pr-8">
+              <div className="flex justify-between items-start mb-4 gap-2">
+                <div className="min-w-0 flex-1">
                   <h3 className="font-bold text-gray-900 text-lg truncate group-hover:text-[#2f4131] transition-colors">{group.name}</h3>
                   <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{group.description || 'Sin descripción'}</p>
                 </div>
-                <div className="absolute top-6 right-6 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                   <button 
                     onClick={() => duplicateGroup(group)} 
                     className="p-1.5 bg-white text-gray-400 hover:text-emerald-600 rounded-lg shadow-sm border border-gray-100 transition-all hover:scale-110"
@@ -180,12 +191,14 @@ export default function AdminModifierGroups() {
                   <button 
                     onClick={() => handleOpenGroup(group)} 
                     className="p-1.5 bg-white text-gray-400 hover:text-blue-600 rounded-lg shadow-sm border border-gray-100 transition-all hover:scale-110"
+                    title="Editar Grupo"
                   >
                     <Icon icon="heroicons:pencil-square" className="text-lg" />
                   </button>
                   <button 
                     onClick={() => deleteGroup(group.id)} 
                     className="p-1.5 bg-white text-gray-400 hover:text-red-600 rounded-lg shadow-sm border border-gray-100 transition-all hover:scale-110"
+                    title="Eliminar Grupo"
                   >
                     <Icon icon="heroicons:trash" className="text-lg" />
                   </button>
@@ -305,210 +318,244 @@ export default function AdminModifierGroups() {
       </div>
 
       {isGroupModalOpen && (
-        <Modal onClose={() => setIsGroupModalOpen(false)}>
-          <ModalHeader title={editingGroup ? "Editar Grupo" : "Nuevo Grupo"} onClose={() => setIsGroupModalOpen(false)} />
-          <form onSubmit={handleSaveGroup} className="p-6 space-y-4">
-            <FormField label="Nombre del Grupo">
-              <TextInput required value={groupForm.name} onChange={e => setGroupForm({...groupForm, name: e.target.value})} placeholder="Ej. Elige tu término" />
-            </FormField>
-            <FormField label="Descripción / Instrucción (Opcional)">
-              <TextInput value={groupForm.description} onChange={e => setGroupForm({...groupForm, description: e.target.value})} placeholder="Ej. Escoge cómo quieres tu carne" />
-            </FormField>
+        <div className="fixed inset-0 bg-gray-900/80 flex items-end md:items-start justify-center z-[100] p-0 md:p-4 overflow-hidden backdrop-blur-sm">
+          <div className="bg-white rounded-t-[2rem] md:rounded-[2rem] w-full max-w-2xl h-[90vh] md:h-auto md:max-h-[90vh] md:my-8 flex flex-col shadow-2xl animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200">
+            <div className="shrink-0 p-6 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-[#2f4131]">{editingGroup ? "Editar Grupo" : "Nuevo Grupo"}</h3>
+                <p className="text-xs text-gray-500 mt-1">Establece las reglas y límites de este grupo de modificadores.</p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setIsGroupModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <Icon icon="heroicons:x-mark" className="text-xl" />
+              </button>
+            </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <FormField label="¿Es obligatorio?">
-                <select 
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none"
-                  value={groupForm.is_required ? 'true' : 'false'}
-                  onChange={e => setGroupForm({...groupForm, is_required: e.target.value === 'true', min_select: e.target.value === 'true' ? Math.max(1, groupForm.min_select) : 0})}
-                >
-                  <option value="false">No (Opcional)</option>
-                  <option value="true">Sí (Obligatorio)</option>
-                </select>
-              </FormField>
-              <FormField label="Cant. Máxima">
-                <input type="number" required min="1" max="99" value={groupForm.max_select} onChange={e => setGroupForm({...groupForm, max_select: parseInt(e.target.value)})} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none" />
-              </FormField>
-            </div>
+            <form onSubmit={handleSaveGroup} className="flex-1 overflow-y-auto no-scrollbar flex flex-col">
+              <div className="p-6 space-y-5 flex-1">
+                <FormField label="Nombre del Grupo">
+                  <TextInput required value={groupForm.name} onChange={e => setGroupForm({...groupForm, name: e.target.value})} placeholder="Ej. Elige tu término" />
+                </FormField>
+                <FormField label="Descripción / Instrucción (Opcional)">
+                  <TextInput value={groupForm.description} onChange={e => setGroupForm({...groupForm, description: e.target.value})} placeholder="Ej. Escoge cómo quieres tu carne" />
+                </FormField>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField label="¿Es obligatorio?">
+                    <select 
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none"
+                      value={groupForm.is_required ? 'true' : 'false'}
+                      onChange={e => setGroupForm({...groupForm, is_required: e.target.value === 'true', min_select: e.target.value === 'true' ? Math.max(1, groupForm.min_select) : 0})}
+                    >
+                      <option value="false">No (Opcional)</option>
+                      <option value="true">Sí (Obligatorio)</option>
+                    </select>
+                  </FormField>
+                  <FormField label="Cant. Máxima">
+                    <input type="number" required min="1" max="99" value={groupForm.max_select} onChange={e => setGroupForm({...groupForm, max_select: parseInt(e.target.value)})} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none" />
+                  </FormField>
+                </div>
+              </div>
 
-            <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-gray-100">
-              <SecondaryButton type="button" onClick={() => setIsGroupModalOpen(false)}>Cancelar</SecondaryButton>
-              <PrimaryButton type="submit">Guardar Grupo</PrimaryButton>
-            </div>
-          </form>
-        </Modal>
+              <div className="shrink-0 p-4 md:p-6 bg-white border-t border-gray-100 flex flex-col sm:flex-row gap-3 mt-auto">
+                <SecondaryButton type="button" onClick={() => setIsGroupModalOpen(false)} className="w-full sm:w-auto">Cancelar</SecondaryButton>
+                <PrimaryButton type="submit" className="w-full sm:w-auto sm:ml-auto">Guardar Grupo</PrimaryButton>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {isOptionModalOpen && (
-        <Modal onClose={() => setIsOptionModalOpen(false)}>
-          <ModalHeader title={editingOption ? "Editar Opción" : "Agregar Opción al Grupo"} onClose={() => setIsOptionModalOpen(false)} />
-          <form onSubmit={handleSaveOption} className="p-6 space-y-4">
-            <FormField label="Vincular a inventario (Opcional)">
-              <div className="mb-2">
-                <select 
-                  className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#2f4131]/20 text-gray-600 font-medium"
-                  value={filterCategory}
-                  onChange={e => setFilterCategory(e.target.value)}
-                >
-                  <option value="">-- Todas las Categorías --</option>
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
+        <div className="fixed inset-0 bg-gray-900/80 flex items-end md:items-start justify-center z-[100] p-0 md:p-4 overflow-hidden backdrop-blur-sm">
+          <div className="bg-white rounded-t-[2rem] md:rounded-[2rem] w-full max-w-2xl h-[95vh] md:h-auto md:max-h-[90vh] md:my-8 flex flex-col shadow-2xl animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200">
+            <div className="shrink-0 p-6 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-[#2f4131]">{editingOption ? "Editar Opción" : "Agregar Opción al Grupo"}</h3>
+                <p className="text-xs text-gray-500 mt-1">Define el precio, vinculación a inventario y sub-opciones para este modificador.</p>
               </div>
-              <select 
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none"
-                value={optionForm.ingredient_id}
-                onChange={e => {
-                  const val = e.target.value;
-                  const ing = ingredients.find(i => i.id === val);
-                  setOptionForm({
-                    ...optionForm, 
-                    ingredient_id: val,
-                    name: ing ? ing.name : optionForm.name,
-                    price: ing ? (ing.selling_price || 0) : optionForm.price
-                  });
-                }}
+              <button 
+                type="button" 
+                onClick={() => setIsOptionModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <option value="">-- Sin vincular (Solo texto) --</option>
-                <optgroup label={filterCategory ? "Insumos Filtrados" : "Tus Insumos"}>
-                  {ingredients
-                    .filter(ing => !filterCategory || ing.category_id === filterCategory)
-                    .map(ing => (
-                      <option key={ing.id} value={ing.id}>{ing.name}</option>
-                  ))}
-                </optgroup>
-              </select>
-              <p className="text-[10px] text-gray-500 mt-1">Si vinculas un insumo, el sistema descontará inventario cuando un cliente pida esta opción.</p>
-            </FormField>
-
-            <div className="grid grid-cols-4 gap-3">
-              <div className="col-span-1 relative">
-                <FormField label="Emoji">
-                  <div 
-                    className={`flex items-center justify-center h-12 w-full border-2 border-dashed rounded-2xl cursor-pointer transition-colors text-2xl ${
-                      emojiPickerOpen ? 'border-[#2f4131] bg-neutral-50' : 'border-neutral-200 hover:border-[#2f4131] hover:bg-neutral-50'
-                    }`}
-                    onClick={() => setEmojiPickerOpen(p => !p)}
+                <Icon icon="heroicons:x-mark" className="text-xl" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSaveOption} className="flex-1 overflow-y-auto no-scrollbar flex flex-col">
+              <div className="p-6 space-y-5 flex-1">
+                <FormField label="Vincular a inventario (Opcional)">
+                  <div className="mb-2">
+                    <select 
+                      className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#2f4131]/20 text-gray-600 font-medium"
+                      value={filterCategory}
+                      onChange={e => setFilterCategory(e.target.value)}
+                    >
+                      <option value="">-- Todas las Categorías --</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <select 
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none"
+                    value={optionForm.ingredient_id}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const ing = ingredients.find(i => i.id === val);
+                      setOptionForm({
+                        ...optionForm, 
+                        ingredient_id: val,
+                        name: ing ? ing.name : optionForm.name,
+                        price: ing ? (ing.selling_price || 0) : optionForm.price
+                      });
+                    }}
                   >
-                    {optionForm.emoji || <span className="text-sm text-neutral-400 font-bold">Icono</span>}
-                  </div>
-                  {emojiPickerOpen && (
-                    <div className="absolute top-full left-0 z-50 mt-2 shadow-2xl rounded-2xl overflow-hidden border border-neutral-100">
-                      <div className="bg-white p-2 border-b border-neutral-100 flex justify-between items-center">
-                        <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Elige tu Emoji</span>
-                        <button type="button" onClick={() => setEmojiPickerOpen(false)} className="text-neutral-400 hover:text-black">
-                           <Icon icon="heroicons:x-mark" className="text-xl" />
-                        </button>
-                      </div>
-                      <EmojiPicker 
-                        onEmojiClick={(pickerOut) => {
-                          setOptionForm({...optionForm, emoji: pickerOut.emoji});
-                          setEmojiPickerOpen(false);
-                        }}
-                        autoFocusSearch={false}
-                        searchDisabled={false}
-                        skinTonesDisabled={true}
-                        width={300}
-                        height={350}
-                      />
-                    </div>
-                  )}
+                    <option value="">-- Sin vincular (Solo texto) --</option>
+                    <optgroup label={filterCategory ? "Insumos Filtrados" : "Tus Insumos"}>
+                      {ingredients
+                        .filter(ing => !filterCategory || ing.category_id === filterCategory)
+                        .map(ing => (
+                          <option key={ing.id} value={ing.id}>{ing.name}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                  <p className="text-[10px] text-gray-500 mt-1">Si vinculas un insumo, el sistema descontará inventario cuando un cliente pida esta opción.</p>
                 </FormField>
-              </div>
-              <div className="col-span-3">
-                <FormField label="Nombre de la opción *">
-                  <TextInput required value={optionForm.name} onChange={e => setOptionForm({...optionForm, name: e.target.value})} placeholder="Ej. Bien cocido" />
-                </FormField>
-              </div>
-            </div>
 
-            <FormField label="URL de Imagen (Menú DIY)">
-              <div className="flex gap-4 items-start">
-                <div className="flex-1">
-                  <TextInput value={optionForm.image_url} onChange={e => setOptionForm({...optionForm, image_url: e.target.value})} placeholder="https://..." />
-                  <p className="text-[10px] text-gray-500 mt-1">Se muestra como miniatura en el modal interactivo de Arma tu Plato.</p>
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="col-span-1 relative">
+                    <FormField label="Emoji">
+                      <div 
+                        className={`flex items-center justify-center h-12 w-full border-2 border-dashed rounded-2xl cursor-pointer transition-colors text-2xl ${
+                          emojiPickerOpen ? 'border-[#2f4131] bg-neutral-50' : 'border-neutral-200 hover:border-[#2f4131] hover:bg-neutral-50'
+                        }`}
+                        onClick={() => setEmojiPickerOpen(p => !p)}
+                      >
+                        {optionForm.emoji || <span className="text-sm text-neutral-400 font-bold">Icono</span>}
+                      </div>
+                      {emojiPickerOpen && (
+                        <div className="absolute top-full left-0 z-50 mt-2 shadow-2xl rounded-2xl overflow-hidden border border-neutral-100">
+                          <div className="bg-white p-2 border-b border-neutral-100 flex justify-between items-center">
+                            <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Elige tu Emoji</span>
+                            <button type="button" onClick={() => setEmojiPickerOpen(false)} className="text-neutral-400 hover:text-black">
+                               <Icon icon="heroicons:x-mark" className="text-xl" />
+                            </button>
+                          </div>
+                          <EmojiPicker 
+                            onEmojiClick={(pickerOut) => {
+                              setOptionForm({...optionForm, emoji: pickerOut.emoji});
+                              setEmojiPickerOpen(false);
+                            }}
+                            autoFocusSearch={false}
+                            searchDisabled={false}
+                            skinTonesDisabled={true}
+                            width={300}
+                            height={350}
+                          />
+                        </div>
+                      )}
+                    </FormField>
+                  </div>
+                  <div className="col-span-3">
+                    <FormField label="Nombre de la opción *">
+                      <TextInput required value={optionForm.name} onChange={e => setOptionForm({...optionForm, name: e.target.value})} placeholder="Ej. Bien cocido" />
+                    </FormField>
+                  </div>
                 </div>
-                {optionForm.image_url && (
-                  <div className="w-16 h-16 shrink-0 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center">
-                    <img src={optionForm.image_url} alt="Preview" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
-                    <span className="hidden text-xl text-gray-300">🖼️</span>
+
+                <FormField label="URL de Imagen (Menú DIY)">
+                  <div className="flex gap-4 items-start">
+                    <div className="flex-1">
+                      <TextInput value={optionForm.image_url} onChange={e => setOptionForm({...optionForm, image_url: e.target.value})} placeholder="https://..." />
+                      <p className="text-[10px] text-gray-500 mt-1">Se muestra como miniatura en el modal interactivo de Arma tu Plato.</p>
+                    </div>
+                    {optionForm.image_url && (
+                      <div className="w-16 h-16 shrink-0 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center">
+                        <img src={optionForm.image_url} alt="Preview" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+                        <span className="hidden text-xl text-gray-300">🖼️</span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </FormField>
+                </FormField>
 
-            <FormField label="Precio Adicional ($)">
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  className="w-full pl-8 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none"
-                  value={optionForm.price}
-                  onChange={e => setOptionForm({...optionForm, price: e.target.value})}
-                  placeholder="Ej. 1500"
-                />
-              </div>
-              {(() => {
-                const selectedIng = ingredients.find(i => i.id === optionForm.ingredient_id);
-                if (selectedIng && selectedIng.unit_cost > 0 && optionForm.price) {
-                  const cost = selectedIng.unit_cost;
-                  const price = parseFloat(optionForm.price) || 0;
-                  const margin = price - cost;
-                  const marginPercent = price > 0 ? Math.round((margin / price) * 100) : 0;
-                  return (
-                    <div className="mt-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between text-xs">
-                      <div>
-                        <span className="text-gray-500 block mb-0.5">Costo en Receta:</span>
-                        <span className="font-bold text-gray-800">${cost.toLocaleString()}</span> <span className="text-gray-400">/{selectedIng.usage_unit || 'u'}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-gray-500 block mb-0.5">Margen Generado:</span>
-                        <span className={`font-bold ${marginPercent >= 50 ? 'text-emerald-700' : marginPercent > 0 ? 'text-amber-600' : 'text-red-600'}`}>
-                          ${margin.toLocaleString()} ({marginPercent}%)
-                        </span>
-                      </div>
-                    </div>
-                  );
-                } else if (selectedIng && selectedIng.unit_cost > 0) {
-                  return (
-                    <div className="mt-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-xl border border-amber-100">
-                      <Icon icon="heroicons:information-circle" className="text-base" /> 
-                      <span>Costo base del insumo: <b>${selectedIng.unit_cost.toLocaleString()}</b>. Asígnale un precio para ver tu margen.</span>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-            </FormField>
+                <FormField label="Precio Adicional ($)">
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-full pl-8 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none"
+                      value={optionForm.price}
+                      onChange={e => setOptionForm({...optionForm, price: e.target.value})}
+                      placeholder="Ej. 1500"
+                    />
+                  </div>
+                  {(() => {
+                    const selectedIng = ingredients.find(i => i.id === optionForm.ingredient_id);
+                    if (selectedIng && selectedIng.unit_cost > 0 && optionForm.price) {
+                      const cost = selectedIng.unit_cost;
+                      const price = parseFloat(optionForm.price) || 0;
+                      const margin = price - cost;
+                      const marginPercent = price > 0 ? Math.round((margin / price) * 100) : 0;
+                      return (
+                        <div className="mt-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between text-xs">
+                          <div>
+                            <span className="text-gray-500 block mb-0.5">Costo en Receta:</span>
+                            <span className="font-bold text-gray-800">${cost.toLocaleString()}</span> <span className="text-gray-400">/{selectedIng.usage_unit || 'u'}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-gray-500 block mb-0.5">Margen Generado:</span>
+                            <span className={`font-bold ${marginPercent >= 50 ? 'text-emerald-700' : marginPercent > 0 ? 'text-amber-600' : 'text-red-600'}`}>
+                              ${margin.toLocaleString()} ({marginPercent}%)
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    } else if (selectedIng && selectedIng.unit_cost > 0) {
+                      return (
+                        <div className="mt-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-xl border border-amber-100">
+                          <Icon icon="heroicons:information-circle" className="text-base" /> 
+                          <span>Costo base del insumo: <b>${selectedIng.unit_cost.toLocaleString()}</b>. Asígnale un precio para ver tu margen.</span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </FormField>
 
-            <FormField label="¿Desplegar sub-opciones? (Opcional)">
-              <div className="relative">
-                <select 
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none"
-                  value={optionForm.nested_group_id}
-                  onChange={e => setOptionForm({...optionForm, nested_group_id: e.target.value})}
-                >
-                  <option value="">-- Sin sub-opciones --</option>
-                  <optgroup label="Selecciona una Condición">
-                    {modifierGroups
-                      .filter(g => g.is_submodifier && g.id !== activeGroupId)
-                      .map(g => (
-                        <option key={g.id} value={g.id}>{g.name}</option>
-                    ))}
-                  </optgroup>
-                </select>
+                <FormField label="¿Desplegar sub-opciones? (Opcional)">
+                  <div className="relative">
+                    <select 
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none"
+                      value={optionForm.nested_group_id}
+                      onChange={e => setOptionForm({...optionForm, nested_group_id: e.target.value})}
+                    >
+                      <option value="">-- Sin sub-opciones --</option>
+                      <optgroup label="Selecciona una Condición">
+                        {modifierGroups
+                          .filter(g => g.is_submodifier && g.id !== activeGroupId)
+                          .map(g => (
+                            <option key={g.id} value={g.id}>{g.name}</option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-1">Ej: Si esta opción es "Carne", aquí podrías vincular el grupo "Términos de Carne".</p>
+                </FormField>
               </div>
-              <p className="text-[10px] text-gray-500 mt-1">Ej: Si esta opción es "Carne", aquí podrías vincular el grupo "Términos de Carne".</p>
-            </FormField>
 
-            <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-gray-100">
-              <SecondaryButton type="button" onClick={() => setIsOptionModalOpen(false)}>Cancelar</SecondaryButton>
-              <PrimaryButton type="submit">{editingOption ? "Guardar Cambios" : "Agregar Opción"}</PrimaryButton>
-            </div>
-          </form>
-        </Modal>
+              <div className="shrink-0 p-4 md:p-6 bg-white border-t border-gray-100 flex flex-col sm:flex-row gap-3 mt-auto">
+                <SecondaryButton type="button" onClick={() => setIsOptionModalOpen(false)} className="w-full sm:w-auto">Cancelar</SecondaryButton>
+                <PrimaryButton type="submit" className="w-full sm:w-auto sm:ml-auto">{editingOption ? "Guardar Cambios" : "Agregar Opción"}</PrimaryButton>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
       {isLinkModalOpen && (
         <LinkCatalogModal
