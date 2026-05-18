@@ -172,7 +172,7 @@ export default function AdminModifierGroups() {
             .filter(group => activeTab === 'sub' ? group.is_submodifier : !group.is_submodifier)
             .filter(group => group.name.toLowerCase().includes(searchTerm.toLowerCase()))
             .map((group) => (
-            <div key={group.id} className="group relative border border-gray-100 rounded-3xl p-6 bg-gray-50/50 flex flex-col h-full hover:bg-white hover:shadow-xl hover:shadow-[#2f4131]/5 transition-all duration-300 border-b-4 hover:border-b-[#2f4131]/20">
+            <div key={group.id} className="group relative border border-gray-100/80 rounded-3xl p-6 bg-white shadow-sm flex flex-col h-full hover:shadow-xl hover:shadow-[#2f4131]/5 transition-all duration-300 border-b-4 hover:border-b-[#2f4131]/30">
               <div className="flex justify-between items-start mb-4 gap-2">
                 <div className="min-w-0 flex-1">
                   <h3 className="font-bold text-gray-900 text-lg truncate group-hover:text-[#2f4131] transition-colors">{group.name}</h3>
