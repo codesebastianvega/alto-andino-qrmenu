@@ -5,7 +5,6 @@ import { supabase } from '../../config/supabase';
 import { useLocations } from '../../hooks/useLocations';
 import { useLocationOverrides } from '../../hooks/useLocationOverrides';
 import { 
-  Modal, 
   ModalHeader, 
   FormField, 
   TextInput, 
@@ -28,6 +27,13 @@ export default function CategoryForm({ category, onSave, onCancel }) {
   const { getCategoryOverrides, saveCategoryOverrides } = useLocationOverrides();
   const [locationOverrides, setLocationOverrides] = useState([]);
   const [loadingOverrides, setLoadingOverrides] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
 
   useEffect(() => {
     if (category?.id) {
@@ -266,15 +272,16 @@ export default function CategoryForm({ category, onSave, onCancel }) {
   };
 
   return (
-    <Modal onClose={onCancel} wide maxWidth="max-w-6xl">
-      <ModalHeader
-        title={category ? 'Gestionar Categoría' : 'Nueva Categoría'}
-        subtitle="Organiza tus productos y personaliza la experiencia visual."
-        onClose={onCancel}
-      />
+    <div className="fixed inset-0 bg-gray-900/80 flex items-end md:items-start justify-center z-[100] p-0 md:p-4 overflow-hidden backdrop-blur-sm">
+      <div className="bg-white rounded-t-[2rem] md:rounded-[2rem] w-full max-w-6xl h-[95vh] md:h-auto md:max-h-[90vh] md:my-8 flex flex-col shadow-2xl animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200">
+        <ModalHeader
+          title={category ? 'Gestionar Categoría' : 'Nueva Categoría'}
+          subtitle="Organiza tus productos y personaliza la experiencia visual."
+          onClose={onCancel}
+        />
 
-      <form onSubmit={handleSubmit} className="overflow-hidden flex flex-col">
-        <div className="px-7 py-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 overflow-y-auto max-h-[70vh] custom-scrollbar">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+          <div className="p-4 md:p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
 
           {/* CARD 1: IDENTIDAD */}
           <BentoCard title="Identidad & Disponibilidad">
@@ -688,7 +695,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                   const isActive = override ? override.is_active : true;
                   
                   return (
-                    <div key={loc.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                    <div key={loc.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-4 rounded-xl border transition-all ${
                       isActive ? 'bg-white border-gray-100 shadow-sm' : 'bg-gray-100/50 border-transparent opacity-60'
                     }`}>
                       <div className="flex items-center gap-3">
@@ -697,13 +704,16 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                         </div>
                         <span className="text-sm font-bold text-gray-700">{loc.name}</span>
                       </div>
-                      <button 
-                        type="button" 
-                        onClick={() => toggleLocation(loc.id)}
-                        className={`w-10 h-5 rounded-full relative transition-all shadow-inner ${isActive ? 'bg-[#2f4131]' : 'bg-gray-200'}`}
-                      >
-                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${isActive ? 'left-5' : 'left-0.5'}`} />
-                      </button>
+                      <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto border-t sm:border-t-0 border-gray-200/50 pt-3 sm:pt-0 mt-1 sm:mt-0">
+                        <span className="text-[11px] font-bold text-gray-400 sm:hidden uppercase">Disponible</span>
+                        <button 
+                          type="button" 
+                          onClick={() => toggleLocation(loc.id)}
+                          className={`w-10 h-5 rounded-full relative transition-all shadow-inner ${isActive ? 'bg-[#2f4131]' : 'bg-gray-200'}`}
+                        >
+                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${isActive ? 'left-5' : 'left-0.5'}`} />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -740,14 +750,18 @@ export default function CategoryForm({ category, onSave, onCancel }) {
           </div>
         </div>
 
-        <div className="px-7 py-6 border-t border-gray-100 bg-gray-50/30 flex gap-4">
-          <SecondaryButton type="button" onClick={onCancel} className="flex-1 py-3">Cancelar</SecondaryButton>
-          <PrimaryButton type="submit" className="flex-[2] py-3 shadow-xl shadow-[#2f4131]/20">
+        {/* Sticky Footer */}
+        <div className="shrink-0 p-4 md:p-6 bg-white border-t border-gray-100 shadow-[0_-10px_20px_rgba(0,0,0,0.03)] flex flex-col sm:flex-row gap-3 mt-auto">
+          <SecondaryButton type="button" onClick={onCancel} className="w-full sm:flex-1 py-3 order-2 sm:order-1">
+            Cancelar
+          </SecondaryButton>
+          <PrimaryButton type="submit" className="w-full sm:flex-[2] py-3 shadow-xl shadow-[#2f4131]/20 order-1 sm:order-2 flex justify-center items-center gap-2">
             <Icon icon="lucide:save" className="text-lg" />
             {category ? 'Guardar Cambios' : 'Crear Categoría'}
           </PrimaryButton>
         </div>
       </form>
-    </Modal>
+    </div>
+  </div>
   );
 }
