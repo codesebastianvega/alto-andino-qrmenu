@@ -985,7 +985,7 @@ export default function AdminOrders() {
 
       {/* Modal Detalle Pedido Rediseñado */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center md:p-4">
+        <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-4">
           <div 
             className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
             onClick={() => setSelectedOrder(null)}
@@ -1017,7 +1017,7 @@ export default function AdminOrders() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 bg-white custom-scrollbar pb-40">
+            <div className="flex-1 overflow-y-auto p-6 bg-white custom-scrollbar pb-56 md:pb-32">
               <div className="grid grid-cols-1 lg:grid-cols-[1fr,340px] gap-8">
                 
                 {/* Columna Izquierda: Consumo */}
@@ -1280,10 +1280,10 @@ export default function AdminOrders() {
             {/* Footer Fijo del Modal */}
             <div className="absolute bottom-0 left-0 right-0 p-4 pb-10 md:p-6 bg-white border-t border-gray-100 flex flex-col md:flex-row gap-4 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-10">
                
-               <div className="flex-1 flex gap-2">
+               <div className="flex-1 grid grid-cols-3 gap-2 w-full">
                  <button 
                    onClick={() => shareToWhatsApp(selectedOrder, 'summary')}
-                   className="flex-1 md:flex-none px-6 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+                   className="w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-black text-[8px] md:text-sm flex flex-col md:flex-row items-center justify-center gap-1 transition-all active:scale-95"
                  >
                    <Icon icon="logos:whatsapp-icon" />
                    RESUMEN
@@ -1296,7 +1296,7 @@ export default function AdminOrders() {
                      setSelectedOrder(null); 
                      toast("Ahora selecciona el pedido destino", { icon: '🎯' });
                    }}
-                   className="flex-1 md:flex-none px-6 py-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+                   className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-black text-[8px] md:text-sm flex flex-col md:flex-row items-center justify-center gap-1 transition-all active:scale-95"
                  >
                    <Icon icon="heroicons:arrows-right-left" />
                    CONSOLIDAR
@@ -1305,13 +1305,13 @@ export default function AdminOrders() {
                  {!isCancelling ? (
                    <button 
                      onClick={() => setIsCancelling(true)}
-                     className="flex-1 md:flex-none px-6 py-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+                     className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-black text-[8px] md:text-sm flex flex-col md:flex-row items-center justify-center gap-1 transition-all active:scale-95"
                    >
                      <Icon icon="heroicons:trash" />
                      CANCELAR
                    </button>
                  ) : (
-                   <div className="flex-1 flex gap-2 items-center bg-red-50 p-2 rounded-2xl border border-red-100 animate-in fade-in slide-in-from-bottom-2">
+                   <div className="col-span-3 md:col-span-1 flex gap-2 items-center bg-red-50 p-2 rounded-2xl border border-red-100 animate-in fade-in slide-in-from-bottom-2">
                      <input 
                        type="text" 
                        placeholder="Motivo..."
@@ -1325,7 +1325,7 @@ export default function AdminOrders() {
                      </button>
                    </div>
                  )}
-                </div>
+               </div>
 
                 <div className="flex-[1.5]">
                   {/* BOTÓN: POS MODAL (Reemplaza Mark as Paid) */}
@@ -1333,7 +1333,7 @@ export default function AdminOrders() {
                     <button 
                       onClick={() => setIsPOSModalOpen(true)}
                       disabled={updatingStatus === selectedOrder.id}
-                      className={`w-full py-5 rounded-[2.5rem] font-black text-lg shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50 mb-4 border-2 group relative overflow-hidden ${
+                      className={`w-full py-3 md:py-4.5 rounded-[2.5rem] font-black text-lg shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50 mb-4 border-2 group relative overflow-hidden ${
                         (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.status === 'new') || 
                         (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.status === 'ready')
                           ? 'bg-emerald-600 border-emerald-600 text-white shadow-emerald-200/50 hover:bg-emerald-700 hover:-translate-y-0.5'
@@ -1354,7 +1354,7 @@ export default function AdminOrders() {
                         updatingStatus === selectedOrder.id || 
                         (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid')
                       }
-                      className={`w-full py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
+                      className={`w-full py-3 md:py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
                         restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid'
                           ? 'bg-neutral-200 text-neutral-400 border-2 border-neutral-100 shadow-none cursor-not-allowed grayscale'
                           : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200/50 hover:-translate-y-0.5 border-2 border-blue-600'
@@ -1372,7 +1372,7 @@ export default function AdminOrders() {
                     <button 
                       onClick={() => updateOrderStatus(selectedOrder.id, 'ready')}
                       disabled={updatingStatus === selectedOrder.id}
-                      className="w-full py-4.5 bg-amber-500 hover:bg-amber-600 text-white rounded-[2rem] font-black text-base shadow-2xl shadow-amber-200/50 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 border-2 border-amber-500 hover:-translate-y-0.5"
+                      className="w-full py-3 md:py-4.5 bg-amber-500 hover:bg-amber-600 text-white rounded-[2rem] font-black text-base shadow-2xl shadow-amber-200/50 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 border-2 border-amber-500 hover:-translate-y-0.5"
                     >
                       <Icon icon="solar:check-circle-bold" className="text-2xl" />
                       LISTO PARA ENTREGA
@@ -1386,7 +1386,7 @@ export default function AdminOrders() {
                         <button 
                           onClick={() => updateOrderStatus(selectedOrder.id, 'on_table')}
                           disabled={updatingStatus === selectedOrder.id}
-                          className="w-full py-4.5 bg-purple-600 hover:bg-purple-700 text-white rounded-[2rem] font-black text-base shadow-2xl shadow-purple-200/50 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 border-2 border-purple-600 hover:-translate-y-0.5"
+                          className="w-full py-3 md:py-4.5 bg-purple-600 hover:bg-purple-700 text-white rounded-[2rem] font-black text-base shadow-2xl shadow-purple-200/50 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 border-2 border-purple-600 hover:-translate-y-0.5"
                         >
                           <Icon icon="solar:shop-2-bold" className="text-2xl" />
                           SERVIR EN MESA
@@ -1399,7 +1399,7 @@ export default function AdminOrders() {
                           updatingStatus === selectedOrder.id || 
                           (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid')
                         }
-                        className={`w-full py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
+                        className={`w-full py-3 md:py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
                           restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
                             ? 'bg-neutral-200 text-neutral-400 border-2 border-neutral-100 shadow-none cursor-not-allowed grayscale'
                             : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200/50 hover:-translate-y-0.5 border-2 border-emerald-600'
@@ -1421,7 +1421,7 @@ export default function AdminOrders() {
                         updatingStatus === selectedOrder.id || 
                         (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid')
                       }
-                      className={`w-full py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
+                      className={`w-full py-3 md:py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
                         restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
                           ? 'bg-neutral-200 text-neutral-400 border-2 border-neutral-100 shadow-none cursor-not-allowed grayscale'
                           : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200/50 hover:-translate-y-0.5 border-2 border-emerald-600'
