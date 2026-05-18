@@ -120,9 +120,8 @@ export default function AdminModifierGroups() {
   };
 
   return (
-    <div className="p-8 w-full space-y-8 animate-fade-in overflow-x-hidden">
-      <div className="bg-white rounded-[2rem] p-8 mt-6 shadow-sm border border-gray-100">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+    <div className="p-4 sm:p-6 md:p-8 w-full space-y-6 md:space-y-8 animate-fade-in overflow-x-hidden">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-[#2f4131]/10 rounded-2xl flex items-center justify-center text-[#2f4131]">
               <Icon icon="heroicons:sparkles" className="text-2xl" />
@@ -151,8 +150,7 @@ export default function AdminModifierGroups() {
               </PrimaryButton>
             </div>
         </div>
-
-        <div className="flex flex-row overflow-x-auto no-scrollbar bg-gray-50 p-1.5 mb-8 rounded-2xl w-full sm:w-fit mx-auto border border-gray-100">
+      <div className="flex flex-row overflow-x-auto no-scrollbar bg-gray-50 p-1.5 rounded-2xl w-full sm:w-fit mx-auto border border-gray-100">
           <button
             onClick={() => setActiveTab('main')}
             className={`whitespace-nowrap shrink-0 px-4 sm:px-8 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'main' ? 'bg-white text-[#2f4131] shadow-md border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
@@ -315,7 +313,6 @@ export default function AdminModifierGroups() {
             </div>
           )}
         </div>
-      </div>
 
       {isGroupModalOpen && (
         <div className="fixed inset-0 bg-gray-900/80 flex items-end md:items-start justify-center z-[100] p-0 md:p-4 overflow-hidden backdrop-blur-sm">
