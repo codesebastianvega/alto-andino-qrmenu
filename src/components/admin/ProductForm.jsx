@@ -122,6 +122,14 @@ export default function ProductForm({ product, categories, recipes = [], allerge
     }
   }, [product?.id, locations]);
 
+  // Prevent background scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   const handleOverrideChange = (locationId, field, value) => {
     setLocationOverrides(prev => {
       const existing = prev.find(o => o.location_id === locationId);
@@ -352,11 +360,11 @@ export default function ProductForm({ product, categories, recipes = [], allerge
   const linkedRecipe = recipes.find(r => r.id === formData.recipe_id);
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-start justify-center z-[100] p-4 overflow-y-auto backdrop-blur-sm">
-      <div className="bg-white rounded-[2rem] w-full max-w-6xl my-8 overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-black/60 flex items-end md:items-start justify-center z-[100] p-0 md:p-4 overflow-hidden backdrop-blur-sm">
+      <div className="bg-white rounded-t-[2rem] md:rounded-[2rem] w-full max-w-6xl h-[95vh] md:h-auto md:max-h-[90vh] md:my-8 flex flex-col shadow-2xl animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200">
 
         {/* ── Header */}
-        <div className="flex items-start justify-between px-8 py-6 border-b border-gray-100">
+        <div className="flex items-start justify-between px-5 md:px-8 py-4 md:py-6 border-b border-gray-100 shrink-0">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 leading-tight">
               {product ? 'Editar producto' : 'Nuevo producto'}
@@ -370,10 +378,11 @@ export default function ProductForm({ product, categories, recipes = [], allerge
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+          <div className="p-4 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
 
-          {/* ── Left: 2 columns */}
-          <div className="lg:col-span-2 space-y-6">
+            {/* ── Left: 2 columns */}
+            <div className="lg:col-span-2 space-y-6">
 
             {/* Basic Info */}
             <section className="border border-gray-100 rounded-2xl p-6 space-y-4">
@@ -491,8 +500,8 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                           is_linked: false
                         };
                         return (
-                          <div key={loc.id} className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border border-gray-50 bg-gray-50/30">
-                            <div className="flex items-center gap-3 min-w-[180px]">
+                          <div key={loc.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-4 rounded-xl border border-gray-50 bg-gray-50/30">
+                            <div className="flex items-center gap-3 sm:min-w-[180px]">
                               <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-gray-300'}`} />
                               <div className="flex flex-col">
                                 <span className="text-sm font-semibold text-gray-900 leading-tight">{loc.name}</span>
@@ -504,7 +513,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-6">
+                            <div className="flex flex-row items-center justify-between sm:justify-end gap-4 sm:gap-6 w-full sm:w-auto">
                               {/* Toggle Visibilidad */}
                               <div className="flex items-center gap-2">
                                 <span className="text-[11px] font-medium text-gray-500 uppercase">Visible</span>
@@ -1084,18 +1093,20 @@ export default function ProductForm({ product, categories, recipes = [], allerge
               </div>
             </div>
 
-            {/* Action buttons */}
-            <div className="space-y-2">
-              <PrimaryButton type="submit" className="w-full py-3">
-                {product ? 'Guardar cambios' : 'Crear producto'}
-              </PrimaryButton>
-              <SecondaryButton type="button" onClick={onCancel} className="w-full py-3">
-                Cancelar
-              </SecondaryButton>
-            </div>
           </div>
-        </form>
-      </div>
+        </div>
+
+        {/* Sticky Footer */}
+        <div className="sticky bottom-0 bg-white border-t border-gray-100 px-5 md:px-8 py-4 flex items-center justify-end gap-3 z-10 shrink-0">
+          <SecondaryButton type="button" onClick={onCancel} className="w-full sm:w-auto px-6 py-2.5">
+            Cancelar
+          </SecondaryButton>
+          <PrimaryButton type="submit" className="w-full sm:w-auto px-6 py-2.5">
+            {product ? 'Guardar cambios' : 'Crear producto'}
+          </PrimaryButton>
+        </div>
+      </form>
     </div>
-  );
+  </div>
+);
 }

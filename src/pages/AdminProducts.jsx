@@ -92,6 +92,7 @@ export default function AdminProducts() {
   const { allergens, loading: loadingAllergens } = useAllergens();
   const { saveProductOverrides } = useLocationOverrides();
   const [search, setSearch] = useState('');
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [catFilter, setCatFilter] = useState('all');
   const [attrFilter, setAttrFilter] = useState('all'); // 'all', 'upsell', 'no_kitchen', 'packaging'
   const [marginFilter, setMarginFilter] = useState('all'); // 'all', 'high', 'med', 'low'
@@ -99,6 +100,7 @@ export default function AdminProducts() {
   const [locationFilter, setLocationFilter] = useState(activeLocationId || 'all'); // 'all' or location_id
   const [showUnassigned, setShowUnassigned] = useState(false); // To show products not yet in this location
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const hasActiveFilters = catFilter !== 'all' || attrFilter !== 'all' || marginFilter !== 'all' || locationFilter !== 'all';
   
   const { settings } = useRestaurantSettings();
   const brandConceptOptions = normalizeBrandConcepts(settings?.brand_concepts || []);
@@ -410,18 +412,18 @@ export default function AdminProducts() {
         title="Productos"
         subtitle="Gestiona el catálogo de tu menú digital."
       >
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-            <div className="text-[11px] font-black uppercase tracking-widest px-4 py-2 bg-white border border-gray-100 rounded-2xl text-gray-500 shadow-sm italic flex flex-col items-center sm:items-end">
-              <span className="text-[9px] text-gray-400">Cupo de Catálogo</span>
-              <span className={isAtLimit ? 'text-orange-600' : 'text-gray-900'}>
-                {products.length} / {maxProducts} PRODUCTOS
-              </span>
-            </div>
+        <div className="flex flex-row items-center justify-between gap-3 w-full sm:w-auto sm:justify-start">
+          <div className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-white border border-gray-100 rounded-xl text-gray-500 shadow-sm italic flex flex-col items-start sm:items-end shrink-0">
+            <span className="text-[8px] text-gray-400 leading-none mb-0.5">Cupo de Catálogo</span>
+            <span className={`text-[10px] leading-none ${isAtLimit ? 'text-orange-600' : 'text-gray-900'}`}>
+              {products.length} / {maxProducts} PRODS
+            </span>
+          </div>
           
           <PrimaryButton 
             onClick={handleCreate} 
             disabled={isAtLimit}
-            className="w-full sm:w-auto py-3 px-6 shadow-xl"
+            className="flex-1 sm:flex-initial py-2.5 px-4 text-xs sm:text-sm sm:py-3 sm:px-6 shadow-xl"
           >
             {isAtLimit ? 'Límite alcanzado' : '+ Nuevo Producto'}
           </PrimaryButton>
@@ -454,47 +456,68 @@ export default function AdminProducts() {
         </div>
       )}
 
-      <div className="flex flex-col gap-4 bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-4">
-          <div className="flex-1 min-w-[300px] group relative">
+      <div className="flex flex-col gap-4 bg-white p-4 md:p-5 rounded-[2rem] border border-gray-100 shadow-sm">
+        {/* 1. Cabecera Fija: Buscador + Botón Filtros (Mobile) */}
+        <div className="flex items-center gap-2 md:gap-4 w-full">
+          <div className="flex-1">
             <SearchInput
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Buscar por nombre o descripción..."
             />
           </div>
-          
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="w-44">
-              <SelectInput value={catFilter} onChange={e => setCatFilter(e.target.value)}>
-                <option value="all">Todas las categorías</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </SelectInput>
-            </div>
-            <div className="w-40">
-              <SelectInput value={brandFilter} onChange={e => setBrandFilter(e.target.value)}>
-                <option value="all">Concepto: Todos</option>
-                {brandConceptOptions.map(concept => (
-                  <option key={concept.value} value={concept.value}>{concept.label}</option>
-                ))}
-              </SelectInput>
-            </div>
+          {/* Botón Toggle solo para Móvil */}
+          <button 
+            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+            className={`md:hidden flex items-center justify-center h-[42px] px-4 rounded-xl border transition-all font-bold text-xs gap-2 relative ${
+              isFiltersOpen
+                ? 'bg-[#2f4131] text-white border-[#2f4131]'
+                : 'bg-gray-50 text-gray-600 border-gray-200 active:scale-95'
+            }`}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            Filtros
+            {/* Pequeño punto indicador si hay filtros aplicados y el panel está cerrado */}
+            {!isFiltersOpen && hasActiveFilters && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full animate-pulse" />
+            )}
+          </button>
+        </div>
 
-            <div className="w-48">
-              <SelectInput value={locationFilter} onChange={e => {
-                setLocationFilter(e.target.value);
-                setShowUnassigned(false);
-              }}>
-                <option value="all">Sede: Catálogo Maestro</option>
-                {locations.map(loc => (
-                  <option key={loc.id} value={loc.id}>Sede: {loc.name}</option>
-                ))}
-              </SelectInput>
-            </div>
+        {/* 2. Cuerpo Colapsable: El resto de los filtros */}
+        <div className={`flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-x-4 gap-y-4 transition-all duration-300 ${
+          isFiltersOpen ? 'flex' : 'hidden md:flex'
+        }`}>
+          <div className="w-full md:w-auto min-w-[150px]">
+            <SelectInput value={catFilter} onChange={e => setCatFilter(e.target.value)}>
+              <option value="all">Todas las categorías</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </SelectInput>
+          </div>
+          <div className="w-full md:w-auto min-w-[150px]">
+            <SelectInput value={brandFilter} onChange={e => setBrandFilter(e.target.value)}>
+              <option value="all">Concepto: Todos</option>
+              {brandConceptOptions.map(concept => (
+                <option key={concept.value} value={concept.value}>{concept.label}</option>
+              ))}
+            </SelectInput>
+          </div>
 
+          <div className="w-full md:w-auto min-w-[150px]">
+            <SelectInput value={locationFilter} onChange={e => {
+              setLocationFilter(e.target.value);
+              setShowUnassigned(false);
+            }}>
+              <option value="all">Sede: Catálogo Maestro</option>
+              {locations.map(loc => (
+                <option key={loc.id} value={loc.id}>Sede: {loc.name}</option>
+              ))}
+            </SelectInput>
+          </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100">
-              <span className="text-[10px] font-bold text-gray-400 uppercase mr-1">Atributos:</span>
+          <div className="flex items-center justify-between md:justify-start gap-1.5 px-3.5 py-2 bg-gray-50 rounded-xl border border-gray-100 w-full md:w-auto">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider mr-1">Atributos</span>
+            <div className="flex items-center gap-1.5">
               {[
                 { id: 'all', label: 'Todos' },
                 { id: 'upsell', label: '✨' },
@@ -508,16 +531,18 @@ export default function AdminProducts() {
                   className={`w-8 h-8 flex items-center justify-center rounded-lg text-[14px] transition-all border ${
                     attrFilter === f.id 
                     ? 'bg-[#2f4131] text-white border-[#2f4131]' 
-                    : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'
+                    : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50 active:scale-95'
                   }`}
                 >
                   {f.id === 'all' ? 'All' : f.label}
                 </button>
               ))}
             </div>
+          </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100">
-              <span className="text-[10px] font-bold text-gray-400 uppercase mr-1">Margen:</span>
+          <div className="flex items-center justify-between md:justify-start gap-1.5 px-3.5 py-2 bg-gray-50 rounded-xl border border-gray-100 w-full md:w-auto">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider mr-1">Margen</span>
+            <div className="flex items-center gap-1.5">
               {[
                 { id: 'all', label: 'Todos' },
                 { id: 'high', label: '📈' },
@@ -531,37 +556,36 @@ export default function AdminProducts() {
                   className={`w-8 h-8 flex items-center justify-center rounded-lg text-[14px] transition-all border ${
                     marginFilter === f.id 
                     ? 'bg-[#2f4131] text-white border-[#2f4131]' 
-                    : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'
+                    : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50 active:scale-95'
                   }`}
                 >
                   {f.id === 'all' ? 'All' : f.label}
                 </button>
               ))}
             </div>
-            
-            <div className="flex items-center gap-2">
-               {catFilter !== 'all' && (
-                <button 
-                  onClick={enterReorderMode}
-                  className="px-4 py-2.5 text-[13px] font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-all flex items-center justify-center gap-2"
-                >
-                  <DragHandle />
-                  Ordenar
-                </button>
-              )}
+          </div>
+          
+          <div className="flex flex-row flex-wrap items-center gap-2 w-full md:w-auto">
+             {catFilter !== 'all' && (
               <button 
-                onClick={() => setIsBulkEditorOpen(true)}
-                className="px-4 py-2.5 text-[13px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
+                onClick={enterReorderMode}
+                className="flex-1 md:flex-initial px-4 py-2.5 text-[13px] font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-all flex items-center justify-center gap-2"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                Costos
+                <DragHandle />
+                Ordenar
               </button>
-            </div>
-
+             )}
+            <button 
+              onClick={() => setIsBulkEditorOpen(true)}
+              className="flex-1 md:flex-initial px-4 py-2.5 text-[13px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Costos
+            </button>
             {locationFilter !== 'all' && (
               <button 
                 onClick={() => setIsLinkModalOpen(true)}
-                className="px-4 py-2.5 text-[13px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
+                className="flex-1 md:flex-initial px-4 py-2.5 text-[13px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
               >
                 <LinkIcon size={14} />
                 Vincular de Catálogo
