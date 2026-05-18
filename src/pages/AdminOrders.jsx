@@ -985,12 +985,12 @@ export default function AdminOrders() {
 
       {/* Modal Detalle Pedido Rediseñado */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center md:p-4">
           <div 
             className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
             onClick={() => setSelectedOrder(null)}
           ></div>
-          <div className="bg-gray-50/50 w-full max-w-7xl max-h-[90vh] rounded-[2.5rem] shadow-2xl overflow-hidden relative border border-white/20 backdrop-blur-xl flex flex-col">
+          <div className="bg-gray-50/50 w-full max-w-7xl h-[92vh] md:h-auto md:max-h-[90vh] rounded-t-[2.5rem] rounded-b-none md:rounded-b-[2.5rem] shadow-2xl overflow-hidden relative border border-white/20 backdrop-blur-xl flex flex-col mt-auto md:mt-0 animate-in slide-in-from-bottom-4 md:zoom-in duration-300">
             {/* Header Modal */}
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <div className="flex items-center gap-4">
@@ -1017,7 +1017,7 @@ export default function AdminOrders() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 bg-white custom-scrollbar pb-32">
+            <div className="flex-1 overflow-y-auto p-6 bg-white custom-scrollbar pb-40">
               <div className="grid grid-cols-1 lg:grid-cols-[1fr,340px] gap-8">
                 
                 {/* Columna Izquierda: Consumo */}
@@ -1278,7 +1278,7 @@ export default function AdminOrders() {
             </div>
 
             {/* Footer Fijo del Modal */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-gray-100 flex flex-col md:flex-row gap-4 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-10">
+            <div className="absolute bottom-0 left-0 right-0 p-4 pb-10 md:p-6 bg-white border-t border-gray-100 flex flex-col md:flex-row gap-4 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-10">
                
                <div className="flex-1 flex gap-2">
                  <button 
