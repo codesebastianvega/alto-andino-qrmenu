@@ -150,7 +150,7 @@ export default function AdminModifierGroups() {
               </PrimaryButton>
             </div>
         </div>
-      <div className="flex flex-row overflow-x-auto no-scrollbar bg-gray-50 p-1.5 rounded-2xl w-full sm:w-fit mx-auto border border-gray-100">
+      <div className="flex flex-row overflow-x-auto scrollbar-hide ios-smooth-scroll flex-nowrap bg-gray-50 p-1.5 rounded-2xl w-full sm:w-fit mx-auto border border-gray-100">
           <button
             onClick={() => setActiveTab('main')}
             className={`whitespace-nowrap shrink-0 px-4 sm:px-8 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'main' ? 'bg-white text-[#2f4131] shadow-md border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}

@@ -42,12 +42,12 @@ export default function AdminModifiers() {
   return (
     <div className="p-8 w-full max-w-[1600px] mx-auto space-y-8 animate-fade-in">
       {/* Tabs Menu */}
-      <div className="flex bg-gray-50/50 backdrop-blur-xl p-1.5 mb-8 rounded-2xl w-fit mx-auto border border-gray-100 shadow-sm sticky top-4 z-50">
+      <div className="flex flex-row overflow-x-auto scrollbar-hide ios-smooth-scroll flex-nowrap bg-gray-50/80 backdrop-blur-lg p-1.5 mb-8 rounded-2xl w-full sm:w-fit mx-auto border border-gray-100 shadow-sm sticky top-4 z-50">
         {TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
+            className={`whitespace-nowrap shrink-0 px-4 sm:px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
               activeTab === tab.id
                 ? 'bg-white text-[#2f4131] shadow-md border border-gray-100 ring-1 ring-gray-200/50'
                 : 'text-gray-400 hover:text-gray-600 hover:bg-white/50'
@@ -517,502 +517,591 @@ function InsumosTab({ activeLocationId }) {
         </div>
       </div>
 
-      <TableContainer className="rounded-[1.5rem] border border-gray-100 shadow-sm overflow-hidden bg-white">
-        <table className="w-full min-w-[1000px] border-collapse">
-          <thead>
-            <tr className="bg-gray-50/50">
-              <Th className="py-4 pl-8">Insumo / SKU</Th>
-              <Th className="py-4">Categoría / Prov.</Th>
-              <Th className="py-4">Costo Unit.</Th>
-              <Th className="py-4">Stock / Alerta</Th>
-              <Th className="py-4">Valor Stock</Th>
-              <Th className="py-4">Última Act.</Th>
-              <Th right className="py-4 pr-8">Acciones</Th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filtered.map(item => {
-              const cat      = categories.find(c => c.id === item.category_id);
-              const stockLow = item.stock_current <= item.stock_min;
-              const hasZero  = !item.unit_cost || item.unit_cost === 0;
-              const isInline = inlineEdit?.id === item.id;
-              const isDelConf= confirmDelete === item.id;
+      {/* Desktop Table */}
+      <div className="hidden md:block">
+        <TableContainer className="rounded-[1.5rem] border border-gray-100 shadow-sm overflow-hidden bg-white">
+          <table className="w-full min-w-[1000px] border-collapse">
+            <thead>
+              <tr className="bg-gray-50/50">
+                <Th className="py-4 pl-8">Insumo / SKU</Th>
+                <Th className="py-4">Categoría / Prov.</Th>
+                <Th className="py-4">Costo Unit.</Th>
+                <Th className="py-4">Stock / Alerta</Th>
+                <Th className="py-4">Valor Stock</Th>
+                <Th className="py-4">Última Act.</Th>
+                <Th right className="py-4 pr-8">Acciones</Th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filtered.map(item => {
+                const cat      = categories.find(c => c.id === item.category_id);
+                const stockLow = item.stock_current <= item.stock_min;
+                const hasZero  = !item.unit_cost || item.unit_cost === 0;
+                const isInline = inlineEdit?.id === item.id;
+                const isDelConf= confirmDelete === item.id;
 
-              // ── Delete confirmation row
-              if (isDelConf) return (
-                <tr key={item.id}>
-                  <td colSpan={6} className="px-8 py-4 bg-red-50/50">
-                    <div className="flex items-center justify-between animate-fade-in">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center text-red-600">
-                          <Icon icon="heroicons:trash" />
+                // ── Delete confirmation row
+                if (isDelConf) return (
+                  <tr key={item.id}>
+                    <td colSpan={6} className="px-8 py-4 bg-red-50/50">
+                      <div className="flex items-center justify-between animate-fade-in">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center text-red-600">
+                            <Icon icon="heroicons:trash" />
+                          </div>
+                          <p className="text-sm font-bold text-red-700">
+                            ¿Eliminar <span className="underline decoration-red-200 decoration-2">{item.name}</span> del inventario?
+                          </p>
                         </div>
-                        <p className="text-sm font-bold text-red-700">
-                          ¿Eliminar <span className="underline decoration-red-200 decoration-2">{item.name}</span> del inventario?
-                        </p>
+                        <div className="flex gap-2">
+                          <button onClick={() => { deleteIngredient(item.id); setConfirmDelete(null); }}
+                            className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 shadow-sm transition-all">
+                            Sí, Eliminar
+                          </button>
+                          <button onClick={() => setConfirmDelete(null)}
+                            className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:bg-gray-50 transition-all">
+                            Cancelar
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => { deleteIngredient(item.id); setConfirmDelete(null); }}
-                          className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 shadow-sm transition-all">
-                          Sí, Eliminar
-                        </button>
-                        <button onClick={() => setConfirmDelete(null)}
-                          className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:bg-gray-50 transition-all">
-                          Cancelar
-                        </button>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              );
+                    </td>
+                  </tr>
+                );
 
-              // ── Inline cost editor row
-              if (isInline) return (
-                <tr key={item.id} className="bg-blue-50/40">
-                  <td className="px-5 py-4" colSpan={6}>
-                    <div className="flex flex-wrap items-end gap-4">
-                      <div className="flex-1 min-w-[160px]">
-                        <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">Insumo</p>
-                        <p className="text-sm font-semibold text-gray-900">{item.name}</p>
-                        <p className="text-[11px] text-gray-400 font-medium capitalize">{item.usage_unit}</p>
-                      </div>
-                      <div className="flex-1 min-w-[120px]">
-                        <label className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 block mb-1.5">Precio de compra</label>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-gray-400 text-sm">$</span>
+                // ── Inline cost editor row
+                if (isInline) return (
+                  <tr key={item.id} className="bg-blue-50/40">
+                    <td className="px-5 py-4" colSpan={6}>
+                      <div className="flex flex-wrap items-end gap-4">
+                        <div className="flex-1 min-w-[160px]">
+                          <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">Insumo</p>
+                          <p className="text-sm font-semibold text-gray-900">{item.name}</p>
+                          <p className="text-[11px] text-gray-400 font-medium capitalize">{item.usage_unit}</p>
+                        </div>
+                        <div className="flex-1 min-w-[120px]">
+                          <label className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 block mb-1.5">Precio de compra</label>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-gray-400 text-sm">$</span>
+                            <input
+                              autoFocus
+                              type="number"
+                              value={inlineEdit.purchase_price}
+                              onChange={e => fi('purchase_price', Number(e.target.value))}
+                              className="w-28 px-3 py-2 bg-white border-2 border-blue-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-200 outline-none"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-[100px]">
+                          <label className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 block mb-1.5">Cant. interna</label>
                           <input
-                            autoFocus
                             type="number"
-                            value={inlineEdit.purchase_price}
-                            onChange={e => fi('purchase_price', Number(e.target.value))}
-                            className="w-28 px-3 py-2 bg-white border-2 border-blue-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-200 outline-none"
+                            value={inlineEdit.purchase_quantity}
+                            onChange={e => fi('purchase_quantity', Number(e.target.value))}
+                            className="w-24 px-3 py-2 bg-white border-2 border-blue-100 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-200 outline-none"
                           />
                         </div>
+                        <div className="flex-1 min-w-[100px]">
+                          <label className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 block mb-1.5">Unidad compra</label>
+                          <input
+                            type="text"
+                            value={inlineEdit.purchase_unit}
+                            onChange={e => fi('purchase_unit', e.target.value)}
+                            className="w-24 px-3 py-2 bg-white border-2 border-blue-100 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-200 outline-none"
+                          />
+                        </div>
+                        {/* Live cost preview */}
+                        <div className="flex-1 min-w-[120px] text-center">
+                          <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">Costo unitario</p>
+                          <p className={`text-xl font-semibold tabular-nums ${
+                            inlineUnitCost > 0 ? 'text-[#2f4131]' : 'text-gray-300'
+                          }`}>
+                            ${inlineUnitCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                            <span className="text-[11px] text-gray-400 font-medium ml-1">/{item.usage_unit}</span>
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={saveInlineCost}
+                            className="px-4 py-2 bg-[#2f4131] text-white rounded-xl text-[12px] font-semibold hover:opacity-90 transition-all">
+                            Guardar
+                          </button>
+                          <button onClick={() => setInlineEdit(null)}
+                            className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-[12px] font-semibold hover:bg-gray-50 transition-all">
+                            Cancelar
+                          </button>
+                          <button onClick={() => openEdit(item)}
+                            className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-xl text-[12px] font-semibold transition-all">
+                            Editar todo…
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-[100px]">
-                        <label className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 block mb-1.5">Cant. interna</label>
-                        <input
-                          type="number"
-                          value={inlineEdit.purchase_quantity}
-                          onChange={e => fi('purchase_quantity', Number(e.target.value))}
-                          className="w-24 px-3 py-2 bg-white border-2 border-blue-100 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-200 outline-none"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-[100px]">
-                        <label className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 block mb-1.5">Unidad compra</label>
-                        <input
-                          type="text"
-                          value={inlineEdit.purchase_unit}
-                          onChange={e => fi('purchase_unit', e.target.value)}
-                          className="w-24 px-3 py-2 bg-white border-2 border-blue-100 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-200 outline-none"
-                        />
-                      </div>
-                      {/* Live cost preview */}
-                      <div className="flex-1 min-w-[120px] text-center">
-                        <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">Costo unitario</p>
-                        <p className={`text-xl font-semibold tabular-nums ${
-                          inlineUnitCost > 0 ? 'text-[#2f4131]' : 'text-gray-300'
+                    </td>
+                  </tr>
+                );
+
+                // ── Normal row
+                return (
+                  <tr key={item.id} className={`group transition-all ${
+                    hasZero ? 'bg-amber-50/5 hover:bg-amber-50/20' : 'hover:bg-gray-50/80'
+                  } ${!item.is_active ? 'opacity-60 grayscale-[0.5]' : ''}`}>
+                    {/* Name column */}
+                    <td className="py-5 pl-8">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm ${
+                          item.is_active ? 'bg-[#2f4131]/10 text-[#2f4131]' : 'bg-gray-100 text-gray-400'
                         }`}>
-                          ${inlineUnitCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                          <span className="text-[11px] text-gray-400 font-medium ml-1">/{item.usage_unit}</span>
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={saveInlineCost}
-                          className="px-4 py-2 bg-[#2f4131] text-white rounded-xl text-[12px] font-semibold hover:opacity-90 transition-all">
-                          Guardar
-                        </button>
-                        <button onClick={() => setInlineEdit(null)}
-                          className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-[12px] font-semibold hover:bg-gray-50 transition-all">
-                          Cancelar
-                        </button>
-                        <button onClick={() => openEdit(item)}
-                          className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-xl text-[12px] font-semibold transition-all">
-                          Editar todo…
-                        </button>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              );
-
-              // ── Normal row
-              return (
-                <tr key={item.id} className={`group transition-all ${
-                  hasZero ? 'bg-amber-50/5 hover:bg-amber-50/20' : 'hover:bg-gray-50/80'
-                } ${!item.is_active ? 'opacity-60 grayscale-[0.5]' : ''}`}>
-                  {/* Name column */}
-                  <td className="py-5 pl-8">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm ${
-                        item.is_active ? 'bg-[#2f4131]/10 text-[#2f4131]' : 'bg-gray-100 text-gray-400'
-                      }`}>
-                        {item.name.charAt(0)}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-gray-900 truncate max-w-[200px]">{item.name}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                           <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{item.usage_unit || 'unidad'}</span>
-                           {item.sku && (
-                             <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-mono font-bold">
-                               {item.sku}
-                             </span>
-                           )}
+                          {item.name.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-900 truncate max-w-[200px]">{item.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{item.usage_unit || 'unidad'}</span>
+                             {item.sku && (
+                               <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-mono font-bold">
+                                 {item.sku}
+                               </span>
+                             )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
+                    </td>
 
-                  {/* Category / Provider column */}
-                  <td className="py-5">
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center gap-2">
-                         <span className="px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-wider border border-gray-200">
-                           {cat?.name || 'Sin Categ.'}
-                         </span>
-                      </div>
-                      {item.provider_id && (
-                        <div className="flex items-center gap-1 text-[10px] text-blue-500 font-bold uppercase tracking-wider">
-                           <Icon icon="heroicons:truck" className="text-xs" />
-                           {providers.find(p => p.id === item.provider_id)?.name || 'Proveedor'}
+                    {/* Category / Provider column */}
+                    <td className="py-5">
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2">
+                           <span className="px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-wider border border-gray-200">
+                             {cat?.name || 'Sin Categ.'}
+                           </span>
                         </div>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* Cost column */}
-                  <td className="py-5">
-                    {hasZero ? (
-                      <button
-                        onClick={() => openInlineEdit(item)}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-amber-100/50 hover:bg-amber-100 text-amber-700 rounded-xl text-[11px] font-bold transition-all border border-amber-200/50"
-                      >
-                        <Icon icon="heroicons:currency-dollar" className="text-sm" />
-                        Fijar precio
-                      </button>
-                    ) : (
-                      <div className="flex flex-col">
-                        <span className="text-sm font-black text-gray-900 tabular-nums">
-                          ${(item.unit_cost || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                        </span>
-                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Por {item.usage_unit || 'u'}</span>
-                      </div>
-                    )}
-                  </td>
-
-                  {/* Stock column */}
-                  <td className="py-5">
-                    <div className="flex flex-col gap-1.5 max-w-[140px]">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-sm font-black tabular-nums ${stockLow ? 'text-rose-500' : 'text-[#2f4131]'}`}>
-                          {item.stock_current} <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{item.usage_unit}</span>
-                        </span>
-                        {stockLow && (
-                          <span className="flex items-center gap-1 justify-center h-5 w-5 bg-rose-500 text-white rounded-full animate-pulse shadow-lg shadow-rose-200">
-                            <Icon icon="heroicons:exclamation-circle" className="text-xs" />
-                          </span>
+                        {item.provider_id && (
+                          <div className="flex items-center gap-1 text-[10px] text-blue-500 font-bold uppercase tracking-wider">
+                             <Icon icon="heroicons:truck" className="text-xs" />
+                             {providers.find(p => p.id === item.provider_id)?.name || 'Proveedor'}
+                          </div>
                         )}
                       </div>
-                      <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden shadow-inner border border-gray-100">
-                        {(() => {
-                          const percentage = Math.min(100, (item.stock_current / Math.max(1, item.stock_min * 2)) * 100);
-                          const isCritical = item.stock_current <= item.stock_min;
-                          const isWarning = item.stock_current <= item.stock_min * 1.5;
-                          
-                          let colorClass = 'bg-[#2f4131]';
-                          if (isCritical) colorClass = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]';
-                          else if (isWarning) colorClass = 'bg-amber-400';
+                    </td>
 
-                          return (
-                            <div
-                              className={`h-full rounded-full transition-all duration-700 ease-out ${colorClass}`}
-                              style={{ width: `${percentage}%` }}
-                            />
-                          );
-                        })()}
-                      </div>
-                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Mín: {item.stock_min}</p>
-                    </div>
-                  </td>
-
-                  {/* Valor Stock column */}
-                  <td className="py-5">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-black text-gray-900 tabular-nums">
-                        ${((item.unit_cost || 0) * (item.stock_current || 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      </span>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Valor total</p>
-                    </div>
-                  </td>
-
-                  {/* Last updated column */}
-                  <td className="py-5">
-                    <div className="flex items-center gap-1.5 text-gray-500 font-medium">
-                       <Icon icon="heroicons:clock" className="text-xs" />
-                       <span className="text-xs">{formatRelativeTime(item.updated_at)}</span>
-                    </div>
-                  </td>
-
-                  {/* Actions column */}
-                  <td className="py-5 pr-8 text-right">
-                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => openEdit(item)}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all shadow-sm hover:shadow-md bg-white border border-transparent hover:border-blue-100">
-                        <Icon icon="heroicons:pencil-square" className="text-lg" />
-                      </button>
-                      <button onClick={() => { setConfirmDelete(item.id); setInlineEdit(null); }}
-                        className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all shadow-sm hover:shadow-md bg-white border border-transparent hover:border-rose-100">
-                        <Icon icon="heroicons:trash" className="text-lg" />
-                      </button>
-                      {!isAllLocations && (
+                    {/* Cost column */}
+                    <td className="py-5">
+                      {hasZero ? (
                         <button
-                          onClick={() => handleUnlinkIngredient(item.id)}
-                          title="Desvincular de esta sede"
-                          className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all shadow-sm hover:shadow-md bg-white border border-transparent hover:border-amber-100"
+                          onClick={() => openInlineEdit(item)}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-amber-100/50 hover:bg-amber-100 text-amber-700 rounded-xl text-[11px] font-bold transition-all border border-amber-200/50"
                         >
-                          <Icon icon="heroicons:link-slash" className="text-lg" />
+                          <Icon icon="heroicons:currency-dollar" className="text-sm" />
+                          Fijar precio
                         </button>
+                      ) : (
+                        <div className="flex flex-col">
+                          <span className="text-sm font-black text-gray-900 tabular-nums">
+                            ${(item.unit_cost || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                          </span>
+                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Por {item.usage_unit || 'u'}</span>
+                        </div>
                       )}
+                    </td>
+
+                    {/* Stock column */}
+                    <td className="py-5">
+                      <div className="flex flex-col gap-1.5 max-w-[140px]">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-sm font-black tabular-nums ${stockLow ? 'text-rose-500' : 'text-[#2f4131]'}`}>
+                            {item.stock_current} <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{item.usage_unit}</span>
+                          </span>
+                          {stockLow && (
+                            <span className="flex items-center gap-1 justify-center h-5 w-5 bg-rose-500 text-white rounded-full animate-pulse shadow-lg shadow-rose-200">
+                              <Icon icon="heroicons:exclamation-circle" className="text-xs" />
+                            </span>
+                          )}
+                        </div>
+                        <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden shadow-inner border border-gray-100">
+                          {(() => {
+                            const percentage = Math.min(100, (item.stock_current / Math.max(1, item.stock_min * 2)) * 100);
+                            const isCritical = item.stock_current <= item.stock_min;
+                            const isWarning = item.stock_current <= item.stock_min * 1.5;
+                            
+                            let colorClass = 'bg-[#2f4131]';
+                            if (isCritical) colorClass = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]';
+                            else if (isWarning) colorClass = 'bg-amber-400';
+
+                            return (
+                              <div
+                                className={`h-full rounded-full transition-all duration-700 ease-out ${colorClass}`}
+                                style={{ width: `${percentage}%` }}
+                              />
+                            );
+                          })()}
+                        </div>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Mín: {item.stock_min}</p>
+                      </div>
+                    </td>
+
+                    {/* Valor Stock column */}
+                    <td className="py-5">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-black text-gray-900 tabular-nums">
+                          ${((item.unit_cost || 0) * (item.stock_current || 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </span>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Valor total</p>
+                      </div>
+                    </td>
+
+                    {/* Last updated column */}
+                    <td className="py-5">
+                      <div className="flex items-center gap-1.5 text-gray-500 font-medium">
+                         <Icon icon="heroicons:clock" className="text-xs" />
+                         <span className="text-xs">{formatRelativeTime(item.updated_at)}</span>
+                      </div>
+                    </td>
+
+                    {/* Actions column */}
+                    <td className="py-5 pr-8 text-right">
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => openEdit(item)}
+                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all shadow-sm hover:shadow-md bg-white border border-transparent hover:border-blue-100">
+                          <Icon icon="heroicons:pencil-square" className="text-lg" />
+                        </button>
+                        <button onClick={() => { setConfirmDelete(item.id); setInlineEdit(null); }}
+                          className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all shadow-sm hover:shadow-md bg-white border border-transparent hover:border-rose-100">
+                          <Icon icon="heroicons:trash" className="text-lg" />
+                        </button>
+                        {!isAllLocations && (
+                          <button
+                            onClick={() => handleUnlinkIngredient(item.id)}
+                            title="Desvincular de esta sede"
+                            className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all shadow-sm hover:shadow-md bg-white border border-transparent hover:border-amber-100"
+                          >
+                            <Icon icon="heroicons:link-slash" className="text-lg" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && (
+                <tr><td colSpan={6} className="px-5 py-14 text-center text-sm text-gray-400 font-medium animate-fade-in">
+                  {showZeroOnly ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Icon icon="heroicons:check-badge" className="text-3xl text-emerald-500" />
+                      <span>¡Todos tus insumos tienen un costo definido!</span>
                     </div>
-                  </td>
-                </tr>
-              );
-            })}
-            {filtered.length === 0 && (
-              <tr><td colSpan={6} className="px-5 py-14 text-center text-sm text-gray-400 font-medium animate-fade-in">
-                {showZeroOnly ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <Icon icon="heroicons:check-badge" className="text-3xl text-emerald-500" />
-                    <span>¡Todos tus insumos tienen un costo definido!</span>
-                  </div>
-                ) : search === 'stock_bajo' ? (
-                   <div className="flex flex-col items-center gap-2">
-                    <Icon icon="heroicons:check-circle" className="text-3xl text-emerald-500" />
-                    <span>No hay insumos con stock bajo. ¡Buen trabajo!</span>
-                  </div>
-                ) : search === 'high_value' ? (
-                  <div className="flex flex-col items-center gap-2">
-                   <Icon icon="heroicons:information-circle" className="text-3xl text-blue-500" />
-                   <span>No hay insumos con valor significativamente alto actualmente.</span>
-                 </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-2">
-                    <Icon icon="heroicons:magnifying-glass" className="text-3xl text-gray-300" />
-                    <span>No se encontraron insumos que coincidan con la búsqueda.</span>
-                  </div>
-                )}
-              </td></tr>
-            )}
-          </tbody>
-        </table>
-      </TableContainer>
+                  ) : search === 'stock_bajo' ? (
+                     <div className="flex flex-col items-center gap-2">
+                      <Icon icon="heroicons:check-circle" className="text-3xl text-emerald-500" />
+                      <span>No hay insumos con stock bajo. ¡Buen trabajo!</span>
+                    </div>
+                  ) : search === 'high_value' ? (
+                    <div className="flex flex-col items-center gap-2">
+                     <Icon icon="heroicons:information-circle" className="text-3xl text-blue-500" />
+                     <span>No hay insumos con valor significativamente alto actualmente.</span>
+                   </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <Icon icon="heroicons:magnifying-glass" className="text-3xl text-gray-300" />
+                      <span>No se encontraron insumos que coincidan con la búsqueda.</span>
+                    </div>
+                  )}
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+        </TableContainer>
+      </div>
 
-      {/* Modal */}
+      {/* Mobile Cards */}
+      <div className="md:hidden flex flex-col gap-4 mt-4">
+        {filtered.map(item => {
+          const cat = categories.find(c => c.id === item.category_id);
+          const stockLow = item.stock_current <= item.stock_min;
+          const hasZero = !item.unit_cost || item.unit_cost === 0;
+          const isInline = inlineEdit?.id === item.id;
+          const isDelConf = confirmDelete === item.id;
+
+          if (isDelConf) return (
+            <div key={item.id} className="bg-red-50 p-4 rounded-2xl border border-red-100 flex flex-col gap-3 animate-fade-in">
+              <p className="text-sm font-bold text-red-700">¿Eliminar {item.name}?</p>
+              <div className="flex gap-2 mt-2">
+                <button onClick={() => { deleteIngredient(item.id); setConfirmDelete(null); }} className="flex-1 py-2 bg-red-600 text-white rounded-xl text-xs font-black uppercase shadow-sm">Eliminar</button>
+                <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2 bg-white text-gray-600 border border-gray-200 rounded-xl text-xs font-black uppercase">Cancelar</button>
+              </div>
+            </div>
+          );
+
+          if (isInline) return (
+            <div key={item.id} className="bg-blue-50/40 border border-blue-100 rounded-2xl p-4 flex flex-col gap-3 animate-fade-in">
+              <p className="text-sm font-bold text-gray-900">{item.name}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">Precio Compra ($)</label>
+                  <input type="number" value={inlineEdit.purchase_price} onChange={e => fi('purchase_price', Number(e.target.value))} className="w-full px-3 py-2 rounded-xl border border-blue-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-300" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">Cant. ({inlineEdit.purchase_unit})</label>
+                  <input type="number" value={inlineEdit.purchase_quantity} onChange={e => fi('purchase_quantity', Number(e.target.value))} className="w-full px-3 py-2 rounded-xl border border-blue-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-300" />
+                </div>
+              </div>
+              <div className="flex justify-between items-center mt-2 pt-2 border-t border-blue-100/50">
+                <p className="text-xs font-bold text-[#2f4131]">Costo: ${inlineUnitCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setInlineEdit(null)} className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-500">Cancelar</button>
+                  <button onClick={saveInlineCost} className="px-4 py-2 bg-[#2f4131] rounded-xl text-xs font-bold text-white shadow-sm">Guardar</button>
+                </div>
+              </div>
+            </div>
+          );
+
+          return (
+            <div key={item.id} className={`bg-white p-4 rounded-[1.5rem] border shadow-sm flex flex-col gap-3 relative transition-all ${hasZero ? 'border-amber-200 bg-amber-50/10' : 'border-gray-100'}`}>
+              <div className="flex gap-3 items-center">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-xl shrink-0 ${item.is_active ? 'bg-[#2f4131]/10 text-[#2f4131]' : 'bg-gray-100 text-gray-400'}`}>
+                  {item.name.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest truncate">{cat?.name || 'Sin Categoría'}</p>
+                  <h4 className="text-base font-black text-gray-900 leading-tight truncate">{item.name}</h4>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-mono font-bold">{item.sku || 'S/N'}</span>
+                    {hasZero && <span className="text-[9px] text-amber-600 font-bold bg-amber-100 px-1.5 py-0.5 rounded uppercase tracking-wider">Falta Costo</span>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100/50">
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Costo Unitario</p>
+                  <p className="text-sm font-black text-gray-900">${(item.unit_cost || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-[10px] text-gray-500 font-medium">/{item.usage_unit}</span></p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Stock</p>
+                  <p className={`text-sm font-black flex items-center gap-1 ${stockLow ? 'text-rose-500' : 'text-[#2f4131]'}`}>
+                    {item.stock_current} <span className="text-[10px] font-medium">{item.usage_unit}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <div className="flex gap-1">
+                  {hasZero && (
+                     <button onClick={() => openInlineEdit(item)} className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-bold active:scale-95 flex items-center gap-1">
+                       Fijar Precio
+                     </button>
+                  )}
+                </div>
+                <div className="flex gap-1">
+                   <button onClick={() => openEdit(item)} className="w-8 h-8 flex items-center justify-center text-blue-600 bg-blue-50 rounded-lg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+                   <button onClick={() => setConfirmDelete(item.id)} className="w-8 h-8 flex items-center justify-center text-rose-500 bg-rose-50 rounded-lg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Modal / Bottom Sheet */}
       {isOpen && (
-        <Modal onClose={() => setIsOpen(false)} wide>
-          <ModalHeader
-            title={editing ? 'Editar insumo' : 'Nuevo insumo'}
-            subtitle={editing ? editing.name : 'Completa los datos del nuevo insumo.'}
-            onClose={() => setIsOpen(false)}
-          />
-
-          {/* Cost indicator banner */}
-          <div className="px-7 py-4 bg-[#2f4131]/5 border-b border-gray-100 flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-[#2f4131]">Costo para recetas</p>
-              <p className="text-2xl font-semibold text-[#2f4131] tabular-nums mt-0.5">
-                ${unitCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                <span className="text-sm text-gray-500 font-medium ml-1">/{form.usage_unit || 'unidad de uso'}</span>
-              </p>
+        <div className="fixed inset-0 bg-gray-900/80 flex items-end md:items-start justify-center z-[100] p-0 md:p-4 overflow-hidden backdrop-blur-sm">
+          <div className="bg-white rounded-t-[2rem] md:rounded-[2rem] w-full max-w-4xl h-[95vh] md:h-auto md:max-h-[90vh] md:my-8 flex flex-col shadow-2xl animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200">
+            <div className="shrink-0">
+              <ModalHeader
+                title={editing ? 'Editar insumo' : 'Nuevo insumo'}
+                subtitle={editing ? editing.name : 'Completa los datos del nuevo insumo.'}
+                onClose={() => setIsOpen(false)}
+              />
+              <div className="px-5 md:px-7 py-4 bg-[#2f4131]/5 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#2f4131]">Costo para recetas</p>
+                  <p className="text-xl font-semibold text-[#2f4131] tabular-nums mt-0.5">
+                    ${unitCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    <span className="text-xs text-gray-500 font-medium ml-1">/{form.usage_unit || 'unidad'}</span>
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-[12px] text-gray-500 font-medium max-w-[260px] leading-snug">
-                Fórmula de costo: <br/>
-                <span className="font-semibold text-gray-700">${form.purchase_price?.toLocaleString() || 0}</span> (compra) ÷ <span className="font-semibold text-gray-700">{form.purchase_quantity || 1}</span> (equivalencia)
-              </p>
-            </div>
-          </div>
-
-          <form onSubmit={handleSave}>
-            <div className="px-7 py-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-              <FormField label="Nombre">
-                <TextInput required value={form.name} onChange={e => f('name', e.target.value)} placeholder="Ej. Aguacate, Café, Pollo" />
-              </FormField>
-              <FormField label="SKU / Código">
-                <TextInput value={form.sku} onChange={e => f('sku', e.target.value.toUpperCase())} placeholder="INS-001" />
-              </FormField>
-              <FormField label="Categoría">
-                <select required value={form.category_id} onChange={e => f('category_id', e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none">
-                  <option value="">Seleccionar…</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </FormField>
-              <FormField label="Proveedor (Opcional)">
-                <select value={form.provider_id} onChange={e => f('provider_id', e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none">
-                  <option value="">Sin proveedor</option>
-                  {providers?.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </FormField>
-              <FormField label="Unidad de uso en Recetas">
-                <select required value={form.usage_unit} onChange={e => f('usage_unit', e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none">
-                  <option value="">Seleccionar unidad...</option>
-                  <option value="Gramo">Gramo (g)</option>
-                  <option value="Mililitro">Mililitro (ml)</option>
-                  <option value="Unidad">Unidad (u)</option>
-                  <option value="Onza">Onza (oz)</option>
-                  <option value="Kilogramo">Kilogramo (kg)</option>
-                  <option value="Litro">Litro (L)</option>
-                  <option value="Libra">Libra (lb)</option>
-                </select>
-              </FormField>
-
-              {/* Purchase calculator */}
-              <div className="md:col-span-2 grid grid-cols-3 gap-4 p-5 bg-blue-50/50 rounded-xl border border-blue-100">
-                <FormField label="Precio de compra">
-                  <TextInput type="number" required value={form.purchase_price === 0 ? '' : form.purchase_price} onChange={e => f('purchase_price', Number(e.target.value))} placeholder="Ej: 5000" />
+            
+            <form onSubmit={handleSave} className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+              <div className="px-5 md:px-7 py-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <FormField label="Nombre">
+                  <TextInput required value={form.name} onChange={e => f('name', e.target.value)} placeholder="Ej. Aguacate, Café, Pollo" />
                 </FormField>
-                <FormField label="¿Cómo se compra?">
-                  <select required value={form.purchase_unit} onChange={e => handlePurchaseUnitChange(e.target.value)}
-                    className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none shadow-sm">
-                    <option value="">Seleccionar...</option>
-                    <option value="Gramos">Gramos</option>
-                    <option value="Kilogramos">Kilogramos</option>
-                    <option value="Mililitros">Mililitros</option>
-                    <option value="Litros">Litros</option>
-                    <option value="Unidades">Unidades</option>
-                    <option value="Paquetes">Paquetes</option>
-                    <option value="Cajas">Cajas</option>
-                    <option value="Botellas">Botellas</option>
-                    <option value="Latas">Latas</option>
-                    <option value="Libras">Libras</option>
-                    <option value="Onzas">Onzas</option>
+                <FormField label="SKU / Código">
+                  <TextInput value={form.sku} onChange={e => f('sku', e.target.value.toUpperCase())} placeholder="INS-001" />
+                </FormField>
+                <FormField label="Categoría">
+                  <select required value={form.category_id} onChange={e => f('category_id', e.target.value)}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none">
+                    <option value="">Seleccionar…</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </FormField>
-                <FormField label={`¿Cuántos ${form.usage_unit || 'g/ml'} trae?`}>
-                  <TextInput type="number" required value={form.purchase_quantity === 0 ? '' : form.purchase_quantity} onChange={e => f('purchase_quantity', Number(e.target.value))} placeholder={`Ej: 1000`} />
+                <FormField label="Proveedor (Opcional)">
+                  <select value={form.provider_id} onChange={e => f('provider_id', e.target.value)}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none">
+                    <option value="">Sin proveedor</option>
+                    {providers?.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
                 </FormField>
-              </div>
+                <FormField label="Unidad de uso en Recetas">
+                  <select required value={form.usage_unit} onChange={e => f('usage_unit', e.target.value)}
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none">
+                    <option value="">Seleccionar unidad...</option>
+                    <option value="Gramo">Gramo (g)</option>
+                    <option value="Mililitro">Mililitro (ml)</option>
+                    <option value="Unidad">Unidad (u)</option>
+                    <option value="Onza">Onza (oz)</option>
+                    <option value="Kilogramo">Kilogramo (kg)</option>
+                    <option value="Litro">Litro (L)</option>
+                    <option value="Libra">Libra (lb)</option>
+                  </select>
+                </FormField>
 
-              <FormField label="Stock actual (General)">
-                <TextInput type="number" value={form.stock_current} onChange={e => f('stock_current', Number(e.target.value))} />
-              </FormField>
-              <FormField label="Stock mínimo (General)">
-                <TextInput type="number" value={form.stock_min} onChange={e => f('stock_min', Number(e.target.value))} />
-              </FormField>
-
-              {/* Per-location inventory section */}
-              <div className="md:col-span-2 space-y-4">
-                <div className="flex items-center gap-3 py-2 border-b border-gray-100">
-                  <Icon icon="heroicons:map-pin" className="text-gray-400 text-lg" />
-                  <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest">Stock por Sede</h4>
+                {/* Purchase calculator */}
+                <div className="md:col-span-2 grid grid-cols-3 gap-4 p-5 bg-blue-50/50 rounded-xl border border-blue-100">
+                  <FormField label="Precio de compra">
+                    <TextInput type="number" required value={form.purchase_price === 0 ? '' : form.purchase_price} onChange={e => f('purchase_price', Number(e.target.value))} placeholder="Ej: 5000" />
+                  </FormField>
+                  <FormField label="¿Cómo se compra?">
+                    <select required value={form.purchase_unit} onChange={e => handlePurchaseUnitChange(e.target.value)}
+                      className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none shadow-sm">
+                      <option value="">Seleccionar...</option>
+                      <option value="Gramos">Gramos</option>
+                      <option value="Kilogramos">Kilogramos</option>
+                      <option value="Mililitros">Mililitros</option>
+                      <option value="Litros">Litros</option>
+                      <option value="Unidades">Unidades</option>
+                      <option value="Paquetes">Paquetes</option>
+                      <option value="Cajas">Cajas</option>
+                      <option value="Botellas">Botellas</option>
+                      <option value="Latas">Latas</option>
+                      <option value="Libras">Libras</option>
+                      <option value="Onzas">Onzas</option>
+                    </select>
+                  </FormField>
+                  <FormField label={`¿Cuántos ${form.usage_unit || 'g/ml'} trae?`}>
+                    <TextInput type="number" required value={form.purchase_quantity === 0 ? '' : form.purchase_quantity} onChange={e => f('purchase_quantity', Number(e.target.value))} placeholder={`Ej: 1000`} />
+                  </FormField>
                 </div>
-                
-                <div className="grid grid-cols-1 gap-4">
-                  {locations.map(loc => (
-                    <div key={loc.id} className="flex items-center gap-4 p-4 bg-gray-50/50 rounded-2xl border border-gray-100 group hover:border-[#2f4131]/30 transition-all">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-gray-900 truncate">{loc.name}</p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{loc.city}</p>
-                      </div>
-                      
-                      <div className="flex items-center gap-3">
-                        <div className="w-24">
-                          <label className="text-[9px] font-black text-gray-400 uppercase block mb-1">Stock</label>
-                          <TextInput 
-                            type="number" 
-                            className="h-9 text-xs"
-                            value={locationInventory[loc.id]?.stock_quantity ?? ''}
-                            placeholder={form.stock_current.toString()}
-                            onChange={e => setLocationInventory({
-                              ...locationInventory,
-                              [loc.id]: {
-                                ...locationInventory[loc.id],
-                                stock_quantity: e.target.value
-                              }
-                            })}
-                          />
+
+                <FormField label="Stock actual (General)">
+                  <TextInput type="number" value={form.stock_current} onChange={e => f('stock_current', Number(e.target.value))} />
+                </FormField>
+                <FormField label="Stock mínimo (General)">
+                  <TextInput type="number" value={form.stock_min} onChange={e => f('stock_min', Number(e.target.value))} />
+                </FormField>
+
+                {/* Per-location inventory section */}
+                <div className="md:col-span-2 space-y-4">
+                  <div className="flex items-center gap-3 py-2 border-b border-gray-100">
+                    <Icon icon="heroicons:map-pin" className="text-gray-400 text-lg" />
+                    <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest">Stock por Sede</h4>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-4">
+                    {locations.map(loc => (
+                      <div key={loc.id} className="flex items-center gap-4 p-4 bg-gray-50/50 rounded-2xl border border-gray-100 group hover:border-[#2f4131]/30 transition-all">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-gray-900 truncate">{loc.name}</p>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{loc.city}</p>
                         </div>
-                        <div className="w-24">
-                          <label className="text-[9px] font-black text-gray-400 uppercase block mb-1">Min.</label>
-                          <TextInput 
-                            type="number" 
-                            className="h-9 text-xs"
-                            value={locationInventory[loc.id]?.min_stock ?? ''}
-                            placeholder={form.stock_min.toString()}
-                            onChange={e => setLocationInventory({
-                              ...locationInventory,
-                              [loc.id]: {
-                                ...locationInventory[loc.id],
-                                min_stock: e.target.value
-                              }
-                            })}
-                          />
+                        
+                        <div className="flex items-center gap-3">
+                          <div className="w-24">
+                            <label className="text-[9px] font-black text-gray-400 uppercase block mb-1">Stock</label>
+                            <TextInput 
+                              type="number" 
+                              className="h-9 text-xs"
+                              value={locationInventory[loc.id]?.stock_quantity ?? ''}
+                              placeholder={form.stock_current.toString()}
+                              onChange={e => setLocationInventory({
+                                ...locationInventory,
+                                [loc.id]: {
+                                  ...locationInventory[loc.id],
+                                  stock_quantity: e.target.value
+                                }
+                              })}
+                            />
+                          </div>
+                          <div className="w-24">
+                            <label className="text-[9px] font-black text-gray-400 uppercase block mb-1">Min.</label>
+                            <TextInput 
+                              type="number" 
+                              className="h-9 text-xs"
+                              value={locationInventory[loc.id]?.min_stock ?? ''}
+                              placeholder={form.stock_min.toString()}
+                              onChange={e => setLocationInventory({
+                                ...locationInventory,
+                                [loc.id]: {
+                                  ...locationInventory[loc.id],
+                                  min_stock: e.target.value
+                                }
+                              })}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Modifier toggle & Profit Margin */}
+                <div className="md:col-span-2 flex flex-col p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700">Disponible como adicional/extra</p>
+                      <p className="text-[12px] text-gray-400 font-medium mt-0.5">El cliente podrá añadirlo a su pedido por un costo extra.</p>
+                    </div>
+                    <button type="button" onClick={() => f('is_modifier', !form.is_modifier)}
+                      className={`w-10 h-5 rounded-full relative transition-all ${form.is_modifier ? 'bg-[#2f4131]' : 'bg-gray-300'}`}>
+                      <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${form.is_modifier ? 'left-5' : 'left-0.5'}`} />
+                    </button>
+                  </div>
+
+                  {form.is_modifier && (
+                    <div className="pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormField label={`Tamaño Porción (${form.usage_unit || '...'})`}>
+                         <TextInput type="number" required value={form.portion_size} onChange={e => f('portion_size', Number(e.target.value))} placeholder="Ej: 50" />
+                      </FormField>
+                      <FormField label="Precio Venta Cliente">
+                        <TextInput type="number" required value={form.selling_price} onChange={e => f('selling_price', Number(e.target.value))} placeholder="Ej: 1500" />
+                      </FormField>
+
+                      {/* Calculated Profit Margin Display */}
+                      <div className="flex flex-col justify-center">
+                        <span className="text-[11px] font-semibold uppercase tracking-widest text-emerald-600 mb-1">Margen de Ganancia</span>
+                        <div className="flex items-baseline gap-2">
+                          {(() => {
+                            const portionCost = unitCost * (form.portion_size || 50);
+                            const sellPrice = form.selling_price || 0;
+                            const profit = sellPrice - portionCost;
+                            const marginPercent = sellPrice > 0 ? (profit / sellPrice) * 100 : 0;
+                            
+                            return (
+                              <>
+                                <span className={`text-xl font-bold tabular-nums ${marginPercent > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                  {marginPercent.toFixed(1)}%
+                                </span>
+                                <span className="text-xs text-gray-500 font-medium">
+                                  (Costo: ${portionCost.toLocaleString(undefined, { maximumFractionDigits: 0 })})
+                                </span>
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
-
-              {/* Modifier toggle & Profit Margin */}
-              <div className="md:col-span-2 flex flex-col p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-700">Disponible como adicional/extra</p>
-                    <p className="text-[12px] text-gray-400 font-medium mt-0.5">El cliente podrá añadirlo a su pedido por un costo extra.</p>
-                  </div>
-                  <button type="button" onClick={() => f('is_modifier', !form.is_modifier)}
-                    className={`w-10 h-5 rounded-full relative transition-all ${form.is_modifier ? 'bg-[#2f4131]' : 'bg-gray-300'}`}>
-                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${form.is_modifier ? 'left-5' : 'left-0.5'}`} />
-                  </button>
-                </div>
-
-                {form.is_modifier && (
-                  <div className="pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField label={`Tamaño Porción (${form.usage_unit || '...'})`}>
-                       <TextInput type="number" required value={form.portion_size} onChange={e => f('portion_size', Number(e.target.value))} placeholder="Ej: 50" />
-                    </FormField>
-                    <FormField label="Precio Venta Cliente">
-                      <TextInput type="number" required value={form.selling_price} onChange={e => f('selling_price', Number(e.target.value))} placeholder="Ej: 1500" />
-                    </FormField>
-
-                    {/* Calculated Profit Margin Display */}
-                    <div className="flex flex-col justify-center">
-                      <span className="text-[11px] font-semibold uppercase tracking-widest text-emerald-600 mb-1">Margen de Ganancia</span>
-                      <div className="flex items-baseline gap-2">
-                        {(() => {
-                          const portionCost = unitCost * (form.portion_size || 50);
-                          const sellPrice = form.selling_price || 0;
-                          const profit = sellPrice - portionCost;
-                          const marginPercent = sellPrice > 0 ? (profit / sellPrice) * 100 : 0;
-                          
-                          return (
-                            <>
-                              <span className={`text-xl font-bold tabular-nums ${marginPercent > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                {marginPercent.toFixed(1)}%
-                              </span>
-                              <span className="text-xs text-gray-500 font-medium">
-                                (Costo: ${portionCost.toLocaleString(undefined, { maximumFractionDigits: 0 })})
-                              </span>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-                )}
+              
+              {/* Sticky Footer */}
+              <div className="shrink-0 px-5 md:px-7 py-4 border-t border-gray-100 flex flex-col sm:flex-row gap-3 mt-auto bg-white shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
+                <SecondaryButton type="button" onClick={() => setIsOpen(false)} className="flex-1 py-3 order-2 sm:order-1">Cancelar</SecondaryButton>
+                <PrimaryButton type="submit" className="flex-[2] py-3 order-1 sm:order-2">{editing ? 'Guardar cambios' : 'Crear insumo'}</PrimaryButton>
               </div>
-            </div>
-
-            <div className="px-7 py-5 border-t border-gray-100 flex gap-3">
-              <SecondaryButton type="button" onClick={() => setIsOpen(false)} className="flex-1">Cancelar</SecondaryButton>
-              <PrimaryButton type="submit" className="flex-[2]">{editing ? 'Guardar cambios' : 'Crear insumo'}</PrimaryButton>
-            </div>
-          </form>
-        </Modal>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Catalog Link Modal */}
