@@ -186,19 +186,19 @@ export default function AdminDashboard() {
           <h1 className="text-3xl font-black text-gray-900 border-l-4 border-[#2f4131] pl-4">DASHBOARD</h1>
           <p className="text-gray-500 mt-1 font-medium pl-4">Inteligencia de Negocio & Analíticas</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-row overflow-x-auto no-scrollbar gap-2 pb-2 w-full md:w-auto snap-x">
           {['today', '7d', '30d', 'all'].map(t => (
-             <button
-               key={t}
-               onClick={() => setDateRange(t)}
-               className={`px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-sm border ${
-                 dateRange === t 
-                   ? 'bg-[#2f4131] text-white border-[#2f4131]' 
-                   : 'bg-white text-gray-500 hover:bg-gray-50 border-gray-200'
-               }`}
-             >
-               {t === 'today' ? 'Hoy' : t === '7d' ? '7 Días' : t === '30d' ? '30 Días' : 'Todo'}
-             </button>
+            <button
+              key={t}
+              onClick={() => setDateRange(t)}
+              className={`shrink-0 snap-start px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm border ${
+                dateRange === t 
+                  ? 'bg-[#2f4131] text-white border-[#2f4131]' 
+                  : 'bg-white text-gray-500 hover:bg-gray-50 border-gray-200'
+              }`}
+            >
+              {t === 'today' ? 'Hoy' : t === '7d' ? '7 Días' : t === '30d' ? '30 Días' : 'Histórico'}
+            </button>
           ))}
         </div>
       </header>
@@ -209,38 +209,54 @@ export default function AdminDashboard() {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* KPI Cards */}
+          {/* Carrusel de KPI Cards */}
+          <div className="flex flex-row overflow-x-auto no-scrollbar gap-4 pb-4 snap-x -mx-4 px-4 md:mx-0 md:px-0">
+            
+            {/* Tarjeta 1: Ingresos (Destacada) */}
+            <div className="shrink-0 snap-start w-[260px] md:w-auto md:flex-1 bg-[#2f4131] p-5 md:p-6 rounded-[1.5rem] shadow-lg flex flex-col justify-between relative overflow-hidden">
+              <div className="absolute -right-4 -bottom-4 opacity-10 text-white pointer-events-none">
+                <Icon icon="heroicons:banknotes" width="100" />
+              </div>
+              <p className="text-[11px] font-bold text-white/60 uppercase tracking-widest relative z-10">Ingresos Totales</p>
+              <p className="text-3xl font-black text-white mt-2 relative z-10">{formatCurrency(stats.revenue)}</p>
+            </div>
 
-            {/* Plan Usage Card */}
+            {/* Tarjeta 2: Ticket Promedio */}
+            <div className="shrink-0 snap-start w-[240px] md:w-auto md:flex-1 bg-white p-5 md:p-6 rounded-[1.5rem] border border-gray-100 shadow-sm flex flex-col justify-between">
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Ticket Promedio</p>
+              <p className="text-2xl font-black text-gray-900 mt-2">{formatCurrency(stats.avgTicket)}</p>
+            </div>
+
+            {/* Tarjeta 3: Pedidos */}
+            <div className="shrink-0 snap-start w-[220px] md:w-auto md:flex-1 bg-white p-5 md:p-6 rounded-[1.5rem] border border-gray-100 shadow-sm flex flex-col justify-between">
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Pedidos Entregados</p>
+              <p className="text-2xl font-black text-gray-900 mt-2">{stats.orderCount} <span className="text-sm text-gray-400 font-bold ml-1">órdenes</span></p>
+            </div>
+
+            {/* Tarjeta 4: Uso del Plan (Existente, adaptada al carrusel) */}
             {maxOrders !== -1 && (
-              <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between overflow-hidden relative">
-                {/* Background Decor */}
+              <div className="shrink-0 snap-start w-[280px] md:w-auto md:flex-1 bg-white p-5 md:p-6 rounded-[1.5rem] border border-gray-100 shadow-sm flex flex-col justify-between overflow-hidden relative">
                 <div className="absolute -right-4 -bottom-4 opacity-[0.03] text-gray-900 pointer-events-none">
-                  <Icon icon="heroicons:sparkles" width="120" />
+                  <Icon icon="heroicons:sparkles" width="100" />
                 </div>
-                
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-tight">Uso del Plan</p>
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-tight">Uso del Plan</p>
                     <p className="text-[10px] font-black text-[#2f4131] uppercase mt-0.5">{planName}</p>
                   </div>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${!isWithinOrderLimit ? 'bg-red-50 text-red-600' : 'bg-[#2f4131]/10 text-[#2f4131]'}`}>
                     <Icon icon={!isWithinOrderLimit ? "heroicons:exclamation-triangle" : "heroicons:rocket-launch"} className="text-lg" />
                   </div>
                 </div>
-
                 <div className="mt-2">
                   <div className="flex justify-between items-end mb-1.5">
-                    <p className="text-2xl lg:text-3xl font-black text-gray-900">
-                      {ordersThisMonth} 
-                      <span className="text-sm text-gray-400 font-bold ml-1">/ {maxOrders}</span>
+                    <p className="text-2xl font-black text-gray-900">
+                      {ordersThisMonth} <span className="text-sm text-gray-400 font-bold ml-1">/ {maxOrders}</span>
                     </p>
                     <p className={`text-[10px] font-bold ${!isWithinOrderLimit ? 'text-red-500' : 'text-gray-400'}`}>
                       {maxOrders > 0 ? Math.round((ordersThisMonth / maxOrders) * 100) : 0}%
                     </p>
                   </div>
-                  
-                  {/* Progress Bar */}
                   <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                     <div 
                       className={`h-full transition-all duration-1000 ease-out rounded-full ${
@@ -249,27 +265,14 @@ export default function AdminDashboard() {
                       style={{ width: `${maxOrders > 0 ? Math.min(100, (ordersThisMonth / maxOrders) * 100) : 0}%` }}
                     />
                   </div>
-                  
-                  {!isWithinOrderLimit ? (
-                    <p className="text-[9px] text-red-500 font-bold mt-2 animate-pulse uppercase">
-                      Límite alcanzado - Pedidos bloqueados
-                    </p>
-                  ) : maxOrders > 0 && (ordersThisMonth / maxOrders) > 0.8 ? (
-                    <p className="text-[9px] text-amber-600 font-bold mt-2 uppercase">
-                      Casi al límite - Considera subir de plan
-                    </p>
-                  ) : (
-                    <p className="text-[9px] text-gray-400 font-bold mt-2 uppercase">
-                      Pedidos este mes
-                    </p>
-                  )}
                 </div>
               </div>
             )}
+          </div>
           
           {/* Charts Row 1 */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="col-span-1 lg:col-span-2 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div className="col-span-1 lg:col-span-2 bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 shadow-sm">
               <h3 className="font-black text-gray-900 mb-6 flex items-center gap-2">
                 <Icon icon="heroicons:chart-bar" className="text-[#7db87a]" />
                 EVOLUCIÓN DE INGRESOS
@@ -295,7 +298,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 shadow-sm">
               <h3 className="font-black text-gray-900 mb-6 flex items-center gap-2">
                 <Icon icon="heroicons:credit-card" className="text-emerald-500" />
                 MÉTODOS DE PAGO
@@ -330,7 +333,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 shadow-sm">
               <h3 className="font-black text-gray-900 mb-6 flex items-center gap-2">
                 <Icon icon="heroicons:pie-chart" className="text-[#EAB308]" />
                 ORIGEN DE VENTAS
@@ -368,7 +371,7 @@ export default function AdminDashboard() {
 
           {/* Charts Row Pro */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 shadow-sm">
               <h3 className="font-black text-gray-900 mb-6 flex items-center gap-2 uppercase tracking-tight italic">
                 <Icon icon="heroicons:clock" className="text-orange-500" />
                 Picos de Demanda (Por Hora)
@@ -399,7 +402,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 shadow-sm">
               <h3 className="font-black text-gray-900 mb-6 flex items-center gap-2 uppercase tracking-tight italic">
                 <Icon icon="heroicons:table-cells" className="text-blue-500" />
                 Ventas por Mesa (Productividad)
@@ -426,7 +429,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Charts Row 2 */}
-          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+          <div className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 shadow-sm">
             <h3 className="font-black text-gray-900 mb-6 flex items-center gap-2">
               <Icon icon="heroicons:star" className="text-[#3B82F6]" />
               TOP 5 PLATOS MÁS VENDIDOS
@@ -437,7 +440,7 @@ export default function AdminDashboard() {
                   <BarChart data={topProducts} layout="vertical" margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
                     <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
-                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#4b5563', fontWeight: 600 }} width={90} />
+                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#4b5563', fontWeight: 600 }} width={75} />
                     <RechartsTooltip 
                       formatter={(val) => [`${val} uds`, 'Vendidos']}
                       cursor={{ fill: '#f9fafb' }}
