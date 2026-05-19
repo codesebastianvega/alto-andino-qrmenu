@@ -4,6 +4,8 @@ import { safeStorage as localStorage } from '../utils/safeStorage';
 
 const AuthContext = createContext({});
 
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser]             = useState(null);
   const [profile, setProfile]       = useState(null);
@@ -44,7 +46,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchProfile = useCallback(async (userId) => {
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
@@ -53,14 +55,30 @@ export const AuthProvider = ({ children }) => {
       if (error) throw error;
 
       if (!data) {
-        // Corrupted session (no profile) — sign out to clean up
-        try {
-          await supabase.auth.signOut();
-        } catch (err) {
-          console.warn('Supabase signOut error in fetchProfile:', err);
+        // New signups can create the public profile right after SIGNED_IN fires.
+        // Give that bootstrap flow a short window before treating the user as incomplete.
+        const startedAt = Date.now();
+        while (!data && Date.now() - startedAt < 5000) {
+          await wait(250);
+
+          const retry = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle();
+
+          if (retry.error) throw retry.error;
+          data = retry.data;
         }
+      }
+
+      if (!data) {
         setProfile(null);
-        setUser(null);
+        setOwnedBrands([]);
+        setActiveBrandState(null);
+        setActiveBrandFeatures([]);
+        setActivePlan(null);
+        setNeedsOnboarding(true);
         return;
       }
 

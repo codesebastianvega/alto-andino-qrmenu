@@ -49,6 +49,23 @@ async function ensureMutation(query, message) {
   if (error) throw new Error(`${message}: ${error.message}`);
 }
 
+async function forceSession(session, expectedUserId) {
+  if (!session?.access_token || !session?.refresh_token) {
+    throw new Error('Revisa tu correo para continuar.');
+  }
+
+  const { error: sessionError } = await supabase.auth.setSession(session);
+  if (sessionError) throw new Error('No se pudo activar la sesion: ' + sessionError.message);
+
+  const { data: { user: sessionUser }, error: userError } = await supabase.auth.getUser();
+  if (userError) throw new Error('No se pudo verificar la sesion: ' + userError.message);
+  if (sessionUser?.id !== expectedUserId) {
+    throw new Error('No se pudo confirmar la sesion autenticada para completar el registro.');
+  }
+
+  return sessionUser;
+}
+
 // ── Helper: crear brand + recursos asociados ──────────────────────────────────
 async function createBrand({ userId, name, businessType, planId }) {
   const slug = name
@@ -67,8 +84,13 @@ async function createBrand({ userId, name, businessType, planId }) {
   const brandId = brand.id;
 
   await ensureMutation(
-    supabase.from('profiles').upsert({ id: userId, role: 'owner', brand_id: brandId, full_name: name }),
-    'No se pudo crear el perfil del propietario'
+    supabase
+      .from('profiles')
+      .update({ role: 'owner', brand_id: brandId, full_name: name })
+      .eq('id', userId)
+      .select('id')
+      .single(),
+    'No se pudo actualizar el perfil del propietario'
   );
   await ensureMutation(
     supabase.from('restaurant_settings').insert({ brand_id: brandId, business_name: name }),
@@ -115,6 +137,7 @@ export default function RegisterPage() {
   });
   const [error, setError]     = useState(null);
   const [success, setSuccess] = useState(false);
+  const [pendingEmailVerification, setPendingEmailVerification] = useState(false);
   const [loading, setLoading] = useState(false);
   const [shake, setShake]     = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -174,23 +197,45 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
+      sessionStorage.setItem('aluna_pending_plan', selectedPlan);
+      sessionStorage.setItem('aluna_pending_name', formData.restaurantName);
+      sessionStorage.setItem('aluna_pending_type', formData.businessType);
+
       const { data: authData, error: authError } = await signUp({
         email: formData.email,
         password: formData.password,
-        options: { data: { full_name: formData.restaurantName } },
+        options: {
+          emailRedirectTo: window.location.origin + '/completar-registro',
+          data: {
+            full_name: formData.restaurantName,
+            restaurant_name: formData.restaurantName,
+            business_type: formData.businessType,
+            pending_plan: selectedPlan,
+          },
+        },
       });
       if (authError) throw authError;
+
+      if (!authData?.session) {
+        setPendingEmailVerification(true);
+        setSuccess(true);
+        setTimeout(() => navigate('/login', { replace: true }), 2500);
+        return;
+      }
+
       const newUser = authData?.user;
       if (!newUser) throw new Error('Error al registrar usuario');
+
+      await forceSession(authData.session, newUser.id);
 
       const planId = PLAN_IDS[selectedPlan] || PLAN_IDS.esencial;
       await createBrand({ userId: newUser.id, name: formData.restaurantName, businessType: formData.businessType, planId });
 
-      if (authData?.session) {
-        navigate(`/admin/checkout?plan=${selectedPlan}`);
-      } else {
-        setSuccess(true);
-      }
+      sessionStorage.removeItem('aluna_pending_plan');
+      sessionStorage.removeItem('aluna_pending_name');
+      sessionStorage.removeItem('aluna_pending_type');
+
+      navigate(`/admin/checkout?plan=${selectedPlan}`);
     } catch (err) {
       setError(err.message || 'Error al completar el registro.');
       triggerShake();
@@ -228,7 +273,6 @@ export default function RegisterPage() {
 
   // ── Pantalla de éxito ───────────────────────────────────────────────────────
   if (success) {
-    const isNewAccount = !isAlreadyLoggedIn;
     return (
       <div className="min-h-screen relative flex flex-col items-center justify-center p-4 overflow-hidden">
         <Background />
@@ -243,25 +287,31 @@ export default function RegisterPage() {
               <CheckCircle2 className="w-10 h-10 text-green-600" />
             </motion.div>
             <h2 className="text-3xl font-light text-stone-900 mb-4" style={{ fontFamily: "'DM Serif Display', serif" }}>
-              {isAlreadyLoggedIn ? '¡Nueva marca creada!' : '¡Bienvenido a Aluna!'}
+              {pendingEmailVerification ? 'Revisa tu correo para continuar' : (isAlreadyLoggedIn ? '¡Nueva marca creada!' : '¡Bienvenido a Aluna!')}
             </h2>
             <p className="text-stone-600 mb-2">
-              Tu negocio <strong className="text-[#D4A853]">{formData.restaurantName}</strong> está listo.
+              {pendingEmailVerification ? (
+                <>Tu cuenta fue creada. Activa el correo para terminar el registro de <strong className="text-[#D4A853]">{formData.restaurantName}</strong>.</>
+              ) : (
+                <>Tu negocio <strong className="text-[#D4A853]">{formData.restaurantName}</strong> está listo.</>
+              )}
             </p>
-            {isNewAccount && (
+            {pendingEmailVerification && (
               <p className="text-stone-500 text-sm mb-6 leading-relaxed">
-                Revisa tu correo para activar tu cuenta antes de ingresar. Una vez activada, podrás continuar al checkout.
+                Despues de confirmar tu correo, Aluna te llevara a completar el negocio antes de entrar al checkout.
               </p>
             )}
-            <Link
-              to={`/admin/checkout?plan=${selectedPlan}`}
-              className="w-full group relative flex items-center justify-center gap-2 py-4 bg-stone-900 text-white font-bold rounded-2xl overflow-hidden transition-transform hover:scale-[1.02] active:scale-[0.98] shadow-lg mt-4"
-            >
-              <div className="absolute inset-0 bg-[#D4A853] translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-              <span className="relative z-10 flex items-center gap-2">
-                {isAlreadyLoggedIn ? 'Continuar al Checkout' : 'Continuar al Checkout'} <ChevronRight className="w-4 h-4" />
-              </span>
-            </Link>
+            {!pendingEmailVerification && (
+              <Link
+                to={`/admin/checkout?plan=${selectedPlan}`}
+                className="w-full group relative flex items-center justify-center gap-2 py-4 bg-stone-900 text-white font-bold rounded-2xl overflow-hidden transition-transform hover:scale-[1.02] active:scale-[0.98] shadow-lg mt-4"
+              >
+                <div className="absolute inset-0 bg-[#D4A853] translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                <span className="relative z-10 flex items-center gap-2">
+                  Continuar al Checkout <ChevronRight className="w-4 h-4" />
+                </span>
+              </Link>
+            )}
           </SpotlightCard>
         </FadeIn>
       </div>

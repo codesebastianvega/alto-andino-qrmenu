@@ -49,17 +49,18 @@ async function ensureMutation(query, message) {
 }
 
 export default function CompleteProfilePage() {
-  const { user, needsOnboarding, refreshProfile } = useAuth();
+  const { user, needsOnboarding, refreshProfile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
-  const pendingPlan = sessionStorage.getItem('aluna_pending_plan') || DEFAULT_PLAN_SLUG;
+  const metadata = user?.user_metadata || {};
+  const pendingPlan = sessionStorage.getItem('aluna_pending_plan') || metadata.pending_plan || DEFAULT_PLAN_SLUG;
 
   const [formData, setFormData] = useState({
     // Pre-llenamos si el usuario venía de /registro
-    restaurantName: sessionStorage.getItem('aluna_pending_name') || '',
-    businessType:   sessionStorage.getItem('aluna_pending_type') || 'restaurant',
+    restaurantName: sessionStorage.getItem('aluna_pending_name') || metadata.restaurant_name || metadata.full_name || '',
+    businessType:   sessionStorage.getItem('aluna_pending_type') || metadata.business_type || 'restaurant',
   });
   const [error, setError]   = useState(null);
   const [loading, setLoading] = useState(false);
@@ -91,6 +92,10 @@ export default function CompleteProfilePage() {
     setLoading(true);
 
     try {
+      if (!user?.id) {
+        throw new Error('No hay una sesion activa. Confirma tu correo o inicia sesion para completar el registro.');
+      }
+
       const planId = PLAN_IDS[pendingPlan] || PLAN_IDS[DEFAULT_PLAN_SLUG];
 
       // 1. Crear Brand
@@ -119,8 +124,11 @@ export default function CompleteProfilePage() {
       await ensureMutation(
         supabase
           .from('profiles')
-          .upsert({ id: user.id, role: 'owner', brand_id: brandId, full_name: formData.restaurantName }),
-        'No se pudo crear el perfil del propietario'
+          .update({ role: 'owner', brand_id: brandId, full_name: formData.restaurantName })
+          .eq('id', user.id)
+          .select('id')
+          .single(),
+        'No se pudo actualizar el perfil del propietario'
       );
 
       // 3. Crear restaurant_settings
@@ -173,6 +181,17 @@ export default function CompleteProfilePage() {
       <div className="absolute inset-0 bg-gradient-to-b from-stone-900/30 via-transparent to-stone-900/40"></div>
     </div>
   );
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
+        <Background />
+        <div className="relative z-10 text-white/70 text-sm font-bold uppercase tracking-widest">
+          Verificando sesion...
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (
