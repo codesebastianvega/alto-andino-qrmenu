@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapPin } from 'lucide-react';
+import { MapPin, Shield, Star, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { safeSessionStorage as sessionStorage } from '../../utils/safeStorage';
 import { supabase } from '../../config/supabase';
@@ -793,6 +793,50 @@ export default function AdminLayout() {
                 <NavSection title="Presencia Web" items={WEB_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
               </>
             )}
+
+            {/* ── SECCIÓN: CUENTA Y EXTRAS ── */}
+            <div className="pt-2 pb-6">
+              {!isCollapsed ? (
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-3 px-4 block">
+                  Cuenta & Extras
+                </span>
+              ) : (
+                <div className="h-px bg-white/5 my-4 mx-4" />
+              )}
+              <div className="space-y-1.5 px-2">
+                {/* Superadmin access */}
+                {user?.role === 'superadmin' && (
+                  <a
+                    href="/superadmin"
+                    className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-300 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 overflow-hidden ${isCollapsed ? 'justify-center px-0' : ''}`}
+                  >
+                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <Shield className="shrink-0 w-[15px] h-[15px] text-white/40 group-hover:text-white transition-colors" />
+                    {!isCollapsed && <span>Panel Superadmin</span>}
+                  </a>
+                )}
+
+                {/* Mi Plan / Upgrade */}
+                <button
+                  onClick={() => setShowPlanSelector(true)}
+                  className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-300 text-white/60 hover:text-amber-100 bg-white/5 hover:bg-white/10 border border-white/5 overflow-hidden ${isCollapsed ? 'justify-center px-0' : ''}`}
+                >
+                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <Star className="shrink-0 w-[15px] h-[15px] text-amber-500/50 group-hover:text-amber-400 transition-colors" />
+                  {!isCollapsed && <span>Mi Plan / Upgrade</span>}
+                </button>
+
+                {/* Ver Menú Público */}
+                <a
+                  href={activeBrand?.slug ? `/${activeBrand.slug}/` : "/"}
+                  className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-300 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 overflow-hidden ${isCollapsed ? 'justify-center px-0' : ''}`}
+                >
+                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <Globe className="shrink-0 w-[15px] h-[15px] text-white/40 group-hover:text-white transition-colors" />
+                  {!isCollapsed && <span>Ver Menú Público</span>}
+                </a>
+              </div>
+            </div>
           </div>
           
 
@@ -860,24 +904,6 @@ export default function AdminLayout() {
                 </div>
               </button>
             )}
-
-            {/* Mi Plan / Upgrade */}
-            <button
-              onClick={() => setShowPlanSelector(true)}
-              className={`flex items-center gap-2.5 px-5 py-3 text-[13px] font-bold text-amber-400 hover:text-amber-300 hover:bg-white/5 transition-all w-full ${isCollapsed ? 'justify-center px-0' : ''}`}
-            >
-              <span className="shrink-0 text-base">⭐</span>
-              {!isCollapsed && <span>Mi Plan / Upgrade</span>}
-            </button>
-
-            {/* Ver Menú Público */}
-            <a
-              href={activeBrand?.slug ? `/${activeBrand.slug}/` : "/"}
-              className={`flex items-center gap-2.5 px-5 py-3 text-[13px] font-medium text-white/40 hover:text-white/70 hover:bg-white/5 transition-all ${isCollapsed ? 'justify-center px-0' : ''}`}
-            >
-              <Icons.Home />
-              {!isCollapsed && <span>Ver Menú Público</span>}
-            </a>
 
             {/* Collapse toggle */}
             <button
@@ -1119,6 +1145,49 @@ export default function AdminLayout() {
                     <NavSection title="Presencia Web" items={WEB_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
                   </>
                 )}
+
+                {/* ── SECCIÓN: CUENTA Y EXTRAS ── */}
+                <div className="pt-2 pb-6">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-2 mb-3 block">
+                    Cuenta & Extras
+                  </span>
+                  <div className="space-y-1.5 px-1">
+                    {/* Superadmin access */}
+                    {user?.role === 'superadmin' && (
+                      <a
+                        href="/superadmin"
+                        className="group relative w-full flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-medium transition-all duration-300 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 overflow-hidden"
+                      >
+                        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        <Shield className="shrink-0 w-[16px] h-[16px] text-white/40 group-hover:text-white transition-colors" />
+                        <span>Panel Superadmin</span>
+                      </a>
+                    )}
+
+                    {/* Mi Plan / Upgrade */}
+                    <button
+                      onClick={() => {
+                        setShowPlanSelector(true);
+                        setIsMobileDrawerOpen(false);
+                      }}
+                      className="group relative w-full flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-medium transition-all duration-300 text-white/60 hover:text-amber-100 bg-white/5 hover:bg-white/10 border border-white/5 overflow-hidden"
+                    >
+                      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <Star className="shrink-0 w-[16px] h-[16px] text-amber-500/50 group-hover:text-amber-400 transition-colors" />
+                      <span>Mi Plan / Upgrade</span>
+                    </button>
+
+                    {/* Ver Menú Público */}
+                    <a
+                      href={activeBrand?.slug ? `/${activeBrand.slug}/` : "/"}
+                      className="group relative w-full flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-medium transition-all duration-300 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 overflow-hidden"
+                    >
+                      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <Globe className="shrink-0 w-[16px] h-[16px] text-white/40 group-hover:text-white transition-colors" />
+                      <span>Ver Menú Público</span>
+                    </a>
+                  </div>
+                </div>
               </div>
 
               {/* Mobile Drawer Plan Info / Billing / CTA */}
@@ -1173,26 +1242,6 @@ export default function AdminLayout() {
                   </button>
                 )}
 
-                {/* Mi Plan / Upgrade */}
-                <button
-                  onClick={() => {
-                    setShowPlanSelector(true);
-                    setIsMobileDrawerOpen(false);
-                  }}
-                  className="flex items-center gap-2.5 px-4 py-2 rounded-xl hover:bg-white/5 text-[13px] font-bold text-amber-400 hover:text-amber-300 transition-all w-full text-left"
-                >
-                  <span className="shrink-0 text-base">⭐</span>
-                  <span>Mi Plan / Upgrade</span>
-                </button>
-
-                {/* Ver Menú Público */}
-                <a
-                  href={activeBrand?.slug ? `/${activeBrand.slug}/` : "/"}
-                  className="flex items-center gap-2.5 px-4 py-2 rounded-xl hover:bg-white/5 text-[13px] font-medium text-white/40 hover:text-white/70 transition-all w-full text-left"
-                >
-                  <Icons.Home />
-                  <span>Ver Menú Público</span>
-                </a>
               </div>
 
               {/* Mobile Drawer User Profile & Logout */}

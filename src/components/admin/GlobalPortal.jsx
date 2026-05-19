@@ -401,6 +401,83 @@ function NewBrandModal({ onClose, onCreated }) {
   );
 }
 
+// ── Componente de Estadísticas por Marca ──────────────────────────────────────
+function BrandStats({ brandId }) {
+  const [stats, setStats] = useState({ orders: 0, sales: 0, loading: true });
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchStats() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const { data, error } = await supabase
+        .from('orders')
+        .select('total_amount, status')
+        .eq('brand_id', brandId)
+        .gte('created_at', today.toISOString());
+
+      if (error) {
+        console.error("Error fetching stats for brand", brandId, error);
+        if (isMounted) setStats({ orders: 0, sales: 0, loading: false });
+        return;
+      }
+
+      const validOrders = data.filter(o => o.status !== 'cancelled');
+      const totalSales = validOrders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+
+      if (isMounted) {
+        setStats({
+          orders: validOrders.length,
+          sales: totalSales,
+          loading: false
+        });
+      }
+    }
+    fetchStats();
+    
+    return () => { isMounted = false; };
+  }, [brandId]);
+
+  if (stats.loading) {
+    return (
+      <div className="grid grid-cols-2 gap-4 py-4 border-t border-white/5">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1">Órdenes Hoy</div>
+          <div className="text-xl font-semibold text-white/40 flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin opacity-50" />
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1">Ventas Hoy</div>
+          <div className="text-xl font-semibold text-white/40 flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin opacity-50" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { 
+    style: 'currency', 
+    currency: 'COP', 
+    maximumFractionDigits: 0 
+  }).format(val);
+
+  return (
+    <div className="grid grid-cols-2 gap-4 py-4 border-t border-white/5">
+      <div>
+        <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1">Órdenes Hoy</div>
+        <div className="text-xl font-semibold text-white/90">{stats.orders}</div>
+      </div>
+      <div>
+        <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1">Ventas Hoy</div>
+        <div className="text-xl font-semibold text-white/90">{formatCurrency(stats.sales)}</div>
+      </div>
+    </div>
+  );
+}
+
 // ── GlobalPortal ─────────────────────────────────────────────────────────────
 export default function GlobalPortal() {
   const { profile, ownedBrands, signOut, switchBrand, refreshProfile, user } = useAuth();
@@ -568,16 +645,7 @@ export default function GlobalPortal() {
                       <span>{brand.slug}.aluna.app</span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 py-4 border-t border-white/5">
-                      <div>
-                        <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1">Órdenes Hoy</div>
-                        <div className="text-xl font-semibold text-white/90">--</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1">Ventas Hoy</div>
-                        <div className="text-xl font-semibold text-white/90">$0</div>
-                      </div>
-                    </div>
+                    <BrandStats brandId={brand.id} />
                   </div>
 
                   {/* Footer Action */}
