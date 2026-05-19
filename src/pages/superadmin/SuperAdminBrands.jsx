@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../config/supabase';
 import { Link } from 'react-router-dom';
-import { Store, CheckCircle, XCircle, Search, Settings, MapPin, MoreVertical, Clock, AlertTriangle, Building2, CalendarPlus } from 'lucide-react';
+import { Store, CheckCircle, XCircle, Search, Settings, MapPin, MoreVertical, Clock, AlertTriangle, Building2, CalendarPlus, Trash2 } from 'lucide-react';
 
 export default function SuperAdminBrands() {
   const [brands, setBrands] = useState([]);
@@ -77,6 +77,31 @@ export default function SuperAdminBrands() {
       setActiveDropdown(null);
     } catch (error) {
       console.error('Error extending trial', error);
+    }
+  };
+
+  const deleteBrand = async (id, name) => {
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar permanentemente el negocio "${name}"? Esta acción no se puede deshacer y borrará todas las sedes, menús, productos y configuraciones asociadas.`)) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('brands')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      setBrands(brands.filter(b => b.id !== id));
+      setActiveDropdown(null);
+      alert('Negocio eliminado exitosamente.');
+    } catch (error) {
+      console.error('Error deleting brand', error);
+      alert(`Error al eliminar el negocio: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -303,15 +328,25 @@ export default function SuperAdminBrands() {
                             onClick={() => toggleBrandActive(brand.id, brand.is_active)}
                             className={`flex items-center gap-2 px-4 py-2.5 text-sm w-full text-left transition-colors ${
                               brand.is_active 
-                                ? 'text-red-600 hover:bg-red-50' 
+                                ? 'text-orange-600 hover:bg-orange-50' 
                                 : 'text-emerald-600 hover:bg-emerald-50'
                             }`}
                           >
                             {brand.is_active ? (
-                              <><XCircle size={16} /> Suspender Cuenta</>
+                              <><XCircle size={16} className="text-orange-500" /> Suspender Cuenta</>
                             ) : (
                               <><CheckCircle size={16} /> Reactivar Cuenta</>
                             )}
+                          </button>
+
+                          <div className="h-px bg-gray-100 my-1 mx-2"></div>
+
+                          <button
+                            onClick={() => deleteBrand(brand.id, brand.name)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors w-full text-left font-medium"
+                          >
+                            <Trash2 size={16} />
+                            Eliminar Negocio
                           </button>
                         </div>
                       )}

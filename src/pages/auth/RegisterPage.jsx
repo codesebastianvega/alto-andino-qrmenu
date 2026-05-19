@@ -44,6 +44,11 @@ const slideVariants = {
   exit:   (dir) => ({ x: dir > 0 ? -60 :  60, opacity: 0 }),
 };
 
+async function ensureMutation(query, message) {
+  const { error } = await query;
+  if (error) throw new Error(`${message}: ${error.message}`);
+}
+
 // ── Helper: crear brand + recursos asociados ──────────────────────────────────
 async function createBrand({ userId, name, businessType, planId }) {
   const slug = name
@@ -61,12 +66,22 @@ async function createBrand({ userId, name, businessType, planId }) {
 
   const brandId = brand.id;
 
-  await Promise.allSettled([
-    supabase.from('profiles').update({ role: 'owner', brand_id: brandId, full_name: name }).eq('id', userId),
+  await ensureMutation(
+    supabase.from('profiles').upsert({ id: userId, role: 'owner', brand_id: brandId, full_name: name }),
+    'No se pudo crear el perfil del propietario'
+  );
+  await ensureMutation(
     supabase.from('restaurant_settings').insert({ brand_id: brandId, business_name: name }),
+    'No se pudo crear la configuracion del negocio'
+  );
+  await ensureMutation(
     supabase.from('home_settings').insert({ brand_id: brandId }),
+    'No se pudo crear la configuracion de inicio'
+  );
+  await ensureMutation(
     supabase.from('staff').insert({ name: 'Admin Principal', role: 'admin', pin: '1234', brand_id: brandId }),
-  ]);
+    'No se pudo crear el admin principal'
+  );
 
   return brand;
 }

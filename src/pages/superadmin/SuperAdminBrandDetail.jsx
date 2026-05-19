@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../config/supabase';
-import { ArrowLeft, Store, Save, ExternalLink, MapPin, Phone, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Store, Save, ExternalLink, MapPin, Phone, MessageCircle, Trash2 } from 'lucide-react';
 
 export default function SuperAdminBrandDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [brand, setBrand] = useState(null);
   const [plans, setPlans] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -105,6 +106,30 @@ export default function SuperAdminBrandDetail() {
     } catch (error) {
       console.error('Error saving brand', error);
       alert('Error guardando los cambios');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar permanentemente el negocio "${brand.name}"? Esta acción no se puede deshacer y borrará todas las sedes, menús, productos y configuraciones asociadas.`)) {
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('brands')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      alert('Negocio eliminado exitosamente.');
+      navigate('/superadmin/brands');
+    } catch (error) {
+      console.error('Error deleting brand', error);
+      alert(`Error al eliminar el negocio: ${error.message}`);
     } finally {
       setSaving(false);
     }
@@ -492,7 +517,17 @@ export default function SuperAdminBrandDetail() {
             </div>
           </div>
 
-          <div className="pt-6 border-t border-[#E5E7EB] flex justify-end">
+          <div className="pt-6 border-t border-[#E5E7EB] flex justify-between items-center">
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={saving}
+              className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-red-700 transition disabled:opacity-50"
+            >
+              <Trash2 size={20} />
+              Eliminar Negocio
+            </button>
+            
             <button
               type="submit"
               disabled={saving}

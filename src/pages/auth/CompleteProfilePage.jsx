@@ -43,6 +43,11 @@ const slideVariants = {
   exit:  (dir) => ({ x: dir > 0 ? -60 : 60, opacity: 0 }),
 };
 
+async function ensureMutation(query, message) {
+  const { error } = await query;
+  if (error) throw new Error(`${message}: ${error.message}`);
+}
+
 export default function CompleteProfilePage() {
   const { user, needsOnboarding, refreshProfile } = useAuth();
   const navigate = useNavigate();
@@ -111,24 +116,35 @@ export default function CompleteProfilePage() {
       const brandId = brandData.id;
 
       // 2. Actualizar perfil
-      await supabase
-        .from('profiles')
-        .update({ role: 'owner', brand_id: brandId, full_name: formData.restaurantName })
-        .eq('id', user.id);
+      await ensureMutation(
+        supabase
+          .from('profiles')
+          .upsert({ id: user.id, role: 'owner', brand_id: brandId, full_name: formData.restaurantName }),
+        'No se pudo crear el perfil del propietario'
+      );
 
       // 3. Crear restaurant_settings
-      await supabase.from('restaurant_settings').insert({
-        brand_id: brandId,
-        business_name: formData.restaurantName,
-      });
+      await ensureMutation(
+        supabase.from('restaurant_settings').insert({
+          brand_id: brandId,
+          business_name: formData.restaurantName,
+        }),
+        'No se pudo crear la configuracion del negocio'
+      );
 
       // 4. Crear home_settings
-      await supabase.from('home_settings').insert({ brand_id: brandId });
+      await ensureMutation(
+        supabase.from('home_settings').insert({ brand_id: brandId }),
+        'No se pudo crear la configuracion de inicio'
+      );
 
       // 5. Crear staff Admin
-      await supabase.from('staff').insert({
-        name: 'Admin Principal', role: 'admin', pin: '1234', brand_id: brandId,
-      });
+      await ensureMutation(
+        supabase.from('staff').insert({
+          name: 'Admin Principal', role: 'admin', pin: '1234', brand_id: brandId,
+        }),
+        'No se pudo crear el admin principal'
+      );
 
       setSuccess(true);
 
