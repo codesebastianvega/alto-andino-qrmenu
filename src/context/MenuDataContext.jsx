@@ -306,7 +306,7 @@ export const MenuDataProvider = ({ children }) => {
   }, [allCategories, productsByCategory, activeLocationId, locationCategories]);
 
   // Trigger fetch when brand changes (resolved from URL slug or session)
-  const lastFetchedBrandRef = React.useRef(null);
+  const lastFetchedBrandRef = React.useRef(undefined);
   
   useEffect(() => {
     let isMounted = true;
