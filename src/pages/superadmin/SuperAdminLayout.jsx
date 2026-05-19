@@ -1,28 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Store,
+  Users,
   CreditCard,
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  ArrowLeft,
+  Home
 } from 'lucide-react';
 import { supabase } from '../../config/supabase';
+import { useAuth } from '../../context/AuthContext';
 
 export default function SuperAdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
-
-  // In Bloque 3 we will add real protection logic, for now simple skeleton
-  // useEffect(() => {
-  //   checkSuperAdmin();
-  // }, []);
+  const { activeBrand } = useAuth();
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Métricas', path: '/superadmin' },
     { icon: Store, label: 'Negocios', path: '/superadmin/brands' },
+    { icon: Users, label: 'Usuarios', path: '/superadmin/users' },
     { icon: CreditCard, label: 'Planes', path: '/superadmin/plans' },
     { icon: Settings, label: 'Configuración', path: '/superadmin/settings' },
   ];
@@ -34,6 +35,14 @@ export default function SuperAdminLayout() {
       console.warn('Superadmin signOut error:', err);
     }
     navigate('/');
+  };
+
+  const handleBackToDashboard = () => {
+    if (activeBrand?.slug) {
+      window.location.href = `/${activeBrand.slug}/#admin`;
+    } else {
+      navigate('/');
+    }
   };
 
   return (
@@ -79,7 +88,7 @@ export default function SuperAdminLayout() {
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                     isActive
-                      ? 'bg-emerald-50 text-emerald-800 font-medium'
+                      ? 'bg-emerald-50 text-emerald-800 font-medium shadow-sm shadow-emerald-900/5'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`
                 }
@@ -91,7 +100,25 @@ export default function SuperAdminLayout() {
           </nav>
         </div>
 
-        <div className="p-4 border-t border-[#E5E7EB]">
+        {/* Bottom Actions */}
+        <div className="p-4 border-t border-[#E5E7EB] space-y-1">
+          {/* Volver al Dashboard */}
+          <button
+            onClick={handleBackToDashboard}
+            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-gray-600 hover:bg-emerald-50 hover:text-emerald-700 transition-all font-medium"
+          >
+            <ArrowLeft size={20} />
+            Volver al Dashboard
+          </button>
+          {/* Volver al Portal de Marcas */}
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-gray-600 hover:bg-blue-50 hover:text-blue-700 transition-all font-medium"
+          >
+            <Home size={20} />
+            Portal de Marcas
+          </button>
+          {/* Cerrar Sesión */}
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all font-medium"

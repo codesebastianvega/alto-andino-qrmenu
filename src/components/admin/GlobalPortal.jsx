@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../config/supabase';
 import { PLAN_IDS, PLAN_LABELS } from '../../config/plans';
@@ -403,8 +404,10 @@ function NewBrandModal({ onClose, onCreated }) {
 // ── GlobalPortal ─────────────────────────────────────────────────────────────
 export default function GlobalPortal() {
   const { profile, ownedBrands, signOut, switchBrand, refreshProfile, user } = useAuth();
+  const navigate = useNavigate();
   const [showNewBrandModal, setShowNewBrandModal] = useState(false);
   const [brandToDelete, setBrandToDelete] = useState(null);
+  const isSuperAdmin = profile?.role === 'superadmin';
 
   // Auto-abrir modal si viene ?new=1 (desde BrandSwitcher)
   useEffect(() => {
@@ -478,6 +481,16 @@ export default function GlobalPortal() {
             </div>
 
             <div className="flex items-center gap-3">
+              {/* 👑 Centro de Mando — Solo visible para Superadmins */}
+              {isSuperAdmin && (
+                <button
+                  onClick={() => navigate('/superadmin')}
+                  className="px-5 py-2.5 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-600/10 border border-amber-500/30 hover:border-amber-400/50 hover:from-amber-500/30 hover:to-amber-600/20 text-amber-300 hover:text-amber-200 transition-all flex items-center gap-2 text-sm font-bold shadow-lg shadow-amber-500/10"
+                >
+                  <Crown className="w-4 h-4" />
+                  Centro de Mando
+                </button>
+              )}
               <button
                 onClick={() => signOut()}
                 className="px-5 py-2.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-white/70 hover:text-white transition-all flex items-center gap-2 text-sm font-medium"

@@ -23,20 +23,81 @@ export default function SuperAdminBrands() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const normalizeOwner = (brand, ownersById = {}) => {
+    const embeddedOwner = Array.isArray(brand.owner) ? brand.owner[0] : brand.owner;
+    const embeddedProfile = Array.isArray(brand.profiles) ? brand.profiles[0] : brand.profiles;
+    return embeddedOwner || embeddedProfile || ownersById[brand.owner_id] || null;
+  };
+
+  const fetchBrandsWithEmbeddedOwner = async () => {
+    return supabase
+      .from('brands')
+      .select(`
+        id, name, slug, owner_id, is_active, created_at, city, google_maps_url,
+        payment_verified, trial_end_date, trial_start_date, subscription_status,
+        owner:profiles!owner_id(id, full_name, email),
+        plan:plans(name),
+        locations(count)
+      `)
+      .order('created_at', { ascending: false });
+  };
+
+  const fetchBrandsWithManualOwners = async () => {
+    const { data, error } = await supabase
+      .from('brands')
+      .select(`
+        id, name, slug, owner_id, is_active, created_at, city, google_maps_url,
+        payment_verified, trial_end_date, trial_start_date, subscription_status,
+        plan:plans(name),
+        locations(count)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) return { data, error };
+
+    const brandsData = data || [];
+    const ownerIds = [...new Set(brandsData.map(brand => brand.owner_id).filter(Boolean))];
+    let ownersById = {};
+
+    if (ownerIds.length > 0) {
+      const { data: owners, error: ownersError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', ownerIds);
+
+      if (ownersError) return { data: null, error: ownersError };
+      ownersById = (owners || []).reduce((acc, owner) => {
+        acc[owner.id] = owner;
+        return acc;
+      }, {});
+    }
+
+    return {
+      data: brandsData.map(brand => ({
+        ...brand,
+        owner: ownersById[brand.owner_id] || null,
+      })),
+      error: null,
+    };
+  };
+
   const fetchBrands = async () => {
     try {
-      const { data, error } = await supabase
-        .from('brands')
-        .select(`
-          id, name, slug, is_active, created_at, city, google_maps_url,
-          payment_verified, trial_end_date, trial_start_date, subscription_status,
-          plan:plans(name),
-          locations(count)
-        `)
-        .order('created_at', { ascending: false });
-      
+      let { data, error } = await fetchBrandsWithEmbeddedOwner();
+
+      if (error) {
+        console.warn('[SuperAdminBrands] Embedded owner fetch failed, falling back to manual owner lookup:', error);
+        ({ data, error } = await fetchBrandsWithManualOwners());
+      }
+
       if (error) throw error;
-      setBrands(data || []);
+      console.log('[SuperAdminBrands] Raw brands response:', data);
+
+      const brandsData = data || [];
+      setBrands(brandsData.map(brand => ({
+        ...brand,
+        owner: normalizeOwner(brand),
+      })));
     } catch (error) {
       console.error('Error fetching brands', error);
     } finally {
@@ -129,8 +190,11 @@ export default function SuperAdminBrands() {
   };
 
   const filteredBrands = brands.filter(b => {
-    const matchesSearch = b.name.toLowerCase().includes(search.toLowerCase()) || 
-                          b.slug.toLowerCase().includes(search.toLowerCase());
+    const term = search.toLowerCase();
+    const matchesSearch = b.name.toLowerCase().includes(term) || 
+                          b.slug.toLowerCase().includes(term) ||
+                          (b.owner?.full_name || '').toLowerCase().includes(term) ||
+                          (b.owner?.email || '').toLowerCase().includes(term);
     if (!matchesSearch) return false;
 
     const status = getBrandStatus(b);
@@ -202,6 +266,7 @@ export default function SuperAdminBrands() {
           <thead>
             <tr className="bg-gray-50 border-b border-[#E5E7EB] text-gray-500 text-sm">
               <th className="py-4 px-6 font-medium">Restaurante</th>
+              <th className="py-4 px-6 font-medium">Propietario</th>
               <th className="py-4 px-6 font-medium">Plan</th>
               <th className="py-4 px-6 font-medium">Estado de Pago</th>
               <th className="py-4 px-6 font-medium">Sedes</th>
@@ -212,7 +277,7 @@ export default function SuperAdminBrands() {
           <tbody>
             {filteredBrands.length === 0 ? (
               <tr>
-                <td colSpan="6" className="py-12 text-center text-gray-500">
+                <td colSpan="7" className="py-12 text-center text-gray-500">
                   No se encontraron negocios con estos filtros
                 </td>
               </tr>
@@ -240,6 +305,16 @@ export default function SuperAdminBrands() {
                           )}
                         </div>
                         <span className="text-xs text-gray-500">/{brand.slug}</span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="min-w-[180px]">
+                        <p className="text-sm font-semibold text-[#1A1A1A] leading-5">
+                          {brand.owner?.full_name || 'Sin propietario'}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400 leading-5">
+                          {brand.owner?.email || brand.owner_id || 'Sin correo registrado'}
+                        </p>
                       </div>
                     </td>
                     <td className="py-4 px-6">
