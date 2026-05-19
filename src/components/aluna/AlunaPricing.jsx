@@ -112,31 +112,31 @@ export default function AlunaPricing() {
                     )}
                     <SpotlightCard 
                       spotlightColor={isPopular ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.03)"} 
-                      className={`p-6 md:p-12 rounded-[32px] md:rounded-[40px] flex flex-col h-full relative overflow-hidden transition-all duration-500 ${
+                      className={`p-4 md:p-6 rounded-2xl md:rounded-3xl flex flex-col h-full relative overflow-hidden transition-all duration-500 ${
                         isPopular 
                           ? 'bg-[#1A1A1A] shadow-2xl md:-translate-y-4 border border-[#1A1A1A]' 
                           : 'bg-white shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-[#E5E7EB]'
                       }`}
                     >
-                      <h3 className={`text-xl md:text-3xl mb-1 md:mb-2 ${isPopular ? 'text-white' : 'text-[#1A1A1A]'}`} style={{ fontFamily: "'DM Serif Display', serif" }}>
+                      <h3 className={`text-lg md:text-xl mb-1 md:mb-2 ${isPopular ? 'text-white' : 'text-[#1A1A1A]'}`} style={{ fontFamily: "'DM Serif Display', serif" }}>
                         {plan.name}
                       </h3>
-                      <p className={`text-sm md:text-base mb-6 md:mb-8 ${isPopular ? 'text-gray-400' : 'text-[#6B7280]'}`}>
+                      <p className={`text-xs md:text-sm mb-4 md:mb-5 ${isPopular ? 'text-gray-400' : 'text-[#6B7280]'}`}>
                         {plan.description}
                       </p>
-                      <div className={`mb-6 md:mb-8`}>
-                        <div className={`text-4xl md:text-6xl ${isPopular ? 'text-white' : 'text-[#1A1A1A]'}`} style={{ fontFamily: "'DM Serif Display', serif" }}>
-                          ${plan.price_monthly.toLocaleString()}<span className={`text-base md:text-lg font-sans ${isPopular ? 'text-gray-400' : 'text-[#6B7280]'}`}>/mes</span>
+                      <div className={`mb-4 md:mb-5`}>
+                        <div className={`text-2xl md:text-3xl ${isPopular ? 'text-white' : 'text-[#1A1A1A]'}`} style={{ fontFamily: "'DM Serif Display', serif" }}>
+                          ${plan.price_monthly.toLocaleString()}<span className={`text-xs md:text-sm font-sans ${isPopular ? 'text-gray-400' : 'text-[#6B7280]'}`}>/mes</span>
                         </div>
-                        <div className={`text-xs md:text-sm font-medium mt-2 uppercase tracking-wider ${isPopular ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                        <div className={`text-[10px] md:text-xs font-medium mt-1 uppercase tracking-wider ${isPopular ? 'text-emerald-400' : 'text-emerald-600'}`}>
                           {plan.max_orders_per_month ? `Hasta ${plan.max_orders_per_month.toLocaleString()} pedidos / mes` : 'Pedidos Ilimitados'}
                         </div>
                       </div>
                       <div className="flex-1 overflow-hidden">
-                        <ul className="space-y-3 md:space-y-4 mb-6 md:mb-8">
+                        <ul className="space-y-2 md:space-y-3 mb-4 md:mb-6">
                           {includedFeatures.slice(0, showAllFeatures[plan.id] ? undefined : 6).map((feature) => (
-                            <li key={feature.id} className={`flex items-start gap-3 text-sm md:text-base ${isPopular ? 'text-gray-300' : 'text-[#1A1A1A]'}`}>
-                              <Check className="w-4 h-4 md:w-5 md:h-5 text-[#2D6A4F] shrink-0 mt-0.5" />
+                            <li key={feature.id} className={`flex items-start gap-2 text-xs md:text-sm ${isPopular ? 'text-gray-300' : 'text-[#1A1A1A]'}`}>
+                              <Check className="w-4 h-4 text-[#2D6A4F] shrink-0 mt-0.5" />
                               {feature.display_name}
                             </li>
                           ))}
@@ -145,7 +145,7 @@ export default function AlunaPricing() {
                         {includedFeatures.length > 6 && (
                           <button 
                             onClick={() => setShowAllFeatures(prev => ({...prev, [plan.id]: !prev[plan.id]}))}
-                            className={`text-[10px] md:text-sm font-bold tracking-widest mb-8 md:mb-10 transition-opacity hover:opacity-70 ${isPopular ? 'text-[#2D6A4F]' : 'text-[#1A1A1A]'}`}
+                            className={`text-[10px] md:text-xs font-bold tracking-widest mb-6 md:mb-8 transition-opacity hover:opacity-70 ${isPopular ? 'text-[#2D6A4F]' : 'text-[#1A1A1A]'}`}
                           >
                             {showAllFeatures[plan.id] ? "- Ver menos" : `+ Ver ${includedFeatures.length - 6} más`}
                           </button>
@@ -153,7 +153,7 @@ export default function AlunaPricing() {
                       </div>
                       <Link 
                         to={`/registro?plan=${plan.slug}`} 
-                        className={`block text-center w-full py-3.5 md:py-5 rounded-full text-sm md:text-base font-semibold transition-colors ${
+                        className={`block text-center w-full py-3 md:py-3.5 rounded-full text-sm font-semibold transition-colors ${
                           isPopular 
                             ? 'bg-white text-[#1A1A1A] hover:bg-gray-100' 
                             : 'border border-[#1A1A1A] text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white'
@@ -181,33 +181,32 @@ export default function AlunaPricing() {
               ))}
             </div>
 
-            {/* AI Add-on Section */}
-            <FadeIn delay={0.2} className="mt-20 max-w-4xl mx-auto">
-              <div className="bg-[#2D6A4F]/5 border border-[#2D6A4F]/20 rounded-[32px] p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 shadow-sm">
-                <div className="w-20 h-20 rounded-2xl bg-[#2D6A4F] flex items-center justify-center text-white shrink-0 shadow-lg shadow-[#2D6A4F]/20">
-                  <Cpu className="w-10 h-10" />
+            <FadeIn delay={0.2} className="mt-12 max-w-3xl mx-auto">
+              <div className="bg-[#2D6A4F]/5 border border-[#2D6A4F]/20 rounded-[20px] p-5 md:p-6 flex flex-col md:flex-row items-center gap-5 shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-[#2D6A4F] flex items-center justify-center text-white shrink-0 shadow-lg shadow-[#2D6A4F]/20">
+                  <Cpu className="w-8 h-8" />
                 </div>
                 <div className="flex-1 text-center md:text-left">
-                  <div className="inline-flex items-center gap-2 text-[#2D6A4F] text-[10px] font-bold px-3 py-1 rounded-full bg-[#2D6A4F]/10 uppercase tracking-wider mb-4">
+                  <div className="inline-flex items-center gap-2 text-[#2D6A4F] text-[10px] font-bold px-3 py-1 rounded-full bg-[#2D6A4F]/10 uppercase tracking-wider mb-3">
                     <Sparkles size={12} /> Add-on Opcional
                   </div>
-                  <h3 className="text-2xl md:text-3xl text-[#1A1A1A] mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                  <h3 className="text-lg md:text-xl text-[#1A1A1A] mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>
                     Conserje Gastronómico con IA
                   </h3>
-                  <p className="text-[#6B7280] text-base mb-2">
+                  <p className="text-[#6B7280] text-sm mb-2">
                     Automatiza pedidos, recomienda platos y responde preguntas de tus clientes 24/7.
                   </p>
-                  <p className="text-[#2D6A4F] font-bold text-sm uppercase tracking-wide">
+                  <p className="text-[#2D6A4F] font-bold text-xs uppercase tracking-wide">
                     Incluye un límite de 1.000 interacciones de IA al mes.
                   </p>
                 </div>
                 <div className="text-center md:text-right shrink-0">
-                  <div className="text-3xl md:text-4xl text-[#1A1A1A] mb-4" style={{ fontFamily: "'DM Serif Display', serif" }}>
-                    $49.900<span className="text-sm font-sans text-[#6B7280]">/mes</span>
+                  <div className="text-xl md:text-2xl text-[#1A1A1A] mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                    $49.900<span className="text-[10px] md:text-xs font-sans text-[#6B7280]">/mes</span>
                   </div>
                   <Link 
                     to="/contacto?addon=ia"
-                    className="inline-flex items-center justify-center px-6 py-3 bg-[#1A1A1A] text-white rounded-full text-sm font-bold hover:bg-[#2f4131] transition-all"
+                    className="inline-flex items-center justify-center px-5 py-2.5 bg-[#1A1A1A] text-white rounded-full text-sm font-bold hover:bg-[#2f4131] transition-all"
                   >
                     Me interesa
                   </Link>
@@ -216,8 +215,8 @@ export default function AlunaPricing() {
             </FadeIn>
 
             {enterprisePlan && (
-              <FadeIn delay={0.3} className="mt-32">
-                <div className="relative rounded-[48px] overflow-hidden shadow-2xl max-w-7xl mx-auto border border-white/5 bg-[#0A0A0A]">
+              <FadeIn delay={0.3} className="mt-20">
+                <div className="relative rounded-[32px] md:rounded-[40px] overflow-hidden shadow-2xl max-w-6xl mx-auto border border-white/5 bg-[#0A0A0A]">
                   {/* Immersive Background */}
                   <div className="absolute inset-0 z-0">
                     <img 
@@ -229,18 +228,18 @@ export default function AlunaPricing() {
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent opacity-60"></div>
                   </div>
 
-                  <div className="relative z-10 p-6 md:p-20 flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
+                  <div className="relative z-10 p-6 md:p-8 lg:p-10 flex flex-col lg:flex-row items-center gap-8 lg:gap-10">
                     {/* Main Content Area */}
                     <div className="flex-1 text-center lg:text-left">
-                      <div className="inline-flex items-center gap-2 text-[#C5A059] text-[10px] font-bold px-4 py-1.5 rounded-full border border-[#C5A059]/30 uppercase tracking-[0.3em] mb-6">
+                      <div className="inline-flex items-center gap-2 text-[#C5A059] text-[10px] font-bold px-4 py-1.5 rounded-full border border-[#C5A059]/30 uppercase tracking-[0.3em] mb-4">
                         <Sparkles size={12} /> Nivel Corporativo
                       </div>
                       
-                      <h3 className="text-3xl md:text-5xl lg:text-7xl text-white mb-4 leading-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                      <h3 className="text-2xl md:text-3xl lg:text-4xl text-white mb-3 leading-tight" style={{ fontFamily: "'DM Serif Display', serif" }}>
                         Aluna <span className="text-[#C5A059]">Enterprise</span>
                       </h3>
                       
-                      <p className="text-gray-300 text-base md:text-lg lg:text-2xl mb-8 lg:mb-12 leading-relaxed max-w-xl font-light">
+                      <p className="text-gray-300 text-sm md:text-base lg:text-lg mb-6 lg:mb-8 leading-relaxed max-w-xl font-light mx-auto lg:mx-0">
                         {enterprisePlan.description || "Tecnología de élite para cadenas gastronómicas que buscan control absoluto y eficiencia global."}
                       </p>
 
@@ -248,10 +247,10 @@ export default function AlunaPricing() {
                         href="https://wa.me/573222285900?text=Hola!%20Me%20interesa%20obtener%20m%C3%A1s%20informaci%C3%B3n%20sobre%20el%20Plan%20Enterprise%20de%20Aluna%20para%20mi%20negocio." 
                         target="_blank" 
                         rel="noreferrer"
-                        className="inline-flex items-center justify-center gap-3 px-8 py-4 lg:px-12 lg:py-6 bg-[#C5A059] text-black font-bold tracking-wide text-sm lg:text-base rounded-full hover:bg-white transition-all duration-300 shadow-xl shadow-[#C5A059]/20 w-full sm:w-auto"
+                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 lg:px-6 lg:py-3 bg-[#C5A059] text-black font-bold tracking-wide text-xs lg:text-sm rounded-full hover:bg-white transition-all duration-300 shadow-xl shadow-[#C5A059]/20 w-full sm:w-auto"
                       >
                         Contactar por WhatsApp
-                        <ChevronRight size={18} className="lg:w-5 lg:h-5" />
+                        <ChevronRight size={16} />
                       </a>
                     </div>
 
@@ -276,22 +275,22 @@ export default function AlunaPricing() {
                       </div>
 
                       {/* Desktop Grid View */}
-                      <div className="hidden md:grid grid-cols-2 gap-6">
+                      <div className="hidden md:grid grid-cols-2 gap-4">
                         {[
-                          { title: "Multi-sede", desc: "Gestión centralizada de múltiples sucursales.", icon: <Building2 className="w-6 h-6" /> },
-                          { title: "Integración", desc: "Conexión directa con ERP y POS.", icon: <Cpu className="w-6 h-6" /> },
-                          { title: "Marca Blanca", desc: "Plataforma personalizada bajo tu dominio.", icon: <Shield className="w-6 h-6" /> },
-                          { title: "Soporte VIP", desc: "Atención prioritaria y Account Manager.", icon: <Headphones className="w-6 h-6" /> }
+                          { title: "Multi-sede", desc: "Gestión centralizada de múltiples sucursales.", icon: <Building2 className="w-5 h-5" /> },
+                          { title: "Integración", desc: "Conexión directa con ERP y POS.", icon: <Cpu className="w-5 h-5" /> },
+                          { title: "Marca Blanca", desc: "Plataforma personalizada bajo tu dominio.", icon: <Shield className="w-5 h-5" /> },
+                          { title: "Soporte VIP", desc: "Atención prioritaria y Account Manager.", icon: <Headphones className="w-5 h-5" /> }
                         ].map((item, idx) => (
                           <div 
                             key={idx} 
-                            className="group p-8 rounded-3xl bg-white/[0.05] border border-white/10 backdrop-blur-md hover:bg-white/[0.1] hover:border-[#C5A059]/30 transition-all duration-300"
+                            className="group p-4 lg:p-5 rounded-2xl bg-white/[0.05] border border-white/10 backdrop-blur-md hover:bg-white/[0.1] hover:border-[#C5A059]/30 transition-all duration-300"
                           >
-                            <div className="w-12 h-12 rounded-xl bg-[#C5A059]/10 flex items-center justify-center text-[#C5A059] mb-6 group-hover:bg-[#C5A059] group-hover:text-black transition-colors">
+                            <div className="w-8 h-8 rounded-lg bg-[#C5A059]/10 flex items-center justify-center text-[#C5A059] mb-3 group-hover:bg-[#C5A059] group-hover:text-black transition-colors">
                               {item.icon}
                             </div>
-                            <h4 className="text-white font-bold text-lg mb-3">{item.title}</h4>
-                            <p className="text-gray-300 text-base leading-relaxed font-normal">{item.desc}</p>
+                            <h4 className="text-white font-bold text-sm mb-1">{item.title}</h4>
+                            <p className="text-gray-300 text-xs leading-relaxed font-normal">{item.desc}</p>
                           </div>
                         ))}
                       </div>
