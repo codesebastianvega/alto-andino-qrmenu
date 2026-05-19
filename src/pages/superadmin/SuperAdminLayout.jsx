@@ -28,7 +28,11 @@ export default function SuperAdminLayout() {
   ];
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn('Superadmin signOut error:', err);
+    }
     navigate('/');
   };
 

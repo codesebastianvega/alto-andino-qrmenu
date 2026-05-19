@@ -54,7 +54,11 @@ export const AuthProvider = ({ children }) => {
 
       if (!data) {
         // Corrupted session (no profile) — sign out to clean up
-        await supabase.auth.signOut();
+        try {
+          await supabase.auth.signOut();
+        } catch (err) {
+          console.warn('Supabase signOut error in fetchProfile:', err);
+        }
         setProfile(null);
         setUser(null);
         return;
@@ -228,7 +232,11 @@ export const AuthProvider = ({ children }) => {
   const signUp  = (data) => supabase.auth.signUp(data);
   const signOut = async () => {
     localStorage.removeItem('aa_active_brand_id');
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn('Supabase signOut error:', err);
+    }
     window.location.href = '/';
   };
 

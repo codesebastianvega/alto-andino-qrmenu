@@ -981,7 +981,11 @@ export default function AdminLayout() {
               onClick={async () => {
                 sessionStorage.removeItem('aa_admin_session');
                 if (user?.auth_session) {
-                  await supabase.auth.signOut();
+                  try {
+                    await supabase.auth.signOut();
+                  } catch (err) {
+                    console.warn('AdminLayout signOut error:', err);
+                  }
                   // Redirect to landing to avoid falling back to the current brand's menu
                   window.location.href = '/'; 
                 } else {
@@ -1226,7 +1230,11 @@ export default function AdminLayout() {
                     onClick={async () => {
                       sessionStorage.removeItem('aa_admin_session');
                       if (user?.auth_session) {
-                        await supabase.auth.signOut();
+                        try {
+                          await supabase.auth.signOut();
+                        } catch (err) {
+                          console.warn('AdminLayout signOut error:', err);
+                        }
                         // Redirect to landing to avoid falling back to the current brand's menu
                         window.location.href = '/'; 
                       } else {
