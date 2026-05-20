@@ -3,6 +3,10 @@ export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-body)', 'Inter', 'sans-serif'],
+        heading: ['var(--font-heading)', 'Outfit', 'sans-serif'],
+      },
       colors: {
         brand: {
           primary: 'var(--color-brand-primary)',
@@ -13,18 +17,18 @@ export default {
           footer: 'var(--color-brand-footer)',
         },
         alto: {
-          primary: "#2E7D5B",
-          primaryDark: "#1F6245",
-          teal: "#0F766E",
-          terracotta: "#C4533D",
-          beige: "#F5EDE3",
-          greige: "#EAE6DE",
-          warmwhite: "#FFFCF8",
-          text: "#1B1B1B",
-          text2: "#585858",
-          success: "#2E7D32",
-          warn: "#B45309",
-          error: "#B91C1C",
+          primary: "#4F46E5", /* Indigo 600 */
+          primaryDark: "#3730A3", /* Indigo 800 */
+          teal: "#4338CA", /* Indigo 700 */
+          terracotta: "#818CF8", /* Indigo 400 */
+          beige: "#F8FAFC", /* Slate 50 */
+          greige: "#F1F5F9", /* Slate 100 */
+          warmwhite: "#FFFFFF",
+          text: "#0F172A", /* Slate 900 */
+          text2: "#475569", /* Slate 600 */
+          success: "#10B981", /* Emerald 500 */
+          warn: "#F59E0B", /* Amber 500 */
+          error: "#EF4444", /* Red 500 */
         },
       },
       boxShadow: { card: "0 6px 20px rgba(0,0,0,0.06)" },

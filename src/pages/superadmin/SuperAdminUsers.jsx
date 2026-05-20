@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { CheckCircle, Search, Users, Store, ChevronDown, ChevronUp, Shield, User as UserIcon } from 'lucide-react';
 import { supabase } from '../../config/supabase';
 
@@ -149,9 +149,8 @@ export default function SuperAdminUsers() {
               </tr>
             ) : (
               filteredUsers.map((user) => (
-                <>
+                <Fragment key={user.id}>
                   <tr
-                    key={user.id}
                     className="border-b border-[#E5E7EB] hover:bg-gray-50 transition-colors cursor-pointer"
                     onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
                   >
@@ -245,7 +244,7 @@ export default function SuperAdminUsers() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))
             )}
           </tbody>
