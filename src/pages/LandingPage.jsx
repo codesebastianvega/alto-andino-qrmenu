@@ -268,7 +268,11 @@ const LandingPage = () => {
             <div className="max-w-md lg:max-w-lg">
               <h1 className="text-4xl md:text-5xl lg:text-7xl font-extrabold leading-[1.1] tracking-tight mb-4 md:mb-6 flex flex-col">
                 <motion.span custom={1} variants={titleVariants} initial="hidden" animate="visible">{h1Lines[0] || 'Descubre tus'}</motion.span>
-                <motion.span custom={2} variants={titleVariants} initial="hidden" animate="visible" className="text-transparent bg-clip-text bg-gradient-to-r from-brand-text to-brand-text/60 md:from-brand-text md:to-brand-text mt-1">{h1Lines.length > 1 ? h1Lines.slice(1).join('\n') : 'platos favoritos'}</motion.span>
+                {h1Lines.length > 1 && (
+                  <motion.span custom={2} variants={titleVariants} initial="hidden" animate="visible" className="text-transparent bg-clip-text bg-gradient-to-r from-brand-text to-brand-text/60 md:from-brand-text md:to-brand-text mt-1">
+                    {h1Lines.slice(1).join('\n')}
+                  </motion.span>
+                )}
               </h1>
               <motion.p custom={3} variants={titleVariants} initial="hidden" animate="visible" className="text-brand-text/50 font-medium text-[13px] md:text-base max-w-md mb-6 md:mb-8 leading-relaxed whitespace-pre-line">{config.heroSubtitle}</motion.p>
               <motion.div custom={4} variants={titleVariants} initial="hidden" animate="visible" className="flex items-center gap-3 md:gap-4 mb-6 md:mb-10 overflow-x-auto hide-scrollbar pb-3 -mx-4 px-4 md:-mx-0 md:px-0">

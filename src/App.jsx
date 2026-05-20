@@ -547,26 +547,27 @@ export default function App() {
         {/* Menu normal: Si estamos en modo orden o hash explícito #menu, o si NO es la vista landing. 
             IMPORTANTE: Excluimos vistas especiales (Portal, Auth, Perfil) y el hash explícito #inicio */}
         {((isOrderingMode || isMenuView || (!isLandingView && !isNewAdminPanel && !isSpecialPlatformView && !orderTrackingId)) && !isExplicitInicio) && (
-          <main
-            className={`mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl px-5 ${isDemo ? 'pt-12 pb-20 sm:px-6 md:px-8' : 'pt-24 sm:px-6 sm:pt-24 md:px-8 md:pt-24'}`}
-          >
-            <MenuHero 
-              query={query}
-              setQuery={setQuery}
-              activeCategory={selectedCategory}
-              setActiveCategory={handleCategorySelect}
-              categories={dbCategories}
-            />
-            <ProductLists
-              query={query}
-              selectedCategory={selectedCategory}
-              onCategorySelect={handleCategorySelect}
-              featureTabs={FEATURE_TABS}
-              hideNav={true}
-            />
-
+          <>
+            <main
+              className={`mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl px-5 ${isDemo ? 'pt-12 pb-20 sm:px-6 md:px-8' : 'pt-24 sm:px-6 sm:pt-24 md:px-8 md:pt-24'}`}
+            >
+              <MenuHero 
+                query={query}
+                setQuery={setQuery}
+                activeCategory={selectedCategory}
+                setActiveCategory={handleCategorySelect}
+                categories={dbCategories}
+              />
+              <ProductLists
+                query={query}
+                selectedCategory={selectedCategory}
+                onCategorySelect={handleCategorySelect}
+                featureTabs={FEATURE_TABS}
+                hideNav={true}
+              />
+            </main>
             {!isDemo && <Footer hasCartBar={hasFloatingCartBar} />}
-          </main>
+          </>
         )}
 
           {!isDemo && brand_slug && <BottomTabBar currentHash={currentHash} />}

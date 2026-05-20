@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../config/supabase';
 import { useMenuData } from '../context/MenuDataContext';
 import { useAuth } from '../context/AuthContext';
+import Footer from '../components/Footer';
 
 const ExperiencesSection = lazy(() => import('../components/ExperiencesSection'));
 
@@ -231,6 +232,9 @@ export default function ExperiencesPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }
