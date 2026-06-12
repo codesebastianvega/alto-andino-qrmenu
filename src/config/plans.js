@@ -18,27 +18,27 @@ export const PLAN_LABELS = {
     name: 'Emprendedor',     
     color: '#6B7280',
     price: '29.900',
-    desc: 'Para comenzar',
+    desc: 'Validar mercado',
     icon: 'zap',
     features: [
       'Menú Digital Premium',
-      '20 Productos / 5 Categorías',
-      'Pedidos por WhatsApp',
-      'Subdominio aluna.menu/',
-      'Soporte Básico'
+      '20 Productos',
+      'Panel Kanban Básico',
+      'Hasta 100 Pedidos/mes',
+      '1 Usuario (Dueño)'
     ]
   },
   esencial: { 
     name: 'Esencial',        
     color: '#2D6A4F',
     price: '59.900',
-    desc: 'Landing + Experiencias',
+    desc: 'Operación regular',
     icon: 'star',
     features: [
-      'Todo lo de Emprendedor',
-      '50 Productos / 15 Categorías',
-      'Analíticas Básicas',
-      'Panel de Staff/Meseros',
+      '50 Productos',
+      'Hasta 300 Pedidos/mes',
+      'Panel para Meseros',
+      '3 Usuarios / 1 Sede',
       'Landing Page Propia'
     ]
   },
@@ -46,43 +46,42 @@ export const PLAN_LABELS = {
     name: 'Profesional ⭐',  
     color: '#1d4ed8',
     price: '149.900',
-    desc: 'IA + Analíticas',
+    desc: 'En crecimiento',
     icon: 'crown',
     features: [
-      'Todo lo de Esencial',
-      'Productos Ilimitados',
-      'Gestión de Mesas con QR',
-      'Sistema de Cocina (KDS)',
-      'Gestión de Inventario',
-      'Analíticas Avanzadas'
+      '150 Productos / 50 Recetas',
+      'Hasta 1.000 Pedidos/mes',
+      'Pantalla KDS Cocina',
+      'Mesas QR / 10 Usuarios',
+      'Hasta 3 Sedes'
     ]
   },
   premium: { 
     name: 'Premium 💎',         
     color: '#fbbf24',
     price: '249.900',
-    desc: 'Negocios de alto volumen',
+    desc: 'Alto volumen',
     icon: 'crown',
     features: [
-      'Todo lo de Profesional',
-      'CRM de Clientes',
-      'Módulo de Fidelización',
-      'Multi-sede (Opcional)',
-      'Soporte Prioritario 24/7'
+      '300 Productos / 200 Recetas',
+      'Hasta 3.000 Pedidos/mes',
+      '25 Usuarios',
+      'Hasta 5 Sedes',
+      'CRM y Fidelización'
     ]
   },
   enterprise: { 
     name: 'Enterprise',      
     color: '#7c3aed',
     price: 'Custom',
-    desc: 'Escala sin límites',
+    desc: 'Cadenas y franquicias',
     icon: 'building-2',
     features: [
-      'Todo lo de Premium',
+      'Pedidos Ilimitados',
+      'Sedes Ilimitadas',
+      'Usuarios Ilimitados',
       'Infraestructura Dedicada',
-      'SLA Garantizado',
-      'Integraciones Personalizadas',
-      'Account Manager Dedicado'
+      'Integración ERP/POS'
     ]
   },
 };

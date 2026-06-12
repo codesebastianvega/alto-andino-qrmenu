@@ -181,38 +181,42 @@ export default function AlunaPricing() {
               ))}
             </div>
 
-            <FadeIn delay={0.2} className="mt-12 max-w-3xl mx-auto">
-              <div className="bg-[#2D6A4F]/5 border border-[#2D6A4F]/20 rounded-[20px] p-5 md:p-6 flex flex-col md:flex-row items-center gap-5 shadow-sm">
-                <div className="w-16 h-16 rounded-2xl bg-[#2D6A4F] flex items-center justify-center text-white shrink-0 shadow-lg shadow-[#2D6A4F]/20">
-                  <Cpu className="w-8 h-8" />
-                </div>
-                <div className="flex-1 text-center md:text-left">
-                  <div className="inline-flex items-center gap-2 text-[#2D6A4F] text-[10px] font-bold px-3 py-1 rounded-full bg-[#2D6A4F]/10 uppercase tracking-wider mb-3">
-                    <Sparkles size={12} /> Add-on Opcional
+            {/* Conserje IA temporalmente oculto para V1 MVP */}
+            {false && (
+              <FadeIn delay={0.2} className="mt-12 max-w-3xl mx-auto">
+                <div className="bg-[#2D6A4F]/5 border border-[#2D6A4F]/20 rounded-[20px] p-5 md:p-6 flex flex-col md:flex-row items-center gap-5 shadow-sm">
+                  <div className="w-16 h-16 rounded-2xl bg-[#2D6A4F] flex items-center justify-center text-white shrink-0 shadow-lg shadow-[#2D6A4F]/20">
+                    <Cpu className="w-8 h-8" />
                   </div>
-                  <h3 className="text-lg md:text-xl text-[#1A1A1A] mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>
-                    Conserje Gastronómico con IA
-                  </h3>
-                  <p className="text-[#6B7280] text-sm mb-2">
-                    Automatiza pedidos, recomienda platos y responde preguntas de tus clientes 24/7.
-                  </p>
-                  <p className="text-[#2D6A4F] font-bold text-xs uppercase tracking-wide">
-                    Incluye un límite de 1.000 interacciones de IA al mes.
-                  </p>
-                </div>
-                <div className="text-center md:text-right shrink-0">
-                  <div className="text-xl md:text-2xl text-[#1A1A1A] mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
-                    $49.900<span className="text-[10px] md:text-xs font-sans text-[#6B7280]">/mes</span>
+                  <div className="flex-1 text-center md:text-left">
+                    <div className="inline-flex items-center gap-2 text-[#2D6A4F] text-[10px] font-bold px-3 py-1 rounded-full bg-[#2D6A4F]/10 uppercase tracking-wider mb-3">
+                      <Sparkles size={12} /> Add-on Opcional
+                    </div>
+                    <h3 className="text-lg md:text-xl text-[#1A1A1A] mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                      Conserje Gastronómico con IA
+                    </h3>
+                    <p className="text-[#6B7280] text-sm mb-2">
+                      Automatiza pedidos, recomienda platos y responde preguntas de tus clientes 24/7.
+                    </p>
+                    <p className="text-[#2D6A4F] font-bold text-xs uppercase tracking-wide">
+                      Incluye un límite de 1.000 interacciones de IA al mes.
+                    </p>
                   </div>
-                  <Link 
-                    to="/contacto?addon=ia"
-                    className="inline-flex items-center justify-center px-5 py-2.5 bg-[#1A1A1A] text-white rounded-full text-sm font-bold hover:bg-[#2f4131] transition-all"
-                  >
-                    Me interesa
-                  </Link>
+                  <div className="text-center md:text-right shrink-0">
+                    <div className="text-xl md:text-2xl text-[#1A1A1A] mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                      $49.900<span className="text-[10px] md:text-xs font-sans text-[#6B7280]">/mes</span>
+                    </div>
+                    <Link 
+                      to="/contacto?addon=ia"
+                      className="inline-flex items-center justify-center px-5 py-2.5 bg-[#1A1A1A] text-white rounded-full text-sm font-bold hover:bg-[#2f4131] transition-all"
+                    >
+                      Me interesa
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            </FadeIn>
+              </FadeIn>
+            )}
+
 
             {enterprisePlan && (
               <FadeIn delay={0.3} className="mt-20">

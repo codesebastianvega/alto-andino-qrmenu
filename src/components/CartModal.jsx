@@ -1372,8 +1372,8 @@ export default function CartModal({ open, onClose }) {
                         <Icon icon="solar:arrow-right-line-duotone" />
                       </button>
 
-                      {/* WhatsApp Option for Non-DineIn orders */}
-                      {(!isPOSMode && fulfillmentType !== 'dine_in' && whatsappLink) && (
+                      {/* WhatsApp Option for Non-DineIn orders (Disabled for V1 MVP: All plans use Kanban) */}
+                      {false && (!isPOSMode && fulfillmentType !== 'dine_in' && whatsappLink) && (
                         <button
                           onClick={() => window.open(whatsappLink, '_blank')}
                           className="w-full bg-[#25D366] text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg shadow-[#25D366]/20 hover:bg-[#128C7E]"
