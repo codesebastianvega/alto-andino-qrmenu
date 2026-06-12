@@ -163,11 +163,27 @@ const LandingPage = () => {
       setActiveCategory(config.heroDishes[randomIndex].category);
     }
   }, [config.heroDishes, activeCategory]);
+
   useEffect(() => {
     if (!menuLoading) {
       setLocalLoading(false);
+      
+      // Auto-open quick view if product_id is in URL (for upselling from OrderStatus)
+      const params = new URLSearchParams(window.location.search);
+      const productId = params.get('product_id');
+      
+      if (productId && typeof getAllProducts === 'function') {
+        const products = getAllProducts();
+        const product = products.find(p => p.id === productId);
+        if (product) {
+          setQuickViewProduct(product);
+          // Clean up URL
+          const newUrl = window.location.pathname + window.location.hash;
+          window.history.replaceState({}, '', newUrl);
+        }
+      }
     }
-  }, [menuLoading]);
+  }, [menuLoading, getAllProducts]);
 
   const handleMouseMove = (e) => {
     const { clientX, clientY } = e;
