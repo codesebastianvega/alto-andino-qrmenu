@@ -17,7 +17,7 @@ export const PLAN_LABELS = {
   emprendedor: { 
     name: 'Emprendedor',     
     color: '#6B7280',
-    price: '29.900',
+    price: '49.900',
     desc: 'Validar mercado',
     icon: 'zap',
     features: [
@@ -31,7 +31,7 @@ export const PLAN_LABELS = {
   esencial: { 
     name: 'Esencial',        
     color: '#2D6A4F',
-    price: '59.900',
+    price: '99.900',
     desc: 'Operación regular',
     icon: 'star',
     features: [
