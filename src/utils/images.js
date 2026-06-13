@@ -6,13 +6,13 @@ import imageCompression from 'browser-image-compression';
  * @param {File} file El archivo original
  * @returns {Promise<File>} El archivo comprimido en formato WebP
  */
-export const compressAndWebp = async (file) => {
+export const compressAndWebp = async (file, customOptions = {}) => {
   const options = {
-    maxSizeMB: 0.2, // 200KB
-    maxWidthOrHeight: 1200,
+    maxSizeMB: customOptions.maxSizeMB || 0.1, // Default 100KB (antes 200KB)
+    maxWidthOrHeight: customOptions.maxWidthOrHeight || 800, // Default 800px (antes 1200px)
     useWebWorker: true,
     fileType: 'image/webp',
-    initialQuality: 0.8
+    initialQuality: customOptions.initialQuality || 0.75, // Default 75%
   };
 
   try {

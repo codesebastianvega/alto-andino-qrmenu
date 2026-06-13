@@ -16,7 +16,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { toast } from '../components/Toast';
-import { validateImageSize } from '../utils/images';
+import { validateImageSize, compressAndWebp } from '../utils/images';
 
 export default function AdminOnboarding() {
   const { activeBrand } = useAuth();
@@ -92,13 +92,14 @@ export default function AdminOnboarding() {
 
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${activeBrand.id}/logo_${Date.now()}.${fileExt}`;
+      // Comprimir a WebP
+      const compressedFile = await compressAndWebp(file, { maxWidthOrHeight: 800, maxSizeMB: 0.1 });
+      const fileName = `${activeBrand.id}/logo_${Date.now()}.webp`;
       const filePath = `branding/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('products') // Using products bucket as it exists
-        .upload(filePath, file);
+        .upload(filePath, compressedFile);
 
       if (uploadError) throw uploadError;
 

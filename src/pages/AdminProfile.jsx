@@ -20,7 +20,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/supabase';
 import { toast } from '../components/Toast';
 import { ImageGuidance } from '../components/admin/ui';
-import { validateImageSize } from '../utils/images';
+import { validateImageSize, compressAndWebp } from '../utils/images';
 
 export default function AdminProfile() {
   const { user, profile, signOut, refreshProfile } = useAuth();
@@ -118,13 +118,15 @@ export default function AdminProfile() {
         return;
       }
 
-      const fileExt = file.name.split('.').pop();
+      // Comprimir a WebP
+      const compressedFile = await compressAndWebp(file, { maxWidthOrHeight: 400, maxSizeMB: 0.1 });
+      const fileExt = 'webp';
       const fileName = `${Math.random()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
       let { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file);
+        .upload(filePath, compressedFile);
 
       if (uploadError) throw uploadError;
 
