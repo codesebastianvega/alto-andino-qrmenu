@@ -997,31 +997,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                 </div>
               )}
 
-              {uploadStats && (
-                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 animate-in fade-in slide-in-from-top-2 duration-500">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2 text-emerald-700">
-                      <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
-                        <Icon icon="lucide:zap" className="w-3.5 h-3.5" />
-                      </div>
-                      <span className="text-[11px] font-bold uppercase tracking-wider">Imagen Optimizada</span>
-                    </div>
-                    <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-full text-[10px] font-black">
-                      -{uploadStats.reduction}% de peso
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white/50 rounded-xl p-2.5 border border-emerald-100/50">
-                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight mb-0.5">Antes</p>
-                      <p className="text-xs font-bold text-gray-600">{uploadStats.original} KB</p>
-                    </div>
-                    <div className="bg-white/50 rounded-xl p-2.5 border border-emerald-100/50">
-                      <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-tight mb-0.5">Después (WebP)</p>
-                      <p className="text-xs font-bold text-emerald-700">{uploadStats.final} KB</p>
-                    </div>
-                  </div>
-                </div>
-              )}
+
 
               {/* Unsplash page link warning */}
               {isUnsplashPageLink(formData.image_url) && (
@@ -1083,12 +1059,36 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                 </FormField>
                 
                 {formData.image_url && !imgError && !isUnsplashPageLink(formData.image_url) && (
-                  <p className="text-[11px] text-green-600 font-medium flex items-center gap-1">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                    </svg>
-                    Imagen cargada correctamente
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] text-green-600 font-medium flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                      Imagen cargada correctamente
+                    </p>
+                    {uploadStats ? (
+                      <div className="flex items-center gap-1.5 animate-in fade-in zoom-in duration-300">
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
+                          WebP
+                        </span>
+                        <span className="bg-gray-50 text-gray-600 border border-gray-200 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider shadow-sm">
+                          {uploadStats.final} KB
+                        </span>
+                      </div>
+                    ) : formData.image_url.includes('.webp') ? (
+                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
+                        WebP
+                      </span>
+                    ) : formData.image_url.includes('images.unsplash.com') ? (
+                      <span className="bg-gray-50 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
+                        UNSPLASH
+                      </span>
+                    ) : (
+                      <span className="bg-gray-50 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
+                        {formData.image_url.match(/\.([a-zA-Z0-9]{3,4})(?:[\?#]|$)/)?.[1]?.toUpperCase() || 'IMG'}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

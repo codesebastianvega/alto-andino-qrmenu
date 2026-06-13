@@ -336,10 +336,10 @@ export function ImageGuidance() {
       <button
         type="button"
         onClick={() => setShowTutorial(!showTutorial)}
-        className="inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-600 hover:text-blue-700 transition-colors bg-blue-50 px-2.5 py-1.5 rounded-xl border border-blue-100/50"
+        className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 transition-colors bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-100/50"
       >
         <Icon icon="solar:info-circle-bold-duotone" className="text-sm" />
-        {showTutorial ? 'Ocultar guía de imágenes' : 'Ver guía: Límite 4MB y Google Drive'}
+        {showTutorial ? 'Ocultar guía de imágenes' : 'Guía: Optimización automática WebP y enlaces'}
       </button>
 
       {showTutorial && (
@@ -381,22 +381,17 @@ export function ImageGuidance() {
               </p>
             </div>
             <p className="text-[10px] text-gray-500 leading-relaxed mb-3">
-              Si subes un archivo directamente, asegúrate de que no sea muy pesado.
+              Puedes subir fotos directamente desde tu dispositivo. Nosotros nos encargamos de optimizarlas automáticamente.
             </p>
             <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-xl border border-emerald-100">
+                <Icon icon="solar:leaf-bold-duotone" className="text-emerald-500 text-sm" />
+                <span className="text-[10px] font-bold text-emerald-700">Compresión Inteligente WebP Activada</span>
+              </div>
               <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100">
                 <Icon icon="solar:shield-warning-bold-duotone" className="text-amber-500 text-sm" />
-                <span className="text-[10px] font-bold text-gray-600">Límite estricto: 4.0 MB</span>
+                <span className="text-[10px] font-bold text-gray-600">Límite inicial del archivo: 4.0 MB</span>
               </div>
-              <a 
-                href="https://tinyjpg.com" 
-                target="_blank" 
-                rel="noreferrer" 
-                className="text-[10px] bg-white px-3 py-2 rounded-xl text-blue-600 border border-blue-100 hover:bg-blue-50 transition-all flex items-center justify-center gap-1.5 font-bold"
-              >
-                <Icon icon="solar:leaf-bold-duotone" className="text-green-600 text-sm" /> 
-                Comprimir en TinyJPG.com
-              </a>
             </div>
           </div>
         </div>
