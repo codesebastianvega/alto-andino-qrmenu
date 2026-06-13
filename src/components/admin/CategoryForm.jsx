@@ -14,7 +14,8 @@ import {
   BentoCard
 } from './ui';
 import IconPicker from './IconPicker';
-import { convertDriveLink, validateImageSize, compressAndWebp } from '../../utils/images';
+import { convertDriveLink, validateImageSize, compressAndWebp, getMaxImageSizeMB } from '../../utils/images';
+import { useAuth } from '../../context/AuthContext';
 import { toast as toastFn } from '../Toast';
 
 const toast = {
@@ -23,6 +24,7 @@ const toast = {
 };
 
 export default function CategoryForm({ category, onSave, onCancel }) {
+  const { activeBrand } = useAuth();
   const { locations } = useLocations();
   const { getCategoryOverrides, saveCategoryOverrides } = useLocationOverrides();
   const [locationOverrides, setLocationOverrides] = useState([]);
@@ -167,7 +169,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
 
       const originalSize = file.size;
       // 2. COMPRESS & CONVERT to WebP
-      const compressedFile = await compressAndWebp(file);
+      const compressedFile = await compressAndWebp(file, activeBrand?.plan_id);
       const finalSize = compressedFile.size;
       
       // 3. PREPARE PATH
@@ -371,7 +373,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                   </div>
                 )}
 
-                {!formData.banner_image_url && <ImageGuidance />}
+                {!formData.banner_image_url && <ImageGuidance maxMB={getMaxImageSizeMB(activeBrand?.plan_id)} />}
 
 
 

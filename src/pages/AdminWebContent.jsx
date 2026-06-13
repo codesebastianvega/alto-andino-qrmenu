@@ -7,7 +7,7 @@ import { PrimaryButton, SecondaryButton, FormField, TextInput, PageHeader, Switc
 import { Icon } from '@iconify-icon/react';
 import { Loader2, Sparkles, Home, BookOpen, Layers, Palette, Cpu, Settings, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
 import AdminBranding from './AdminBranding';
-import { validateImageSize, compressAndWebp } from '../utils/images';
+import { validateImageSize, compressAndWebp, getMaxImageSizeMB } from '../utils/images';
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 2000 }),

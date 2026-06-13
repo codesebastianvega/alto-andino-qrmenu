@@ -16,7 +16,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { toast } from '../components/Toast';
-import { validateImageSize, compressAndWebp } from '../utils/images';
+import { validateImageSize, compressAndWebp, getMaxImageSizeMB } from '../utils/images';
 
 export default function AdminOnboarding() {
   const { activeBrand } = useAuth();

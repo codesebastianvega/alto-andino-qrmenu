@@ -123,3 +123,14 @@ export const FEATURE_MIN_LEVEL = {
 export const getPlanIdBySlug = (slug) => {
   return PLAN_IDS[slug] || PLAN_IDS[DEFAULT_PLAN_SLUG];
 };
+
+/**
+ * Límites operativos por Plan ID
+ */
+export const PLAN_LIMITS_BY_ID = {
+  [PLAN_IDS.emprendedor]: { image_max_mb: 2 },
+  [PLAN_IDS.esencial]:    { image_max_mb: 4 },
+  [PLAN_IDS.profesional]: { image_max_mb: 6 },
+  [PLAN_IDS.premium]:     { image_max_mb: 8 },
+  [PLAN_IDS.enterprise]:  { image_max_mb: 15 },
+};

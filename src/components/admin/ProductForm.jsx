@@ -7,7 +7,7 @@ import { Icon } from '@iconify-icon/react';
 import { useLocations } from '../../hooks/useLocations';
 import { useLocationOverrides } from '../../hooks/useLocationOverrides';
 import { useRestaurantSettings } from '../../hooks/useRestaurantSettings';
-import { validateImageSize, convertDriveLink, compressAndWebp } from '../../utils/images';
+import { validateImageSize, convertDriveLink, compressAndWebp, getMaxImageSizeMB } from '../../utils/images';
 import { toast as toastFn } from '../Toast';
 import { useAuth } from '../../context/AuthContext';
 import { useGemini } from '../../hooks/useGemini';
@@ -252,7 +252,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
       const originalSize = file.size;
 
       // 1. Comprimir y convertir a WebP en el cliente
-      const compressedFile = await compressAndWebp(file);
+      const compressedFile = await compressAndWebp(file, activeBrand?.plan_id);
       const finalSize = compressedFile.size;
       
       // 2. Preparar ruta (forzar .webp)
@@ -1016,7 +1016,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
               )}
               
               <div className="flex flex-col gap-4 mt-2">
-                <ImageGuidance />
+                <ImageGuidance maxMB={getMaxImageSizeMB(activeBrand?.plan_id)} />
                 
                 <div className="space-y-2">
                   <label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Subir archivo directo</label>

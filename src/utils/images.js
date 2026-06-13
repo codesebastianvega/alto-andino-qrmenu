@@ -1,22 +1,43 @@
 // src/utils/images.js
 import imageCompression from 'browser-image-compression';
+import { PLAN_LIMITS_BY_ID } from '../config/plans';
+
+/**
+ * Obtiene las opciones de compresión según el plan.
+ */
+export const getCompressionOptions = (planId) => {
+  const planLimits = PLAN_LIMITS_BY_ID[planId] || { image_max_mb: 0.1, max_width: 800 };
+  
+  return {
+    maxSizeMB: planLimits.image_max_mb || 0.1, // Peso final objetivo WebP
+    maxWidthOrHeight: planLimits.max_width || 800, // Resolución máxima
+    useWebWorker: true,
+    fileType: 'image/webp',
+    initialQuality: planLimits.image_max_mb > 0.5 ? 0.85 : 0.75, // Mejor calidad para planes altos
+  };
+};
 
 /**
  * Comprime una imagen y la convierte a formato WebP.
  * @param {File} file El archivo original
+ * @param {string} planId El ID del plan del usuario
  * @returns {Promise<File>} El archivo comprimido en formato WebP
  */
-export const compressAndWebp = async (file, customOptions = {}) => {
-  const options = {
-    maxSizeMB: customOptions.maxSizeMB || 0.1, // Default 100KB (antes 200KB)
-    maxWidthOrHeight: customOptions.maxWidthOrHeight || 800, // Default 800px (antes 1200px)
-    useWebWorker: true,
-    fileType: 'image/webp',
-    initialQuality: customOptions.initialQuality || 0.75, // Default 75%
-  };
+export const compressAndWebp = async (file, planIdOrOptions = null, customOptions = null) => {
+  let planId = null;
+  let options = null;
+
+  if (planIdOrOptions && typeof planIdOrOptions === 'object') {
+    options = planIdOrOptions;
+  } else {
+    planId = planIdOrOptions;
+    options = customOptions;
+  }
+
+  const finalOptions = options || getCompressionOptions(planId);
 
   try {
-    const compressedFile = await imageCompression(file, options);
+    const compressedFile = await imageCompression(file, finalOptions);
     // Asegurarnos de que el nombre termine en .webp
     const fileName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
     return new File([compressedFile], `${fileName}.webp`, { type: 'image/webp' });
@@ -26,29 +47,8 @@ export const compressAndWebp = async (file, customOptions = {}) => {
   }
 };
 
-// Guía para subir y enlazar imágenes de producto
-//
-// Dónde subirlas
-// - Carpeta: /public/img/products/
-// - Ruta pública: /img/products/<archivo>
-//
-// Cómo enlazarlas
-// - Opción A (recomendada): agrega una línea en IMAGE_MAP con el id del
-//   producto y la ruta del archivo. Solo quita "//" para activarla.
-// - Opción B (automática): si NO hay línea en IMAGE_MAP, se probará
-//   /img/products/<id>.png y luego /img/products/<id>.jpg. Si el producto no
-//   tiene id, se usa slug(name).
-//
-// Recomendaciones
-// - Usa el id cuando sea simple (ej.: des-sendero.jpg).
-// - Para ids con ":" o espacios (smoothies), usa nombre de archivo slug y
-//   mapea explícitamente (ej.: smoothie-brisas-tropicales.jpg).
-//
-// Checklist
-// 1) Copia la foto a /public/img/products
-// 2) Descomenta la línea correspondiente en IMAGE_MAP
-// 3) Guarda y recarga; debería mostrarse en las cards/QuickView
-
+// Guía para subir y enlazar imágenes de producto...
+// (Comentarios originales)
 function slugify(s = "") {
   return String(s)
     .toLowerCase()
@@ -57,13 +57,12 @@ function slugify(s = "") {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 }
-// Máximo tamaño permitido: 1MB (recomendado para web y para evitar llenar almacenamiento)
-export const MAX_IMAGE_SIZE = 4 * 1024 * 1024; 
+
+// Máximo tamaño permitido inicial en el navegador (10MB) para no crashear la memoria antes de comprimir
+export const MAX_INITIAL_FILE_MB = 10;
 
 /**
  * Verifica si una URL es externa (Unsplash, Google, etc.)
- * @param {string} url La URL a verificar
- * @returns {boolean} True si es externa
  */
 export const isExternalUrl = (url) => {
   if (!url) return false;
@@ -72,19 +71,15 @@ export const isExternalUrl = (url) => {
 
 /**
  * Convierte un link de Google Drive (compartir) a un link directo de imagen.
- * @param {string} url La URL a convertir
- * @returns {string} La URL convertida o la original si no es de Drive
  */
 export const convertDriveLink = (url) => {
   if (!url) return url;
   
-  // Formato: https://drive.google.com/file/d/FILE_ID/view...
   const driveMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (driveMatch && driveMatch[1]) {
     return `https://drive.google.com/uc?export=view&id=${driveMatch[1]}`;
   }
   
-  // Formato: https://drive.google.com/open?id=FILE_ID
   const driveOpenMatch = url.match(/id=([a-zA-Z0-9_-]+)/);
   if (url.includes('drive.google.com') && driveOpenMatch && driveOpenMatch[1]) {
     return `https://drive.google.com/uc?export=view&id=${driveOpenMatch[1]}`;
@@ -94,17 +89,16 @@ export const convertDriveLink = (url) => {
 };
 
 /**
- * Valida si el archivo de imagen excede el tamaño máximo permitido.
- * @param {File} file El archivo a validar
- * @param {Function} toast El sistema de notificaciones (opcional)
- * @returns {boolean} True si es válido, False si excede el tamaño
+ * Valida si el archivo de imagen excede el límite de memoria del navegador antes de comprimir.
  */
 export const validateImageSize = (file, toast = null) => {
   if (!file) return false;
-  if (file.size > MAX_IMAGE_SIZE) {
+  
+  const maxBytes = MAX_INITIAL_FILE_MB * 1024 * 1024;
+
+  if (file.size > maxBytes) {
     const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-    const limitMB = (MAX_IMAGE_SIZE / (1024 * 1024)).toFixed(0);
-    const errorMsg = `La imagen es demasiado grande (${sizeMB}MB). El límite es de ${limitMB}MB.`;
+    const errorMsg = `La imagen original es demasiado grande (${sizeMB}MB). Por favor selecciona una imagen de menos de ${MAX_INITIAL_FILE_MB}MB.`;
     
     if (toast && typeof toast.error === 'function') {
       toast.error(errorMsg);

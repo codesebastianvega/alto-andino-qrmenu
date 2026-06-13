@@ -328,7 +328,7 @@ export function LockOverlay({ featureName }) {
  */
 import { useState as useStateUI } from 'react';
 
-export function ImageGuidance() {
+export function ImageGuidance({ maxMB = 4 }) {
   const [showTutorial, setShowTutorial] = useStateUI(false);
 
   return (
@@ -364,7 +364,7 @@ export function ImageGuidance() {
               </div>
               <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100">
                 <Icon icon="solar:shield-warning-bold-duotone" className="text-amber-500 text-sm" />
-                <span className="text-[10px] font-bold text-gray-600">Límite inicial del archivo: 4.0 MB</span>
+                <span className="text-[10px] font-bold text-gray-600">Límite inicial del archivo: {maxMB.toFixed(1)} MB</span>
               </div>
             </div>
           </div>
