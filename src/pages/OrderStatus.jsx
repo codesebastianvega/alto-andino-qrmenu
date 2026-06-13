@@ -5,7 +5,7 @@ import { useMenuData } from '../context/MenuDataContext';
 import { useAuth } from '../context/AuthContext';
 import { 
   ArrowLeft, CheckCircle2, ChefHat, ShoppingBag, Clock, XIcon, 
-  Loader2, AlertCircle, Banknote, Home
+  Loader2, AlertCircle, Banknote, Home, Truck, Utensils
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -119,46 +119,51 @@ export default function OrderStatus({ orderId }) {
   }
 
   // --- LOGIC PARA TRACKER DINÁMICO EXPRESIVO ---
+  // El tracking de preparación es INDEPENDIENTE del estado de pago.
+  // waiting_payment se muestra como banner aparte, no afecta la barra de progreso.
+  const isDelivery = order.fulfillment_type === 'delivery';
+  const isTakeaway = order.fulfillment_type === 'takeaway';
+  const isDineIn = order.fulfillment_type === 'dine_in';
+  const isPaymentPending = order.payment_status !== 'paid';
+
   const STATUS_STEPS = {
     cancelled: { label: 'Cancelado', icon: <AlertCircle size={48} />, color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-100', glow: 'bg-red-500/10', text: 'text-red-600', step: 0 },
-    waiting_payment: { label: 'Esperando Pago', icon: <Banknote size={48} />, color: 'text-orange-500', bg: 'bg-orange-50', border: 'border-orange-100', glow: 'bg-orange-500/15', text: 'text-orange-600', step: 1 },
-    new: { label: 'Recibido', icon: <CheckCircle2 size={48} />, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100', glow: 'bg-blue-500/15', text: 'text-blue-600', step: 2 },
-    preparing: { label: 'En Cocina', icon: <ChefHat size={48} />, color: 'text-yellow-600', bg: 'bg-[#FFF9E6]', border: 'border-[#F8E5A0]', glow: 'bg-[#E6B05C]/20', text: 'text-yellow-700', step: 3 },
-    ready: { label: '¡Listo!', icon: <ShoppingBag size={48} />, color: 'text-green-500', bg: 'bg-green-50', border: 'border-green-100', glow: 'bg-green-500/15', text: 'text-green-600', step: 4 },
-    on_table: { label: 'En Mesa', icon: <ShoppingBag size={48} />, color: 'text-purple-500', bg: 'bg-purple-50', border: 'border-purple-100', glow: 'bg-purple-500/15', text: 'text-purple-600', step: 4 },
+    waiting_payment: { label: 'Recibido', icon: <CheckCircle2 size={48} />, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100', glow: 'bg-blue-500/15', text: 'text-blue-600', step: 1 },
+    new: { label: 'Recibido', icon: <CheckCircle2 size={48} />, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100', glow: 'bg-blue-500/15', text: 'text-blue-600', step: 1 },
+    preparing: { label: 'En Cocina', icon: <ChefHat size={48} />, color: 'text-yellow-600', bg: 'bg-[#FFF9E6]', border: 'border-[#F8E5A0]', glow: 'bg-[#E6B05C]/20', text: 'text-yellow-700', step: 2 },
+    ready: { label: '¡Listo!', icon: <ShoppingBag size={48} />, color: 'text-green-500', bg: 'bg-green-50', border: 'border-green-100', glow: 'bg-green-500/15', text: 'text-green-600', step: 3 },
+    on_table: { label: 'En Mesa', icon: <Utensils size={48} />, color: 'text-purple-500', bg: 'bg-purple-50', border: 'border-purple-100', glow: 'bg-purple-500/15', text: 'text-purple-600', step: 4 },
+    on_the_way: { label: isDelivery ? 'En Camino' : 'Entregando', icon: isDelivery ? <Truck size={48} /> : <ShoppingBag size={48} />, color: 'text-indigo-500', bg: 'bg-indigo-50', border: 'border-indigo-100', glow: 'bg-indigo-500/15', text: 'text-indigo-600', step: 4 },
     delivered: { label: 'Finalizado', icon: <Home size={48} />, color: 'text-[#4A7856]', bg: 'bg-[#EAF1EC]', border: 'border-[#4A7856]/20', glow: 'bg-[#4A7856]/15', text: 'text-[#4A7856]', step: 5 }
   };
 
   const currentStatus = STATUS_STEPS[order.status] || STATUS_STEPS['new'];
   const orderStepId = currentStatus.step;
 
-  // Generamos la barra de progreso dinámicamente según el tipo de pedido
-  let progressSteps = [];
-  if (order.status === 'waiting_payment') {
-    progressSteps = [
-      { id: 1, title: 'Pago', icon: <Banknote size={20} /> },
-      { id: 2, title: 'Recibido', icon: <CheckCircle2 size={20} /> },
-      { id: 3, title: 'Cocina', icon: <ChefHat size={20} /> }
-    ];
-  } else {
-    progressSteps = [
-      { id: 2, title: 'Recibido', icon: <CheckCircle2 size={20} /> },
-      { id: 3, title: 'Cocina', icon: <ChefHat size={20} /> },
-      { id: 4, title: order.fulfillment_type === 'dine_in' ? 'A Mesa' : 'Listo', icon: <ShoppingBag size={20} /> },
-      { id: 5, title: 'Finalizado', icon: <Home size={20} /> }
-    ];
-  }
+  // Barra de progreso SIEMPRE muestra preparación, independiente del pago
+  const progressSteps = isDineIn ? [
+    { id: 1, title: 'Recibido', icon: <CheckCircle2 size={20} /> },
+    { id: 2, title: 'Cocina', icon: <ChefHat size={20} /> },
+    { id: 3, title: 'Listo', icon: <ShoppingBag size={20} /> },
+    { id: 4, title: 'En Mesa', icon: <Utensils size={20} /> },
+    { id: 5, title: 'Finalizado', icon: <Home size={20} /> }
+  ] : [
+    { id: 1, title: 'Recibido', icon: <CheckCircle2 size={20} /> },
+    { id: 2, title: 'Cocina', icon: <ChefHat size={20} /> },
+    { id: 3, title: 'Listo', icon: <ShoppingBag size={20} /> },
+    { id: 4, title: isDelivery ? 'En Camino' : 'Entregando', icon: isDelivery ? <Truck size={20} /> : <ShoppingBag size={20} /> },
+    { id: 5, title: 'Finalizado', icon: <Home size={20} /> }
+  ];
   
-  // Limitar a 3 o 4 pasos visualmente
-  const visualSteps = progressSteps.slice(0, 4);
+  const visualSteps = progressSteps;
 
   const orderTimeMinutes = new Date(order.created_at).getMinutes();
   const estimatedMin = (orderTimeMinutes + 15) % 60;
   const estimatedHour = new Date(order.created_at).getHours() + Math.floor((orderTimeMinutes + 15)/60);
   const estimatedTimeStr = `${estimatedHour.toString().padStart(2, '0')}:${estimatedMin.toString().padStart(2, '0')}`;
 
-  const fulfillmentText = order.fulfillment_type === 'dine_in' ? 'Consumo en local' : 
-                          order.fulfillment_type === 'takeaway' ? 'Para llevar' : 'Domicilio';
+  const fulfillmentText = isDineIn ? 'Consumo en local' : 
+                          isTakeaway ? 'Para llevar' : 'Domicilio';
   
   const whatsappNumber = (restaurantSettings?.whatsapp_number_orders || "573138830171").replace(/[\s+]/g, '');
   const wppMessage = encodeURIComponent(`¡Hola! 👋 Envío el comprobante de pago de mi pedido #${order.id.slice(0,4).toUpperCase()} en ${brandName}. ✨`);
@@ -288,7 +293,7 @@ export default function OrderStatus({ orderId }) {
         {/* =========================================
             ALERTA PAGO PENDIENTE (Si aplica)
         ========================================= */}
-        {order.status === 'waiting_payment' && (
+        {isPaymentPending && order.status !== 'cancelled' && order.status !== 'delivered' && (
           <motion.div 
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-orange-200 mb-8 overflow-hidden relative"

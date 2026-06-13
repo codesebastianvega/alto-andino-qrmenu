@@ -1008,26 +1008,6 @@ export default function CartModal({ open, onClose }) {
               {/* Fulfillment Type Selector (Only if not in POS mode or if allowed) */}
               {!isPOSMode && items.length > 0 && (
                 <div className="px-4 pt-4 sm:px-6">
-                  <div className="flex p-1 bg-neutral-100 rounded-xl mb-4">
-                    {[
-                      { id: 'dine_in', label: 'En mesa', icon: 'heroicons:utensils' },
-                      { id: 'takeaway', label: 'Llevar', icon: 'heroicons:shopping-bag' },
-                      { id: 'delivery', label: 'Domicilio', icon: 'heroicons:truck' }
-                    ].map((type) => (
-                      <button
-                        key={type.id}
-                        onClick={() => setFulfillmentType(type.id)}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-lg transition-all ${
-                          fulfillmentType === type.id 
-                            ? 'bg-white text-neutral-900 shadow-sm ring-1 ring-black/5' 
-                            : 'text-neutral-500 hover:text-neutral-700'
-                        }`}
-                      >
-                        <Icon icon={type.icon} className="text-lg" />
-                        {type.label}
-                      </button>
-                    ))}
-                  </div>
 
                   {/* Delivery Radius Information */}
                   {fulfillmentType === 'delivery' && currentLocation?.delivery_radius_km && (
@@ -1320,11 +1300,34 @@ export default function CartModal({ open, onClose }) {
                       </div>
                     )}
 
-                    {!isPOSMode && fulfillmentType !== 'dine_in' && (
-                      <p className="text-sm text-gray-400 mt-4 leading-relaxed">
-                        Por favor completa el pago para <br/> iniciar la preparación.
-                      </p>
-                    )}
+                    {!isPOSMode && fulfillmentType !== 'dine_in' && !isPaid && (() => {
+                      const proofPhone = (currentLocation?.whatsapp || settings?.whatsapp_number_orders || '').replace(/[\s+]/g, '');
+                      const proofOrderCode = lastOrderId ? lastOrderId.slice(-4).toUpperCase() : '';
+                      const proofMsg = encodeURIComponent('¡Hola! 👋 Envío el comprobante de pago de mi pedido #' + proofOrderCode + '. ✨');
+                      const proofUrl = 'https://wa.me/' + proofPhone + '?text=' + proofMsg;
+                      return (
+                      <div className="mt-6 w-full max-w-sm mx-auto">
+                        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 text-center">
+                          <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Icon icon="solar:wallet-bold" className="text-2xl text-orange-500" />
+                          </div>
+                          <p className="text-sm font-bold text-gray-800 mb-1">Confirmación de Pago</p>
+                          <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+                            Para iniciar la preparación, envía tu comprobante de pago por WhatsApp.
+                          </p>
+                          <a
+                            href={proofUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full bg-[#25D366] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(37,211,102,0.3)] hover:shadow-[0_6px_20px_rgba(37,211,102,0.4)] hover:-translate-y-0.5 transition-all"
+                          >
+                            <Icon icon="logos:whatsapp-icon" className="text-xl" />
+                            Enviar Comprobante
+                          </a>
+                        </div>
+                      </div>
+                      );
+                    })()}
                 </div>
 
                 <div className="w-full space-y-3">

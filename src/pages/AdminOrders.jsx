@@ -15,7 +15,7 @@ const ORDER_STATUSES = [
   { id: 'new', label: 'Nuevos', color: 'text-blue-600', icon: 'heroicons:star' },
   { id: 'preparing', label: 'En Cocina', color: 'text-yellow-600', icon: 'heroicons:fire' },
   { id: 'ready', label: 'Listos', color: 'text-emerald-600', icon: 'heroicons:check-badge' },
-  { id: 'on_table', label: 'En Mesa', color: 'text-purple-600', icon: 'heroicons:home' },
+  { id: 'on_table', label: 'En Mesa / En Camino', color: 'text-purple-600', icon: 'heroicons:home' },
 ];
 
 const playNotificationSound = () => {
@@ -505,7 +505,7 @@ export default function AdminOrders() {
     if (!destination) return;
     if (source.droppableId !== destination.droppableId) {
       const orderId = draggableId;
-      const newStatus = destination.droppableId;
+      let newStatus = destination.droppableId;
       const order = orders.find(o => o.id === orderId);
 
       // Protección contra cancelaciones accidentales
@@ -516,6 +516,13 @@ export default function AdminOrders() {
           toast("Ingresa el motivo de cancelación para continuar", { icon: '📝' });
         }
         return; // Detenemos aquí, el usuario deberá confirmar en el panel de detalles
+      }
+
+      // Columna 4 dinámica: en_mesa para dine_in, en_camino para delivery/takeaway
+      if (newStatus === 'on_table' && order) {
+        if (order.fulfillment_type === 'delivery' || order.fulfillment_type === 'takeaway') {
+          newStatus = 'on_the_way';
+        }
       }
 
       updateOrderStatus(orderId, newStatus);
@@ -825,7 +832,9 @@ export default function AdminOrders() {
 
                 const colOrders = statusCol.id === 'new'
                     ? orders.filter(o => o.status === 'new' || o.status === 'waiting_payment').sort((a,b) => sortOrders(a, b, true))
-                    : orders.filter(o => o.status === statusCol.id).sort((a,b) => sortOrders(a, b, true));
+                    : statusCol.id === 'on_table'
+                      ? orders.filter(o => o.status === 'on_table' || o.status === 'on_the_way').sort((a,b) => sortOrders(a, b, true))
+                      : orders.filter(o => o.status === statusCol.id).sort((a,b) => sortOrders(a, b, true));
 
                 // Color themes per column
                 const themes = {
@@ -911,6 +920,9 @@ export default function AdminOrders() {
                             <OrderTimer createdAt={order.created_at} status={order.status} />
                             {order.fulfillment_type === 'dine_in' && (
                               <span className="text-[8px] font-black bg-emerald-500 text-white px-2 py-0.5 rounded-full uppercase tracking-tighter">MESA</span>
+                            )}
+                            {order.status === 'on_the_way' && (
+                              <span className="text-[8px] font-black bg-indigo-500 text-white px-2 py-0.5 rounded-full uppercase tracking-tighter animate-pulse">EN CAMINO</span>
                             )}
                           </div>
                         </div>
@@ -1379,7 +1391,7 @@ export default function AdminOrders() {
                     </button>
                   )}
 
-                  {/* BOTÓN: SERVIR EN MESA / FINALIZAR */}
+                  {/* BOTÓN: SERVIR EN MESA / EN CAMINO / FINALIZAR */}
                   {selectedOrder.status === 'ready' && (
                     <div className="flex flex-col gap-3">
                       {selectedOrder.fulfillment_type === 'dine_in' && (
@@ -1390,6 +1402,17 @@ export default function AdminOrders() {
                         >
                           <Icon icon="solar:shop-2-bold" className="text-2xl" />
                           SERVIR EN MESA
+                        </button>
+                      )}
+
+                      {(selectedOrder.fulfillment_type === 'delivery' || selectedOrder.fulfillment_type === 'takeaway') && (
+                        <button 
+                          onClick={() => updateOrderStatus(selectedOrder.id, 'on_the_way')}
+                          disabled={updatingStatus === selectedOrder.id}
+                          className="w-full py-3 md:py-4.5 bg-purple-600 hover:bg-purple-700 text-white rounded-[2rem] font-black text-base shadow-2xl shadow-purple-200/50 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 border-2 border-purple-600 hover:-translate-y-0.5"
+                        >
+                          <Icon icon="solar:delivery-bold" className="text-2xl" />
+                          {selectedOrder.fulfillment_type === 'delivery' ? 'ENVIAR DOMICILIO' : 'LISTO PARA RECOGER'}
                         </button>
                       )}
                       
@@ -1413,8 +1436,8 @@ export default function AdminOrders() {
                     </div>
                   )}
 
-                  {/* BOTÓN: FINALIZAR (Desde En Mesa) */}
-                  {selectedOrder.status === 'on_table' && (
+                  {/* BOTÓN: FINALIZAR (Desde En Mesa / En Camino) */}
+                  {(selectedOrder.status === 'on_table' || selectedOrder.status === 'on_the_way') && (
                     <button 
                       onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
                       disabled={
@@ -1430,7 +1453,7 @@ export default function AdminOrders() {
                       <Icon icon="solar:check-read-bold" className="text-2xl" />
                       {restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
                         ? 'PAGO REQUERIDO PARA FINALIZAR'
-                        : 'FINALIZAR PEDIDO'}
+                        : selectedOrder.status === 'on_the_way' ? 'PEDIDO ENTREGADO' : 'FINALIZAR PEDIDO'}
                     </button>
                   )}
                 </div>
