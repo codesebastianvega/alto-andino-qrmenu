@@ -464,7 +464,12 @@ export default function App() {
               </AnimatePresence>
 
               {!isDemo && !isAuthView && brand_slug && brand_slug !== 'anonimo' && (
-                <Header onCartOpen={() => setOpen(true)} onGuideOpen={() => setOpenGuide(true)} currentHash={currentHash} />
+                <Header
+                  onCartOpen={() => setOpen(true)}
+                  onGuideOpen={() => setOpenGuide(true)}
+                  cartCount={cart?.items?.length || 0}
+                  currentHash={currentHash}
+                />
               )}
 
 
@@ -549,7 +554,7 @@ export default function App() {
         {((isOrderingMode || isMenuView || (!isLandingView && !isNewAdminPanel && !isSpecialPlatformView && !orderTrackingId)) && !isExplicitInicio) && (
           <>
             <main
-              className={`mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl px-5 ${isDemo ? 'pt-12 pb-20 sm:px-6 md:px-8' : 'pt-24 sm:px-6 sm:pt-24 md:px-8 md:pt-24'}`}
+              className={`mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl px-5 ${isDemo ? 'pt-12 pb-20 sm:px-6 md:px-8' : 'pt-6 pb-24 sm:px-6 sm:pt-8 md:px-8 md:pt-24'}`}
             >
               <MenuHero 
                 query={query}
@@ -570,7 +575,12 @@ export default function App() {
           </>
         )}
 
-          {!isDemo && brand_slug && <BottomTabBar currentHash={currentHash} />}
+          {!isDemo && brand_slug && (
+            <BottomTabBar
+              currentHash={currentHash}
+              onAllergensOpen={() => setOpenGuide(true)}
+            />
+          )}
 
           {/* Barra flotante y Drawer del carrito */}
           <Suspense fallback={<div />}>
