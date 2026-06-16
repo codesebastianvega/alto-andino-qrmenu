@@ -146,6 +146,11 @@ export default function App() {
   
   const isOrderingMode = isMenuView || !!localStorage.getItem("aa_current_mesa") || searchParams.get("mesa");
   const hasFloatingCartBar = !!brand_slug && (cart?.items?.length || 0) > 0;
+  const shouldRenderPublicMenu =
+    !isExplicitInicio &&
+    !isSpecialPlatformView &&
+    !orderTrackingId &&
+    (isOrderingMode || isMenuView || (!isLandingView && !isNewAdminPanel));
 
   useEffect(() => {
     // En el panel de admin, priorizamos el nombre de la marca de la sesión
@@ -551,7 +556,7 @@ export default function App() {
 
         {/* Menu normal: Si estamos en modo orden o hash explícito #menu, o si NO es la vista landing. 
             IMPORTANTE: Excluimos vistas especiales (Portal, Auth, Perfil) y el hash explícito #inicio */}
-        {((isOrderingMode || isMenuView || (!isLandingView && !isNewAdminPanel && !isSpecialPlatformView && !orderTrackingId)) && !isExplicitInicio) && (
+        {shouldRenderPublicMenu && (
           <>
             <main
               className={`mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl px-5 ${isDemo ? 'pt-12 pb-20 sm:px-6 md:px-8' : 'pt-6 pb-24 sm:px-6 sm:pt-8 md:px-8 md:pt-24'}`}

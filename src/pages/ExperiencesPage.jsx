@@ -8,6 +8,27 @@ import Footer from '../components/Footer';
 
 const ExperiencesSection = lazy(() => import('../components/ExperiencesSection'));
 
+const FALLBACK_EXPERIENCES_IMAGE = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=2000";
+const FALLBACK_EVENT_PLANNER_IMAGE = "https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?auto=format&fit=crop&q=80&w=800";
+
+function getSafeSupabaseImageUrl(value, fallback) {
+  if (!value) return fallback;
+
+  try {
+    const imageUrl = new URL(value);
+    const currentSupabaseHost = new URL(import.meta.env.VITE_SUPABASE_URL || '').host;
+    const isSupabaseStorage = imageUrl.hostname.endsWith('.supabase.co') && imageUrl.pathname.includes('/storage/');
+
+    if (isSupabaseStorage && currentSupabaseHost && imageUrl.host !== currentSupabaseHost) {
+      return fallback;
+    }
+
+    return value;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function ExperiencesPage() {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [eventQuery, setEventQuery] = useState('');
@@ -18,6 +39,8 @@ export default function ExperiencesPage() {
   const { activeBrand } = useAuth();
   
   const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
+  const experiencesHeroImage = getSafeSupabaseImageUrl(homeSettings?.experiences_img, FALLBACK_EXPERIENCES_IMAGE);
+  const eventPlannerImage = getSafeSupabaseImageUrl(homeSettings?.event_planner_img, FALLBACK_EVENT_PLANNER_IMAGE);
 
   // Variantes de animación
   const fadeUp = {
@@ -71,7 +94,7 @@ export default function ExperiencesPage() {
         {/* Background Image with Parallax effect */}
         <div className="absolute inset-0 z-0">
           <img 
-            src={homeSettings?.experiences_img || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=2000"} 
+            src={experiencesHeroImage} 
             alt={`Experiencias ${brandName}`} 
             className="w-full h-full object-cover object-center"
           />
@@ -160,7 +183,7 @@ export default function ExperiencesPage() {
             {/* Imagen Lateral (Ocupa la mitad derecha) */}
             <div className="w-full md:w-1/2 h-[300px] md:h-auto md:absolute md:inset-y-0 md:right-0 overflow-hidden">
               <img 
-                src={homeSettings?.event_planner_img || "https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?auto=format&fit=crop&q=80&w=800"} 
+                src={eventPlannerImage} 
                 className="w-full h-full object-cover" 
                 alt="Eventos Privados" 
               />
