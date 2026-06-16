@@ -7,7 +7,7 @@ import { PrimaryButton, SecondaryButton, FormField, TextInput, PageHeader, Switc
 import { Icon } from '@iconify-icon/react';
 import { Loader2, Sparkles, Home, BookOpen, Layers, Palette, Cpu, Settings, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
 import AdminBranding from './AdminBranding';
-import { validateImageSize } from '../utils/images';
+import { validateImageSize, compressAndWebp, getMaxImageSizeMB } from '../utils/images';
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 2000 }),
@@ -344,13 +344,14 @@ export default function AdminWebContent() {
 
     setUploadingImage(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${activeBrand.id}/landing_${field}_${Date.now()}.${fileExt}`;
+      // Comprimir y convertir a WebP
+      const compressedFile = await compressAndWebp(file, { maxWidthOrHeight: 1600, maxSizeMB: 0.3 });
+      const fileName = `${activeBrand.id}/landing_${field}_${Date.now()}.webp`;
       const filePath = `branding/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('products')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, compressedFile, { upsert: true });
 
       if (uploadError) throw uploadError;
 

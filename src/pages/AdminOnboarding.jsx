@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/supabase';
 import { 
@@ -16,10 +17,11 @@ import {
   Briefcase
 } from 'lucide-react';
 import { toast } from '../components/Toast';
-import { validateImageSize } from '../utils/images';
+import { validateImageSize, compressAndWebp, getMaxImageSizeMB } from '../utils/images';
 
 export default function AdminOnboarding() {
-  const { activeBrand } = useAuth();
+  const { activeBrand, user, refreshProfile } = useAuth();
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -92,13 +94,14 @@ export default function AdminOnboarding() {
 
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${activeBrand.id}/logo_${Date.now()}.${fileExt}`;
+      // Comprimir a WebP
+      const compressedFile = await compressAndWebp(file, { maxWidthOrHeight: 800, maxSizeMB: 0.1 });
+      const fileName = `${activeBrand.id}/logo_${Date.now()}.webp`;
       const filePath = `branding/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('products') // Using products bucket as it exists
-        .upload(filePath, file);
+        .upload(filePath, compressedFile);
 
       if (uploadError) throw uploadError;
 
@@ -155,8 +158,11 @@ export default function AdminOnboarding() {
 
       if (settingsError) throw settingsError;
 
-      // 3. Refresh context
-      window.location.reload(); // Hard refresh to clear onboarding state and reload all data
+      // 3. Refrescar contexto y navegar al slug actualizado. Si el usuario
+      // cambio el slug durante onboarding, la URL anterior deja la app sin marca activa.
+      const params = window.location.search || '?admin_page=checkout';
+      if (user?.id) await refreshProfile(user.id);
+      navigate(`/${formData.slug}/${params}#admin`, { replace: true });
     } catch (err) {
       console.error('Error in onboarding:', err);
       setError(err.message || 'Error al guardar la configuración');

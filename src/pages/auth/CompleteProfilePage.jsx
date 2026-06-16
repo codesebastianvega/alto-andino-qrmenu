@@ -49,7 +49,7 @@ async function ensureMutation(query, message) {
 }
 
 export default function CompleteProfilePage() {
-  const { user, needsOnboarding, refreshProfile, loading: authLoading } = useAuth();
+  const { user, needsOnboarding, refreshProfile, loading: authLoading, activeBrand } = useAuth();
   const navigate = useNavigate();
 
   const [step, setStep] = useState(1);
@@ -77,9 +77,12 @@ export default function CompleteProfilePage() {
   // Si ya tiene negocio, redirigir al panel
   useEffect(() => {
     if (!needsOnboarding && !loading && user) {
-      navigate(`/admin/checkout?plan=${pendingPlan}`, { replace: true });
+      const target = activeBrand?.slug
+        ? `/${activeBrand.slug}/?plan=${pendingPlan}&admin_page=checkout#admin`
+        : '/#portal';
+      navigate(target, { replace: true });
     }
-  }, [needsOnboarding, loading, user, navigate, pendingPlan]);
+  }, [needsOnboarding, loading, user, navigate, pendingPlan, activeBrand]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -97,6 +100,38 @@ export default function CompleteProfilePage() {
       }
 
       const planId = PLAN_IDS[pendingPlan] || PLAN_IDS[DEFAULT_PLAN_SLUG];
+
+      const { data: existingBrands, error: existingBrandError } = await supabase
+        .from('brands')
+        .select('id, slug')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (existingBrandError) {
+        throw new Error('No se pudo verificar si ya existe un negocio. ' + existingBrandError.message);
+      }
+
+      if (existingBrands?.length) {
+        const existingBrand = existingBrands[0];
+        await ensureMutation(
+          supabase
+            .from('profiles')
+            .update({ role: 'owner', brand_id: existingBrand.id, full_name: formData.restaurantName })
+            .eq('id', user.id)
+            .select('id')
+            .single(),
+          'No se pudo actualizar el perfil del propietario'
+        );
+
+        sessionStorage.removeItem('aluna_pending_name');
+        sessionStorage.removeItem('aluna_pending_type');
+        sessionStorage.removeItem('aluna_pending_plan');
+
+        await refreshProfile(user.id);
+        navigate(`/${existingBrand.slug}/?plan=${pendingPlan}&admin_page=checkout#admin`, { replace: true });
+        return;
+      }
 
       // 1. Crear Brand
       const brandSlug = formData.restaurantName
@@ -149,7 +184,11 @@ export default function CompleteProfilePage() {
       // 5. Crear staff Admin
       await ensureMutation(
         supabase.from('staff').insert({
-          name: 'Admin Principal', role: 'admin', pin: '1234', brand_id: brandId,
+          name: 'Admin Principal',
+          role: 'admin',
+          pin: '1234',
+          brand_id: brandId,
+          access_all_locations: true,
         }),
         'No se pudo crear el admin principal'
       );
@@ -163,7 +202,7 @@ export default function CompleteProfilePage() {
 
       // Refrescar el contexto y redirigir
       await refreshProfile(user.id);
-      setTimeout(() => navigate(`/admin/checkout?plan=${pendingPlan}`, { replace: true }), 2000);
+      setTimeout(() => navigate(`/${brandData.slug}/?plan=${pendingPlan}&admin_page=checkout#admin`, { replace: true }), 2000);
 
     } catch (err) {
       setError(err.message || 'Error al crear el negocio.');

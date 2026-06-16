@@ -14,7 +14,8 @@ import {
   BentoCard
 } from './ui';
 import IconPicker from './IconPicker';
-import { convertDriveLink, validateImageSize, compressAndWebp } from '../../utils/images';
+import { convertDriveLink, validateImageSize, compressAndWebp, getMaxImageSizeMB } from '../../utils/images';
+import { useAuth } from '../../context/AuthContext';
 import { toast as toastFn } from '../Toast';
 
 const toast = {
@@ -23,6 +24,7 @@ const toast = {
 };
 
 export default function CategoryForm({ category, onSave, onCancel }) {
+  const { activeBrand } = useAuth();
   const { locations } = useLocations();
   const { getCategoryOverrides, saveCategoryOverrides } = useLocationOverrides();
   const [locationOverrides, setLocationOverrides] = useState([]);
@@ -167,7 +169,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
 
       const originalSize = file.size;
       // 2. COMPRESS & CONVERT to WebP
-      const compressedFile = await compressAndWebp(file);
+      const compressedFile = await compressAndWebp(file, activeBrand?.plan_id);
       const finalSize = compressedFile.size;
       
       // 3. PREPARE PATH
@@ -371,31 +373,9 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                   </div>
                 )}
 
-                {!formData.banner_image_url && <ImageGuidance />}
+                {!formData.banner_image_url && <ImageGuidance maxMB={getMaxImageSizeMB(activeBrand?.plan_id)} />}
 
-                {uploadStats && formData.banner_image_url && (
-                  <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 animate-in fade-in slide-in-from-top-2">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2 text-emerald-700">
-                        <Icon icon="lucide:sparkles" className="w-4 h-4" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Optimización Exitosa</span>
-                      </div>
-                      <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-full text-[9px] font-black">
-                        -{uploadStats.reduction}%
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-white/60 rounded-xl p-2 border border-emerald-100/50 text-center">
-                        <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">Original</p>
-                        <p className="text-xs font-bold text-gray-600">{uploadStats.original}KB</p>
-                      </div>
-                      <div className="bg-white/60 rounded-xl p-2 border border-emerald-100/50 text-center">
-                        <p className="text-[9px] font-bold text-emerald-500 uppercase mb-0.5">WebP</p>
-                        <p className="text-xs font-bold text-emerald-700">{uploadStats.final}KB</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+
 
                 <label className={`group relative flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
                   isUploading ? 'bg-gray-50 border-gray-100 cursor-wait' : 'border-gray-200 bg-gray-50/50 hover:border-[#2f4131]/30 hover:bg-white hover:shadow-xl hover:shadow-gray-200/50'
@@ -422,7 +402,31 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                 </label>
 
                 <div className="pt-2">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-2">URL Manual / CDN</p>
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">URL Manual / CDN</p>
+                    {uploadStats && formData.banner_image_url ? (
+                      <div className="flex items-center gap-1.5 animate-in fade-in zoom-in duration-300">
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
+                          WebP
+                        </span>
+                        <span className="bg-gray-50 text-gray-600 border border-gray-200 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider shadow-sm">
+                          {uploadStats.final} KB
+                        </span>
+                      </div>
+                    ) : formData.banner_image_url && formData.banner_image_url.includes('.webp') ? (
+                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
+                        WebP
+                      </span>
+                    ) : formData.banner_image_url && formData.banner_image_url.includes('images.unsplash.com') ? (
+                      <span className="bg-gray-50 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
+                        UNSPLASH
+                      </span>
+                    ) : formData.banner_image_url ? (
+                      <span className="bg-gray-50 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
+                        {formData.banner_image_url.match(/\.([a-zA-Z0-9]{3,4})(?:[\?#]|$)/)?.[1]?.toUpperCase() || 'IMG'}
+                      </span>
+                    ) : null}
+                  </div>
                   <TextInput 
                     name="banner_image_url" 
                     value={formData.banner_image_url} 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
@@ -15,10 +15,13 @@ export const useCategories = () => {
   const [error, setError] = useState(null);
   const { activeBrand } = useAuth();
   const activeBrandId = activeBrand?.id;
+  const isMountedRef = useRef(false);
 
-  const fetchCategories = useCallback(async (locationId = 'all') => {
+  const fetchCategories = useCallback(async (locationId = 'all', options = {}) => {
+    const { signal } = options;
     try {
-      setLoading(true);
+      if (signal?.aborted) return;
+      if (isMountedRef.current) setLoading(true);
       console.log('Fetching categories for location:', locationId);
       
       let query = supabase
@@ -32,8 +35,14 @@ export const useCategories = () => {
       if (activeBrandId) {
         query = query.eq('brand_id', activeBrandId);
       }
+
+      if (signal) {
+        query = query.abortSignal(signal);
+      }
         
       const { data, error } = await query.order('sort_order', { ascending: true });
+
+      if (signal?.aborted || !isMountedRef.current) return;
 
       if (error) {
         console.error('Categories error:', error);
@@ -43,10 +52,17 @@ export const useCategories = () => {
       // Fetch location-specific product links if a location is active
       let linkedProductIds = null;
       if (locationId && locationId !== 'all') {
-        const { data: lps } = await supabase
+        let locationQuery = supabase
           .from('location_product_status')
           .select('product_id')
           .eq('location_id', locationId);
+
+        if (signal) {
+          locationQuery = locationQuery.abortSignal(signal);
+        }
+
+        const { data: lps } = await locationQuery;
+        if (signal?.aborted || !isMountedRef.current) return;
         linkedProductIds = new Set((lps || []).map(r => r.product_id));
       }
 
@@ -78,20 +94,27 @@ export const useCategories = () => {
       setCategories(enrichedData);
       setError(null);
     } catch (err) {
+      if (signal?.aborted || err?.name === 'AbortError') return;
       console.error('Error fetching categories:', err);
-      setError(err.message);
+      if (isMountedRef.current) setError(err.message);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted && isMountedRef.current) setLoading(false);
     }
   }, [activeBrandId]);
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     if (!activeBrandId) {
       setLoading(false);
-      return;
+      return () => {
+        isMountedRef.current = false;
+      };
     }
 
-    fetchCategories();
+    const abortController = new AbortController();
+
+    fetchCategories('all', { signal: abortController.signal });
 
     // Real-time listener
     const channel = supabase
@@ -101,15 +124,17 @@ export const useCategories = () => {
         schema: 'public', 
         table: 'categories',
         filter: `brand_id=eq.${activeBrandId}`
-      }, () => fetchCategories())
+      }, () => fetchCategories('all', { signal: abortController.signal }))
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'location_categories'
-      }, () => fetchCategories())
+      }, () => fetchCategories('all', { signal: abortController.signal }))
       .subscribe();
 
     return () => {
+      isMountedRef.current = false;
+      abortController.abort();
       supabase.removeChannel(channel);
     };
   }, [activeBrandId, fetchCategories]);

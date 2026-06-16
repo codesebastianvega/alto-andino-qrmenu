@@ -20,7 +20,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/supabase';
 import { toast } from '../components/Toast';
 import { ImageGuidance } from '../components/admin/ui';
-import { validateImageSize } from '../utils/images';
+import { validateImageSize, compressAndWebp, getMaxImageSizeMB } from '../utils/images';
 
 export default function AdminProfile() {
   const { user, profile, signOut, refreshProfile } = useAuth();
@@ -118,13 +118,15 @@ export default function AdminProfile() {
         return;
       }
 
-      const fileExt = file.name.split('.').pop();
+      // Comprimir a WebP
+      const compressedFile = await compressAndWebp(file, { maxWidthOrHeight: 400, maxSizeMB: 0.1 });
+      const fileExt = 'webp';
       const fileName = `${Math.random()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
       let { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file);
+        .upload(filePath, compressedFile);
 
       if (uploadError) throw uploadError;
 
@@ -218,7 +220,7 @@ export default function AdminProfile() {
               <p className="text-gray-500 font-medium">Gestiona tu identidad y seguridad en la plataforma Aluna.</p>
             </div>
             
-            <ImageGuidance />
+            <ImageGuidance maxMB={getMaxImageSizeMB(user?.brand?.plan_id || user?.plan_id)} />
             <div className="flex flex-wrap justify-center md:justify-start gap-3 mt-4">
               <span className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-1.5 rounded-full text-xs font-bold border border-green-100 shadow-sm">
                 <ShieldCheck size={14} /> Dueño / Administrador

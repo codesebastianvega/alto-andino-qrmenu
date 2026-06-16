@@ -328,7 +328,7 @@ export function LockOverlay({ featureName }) {
  */
 import { useState as useStateUI } from 'react';
 
-export function ImageGuidance() {
+export function ImageGuidance({ maxMB = 4 }) {
   const [showTutorial, setShowTutorial] = useStateUI(false);
 
   return (
@@ -336,67 +336,59 @@ export function ImageGuidance() {
       <button
         type="button"
         onClick={() => setShowTutorial(!showTutorial)}
-        className="inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-600 hover:text-blue-700 transition-colors bg-blue-50 px-2.5 py-1.5 rounded-xl border border-blue-100/50"
+        className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 transition-colors bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-100/50"
       >
         <Icon icon="solar:info-circle-bold-duotone" className="text-sm" />
-        {showTutorial ? 'Ocultar guía de imágenes' : 'Ver guía: Límite 4MB y Google Drive'}
+        {showTutorial ? 'Ocultar guía de imágenes' : 'Guía: Optimización inteligente y URLs'}
       </button>
 
       {showTutorial && (
-        <div className="mt-3 p-4 bg-white border border-blue-100 rounded-2xl shadow-sm space-y-4 animate-in slide-in-from-top-2 duration-200">
+        <div className="mt-3 p-4 bg-white border border-emerald-100 rounded-2xl shadow-sm space-y-4 animate-in slide-in-from-top-2 duration-200">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Icon icon="solar:link-bold-duotone" className="text-blue-500 text-sm" />
+              <div className="w-6 h-6 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <Icon icon="solar:upload-bold-duotone" className="text-emerald-500 text-sm" />
               </div>
               <p className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">
-                1. Usar Enlaces (Recomendado)
+                1. Subida Directa (Recomendado)
               </p>
             </div>
             <p className="text-[10px] text-gray-500 leading-relaxed mb-3">
-              Pegar un link directo (Unsplash, Google Drive) hace que el menú cargue más rápido.
+              Sube tus fotos libremente. Nuestro sistema cuenta con un motor de compresión inteligente que las transforma a <b>WebP ultra-ligeras</b> antes de subirlas.
             </p>
             
-            <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 space-y-2">
-              <p className="text-[10px] font-bold text-amber-800 flex items-center gap-1.5">
-                <Icon icon="logos:google-drive" className="text-xs" />
-                ¿Cómo usar fotos de Google Drive?
-              </p>
-              <ol className="text-[10px] text-amber-700 list-decimal ml-4 space-y-1.5">
-                <li>Sube la foto a tu <b>Google Drive</b>.</li>
-                <li>Click derecho → Compartir → Cambiar a <b>"Cualquier persona con el enlace"</b>.</li>
-                <li>Copia el enlace y <b>pégalo en el campo de texto</b>.</li>
-                <li className="font-bold">¡Listo! Nosotros lo convertimos automáticamente.</li>
-              </ol>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-xl border border-emerald-100">
+                <Icon icon="solar:leaf-bold-duotone" className="text-emerald-500 text-sm" />
+                <span className="text-[10px] font-bold text-emerald-700">Ahorra hasta un 90% de peso y tiempos de carga</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100">
+                <Icon icon="solar:shield-warning-bold-duotone" className="text-amber-500 text-sm" />
+                <span className="text-[10px] font-bold text-gray-600">Límite inicial del archivo: {maxMB.toFixed(1)} MB</span>
+              </div>
             </div>
           </div>
 
           <div className="pt-3 border-t border-gray-100">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Icon icon="solar:upload-bold-duotone" className="text-blue-500 text-sm" />
+                <Icon icon="solar:link-bold-duotone" className="text-blue-500 text-sm" />
               </div>
               <p className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">
-                2. Subir Archivo (Máx 4MB)
+                2. Banco de Imágenes Externo
               </p>
             </div>
             <p className="text-[10px] text-gray-500 leading-relaxed mb-3">
-              Si subes un archivo directamente, asegúrate de que no sea muy pesado.
+              Puedes seguir usando enlaces externos (ej. <b>Unsplash</b>). Ya no recomendamos Google Drive porque suele bloquear la visualización en menús.
             </p>
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100">
-                <Icon icon="solar:shield-warning-bold-duotone" className="text-amber-500 text-sm" />
-                <span className="text-[10px] font-bold text-gray-600">Límite estricto: 4.0 MB</span>
-              </div>
-              <a 
-                href="https://tinyjpg.com" 
-                target="_blank" 
-                rel="noreferrer" 
-                className="text-[10px] bg-white px-3 py-2 rounded-xl text-blue-600 border border-blue-100 hover:bg-blue-50 transition-all flex items-center justify-center gap-1.5 font-bold"
-              >
-                <Icon icon="solar:leaf-bold-duotone" className="text-green-600 text-sm" /> 
-                Comprimir en TinyJPG.com
-              </a>
+            <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 space-y-2">
+              <p className="text-[10px] font-bold text-amber-800 flex items-center gap-1.5">
+                <Icon icon="solar:danger-triangle-bold-duotone" className="text-xs" />
+                Evita usar Google Drive
+              </p>
+              <p className="text-[10px] text-amber-700 leading-relaxed">
+                Google cambia constantemente sus políticas y bloquea las fotos. Sube tus archivos directamente o usa fotos profesionales de Unsplash.
+              </p>
             </div>
           </div>
         </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'rea
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
-import { validateImageSize } from '../utils/images';
+import { validateImageSize, compressAndWebp, getMaxImageSizeMB } from '../utils/images';
 import { PageHeader, PrimaryButton, FormField, TextInput, ImageGuidance } from '../components/admin/ui';
 import { Icon } from '@iconify/react';
 import { Loader2, Upload, Palette, Type } from 'lucide-react';
@@ -202,13 +202,14 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
     else setUploadingFavicon(true);
 
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${activeBrand.id}/${type}_${Date.now()}.${fileExt}`;
+      // Comprimir a WebP
+      const compressedFile = await compressAndWebp(file, { maxWidthOrHeight: 800, maxSizeMB: 0.1 });
+      const fileName = `${activeBrand.id}/${type}_${Date.now()}.webp`;
       const filePath = `branding/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('products') // Using 'products' bucket as per existing code, or 'branding' if preferred
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, compressedFile, { upsert: true });
 
       if (uploadError) throw uploadError;
 
@@ -310,7 +311,7 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
                             {!isAdvancedLocked && <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'favicon')} disabled={uploadingFavicon} />}
                         </label>
                         </div>
-                        <ImageGuidance />
+                        <ImageGuidance maxMB={getMaxImageSizeMB(activeBrand?.plan_id)} />
                     </div>
                     </FormField>
                 </div>
@@ -333,7 +334,7 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
                     <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'logo')} disabled={uploadingLogo} />
                  </label>
                  <div className="w-full">
-                    <ImageGuidance />
+                    <ImageGuidance maxMB={getMaxImageSizeMB(activeBrand?.plan_id)} />
                  </div>
               </div>
             </div>
@@ -519,7 +520,7 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
                                 onChange={(e) => updateConcept(concept.id, 'image_url', e.target.value)}
                                 placeholder="https://..."
                               />
-                              <ImageGuidance />
+                              <ImageGuidance maxMB={getMaxImageSizeMB(activeBrand?.plan_id)} />
                             </FormField>
                           </div>
                         </div>

@@ -101,7 +101,13 @@ async function createBrand({ userId, name, businessType, planId }) {
     'No se pudo crear la configuracion de inicio'
   );
   await ensureMutation(
-    supabase.from('staff').insert({ name: 'Admin Principal', role: 'admin', pin: '1234', brand_id: brandId }),
+    supabase.from('staff').insert({
+      name: 'Admin Principal',
+      role: 'admin',
+      pin: '1234',
+      brand_id: brandId,
+      access_all_locations: true,
+    }),
     'No se pudo crear el admin principal'
   );
 
@@ -174,9 +180,9 @@ export default function RegisterPage() {
     setError(null);
     try {
       const planId = PLAN_IDS[selectedPlan] || PLAN_IDS.emprendedor;
-      await createBrand({ userId: user.id, name: formData.restaurantName, businessType: formData.businessType, planId });
+      const brand = await createBrand({ userId: user.id, name: formData.restaurantName, businessType: formData.businessType, planId });
       await refreshProfile(user.id);
-      navigate(`/admin/checkout?plan=${selectedPlan}`);
+      navigate(`/${brand.slug}/?plan=${selectedPlan}&admin_page=checkout#admin`);
     } catch (err) {
       setError(err.message);
       triggerShake();
@@ -229,13 +235,13 @@ export default function RegisterPage() {
       await forceSession(authData.session, newUser.id);
 
       const planId = PLAN_IDS[selectedPlan] || PLAN_IDS.esencial;
-      await createBrand({ userId: newUser.id, name: formData.restaurantName, businessType: formData.businessType, planId });
+      const brand = await createBrand({ userId: newUser.id, name: formData.restaurantName, businessType: formData.businessType, planId });
 
       sessionStorage.removeItem('aluna_pending_plan');
       sessionStorage.removeItem('aluna_pending_name');
       sessionStorage.removeItem('aluna_pending_type');
 
-      navigate(`/admin/checkout?plan=${selectedPlan}`);
+      navigate(`/${brand.slug}/?plan=${selectedPlan}&admin_page=checkout#admin`);
     } catch (err) {
       setError(err.message || 'Error al completar el registro.');
       triggerShake();
@@ -303,7 +309,7 @@ export default function RegisterPage() {
             )}
             {!pendingEmailVerification && (
               <Link
-                to={`/admin/checkout?plan=${selectedPlan}`}
+                to="/#portal"
                 className="w-full group relative flex items-center justify-center gap-2 py-4 bg-stone-900 text-white font-bold rounded-2xl overflow-hidden transition-transform hover:scale-[1.02] active:scale-[0.98] shadow-lg mt-4"
               >
                 <div className="absolute inset-0 bg-[#D4A853] translate-y-full group-hover:translate-y-0 transition-transform duration-300" />

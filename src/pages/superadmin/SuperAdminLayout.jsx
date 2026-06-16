@@ -10,7 +10,8 @@ import {
   Menu,
   X,
   ArrowLeft,
-  Home
+  Home,
+  MessageSquare
 } from 'lucide-react';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
@@ -23,6 +24,7 @@ export default function SuperAdminLayout() {
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Métricas', path: '/superadmin' },
+    { icon: MessageSquare, label: 'Leads', path: '/superadmin/leads' },
     { icon: Store, label: 'Negocios', path: '/superadmin/brands' },
     { icon: Users, label: 'Usuarios', path: '/superadmin/users' },
     { icon: CreditCard, label: 'Planes', path: '/superadmin/plans' },

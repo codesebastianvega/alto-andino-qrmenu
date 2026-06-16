@@ -65,14 +65,13 @@ const openWhatsApp = (msg) => {
 
 const TRIAL_UNLOCKS = [
   'Landing page propia',
-  'Panel de meseros',
+  'Panel de meseros (Kanban)',
   'Analíticas básicas y avanzadas',
   'Mesas QR + sistema KDS cocina',
   'Inventario y control de recetas',
   'Experiencias y fidelización',
   'Múltiples ubicaciones',
   'Marketplace Aluna',
-  'Asistente IA',
 ];
 
 
@@ -108,10 +107,10 @@ export default function UpgradeModal({ isOpen, onClose, currentPlanSlug, startTr
         console.error('Error fetching plans:', err);
         // Fallback plans
         setPlans([
-          { id: 'emprendedor', name: 'Emprendedor', price_monthly: 0, description: 'Comienza gratis', is_custom_pricing: false, features: [{is_included: true, display_name: 'Menú QR básico', sort_order: 1}] },
-          { id: 'esencial', name: 'Esencial', price_monthly: 29000, description: 'Para negocios locales', is_custom_pricing: false, features: [{is_included: true, display_name: 'Pedidos por WhatsApp', sort_order: 1}] },
-          { id: 'profesional', name: 'Profesional', price_monthly: 59000, description: 'Crecimiento sin límites', is_custom_pricing: false, features: [{is_included: true, display_name: 'Menú Digital + POS', sort_order: 1}] },
-          { id: 'premium', name: 'Premium', price_monthly: 129000, description: 'Todas las integraciones', is_custom_pricing: false, features: [{is_included: true, display_name: 'Analytics avanzados', sort_order: 1}] }
+          { id: 'emprendedor', name: 'Emprendedor', price_monthly: 29900, description: 'Para negocios que inician', is_custom_pricing: false, features: [{is_included: true, display_name: 'Panel Kanban Básico', sort_order: 1}] },
+          { id: 'esencial', name: 'Esencial', price_monthly: 59900, description: 'Operación regular', is_custom_pricing: false, features: [{is_included: true, display_name: 'Toma de pedidos (Meseros)', sort_order: 1}] },
+          { id: 'profesional', name: 'Profesional', price_monthly: 149900, description: 'Negocios en crecimiento', is_custom_pricing: false, features: [{is_included: true, display_name: 'Sistema de Cocina KDS', sort_order: 1}] },
+          { id: 'premium', name: 'Premium', price_monthly: 249900, description: 'Cadenas de alto volumen', is_custom_pricing: false, features: [{is_included: true, display_name: 'CRM de Clientes', sort_order: 1}] }
         ]);
       } finally {
         setLoadingPlans(false);
@@ -410,79 +409,81 @@ export default function UpgradeModal({ isOpen, onClose, currentPlanSlug, startTr
                       </div>
                     </motion.div>
 
-                    {/* AI Agent — green aurora */}
-                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.33 }}
-                      className="aurora-green rounded-2xl border border-emerald-500/[0.12] flex flex-col relative">
-                      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/25 to-transparent rounded-t-2xl" />
+                    {/* AI Agent — green aurora (Oculto temporalmente MVP V1) */}
+                    {false && (
+                      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.33 }}
+                        className="aurora-green rounded-2xl border border-emerald-500/[0.12] flex flex-col relative">
+                        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/25 to-transparent rounded-t-2xl" />
 
-                      <div className="relative p-5">
-                        {/* Agent header */}
-                        <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-                          <div className="relative w-8 h-8 rounded-full flex items-center justify-center text-base"
-                            style={{ background: 'linear-gradient(135deg,#4ade80,#22d3ee,#818cf8)' }}>
-                            🤖
+                        <div className="relative p-5">
+                          {/* Agent header */}
+                          <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+                            <div className="relative w-8 h-8 rounded-full flex items-center justify-center text-base"
+                              style={{ background: 'linear-gradient(135deg,#4ade80,#22d3ee,#818cf8)' }}>
+                              🤖
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-white font-bold text-sm">Aluna IA</p>
+                                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-400/10">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                  <span className="text-emerald-400 text-[9px] font-medium">En línea</span>
+                                </div>
+                              </div>
+                              <p className="text-white/30 text-[10px]">Lista para atender tu restaurante</p>
+                            </div>
                           </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-white font-bold text-sm">Aluna IA</p>
-                              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-400/10">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                <span className="text-emerald-400 text-[9px] font-medium">En línea</span>
+
+                          {/* Mini chat mock */}
+                          <div className="mb-4 space-y-2">
+                            <div className="flex gap-2 items-end">
+                              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[9px]">👤</div>
+                              <div className="px-3 py-1.5 rounded-2xl rounded-bl-sm bg-white/[0.06] border border-white/[0.08]">
+                                <p className="text-white/55 text-[11px]">¿Qué me recomiendas hoy?</p>
                               </div>
                             </div>
-                            <p className="text-white/30 text-[10px]">Lista para atender tu restaurante</p>
-                          </div>
-                        </div>
-
-                        {/* Mini chat mock */}
-                        <div className="mb-4 space-y-2">
-                          <div className="flex gap-2 items-end">
-                            <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[9px]">👤</div>
-                            <div className="px-3 py-1.5 rounded-2xl rounded-bl-sm bg-white/[0.06] border border-white/[0.08]">
-                              <p className="text-white/55 text-[11px]">¿Qué me recomiendas hoy?</p>
+                            <div className="flex gap-2 items-end justify-end">
+                              <div className="px-3 py-1.5 rounded-2xl rounded-br-sm max-w-[75%]"
+                                style={{ background: 'linear-gradient(135deg,rgba(74,222,128,0.15),rgba(34,211,238,0.1))' }}>
+                                <p className="text-white/70 text-[11px]">🔥 El lomo saltado — muy pedido esta semana. También el tiramisú, que agotó ayer.</p>
+                              </div>
+                              <div className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px]"
+                                style={{ background: 'linear-gradient(135deg,#4ade80,#22d3ee)' }}>🤖</div>
                             </div>
                           </div>
-                          <div className="flex gap-2 items-end justify-end">
-                            <div className="px-3 py-1.5 rounded-2xl rounded-br-sm max-w-[75%]"
-                              style={{ background: 'linear-gradient(135deg,rgba(74,222,128,0.15),rgba(34,211,238,0.1))' }}>
-                              <p className="text-white/70 text-[11px]">🔥 El lomo saltado — muy pedido esta semana. También el tiramisú, que agotó ayer.</p>
+
+                          {/* Capabilities */}
+                          <div className="grid grid-cols-2 gap-x-3 gap-y-2 mb-5">
+                            {[
+                              ['🧠','Analiza ventas y sugiere acciones'],
+                              ['💬','Mesero IA en WhatsApp 24/7'],
+                              ['🎯','Recomienda platos personalizados'],
+                              ['📊','Resúmenes diarios automáticos'],
+                              ['✨','Aprende de tu carta y clientes'],
+                              ['🔔','Alertas de bajo stock en tiempo real'],
+                            ].map(([emoji, text], i) => (
+                              <div key={i} className="flex items-start gap-1.5">
+                                <span className="text-xs mt-px shrink-0">{emoji}</span>
+                                <span className="text-white/40 text-[10px] leading-tight">{text}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="flex items-center justify-between pt-3 border-t border-white/[0.07]">
+                            <div>
+                              <span className="text-white font-black text-sm">+$49.900</span>
+                              <span className="text-white/25 text-[10px]">/mes · a cualquier plan</span>
                             </div>
-                            <div className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px]"
-                              style={{ background: 'linear-gradient(135deg,#4ade80,#22d3ee)' }}>🤖</div>
+                            <button type="button"
+                               onClick={() => openWhatsApp('Hola, quiero agregar el módulo de Aluna IA (+$49.900/mes) a mi plan actual. ¿Cómo lo activo?')}
+                               className="h-8 px-4 rounded-xl text-[11px] font-black text-black flex items-center gap-1.5 transition-all active:scale-[0.97] hover:opacity-90"
+                               style={{ background: 'linear-gradient(135deg,#4ade80,#22d3ee)' }}>
+                               Agregar ✨
+                             </button>
                           </div>
                         </div>
-
-                        {/* Capabilities */}
-                        <div className="grid grid-cols-2 gap-x-3 gap-y-2 mb-5">
-                          {[
-                            ['🧠','Analiza ventas y sugiere acciones'],
-                            ['💬','Mesero IA en WhatsApp 24/7'],
-                            ['🎯','Recomienda platos personalizados'],
-                            ['📊','Resúmenes diarios automáticos'],
-                            ['✨','Aprende de tu carta y clientes'],
-                            ['🔔','Alertas de bajo stock en tiempo real'],
-                          ].map(([emoji, text], i) => (
-                            <div key={i} className="flex items-start gap-1.5">
-                              <span className="text-xs mt-px shrink-0">{emoji}</span>
-                              <span className="text-white/40 text-[10px] leading-tight">{text}</span>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="flex items-center justify-between pt-3 border-t border-white/[0.07]">
-                          <div>
-                            <span className="text-white font-black text-sm">+$49.900</span>
-                            <span className="text-white/25 text-[10px]">/mes · a cualquier plan</span>
-                          </div>
-                          <button type="button"
-                             onClick={() => openWhatsApp('Hola, quiero agregar el módulo de Aluna IA (+$49.900/mes) a mi plan actual. ¿Cómo lo activo?')}
-                             className="h-8 px-4 rounded-xl text-[11px] font-black text-black flex items-center gap-1.5 transition-all active:scale-[0.97] hover:opacity-90"
-                             style={{ background: 'linear-gradient(135deg,#4ade80,#22d3ee)' }}>
-                             Agregar ✨
-                           </button>
-                        </div>
-                      </div>
-                    </motion.div>
+                      </motion.div>
+                    )}
                   </div>
 
                 </div>

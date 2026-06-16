@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { toast as toastFn } from '../components/Toast';
@@ -14,10 +14,14 @@ export const useAdminProducts = () => {
   const [error, setError] = useState(null);
   const { activeBrand } = useAuth();
   const activeBrandId = activeBrand?.id;
+  const isMountedRef = useRef(false);
+  const isRealtimeActiveRef = useRef(false);
 
-  const fetchProducts = useCallback(async (locationId = 'all') => {
+  const fetchProducts = useCallback(async (locationId = 'all', options = {}) => {
+    const { signal } = options;
     try {
-      setLoading(true);
+      if (signal?.aborted) return;
+      if (isMountedRef.current) setLoading(true);
       
       let query = supabase
         .from('products')
@@ -32,6 +36,10 @@ export const useAdminProducts = () => {
         query = query.eq('brand_id', activeBrandId);
       }
 
+      if (signal) {
+        query = query.abortSignal(signal);
+      }
+
       // We no longer filter out products that don't have a status record for the location.
       // Instead, we fetch all and let the UI handle the "Inherit" state.
       // if (locationId && locationId !== 'all') { ... }
@@ -39,6 +47,8 @@ export const useAdminProducts = () => {
       const { data, error } = await query
         .order('sort_order', { ascending: true })
         .order('name');
+
+      if (signal?.aborted || !isMountedRef.current) return;
       
       if (error) throw error;
 
@@ -46,20 +56,29 @@ export const useAdminProducts = () => {
       const fetchedProducts = data || [];
       setProducts(fetchedProducts);
     } catch (err) {
+      if (signal?.aborted || err?.name === 'AbortError') return;
       console.error('Error fetching products:', err);
-      setError(err.message);
+      if (isMountedRef.current) setError(err.message);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted && isMountedRef.current) setLoading(false);
     }
   }, [activeBrandId]);
 
   useEffect(() => {
+    isMountedRef.current = true;
+    isRealtimeActiveRef.current = true;
+
     if (!activeBrandId) {
       setLoading(false);
-      return;
+      return () => {
+        isMountedRef.current = false;
+        isRealtimeActiveRef.current = false;
+      };
     }
 
-    fetchProducts();
+    const abortController = new AbortController();
+
+    fetchProducts('all', { signal: abortController.signal });
 
     // Real-time listener for products
     const channel = supabase
@@ -71,7 +90,7 @@ export const useAdminProducts = () => {
         filter: `brand_id=eq.${activeBrandId}`
       }, (payload) => {
         console.log('Realtime: Product change detected', payload);
-        fetchProducts();
+        fetchProducts('all', { signal: abortController.signal });
       })
       .on('postgres_changes', { 
         event: '*', 
@@ -79,7 +98,7 @@ export const useAdminProducts = () => {
         table: 'location_product_prices'
       }, (payload) => {
         console.log('Realtime: Price override change detected', payload);
-        fetchProducts();
+        fetchProducts('all', { signal: abortController.signal });
       })
       .on('postgres_changes', { 
         event: '*', 
@@ -87,16 +106,19 @@ export const useAdminProducts = () => {
         table: 'location_product_status'
       }, (payload) => {
         console.log('Realtime: Status override change detected', payload);
-        fetchProducts();
+        fetchProducts('all', { signal: abortController.signal });
       })
       .subscribe((status) => {
         console.log(`Realtime: Subscription status for products: ${status}`);
-        if (status === 'CHANNEL_ERROR') {
-          console.error('Realtime: Channel error detected for products');
+        if (status === 'CHANNEL_ERROR' && isRealtimeActiveRef.current) {
+          console.debug('Realtime: Products channel unavailable; falling back to manual refresh');
         }
       });
 
     return () => {
+      isMountedRef.current = false;
+      isRealtimeActiveRef.current = false;
+      abortController.abort();
       supabase.removeChannel(channel);
     };
   }, [activeBrandId, fetchProducts]);
