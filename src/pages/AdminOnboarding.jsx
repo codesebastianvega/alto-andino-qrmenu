@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/supabase';
 import { 
@@ -19,7 +20,8 @@ import { toast } from '../components/Toast';
 import { validateImageSize, compressAndWebp, getMaxImageSizeMB } from '../utils/images';
 
 export default function AdminOnboarding() {
-  const { activeBrand } = useAuth();
+  const { activeBrand, user, refreshProfile } = useAuth();
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -156,8 +158,11 @@ export default function AdminOnboarding() {
 
       if (settingsError) throw settingsError;
 
-      // 3. Refresh context
-      window.location.reload(); // Hard refresh to clear onboarding state and reload all data
+      // 3. Refrescar contexto y navegar al slug actualizado. Si el usuario
+      // cambio el slug durante onboarding, la URL anterior deja la app sin marca activa.
+      const params = window.location.search || '?admin_page=checkout';
+      if (user?.id) await refreshProfile(user.id);
+      navigate(`/${formData.slug}/${params}#admin`, { replace: true });
     } catch (err) {
       console.error('Error in onboarding:', err);
       setError(err.message || 'Error al guardar la configuración');

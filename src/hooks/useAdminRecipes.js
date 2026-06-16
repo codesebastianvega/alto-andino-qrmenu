@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { toast } from '../components/Toast';
@@ -8,10 +8,13 @@ export function useAdminRecipes() {
   const [loading, setLoading] = useState(true);
   const { activeBrand } = useAuth();
   const activeBrandId = activeBrand?.id;
+  const isMountedRef = useRef(false);
 
-  const fetchRecipes = useCallback(async (locationId = 'all') => {
+  const fetchRecipes = useCallback(async (locationId = 'all', options = {}) => {
+    const { signal } = options;
     try {
-      setLoading(true);
+      if (signal?.aborted) return;
+      if (isMountedRef.current) setLoading(true);
       let query = supabase
         .from('recipes')
         .select(`
@@ -28,8 +31,14 @@ export function useAdminRecipes() {
         query = query.eq('brand_id', activeBrandId);
       }
 
+      if (signal) {
+        query = query.abortSignal(signal);
+      }
+
       const { data, error } = await query
         .order('name');
+
+      if (signal?.aborted || !isMountedRef.current) return;
       
       if (error) throw error;
 
@@ -42,19 +51,28 @@ export function useAdminRecipes() {
 
       setRecipes(filteredData);
     } catch (err) {
+      if (signal?.aborted || err?.name === 'AbortError') return;
       console.error('Error fetching recipes:', err);
-      toast('Error al cargar recetas');
+      if (isMountedRef.current) toast('Error al cargar recetas');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted && isMountedRef.current) setLoading(false);
     }
   }, [activeBrandId]);
 
   useEffect(() => {
+    isMountedRef.current = true;
+    const abortController = new AbortController();
+
     if (activeBrandId) {
-      fetchRecipes();
+      fetchRecipes('all', { signal: abortController.signal });
     } else {
       setLoading(false);
     }
+
+    return () => {
+      isMountedRef.current = false;
+      abortController.abort();
+    };
   }, [activeBrandId, fetchRecipes]);
 
   return {

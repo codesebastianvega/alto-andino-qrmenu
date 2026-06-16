@@ -13,7 +13,7 @@ export default function ContactPage() {
     <div className="bg-white font-sans antialiased relative min-h-screen flex flex-col">
       <AlunaNavbar />
       <div className="flex-grow pt-24 bg-white flex flex-col justify-center">
-        <AlunaContact />
+        <AlunaContact source="contact_page" />
       </div>
       <AlunaFooter />
       <CookieConsent />

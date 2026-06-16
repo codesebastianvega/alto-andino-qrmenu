@@ -63,7 +63,13 @@ async function createBrand({ userId, name, businessType, planId }) {
   await Promise.allSettled([
     supabase.from('restaurant_settings').insert({ brand_id: brand.id, business_name: name }),
     supabase.from('home_settings').insert({ brand_id: brand.id }),
-    supabase.from('staff').insert({ name: 'Admin Principal', role: 'admin', pin: '1234', brand_id: brand.id }),
+    supabase.from('staff').insert({
+      name: 'Admin Principal',
+      role: 'admin',
+      pin: '1234',
+      brand_id: brand.id,
+      access_all_locations: true,
+    }),
   ]);
 
   return brand;
@@ -76,6 +82,8 @@ function DeleteBrandModal({ brand, onClose, onDeleted }) {
   const [confirmed, setConfirmed] = useState(false);
 
   const handleDelete = async () => {
+    setError('El borrado permanente está deshabilitado por seguridad. Usa suspensión/archivo mientras se define recuperación.');
+    return;
     setLoading(true);
     setError(null);
     try {

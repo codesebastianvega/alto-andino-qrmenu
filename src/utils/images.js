@@ -18,6 +18,14 @@ export const getCompressionOptions = (planId) => {
 };
 
 /**
+ * Obtiene el límite en MB según el plan_id para mostrar en la interfaz.
+ */
+export const getMaxImageSizeMB = (planId) => {
+  const planLimits = PLAN_LIMITS_BY_ID[planId] || { image_max_mb: 0.1 };
+  return planLimits.image_max_mb || 0.1;
+};
+
+/**
  * Comprime una imagen y la convierte a formato WebP.
  * @param {File} file El archivo original
  * @param {string} planId El ID del plan del usuario

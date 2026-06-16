@@ -142,6 +142,9 @@ export default function SuperAdminBrands() {
   };
 
   const deleteBrand = async (id, name) => {
+    alert('El borrado permanente está deshabilitado por seguridad. Usa Suspender Cuenta mientras se define un flujo de archivo y recuperación.');
+    setActiveDropdown(null);
+    return;
     if (!window.confirm(`¿Estás seguro de que deseas eliminar permanentemente el negocio "${name}"? Esta acción no se puede deshacer y borrará todas las sedes, menús, productos y configuraciones asociadas.`)) {
       return;
     }

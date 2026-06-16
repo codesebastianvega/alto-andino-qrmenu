@@ -21,6 +21,7 @@ const SuperAdminLayout = React.lazy(() => import("./pages/superadmin/SuperAdminL
 const SuperAdminMetrics = React.lazy(() => import("./pages/superadmin/SuperAdminMetrics.jsx"));
 const SuperAdminBrands = React.lazy(() => import("./pages/superadmin/SuperAdminBrands.jsx"));
 const SuperAdminBrandDetail = React.lazy(() => import("./pages/superadmin/SuperAdminBrandDetail.jsx"));
+const SuperAdminLeads = React.lazy(() => import("./pages/superadmin/SuperAdminLeads.jsx"));
 const SuperAdminUsers = React.lazy(() => import("./pages/superadmin/SuperAdminUsers.jsx"));
 const SuperAdminPlans = React.lazy(() => import("./pages/superadmin/SuperAdminPlans.jsx"));
 const SuperAdminSettings = React.lazy(() => import("./pages/superadmin/SuperAdminSettings.jsx"));
@@ -100,6 +101,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
                 </React.Suspense>
               }>
                 <Route index element={<SuperAdminMetrics />} />
+                <Route path="leads" element={<SuperAdminLeads />} />
                 <Route path="brands" element={<SuperAdminBrands />} />
                 <Route path="brands/:id" element={<SuperAdminBrandDetail />} />
                 <Route path="users" element={<SuperAdminUsers />} />

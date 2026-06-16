@@ -43,7 +43,7 @@ export default function AlunaLanding() {
       <AlunaPortfolio />
       <AlunaPricing />
       <AlunaFAQ />
-      <AlunaContact />
+      <AlunaContact source="landing_page" />
       <AlunaFooter />
       <CookieConsent />
     </div>
