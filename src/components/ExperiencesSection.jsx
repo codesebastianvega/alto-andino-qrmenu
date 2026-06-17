@@ -81,10 +81,11 @@ export default function ExperiencesSection({ variant = "slider", hideHeader = fa
         {experiences.map((exp, idx) => {
           const nextDate = exp.dates?.[0];
           return (
-              <div
+              <button
                 key={exp.id}
+                type="button"
                 onClick={() => setSelectedExp(exp)}
-                className={`group bg-white rounded-[2rem] p-3 shadow-sm hover:shadow-[0_30px_60px_rgba(0,0,0,0.08)] transition-all border border-black/5 flex flex-col cursor-pointer ${variant === 'slider' ? 'flex-shrink-0 w-[280px] sm:w-[320px] snap-start' : 'w-full'}`}
+                className={`group bg-white rounded-[2rem] p-3 text-left shadow-sm hover:shadow-[0_30px_60px_rgba(0,0,0,0.08)] transition-all border border-black/5 flex flex-col cursor-pointer touch-manipulation active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E6B05C] focus-visible:ring-offset-2 ${variant === 'slider' ? 'flex-shrink-0 w-[280px] sm:w-[320px] snap-start' : 'w-full'}`}
               >
                 <div className="w-full h-56 md:h-64 mb-5 overflow-hidden rounded-[1.5rem] relative">
                   {exp.image_url ? (
@@ -95,18 +96,18 @@ export default function ExperiencesSection({ variant = "slider", hideHeader = fa
                     </div>
                   )}
 
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                   {/* Date Pill over image */}
                   {nextDate && (
-                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg border border-white/20">
+                    <div className="pointer-events-none absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg border border-white/20">
                       <Icon icon="heroicons:calendar" className="text-[#E6B05C] text-sm" />
                        <span className="text-[10px] font-bold tracking-widest text-[#1A1A1A]">{nextDate.date}</span>
                     </div>
                   )}
                   
                    {/* Status Tag dummy */}
-                   <div className="absolute top-4 left-4 bg-[#1A1A1A] text-white px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">
+                   <div className="pointer-events-none absolute top-4 left-4 bg-[#1A1A1A] text-white px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">
                     {exp.type || "Evento"}
                   </div>
                 </div>
@@ -120,12 +121,12 @@ export default function ExperiencesSection({ variant = "slider", hideHeader = fa
 
                   <div className="mt-auto flex justify-between items-center border-t border-black/5 pt-4">
                     <span className="font-extrabold text-2xl text-[#1A1A1A]">{formatCurrency(exp.price)}</span>
-                    <div className="w-10 h-10 rounded-full bg-[#E6B05C] text-[#1A1A1A] flex items-center justify-center hover:scale-110 hover:bg-[#1A1A1A] hover:text-white transition-all shadow-lg shadow-[#E6B05C]/30">
+                    <div className="pointer-events-none w-10 h-10 rounded-full bg-[#E6B05C] text-[#1A1A1A] flex items-center justify-center group-hover:scale-110 group-hover:bg-[#1A1A1A] group-hover:text-white transition-all shadow-lg shadow-[#E6B05C]/30">
                       <Icon icon="heroicons:arrow-right" className="text-lg" />
                     </div>
                   </div>
                 </div>
-              </div>
+              </button>
           );
         })}
       </div>
