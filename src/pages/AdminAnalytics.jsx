@@ -240,6 +240,42 @@ const VisionTooltip = ({ active, payload, label, formatter, units = "ventas" }) 
   return null;
 };
 
+class AnalyticsTabBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  componentDidCatch(error, info) {
+    console.error('AdminAnalytics tab render error:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-900 shadow-sm">
+          <p className="text-sm font-black uppercase tracking-[0.18em] text-amber-700">Vista temporalmente no disponible</p>
+          <p className="mt-2 text-sm font-medium text-amber-800/80">
+            Hubo un problema renderizando esta grafica. Cambia de pestaña o recarga el panel.
+          </p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 export default function AdminAnalytics() {
   const [editingProductId, setEditingProductId] = useState(null);
   const [editValue, setEditValue] = useState('');
@@ -1214,6 +1250,7 @@ export default function AdminAnalytics() {
   }, [data?.orders]);
 
   const DiffBadge = ({ value }) => {
+    if (!Number.isFinite(Number(value))) return null;
     if (value === 0) return null;
     const isPositive = value > 0;
     return (
@@ -2880,10 +2917,12 @@ export default function AdminAnalytics() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
             >
-              {activeTab === 'resumen' && <RenderResumen />}
-              {activeTab === 'analitica' && <RenderAnalitica />}
-              {activeTab === 'operaciones' && <RenderOperaciones />}
-              {activeTab === 'crm' && <CustomerDirectory />}
+              <AnalyticsTabBoundary resetKey={activeTab}>
+                {activeTab === 'resumen' && <RenderResumen />}
+                {activeTab === 'analitica' && <RenderAnalitica />}
+                {activeTab === 'operaciones' && <RenderOperaciones />}
+                {activeTab === 'crm' && <CustomerDirectory />}
+              </AnalyticsTabBoundary>
             </motion.div>
           </AnimatePresence>
         </div>
