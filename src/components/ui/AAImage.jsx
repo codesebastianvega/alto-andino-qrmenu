@@ -1,4 +1,5 @@
 import React from "react";
+import { getSafeImageUrl } from "@/utils/images";
 
 // Muestra la imagen solo cuando cargue correctamente.
 // Si falla, no renderiza nada (evita redundancia/espacios en blanco).
@@ -16,8 +17,9 @@ export default function AAImage({
 }) {
   const [loaded, setLoaded] = React.useState(false);
   const [failed, setFailed] = React.useState(false);
+  const safeSrc = getSafeImageUrl(src);
 
-  if ((!src || failed) && !rest.fallback) return null;
+  if ((!safeSrc || failed) && !rest.fallback) return null;
   if (failed && rest.fallback) return rest.fallback;
 
   const handleLoad = (e) => {
@@ -44,7 +46,7 @@ export default function AAImage({
   if (priority) {
     return (
       <img
-        src={src}
+        src={safeSrc}
         {...common}
         fetchpriority="high"
         loading="eager"
@@ -54,7 +56,7 @@ export default function AAImage({
 
   return (
     <img
-      src={src}
+      src={safeSrc}
       {...common}
       loading="lazy"
     />

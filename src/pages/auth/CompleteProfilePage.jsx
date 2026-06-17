@@ -26,6 +26,7 @@ import { FadeIn, SpotlightCard, MagneticButton } from '../../components/aluna/an
 
 import { PLAN_IDS, PLAN_LABELS, DEFAULT_PLAN_SLUG } from '../../config/plans';
 import { safeSessionStorage as sessionStorage } from '../../utils/safeStorage';
+import { buildDefaultBusinessHours } from '../../utils/businessHours';
 
 
 const BUSINESS_TYPES = [
@@ -181,7 +182,13 @@ export default function CompleteProfilePage() {
         'No se pudo crear la configuracion de inicio'
       );
 
-      // 5. Crear staff Admin
+      // 5. Crear horario inicial
+      await ensureMutation(
+        supabase.from('business_hours').insert(buildDefaultBusinessHours(brandId)),
+        'No se pudo crear el horario inicial'
+      );
+
+      // 6. Crear staff Admin
       await ensureMutation(
         supabase.from('staff').insert({
           name: 'Admin Principal',

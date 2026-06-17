@@ -29,6 +29,7 @@ import { useMenuData } from '../context/MenuDataContext';
 import { useAuth } from '../context/AuthContext';
 import { formatCOP } from '../utils/money';
 import { useCart } from '../context/CartContext';
+import { getSafeImageUrl } from '../utils/images';
 
 const ProductQuickView = lazy(() => import('../components/ProductQuickView'));
 
@@ -41,6 +42,8 @@ const FALLBACK_HERO_DISHES = [
   { category: "Café", name: "Filtrado de Origen", rating: "4.9", prepTime: "5 mins", img: "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&q=80&w=1200" },
   { category: "Postres", name: "Tarta de Higo", rating: "4.7", prepTime: "15 mins", img: "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&q=80&w=1200" }
 ];
+
+const FALLBACK_HERO_IMAGE = "/img/products/bowl-poke-hawaiano.jpg";
 
 const FALLBACK_FEATURED = [
   { name: "Sunrise Bowl", img: "https://images.unsplash.com/photo-1494390248081-4e521a5940db?auto=format&fit=crop&q=80&w=400", price: 28000 },
@@ -98,8 +101,8 @@ const LandingPage = () => {
             || products.find(p => p.image_url || p.image)
             || products[0];
           
-          let img = featuredProduct?.image_url || featuredProduct?.image;
-          if (!img) img = "https://images.unsplash.com/photo-1546241072-48010ad28c2c?q=80&w=1200";
+          let img = getSafeImageUrl(featuredProduct?.image_url || featuredProduct?.image);
+          if (!img) img = FALLBACK_HERO_IMAGE;
 
           return {
             category: cat.name,
@@ -128,7 +131,7 @@ const LandingPage = () => {
             ...item, 
             ...(found || {}), 
             id: productId || found?.id || `featured-${idx}`,
-            img: item.img || found?.image_url || found?.image || "https://images.unsplash.com/photo-1546241072-48010ad28c2c?q=80&w=1200",
+            img: getSafeImageUrl(item.img || found?.image_url || found?.image, FALLBACK_HERO_IMAGE),
             price: found?.price || item.price || 0,
             name: item.name || found?.name || "Plato Recomendado"
           };

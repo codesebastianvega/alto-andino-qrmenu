@@ -26,6 +26,7 @@ import { FadeIn, SpotlightCard, MagneticButton } from '../../components/aluna/an
 
 import { PLAN_IDS, PLAN_LABELS } from '../../config/plans';
 import { safeSessionStorage as sessionStorage } from '../../utils/safeStorage';
+import { buildDefaultBusinessHours } from '../../utils/businessHours';
 
 
 
@@ -99,6 +100,10 @@ async function createBrand({ userId, name, businessType, planId }) {
   await ensureMutation(
     supabase.from('home_settings').insert({ brand_id: brandId }),
     'No se pudo crear la configuracion de inicio'
+  );
+  await ensureMutation(
+    supabase.from('business_hours').insert(buildDefaultBusinessHours(brandId)),
+    'No se pudo crear el horario inicial'
   );
   await ensureMutation(
     supabase.from('staff').insert({

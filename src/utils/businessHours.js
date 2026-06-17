@@ -51,3 +51,14 @@ export function isRestaurantOpen(businessHours) {
     message: `Estamos cerrados. Abrimos hoy de ${todayHours.open_time} a ${todayHours.close_time}.` 
   };
 }
+
+export function buildDefaultBusinessHours(brandId, locationId = null) {
+  return Array.from({ length: 7 }, (_, day) => ({
+    brand_id: brandId,
+    location_id: locationId,
+    day_of_week: day,
+    open_time: '08:00',
+    close_time: '22:00',
+    is_closed: false,
+  }));
+}

@@ -99,6 +99,28 @@ export const convertDriveLink = (url) => {
 /**
  * Valida si el archivo de imagen excede el límite de memoria del navegador antes de comprimir.
  */
+export const getSafeImageUrl = (url, fallback = null) => {
+  if (!url || typeof url !== 'string') return fallback;
+
+  const value = url.trim();
+  if (!value) return fallback;
+
+  try {
+    const imageUrl = new URL(value);
+    const currentSupabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const currentSupabaseHost = currentSupabaseUrl ? new URL(currentSupabaseUrl).host : null;
+    const isSupabaseStorage = imageUrl.hostname.endsWith('.supabase.co') && imageUrl.pathname.includes('/storage/');
+
+    if (isSupabaseStorage && currentSupabaseHost && imageUrl.host !== currentSupabaseHost) {
+      return fallback;
+    }
+  } catch {
+    // Relative paths are valid image sources.
+  }
+
+  return value;
+};
+
 export const validateImageSize = (file, toast = null) => {
   if (!file) return false;
   
@@ -227,7 +249,7 @@ export function getProductImage(product) {
   if (idKey && IMAGE_MAP[idKey]) return IMAGE_MAP[idKey];
 
   // 2) Buscar en las propiedades de imagen del objeto (Database/AI)
-  const directUrl = product.image_url || product.image || product.img || product.imageUrl;
+  const directUrl = getSafeImageUrl(product.image_url || product.image || product.img || product.imageUrl);
   
   if (directUrl && typeof directUrl === 'string' && directUrl.trim() !== '') {
     // Si es una URL completa o una ruta absoluta

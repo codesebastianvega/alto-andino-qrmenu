@@ -208,7 +208,12 @@ export function usePlan(manualBrandId = null) {
 
       if (!error) {
         // Refresh plan data
-        setPlan(prev => prev ? { ...prev, trial_end_date: trialEndsAt.toISOString() } : null);
+        setPlan(prev => prev ? {
+          ...prev,
+          trial_end_date: trialEndsAt.toISOString(),
+          subscription_status: 'trialing',
+          payment_verified: false
+        } : null);
       }
 
       return { error };

@@ -55,6 +55,7 @@ export default function UniversalCheckout({ onSelectPage }) {
   const [step, setStep] = useState('form'); // form, processing, success
   const [processingStatus, setProcessingStatus] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activationError, setActivationError] = useState('');
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -160,6 +161,7 @@ export default function UniversalCheckout({ onSelectPage }) {
 
   const handleActivate = async () => {
     if (isSubmitting) return;
+    setActivationError('');
     setIsSubmitting(true);
     setStep('processing');
     
@@ -186,7 +188,8 @@ export default function UniversalCheckout({ onSelectPage }) {
       setStep('success');
     } catch (err) {
       console.error('Checkout Activation Error:', err);
-      setStep('success');
+      setActivationError(err?.message || 'No pudimos activar tu prueba. Intenta de nuevo o escríbenos por WhatsApp.');
+      setStep('form');
     } finally {
       setIsSubmitting(false);
     }
@@ -299,6 +302,11 @@ export default function UniversalCheckout({ onSelectPage }) {
               <div className="lg:col-span-7">
                 <div className="p-6 rounded-2xl bg-gradient-to-br from-white/[0.08] to-transparent border border-white/10 shadow-2xl relative overflow-hidden">
                   <h2 className="text-lg font-bold mb-5">Información de Contacto</h2>
+                  {activationError && (
+                    <div className="mb-5 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200">
+                      {activationError}
+                    </div>
+                  )}
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div className="space-y-1.5">
@@ -448,7 +456,7 @@ export default function UniversalCheckout({ onSelectPage }) {
                   onClick={() => {
                     // Redirect to the actual brand dashboard if available
                     const slug = activeBrand?.slug || profile?.brand_slug || '';
-                    window.location.href = slug ? `/admin/${slug}` : '/admin';
+                    window.location.href = slug ? `/${slug}/?admin_page=dashboard#admin` : '/admin';
                   }}
                   className="w-full py-5 bg-white text-black rounded-[24px] font-black text-lg flex items-center justify-center gap-3 hover:bg-brand-primary transition-colors group"
                 >

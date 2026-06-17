@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../config/supabase';
 import { PLAN_IDS, PLAN_LABELS } from '../../config/plans';
+import { buildDefaultBusinessHours } from '../../utils/businessHours';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -63,6 +64,7 @@ async function createBrand({ userId, name, businessType, planId }) {
   await Promise.allSettled([
     supabase.from('restaurant_settings').insert({ brand_id: brand.id, business_name: name }),
     supabase.from('home_settings').insert({ brand_id: brand.id }),
+    supabase.from('business_hours').insert(buildDefaultBusinessHours(brand.id)),
     supabase.from('staff').insert({
       name: 'Admin Principal',
       role: 'admin',

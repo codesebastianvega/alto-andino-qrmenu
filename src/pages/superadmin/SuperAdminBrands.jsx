@@ -397,7 +397,7 @@ export default function SuperAdminBrands() {
                             className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors w-full text-left"
                           >
                             <CalendarPlus size={16} className="text-blue-500" />
-                            Extender Trial (+7d)
+                            Extender Trial (+21d)
                           </button>
                           
                           <div className="h-px bg-gray-100 my-1 mx-2"></div>
