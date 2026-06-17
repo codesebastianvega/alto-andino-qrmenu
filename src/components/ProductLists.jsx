@@ -285,9 +285,11 @@ export default function ProductLists({
      return () => window.removeEventListener("scroll", reset);
    }, [selectedCategory]);
  
+  const filtersToSingleSection = (featureTabs || hideNav) && selectedCategory !== "todos";
+
   useEffect(() => {
     // Solo observar secciones en modo barra y cuando no está activo 'todos'
-    if (featureTabs || selectedCategory === "todos") return;
+    if (filtersToSingleSection || selectedCategory === "todos") return;
     const map = {};
     const observer = new IntersectionObserver(
        (entries) => {
@@ -312,9 +314,9 @@ export default function ProductLists({
      });
  
      return () => observer.disconnect();
-   }, [categories, featureTabs, selectedCategory, onCategorySelect, sections]);
+   }, [categories, filtersToSingleSection, selectedCategory, onCategorySelect, sections]);
  
-  const stackClass = featureTabs && selectedCategory !== "todos" ? "" : "space-y-6";
+  const stackClass = filtersToSingleSection ? "" : "space-y-6";
 
   const hasIndexState =
     typeof setActiveCategoryIndex === "function" ||
@@ -407,7 +409,7 @@ export default function ProductLists({
 
 
           {sections.map((s, idx) => {
-            if (featureTabs && selectedCategory !== "todos" && s.id !== selectedCategory) {
+            if (filtersToSingleSection && s.id !== selectedCategory) {
               return null;
             }
             
