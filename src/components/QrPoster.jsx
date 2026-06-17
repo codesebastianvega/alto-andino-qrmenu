@@ -1,5 +1,5 @@
 // src/components/QrPoster.jsx
-import QRCode from "react-qr-code";
+import { QRCode } from "react-qr-code";
 import AAImage from "@/components/ui/AAImage";
 import { useMenuData } from "../context/MenuDataContext";
 

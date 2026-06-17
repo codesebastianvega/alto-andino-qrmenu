@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import QRCode from "react-qr-code";
+import { QRCode } from "react-qr-code";
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useLocations } from '../context/LocationContext';

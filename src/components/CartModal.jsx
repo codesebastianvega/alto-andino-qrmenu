@@ -9,7 +9,7 @@ import { MILK_OPTIONS } from "@/config/milkOptions";
 import { formatCOP } from "@/utils/money";
 import AAImage from "@/components/ui/AAImage";
 import { Icon } from "@iconify-icon/react";
-import QRCode from "react-qr-code";
+import { QRCode } from "react-qr-code";
 import { supabase } from "@/config/supabase";
 import { translateGroup } from "@/utils/formatters";
 import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";

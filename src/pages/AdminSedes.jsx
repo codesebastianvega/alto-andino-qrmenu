@@ -9,7 +9,7 @@ import { toast as toastFn } from '../components/Toast';
 import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton, Modal, ModalHeader } from '../components/admin/ui';
 import { Icon } from '@iconify/react';
 import { Loader2, MapPin, Phone, Building2, ExternalLink, Trash2, QrCode } from 'lucide-react';
-import QRCode from "react-qr-code";
+import { QRCode } from "react-qr-code";
 
 const toast = {
   success: (msg, opts) => toastFn.success(msg, { duration: 2500, ...opts }),
