@@ -147,7 +147,11 @@ export default function ProductSection({
           <div 
             ref={scrollRef}
             onScroll={handleScroll}
-            className="flex overflow-x-auto gap-4 pb-6 pt-4 no-scrollbar -mx-5 px-5 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8 lg:mx-0 lg:px-0 scroll-smooth snap-x snap-mandatory scroll-pl-5 sm:scroll-pl-6 md:scroll-pl-8"
+            onTouchStart={(event) => event.stopPropagation()}
+            onTouchMove={(event) => event.stopPropagation()}
+            onTouchEnd={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+            className="flex overflow-x-auto gap-4 pb-6 pt-4 no-scrollbar -mx-5 px-5 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8 lg:mx-0 lg:px-0 scroll-smooth snap-x snap-mandatory scroll-pl-5 sm:scroll-pl-6 md:scroll-pl-8 touch-pan-x"
           >
             {arr.map((item, i) => {
               const safeItem = typeof mapItem === "function" ? mapItem(item) : item;

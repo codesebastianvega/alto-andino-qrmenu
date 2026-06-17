@@ -361,7 +361,7 @@ export default function ProductLists({
     preventDefaultTouchmoveEvent: false,
   });
 
-  const _safeSwipeHandlers = swipeHandlers || {};
+  const _safeSwipeHandlers = hideNav ? {} : (swipeHandlers || {});
 
   const dynamicDiets = useMemo(() => allergens.filter(a => a.type === 'diet'), [allergens]);
 
