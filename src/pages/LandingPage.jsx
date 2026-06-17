@@ -67,6 +67,7 @@ const LandingPage = () => {
     restaurantSettings, 
     categories: allCategories,
     loading: menuLoading,
+    currentLocation,
     getProductsByCategory,
     getAllProducts 
   } = menuData;
@@ -77,6 +78,8 @@ const LandingPage = () => {
   
   const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
   const brandCity = activeBrand?.city || "";
+  const brandLogoUrl = restaurantSettings?.logo_url || activeBrand?.logo_url || "";
+  const brandLocationLabel = currentLocation?.name || brandCity || activeBrand?.city || "";
 
   // Configuración reactiva basada en los datos del menú y ajustes de Supabase
   const config = useMemo(() => {
@@ -270,19 +273,19 @@ const LandingPage = () => {
         `}
       </style>
 
-      <section className="relative min-h-screen flex items-center pt-16 md:pt-20 overflow-hidden" onMouseMove={handleMouseMove}>
+      <section className="relative flex items-start pt-[calc(env(safe-area-inset-top)+14px)] pb-8 md:min-h-screen md:items-center md:pt-20 md:pb-0 overflow-hidden" onMouseMove={handleMouseMove}>
         <div className="absolute top-4 right-4 bottom-4 w-full md:w-[45%] bg-brand-primary rounded-[3rem] z-0 hidden md:block overflow-hidden shadow-2xl">
            <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-brand-secondary/15 rounded-full blur-[80px]" />
            <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-white/5 rounded-full blur-[60px]" />
         </div>
-        <div className="absolute top-0 right-0 w-full h-[40%] bg-brand-primary rounded-b-[2rem] md:rounded-b-[3rem] z-0 md:hidden overflow-hidden">
+        <div className="absolute top-0 right-0 w-full h-[300px] bg-brand-primary rounded-b-[2rem] md:rounded-b-[3rem] z-0 md:hidden overflow-hidden">
            <div className="absolute top-[-20%] right-[-10%] w-[300px] h-[300px] bg-brand-secondary/15 rounded-full blur-[50px]" />
         </div>
 
-        <div className="container mx-auto px-4 md:px-6 lg:px-12 relative z-10 flex flex-col md:flex-row items-center h-full gap-6 md:gap-12">
-          <div className="flex-1 mt-20 md:mt-0 w-full order-2 md:order-1 relative z-30">
+        <div className="container mx-auto px-4 md:px-6 lg:px-12 relative z-10 flex flex-col md:flex-row items-center h-full gap-0 md:gap-12">
+          <div className="flex-1 mt-8 md:mt-0 w-full order-2 md:order-1 relative z-30">
             <div className="max-w-md lg:max-w-lg">
-              <h1 className="text-4xl md:text-5xl lg:text-7xl font-extrabold leading-[1.1] tracking-tight mb-4 md:mb-6 flex flex-col">
+              <h1 className="text-[31px] md:text-5xl lg:text-7xl font-extrabold leading-[1.08] tracking-tight mb-3 md:mb-6 flex flex-col">
                 <motion.span custom={1} variants={titleVariants} initial="hidden" animate="visible">{h1Lines[0] || 'Descubre tus'}</motion.span>
                 {h1Lines.length > 1 && (
                   <motion.span custom={2} variants={titleVariants} initial="hidden" animate="visible" className="text-transparent bg-clip-text bg-gradient-to-r from-brand-text to-brand-text/60 md:from-brand-text md:to-brand-text mt-1">
@@ -290,8 +293,8 @@ const LandingPage = () => {
                   </motion.span>
                 )}
               </h1>
-              <motion.p custom={3} variants={titleVariants} initial="hidden" animate="visible" className="text-brand-text/50 font-medium text-[13px] md:text-base max-w-md mb-6 md:mb-8 leading-relaxed whitespace-pre-line">{config.heroSubtitle}</motion.p>
-              <motion.div custom={4} variants={titleVariants} initial="hidden" animate="visible" className="flex items-center gap-3 md:gap-4 mb-6 md:mb-10 overflow-x-auto hide-scrollbar pb-3 -mx-4 px-4 md:-mx-0 md:px-0">
+              <motion.p custom={3} variants={titleVariants} initial="hidden" animate="visible" className="text-brand-text/50 font-medium text-[13px] md:text-base max-w-md mb-5 md:mb-8 leading-relaxed whitespace-pre-line">{config.heroSubtitle}</motion.p>
+              <motion.div custom={4} variants={titleVariants} initial="hidden" animate="visible" className="flex items-center gap-3 md:gap-4 mb-4 md:mb-10 overflow-x-auto hide-scrollbar pb-3 -mx-4 px-4 md:-mx-0 md:px-0">
                 {config.heroDishes.map((cat, idx) => (
                   <div key={idx} onClick={() => handleCategoryClick(cat.category)} className={`shrink-0 flex items-center gap-2 md:gap-3 px-3 md:px-4 py-1.5 md:py-2 rounded-full cursor-pointer transition-all duration-300 border ${activeCategory === cat.category ? 'bg-white border-transparent shadow-[0_8px_20px_rgba(0,0,0,0.08)] scale-105' : 'bg-transparent border-black/10 hover:border-black/30 opacity-70'}`}>
                     <span className="text-lg md:text-xl bg-brand-bg w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center">{cat.icon}</span>
@@ -305,14 +308,35 @@ const LandingPage = () => {
             </div>
           </div>
 
-          <div className="flex-1 relative w-full h-[320px] md:h-screen flex items-center justify-center md:justify-end order-1 md:order-2">
-            <motion.div animate={{ x: mousePosition.x * -1, y: mousePosition.y * -1 }} transition={{ type: "spring", stiffness: 100, damping: 30 }} className="relative w-[260px] h-[260px] sm:w-[400px] sm:h-[400px] md:w-[700px] md:h-[700px] md:translate-x-24 lg:translate-x-32">
+          <div className="flex-1 relative w-full h-[318px] md:h-screen flex flex-col items-center justify-start md:justify-center md:items-end order-1 md:order-2">
+            <div className="md:hidden w-full flex items-center gap-3 px-1 mb-4">
+              <div className="w-11 h-11 rounded-2xl bg-white/95 shadow-[0_10px_25px_rgba(0,0,0,0.10)] border border-white/80 overflow-hidden flex items-center justify-center shrink-0">
+                {brandLogoUrl ? (
+                  <img src={brandLogoUrl} alt={brandName} className="w-full h-full object-contain p-1.5" />
+                ) : (
+                  <span className="text-[10px] font-extrabold tracking-widest text-brand-primary uppercase">{brandName.slice(0, 2)}</span>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[15px] leading-none font-extrabold text-white drop-shadow-sm truncate">{brandName}</p>
+                <div className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-white/75">
+                  <span>Menú digital</span>
+                  {brandLocationLabel && (
+                    <>
+                      <span className="w-1 h-1 rounded-full bg-white/50" />
+                      <span className="truncate">{brandLocationLabel}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+            <motion.div animate={{ x: mousePosition.x * -1, y: mousePosition.y * -1 }} transition={{ type: "spring", stiffness: 100, damping: 30 }} className="relative w-[222px] h-[222px] sm:w-[400px] sm:h-[400px] md:w-[700px] md:h-[700px] md:translate-x-24 lg:translate-x-32">
               <AnimatePresence mode="wait">
                 <motion.div key={currentHeroDish?.name} initial={{ scale: 0.8, opacity: 0, rotate: -20 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} exit={{ scale: 0.8, opacity: 0, rotate: 20 }} transition={{ duration: 0.8, type: "spring", bounce: 0.3 }} className="w-full h-full absolute inset-0">
                   <img src={currentHeroDish?.img} alt={currentHeroDish?.name} className="w-full h-full object-cover rounded-full shadow-[0_20px_40px_rgba(0,0,0,0.4)] md:shadow-[0_40px_80px_rgba(0,0,0,0.5)] border-[8px] md:border-[12px] border-white/10" />
-                  <div className="absolute bottom-2 left-0 md:bottom-28 md:left-4 lg:bottom-32 lg:-left-12 glass-panel bg-brand-card/90 px-4 py-3 md:px-6 md:py-4 rounded-xl md:rounded-2xl flex flex-col gap-1 shadow-2xl backdrop-blur-xl border border-white/80 z-20">
+                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-[210px] md:w-auto md:translate-x-0 md:bottom-28 md:left-4 lg:bottom-32 lg:-left-12 glass-panel bg-brand-card/90 px-3 py-2.5 md:px-6 md:py-4 rounded-xl md:rounded-2xl flex flex-col gap-1 shadow-2xl backdrop-blur-xl border border-white/80 z-20">
                     <div className="flex items-center gap-3 mb-1">
-                      <span className="text-sm md:text-base font-extrabold text-brand-text">{currentHeroDish?.name}</span>
+                      <span className="text-sm md:text-base font-extrabold text-brand-text truncate min-w-0">{currentHeroDish?.name}</span>
                       <div className="flex items-center gap-1 text-brand-secondary bg-brand-secondary/10 px-2 py-0.5 rounded-full">
                         <Star size={12} fill="currentColor" />
                         <span className="text-[10px] font-bold">{currentHeroDish?.rating}</span>
@@ -340,7 +364,7 @@ const LandingPage = () => {
                   <motion.div key={i}
                     animate={{ x: mousePosition.x * pos.parallax, y: mousePosition.y * pos.parallax }}
                     transition={{ type: "spring", stiffness: 100, damping: 30 }}
-                    className={`absolute ${pos.cls} z-10`}
+                    className={`hidden md:absolute ${pos.cls} z-10`}
                   >
                     <motion.div
                       animate={{ y: pos.y, rotate: pos.rot }}
