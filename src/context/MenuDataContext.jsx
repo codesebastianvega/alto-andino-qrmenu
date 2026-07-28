@@ -452,14 +452,17 @@ export const MenuDataProvider = ({ children }) => {
       Object.entries(colors).forEach(([k, v]) => root.style.setProperty(k, v));
 
       const faviconUrl = restaurantSettings.favicon_url || '/favicon.png';
-      let link = document.querySelector("link[rel~='icon']");
-      if (!link) {
-        link = document.createElement('link');
+      const iconLinks = document.querySelectorAll("link[rel~='icon']");
+      if (iconLinks.length > 0) {
+        iconLinks.forEach((link) => {
+          link.href = faviconUrl;
+        });
+      } else {
+        const link = document.createElement('link');
         link.rel = 'icon';
+        link.href = faviconUrl;
         document.head.appendChild(link);
       }
-      link.type = 'image/png';
-      link.href = faviconUrl;
     } catch (err) {
       console.error('Error applying theme/favicon:', err);
     }

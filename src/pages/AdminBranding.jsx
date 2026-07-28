@@ -138,6 +138,7 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
     try {
       const payload = {
         brand_id: activeBrand.id,
+        location_id: null,
         business_name: settingsForm.business_name,
         primary_color: settingsForm.primary_color,
         logo_url: settingsForm.logo_url,
@@ -157,8 +158,12 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
         logo_url: settingsForm.logo_url || null
       };
 
+      const settingsQuery = settings?.id
+        ? supabase.from('restaurant_settings').update(payload).eq('id', settings.id).select().single()
+        : supabase.from('restaurant_settings').insert(payload).select().single();
+
       const [settingsRes, brandRes] = await Promise.all([
-        supabase.from('restaurant_settings').upsert(payload, { onConflict: 'brand_id' }).select().single(),
+        settingsQuery,
         supabase.from('brands').update(brandPayload).eq('id', activeBrand.id)
       ]);
 
@@ -166,6 +171,11 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
       if (brandRes.error) throw brandRes.error;
       
       if (settingsRes.data) setSettings(settingsRes.data);
+
+      const faviconUrl = settingsRes.data?.favicon_url || '/favicon.png';
+      document.querySelectorAll("link[rel~='icon']").forEach((link) => {
+        link.href = faviconUrl;
+      });
 
       toast.success('¡Branding y perfil guardados correctamente!');
       if (user) refreshProfile(user.id);

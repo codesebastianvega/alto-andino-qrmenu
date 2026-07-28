@@ -176,13 +176,20 @@ export default function App() {
       
     document.title = newTitle;
 
-    // Update favicon
-    const faviconUrl = isNewAdminPanel ? (activeBrand?.favicon_url || activeBrand?.logo_url || "/favicon.ico") : (restaurantSettings?.favicon_url || "/favicon.ico");
-    const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
-    link.type = 'image/x-icon';
-    link.rel = 'shortcut icon';
-    link.href = faviconUrl;
-    document.getElementsByTagName('head')[0].appendChild(link);
+    // El favicon es un recurso independiente del logotipo principal.
+    const faviconUrl = restaurantSettings?.favicon_url || "/favicon.png";
+    const iconLinks = document.querySelectorAll("link[rel~='icon']");
+
+    if (iconLinks.length > 0) {
+      iconLinks.forEach((link) => {
+        link.href = faviconUrl;
+      });
+    } else {
+      const link = document.createElement('link');
+      link.rel = 'icon';
+      link.href = faviconUrl;
+      document.head.appendChild(link);
+    }
   }, [restaurantSettings, activeBrand, isLandingView, brand_slug, currentHash, isNewAdminPanel, currentLocation]);
 
   const isValidCat = (cat) => cat === "todos" || dbCategories.some(c => c.slug === cat);

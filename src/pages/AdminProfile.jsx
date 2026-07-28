@@ -120,19 +120,22 @@ export default function AdminProfile() {
 
       // Comprimir a WebP
       const compressedFile = await compressAndWebp(file, { maxWidthOrHeight: 400, maxSizeMB: 0.1 });
-      const fileExt = 'webp';
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
+      const filePath = `${user.id}/avatar.webp`;
 
-      let { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, compressedFile);
+        .upload(filePath, compressedFile, {
+          cacheControl: '31536000',
+          contentType: 'image/webp',
+          upsert: true
+        });
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data: { publicUrl: storedPublicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
+      const publicUrl = `${storedPublicUrl}?v=${Date.now()}`;
 
       const { error: updateError } = await supabase
         .from('profiles')
@@ -147,6 +150,7 @@ export default function AdminProfile() {
       setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
       toast.success('Foto de perfil actualizada');
     } catch (error) {
+      console.error('AdminProfile: Error subiendo avatar', error);
       toast.error('Error al cargar imagen: ' + error.message);
     } finally {
       setUploading(false);
