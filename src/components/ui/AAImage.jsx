@@ -37,6 +37,7 @@ export default function AAImage({
     width,
     height,
     decoding: "async",
+    referrerPolicy: "no-referrer",
     onLoad: handleLoad,
     onError: handleError,
     style: { opacity: loaded ? 1 : 0, transition: "opacity .2s ease", ...style },

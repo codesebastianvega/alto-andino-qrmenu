@@ -11,6 +11,11 @@ import { BrandProvider } from "./context/BrandContext";
 import { MenuDataProvider } from "./context/MenuDataContext";
 import { LocationProvider } from "./context/LocationContext";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import ConnectivityBanner from "./components/ConnectivityBanner.jsx";
+
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(console.error));
+}
 
 // Aluna Landing (lazy)
 const AlunaLanding = React.lazy(() => import("./pages/AlunaLanding.jsx"));
@@ -32,6 +37,7 @@ const UniversalCheckout = React.lazy(() => import("./pages/checkout/UniversalChe
 
 ReactDOM.createRoot(document.getElementById("root")).render(
     <ErrorBoundary>
+      <ConnectivityBanner />
       <BrowserRouter>
         <AuthProvider>
           <LocationProvider>

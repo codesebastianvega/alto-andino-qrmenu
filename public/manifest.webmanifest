@@ -1,0 +1,11 @@
+{
+  "name": "Aluna Hospitality OS",
+  "short_name": "Aluna",
+  "description": "Menu, pedidos y operacion para restaurantes",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FDFDFB",
+  "theme_color": "#111827",
+  "icons": [{ "src": "/favicon.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" }]
+}
+

@@ -10,6 +10,7 @@ import PaymentPOSModal from '../components/admin/PaymentPOSModal';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Modal } from '../components/admin/ui';
+import { printThermalDocument } from '../utils/thermalPrint';
 
 const ORDER_STATUSES = [
   { id: 'new', label: 'Nuevos', color: 'text-blue-600', icon: 'heroicons:star' },
@@ -1340,6 +1341,14 @@ export default function AdminOrders() {
                </div>
 
                 <div className="flex-[1.5]">
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    {restaurantSettings?.kitchen_print_enabled && (
+                      <button onClick={() => printThermalDocument({ order: selectedOrder, type: 'kitchen', width: restaurantSettings?.thermal_paper_width || '80', businessName: activeBrand?.name, business: activeBrand })} className="py-3 rounded-2xl border border-orange-200 bg-orange-50 text-orange-700 text-xs font-black">IMPRIMIR COMANDA</button>
+                    )}
+                    {restaurantSettings?.receipt_print_enabled !== false && (
+                      <button onClick={() => printThermalDocument({ order: selectedOrder, type: 'receipt', width: restaurantSettings?.thermal_paper_width || '80', businessName: activeBrand?.name, business: activeBrand })} className="py-3 rounded-2xl border border-gray-200 bg-white text-gray-700 text-xs font-black">IMPRIMIR RECIBO</button>
+                    )}
+                  </div>
                   {/* BOTÓN: POS MODAL (Reemplaza Mark as Paid) */}
                   {selectedOrder.payment_status !== 'paid' && (
                     <button 

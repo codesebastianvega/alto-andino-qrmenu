@@ -17,7 +17,7 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
   const isSandwich = product?.tags?.includes('sandwich') || category?.slug === 'sandwiches';
   
   const imageSrc = category?.banner_image_url || 
-                  (isBowl ? "/poke1.png" : 
+                  (isBowl ? "/poke1.webp" :
                   (isSandwich ? "/sandwich-promo.png" : "/logo.webp"));
 
   const basePrice = product?.price || 0;

@@ -6,6 +6,7 @@ import { toast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { useLocations } from '../context/LocationContext';
 import { useRestaurantSettings } from '../hooks/useRestaurantSettings';
+import { printThermalDocument } from '../utils/thermalPrint';
 
 const playNotificationSound = () => {
     try {
@@ -432,6 +433,11 @@ export default function AdminKitchen() {
 
       {/* Action Footer (Massive Tactile Buttons) */}
       <div className="p-4 mt-auto">
+        {restaurantSettings?.kitchen_print_enabled && (
+          <button onClick={() => printThermalDocument({ order, type: 'kitchen', width: restaurantSettings?.thermal_paper_width || '80', businessName: activeBrand?.name, business: activeBrand })} className="w-full h-10 mb-3 rounded-xl bg-white/10 text-white text-xs font-black border border-white/10 flex items-center justify-center gap-2">
+            <Icon icon="solar:printer-2-linear" /> IMPRIMIR COMANDA
+          </button>
+        )}
         {order.status === 'new' ? (
           <button 
             onClick={() => markAsPreparing(order.id)}

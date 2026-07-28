@@ -4,6 +4,7 @@ import { supabase } from '../config/supabase';
 import { useAuth } from './AuthContext';
 import { useBrand } from './BrandContext';
 import { useLocation as useAppLocation } from './LocationContext';
+import { catalogCache } from '../utils/offlineDb';
 
 const MenuDataContext = createContext({});
 
@@ -64,6 +65,18 @@ export const MenuDataProvider = ({ children }) => {
     setBusinessHours([]);
 
     try {
+      const recentCache = await catalogCache.get(`menu:${brandId}`);
+      if (recentCache?.value && Date.now() - recentCache.cachedAt < 5 * 60 * 1000) {
+        const data = recentCache.value;
+        setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);
+        setExperiences(data.experiences); setAllergens(data.allergens); setLocations(data.locations);
+        setBanners(data.banners); setHomeSettings(data.homeSettings); setRestaurantSettings(data.restaurantSettings);
+        setBrand(data.brand); setPlanFeatures(data.brand?.plans?.plan_features || []); setBusinessHours(data.businessHours);
+        setLocationPrices(data.locationPrices); setLocationStatus(data.locationStatus);
+        setLocationCategories(data.locationCategories); setLocationModLinks(data.locationModLinks);
+        return;
+      }
+
       if (!brandId) {
         setLoading(false);
         return;
@@ -118,6 +131,10 @@ export const MenuDataProvider = ({ children }) => {
       setBusinessHours(hoursRes.data || []);
 
       // 2. Fetch location-specific overrides (only if locations exist)
+      let cachedLocationPrices = [];
+      let cachedLocationStatus = [];
+      let cachedLocationCategories = [];
+      let cachedLocationModLinks = [];
       if (locsRes.data?.length > 0) {
         const locationIds = locsRes.data.map(l => l.id);
         const [pricesRes, statusRes, catLinksRes, modLinksRes] = await Promise.all([
@@ -131,12 +148,40 @@ export const MenuDataProvider = ({ children }) => {
         setLocationStatus(statusRes.data || []);
         setLocationCategories(catLinksRes.data || []);
         setLocationModLinks(modLinksRes.data || []);
+        cachedLocationPrices = pricesRes.data || [];
+        cachedLocationStatus = statusRes.data || [];
+        cachedLocationCategories = catLinksRes.data || [];
+        cachedLocationModLinks = modLinksRes.data || [];
       }
+
+      await catalogCache.put(`menu:${brandId}`, {
+        categories: catsRes.data || [], products: prodsRes.data || [], modifierGroups: modsRes.data || [],
+        experiences: expRes.data || [], allergens: allgsRes.data || [], locations: locsRes.data || [],
+        banners: bnrsRes.data || [], homeSettings: hSettRes.data?.[0] || null,
+        restaurantSettings: rSettRes.data?.[0] || null, brand: brandRes.data || null,
+        businessHours: hoursRes.data || [], locationPrices: cachedLocationPrices,
+        locationStatus: cachedLocationStatus, locationCategories: cachedLocationCategories,
+        locationModLinks: cachedLocationModLinks,
+      });
 
       console.log('✅ MenuData Parallel Fetch Complete');
 
     } catch (err) {
       console.error('❌ MenuData Fetch Error:', err);
+      try {
+        const cached = await catalogCache.get(`menu:${brandId}`);
+        if (cached?.value) {
+          const data = cached.value;
+          setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);
+          setExperiences(data.experiences); setAllergens(data.allergens); setLocations(data.locations);
+          setBanners(data.banners); setHomeSettings(data.homeSettings); setRestaurantSettings(data.restaurantSettings);
+          setBrand(data.brand); setPlanFeatures(data.brand?.plans?.plan_features || []); setBusinessHours(data.businessHours);
+          setLocationPrices(data.locationPrices); setLocationStatus(data.locationStatus);
+          setLocationCategories(data.locationCategories); setLocationModLinks(data.locationModLinks);
+        }
+      } catch (cacheError) {
+        console.error('No fue posible restaurar el catalogo local:', cacheError);
+      }
     } finally {
       setLoading(false);
     }

@@ -1,0 +1,12 @@
+{
+  "inputRows": {
+    "gf2023": 118,
+    "manual2023": 24,
+    "form2024": 282
+  },
+  "totalParticipations": 424,
+  "uniqueClients": 307,
+  "duplicateParticipations": 117,
+  "clientsWithoutPhone": 3,
+  "clientsWithoutEmail": 2
+}

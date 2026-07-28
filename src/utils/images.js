@@ -166,11 +166,11 @@ export const IMAGE_MAP = {
   // "sandwich-de-pavo": "/img/products/sandwich-pavo.jpg",
   "serrano-di-bufala": "/img/products/sandwich-serrano.jpg",
   // "cosecha-del-huerto": "/img/products/sandwich-cosecha.jpg",
-  "sandwich-de-cerdo": "/img/products/sancerdo1.png", // ya existente
+  "sandwich-de-cerdo": "/img/products/sancerdo1.webp", // optimizada
   
   // Mantener las viejas por si acaso
   "sandwich:serrano": "/img/products/sandwich-serrano.jpg",
-  "sandwich:cerdo": "/img/products/sancerdo1.png",
+  "sandwich:cerdo": "/img/products/sancerdo1.webp",
 
   // === Smoothies ===
   // Usa un nombre de archivo slug y mapea explícitamente (ids traen ":")
@@ -225,7 +225,7 @@ export const IMAGE_MAP = {
   "cumbre:rojos": "/img/products/cumbre-rojos.jpg",
   "cumbre:amarillos": "/img/products/cumbre-amarillos.jpg",
   // "cumbre:blancos": "/img/products/cumbre-blancos.jpg",
-   "cumbre:choco": "/img/products/cumbre-choco.png",
+   "cumbre:choco": "/img/products/cumbre-choco.webp",
 
   // === Veggie (nuevo) ===
   // Descomenta la(s) línea(s) cuando subas las fotos a /public/img/products

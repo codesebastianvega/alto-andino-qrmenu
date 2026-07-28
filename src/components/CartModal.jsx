@@ -19,6 +19,7 @@ import { usePlan } from "@/hooks/usePlan";
 import { trackAnalyticsEvent } from "@/utils/analytics";
 import { isRestaurantOpen } from "@/utils/businessHours";
 import { safeStorage as localStorage, safeSessionStorage as sessionStorage } from "@/utils/safeStorage";
+import { createClientOrderId, submitOrderResilient } from "@/services/orderSync";
 
 
 const toast = {
@@ -385,6 +386,39 @@ export default function CartModal({ open, onClose }) {
       }
 
       let orderData = null;
+
+      // Offline mode never attempts to merge a table order: it creates an
+      // independent idempotent order that will be reconciled on reconnect.
+      if (!navigator.onLine) {
+        const clientOrderId = createClientOrderId();
+        const offlineItems = items.map((item) => ({
+          product_id: item.productId || item.id,
+          brand_id: activeBrandId,
+          quantity: item.qty || 1,
+          unit_price: getItemUnit(item),
+          modifiers: item.options || {},
+          notes: item.note || '',
+        }));
+        const result = await submitOrderResilient({
+          clientOrderId,
+          order: {
+            status: orderStatus, origin: fulfillmentType === 'dine_in' ? 'table' : 'takeaway',
+            fulfillment_type: fulfillmentType, table_id: tableId, brand_id: activeBrandId,
+            location_id: orderLocationId || null, total_amount: finalTotal, service_fee: serviceFeeAmount,
+            customer_name: customerName, customer_phone: customerPhone, customer_id: customerId,
+            scheduled_time: scheduledTime || null, payment_status: isPaid ? 'paid' : 'pending',
+            payment_method: isPaid ? paymentMethod : null,
+          },
+          items: offlineItems,
+        });
+        const pendingId = result.orderId || clientOrderId;
+        localStorage.setItem("aa_last_order", JSON.stringify({ items, note, total, orderId: pendingId, pendingSync: true }));
+        localStorage.setItem("aa_active_order", pendingId);
+        setLastOrderId(pendingId);
+        setShowSuccess(true);
+        toast.success('Pedido guardado sin internet. Se enviara al volver la conexion.');
+        return;
+      }
 
       // Try to find an existing active order for this table to merge items
       if (tableId) {

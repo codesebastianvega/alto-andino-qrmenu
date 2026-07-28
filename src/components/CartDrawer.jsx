@@ -16,6 +16,7 @@ import { useMenuData } from "@/context/MenuDataContext";
 import { isRestaurantOpen } from "@/utils/businessHours";
 import { usePlan } from "@/hooks/usePlan";
 import { safeStorage as localStorage, safeSessionStorage as sessionStorage } from "@/utils/safeStorage";
+import { createClientOrderId, submitOrderResilient } from "@/services/orderSync";
 
 
 const toast = {
@@ -255,11 +256,11 @@ export default function CartDrawer({ open, onClose }) {
 
       }
 
-      // 2. Insert Order
+      // 2. Persist atomically. If offline, keep the complete order in IndexedDB.
       const finalTotal = fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount;
 
-      const { data: orderData, error: orderError } = await supabase.from('orders')
-        .insert([{
+      const clientOrderId = createClientOrderId();
+      const orderPayload = {
           brand_id: brandId,
           location_id: orderLocationId || null,
           status: (fulfillmentType === 'dine_in' || fulfillmentType === 'takeaway') ? 'new' : 'waiting_payment',
@@ -271,33 +272,25 @@ export default function CartDrawer({ open, onClose }) {
           customer_name: customerName,
           customer_phone: customerPhone,
           scheduled_time: scheduledTime || null
-        }])
-        .select()
-        .single();
-        
-      if (orderError) throw orderError;
+      };
 
-      // 3. Insert Order Items
-        const orderItemsToInsert = items.map(it => ({
-          order_id: orderData.id,
+      const orderItemsToInsert = items.map(it => ({
           product_id: it.productId || it.id,
           brand_id: brandId,
           quantity: it.qty || 1,
           unit_price: getItemUnit(it),
           modifiers: it.options || {},
           notes: it.note || ''
-        }));
-
-      const { error: itemsError } = await supabase.from('order_items')
-        .insert(orderItemsToInsert);
-
-      if (itemsError) throw itemsError;
+      }));
+      const result = await submitOrderResilient({ clientOrderId, order: orderPayload, items: orderItemsToInsert });
+      const persistedOrderId = result.orderId || clientOrderId;
 
       // 4. Handle Success
-      const snapshot = { items, note, total, orderId: orderData.id };
+      const snapshot = { items, note, total, orderId: persistedOrderId, pendingSync: result.queued };
       localStorage.setItem("aa_last_order", JSON.stringify(snapshot));
-      localStorage.setItem("aa_active_order", orderData.id);
-      setLastOrderId(orderData.id);
+      localStorage.setItem("aa_active_order", persistedOrderId);
+      setLastOrderId(persistedOrderId);
+      if (result.queued) toast.success('Pedido guardado sin internet. Se enviara al volver la conexion.');
 
       setShowSuccess(true);
       // We do NOT clear target here so it still shows the items behind the success screen if desired

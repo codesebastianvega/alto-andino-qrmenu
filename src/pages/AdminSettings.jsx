@@ -29,7 +29,11 @@ export default function AdminSettings() {
     payment_requirement_stage: 'none',
     target_prep_time_mins: 15,
     inactivity_threshold_mins: 30,
-    hide_sales_from_staff: false
+    hide_sales_from_staff: false,
+    kitchen_print_enabled: false,
+    receipt_print_enabled: true,
+    thermal_paper_width: '80',
+    electronic_invoicing_status: 'coming_soon'
   });
   const [isSubmittingSettings, setIsSubmittingSettings] = useState(false);
 
@@ -74,6 +78,10 @@ export default function AdminSettings() {
           target_prep_time_mins: data.target_prep_time_mins ?? 15,
           inactivity_threshold_mins: data.inactivity_threshold_mins ?? 30,
           hide_sales_from_staff: data.hide_sales_from_staff ?? false,
+          kitchen_print_enabled: data.kitchen_print_enabled ?? false,
+          receipt_print_enabled: data.receipt_print_enabled ?? true,
+          thermal_paper_width: data.thermal_paper_width === '58' ? '50' : (data.thermal_paper_width || '80'),
+          electronic_invoicing_status: data.electronic_invoicing_status || 'coming_soon',
         });
       } else {
         setSettings(null);
@@ -85,7 +93,11 @@ export default function AdminSettings() {
           payment_requirement_stage: 'none',
           target_prep_time_mins: 15,
           inactivity_threshold_mins: 30,
-          hide_sales_from_staff: false
+          hide_sales_from_staff: false,
+          kitchen_print_enabled: false,
+          receipt_print_enabled: true,
+          thermal_paper_width: '80',
+          electronic_invoicing_status: 'coming_soon'
         });
       }
     } catch (err) {
@@ -147,6 +159,10 @@ export default function AdminSettings() {
         target_prep_time_mins: settingsForm.target_prep_time_mins,
         inactivity_threshold_mins: settingsForm.inactivity_threshold_mins,
         hide_sales_from_staff: settingsForm.hide_sales_from_staff,
+        kitchen_print_enabled: settingsForm.kitchen_print_enabled,
+        receipt_print_enabled: settingsForm.receipt_print_enabled,
+        thermal_paper_width: settingsForm.thermal_paper_width,
+        electronic_invoicing_status: settingsForm.electronic_invoicing_status,
         updated_at: new Date().toISOString()
       };
 
@@ -402,6 +418,36 @@ export default function AdminSettings() {
                       );
                     })}
                   </div>
+                </div>
+
+                <div className="glass-glow bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-xl shadow-gray-50/50">
+                  <div className="flex items-center justify-between gap-4 mb-6">
+                    <div>
+                      <h4 className="text-lg font-black text-gray-900 uppercase tracking-tight">Impresion y documentos</h4>
+                      <p className="text-xs text-gray-400 mt-1">KDS principal, con impresion termica opcional.</p>
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-700 px-3 py-2 rounded-full">Factura electronica · Proximamente</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <label className="p-5 rounded-2xl bg-gray-50 border border-gray-100 cursor-pointer">
+                      <input type="checkbox" checked={settingsForm.kitchen_print_enabled} onChange={(e) => setSettingsForm({ ...settingsForm, kitchen_print_enabled: e.target.checked })} className="mr-3" />
+                      <span className="text-sm font-bold">Comanda opcional</span>
+                      <p className="text-[10px] text-gray-400 mt-2">Para locales que no usen KDS.</p>
+                    </label>
+                    <label className="p-5 rounded-2xl bg-gray-50 border border-gray-100 cursor-pointer">
+                      <input type="checkbox" checked={settingsForm.receipt_print_enabled} onChange={(e) => setSettingsForm({ ...settingsForm, receipt_print_enabled: e.target.checked })} className="mr-3" />
+                      <span className="text-sm font-bold">Recibo / cuenta</span>
+                      <p className="text-[10px] text-gray-400 mt-2">Documento interno, no fiscal.</p>
+                    </label>
+                    <label className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
+                      <span className="text-xs font-black uppercase text-gray-400">Papel termico</span>
+                      <select value={settingsForm.thermal_paper_width} onChange={(e) => setSettingsForm({ ...settingsForm, thermal_paper_width: e.target.value })} className="mt-3 w-full rounded-xl border-gray-200 text-sm font-bold">
+                        <option value="80">80 mm</option>
+                        <option value="50">50 mm</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div className="flex justify-end mt-6"><PrimaryButton type="button" onClick={handleSaveSettings} disabled={isSubmittingSettings}>Guardar impresion</PrimaryButton></div>
                 </div>
 
                 {/* ── Kitchen & Table Intelligence Module (NEW) */}
