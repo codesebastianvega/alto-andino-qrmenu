@@ -212,13 +212,19 @@ const LandingPage = () => {
   const [isConciergeLoading, setIsConciergeLoading] = useState(false);
 
   const handleConcierge = async () => {
-    if (!conciergeQuery) return;
+    if (!conciergeQuery.trim() || !resolvedBrand?.id) return;
     setIsConciergeLoading(true);
     try {
+      const configuredPrompt = config.conciergePrompt?.trim();
+      const prompt = configuredPrompt
+        ? configuredPrompt.replace('{{query}}', conciergeQuery.trim())
+        : conciergeQuery.trim();
       const { data, error } = await supabase.functions.invoke('gemini-chat', {
         body: { 
-          prompt: config.conciergePrompt.replace('{{query}}', conciergeQuery),
-          systemInstruction: `Menú de ${brandName}. Ingredientes premium y locales.`
+          prompt,
+          brand_id: resolvedBrand.id,
+          location_id: currentLocation?.id || null,
+          mode: 'concierge',
         }
       });
       if (error) throw error;

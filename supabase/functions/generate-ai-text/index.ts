@@ -15,7 +15,7 @@ serve(async (req: Request) => {
   try {
     const { prompt } = await req.json();
 
-    if (!prompt) {
+    if (typeof prompt !== 'string' || !prompt.trim()) {
       return new Response(JSON.stringify({ error: 'Missing prompt' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
@@ -28,16 +28,18 @@ serve(async (req: Request) => {
       throw new Error('GEMINI_API_KEY not set in environment variables');
     }
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const model = Deno.env.get('GEMINI_MODEL') || 'gemini-3.1-flash-lite';
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
     
     const geminiResponse = await fetch(geminiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
       },
       body: JSON.stringify({
         contents: [{
-          parts: [{ text: prompt }]
+          parts: [{ text: prompt.trim().slice(0, 12000) }]
         }]
       })
     });

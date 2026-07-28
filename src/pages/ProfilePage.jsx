@@ -27,7 +27,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMenuData } from '../context/MenuDataContext';
-import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/supabase';
 
 export default function ProfilePage() {
@@ -84,21 +83,25 @@ export default function ProfilePage() {
     { type: 'Experiencia', title: 'Cata de Cafés de Origen', date: '8 Mar 2026', time: '10:00 AM', guests: 2, status: 'Confirmada' }
   ];
 
-  const { restaurantSettings } = useMenuData();
-  const { activeBrand } = useAuth();
+  const { restaurantSettings, brand, currentLocation } = useMenuData();
   
-  const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
+  const brandName = restaurantSettings?.business_name || brand?.name || "Aluna";
 
   useEffect(() => {
-    generatePalateProfile();
-  }, []);
+    if (brand?.id) generatePalateProfile();
+  }, [brand?.id]);
 
   const generatePalateProfile = async () => {
     setIsAiLoading(true);
     try {
       const prompt = `Eres la IA de ${brandName}. Genera un "Perfil de Paladar" divertido y elegante de 1 sola línea (máx 15 palabras) para el cliente ${user.name}. Ej: "Tu paladar exige frescura premium y notas intensas."`;
       const { data, error } = await supabase.functions.invoke('gemini-chat', {
-        body: { prompt, systemInstruction: `Experiencia gastronómica en ${brandName}.` }
+        body: {
+          prompt,
+          brand_id: brand.id,
+          location_id: currentLocation?.id || null,
+          mode: 'profile',
+        }
       });
       if (error) throw error;
       setAiPalate(data.reply);
