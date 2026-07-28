@@ -126,8 +126,8 @@ export default function HeroHeadline() {
         className="relative z-10 rounded text-[22px] font-semibold leading-tight tracking-tight md:text-3xl"
       >
         <span className="sr-only">{brandName}</span>
-        {homeSettings?.menu_hero_title ? (
-          <span dangerouslySetInnerHTML={{ __html: homeSettings.menu_hero_title.replace(/\n/g, '<br/>') }} />
+        {homeSettings?.hero_h1 ? (
+          <span dangerouslySetInnerHTML={{ __html: homeSettings.hero_h1.replace(/\n/g, '<br/>') }} />
         ) : (
           <>
             <span className="bg-gradient-to-r from-[#203628] to-[#5f8a74] bg-clip-text text-transparent">Comer sano</span>{" "}
@@ -142,7 +142,7 @@ export default function HeroHeadline() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4, duration: 0.5 }}
       >
-        {homeSettings?.menu_hero_subtitle || "Ingredientes locales y de temporada"}
+        {homeSettings?.hero_subtitle || "Ingredientes locales y de temporada"}
       </motion.p>
 
       <motion.div

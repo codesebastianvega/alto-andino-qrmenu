@@ -247,8 +247,6 @@ export default function AdminWebContent() {
         menu_banner_subtitle: data.menu_banner_subtitle || null,
         menu_banner_tag: data.menu_banner_tag || null,
         menu_banner_img: data.menu_banner_img || null,
-        menu_hero_title: data.menu_hero_title || null,
-        menu_hero_subtitle: data.menu_hero_subtitle || null,
         welcome_bg_img: data.welcome_bg_img || null,
         updated_at: new Date().toISOString()
       };
@@ -1010,8 +1008,8 @@ export default function AdminWebContent() {
                     <div className="grid grid-cols-1 gap-6">
                       <FormField label="Título del Encabezado del Menú (H1)">
                         <TextInput 
-                          value={data.menu_hero_title || ''} 
-                          onChange={(e) => setData({ ...data, menu_hero_title: e.target.value })} 
+                          value={data.hero_h1 || ''} 
+                          onChange={(e) => setData({ ...data, hero_h1: e.target.value })} 
                           placeholder="Ej. Comer sano nunca fue tan fácil" 
                           className="bg-gray-50 border-gray-50 focus:bg-white focus:border-emerald-100 rounded-2xl p-4 font-bold"
                         />
@@ -1019,8 +1017,8 @@ export default function AdminWebContent() {
 
                       <FormField label="Subtítulo del Encabezado del Menú">
                         <TextInput 
-                          value={data.menu_hero_subtitle || ''} 
-                          onChange={(e) => setData({ ...data, menu_hero_subtitle: e.target.value })} 
+                          value={data.hero_subtitle || ''} 
+                          onChange={(e) => setData({ ...data, hero_subtitle: e.target.value })} 
                           placeholder="Ej. Ingredientes locales, directo a tu mesa." 
                           className="bg-gray-50 border-gray-50 focus:bg-white focus:border-emerald-100 rounded-2xl p-4"
                         />
