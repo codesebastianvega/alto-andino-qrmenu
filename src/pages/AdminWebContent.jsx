@@ -247,14 +247,22 @@ export default function AdminWebContent() {
         menu_banner_subtitle: data.menu_banner_subtitle || null,
         menu_banner_tag: data.menu_banner_tag || null,
         menu_banner_img: data.menu_banner_img || null,
+        menu_hero_title: data.menu_hero_title || null,
+        menu_hero_subtitle: data.menu_hero_subtitle || null,
         welcome_bg_img: data.welcome_bg_img || null,
         updated_at: new Date().toISOString()
       };
+      
+      const upsertPayload = {
+        ...payload,
+        brand_id: activeBrand.id
+      };
+      if (data.id) {
+        upsertPayload.id = data.id;
+      }
+
       const { error } = await supabase.from('home_settings')
-        .upsert({
-          ...payload,
-          brand_id: activeBrand.id
-        }, { 
+        .upsert(upsertPayload, { 
           onConflict: 'brand_id' 
         });
       if (error) throw error;
@@ -1000,26 +1008,44 @@ export default function AdminWebContent() {
                   {/* Form Side */}
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 gap-6">
-                      <FormField label="Título del Banner">
+                      <FormField label="Título del Encabezado del Menú (H1)">
                         <TextInput 
-                          value={data.menu_banner_title || ''} 
-                          onChange={(e) => setData({ ...data, menu_banner_title: e.target.value })} 
-                          placeholder="Ej. Nuestra Carta" 
+                          value={data.menu_hero_title || ''} 
+                          onChange={(e) => setData({ ...data, menu_hero_title: e.target.value })} 
+                          placeholder="Ej. Comer sano nunca fue tan fácil" 
+                          className="bg-gray-50 border-gray-50 focus:bg-white focus:border-emerald-100 rounded-2xl p-4 font-bold"
+                        />
+                      </FormField>
+
+                      <FormField label="Subtítulo del Encabezado del Menú">
+                        <TextInput 
+                          value={data.menu_hero_subtitle || ''} 
+                          onChange={(e) => setData({ ...data, menu_hero_subtitle: e.target.value })} 
+                          placeholder="Ej. Ingredientes locales, directo a tu mesa." 
                           className="bg-gray-50 border-gray-50 focus:bg-white focus:border-emerald-100 rounded-2xl p-4"
                         />
                       </FormField>
 
-                      <FormField label="Tag Superior (Chip)">
+                      <FormField label="Título del Banner">
+                        <TextInput 
+                          value={data.menu_banner_title || ''} 
+                          onChange={(e) => setData({ ...data, menu_banner_title: e.target.value })} 
+                          placeholder="Ej. Nuestra Carta Fusión" 
+                          className="bg-gray-50 border-gray-50 focus:bg-white focus:border-emerald-100 rounded-2xl p-4"
+                        />
+                      </FormField>
+
+                      <FormField label="Tag Superior del Banner (Chip)">
                         <TextInput 
                           value={data.menu_banner_tag || ''} 
                           onChange={(e) => setData({ ...data, menu_banner_tag: e.target.value })} 
-                          placeholder="Ej. Selección de Temporada" 
+                          placeholder="Ej. Menú BOKU [僕] • Balance & Sabor" 
                           className="bg-gray-50 border-gray-50 focus:bg-white focus:border-emerald-100 rounded-2xl p-4"
                         />
                       </FormField>
                     </div>
 
-                    <FormField label="Descripción / Copy de Bienvenida">
+                    <FormField label="Descripción / Copy de Bienvenida del Banner">
                       <textarea 
                         value={data.menu_banner_subtitle || ''} 
                         onChange={(e) => setData({ ...data, menu_banner_subtitle: e.target.value })} 
