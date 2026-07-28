@@ -34,6 +34,7 @@ import { useMenuData } from '../../context/MenuDataContext';
 import { usePlan } from '../../hooks/usePlan';
 import Toast from '../Toast';
 import AccountSuspendedOverlay from './AccountSuspendedOverlay';
+import AlunaCopilot from './AlunaCopilot';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
 const Icons = {
@@ -1380,6 +1381,14 @@ export default function AdminLayout() {
       </div>
 
       <Toast />
+
+      {authUser && user?.auth_session && ['admin', 'owner', 'superadmin', 'encargado'].includes(profile?.role) ? (
+        <AlunaCopilot
+          brand={activeBrand || (activeBrandId ? { id: activeBrandId, name: restaurantName } : null)}
+          location={activeLocation}
+          locationId={isAllLocations ? null : activeLocationId}
+        />
+      ) : null}
 
       {activeBrand?.is_active === false && (
         <AccountSuspendedOverlay brandName={restaurantName} />
