@@ -3,13 +3,11 @@ import { Sparkles, Loader2, X, ArrowUpRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../config/supabase';
 import { useMenuData } from '../context/MenuDataContext';
-import { useAuth } from '../context/AuthContext';
 import Footer from '../components/Footer';
 
 const ExperiencesSection = lazy(() => import('../components/ExperiencesSection'));
 
 const FALLBACK_EXPERIENCES_IMAGE = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=2000";
-const FALLBACK_EVENT_PLANNER_IMAGE = "https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?auto=format&fit=crop&q=80&w=800";
 
 function getSafeSupabaseImageUrl(value, fallback) {
   if (!value) return fallback;
@@ -35,12 +33,18 @@ export default function ExperiencesPage() {
   const [eventResponse, setEventResponse] = useState('');
   const [isEventLoading, setIsEventLoading] = useState(false);
   
-  const { homeSettings, restaurantSettings, loading: menuLoading } = useMenuData();
-  const { activeBrand } = useAuth();
+  const { homeSettings, restaurantSettings, brand, currentLocation, locations, loading: menuLoading } = useMenuData();
   
-  const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
+  const brandName = restaurantSettings?.business_name || brand?.name || "Aluna";
   const experiencesHeroImage = getSafeSupabaseImageUrl(homeSettings?.experiences_img, FALLBACK_EXPERIENCES_IMAGE);
-  const eventPlannerImage = getSafeSupabaseImageUrl(homeSettings?.event_planner_img, FALLBACK_EVENT_PLANNER_IMAGE);
+
+  const mainLocation = currentLocation || locations?.find(loc => loc.is_main) || locations?.[0];
+  const RAW_WA = (mainLocation?.phone || restaurantSettings?.whatsapp_number_orders || brand?.whatsapp || "").replace(/\D/g, "");
+  const WA_NUM = RAW_WA ? (RAW_WA.startsWith("57") ? RAW_WA : `57${RAW_WA}`) : "";
+  const getWaMessage = (text) => {
+    const msg = `Hola ${brandName}, me gustaría cotizar/agendar esta propuesta de evento: "${text}"`;
+    return WA_NUM ? `https://wa.me/${WA_NUM}?text=${encodeURIComponent(msg)}` : '#';
+  };
 
   // Variantes de animación
   const fadeUp = {
@@ -49,22 +53,24 @@ export default function ExperiencesPage() {
   };
 
   const handleEventPlanner = async () => {
-    if (!eventQuery.trim()) return;
+    if (!eventQuery.trim() || !brand?.id) return;
     
     setIsEventLoading(true);
     try {
-      // Tomamos el prompt o lo llamamos directamente usando la edge function
       const { data: settings } = await supabase
         .from('home_settings')
         .select('ai_event_prompt')
+        .eq('brand_id', brand.id)
         .single();
         
       const systemPrompt = settings?.ai_event_prompt || `Eres el 'Curador de Experiencias' de ${brandName}. Crea una propuesta de evento breve y moderna. Incluye: Nombre del evento y concepto de comida/espacio en 3 líneas máximo.`;
       
       const { data, error } = await supabase.functions.invoke('gemini-chat', {
         body: {
-          prompt: `${systemPrompt}\n\nCliente dice: "${eventQuery}"`,
-          systemInstruction: systemPrompt
+          prompt: `${systemPrompt}\n\nCliente dice: "${eventQuery.trim()}"`,
+          brand_id: brand.id,
+          location_id: currentLocation?.id || null,
+          mode: 'event',
         }
       });
 
@@ -137,19 +143,18 @@ export default function ExperiencesPage() {
 
       {/* 🤖 SECCIÓN VIP: CURADOR DE EXPERIENCIAS AI */}
       <section className="py-20 px-4 sm:px-6 lg:px-12 bg-white rounded-t-[3rem] md:rounded-t-[4rem] -mb-10 relative z-10">
-        <div className="container mx-auto max-w-6xl">
+        <div className="container mx-auto max-w-4xl">
           <div 
-            className="rounded-[3rem] overflow-hidden flex flex-col md:flex-row relative shadow-[0_20px_60px_rgba(26,36,33,0.3)]"
+            className="rounded-[3rem] overflow-hidden flex flex-col items-center text-center relative shadow-[0_20px_60px_rgba(26,36,33,0.3)] p-10 md:p-16"
             style={{ backgroundColor: restaurantSettings?.theme_footer_bg || homeSettings?.event_planner_bg_color || '#1A2421' }}
           >
-            
             {/* Background Glows */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-brand-secondary/20 rounded-full blur-[80px] pointer-events-none" />
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-brand-primary/30 rounded-full blur-[80px] pointer-events-none" />
 
-            {/* Texto y Llamado a la Acción */}
-            <div className="w-full md:w-1/2 p-10 md:p-16 flex flex-col justify-center relative z-10">
-              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-xl px-4 py-2 rounded-full mb-6 self-start border border-white/10">
+            {/* Texto y Llamado a la Acción Centrado */}
+            <div className="w-full flex flex-col items-center text-center justify-center relative z-10">
+              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-xl px-4 py-2 rounded-full mb-6 border border-white/10">
                 <Sparkles size={14} className="text-brand-secondary" />
                 <span className="text-[10px] font-bold text-white uppercase tracking-widest">Servicio VIP • Gemini AI</span>
               </div>
@@ -158,7 +163,7 @@ export default function ExperiencesPage() {
                 className="text-3xl md:text-5xl font-extrabold text-white mb-4 leading-tight whitespace-pre-line"
                 dangerouslySetInnerHTML={{ __html: homeSettings?.event_planner_h1?.replace(/\n/g, '<br/>') || `¿Buscas algo <br/>más <span className="text-brand-secondary">Privado?</span>` }}
               />
-              <p className="text-white/60 font-medium text-sm mb-10 leading-relaxed max-w-md whitespace-pre-line">
+              <p className="text-white/60 font-medium text-sm mb-8 leading-relaxed max-w-lg mx-auto whitespace-pre-line">
                 {homeSettings?.event_planner_subtitle || 'Cenas de aniversario, reuniones de equipo o cumpleaños. Describe la experiencia que tienes en mente y nuestro curador de IA diseñará una propuesta preliminar a tu medida.'}
               </p>
               
@@ -169,16 +174,6 @@ export default function ExperiencesPage() {
                 <Sparkles size={16} />
                 Diseñar mi evento con IA
               </button>
-            </div>
-
-            {/* Imagen Lateral (Ocupa la mitad derecha) */}
-            <div className="w-full md:w-1/2 h-[300px] md:h-auto md:absolute md:inset-y-0 md:right-0 overflow-hidden">
-              <img 
-                src={eventPlannerImage} 
-                className="w-full h-full object-cover" 
-                alt="Eventos Privados" 
-              />
-              <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-brand-primary via-brand-primary/30 to-transparent w-full md:w-1/3 h-1/3 md:h-full" />
             </div>
           </div>
         </div>
@@ -236,7 +231,12 @@ export default function ExperiencesPage() {
                     <div className="absolute top-0 left-0 w-1 h-full bg-brand-secondary" />
                     <p className="text-sm font-medium leading-relaxed text-brand-text italic">"{eventResponse}"</p>
                     
-                    <a href="https://wa.me/573000000000" target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-[10px] uppercase font-bold text-brand-secondary tracking-widest hover:text-brand-primary transition-colors">
+                    <a 
+                      href={getWaMessage(eventResponse)} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="mt-4 inline-flex items-center gap-1 text-[10px] uppercase font-bold text-brand-secondary tracking-widest hover:text-brand-primary transition-colors"
+                    >
                       Contactar para agendar <ArrowUpRight size={12} />
                     </a>
                   </motion.div>
