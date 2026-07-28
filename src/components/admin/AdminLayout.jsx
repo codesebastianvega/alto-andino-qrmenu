@@ -250,7 +250,7 @@ export default function AdminLayout() {
     setCurrentPage(pageId);
   };
 
-  const logoUrl = activeBrand?.logo_url || restaurantSettings?.logo_url || "/logoalto.png";
+  const logoUrl = activeBrand?.logo_url || restaurantSettings?.logo_url || "/favicon.png";
   const restaurantName = activeBrand?.name || restaurantSettings?.business_name || "Mi Negocio";
 
   // ─── Phase 1.5: Auth Robustness ──────────────────────────────────────────

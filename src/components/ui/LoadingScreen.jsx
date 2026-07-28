@@ -144,7 +144,7 @@ const LoadingScreen = ({ mode = 'splash', brandLogo = null, businessType = 'rest
           transition={{ delay: 1 }}
           className="text-[10px] uppercase tracking-[0.2em] text-neutral-500 absolute bottom-[-100px]"
         >
-          Alto Andino System • Premium Experience
+          Aluna System • Experiencia Premium
         </motion.p>
       </div>
     </div>

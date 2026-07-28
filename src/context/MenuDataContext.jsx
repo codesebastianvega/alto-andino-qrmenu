@@ -41,7 +41,7 @@ export const MenuDataProvider = ({ children }) => {
 
 
   // Fetch menu data for a given brand
-  const fetchMenuData = useCallback(async (brandId) => {
+  const fetchMenuData = useCallback(async (brandId, { force = false } = {}) => {
     if (!brandId) {
       setLoading(false);
       return;
@@ -65,7 +65,8 @@ export const MenuDataProvider = ({ children }) => {
     setBusinessHours([]);
 
     try {
-      const recentCache = await catalogCache.get(`menu:${brandId}`);
+      const cacheKey = `menu:v2:${brandId}`;
+      const recentCache = force ? null : await catalogCache.get(cacheKey);
       if (recentCache?.value && Date.now() - recentCache.cachedAt < 5 * 60 * 1000) {
         const data = recentCache.value;
         setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);
@@ -106,7 +107,7 @@ export const MenuDataProvider = ({ children }) => {
         brandFilter(supabase.from('locations').select('*').eq('is_active', true).order('is_main', { ascending: false })),
         brandFilter(supabase.from('promo_banners').select('*').eq('is_active', true).order('sort_order', { ascending: true })),
         brandFilter(supabase.from('home_settings').select('*').limit(1)),
-        brandFilter(supabase.from('restaurant_settings').select('*').limit(1)),
+        brandFilter(supabase.from('restaurant_settings').select('*').order('location_id', { ascending: true, nullsFirst: true }).limit(1)),
         supabase.from('brands').select('*, plans(*, plan_features(*))').eq('id', brandId).single(),
         brandFilter(supabase.from('products').select('*, categories:category_id (slug)').eq('is_active', true).order('sort_order', { ascending: true })),
         brandFilter(supabase.from('business_hours').select('*'))
@@ -154,7 +155,7 @@ export const MenuDataProvider = ({ children }) => {
         cachedLocationModLinks = modLinksRes.data || [];
       }
 
-      await catalogCache.put(`menu:${brandId}`, {
+      await catalogCache.put(cacheKey, {
         categories: catsRes.data || [], products: prodsRes.data || [], modifierGroups: modsRes.data || [],
         experiences: expRes.data || [], allergens: allgsRes.data || [], locations: locsRes.data || [],
         banners: bnrsRes.data || [], homeSettings: hSettRes.data?.[0] || null,
@@ -169,7 +170,7 @@ export const MenuDataProvider = ({ children }) => {
     } catch (err) {
       console.error('❌ MenuData Fetch Error:', err);
       try {
-        const cached = await catalogCache.get(`menu:${brandId}`);
+        const cached = await catalogCache.get(`menu:v2:${brandId}`);
         if (cached?.value) {
           const data = cached.value;
           setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);
@@ -405,29 +406,29 @@ export const MenuDataProvider = ({ children }) => {
         schema: 'public', 
         table: 'products',
         filter: `brand_id=eq.${activeBrandId}`
-      }, () => fetchMenuData(activeBrandId))
+      }, () => fetchMenuData(activeBrandId, { force: true }))
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'categories',
         filter: `brand_id=eq.${activeBrandId}`
-      }, () => fetchMenuData(activeBrandId))
+      }, () => fetchMenuData(activeBrandId, { force: true }))
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'modifier_groups',
         filter: `brand_id=eq.${activeBrandId}`
-      }, () => fetchMenuData(activeBrandId))
+      }, () => fetchMenuData(activeBrandId, { force: true }))
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'modifier_options' 
         // modifier_options doesn't have brand_id, but it's linked to groups
-      }, () => fetchMenuData(activeBrandId))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'location_product_prices' }, () => fetchMenuData(activeBrandId))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'location_product_status' }, () => fetchMenuData(activeBrandId))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'location_categories' }, () => fetchMenuData(activeBrandId))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'location_modifier_groups' }, () => fetchMenuData(activeBrandId))
+      }, () => fetchMenuData(activeBrandId, { force: true }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'location_product_prices' }, () => fetchMenuData(activeBrandId, { force: true }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'location_product_status' }, () => fetchMenuData(activeBrandId, { force: true }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'location_categories' }, () => fetchMenuData(activeBrandId, { force: true }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'location_modifier_groups' }, () => fetchMenuData(activeBrandId, { force: true }))
       .subscribe();
 
     return () => {
@@ -502,7 +503,7 @@ export const MenuDataProvider = ({ children }) => {
     activeBrandId,
     currentLocation,
     currentLocationId: activeLocationId,
-    refetchMenuData: () => fetchMenuData(activeBrandId),
+    refetchMenuData: () => fetchMenuData(activeBrandId, { force: true }),
     hasFeature: (key) => planFeatures?.find(f => f.feature_key === key)?.is_included ?? false,
   }), [
     categories, allCategories, productsByCategory, getProductsByCategory, getAllProducts, 

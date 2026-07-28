@@ -26,7 +26,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMenuData } from '../context/MenuDataContext';
-import { useAuth } from '../context/AuthContext';
 import { formatCOP } from '../utils/money';
 import { useCart } from '../context/CartContext';
 import { getSafeImageUrl } from '../utils/images';
@@ -53,9 +52,9 @@ const FALLBACK_FEATURED = [
 ];
 
 const FALLBACK_REVIEWS = [
-  { name: "Dra. Elena R.", role: "Médico", rating: 5, text: "El ambiente perfecto para desconectar después del hospital. El Poke Andino es mi favorito absoluto.", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=150" },
+  { name: "Dra. Elena R.", role: "Médico", rating: 5, text: "El ambiente perfecto para desconectar. Mi poke favorito siempre llega fresco y delicioso.", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=150" },
   { name: "Carlos M.", role: "Emprendedor", rating: 5, text: "Excelente WiFi y el café filtrado es de otro nivel. Vengo a trabajar dos veces por semana.", img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150" },
-  { name: "Ana & Max", role: "Pet Lovers", rating: 5, text: "A Max (mi golden) le encanta Cocoa, el perrito anfitrión. El mejor lugar pet-friendly de la zona.", img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150" }
+  { name: "Ana & Max", role: "Clientes frecuentes", rating: 5, text: "Ingredientes frescos, buenas porciones y una experiencia que siempre queremos repetir.", img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150" }
 ];
 
 const LandingPage = () => {
@@ -77,12 +76,12 @@ const LandingPage = () => {
   
   const { addItem } = useCart();
   const [quickViewProduct, setQuickViewProduct] = useState(null);
-  const { activeBrand } = useAuth();
+  const { brand: resolvedBrand } = menuData;
   
-  const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
-  const brandCity = activeBrand?.city || "";
-  const brandLogoUrl = restaurantSettings?.logo_url || activeBrand?.logo_url || "";
-  const brandLocationLabel = currentLocation?.name || brandCity || activeBrand?.city || "";
+  const brandName = restaurantSettings?.business_name || resolvedBrand?.name || "Aluna";
+  const brandCity = resolvedBrand?.city || "";
+  const brandLogoUrl = restaurantSettings?.logo_url || resolvedBrand?.logo_url || "";
+  const brandLocationLabel = currentLocation?.name || brandCity || "";
 
   // Configuración reactiva basada en los datos del menú y ajustes de Supabase
   const config = useMemo(() => {

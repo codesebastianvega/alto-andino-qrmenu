@@ -1,6 +1,7 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useMenuData } from '../context/MenuDataContext';
 import { toast as toastFn } from '../components/Toast';
 import { validateImageSize, compressAndWebp, getMaxImageSizeMB } from '../utils/images';
 import { PageHeader, PrimaryButton, FormField, TextInput, ImageGuidance } from '../components/admin/ui';
@@ -22,6 +23,7 @@ const FONT_OPTIONS = [
 
 const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, ref) {
   const { activeBrand, activePlan, isFeatureLocked, refreshProfile, user } = useAuth();
+  const { refetchMenuData } = useMenuData();
   const [settings, setSettings] = useState(null);
   const [loadingSettings, setLoadingSettings] = useState(false);
   
@@ -179,6 +181,7 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
 
       toast.success('¡Branding y perfil guardados correctamente!');
       if (user) refreshProfile(user.id);
+      await refetchMenuData?.();
     } catch (err) {
       console.error('Error saving branding:', err);
       toast.error('Error guardando configuración de branding');

@@ -3,18 +3,16 @@ import { Icon } from "@iconify-icon/react";
 import { Info, ShoppingBag } from "lucide-react";
 import { getTableId } from "@/utils/table";
 import { useMenuData } from "../context/MenuDataContext";
-import { useAuth } from "../context/AuthContext";
 import { safeStorage as localStorage } from "../utils/safeStorage";
 
 export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, currentHash = "" }) {
   const [table, setTable] = useState("");
   const [activeOrderId, setActiveOrderId] = useState(null);
   const [isScrolled, setIsScrolled] = useState(false);
-  const { restaurantSettings } = useMenuData();
-  const { activeBrand } = useAuth();
+  const { restaurantSettings, brand } = useMenuData();
 
-  const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
-  const logoUrl = restaurantSettings?.logo_url || activeBrand?.logo_url;
+  const brandName = restaurantSettings?.business_name || brand?.name || "Aluna";
+  const logoUrl = restaurantSettings?.logo_url || brand?.logo_url;
   const primaryColor = restaurantSettings?.primary_color || "#BFAE78";
 
   useEffect(() => {
@@ -79,7 +77,6 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
                   src={logoUrl}
                   alt={brandName}
                   className="h-full w-full object-contain p-1.5 transition-transform group-hover:scale-105"
-                  style={{ filter: "brightness(0) saturate(100%)" }}
                 />
               ) : (
                 <span className="text-sm font-black uppercase" style={{ color: primaryColor }}>
