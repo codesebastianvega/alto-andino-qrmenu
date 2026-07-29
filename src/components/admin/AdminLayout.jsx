@@ -1387,6 +1387,8 @@ export default function AdminLayout() {
           brand={activeBrand || (activeBrandId ? { id: activeBrandId, name: restaurantName } : null)}
           location={activeLocation}
           locationId={isAllLocations ? null : activeLocationId}
+          onNavigate={(pageId) => handleSelectPage(pageId)}
+          recipesEnabled={can('inventory')}
         />
       ) : null}
 
