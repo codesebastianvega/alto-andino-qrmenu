@@ -4,8 +4,11 @@ import { useExperiences } from '../hooks/useExperiences';
 import { useAuth } from '../context/AuthContext';
 
 const TYPE_LABELS = {
-  event: { label: 'Evento', icon: 'heroicons:sparkles', color: 'text-purple-600 bg-purple-50' },
-  workshop: { label: 'Taller', icon: 'heroicons:wrench-screwdriver', color: 'text-blue-600 bg-blue-50' },
+  private: { label: 'Reserva Privada / A Domicilio', icon: 'heroicons:user-group', color: 'text-amber-700 bg-amber-100 border border-amber-200' },
+  omakase: { label: 'Omakase Romántico (Cena Privada)', icon: 'heroicons:star', color: 'text-rose-700 bg-rose-100 border border-rose-200' },
+  catering: { label: 'Catering en Vivo (3 Estaciones)', icon: 'heroicons:fire', color: 'text-emerald-700 bg-emerald-100 border border-emerald-200' },
+  workshop: { label: 'Taller / Masterclass', icon: 'heroicons:wrench-screwdriver', color: 'text-blue-600 bg-blue-50' },
+  event: { label: 'Evento Programado', icon: 'heroicons:sparkles', color: 'text-purple-600 bg-purple-50' },
   tasting: { label: 'Cata', icon: 'heroicons:beaker', color: 'text-amber-600 bg-amber-50' },
   tour: { label: 'Tour', icon: 'heroicons:map', color: 'text-emerald-600 bg-emerald-50' },
   dinner: { label: 'Cena Temática', icon: 'heroicons:fire', color: 'text-red-600 bg-red-50' },
@@ -13,9 +16,10 @@ const TYPE_LABELS = {
 };
 
 const EMPTY_FORM = {
-  title: '', short_description: '', description: '', type: 'event',
-  price: '', capacity: 10, duration_minutes: 60, image_url: '',
-  includes: [], location: '', is_active: true, dates: [],
+  title: '', short_description: '', description: '', type: 'private',
+  price: '', capacity: 10, duration_minutes: 180, image_url: '',
+  includes: [], location: 'A domicilio / Espacio del cliente', is_active: true, dates: [],
+  is_private_booking: true
 };
 export default function AdminExperiences() {
   const { isFeatureLocked } = useAuth();
@@ -71,20 +75,22 @@ export default function AdminExperiences() {
 
   const openModal = (exp = null) => {
     if (exp) {
+      const isPrivate = exp.is_private_booking !== undefined ? exp.is_private_booking : (['private', 'omakase', 'catering'].includes(exp.type) || !exp.dates || exp.dates.length === 0);
       setEditingExp(exp);
       setForm({
         title: exp.title || '',
         short_description: exp.short_description || '',
         description: exp.description || '',
-        type: exp.type || 'event',
+        type: exp.type || 'private',
         price: exp.price || '',
         capacity: exp.capacity || 10,
-        duration_minutes: exp.duration_minutes || 60,
+        duration_minutes: exp.duration_minutes || 180,
         image_url: exp.image_url || '',
         includes: exp.includes || [],
         location: exp.location || '',
         is_active: exp.is_active !== false,
         dates: exp.dates || [],
+        is_private_booking: isPrivate,
       });
     } else {
       setEditingExp(null);
@@ -382,8 +388,19 @@ export default function AdminExperiences() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Tipo</label>
-                  <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#7db87a]/30 font-medium text-gray-700">
+                  <select 
+                    value={form.type} 
+                    onChange={e => {
+                      const newType = e.target.value;
+                      const autoPrivate = ['private', 'omakase', 'catering'].includes(newType);
+                      setForm(f => ({ 
+                        ...f, 
+                        type: newType,
+                        is_private_booking: autoPrivate ? true : f.is_private_booking 
+                      }));
+                    }}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#7db87a]/30 font-medium text-gray-700"
+                  >
                     {Object.entries(TYPE_LABELS).map(([k, v]) => (
                       <option key={k} value={k}>{v.label}</option>
                     ))}
@@ -446,9 +463,60 @@ export default function AdminExperiences() {
                 </div>
               </div>
 
-              {/* Dates */}
+              {/* Mode Selector */}
+              <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Icon icon="heroicons:sparkles" className="text-amber-600 text-base" />
+                    Modalidad de Agenda
+                  </label>
+                  <span className="text-[10px] font-bold uppercase bg-amber-200/60 text-amber-900 px-2.5 py-0.5 rounded-full">
+                    {form.is_private_booking ? 'Bajo Reserva Privada' : 'Evento con Fecha Fija'}
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, is_private_booking: true })}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      form.is_private_booking 
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-md ring-2 ring-amber-400/30' 
+                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="font-extrabold text-xs sm:text-sm mb-0.5">🥂 Reserva Privada</div>
+                    <div className="text-[10px] opacity-90 font-medium">Cotización / Fecha flexible por WhatsApp o IA.</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, is_private_booking: false })}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      !form.is_private_booking 
+                        ? 'bg-[#4a6741] text-white border-[#4a6741] shadow-md ring-2 ring-[#4a6741]/30' 
+                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="font-extrabold text-xs sm:text-sm mb-0.5">📅 Fecha Fija</div>
+                    <div className="text-[10px] opacity-90 font-medium">Día y hora programada en calendario público.</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Dates or Private Info */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Fechas Programadas</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">
+                  {form.is_private_booking ? 'Programación de Fechas (Opcional)' : 'Fechas Programadas'}
+                </label>
+
+                {form.is_private_booking && (
+                  <div className="mb-3 bg-emerald-50 border border-emerald-200/80 rounded-xl p-3 text-xs text-emerald-800 font-medium flex items-center gap-2">
+                    <Icon icon="heroicons:check-circle" className="text-emerald-600 text-lg shrink-0" />
+                    <span>Experiencia en modalidad <strong>Reserva Privada</strong>. Los clientes solicitarán su fecha de forma personalizada.</span>
+                  </div>
+                )}
+
                 <div className="flex gap-2 mb-2">
                   <input type="date" value={dateInput.date} onChange={e => setDateInput({ ...dateInput, date: e.target.value })}
                     className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none font-medium text-gray-700 text-sm" />
