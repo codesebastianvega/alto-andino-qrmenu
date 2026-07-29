@@ -214,20 +214,94 @@ export default function ExperiencesSection({ variant = "slider", hideHeader = fa
                         <p className="text-sm text-[#1A1A1A]/70 leading-relaxed font-medium">{selectedExp.description}</p>
                       </div>
 
-                      {/* Includes */}
-                      {selectedExp.includes?.length > 0 && (
-                        <div>
-                          <h4 className="text-xs font-bold text-black/40 uppercase tracking-widest mb-3">¿Qué incluye?</h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {selectedExp.includes.map((item, i) => (
-                              <div key={i} className="flex items-start gap-2.5 text-sm text-[#1A1A1A]/80 font-medium bg-[#FAFAFA] p-3 rounded-xl border border-black/5">
-                                <Icon icon="heroicons:check-circle" className="text-[#E6B05C] text-lg flex-shrink-0" />
-                                <span className="leading-tight">{item}</span>
+                      {/* Includes & Step-by-Step Degustation Menu */}
+                      {(() => {
+                        const generalIncludes = [];
+                        const stepItems = [];
+
+                        if (Array.isArray(selectedExp.steps) && selectedExp.steps.length > 0) {
+                          selectedExp.steps.forEach((st, idx) => {
+                            stepItems.push({
+                              number: idx + 1,
+                              title: st.title || `Paso ${idx + 1}`,
+                              description: st.description || ''
+                            });
+                          });
+                        }
+
+                        if (Array.isArray(selectedExp.includes)) {
+                          selectedExp.includes.forEach((item) => {
+                            if (typeof item === 'string' && item.trim().toLowerCase().startsWith('paso ')) {
+                              if (!selectedExp.steps || selectedExp.steps.length === 0) {
+                                const parts = item.split(': ');
+                                const titlePart = parts[0] ? parts[0].trim() : item;
+                                const descPart = parts.slice(1).join(': ').trim();
+                                stepItems.push({
+                                  number: stepItems.length + 1,
+                                  title: titlePart,
+                                  description: descPart
+                                });
+                              }
+                            } else if (typeof item === 'string' && item.trim()) {
+                              generalIncludes.push(item);
+                            }
+                          });
+                        }
+
+                        return (
+                          <div className="space-y-6">
+                            {/* General Includes */}
+                            {generalIncludes.length > 0 && (
+                              <div>
+                                <h4 className="text-xs font-bold text-black/40 uppercase tracking-widest mb-3">¿Qué incluye?</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  {generalIncludes.map((item, i) => (
+                                    <div key={i} className="flex items-start gap-2.5 text-xs sm:text-sm text-[#1A1A1A]/80 font-semibold bg-[#FAFAFA] p-3 rounded-xl border border-black/5">
+                                      <Icon icon="heroicons:check-circle" className="text-[#E6B05C] text-lg flex-shrink-0 mt-0.5" />
+                                      <span className="leading-tight">{item}</span>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                            ))}
+                            )}
+
+                            {/* Step by Step Degustation Menu */}
+                            {stepItems.length > 0 && (
+                              <div>
+                                <div className="flex items-center justify-between mb-4">
+                                  <h4 className="text-xs font-bold text-black/40 uppercase tracking-widest flex items-center gap-2">
+                                    <Icon icon="heroicons:list-bullet" className="text-[#E6B05C] text-base" />
+                                    Menú Degustación • Paso a Paso
+                                  </h4>
+                                  <span className="text-[10px] font-bold uppercase bg-[#E6B05C]/15 text-[#a37633] px-2.5 py-0.5 rounded-full border border-[#E6B05C]/30">
+                                    {stepItems.length} Pasos Sensoriales
+                                  </span>
+                                </div>
+
+                                <div className="space-y-3 relative before:absolute before:left-4 before:top-4 before:bottom-4 before:w-0.5 before:bg-[#E6B05C]/30">
+                                  {stepItems.map((step, i) => (
+                                    <div key={i} className="relative flex items-start gap-3.5 bg-[#FAFAFA] hover:bg-white p-4 rounded-2xl border border-black/5 shadow-xs hover:shadow-md transition-all group">
+                                      <div className="w-7 h-7 rounded-full bg-[#1A1A1A] text-[#E6B05C] font-black text-xs flex items-center justify-center shrink-0 border border-[#E6B05C]/40 shadow-sm z-10 group-hover:scale-110 transition-transform mt-0.5">
+                                        {i + 1}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <h5 className="text-sm font-extrabold text-[#1A1A1A] leading-snug group-hover:text-[#a37633] transition-colors">
+                                          {step.title.replace(/^Paso\s*\d+:\s*/i, '')}
+                                        </h5>
+                                        {step.description && (
+                                          <p className="text-xs text-black/60 font-medium mt-1 leading-relaxed">
+                                            {step.description}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
 
                       {/* Booking Form */}
                       <div className="bg-[#FAFAFA] rounded-[2rem] p-6 sm:p-8 border border-black/5">
