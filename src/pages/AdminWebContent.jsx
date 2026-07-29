@@ -268,6 +268,13 @@ export default function AdminWebContent() {
           onConflict: 'brand_id' 
         });
       if (error) throw error;
+
+      // Sync brand description if footer_tagline was modified
+      if (data.footer_tagline && activeBrand?.id) {
+        await supabase.from('brands')
+          .update({ description: data.footer_tagline })
+          .eq('id', activeBrand.id);
+      }
       
       // Update local context for SPA synchronization
       if (refetchMenuData) refetchMenuData();
