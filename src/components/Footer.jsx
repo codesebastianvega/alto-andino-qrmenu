@@ -30,8 +30,18 @@ export default function Footer({ hasCartBar }) {
 
   const formattedHours = React.useMemo(() => {
     if (!businessHours || businessHours.length === 0) return null;
+    
+    // Filter to location-specific hours if present, otherwise fallback to brand-level default (location_id IS NULL)
+    const locId = mainLocation?.id;
+    const specificHours = locId ? businessHours.filter(h => h.location_id === locId) : [];
+    const relevantHours = specificHours.length > 0 
+      ? specificHours 
+      : businessHours.filter(h => !h.location_id);
+
+    if (relevantHours.length === 0) return null;
+
     const DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-    const openDays = businessHours.filter(h => !h.is_closed);
+    const openDays = relevantHours.filter(h => !h.is_closed);
     if (openDays.length === 0) return [{ days: "Cerrado", hours: "-" }];
 
     const groups = [];
@@ -60,7 +70,7 @@ export default function Footer({ hasCartBar }) {
       }
       return { days: daysLabel, hours: `${g.openT} - ${g.closeT}` };
     });
-  }, [businessHours]);
+  }, [businessHours, mainLocation?.id]);
 
   return (
     <footer 

@@ -255,7 +255,8 @@ export default function AdminSettings() {
       }
 
       toast.success('Horarios actualizados');
-      fetchHours();
+      await fetchHours();
+      if (refetchMenuData) refetchMenuData();
     } catch (err) {
       console.error(err);
       toast.error('Error guardando horarios');
