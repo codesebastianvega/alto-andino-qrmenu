@@ -5,13 +5,32 @@ import { useAuth } from "../context/AuthContext";
 
 function getGreetingMessage(homeSettings) {
   const hour = new Date().getHours();
+  let morning = '';
+  let afternoon = '';
+  let night = '';
+
+  if (homeSettings?.footer_thanks_message) {
+    try {
+      if (homeSettings.footer_thanks_message.startsWith('{')) {
+        const parsed = JSON.parse(homeSettings.footer_thanks_message);
+        morning = parsed.morning;
+        afternoon = parsed.afternoon;
+        night = parsed.night;
+      } else {
+        night = homeSettings.footer_thanks_message;
+      }
+    } catch {
+      night = homeSettings.footer_thanks_message;
+    }
+  }
+
   if (hour >= 5 && hour < 12) {
-    return homeSettings?.footer_greeting_morning || "Gracias por visitarnos esta mañana ☀️";
+    return morning || homeSettings?.footer_greeting_morning || "Gracias por visitarnos esta mañana ☀️";
   }
   if (hour >= 12 && hour < 18) {
-    return homeSettings?.footer_greeting_afternoon || "Gracias por compartir tu tarde con nosotros 🌿";
+    return afternoon || homeSettings?.footer_greeting_afternoon || "Gracias por compartir tu tarde con nosotros 🌿";
   }
-  return homeSettings?.footer_greeting_night || homeSettings?.footer_thanks_message || "Gracias por acompañarnos esta noche 🌙";
+  return night || homeSettings?.footer_greeting_night || "Gracias por acompañarnos esta noche 🌙";
 }
 
 export default function Footer({ hasCartBar }) {

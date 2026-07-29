@@ -96,9 +96,29 @@ export default function AdminWebContent() {
         .single();
       if (error && error.code !== 'PGRST116') throw error;
       if (data) {
+        let morning = '';
+        let afternoon = '';
+        let night = '';
+        if (data.footer_thanks_message) {
+          try {
+            if (data.footer_thanks_message.startsWith('{')) {
+              const parsed = JSON.parse(data.footer_thanks_message);
+              morning = parsed.morning || '';
+              afternoon = parsed.afternoon || '';
+              night = parsed.night || '';
+            } else {
+              night = data.footer_thanks_message;
+            }
+          } catch {
+            night = data.footer_thanks_message;
+          }
+        }
         setData(prev => ({
           ...prev,
           ...data,
+          footer_greeting_morning: morning,
+          footer_greeting_afternoon: afternoon,
+          footer_greeting_night: night,
           featured_items: data.featured_items || [],
           reviews: data.reviews || []
         }));
@@ -227,14 +247,17 @@ export default function AdminWebContent() {
         return;
       }
 
+      const thanksPayload = JSON.stringify({
+        morning: data.footer_greeting_morning || '',
+        afternoon: data.footer_greeting_afternoon || '',
+        night: data.footer_greeting_night || ''
+      });
+
       const payload = {
         hero_h1: data.hero_h1 || null,
         hero_subtitle: data.hero_subtitle || null,
         hero_emojis: data.hero_emojis || null,
-        footer_thanks_message: data.footer_thanks_message || null,
-        footer_greeting_morning: data.footer_greeting_morning || null,
-        footer_greeting_afternoon: data.footer_greeting_afternoon || null,
-        footer_greeting_night: data.footer_greeting_night || null,
+        footer_thanks_message: thanksPayload,
         footer_tagline: data.footer_tagline || null,
         featured_items: data.featured_items || [],
         reviews: data.reviews || [],
