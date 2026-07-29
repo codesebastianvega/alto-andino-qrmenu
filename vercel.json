@@ -5,7 +5,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*(whatsapp|facebookexternalhit|twitterbot|telegrambot|linkedinbot|slackbot|discordbot|applebot).*"
+          "value": ".*(whatsapp|facebookexternalhit|twitterbot|telegrambot|linkedinbot|slackbot|discordbot).*"
         }
       ],
       "source": "/:slug*",
