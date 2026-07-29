@@ -189,12 +189,26 @@ export default function AdminExperiences() {
     const baseIncludes = (form.includes || []).filter(inc => typeof inc === 'string' && !inc.toLowerCase().startsWith('paso '));
     const mergedIncludes = [...baseIncludes, ...formattedSteps];
 
+    const DB_TYPE_MAP = {
+      private: 'premium',
+      omakase: 'dinner',
+      catering: 'event',
+      workshop: 'workshop',
+      event: 'event',
+      tasting: 'tasting',
+      tour: 'tour',
+      dinner: 'dinner',
+      premium: 'premium'
+    };
+
+    const validDbType = DB_TYPE_MAP[form.type] || 'premium';
+
     // Strictly valid columns for Supabase experiences table
     const payload = {
       title: form.title,
       short_description: form.short_description || '',
       description: form.description || '',
-      type: form.type || 'private',
+      type: validDbType,
       price: Number(form.price) || 0,
       capacity: Number(form.capacity) || 10,
       duration_minutes: Number(form.duration_minutes) || 60,
