@@ -42,6 +42,8 @@ export default function AdminWebContent() {
     hero_h1: '',
     hero_subtitle: '',
     hero_emojis: '',
+    footer_thanks_message: '',
+    footer_tagline: '',
     featured_items: [],
     reviews: [],
     featured_items_title: '',
@@ -226,6 +228,8 @@ export default function AdminWebContent() {
         hero_h1: data.hero_h1 || null,
         hero_subtitle: data.hero_subtitle || null,
         hero_emojis: data.hero_emojis || null,
+        footer_thanks_message: data.footer_thanks_message || null,
+        footer_tagline: data.footer_tagline || null,
         featured_items: data.featured_items || [],
         reviews: data.reviews || [],
         featured_items_title: data.featured_items_title || null,
@@ -549,6 +553,38 @@ export default function AdminWebContent() {
                          </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* CONFIGURACIÓN DEL FOOTER (PIE DE PÁGINA) */}
+                <div className="p-6 bg-gray-50/50 rounded-[2rem] border border-gray-100 space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+                      <Icon icon="solar:document-text-bold-duotone" className="text-emerald-600 text-xl" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900 uppercase tracking-tight">Pie de Página (Footer)</h4>
+                      <p className="text-[11px] text-gray-500 font-medium">Personaliza los mensajes y la descripción de tu marca que se muestran al final de la carta.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <FormField label="Mensaje de Agradecimiento (Superior)" subtitle="Aparece al inicio del footer según el momento del día.">
+                      <TextInput 
+                        value={data.footer_thanks_message || ''}
+                        onChange={(e) => setData({ ...data, footer_thanks_message: e.target.value })}
+                        placeholder="Ej. Gracias por acompañarnos esta noche 🌙"
+                      />
+                    </FormField>
+
+                    <FormField label="Descripción de la Marca (Footer)" subtitle="Texto explicativo breve bajo el logo en el pie de página.">
+                      <textarea 
+                        value={data.footer_tagline || ''}
+                        onChange={(e) => setData({ ...data, footer_tagline: e.target.value })}
+                        className="w-full bg-white border-2 border-gray-100 rounded-[1.5rem] p-4 text-xs font-medium text-gray-700 outline-none focus:border-indigo-200 transition-all placeholder:text-gray-300 min-h-[90px] shadow-sm"
+                        placeholder="Ej. Elevando la experiencia de la comida saludable. Raíces locales, nutrición consciente y un espacio para respirar..."
+                      />
+                    </FormField>
                   </div>
                 </div>
 

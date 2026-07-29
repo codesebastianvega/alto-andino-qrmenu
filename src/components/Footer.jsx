@@ -11,7 +11,7 @@ function getGreetingMessage() {
 }
 
 export default function Footer({ hasCartBar }) {
-  const { restaurantSettings, locations } = useMenuData();
+  const { restaurantSettings, homeSettings, locations, businessHours } = useMenuData();
   const { activeBrand } = useAuth();
   
   const mainLocation = locations?.find(loc => loc.is_main) || locations?.[0];
@@ -21,10 +21,46 @@ export default function Footer({ hasCartBar }) {
   const footerBg = restaurantSettings?.theme_footer_bg || "#1A2421";
 
   const IG_URL = restaurantSettings?.instagram_url || (activeBrand?.instagram ? `https://instagram.com/${activeBrand.instagram.replace('@', '')}` : null);
-  const RAW_WA = (mainLocation?.phone || restaurantSettings?.whatsapp_number_orders || activeBrand?.whatsapp || "").replace(/\D/g, "");
+  const RAW_WA = (restaurantSettings?.whatsapp_number_orders || mainLocation?.phone || activeBrand?.whatsapp || activeBrand?.phone || "").replace(/\D/g, "");
   const WA_NUM = RAW_WA ? (RAW_WA.startsWith("57") ? RAW_WA : `57${RAW_WA}`) : null;
   const WA_LINK = WA_NUM ? `https://wa.me/${WA_NUM}` : null;
   const REVIEWS_URL = restaurantSettings?.reviews_url;
+
+  const displayPhone = restaurantSettings?.whatsapp_number_orders || mainLocation?.phone || activeBrand?.whatsapp || activeBrand?.phone || "";
+
+  const formattedHours = React.useMemo(() => {
+    if (!businessHours || businessHours.length === 0) return null;
+    const DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+    const openDays = businessHours.filter(h => !h.is_closed);
+    if (openDays.length === 0) return [{ days: "Cerrado", hours: "-" }];
+
+    const groups = [];
+    openDays.forEach(h => {
+      const openT = h.open_time ? h.open_time.slice(0, 5) : "08:00";
+      const closeT = h.close_time ? h.close_time.slice(0, 5) : "22:00";
+      const key = `${openT}-${closeT}`;
+      const dayName = DAYS[h.day_of_week];
+      const existing = groups.find(g => g.key === key);
+      if (existing) {
+        existing.days.push(h.day_of_week);
+        existing.dayNames.push(dayName);
+      } else {
+        groups.push({ key, openT, closeT, days: [h.day_of_week], dayNames: [dayName] });
+      }
+    });
+
+    return groups.map(g => {
+      let daysLabel = "";
+      if (g.days.length === 7) {
+        daysLabel = "Todos los días";
+      } else if (g.days.length > 1 && g.days[g.days.length - 1] - g.days[0] === g.days.length - 1) {
+        daysLabel = `${DAYS[g.days[0]]} - ${DAYS[g.days[g.days.length - 1]]}`;
+      } else {
+        daysLabel = g.dayNames.join(", ");
+      }
+      return { days: daysLabel, hours: `${g.openT} - ${g.closeT}` };
+    });
+  }, [businessHours]);
 
   return (
     <footer 
@@ -35,7 +71,9 @@ export default function Footer({ hasCartBar }) {
         
         {/* Greeting */}
         <div className="text-center mb-8 md:mb-16">
-          <p className="text-white/40 text-xs md:text-sm font-medium">{getGreetingMessage()}</p>
+          <p className="text-white/40 text-xs md:text-sm font-medium">
+            {homeSettings?.footer_thanks_message || getGreetingMessage()}
+          </p>
         </div>
 
         {/* Main Grid */}
@@ -53,7 +91,7 @@ export default function Footer({ hasCartBar }) {
               )}
             </div>
             <p className="text-white/50 font-medium text-xs md:text-sm max-w-sm leading-relaxed mb-4 md:mb-6">
-              {activeBrand?.description || "Elevando la experiencia de la comida saludable. Raíces locales, nutrición consciente y un espacio para respirar en la ciudad."}
+              {homeSettings?.footer_tagline || activeBrand?.description || "Elevando la experiencia de la comida saludable. Raíces locales, nutrición consciente y un espacio para respirar en la ciudad."}
             </p>
             <div className="flex gap-2 md:gap-3">
               {IG_URL && (
@@ -101,7 +139,12 @@ export default function Footer({ hasCartBar }) {
                   <ul key={loc.id} className="space-y-2 text-xs md:text-sm text-white/60 font-medium border-l border-white/10 pl-3">
                     <li className="text-white/90 font-bold">{loc.name}</li>
                     <li>{loc.address}</li>
-                    {loc.phone && <li>{loc.phone}</li>}
+                    {(loc.phone || displayPhone) && (
+                      <li className="text-white/80 font-medium flex items-center gap-1.5">
+                        <MessageCircle size={13} className="text-[#25D366]" />
+                        {loc.phone || displayPhone}
+                      </li>
+                    )}
                     {loc.maps_url && (
                       <li className="pt-1">
                         <a 
@@ -120,6 +163,12 @@ export default function Footer({ hasCartBar }) {
                 <ul className="space-y-2 md:space-y-3 text-xs md:text-sm text-white/60 font-medium">
                   <li>{activeBrand?.address || ""}</li>
                   <li>{activeBrand?.city || ""}</li>
+                  {displayPhone && (
+                    <li className="text-white/80 font-medium flex items-center gap-1.5">
+                      <MessageCircle size={13} className="text-[#25D366]" />
+                      {displayPhone}
+                    </li>
+                  )}
                   {activeBrand?.address_link && (
                     <li className="pt-1">
                       <a 
@@ -141,10 +190,19 @@ export default function Footer({ hasCartBar }) {
           <div>
             <h4 className="font-bold mb-3 md:mb-5 text-sm md:text-base">Horarios</h4>
             <ul className="space-y-2 md:space-y-3 text-xs md:text-sm text-white/60 font-medium">
-              <li className="flex justify-between gap-4">
-                <span>{activeBrand?.schedule_days || "Lun - Vie"}</span>
-                <span>{activeBrand?.schedule_hours || "8:00 - 18:00"}</span>
-              </li>
+              {formattedHours && formattedHours.length > 0 ? (
+                formattedHours.map((hGroup, idx) => (
+                  <li key={idx} className="flex justify-between gap-4">
+                    <span>{hGroup.days}</span>
+                    <span className="font-bold text-white/90">{hGroup.hours}</span>
+                  </li>
+                ))
+              ) : (
+                <li className="flex justify-between gap-4">
+                  <span>{activeBrand?.schedule_days || "Lun - Vie"}</span>
+                  <span className="font-bold text-white/90">{activeBrand?.schedule_hours || "08:00 - 18:00"}</span>
+                </li>
+              )}
             </ul>
           </div>
         </div>
