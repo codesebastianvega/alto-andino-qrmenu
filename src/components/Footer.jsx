@@ -3,11 +3,15 @@ import { Leaf, MapPin, Instagram, MessageCircle } from "lucide-react";
 import { useMenuData } from "../context/MenuDataContext";
 import { useAuth } from "../context/AuthContext";
 
-function getGreetingMessage() {
+function getGreetingMessage(homeSettings) {
   const hour = new Date().getHours();
-  if (hour < 12) return "Gracias por visitarnos esta mañana ☀️";
-  if (hour < 18) return "Gracias por compartir tu tarde con nosotros 🌿";
-  return "Gracias por acompañarnos esta noche 🌙";
+  if (hour >= 5 && hour < 12) {
+    return homeSettings?.footer_greeting_morning || "Gracias por visitarnos esta mañana ☀️";
+  }
+  if (hour >= 12 && hour < 18) {
+    return homeSettings?.footer_greeting_afternoon || "Gracias por compartir tu tarde con nosotros 🌿";
+  }
+  return homeSettings?.footer_greeting_night || homeSettings?.footer_thanks_message || "Gracias por acompañarnos esta noche 🌙";
 }
 
 export default function Footer({ hasCartBar }) {
@@ -82,7 +86,7 @@ export default function Footer({ hasCartBar }) {
         {/* Greeting */}
         <div className="text-center mb-8 md:mb-16">
           <p className="text-white/40 text-xs md:text-sm font-medium">
-            {homeSettings?.footer_thanks_message || getGreetingMessage()}
+            {getGreetingMessage(homeSettings)}
           </p>
         </div>
 

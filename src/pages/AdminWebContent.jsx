@@ -43,6 +43,9 @@ export default function AdminWebContent() {
     hero_subtitle: '',
     hero_emojis: '',
     footer_thanks_message: '',
+    footer_greeting_morning: '',
+    footer_greeting_afternoon: '',
+    footer_greeting_night: '',
     footer_tagline: '',
     featured_items: [],
     reviews: [],
@@ -229,6 +232,9 @@ export default function AdminWebContent() {
         hero_subtitle: data.hero_subtitle || null,
         hero_emojis: data.hero_emojis || null,
         footer_thanks_message: data.footer_thanks_message || null,
+        footer_greeting_morning: data.footer_greeting_morning || null,
+        footer_greeting_afternoon: data.footer_greeting_afternoon || null,
+        footer_greeting_night: data.footer_greeting_night || null,
         footer_tagline: data.footer_tagline || null,
         featured_items: data.featured_items || [],
         reviews: data.reviews || [],
@@ -571,19 +577,42 @@ export default function AdminWebContent() {
                     </div>
                     <div>
                       <h4 className="text-sm font-bold text-gray-900 uppercase tracking-tight">Pie de Página (Footer)</h4>
-                      <p className="text-[11px] text-gray-500 font-medium">Personaliza los mensajes y la descripción de tu marca que se muestran al final de la carta.</p>
+                      <p className="text-[11px] text-gray-500 font-medium">Personaliza los mensajes por franja horaria y la descripción de tu marca que se muestran al final de la carta.</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <FormField label="Mensaje de Agradecimiento (Superior)" subtitle="Aparece al inicio del footer según el momento del día.">
-                      <TextInput 
-                        value={data.footer_thanks_message || ''}
-                        onChange={(e) => setData({ ...data, footer_thanks_message: e.target.value })}
-                        placeholder="Ej. Gracias por acompañarnos esta noche 🌙"
-                      />
-                    </FormField>
+                  <div className="space-y-4">
+                    <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider">
+                      Mensajes de Agradecimiento Dinámicos (Según la Hora del Día)
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormField label="☀️ Mañana (5am - 12pm)" subtitle="Mensaje automático matutino">
+                        <TextInput 
+                          value={data.footer_greeting_morning || ''}
+                          onChange={(e) => setData({ ...data, footer_greeting_morning: e.target.value })}
+                          placeholder="Gracias por visitarnos esta mañana ☀️"
+                        />
+                      </FormField>
 
+                      <FormField label="🌿 Tarde (12pm - 6pm)" subtitle="Mensaje automático de la tarde">
+                        <TextInput 
+                          value={data.footer_greeting_afternoon || ''}
+                          onChange={(e) => setData({ ...data, footer_greeting_afternoon: e.target.value })}
+                          placeholder="Gracias por compartir tu tarde con nosotros 🌿"
+                        />
+                      </FormField>
+
+                      <FormField label="🌙 Noche (6pm - 5am)" subtitle="Mensaje automático nocturno">
+                        <TextInput 
+                          value={data.footer_greeting_night || ''}
+                          onChange={(e) => setData({ ...data, footer_greeting_night: e.target.value })}
+                          placeholder="Gracias por acompañarnos esta noche 🌙"
+                        />
+                      </FormField>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
                     <FormField label="Descripción de la Marca (Footer)" subtitle="Texto explicativo breve bajo el logo en el pie de página.">
                       <textarea 
                         value={data.footer_tagline || ''}
