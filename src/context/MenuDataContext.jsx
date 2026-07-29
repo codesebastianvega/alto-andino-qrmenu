@@ -508,10 +508,40 @@ export const MenuDataProvider = ({ children }) => {
   }), [
     categories, allCategories, productsByCategory, getProductsByCategory, getAllProducts, 
     getModifiers, modifiers, rawModifierGroups, experiences, banners, allergens, 
-    homeSettings, restaurantSettings, brand, planFeatures, locations, loading, activeBrandId, currentLocation, activeLocationId, fetchMenuData,
-    currentBusinessHours, businessHours
   ]);
 
+  useEffect(() => {
+    if (!brand) return;
+    const bName = restaurantSettings?.business_name || brand?.name || "Boku Bento";
+    const bDesc = homeSettings?.hero_subtitle || brand?.description || "Menú Digital Interactivo";
+    const bLogo = restaurantSettings?.logo_url || brand?.logo_url;
+
+    document.title = `${bName} | Menú Digital`;
+
+    const setMeta = (attrName, attrVal, content) => {
+      if (!content) return;
+      let el = document.querySelector(`meta[${attrName}="${attrVal}"]`);
+      if (!el) {
+        el = document.createElement('meta');
+        el.setAttribute(attrName, attrVal);
+        document.head.appendChild(el);
+      }
+      el.setAttribute('content', content);
+    };
+
+    setMeta('property', 'og:title', `${bName} | Menú Digital`);
+    setMeta('property', 'og:description', bDesc);
+    if (bLogo) {
+      setMeta('property', 'og:image', bLogo);
+      setMeta('property', 'og:image:secure_url', bLogo);
+      setMeta('name', 'twitter:image', bLogo);
+    }
+    setMeta('property', 'og:url', window.location.href);
+    setMeta('property', 'og:type', 'website');
+    setMeta('name', 'twitter:card', 'summary_large_image');
+    setMeta('name', 'twitter:title', `${bName} | Menú Digital`);
+    setMeta('name', 'twitter:description', bDesc);
+  }, [brand, restaurantSettings, homeSettings]);
 
   return (
     <MenuDataContext.Provider value={value}>
