@@ -85,6 +85,23 @@ export default function AdminExperiences() {
   const openModal = (exp = null) => {
     if (exp) {
       const isPrivate = exp.is_private_booking !== undefined ? exp.is_private_booking : (['private', 'omakase', 'catering'].includes(exp.type) || !exp.dates || exp.dates.length === 0);
+      
+      const parsedSteps = exp.steps && exp.steps.length > 0 ? exp.steps : [];
+      const parsedIncludes = [];
+      
+      (exp.includes || []).forEach(inc => {
+        if (typeof inc === 'string' && inc.toLowerCase().startsWith('paso ')) {
+          if (!exp.steps || exp.steps.length === 0) {
+            const parts = inc.split(': ');
+            const title = parts[0] ? parts[0].trim() : inc;
+            const description = parts.slice(1).join(': ').trim();
+            parsedSteps.push({ title, description });
+          }
+        } else {
+          parsedIncludes.push(inc);
+        }
+      });
+
       setEditingExp(exp);
       setForm({
         title: exp.title || '',
@@ -95,12 +112,12 @@ export default function AdminExperiences() {
         capacity: exp.capacity || 10,
         duration_minutes: exp.duration_minutes || 180,
         image_url: exp.image_url || '',
-        includes: exp.includes || [],
+        includes: parsedIncludes,
         location: exp.location || '',
         is_active: exp.is_active !== false,
         dates: exp.dates || [],
         is_private_booking: isPrivate,
-        steps: exp.steps || [],
+        steps: parsedSteps,
       });
     } else {
       setEditingExp(null);
@@ -161,7 +178,33 @@ export default function AdminExperiences() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    const payload = { ...form, price: Number(form.price) };
+
+    // Combine form.includes and form.steps (formatted as "Paso X: Título - Detalle")
+    const formattedSteps = (form.steps || []).map((s, idx) => {
+      const stepPrefix = s.title.toLowerCase().startsWith('paso') ? '' : `Paso ${idx + 1}: `;
+      return s.description ? `${stepPrefix}${s.title}: ${s.description}` : `${stepPrefix}${s.title}`;
+    });
+
+    // Keep base includes that are not step descriptions
+    const baseIncludes = (form.includes || []).filter(inc => typeof inc === 'string' && !inc.toLowerCase().startsWith('paso '));
+    const mergedIncludes = [...baseIncludes, ...formattedSteps];
+
+    // Strictly valid columns for Supabase experiences table
+    const payload = {
+      title: form.title,
+      short_description: form.short_description || '',
+      description: form.description || '',
+      type: form.type || 'private',
+      price: Number(form.price) || 0,
+      capacity: Number(form.capacity) || 10,
+      duration_minutes: Number(form.duration_minutes) || 60,
+      image_url: form.image_url || '',
+      includes: mergedIncludes,
+      location: form.location || '',
+      is_active: form.is_active !== false,
+      dates: form.dates || []
+    };
+
     let result;
     if (editingExp) {
       result = await updateExperience(editingExp.id, payload);
@@ -169,7 +212,13 @@ export default function AdminExperiences() {
       result = await createExperience(payload);
     }
     setSaving(false);
-    if (!result.error) setIsModalOpen(false);
+    if (!result?.error) {
+      toast.success(editingExp ? 'Experiencia actualizada' : 'Experiencia guardada con éxito');
+      setIsModalOpen(false);
+    } else {
+      console.error('Error saving experience:', result.error);
+      toast.error('Error al guardar la experiencia: ' + (result.error.message || 'Verifica los campos'));
+    }
   };
 
   const handleDelete = async (id, title) => {
