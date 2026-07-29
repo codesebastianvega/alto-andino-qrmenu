@@ -511,10 +511,16 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
           </div>
 
           <h1 className="mb-1.5 text-2xl font-extrabold tracking-tight text-[#1A1A1A] md:text-3xl">
-            Comer <span style={{ color: primaryColor }}>sano</span> nunca fue tan fácil
+            {homeSettings?.hero_h1 ? (
+              <span dangerouslySetInnerHTML={{ __html: homeSettings.hero_h1.replace(/\n/g, '<br/>') }} />
+            ) : (
+              <>
+                Comer <span style={{ color: primaryColor }}>sano</span> nunca fue tan fácil
+              </>
+            )}
           </h1>
           <p className="text-xs font-medium text-[#1A1A1A]/40 md:text-sm">
-            Ingredientes locales, directo a tu mesa.
+            {homeSettings?.hero_subtitle || 'Ingredientes locales, directo a tu mesa.'}
           </p>
         </motion.div>
 

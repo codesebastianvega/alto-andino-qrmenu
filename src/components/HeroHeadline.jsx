@@ -64,7 +64,7 @@ function getTimeContext(city = "") {
 export default function HeroHeadline() {
   const cart = useCart();
   // Selección de producto recomendado con stock disponible
-  const { restaurantSettings, categories, productsByCategory } = useMenuData();
+  const { homeSettings, restaurantSettings, categories, productsByCategory } = useMenuData();
   const { activeBrand } = useAuth();
   
   const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
