@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify-icon/react';
+import { Loader2 } from 'lucide-react';
 import { useExperiences } from '../hooks/useExperiences';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../config/supabase';
+import { validateImageSize, compressAndWebp } from '../utils/images';
+import { toast as toastFn } from '../components/Toast';
+
+const toast = {
+  success: (msg) => toastFn(msg, { duration: 2500 }),
+  error: (msg) => toastFn(msg, { duration: 3500 }),
+};
 
 const TYPE_LABELS = {
   private: { label: 'Reserva Privada / A Domicilio', icon: 'heroicons:user-group', color: 'text-amber-700 bg-amber-100 border border-amber-200' },
@@ -19,7 +28,7 @@ const EMPTY_FORM = {
   title: '', short_description: '', description: '', type: 'private',
   price: '', capacity: 10, duration_minutes: 180, image_url: '',
   includes: [], location: 'A domicilio / Espacio del cliente', is_active: true, dates: [],
-  is_private_booking: true
+  is_private_booking: true, steps: []
 };
 export default function AdminExperiences() {
   const { isFeatureLocked } = useAuth();
@@ -91,12 +100,62 @@ export default function AdminExperiences() {
         is_active: exp.is_active !== false,
         dates: exp.dates || [],
         is_private_booking: isPrivate,
+        steps: exp.steps || [],
       });
     } else {
       setEditingExp(null);
       setForm(EMPTY_FORM);
     }
     setIsModalOpen(true);
+  };
+
+  const [stepInput, setStepInput] = useState({ title: '', description: '' });
+  const [uploadingExpImage, setUploadingExpImage] = useState(false);
+
+  const addStep = () => {
+    if (stepInput.title.trim()) {
+      setForm(f => ({
+        ...f,
+        steps: [...(f.steps || []), { title: stepInput.title.trim(), description: stepInput.description.trim() }]
+      }));
+      setStepInput({ title: '', description: '' });
+    }
+  };
+
+  const removeStep = (idx) => {
+    setForm(f => ({ ...f, steps: (f.steps || []).filter((_, i) => i !== idx) }));
+  };
+
+  const handleExpImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!validateImageSize(file, toast)) return;
+
+    setUploadingExpImage(true);
+    try {
+      // Compress to WebP (max 1200px width, max 0.3MB)
+      const compressedFile = await compressAndWebp(file, { maxWidthOrHeight: 1200, maxSizeMB: 0.3 });
+      const fileName = `experience_${Date.now()}.webp`;
+      const filePath = `experiences/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('products')
+        .upload(filePath, compressedFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicData } = supabase.storage
+        .from('products')
+        .getPublicUrl(filePath);
+
+      setForm(prev => ({ ...prev, image_url: publicData.publicUrl }));
+      toast.success('Imagen subida y optimizada en formato WebP');
+    } catch (error) {
+      console.error('Error subiendo imagen de experiencia:', error);
+      toast.error('Error al subir la imagen');
+    } finally {
+      setUploadingExpImage(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -427,21 +486,61 @@ export default function AdminExperiences() {
                 </div>
               </div>
 
-              {/* Location + Image */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Location + Image Upload */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Ubicación</label>
                   <input type="text" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
-                    placeholder="Ej: Terraza 2do piso"
+                    placeholder="Ej: Terraza 2do piso / A domicilio"
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#7db87a]/30 font-medium text-gray-700" />
                 </div>
+
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">URL Imagen</label>
-                  <input type="text" value={form.image_url} onChange={e => setForm({ ...form, image_url: e.target.value })}
-                    placeholder="https://... o /img/mi-foto.jpg"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#7db87a]/30 font-medium text-gray-700" />
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">
+                    Imagen de la Experiencia
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="text" 
+                      value={form.image_url} 
+                      onChange={e => setForm({ ...form, image_url: e.target.value })}
+                      placeholder="URL o sube un archivo..."
+                      className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-[#7db87a]/30 font-medium text-gray-700 text-xs min-w-0" 
+                    />
+                    
+                    <label className="flex items-center gap-1.5 bg-[#4a6741] hover:bg-[#3b5334] text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all shrink-0 shadow-sm">
+                      {uploadingExpImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon icon="heroicons:arrow-up-tray" className="text-base" />}
+                      <span>{uploadingExpImage ? 'Subiendo...' : 'Subir Imagen'}</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={handleExpImageUpload}
+                        disabled={uploadingExpImage}
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
+
+              {/* Image Preview Thumbnail */}
+              {form.image_url && (
+                <div className="relative w-full h-32 rounded-2xl overflow-hidden border border-gray-200 bg-gray-900 group shadow-inner">
+                  <img src={form.image_url} alt="Vista previa" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end justify-between p-3">
+                    <span className="text-[10px] font-bold text-white uppercase tracking-wider bg-emerald-600/80 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Icon icon="heroicons:sparkles" /> WebP Optimizado
+                    </span>
+                    <button 
+                      type="button" 
+                      onClick={() => setForm({ ...form, image_url: '' })}
+                      className="text-white/80 hover:text-red-400 text-xs font-bold bg-black/50 hover:bg-black/80 px-2 py-1 rounded-lg backdrop-blur-md transition-colors"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Includes */}
               <div>
@@ -451,14 +550,78 @@ export default function AdminExperiences() {
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addInclude(); } }}
                     placeholder="Ej: Copa de bienvenida"
                     className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-[#7db87a]/30 font-medium text-gray-700 text-sm" />
-                  <button type="button" onClick={addInclude} className="bg-[#7db87a] text-white px-3 rounded-xl font-bold text-sm hover:bg-[#6aa669]">+</button>
+                  <button type="button" onClick={addInclude} className="bg-[#7db87a] text-white px-3.5 rounded-xl font-bold text-sm hover:bg-[#6aa669]">+</button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {form.includes.map((item, i) => (
-                    <span key={i} className="bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                    <span key={i} className="bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-emerald-100">
                       {item}
-                      <button type="button" onClick={() => removeInclude(i)} className="text-emerald-400 hover:text-red-500">×</button>
+                      <button type="button" onClick={() => removeInclude(i)} className="text-emerald-400 hover:text-red-500 text-sm font-bold">×</button>
                     </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pasos / Menú Degustación Paso a Paso */}
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Icon icon="heroicons:list-bullet" className="text-[#4a6741] text-base" />
+                    Pasos / Menú Degustación (Paso por Paso)
+                  </label>
+                  <span className="text-[10px] font-bold uppercase bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-full">
+                    {(form.steps || []).length} Pasos Creados
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <input 
+                    type="text" 
+                    value={stepInput.title} 
+                    onChange={e => setStepInput({ ...stepInput, title: e.target.value })}
+                    placeholder="Título del paso (ej: Paso 1: Esferificación de Maracuyá & Sake)"
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-xs outline-none focus:ring-2 focus:ring-[#7db87a]/30 font-medium text-gray-800"
+                  />
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      value={stepInput.description} 
+                      onChange={e => setStepInput({ ...stepInput, description: e.target.value })}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addStep(); } }}
+                      placeholder="Detalle del paso (ej: Esfera translúcida en cuchara de cerámica...)"
+                      className="flex-1 bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-xs outline-none focus:ring-2 focus:ring-[#7db87a]/30 font-medium text-gray-800"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={addStep}
+                      className="bg-[#4a6741] text-white px-3.5 rounded-xl font-bold text-xs hover:bg-[#3b5334] transition-colors shrink-0 flex items-center gap-1"
+                    >
+                      <span>+ Agregar Paso</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Renders Added Steps */}
+                <div className="space-y-2 pt-1 max-h-48 overflow-y-auto pr-1">
+                  {(form.steps || []).map((st, i) => (
+                    <div key={i} className="flex items-start justify-between bg-white p-3 rounded-xl border border-slate-200 shadow-sm text-xs gap-3">
+                      <div className="flex items-start gap-2.5">
+                        <span className="bg-[#4a6741]/10 text-[#4a6741] text-[10px] font-black uppercase px-2 py-0.5 rounded-md shrink-0 mt-0.5">
+                          Paso {i + 1}
+                        </span>
+                        <div>
+                          <p className="font-bold text-gray-900">{st.title}</p>
+                          {st.description && <p className="text-gray-500 text-[11px] mt-0.5 leading-relaxed">{st.description}</p>}
+                        </div>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => removeStep(i)}
+                        className="text-gray-400 hover:text-red-500 p-1 text-base leading-none transition-colors"
+                      >
+                        ×
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
