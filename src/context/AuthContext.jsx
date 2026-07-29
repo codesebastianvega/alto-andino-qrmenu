@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '../config/supabase';
 import { safeStorage as localStorage } from '../utils/safeStorage';
+import { withTimeout } from '../utils/withTimeout';
 
 const AuthContext = createContext({});
 
@@ -158,11 +159,15 @@ export const AuthProvider = ({ children }) => {
     // Initial session check
     const checkSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await withTimeout(
+          supabase.auth.getSession(),
+          8000,
+          'La verificación de sesión',
+        );
         const initialUser = session?.user ?? null;
         setUser(initialUser);
         if (initialUser) {
-          await fetchProfile(initialUser.id);
+          await withTimeout(fetchProfile(initialUser.id), 15000, 'La carga del perfil');
         } else {
           setLoading(false);
         }
@@ -176,7 +181,8 @@ export const AuthProvider = ({ children }) => {
   }, [fetchProfile]);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const pendingProfileTimers = new Set();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       const newUser = session?.user ?? null;
       const prevUser = currentUserRef.current;
 
@@ -202,10 +208,23 @@ export const AuthProvider = ({ children }) => {
       // 3. New user or session transition
       setUser(newUser);
       setLoading(true);
-      fetchProfile(newUser.id);
+      // Supabase recomienda no encadenar otras consultas dentro del callback de Auth.
+      // Diferirlas evita bloquear el lock de inicialización de la sesión.
+      const timer = window.setTimeout(() => {
+        pendingProfileTimers.delete(timer);
+        void withTimeout(fetchProfile(newUser.id), 15000, 'La carga del perfil')
+          .catch((err) => {
+            console.error('Auth profile refresh error:', err);
+            setLoading(false);
+          });
+      }, 0);
+      pendingProfileTimers.add(timer);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      pendingProfileTimers.forEach((timer) => window.clearTimeout(timer));
+      subscription.unsubscribe();
+    };
   }, [fetchProfile]);
 
 

@@ -384,7 +384,9 @@ export default function App() {
 
 
   // Render loading screen if still authenticating or loading critical brand data
-  const isGlobalLoading = authLoading || loadingBrand || (brand_slug && menuLoading);
+  // El menú público no necesita esperar Auth. El panel sí requiere la sesión
+  // antes de elegir la marca que administrará.
+  const isGlobalLoading = loadingBrand || (brand_slug && menuLoading) || (isNewAdminPanel && authLoading);
 
   // We use a small internal state to handle the fade-out duration
   const [actuallyDone, setActuallyDone] = useState(false);
@@ -413,6 +415,7 @@ export default function App() {
         {!actuallyDone && (
           <motion.div
             key="global-loader"
+            data-testid="global-loader"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5, ease: "easeInOut" }}

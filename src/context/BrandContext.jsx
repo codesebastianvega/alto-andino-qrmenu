@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabase';
+import { withTimeout } from '../utils/withTimeout';
 
 const BrandContext = createContext({});
 
@@ -22,24 +23,28 @@ export const BrandProvider = ({ children }) => {
       let brandBySlug = null;
       let targetBrandId = null;
       if (brand_slug) {
-        const { data } = await supabase
+        const { data } = await withTimeout(supabase
           .from('brands')
           .select('id, slug, name, payment_verified, trial_end_date, is_active')
           .eq('slug', brand_slug)
-          .maybeSingle();
+          .maybeSingle(), 10000, 'La búsqueda de la marca');
         brandBySlug = data;
       }
 
       // 2. Modo Admin: Verificamos perfil
       const is_admin_view = location.hash.includes('#admin');
       if (is_admin_view) {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await withTimeout(
+          supabase.auth.getSession(),
+          8000,
+          'La verificación de sesión de la marca',
+        );
         if (session?.user) {
-          const { data: profile } = await supabase
+          const { data: profile } = await withTimeout(supabase
             .from('profiles')
             .select('brand_id, brand:brands(id, slug, name, payment_verified, trial_end_date, is_active)')
             .eq('id', session.user.id)
-            .maybeSingle();
+            .maybeSingle(), 10000, 'La carga de la marca del perfil');
             
           if (profile?.brand_id) {
             // Sincronización: Si el slug URL no coincide con el perfil, redirigimos
@@ -62,11 +67,11 @@ export const BrandProvider = ({ children }) => {
       }
 
       if (targetBrandId) {
-        const { data: brandData, error } = await supabase
+        const { data: brandData, error } = await withTimeout(supabase
           .from('brands')
           .select('*, payment_verified, trial_end_date, plans(id, name)')
           .eq('id', targetBrandId)
-          .single();
+          .single(), 10000, 'La carga de la marca activa');
 
         if (!error && brandData) {
           // Solo actualizar si la marca es diferente para evitar loops de renderizado
@@ -74,11 +79,11 @@ export const BrandProvider = ({ children }) => {
             setBrand(brandData);
 
             if (brandData.plan_id) {
-              const { data: featuresData } = await supabase
+              const { data: featuresData } = await withTimeout(supabase
                 .from('plan_features')
                 .select('*')
                 .eq('plan_id', brandData.plan_id)
-                .eq('is_included', true);
+                .eq('is_included', true), 10000, 'La carga de funciones del plan');
               
               setFeatures(featuresData || []);
             }

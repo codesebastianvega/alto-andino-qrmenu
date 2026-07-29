@@ -1,15 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabase';
-import { useAuth } from './AuthContext';
 import { useBrand } from './BrandContext';
 import { useLocation as useAppLocation } from './LocationContext';
 import { catalogCache } from '../utils/offlineDb';
+import { withTimeout } from '../utils/withTimeout';
 
 const MenuDataContext = createContext({});
 
 export const MenuDataProvider = ({ children }) => {
-  const routerLocation = useLocation();
   const { activeLocationId } = useAppLocation();
   const [allCategories, setAllCategories] = useState([]);
   const [rawProducts, setRawProducts] = useState([]);
@@ -44,7 +42,7 @@ export const MenuDataProvider = ({ children }) => {
   const fetchMenuData = useCallback(async (brandId, { force = false } = {}) => {
     if (!brandId) {
       setLoading(false);
-      return;
+      return true;
     }
     setLoading(true);
     // Clear old state immediately to avoid "ghost" data from other brands
@@ -66,7 +64,14 @@ export const MenuDataProvider = ({ children }) => {
 
     try {
       const cacheKey = `menu:v2:${brandId}`;
-      const recentCache = force ? null : await catalogCache.get(cacheKey);
+      let recentCache = null;
+      if (!force) {
+        try {
+          recentCache = await withTimeout(catalogCache.get(cacheKey), 2500, 'La lectura del catálogo local');
+        } catch (cacheReadError) {
+          console.warn('MenuData: se omitió el caché local y se consultará Supabase.', cacheReadError);
+        }
+      }
       if (recentCache?.value && Date.now() - recentCache.cachedAt < 5 * 60 * 1000) {
         const data = recentCache.value;
         setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);
@@ -75,12 +80,12 @@ export const MenuDataProvider = ({ children }) => {
         setBrand(data.brand); setPlanFeatures(data.brand?.plans?.plan_features || []); setBusinessHours(data.businessHours);
         setLocationPrices(data.locationPrices); setLocationStatus(data.locationStatus);
         setLocationCategories(data.locationCategories); setLocationModLinks(data.locationModLinks);
-        return;
+        return true;
       }
 
       if (!brandId) {
         setLoading(false);
-        return;
+        return true;
       }
 
       // Helper to add brand filter when needed
@@ -99,7 +104,7 @@ export const MenuDataProvider = ({ children }) => {
         brandRes,
         prodsRes,
         hoursRes
-      ] = await Promise.all([
+      ] = await withTimeout(Promise.all([
         brandFilter(supabase.from('categories').select('*').eq('is_active', true).order('sort_order', { ascending: true })),
         brandFilter(supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(id, group_id, name, price, sort_order, created_at, nested_group_id, image_url, emoji, ingredient_id)')),
         brandFilter(supabase.from('experiences').select('*').eq('is_active', true).order('created_at', { ascending: false })),
@@ -111,7 +116,10 @@ export const MenuDataProvider = ({ children }) => {
         supabase.from('brands').select('*, plans(*, plan_features(*))').eq('id', brandId).single(),
         brandFilter(supabase.from('products').select('*, categories:category_id (slug)').eq('is_active', true).order('sort_order', { ascending: true })),
         brandFilter(supabase.from('business_hours').select('*'))
-      ]);
+      ]), 15000, 'La carga inicial del menú');
+
+      const criticalError = [brandRes, catsRes, prodsRes].find((result) => result.error)?.error;
+      if (criticalError) throw criticalError;
 
       // Set brand and plan features from the joined query
       if (brandRes.data) {
@@ -138,12 +146,12 @@ export const MenuDataProvider = ({ children }) => {
       let cachedLocationModLinks = [];
       if (locsRes.data?.length > 0) {
         const locationIds = locsRes.data.map(l => l.id);
-        const [pricesRes, statusRes, catLinksRes, modLinksRes] = await Promise.all([
+        const [pricesRes, statusRes, catLinksRes, modLinksRes] = await withTimeout(Promise.all([
           supabase.from('location_product_prices').select('*').in('location_id', locationIds),
           supabase.from('location_product_status').select('*').in('location_id', locationIds),
           supabase.from('location_categories').select('*').in('location_id', locationIds),
           supabase.from('location_modifier_groups').select('*').in('location_id', locationIds)
-        ]);
+        ]), 10000, 'La carga de configuración por sede');
 
         setLocationPrices(pricesRes.data || []);
         setLocationStatus(statusRes.data || []);
@@ -155,7 +163,7 @@ export const MenuDataProvider = ({ children }) => {
         cachedLocationModLinks = modLinksRes.data || [];
       }
 
-      await catalogCache.put(cacheKey, {
+      const cachePayload = {
         categories: catsRes.data || [], products: prodsRes.data || [], modifierGroups: modsRes.data || [],
         experiences: expRes.data || [], allergens: allgsRes.data || [], locations: locsRes.data || [],
         banners: bnrsRes.data || [], homeSettings: hSettRes.data?.[0] || null,
@@ -163,14 +171,21 @@ export const MenuDataProvider = ({ children }) => {
         businessHours: hoursRes.data || [], locationPrices: cachedLocationPrices,
         locationStatus: cachedLocationStatus, locationCategories: cachedLocationCategories,
         locationModLinks: cachedLocationModLinks,
-      });
+      };
+      try {
+        await withTimeout(catalogCache.put(cacheKey, cachePayload), 2500, 'La escritura del catálogo local');
+      } catch (cacheWriteError) {
+        console.warn('MenuData: el menú cargó, pero no se pudo actualizar el caché local.', cacheWriteError);
+      }
 
       console.log('✅ MenuData Parallel Fetch Complete');
+      return true;
 
     } catch (err) {
       console.error('❌ MenuData Fetch Error:', err);
+      let recoveredFromCache = false;
       try {
-        const cached = await catalogCache.get(`menu:v2:${brandId}`);
+        const cached = await withTimeout(catalogCache.get(`menu:v2:${brandId}`), 2500, 'La recuperación del catálogo local');
         if (cached?.value) {
           const data = cached.value;
           setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);
@@ -179,10 +194,12 @@ export const MenuDataProvider = ({ children }) => {
           setBrand(data.brand); setPlanFeatures(data.brand?.plans?.plan_features || []); setBusinessHours(data.businessHours);
           setLocationPrices(data.locationPrices); setLocationStatus(data.locationStatus);
           setLocationCategories(data.locationCategories); setLocationModLinks(data.locationModLinks);
+          recoveredFromCache = true;
         }
       } catch (cacheError) {
         console.error('No fue posible restaurar el catalogo local:', cacheError);
       }
+      return recoveredFromCache;
     } finally {
       setLoading(false);
     }
@@ -364,7 +381,12 @@ export const MenuDataProvider = ({ children }) => {
     lastFetchedBrandRef.current = activeBrandId;
     
     const doFetch = async () => {
-      await fetchMenuData(activeBrandId);
+      const loaded = await fetchMenuData(activeBrandId);
+      if (!loaded && isMounted) {
+        console.warn('MenuData: primer intento fallido; se hará un reintento controlado.');
+        await new Promise((resolve) => window.setTimeout(resolve, 1200));
+        if (isMounted) await fetchMenuData(activeBrandId, { force: true });
+      }
     };
 
     doFetch();
@@ -507,7 +529,10 @@ export const MenuDataProvider = ({ children }) => {
     hasFeature: (key) => planFeatures?.find(f => f.feature_key === key)?.is_included ?? false,
   }), [
     categories, allCategories, productsByCategory, getProductsByCategory, getAllProducts, 
-    getModifiers, modifiers, rawModifierGroups, experiences, banners, allergens, 
+    getModifiers, modifiers, rawModifierGroups, experiences, banners, allergens,
+    homeSettings, restaurantSettings, brand, businessHours, currentBusinessHours,
+    planFeatures, locations, loading, activeBrandId, currentLocation, activeLocationId,
+    fetchMenuData,
   ]);
 
   useEffect(() => {

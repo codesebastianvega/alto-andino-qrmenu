@@ -14,17 +14,27 @@ function openDatabase() {
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error('IndexedDB está bloqueada por otra pestaña'));
   });
 }
 
 async function withStore(storeName, mode, operation) {
   const db = await openDatabase();
+  db.onversionchange = () => db.close();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(storeName, mode);
     const request = operation(transaction.objectStore(storeName));
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
     transaction.oncomplete = () => db.close();
+    transaction.onerror = () => {
+      db.close();
+      reject(transaction.error || new Error('Falló la transacción de IndexedDB'));
+    };
+    transaction.onabort = () => {
+      db.close();
+      reject(transaction.error || new Error('Se canceló la transacción de IndexedDB'));
+    };
   });
 }
 
@@ -38,4 +48,3 @@ export const catalogCache = {
   put: (key, value) => withStore(CACHE_STORE, 'readwrite', (store) => store.put({ key, value, cachedAt: Date.now() })),
   get: (key) => withStore(CACHE_STORE, 'readonly', (store) => store.get(key)),
 };
-
