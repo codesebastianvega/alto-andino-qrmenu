@@ -63,9 +63,21 @@ export default function AdminSettings() {
         query = query.is('location_id', null);
       }
 
-      const { data, error } = await query.limit(1).single();
+      let { data, error } = await query.limit(1).maybeSingle();
       
-      if (error && error.code !== 'PGRST116') throw error;
+      // Fallback: If no location-specific settings row is found, check for brand-level settings (location_id IS NULL)
+      if (!data && !isAllLocations && activeLocationId) {
+        const fallbackRes = await supabase
+          .from('restaurant_settings')
+          .select('*')
+          .eq('brand_id', activeBrand.id)
+          .is('location_id', null)
+          .limit(1)
+          .maybeSingle();
+        if (fallbackRes.data) {
+          data = fallbackRes.data;
+        }
+      }
       
       if (data) {
         setSettings(data);
@@ -174,16 +186,19 @@ export default function AdminSettings() {
           .eq('id', settings.id);
         error = updateErr;
       } else {
-        const { error: insertErr } = await supabase
+        const { data: upsertData, error: upsertErr } = await supabase
           .from('restaurant_settings')
-          .insert([payload]);
-        error = insertErr;
+          .upsert(payload, { onConflict: 'brand_id' })
+          .select()
+          .single();
+        error = upsertErr;
+        if (upsertData) setSettings(upsertData);
       }
 
       if (error) throw error;
       
-      toast.success('Configuración guardada');
-      fetchSettings();
+      toast.success('Configuración guardada correctamente');
+      await fetchSettings();
     } catch (err) {
       console.error(err);
       toast.error('Error guardando configuración');
