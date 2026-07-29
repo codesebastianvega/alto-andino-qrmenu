@@ -139,10 +139,10 @@ export default function Footer({ hasCartBar }) {
                   <ul key={loc.id} className="space-y-2 text-xs md:text-sm text-white/60 font-medium border-l border-white/10 pl-3">
                     <li className="text-white/90 font-bold">{loc.name}</li>
                     <li>{loc.address}</li>
-                    {(loc.phone || displayPhone) && (
+                    {(displayPhone || loc.phone) && (
                       <li className="text-white/80 font-medium flex items-center gap-1.5">
                         <MessageCircle size={13} className="text-[#25D366]" />
-                        {loc.phone || displayPhone}
+                        {displayPhone || loc.phone}
                       </li>
                     )}
                     {loc.maps_url && (

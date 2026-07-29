@@ -197,6 +197,15 @@ export default function AdminSettings() {
 
       if (error) throw error;
       
+      // Also update locations table so DB location record matches
+      if (settingsForm.whatsapp_number_orders) {
+        if (!isAllLocations && activeLocationId) {
+          await supabase.from('locations').update({ phone: settingsForm.whatsapp_number_orders, whatsapp: settingsForm.whatsapp_number_orders }).eq('id', activeLocationId);
+        } else if (activeBrand?.id) {
+          await supabase.from('locations').update({ phone: settingsForm.whatsapp_number_orders, whatsapp: settingsForm.whatsapp_number_orders }).eq('brand_id', activeBrand.id);
+        }
+      }
+
       toast.success('Configuración guardada correctamente');
       await fetchSettings();
     } catch (err) {
