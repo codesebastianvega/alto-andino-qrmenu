@@ -21,7 +21,6 @@ archive/
 scratch/
 revisarfeatures/
 .vscode/
-schema_recreated.sql
 scripts/
 .vercel/
 *.log
