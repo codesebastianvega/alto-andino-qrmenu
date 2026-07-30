@@ -930,7 +930,7 @@ export default function AdminLayout() {
             <div className="flex items-center gap-3 lg:gap-6">
               {/* Context Breadcrumb - Visible ONLY on Desktop here */}
               <div className="hidden lg:block">
-                <ContextBreadcrumb />
+                <ContextBreadcrumb onNavigate={handleSelectPage} />
               </div>
               
               <div className="h-6 w-px bg-gray-200 hidden lg:block" />
@@ -1129,7 +1129,7 @@ export default function AdminLayout() {
               <div className="flex-1 overflow-y-auto custom-scrollbar pt-4 px-4 pb-20 space-y-5">
                 {/* Brand/Location Selectors for Mobile - Simplified without extra wrap */}
                 <div className="mb-8">
-                  <ContextBreadcrumb />
+                  <ContextBreadcrumb onNavigate={handleSelectPage} />
                 </div>
 
                 {ADMIN_ROLES.includes(user.role) && (
