@@ -4,6 +4,7 @@ import { useBrand } from './BrandContext';
 import { useLocation as useAppLocation } from './LocationContext';
 import { catalogCache } from '../utils/offlineDb';
 import { withTimeout } from '../utils/withTimeout';
+import { useDynamicPWA } from '../hooks/useDynamicPWA';
 
 const MenuDataContext = createContext({});
 
@@ -30,6 +31,9 @@ export const MenuDataProvider = ({ children }) => {
   // Get brand information from BrandContext (which resolves slug/session)
   const { brand: currentBrand, loadingBrand } = useBrand();
   const activeBrandId = currentBrand?.id ?? null;
+
+  // Inyectar PWA manifest dinámico por marca
+  useDynamicPWA({ brand: brand || currentBrand, restaurantSettings });
 
   // Expose the current location object for convenience
   const currentLocation = useMemo(() => {
