@@ -8,6 +8,7 @@ import {
   Loader2, AlertCircle, Banknote, Home, Truck, Utensils
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import soundService from '../utils/soundService';
 
 export default function OrderStatus({ orderId }) {
   const [order, setOrder] = useState(null);
@@ -31,7 +32,14 @@ export default function OrderStatus({ orderId }) {
         table: 'orders',
         filter: `id=eq.${orderId}`
       }, (payload) => {
+        const newStatus = payload.new?.status;
         setOrder(payload.new);
+
+        if (newStatus === 'ready') {
+          soundService.playOrderReady();
+        } else if (newStatus === 'preparing') {
+          soundService.playOrderReceived();
+        }
       })
       .subscribe();
 

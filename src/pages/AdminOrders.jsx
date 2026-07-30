@@ -11,6 +11,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Modal } from '../components/admin/ui';
 import { printThermalDocument } from '../utils/thermalPrint';
+import soundService from '../utils/soundService';
 
 const ORDER_STATUSES = [
   { id: 'new', label: 'Nuevos', color: 'text-blue-600', icon: 'heroicons:star' },
@@ -20,29 +21,7 @@ const ORDER_STATUSES = [
 ];
 
 const playNotificationSound = () => {
-    try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        const context = new AudioContext();
-        const oscillator = context.createOscillator();
-        const gainNode = context.createGain();
-
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, context.currentTime); // A5
-        oscillator.frequency.exponentialRampToValueAtTime(440, context.currentTime + 0.5); // A4
-
-        gainNode.gain.setValueAtTime(0, context.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.5, context.currentTime + 0.1);
-        gainNode.gain.linearRampToValueAtTime(0, context.currentTime + 0.5);
-
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
-
-        oscillator.start();
-        oscillator.stop(context.currentTime + 0.5);
-    } catch (e) {
-        console.error('Audio play failed', e);
-    }
+    soundService.playNewOrder();
 };
 
 const DailyStats = ({ orders, range, onCancelledClick, onDeliveredClick }) => {

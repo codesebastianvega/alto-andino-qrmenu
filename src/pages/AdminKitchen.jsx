@@ -7,31 +7,14 @@ import { useAuth } from '../context/AuthContext';
 import { useLocations } from '../context/LocationContext';
 import { useRestaurantSettings } from '../hooks/useRestaurantSettings';
 import { printThermalDocument } from '../utils/thermalPrint';
+import soundService from '../utils/soundService';
 
 const playNotificationSound = () => {
-    try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        const context = new AudioContext();
-        const oscillator = context.createOscillator();
-        const gainNode = context.createGain();
+    soundService.playNewOrder();
+};
 
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, context.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(440, context.currentTime + 0.5);
-
-        gainNode.gain.setValueAtTime(0, context.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.5, context.currentTime + 0.1);
-        gainNode.gain.linearRampToValueAtTime(0, context.currentTime + 0.5);
-
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
-
-        oscillator.start();
-        oscillator.stop(context.currentTime + 0.5);
-    } catch (e) {
-        console.error('Audio play failed', e);
-    }
+const playReadySound = () => {
+    soundService.playOrderReady();
 };
 
 function KitchenTimer({ createdAt }) {
@@ -279,7 +262,7 @@ export default function AdminKitchen() {
       // We'll let the realtime subscription handle the removal or do it manually for immediate feedback
       setOrders(prev => prev.filter(o => o.id !== orderId));
       toast('¡Pedido listo para entregar!');
-      playNotificationSound(); // Success sound
+      playReadySound(); // Success sound
     } catch (err) {
       console.error('Error updating order:', err);
       toast('Error al marcar como listo');
