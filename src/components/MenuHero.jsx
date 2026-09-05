@@ -225,6 +225,7 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
   const displayLocation = currentLocation || locations?.find((loc) => loc.is_main) || locations?.[0];
   const locationLabel = displayLocation?.name || brandName;
   const locationHint = displayLocation?.city || displayLocation?.address || 'Listo para ordenar';
+  const [menuBannerError, setMenuBannerError] = useState(false);
 
   const candidates = useMemo(() => {
     return activeCategories.flatMap((cat) => {
@@ -629,7 +630,8 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
           className="w-full mt-2 rounded-[1.5rem] overflow-hidden relative cursor-pointer group h-28 md:h-32 shadow-sm"
         >
           <img
-            src={homeSettings?.menu_banner_img || 'https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?auto=format&fit=crop&q=80&w=1200'}
+            src={!menuBannerError && homeSettings?.menu_banner_img ? homeSettings.menu_banner_img : 'https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?auto=format&fit=crop&q=80&w=1200'}
+            onError={() => setMenuBannerError(true)}
             alt="Experiencias"
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
           />

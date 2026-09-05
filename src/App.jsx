@@ -144,9 +144,11 @@ export default function App() {
                      window.location.pathname.startsWith('/login') || 
                      window.location.pathname.startsWith('/registro');
   
-  const isOrderingMode = isMenuView || !!localStorage.getItem("aa_current_mesa") || searchParams.get("mesa");
-  const hasFloatingCartBar = !!brand_slug && (cart?.items?.length || 0) > 0;
+  const isBrandScope = Boolean(brand_slug);
+  const isOrderingMode = isBrandScope && (isMenuView || !!localStorage.getItem("aa_current_mesa") || searchParams.get("mesa"));
+  const hasFloatingCartBar = isBrandScope && (cart?.items?.length || 0) > 0;
   const shouldRenderPublicMenu =
+    isBrandScope &&
     !isExplicitInicio &&
     !isSpecialPlatformView &&
     !orderTrackingId &&
@@ -257,7 +259,7 @@ export default function App() {
       if (!hasVisited) {
         trackAnalyticsEvent('menu_visit', {
           brandId: activeBrand.id,
-          locationId: activeLocation?.id || currentLocation?.id || null,
+          locationId: currentLocation?.id || (activeLocation?.brand_id === activeBrand.id ? activeLocation.id : null),
         });
         localStorage.setItem('aluna_tracked_visit', 'true');
       }
@@ -268,7 +270,7 @@ export default function App() {
         if (!hasTrackedScan) {
           trackAnalyticsEvent('qr_scan', {
             brandId: activeBrand.id,
-            locationId: activeLocation?.id || currentLocation?.id || null,
+            locationId: currentLocation?.id || (activeLocation?.brand_id === activeBrand.id ? activeLocation.id : null),
             tableId: mesa,
             qrTable: mesa,
           });
@@ -469,8 +471,13 @@ export default function App() {
               <AnimatePresence>
                 {showWelcome && (
                   <BrandWelcome 
-                    brandName={activeLocation?.name || activeBrand?.name}
-                    logoUrl={restaurantSettings?.logo_url}
+                    brandName={
+                      (currentLocation && currentLocation.brand_id === activeBrand?.id ? currentLocation.name : null) ||
+                      activeBrand?.name ||
+                      restaurantSettings?.business_name ||
+                      "Aluna"
+                    }
+                    logoUrl={restaurantSettings?.logo_url || activeBrand?.logo_url}
                     bgUrl={homeSettings?.welcome_bg_img}
                     mesa={new URLSearchParams(window.location.search).get('mesa')}
                     onStart={handleStartExperience}

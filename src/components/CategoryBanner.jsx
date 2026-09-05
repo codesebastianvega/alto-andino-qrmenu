@@ -16,9 +16,14 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
   const isBowl = product?.tags?.includes('bowl') || category?.slug === 'bowls';
   const isSandwich = product?.tags?.includes('sandwich') || category?.slug === 'sandwiches';
   
-  const imageSrc = category?.banner_image_url || 
-                  (isBowl ? "/poke1.webp" :
-                  (isSandwich ? "/sandwich-promo.png" : "/logo.webp"));
+  const defaultFallback = isBowl 
+    ? "/poke1.webp" 
+    : (isSandwich ? "/img/products/sandwich-serrano.jpg" : "/img/products/bowl-poke-hawaiano.jpg");
+
+  const [imgError, setImgError] = React.useState(false);
+  const imageSrc = (!imgError && category?.banner_image_url) 
+    ? category.banner_image_url 
+    : defaultFallback;
 
   const basePrice = product?.price || 0;
 
@@ -36,6 +41,7 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
             <img 
               src={imageSrc} 
               alt={title} 
+              onError={() => setImgError(true)}
               className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent z-10" />
@@ -51,6 +57,7 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
           <AAImage
             src={imageSrc}
             alt={title}
+            onError={() => setImgError(true)}
             className={`pointer-events-none absolute z-20 animate-[spin_60s_linear_infinite] object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-700
               ${isBowl 
                 ? 'bottom-[-10px] right-[-10px] w-36 sm:bottom-[-10px] sm:right-2 sm:w-64 md:w-80' 
@@ -114,4 +121,3 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
     </div>
   );
 }
-

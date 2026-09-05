@@ -653,8 +653,13 @@ function InsumosTab({ activeLocationId }) {
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-gray-900 truncate max-w-[200px]">{item.name}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{item.usage_unit || 'unidad'}</span>
+                           <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{item.usage_unit || 'unidad'}</span>
+                              {item.recipe_usage_count > 0 && (
+                                <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold">
+                                  {item.recipe_usage_count} receta{item.recipe_usage_count === 1 ? '' : 's'} · {item.recipe_required_quantity} {item.usage_unit}
+                                </span>
+                              )}
                              {item.sku && (
                                <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-mono font-bold">
                                  {item.sku}

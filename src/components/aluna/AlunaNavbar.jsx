@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { label: "Servicios",  href: "#como-funciona"  },
   { label: "Beneficios", href: "#beneficios"     },
   { label: "Portafolio", href: "#portafolio"     },
+  { label: "Comparador", href: "/comparar"       },
   { label: "Planes",     href: "#planes"         },
   { label: "FAQ",        href: "#faq"            },
 ];
@@ -37,6 +38,10 @@ export default function AlunaNavbar() {
   const isHome = window.location.pathname === "/";
 
   const scrollTo = (e, href) => {
+    if (href.startsWith("/")) {
+      setIsMenuOpen(false);
+      return;
+    }
     if (isHome) {
       e.preventDefault();
       const el = document.getElementById(href.replace("#", ""));

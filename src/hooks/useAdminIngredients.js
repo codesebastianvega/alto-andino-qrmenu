@@ -14,7 +14,7 @@ export function useAdminIngredients() {
     try {
       let query = supabase
         .from('ingredients')
-        .select('*, location_inventory!left(*)');
+        .select('*, location_inventory!left(*), recipe_ingredients!left(quantity, recipes(id,name))');
 
       if (activeBrandId) {
         query = query.eq('brand_id', activeBrandId);
@@ -25,7 +25,11 @@ export function useAdminIngredients() {
 
       if (error) throw error;
       
-      let filteredData = data || [];
+      let filteredData = (data || []).map((ingredient) => ({
+        ...ingredient,
+        recipe_usage_count: ingredient.recipe_ingredients?.length || 0,
+        recipe_required_quantity: (ingredient.recipe_ingredients || []).reduce((sum, usage) => sum + (Number(usage.quantity) || 0), 0),
+      }));
       // If we are in a specific location, filter the list to only items linked to that location
       if (locationId && locationId !== 'all') {
         filteredData = filteredData.filter(ingredient => 

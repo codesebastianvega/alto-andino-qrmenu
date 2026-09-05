@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { Sparkles, TrendingUp, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import InteractivePhone from "./InteractivePhone";
@@ -132,6 +132,18 @@ export default function AlunaHero() {
                 )}
                 <Link to="/alto-andino?demo=1#menu" className="bg-transparent border border-white/30 text-white px-8 py-4 rounded-full text-sm font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2 w-full sm:w-auto">
                   Ver Demo
+                </Link>
+              </div>
+
+              {/* Link directo al Comparador de Métricas e Impacto */}
+              <div className="pt-3 flex items-center justify-center md:justify-start">
+                <Link 
+                  to="/comparar" 
+                  className="inline-flex items-center gap-2 text-xs uppercase tracking-widest font-bold text-[#D4A853] hover:text-white px-4 py-2 rounded-full border border-[#D4A853]/30 bg-[#D4A853]/10 hover:bg-[#D4A853]/20 transition-all shadow-lg shadow-[#D4A853]/5 group"
+                >
+                  <TrendingUp className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                  <span>Ver Comparador: Fotos IA vs Fotos Reales</span>
+                  <ChevronRight className="w-3.5 h-3.5 opacity-70 group-hover:translate-x-0.5 transition-transform" />
                 </Link>
               </div>
             </div>

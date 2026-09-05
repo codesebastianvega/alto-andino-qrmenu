@@ -71,6 +71,15 @@ export async function executeAlunaKitchenAction({ brandId, locationId = null, pr
   return data;
 }
 
+export async function executeAlunaCatalogManagementAction({ brandId, locationId = null, action, proposal }) {
+  const { data, error } = await supabase.functions.invoke('aluna-catalog-management-action', {
+    body: { brand_id: brandId, location_id: locationId, action, proposal, approved: true },
+  });
+  if (error) throw new Error(await functionErrorMessage(error, 'No fue posible actualizar el producto.'));
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
 export async function executeAlunaOperationsAction({ brandId, locationId = null, action, proposal }) {
   const { data, error } = await supabase.functions.invoke('aluna-operations-action', {
     body: {

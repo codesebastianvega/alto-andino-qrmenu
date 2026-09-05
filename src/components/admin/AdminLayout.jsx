@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Shield, Star, Globe } from 'lucide-react';
+import { Beaker, MapPin, Shield, Star, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { safeSessionStorage as sessionStorage } from '../../utils/safeStorage';
 import { supabase } from '../../config/supabase';
@@ -35,6 +35,7 @@ import { usePlan } from '../../hooks/usePlan';
 import Toast from '../Toast';
 import AccountSuspendedOverlay from './AccountSuspendedOverlay';
 import AlunaCopilot from './AlunaCopilot';
+import AlunaLab from '../../pages/AlunaLab';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
 const Icons = {
@@ -503,6 +504,10 @@ export default function AdminLayout() {
 
   console.log('DEBUG ACTIVE BRAND:', activeBrand);
 
+  if (currentPage === 'aluna_lab') {
+    return <AlunaLab brand={activeBrand || (activeBrandId ? { id: activeBrandId, name: restaurantName } : null)} onBack={() => handleSelectPage('products')} />;
+  }
+
   return (
     <div className="flex min-h-screen bg-[#F4F4F2]" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* ── Sidebar ────────────────────────────────────────────────────── */}
@@ -805,6 +810,17 @@ export default function AdminLayout() {
                 <div className="h-px bg-white/5 my-4 mx-4" />
               )}
               <div className="space-y-1.5 px-2">
+                {ADMIN_ROLES.includes(user.role) && (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPage('aluna_lab')}
+                    className={`group relative mb-3 flex w-full items-center gap-3 overflow-hidden rounded-2xl border px-3 py-3 text-left transition-all duration-300 ${currentPage === 'aluna_lab' ? 'border-emerald-300/50 bg-emerald-400/15' : 'border-emerald-300/20 bg-white/[0.04] hover:border-emerald-300/50 hover:bg-white/[0.08]'} shadow-[0_0_26px_rgba(52,211,153,0.08)]`}
+                  >
+                    <span className="absolute inset-0 bg-gradient-to-r from-emerald-400/10 via-cyan-300/5 to-violet-400/10 opacity-70" />
+                    <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-300/10 text-emerald-200 shadow-[0_0_18px_rgba(52,211,153,0.18)]"><Beaker size={17} /></span>
+                    {!isCollapsed ? <span className="relative min-w-0"><span className="flex items-center gap-2 text-[13px] font-black text-white">Aluna Lab <span className="rounded-full bg-violet-400/15 px-1.5 py-0.5 text-[8px] uppercase tracking-wider text-violet-200">Beta</span></span><span className="mt-0.5 block text-[9px] font-medium text-white/35">Canvas gastronómico</span></span> : null}
+                  </button>
+                )}
                 {/* Superadmin access */}
                 {user?.role === 'superadmin' && (
                   <a

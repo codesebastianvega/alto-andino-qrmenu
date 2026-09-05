@@ -37,7 +37,13 @@ export const MenuDataProvider = ({ children }) => {
 
   // Expose the current location object for convenience
   const currentLocation = useMemo(() => {
-    return locations.find(l => l.id === activeLocationId) || null;
+    if (!locations || locations.length === 0) return null;
+    if (activeLocationId && activeLocationId !== 'all') {
+      const match = locations.find(l => l.id === activeLocationId);
+      if (match) return match;
+    }
+    // Fallback al local principal o primer local de la marca activa
+    return locations.find(l => l.is_main) || locations[0] || null;
   }, [locations, activeLocationId]);
 
 
@@ -116,7 +122,7 @@ export const MenuDataProvider = ({ children }) => {
         brandFilter(supabase.from('locations').select('*').eq('is_active', true).order('is_main', { ascending: false })),
         brandFilter(supabase.from('promo_banners').select('*').eq('is_active', true).order('sort_order', { ascending: true })),
         brandFilter(supabase.from('home_settings').select('*').limit(1)),
-        brandFilter(supabase.from('restaurant_settings').select('*').order('location_id', { ascending: true, nullsFirst: true }).limit(1)),
+        brandFilter(supabase.from('restaurant_settings').select('*')),
         supabase.from('brands').select('*, plans(*, plan_features(*))').eq('id', brandId).single(),
         brandFilter(supabase.from('products').select('*, categories:category_id (slug)').eq('is_active', true).order('sort_order', { ascending: true })),
         brandFilter(supabase.from('business_hours').select('*'))
@@ -139,7 +145,24 @@ export const MenuDataProvider = ({ children }) => {
       setLocations(locsRes.data || []);
       setBanners(bnrsRes.data || []);
       setHomeSettings(hSettRes.data?.[0] || null);
-      setRestaurantSettings(rSettRes.data?.[0] || null);
+
+      const allRS = rSettRes.data || [];
+      const mainLoc = locsRes.data?.find(l => l.is_main);
+      const bestRS = allRS.find(s => activeLocationId && s.location_id === activeLocationId)
+        || allRS.find(s => mainLoc && s.location_id === mainLoc.id)
+        || allRS.find(s => s.logo_url)
+        || allRS[0]
+        || null;
+
+      if (bestRS && !bestRS.logo_url) {
+        const rowWithLogo = allRS.find(s => s.logo_url);
+        if (rowWithLogo) {
+          bestRS.logo_url = rowWithLogo.logo_url;
+          if (!bestRS.favicon_url) bestRS.favicon_url = rowWithLogo.favicon_url;
+        }
+      }
+
+      setRestaurantSettings(bestRS);
       setRawProducts(prodsRes.data || []);
       setBusinessHours(hoursRes.data || []);
 
@@ -171,7 +194,7 @@ export const MenuDataProvider = ({ children }) => {
         categories: catsRes.data || [], products: prodsRes.data || [], modifierGroups: modsRes.data || [],
         experiences: expRes.data || [], allergens: allgsRes.data || [], locations: locsRes.data || [],
         banners: bnrsRes.data || [], homeSettings: hSettRes.data?.[0] || null,
-        restaurantSettings: rSettRes.data?.[0] || null, brand: brandRes.data || null,
+        restaurantSettings: bestRS, brand: brandRes.data || null,
         businessHours: hoursRes.data || [], locationPrices: cachedLocationPrices,
         locationStatus: cachedLocationStatus, locationCategories: cachedLocationCategories,
         locationModLinks: cachedLocationModLinks,

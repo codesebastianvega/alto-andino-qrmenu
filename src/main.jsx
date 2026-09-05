@@ -34,6 +34,7 @@ const LoginPage = React.lazy(() => import("./pages/auth/LoginPage.jsx"));
 const RegisterPage = React.lazy(() => import("./pages/auth/RegisterPage.jsx"));
 const CompleteProfilePage = React.lazy(() => import("./pages/auth/CompleteProfilePage.jsx"));
 const UniversalCheckout = React.lazy(() => import("./pages/checkout/UniversalCheckout.jsx"));
+const ImpactComparisonPage = React.lazy(() => import("./pages/ImpactComparisonPage.jsx"));
 
 ReactDOM.createRoot(document.getElementById("root")).render(
     <ErrorBoundary>
@@ -97,6 +98,18 @@ ReactDOM.createRoot(document.getElementById("root")).render(
                   </React.Suspense>
                 }
               />
+
+              {/* Impact & Comparison Page (Sales Tool) */}
+              <Route
+                path="/comparar"
+                element={
+                  <React.Suspense fallback={<div className="min-h-screen bg-[#0A0A0B]" />}>
+                    <ImpactComparisonPage />
+                  </React.Suspense>
+                }
+              />
+              <Route path="/impacto" element={<Navigate to="/comparar" replace />} />
+              <Route path="/metricas" element={<Navigate to="/comparar" replace />} />
 
               {/* Superadmin Routes — Protected by SuperAdminRoute guard */}
               <Route path="/superadmin/*" element={

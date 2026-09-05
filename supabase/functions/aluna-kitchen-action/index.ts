@@ -70,6 +70,7 @@ serve(async (req: Request) => {
   let actorId: string | null = null;
   let brandId: string | null = null;
   let locationId: string | null = null;
+  let updatedExistingProductBefore: JsonObject | null = null;
   const created = {
     productId: null as string | null,
     recipeId: null as string | null,
@@ -128,6 +129,8 @@ serve(async (req: Request) => {
     const proposal = body.proposal && typeof body.proposal === 'object' ? body.proposal : {};
     const categoryName = cleanText(proposal.category_name, 100);
     const productInput = proposal.product && typeof proposal.product === 'object' ? proposal.product : {};
+    const existingProductId = cleanText(productInput.existing_product_id, 36);
+    if (existingProductId && !UUID_PATTERN.test(existingProductId)) throw new HttpError(400, 'Invalid existing product');
     const recipeInput = proposal.recipe && typeof proposal.recipe === 'object' ? proposal.recipe : {};
     const productName = cleanText(productInput.name, 120);
     const productDescription = cleanText(productInput.description, 800);
@@ -193,11 +196,18 @@ serve(async (req: Request) => {
       throw new HttpError(409, locationId ? 'The selected location is inactive or belongs to another brand' : 'At least one active location is required');
     }
 
-    const [{ data: brandCategories, error: categoriesError }, { data: brandIngredients, error: ingredientsError }] = await Promise.all([
+    const [{ data: brandCategories, error: categoriesError }, { data: brandIngredients, error: ingredientsError }, existingProductResult] = await Promise.all([
       admin.from('categories').select('id,name,slug,is_active').eq('brand_id', brandId),
       admin.from('ingredients').select('id,name,purchase_price,purchase_quantity,purchase_unit,usage_unit,unit_cost,is_active').eq('brand_id', brandId),
+      existingProductId
+        ? admin.from('products').select('id,brand_id,category_id,name,description,price,cost,margin,recipe_id,tags,is_active,requires_kitchen,packaging_fee').eq('id', existingProductId).eq('brand_id', brandId).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
     ]);
-    if (categoriesError || ingredientsError) throw categoriesError || ingredientsError;
+    if (categoriesError || ingredientsError || existingProductResult.error) throw categoriesError || ingredientsError || existingProductResult.error;
+    const existingProduct = existingProductResult.data;
+    if (existingProductId && !existingProduct) throw new HttpError(404, 'The selected product does not exist in this brand');
+    if (existingProduct?.recipe_id) throw new HttpError(409, 'The selected product already has a recipe linked');
+    if (existingProduct && normalizeName(existingProduct.name || '') !== normalizeName(productName)) throw new HttpError(409, 'The approved product no longer matches the selected product');
 
     const matchingCategories = (brandCategories || []).filter((category) => normalizeName(category.name || '') === normalizeName(categoryName));
     if (matchingCategories.length > 1) {
@@ -290,7 +300,7 @@ serve(async (req: Request) => {
         data: { name: input.name, existing_id: existing?.id || null, unit_cost: input.unitCost },
       })),
       { tool: 'create_recipe', data: { name: recipeName, total_cost: totalCost, servings } },
-      { tool: 'create_product', data: { name: productName, price: productPrice, cost: fullCost, margin } },
+      { tool: existingProduct ? 'link_recipe_to_product' : 'create_product', data: { existing_product_id: existingProduct?.id || null, name: productName, price: productPrice, cost: fullCost, margin } },
     ];
 
     const { data: changeSet, error: changeSetError } = await admin.from('agent_change_sets').insert({
@@ -390,27 +400,30 @@ serve(async (req: Request) => {
     const { error: recipeIngredientsError } = await admin.from('recipe_ingredients').insert(recipeIngredientPayload);
     if (recipeIngredientsError) throw recipeIngredientsError;
 
-    const { data: product, error: productError } = await admin.from('products').insert({
-      brand_id: brandId,
-      category_id: category.id,
-      recipe_id: recipe.id,
-      name: productName,
-      description: productDescription,
-      price: productPrice,
-      cost: fullCost,
-      margin,
-      stock_status: 'in',
-      tags: productTags,
-      is_active: true,
-      is_addon: false,
-      requires_kitchen: productInput.requires_kitchen !== false,
-      packaging_fee: packagingFee,
-      variants: [],
-      modifier_groups: [],
-      config_options: {},
-    }).select('id,name,description,price,cost,margin,category_id,recipe_id,tags,is_active,requires_kitchen,packaging_fee').single();
-    if (productError) throw productError;
-    created.productId = product.id;
+    let product;
+    if (existingProduct) {
+      updatedExistingProductBefore = existingProduct;
+      const { data, error } = await admin.from('products').update({
+        recipe_id: recipe.id,
+        price: productPrice,
+        cost: fullCost,
+        margin,
+        requires_kitchen: productInput.requires_kitchen !== false,
+      }).eq('id', existingProduct.id).eq('brand_id', brandId).is('recipe_id', null).select('id,name,description,price,cost,margin,category_id,recipe_id,tags,is_active,requires_kitchen,packaging_fee').maybeSingle();
+      if (error) throw error;
+      if (!data) throw new HttpError(409, 'The product changed before the recipe could be linked');
+      product = data;
+    } else {
+      const { data, error } = await admin.from('products').insert({
+        brand_id: brandId, category_id: category.id, recipe_id: recipe.id, name: productName,
+        description: productDescription, price: productPrice, cost: fullCost, margin, stock_status: 'in',
+        tags: productTags, is_active: true, is_addon: false, requires_kitchen: productInput.requires_kitchen !== false,
+        packaging_fee: packagingFee, variants: [], modifier_groups: [], config_options: {},
+      }).select('id,name,description,price,cost,margin,category_id,recipe_id,tags,is_active,requires_kitchen,packaging_fee').single();
+      if (error) throw error;
+      product = data;
+      created.productId = product.id;
+    }
 
     const targetLocationIds = targetLocations.map((location) => location.id);
     const [{ data: existingCategoryLinks }, { data: existingIngredientLinks }] = await Promise.all([
@@ -433,8 +446,10 @@ serve(async (req: Request) => {
       ...(missingCategoryLinks.length ? [{ table: 'location_categories', rows: missingCategoryLinks }] : []),
       ...(missingInventoryLinks.length ? [{ table: 'location_inventory', rows: missingInventoryLinks }] : []),
       { table: 'location_recipes', rows: targetLocationIds.map((id) => ({ location_id: id, recipe_id: recipe.id, is_active: true })) },
-      { table: 'location_product_status', rows: targetLocationIds.map((id) => ({ location_id: id, product_id: product.id, is_active: true, stock_status: 'in' })) },
-      { table: 'location_product_prices', rows: targetLocationIds.map((id) => ({ location_id: id, product_id: product.id, price: productPrice })) },
+      ...(!existingProduct ? [
+        { table: 'location_product_status', rows: targetLocationIds.map((id) => ({ location_id: id, product_id: product.id, is_active: true, stock_status: 'in' })) },
+        { table: 'location_product_prices', rows: targetLocationIds.map((id) => ({ location_id: id, product_id: product.id, price: productPrice })) },
+      ] : []),
     ];
     if (inactiveCategoryLinkIds.length) {
       const { error } = await admin.from('location_categories').update({ is_active: true }).in('id', inactiveCategoryLinkIds);
@@ -505,6 +520,7 @@ serve(async (req: Request) => {
         margin_percentage: margin,
       },
       linked_location_ids: targetLocationIds,
+      product_reused: Boolean(existingProduct),
     });
   } catch (error) {
     console.error('aluna-kitchen-action error', error instanceof Error ? error.message : error);
@@ -517,6 +533,11 @@ serve(async (req: Request) => {
         if (rollbackError) rollbackErrors.push(`${table}: ${rollbackError.message}`);
       };
       for (const link of [...created.linkRows].reverse()) await rollback(link.table, link.id);
+      if (updatedExistingProductBefore?.id) {
+        const { id, brand_id: _brandId, ...restoreData } = updatedExistingProductBefore;
+        const { error: restoreProductError } = await admin.from('products').update(restoreData).eq('id', id).eq('brand_id', brandId);
+        if (restoreProductError) rollbackErrors.push(`products: ${restoreProductError.message}`);
+      }
       if (created.reactivatedCategoryLinkIds.length) {
         const { error: restoreLinkError } = await admin.from('location_categories').update({ is_active: false }).in('id', created.reactivatedCategoryLinkIds);
         if (restoreLinkError) rollbackErrors.push(`location_categories: ${restoreLinkError.message}`);
