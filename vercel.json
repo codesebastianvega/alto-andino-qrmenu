@@ -1,23 +1,15 @@
 {
-  "trailingSlash": false,
   "rewrites": [
     {
       "source": "/api/:match*",
       "destination": "/api/:match*"
     },
     {
-      "source": "/:slug*/",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*([wW]hats[aA]pp|[fF]acebookexternalhit|[fF]acebot|[tT]witterbot|[tT]elegram[bB]ot|[lL]inked[iI]n[bB]ot|[sS]lackbot|[dD]iscordbot).*"
-        }
-      ],
-      "destination": "/api/og?slug=:slug*"
+      "source": "/assets/:match*",
+      "destination": "/assets/:match*"
     },
     {
-      "source": "/:slug*",
+      "source": "/(.*)",
       "has": [
         {
           "type": "header",
@@ -25,7 +17,7 @@
           "value": ".*([wW]hats[aA]pp|[fF]acebookexternalhit|[fF]acebot|[tT]witterbot|[tT]elegram[bB]ot|[lL]inked[iI]n[bB]ot|[sS]lackbot|[dD]iscordbot).*"
         }
       ],
-      "destination": "/api/og?slug=:slug*"
+      "destination": "/api/og?slug=$1"
     },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
