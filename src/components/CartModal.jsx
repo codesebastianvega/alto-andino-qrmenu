@@ -871,8 +871,8 @@ export default function CartModal({ open, onClose }) {
         </div>
         
         <div
-          className="px-4 pt-3 pb-8 sm:px-6 sm:pt-4 sm:pb-12"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 36px)" }}
+          className={`px-4 pt-3 sm:px-6 sm:pt-4 ${idSuffix === 'desktop' ? 'pb-8 sm:pb-6' : 'pb-8 sm:pb-12'}`}
+          style={idSuffix === 'mobile' ? { paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 36px)" } : undefined}
         >
           <div className="flex items-center justify-between mb-4">
             <span className="text-base sm:text-lg font-bold text-neutral-900">Total</span>
@@ -1352,7 +1352,11 @@ export default function CartModal({ open, onClose }) {
 
         {/* Modal Window */}
         <div
-          className={`relative w-full h-[100dvh] sm:h-auto ${showSuccess ? 'sm:min-h-[750px]' : 'sm:max-h-[85vh]'} rounded-none sm:rounded-[32px] bg-white shadow-2xl flex flex-col sm:max-w-2xl md:max-w-4xl lg:max-w-5xl transition-all overflow-hidden`}
+          className={`relative w-full h-[100dvh] ${
+            items.length > 0
+              ? 'sm:h-[88vh] sm:max-h-[860px] sm:min-h-[480px]'
+              : 'sm:h-auto sm:max-h-[85vh]'
+          } ${showSuccess ? 'sm:min-h-[600px]' : ''} rounded-none sm:rounded-[32px] bg-white shadow-2xl flex flex-col sm:max-w-2xl md:max-w-4xl lg:max-w-5xl transition-all overflow-hidden`}
           role="dialog"
           aria-modal="true"
         >
@@ -1399,9 +1403,9 @@ export default function CartModal({ open, onClose }) {
           </div>
 
           {/* Body Container */}
-          <div className="flex-1 overflow-hidden flex flex-col md:flex-row relative">
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col md:flex-row relative">
             {/* Left Column (Items) */}
-            <div className="flex-1 overflow-y-auto bg-neutral-50/50 sm:bg-white relative flex flex-col">
+            <div className="flex-1 min-h-0 overflow-y-auto bg-neutral-50/50 sm:bg-white relative flex flex-col custom-scrollbar">
               
               {/* Fulfillment Type Selector (Only if not in POS mode or if allowed) */}
               {!isPOSMode && items.length > 0 && (
@@ -1606,7 +1610,7 @@ export default function CartModal({ open, onClose }) {
           
           {/* Right Column (Upselling + Footer) - Visible only on Desktop */}
           {items.length > 0 && (
-            <div className="hidden md:flex w-full md:w-[390px] lg:w-[440px] flex-shrink-0 flex-col bg-neutral-50 md:border-l border-neutral-200 z-10 relative h-full overflow-y-auto overscroll-contain">
+            <div className="hidden md:flex w-full md:w-[390px] lg:w-[440px] flex-shrink-0 flex-col bg-neutral-50 md:border-l border-neutral-200 z-10 relative h-full min-h-0 overflow-y-auto overscroll-contain custom-scrollbar">
               
               {/* Upselling Banner (Scrollable) */}
               {upsellProducts.length > 0 && !showFulfillmentSelector && (
@@ -1642,7 +1646,7 @@ export default function CartModal({ open, onClose }) {
               )}
 
               {/* Footer con formulario y checkout (Scrollable) */}
-              <div className="flex-1">
+              <div className="flex-1 min-h-0">
                 {renderCheckoutFooter('desktop')}
               </div>
             </div>
