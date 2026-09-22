@@ -129,7 +129,7 @@ serve(async (req: Request) => {
 
     const model = (typeof requestedModel === 'string' && requestedModel.trim())
       ? requestedModel.trim()
-      : (Deno.env.get('GEMINI_MODEL') || 'gemini-1.5-flash');
+      : (Deno.env.get('GEMINI_MODEL') || 'gemini-3.5-flash-lite');
     const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
@@ -158,8 +158,8 @@ serve(async (req: Request) => {
     );
     const geminiData = await geminiResponse.json();
     if (!geminiResponse.ok) {
-      console.error('Gemini API request failed', geminiResponse.status, geminiData?.error?.status);
-      return jsonResponse({ error: 'Gemini request failed' }, 502);
+      console.error('Gemini API request failed', geminiResponse.status, geminiData?.error);
+      return jsonResponse({ error: 'Gemini request failed', details: geminiData?.error, model }, 502);
     }
 
     const rawText = geminiData?.candidates?.[0]?.content?.parts

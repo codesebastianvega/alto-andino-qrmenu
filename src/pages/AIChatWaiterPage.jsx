@@ -143,7 +143,7 @@ export default function AIChatWaiterPage() {
           brand_id: targetBrandId,
           location_id: validLocationId,
           mode: "concierge",
-          model: "gemini-1.5-flash"
+          model: "gemini-3.5-flash-lite"
         }
       });
 
