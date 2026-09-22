@@ -9,6 +9,8 @@ import AIAvatar from "@/components/ui/AIAvatar";
 import AAImage from "@/components/ui/AAImage";
 import { Icon } from "@iconify-icon/react";
 import { motion, AnimatePresence } from "framer-motion";
+import ProductQuickView from "@/components/ProductQuickView";
+import DIYProductModal from "@/components/DIYProductModal";
 
 export default function AIChatWaiterPage() {
   const { 
@@ -18,7 +20,8 @@ export default function AIChatWaiterPage() {
     homeSettings, 
     restaurantSettings, 
     currentLocation, 
-    getAllProducts 
+    getAllProducts,
+    categories = []
   } = useMenuData();
 
   const { items = [], total = 0, addItem } = useCart() || {};
@@ -33,22 +36,53 @@ export default function AIChatWaiterPage() {
   const [inputQuery, setInputQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [addedItemIds, setAddedItemIds] = useState(new Set());
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedDiyProduct, setSelectedDiyProduct] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Dynamic smart chips generated from actual menu categories and active products
+  const dynamicWelcomeChips = useMemo(() => {
+    const chips = [];
+
+    // 1. Categories from the active brand
+    if (categories && categories.length > 0) {
+      const activeCats = categories.filter(c => c.name && c.is_active !== false);
+      if (activeCats.length > 0) {
+        chips.push(`🍱 Ver ${activeCats[0].name}`);
+        if (activeCats.length > 1) {
+          chips.push(`✨ ${activeCats[1].name}`);
+        }
+      }
+    }
+
+    // 2. Real products / popular dishes from this restaurant
+    if (allProducts && allProducts.length > 0) {
+      const popular = allProducts.find(p => p.is_featured || p.tags?.some(t => /popular|destacado|estrella/i.test(t))) || allProducts[0];
+      if (popular?.name && chips.length < 3) {
+        chips.push(`⭐ Recomiéndame ${popular.name}`);
+      }
+
+      const hasHealthy = allProducts.some(p => p.tags?.some(t => /fresco|ligero|ensalada|bowl|saludable/i.test(t)) || /fresco|saludable|ligero/i.test(p.description || ''));
+      if (hasHealthy && chips.length < 4) {
+        chips.push(`🥑 Algo fresco y ligero`);
+      }
+    }
+
+    if (chips.length === 0) {
+      chips.push("⭐ Platos más pedidos", "🥑 Algo fresco y ligero", "🛵 Armar mi pedido");
+    }
+
+    return chips.slice(0, 4);
+  }, [categories, allProducts]);
 
   // Initial welcome message
   const [messages, setMessages] = useState(() => [
     {
       id: "welcome",
       sender: "ai",
-      text: `¡Hola! 👋 Soy ${assistantName}.\n\n¿Qué se te antoja hoy? Puedo recomendarte bowls frescos, combinaciones deliciosas o armarte el pedido ideal.`,
-      timestamp: new Date(),
-      suggestedChips: [
-        "🍱 Bowls más pedidos",
-        "🥑 Algo fresco y ligero",
-        "🌶️ Opciones con toque picante",
-        "🛵 Armar un almuerzo completo"
-      ]
+      text: `¡Hola! 👋 Soy ${assistantName}.\n\n¿Qué se te antoja hoy? Puedo recomendarte las mejores opciones de nuestra carta, combinaciones deliciosas o armarte el pedido ideal.`,
+      timestamp: new Date()
     }
   ]);
 
@@ -98,14 +132,22 @@ export default function AIChatWaiterPage() {
         ? `${configuredPrompt}\n\nPregunta del cliente: ${query}${cartContextPrompt}`
         : `${query}${cartContextPrompt}`;
 
-      const { data, error } = await supabase.functions.invoke("gemini-chat", {
+      // Protect user against edge function hanging or latency > 12s
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("AI_TIMEOUT")), 12000);
+      });
+
+      const invokePromise = supabase.functions.invoke("gemini-chat", {
         body: {
           prompt,
           brand_id: targetBrandId,
           location_id: validLocationId,
-          mode: "concierge"
+          mode: "concierge",
+          model: "gemini-1.5-flash"
         }
       });
+
+      const { data, error } = await Promise.race([invokePromise, timeoutPromise]);
 
       if (error) throw error;
 
@@ -136,19 +178,30 @@ export default function AIChatWaiterPage() {
         }
       ]);
     } catch (err) {
-      console.error("Error en chat IA:", err);
+      console.warn("Respuesta local inteligente tras demora o error de IA:", err?.message || err);
 
-      // Smart fallback: recommend active products not currently in cart
+      // Smart semantic matching using local catalog so the user is never left hanging
       const currentCartIds = new Set(items.map(i => i.productId || i.id));
+      const qLower = query.toLowerCase();
+      const words = qLower.split(/\s+/).filter(w => w.length > 2);
+
+      const matched = allProducts.filter(p => {
+        if (currentCartIds.has(p.id)) return false;
+        const text = `${p.name} ${p.description || ''} ${(p.tags || []).join(' ')}`.toLowerCase();
+        return words.some(w => text.includes(w));
+      });
+
       const availableFallback = allProducts.filter(p => !currentCartIds.has(p.id));
-      const fallbackProducts = (availableFallback.length > 0 ? availableFallback : allProducts).slice(0, 2);
+      const fallbackProducts = (matched.length > 0 ? matched : (availableFallback.length > 0 ? availableFallback : allProducts)).slice(0, 3);
 
       setMessages(prev => [
         ...prev,
         {
           id: `ai_${Date.now()}`,
           sender: "ai",
-          text: `Te preparé algunas opciones deliciosas de la carta para complementar tu pedido:`,
+          text: matched.length > 0
+            ? `¡Encontré estas opciones en nuestra carta que se ajustan a lo que buscas! Toca cualquiera para ver sus ingredientes y detalles:`
+            : `Aquí tienes algunas de nuestras recomendaciones favoritas disponibles hoy en la carta. Toca cualquiera para ver sus detalles:`,
           products: fallbackProducts,
           timestamp: new Date()
         }
@@ -215,7 +268,7 @@ export default function AIChatWaiterPage() {
           <div className="flex items-center gap-2.5">
             <div className="relative">
               <AIAvatar avatar={assistantAvatar} className="w-8 h-8 rounded-full ring-1 ring-white/10" />
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#0e1014] animate-pulse" />
+              <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[#0e1014]" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
@@ -275,10 +328,10 @@ export default function AIChatWaiterPage() {
                   {msg.text}
                 </div>
 
-                {/* Lightweight Quick Chips */}
-                {msg.suggestedChips && msg.suggestedChips.length > 0 && (
+                {/* Dynamic Smart Chips based on real menu */}
+                {((msg.suggestedChips && msg.suggestedChips.length > 0) || (msg.id === "welcome" && dynamicWelcomeChips.length > 0)) && (
                   <div className="flex flex-wrap gap-1.5 pt-0.5">
-                    {msg.suggestedChips.map((chip, idx) => (
+                    {(msg.suggestedChips || dynamicWelcomeChips).map((chip, idx) => (
                       <motion.button
                         key={idx}
                         type="button"
@@ -305,38 +358,68 @@ export default function AIChatWaiterPage() {
                     transition={{ duration: 0.3, delay: 0.1 }}
                     className="space-y-2 pt-1"
                   >
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 px-0.5">
-                      Sugerencias de la carta:
-                    </p>
+                    <div className="flex items-center justify-between px-0.5">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                        Sugerencias de la carta:
+                      </p>
+                      <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+                        <Icon icon="solar:eye-bold" className="text-xs" />
+                        Toca para ver detalle
+                      </span>
+                    </div>
                     <div className="space-y-2">
                       {msg.products.map((prod) => {
                         const isAdded = addedItemIds.has(prod.id);
+                        const isDiy = prod.is_diy || prod.is_build_your_own;
                         return (
                           <div
                             key={prod.id}
-                            className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.07] hover:border-white/15 transition-all group"
+                            onClick={() => {
+                              if (isDiy) {
+                                setSelectedDiyProduct(prod);
+                              } else {
+                                setSelectedProduct(prod);
+                              }
+                            }}
+                            className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.07] hover:border-emerald-500/40 transition-all group cursor-pointer"
                           >
                             <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
                               {(prod.image || prod.image_url) && (
-                                <div className="w-12 h-12 rounded-lg overflow-hidden bg-black/30 flex-shrink-0">
+                                <div className="w-12 h-12 rounded-lg overflow-hidden bg-black/30 flex-shrink-0 relative">
                                   <AAImage
                                     src={prod.image || prod.image_url}
                                     alt={prod.name}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                   />
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center transition-colors">
+                                    <Icon icon="solar:eye-bold" className="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity" />
+                                  </div>
                                 </div>
                               )}
                               <div className="min-w-0 flex-1">
-                                <h4 className="text-xs font-semibold text-white truncate">{prod.name}</h4>
+                                <div className="flex items-center gap-1.5">
+                                  <h4 className="text-xs font-semibold text-white truncate group-hover:text-emerald-300 transition-colors">
+                                    {prod.name}
+                                  </h4>
+                                  <span className="text-[10px] text-neutral-400 group-hover:text-neutral-200">🔍</span>
+                                </div>
                                 <p className="text-[11px] font-semibold text-emerald-400 mt-0.5">
                                   {formatCOP(prod.price)}
                                 </p>
+                                {prod.description && (
+                                  <p className="text-[10px] text-neutral-400 line-clamp-1 mt-0.5">
+                                    {prod.description}
+                                  </p>
+                                )}
                               </div>
                             </div>
 
                             <button
                               type="button"
-                              onClick={() => handleAddToCart(prod)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddToCart(prod);
+                              }}
                               className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all active:scale-95 flex-shrink-0 ${
                                 isAdded
                                   ? "bg-emerald-500 text-white shadow-sm"
@@ -441,6 +524,21 @@ export default function AIChatWaiterPage() {
 
         </div>
       </motion.footer>
+
+      {/* 4. MODALES DE DETALLE DE PRODUCTO */}
+      <ProductQuickView
+        open={Boolean(selectedProduct)}
+        product={selectedProduct}
+        onClose={() => setSelectedProduct(null)}
+        onAdd={() => setSelectedProduct(null)}
+      />
+
+      <DIYProductModal
+        open={Boolean(selectedDiyProduct)}
+        product={selectedDiyProduct}
+        onClose={() => setSelectedDiyProduct(null)}
+        onAdd={() => setSelectedDiyProduct(null)}
+      />
 
     </motion.div>
   );

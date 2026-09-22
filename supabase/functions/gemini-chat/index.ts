@@ -27,7 +27,7 @@ serve(async (req: Request) => {
   if (req.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405);
 
   try {
-    const { prompt, brand_id: brandId, location_id: locationId, mode: requestedMode } = await req.json();
+    const { prompt, brand_id: brandId, location_id: locationId, mode: requestedMode, model: requestedModel } = await req.json();
     const mode = MODES.has(requestedMode) ? requestedMode : 'concierge';
 
     if (typeof prompt !== 'string' || !prompt.trim()) {
@@ -127,7 +127,9 @@ serve(async (req: Request) => {
       'Responde en español, de forma breve, amable y comercialmente útil.',
     ].join('\n');
 
-    const model = Deno.env.get('GEMINI_MODEL') || 'gemini-3.1-flash-lite';
+    const model = (typeof requestedModel === 'string' && requestedModel.trim())
+      ? requestedModel.trim()
+      : (Deno.env.get('GEMINI_MODEL') || 'gemini-1.5-flash');
     const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
