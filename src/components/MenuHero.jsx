@@ -6,6 +6,7 @@ import { getStockState } from '../utils/stock';
 import { useMenuData } from '../context/MenuDataContext';
 import { useAuth } from '../context/AuthContext';
 import { categoryIcons } from '../data/categoryIcons';
+import { cleanAssistantName } from '../utils/formatters';
 
 const HERO_CATEGORY_ICONS = {
   todos: 'ph:squares-four',
@@ -626,13 +627,13 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          onClick={() => window.location.hash = '#experiencias'}
+          onClick={() => window.location.hash = '#asistente'}
           className="w-full mt-2 rounded-[1.5rem] overflow-hidden relative cursor-pointer group h-28 md:h-32 shadow-sm"
         >
           <img
             src={!menuBannerError && homeSettings?.menu_banner_img ? homeSettings.menu_banner_img : 'https://images.unsplash.com/photo-1600093463592-8e36ae95ef56?auto=format&fit=crop&q=80&w=1200'}
             onError={() => setMenuBannerError(true)}
-            alt="Experiencias"
+            alt="Asistente Virtual"
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#1A2421]/90 via-[#1A2421]/60 to-transparent" />
@@ -641,15 +642,15 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
             <div className="flex flex-col justify-center">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="bg-[#E6B05C] text-[#1A1A1A] text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full">
-                  {homeSettings?.menu_banner_tag || 'Exclusivo'}
+                  {homeSettings?.menu_banner_tag || 'Mesero IA'}
                 </span>
                 <span className="text-white/60 text-[10px] font-bold">
-                  {homeSettings?.menu_banner_subtitle || 'Talleres & Catas'}
+                  {homeSettings?.menu_banner_subtitle && homeSettings.menu_banner_subtitle !== 'Talleres & Catas' ? homeSettings.menu_banner_subtitle : 'Recomendaciones en vivo'}
                 </span>
               </div>
               <h3
                 className="font-extrabold text-white text-lg md:text-xl leading-tight"
-                dangerouslySetInnerHTML={{ __html: homeSettings?.menu_banner_title?.replace(/\n/g, '<br/>') || `Vive la experiencia<br/>${brandName}` }}
+                dangerouslySetInnerHTML={{ __html: homeSettings?.menu_banner_title && !homeSettings.menu_banner_title.includes('Vive la experiencia') ? homeSettings.menu_banner_title.replace(/\n/g, '<br/>') : `¿No sabes qué pedir?<br/>Pregúntale a ${cleanAssistantName(homeSettings?.concierge_h1, 'Boki')}` }}
               />
             </div>
 

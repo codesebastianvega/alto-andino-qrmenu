@@ -28,7 +28,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useMenuData } from '../context/MenuDataContext';
 import { formatCOP } from '../utils/money';
 import { useCart } from '../context/CartContext';
+import AIAvatar from '../components/ui/AIAvatar';
 import { getSafeImageUrl } from '../utils/images';
+import { cleanAssistantName } from '../utils/formatters';
 
 const ProductQuickView = lazy(() => import('../components/ProductQuickView'));
 
@@ -82,6 +84,7 @@ const LandingPage = () => {
   const brandCity = resolvedBrand?.city || "";
   const brandLogoUrl = restaurantSettings?.logo_url || resolvedBrand?.logo_url || "";
   const brandLocationLabel = currentLocation?.name || brandCity || "";
+  const assistantName = cleanAssistantName(homeSettings?.concierge_h1, 'Boki');
 
   // Configuración reactiva basada en los datos del menú y ajustes de Supabase
   const config = useMemo(() => {
@@ -401,14 +404,16 @@ const LandingPage = () => {
               <div>
                 <div className="inline-flex items-center gap-2 bg-white/10 px-3 py-1.5 md:px-4 md:py-2 rounded-full backdrop-blur-md border border-white/10 mb-4 md:mb-6">
                   <Sparkles size={14} className="text-brand-secondary" />
-                  <span className="text-[10px] font-bold text-white uppercase tracking-widest">Powered by Gemini AI</span>
+                  <span className="text-[10px] font-bold text-white uppercase tracking-widest">
+                    {assistantName ? `Atendido por ${assistantName}` : 'Powered by Gemini AI'}
+                  </span>
                 </div>
                 <h2 
                   className="text-2xl md:text-5xl font-extrabold text-white mb-3 md:mb-4 leading-tight whitespace-pre-line"
-                  dangerouslySetInnerHTML={{ __html: homeSettings?.concierge_h1?.replace(/\n/g, '<br/>') || `Taste the Best <br/>that <span className="text-brand-secondary">Surprise you</span>` }}
+                  dangerouslySetInnerHTML={{ __html: assistantName ? `${assistantName} <br/><span className="text-brand-secondary">te recomienda</span>` : `Taste the Best <br/>that <span className="text-brand-secondary">Surprise you</span>` }}
                 />
-                <p className="text-white/50 text-xs md:text-base font-medium mb-5 md:mb-8 leading-relaxed max-w-sm whitespace-pre-line">
-                  {homeSettings?.concierge_subtitle || 'Nuestro Conserje Gastronómico analiza tu antojo y encuentra el plato perfecto en nuestro menú.'}
+                <p className="text-white/70 text-xs md:text-base font-medium mb-5 md:mb-8 leading-relaxed max-w-sm whitespace-pre-line">
+                  {homeSettings?.concierge_subtitle || 'Nuestro Asistente Gastronómico analiza tu antojo y encuentra el plato perfecto en nuestro menú.'}
                 </p>
 
                 <div className="glass-dark p-2 rounded-2xl flex flex-col sm:flex-row gap-2 shadow-2xl">
@@ -431,41 +436,48 @@ const LandingPage = () => {
               </div>
 
               <div className="h-full flex items-center justify-center relative">
-                {config.conciergeImg && !conciergeResponse && (
-                  <div className="absolute inset-0 opacity-20 pointer-events-none">
-                    <img src={config.conciergeImg} alt="Concierge" className="w-full h-full object-cover rounded-2xl md:rounded-[2rem]" />
-                  </div>
-                )}
                 <AnimatePresence mode="wait">
                   {conciergeResponse ? (
                     <motion.div 
                       key="response"
                       initial={{ opacity: 0, scale: 0.9, y: 20 }} 
                       animate={{ opacity: 1, scale: 1, y: 0 }} 
-                      exit={{ opacity: 0, scale: 0.9, y: -20 }}
+                      exit={{ opacity: 0, scale: 0.9, y: -20 }} 
                       className="glass-dark w-full p-5 md:p-8 rounded-2xl md:rounded-[2rem] relative z-10"
                     >
-                      <div className="absolute -top-6 -left-6 w-12 h-12 bg-brand-secondary rounded-full flex items-center justify-center shadow-lg text-white">
-                        {config.conciergeImg ? (
-                          <img src={config.conciergeImg} alt="Concierge avatar" className="w-full h-full object-cover rounded-full" />
-                        ) : (
-                          <Sparkles size={20} />
-                        )}
+                      <div className="absolute -top-6 -left-6 w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg text-white overflow-hidden ring-2 ring-white/20">
+                        <AIAvatar avatar={config.conciergeImg || 'lumi_spark'} className="w-12 h-12" />
                       </div>
                       <p className="text-white text-sm md:text-lg font-medium leading-relaxed italic">
                         "{conciergeResponse}"
                       </p>
-                      <a href="#menu" className="mt-6 text-[11px] font-bold text-brand-secondary uppercase tracking-wider hover:text-white transition-colors flex items-center gap-2">
-                        Ver este plato en el menú <ArrowRight size={14} />
-                      </a>
+                      <div className="flex flex-wrap items-center gap-4 mt-6">
+                        <a href="#menu" className="text-[11px] font-bold text-brand-secondary uppercase tracking-wider hover:text-white transition-colors flex items-center gap-2">
+                          Ver en la carta <ArrowRight size={14} />
+                        </a>
+                        <a href="#asistente" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold transition-all">
+                          <Sparkles size={13} className="text-[#E6B05C]" />
+                          <span>Hablar en vivo</span>
+                        </a>
+                      </div>
                     </motion.div>
                   ) : (
                     <motion.div 
                       key="empty"
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                      className="w-full h-36 md:h-48 border-2 border-dashed border-white/10 rounded-2xl md:rounded-[2rem] flex items-center justify-center text-white/20 p-5 md:p-8 text-center relative z-10"
+                      className="w-full h-auto py-8 border-2 border-dashed border-white/10 rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center text-white/40 p-5 md:p-8 text-center relative z-10 gap-3"
                     >
-                      <span className="font-medium">Haz una petición para ver la magia.</span>
+                      <AIAvatar avatar={config.conciergeImg || 'lumi_spark'} className="w-12 h-12 opacity-80" />
+                      <span className="font-medium text-xs md:text-sm text-white/60 max-w-xs">
+                        Dime qué se te antoja hoy y {assistantName} te sugerirá la mejor combinación del menú.
+                      </span>
+                      <a
+                        href="#asistente"
+                        className="mt-1 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-bold transition-all active:scale-95 shadow-sm"
+                      >
+                        <Sparkles size={13} className="text-[#E6B05C]" />
+                        <span>Chatear en vivo con {assistantName}</span>
+                      </a>
                     </motion.div>
                   )}
                 </AnimatePresence>

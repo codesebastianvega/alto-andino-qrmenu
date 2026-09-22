@@ -35,7 +35,8 @@ const OrderStatus = lazy(() => import("./pages/OrderStatus"));
 // Hash Routing Pages
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const AlunaLanding = lazy(() => import("./pages/AlunaLanding"));
-const ExperiencesPage = lazy(() => import("./pages/ExperiencesPage"));
+const AIChatWaiterPage = lazy(() => import("./pages/AIChatWaiterPage"));
+// const ExperiencesPage = lazy(() => import("./pages/ExperiencesPage"));
 // const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const AdminOnboarding = lazy(() => import("./pages/AdminOnboarding"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
@@ -87,6 +88,12 @@ export default function App() {
   const [query, setQuery] = useState("");
   const cart = useCart();
 
+  useEffect(() => {
+    const handleOpenCart = () => setOpen(true);
+    window.addEventListener("aa:open-cart", handleOpenCart);
+    return () => window.removeEventListener("aa:open-cart", handleOpenCart);
+  }, []);
+
   // ✅ Redirección automática al portal para usuarios autenticados
   useEffect(() => {
     // Si el usuario está autenticado y tenemos su perfil cargado
@@ -126,6 +133,9 @@ export default function App() {
   const isSpecialPlatformView = 
     currentHash.startsWith('#portal') || 
     currentHash === '#experiencias' || 
+    currentHash === '#asistente' ||
+    currentHash === '#mesero' ||
+    currentHash === '#chat' ||
     currentHash === '#login' || 
     currentHash === '#registro' ||
     currentHash.startsWith('#access_token') ||
@@ -485,7 +495,7 @@ export default function App() {
                 )}
               </AnimatePresence>
 
-              {!isDemo && !isAuthView && brand_slug && brand_slug !== 'anonimo' && (
+              {!isDemo && !isAuthView && !currentHash.startsWith('#asistente') && !currentHash.startsWith('#mesero') && !currentHash.startsWith('#chat') && brand_slug && brand_slug !== 'anonimo' && (
                 <Header
                   onCartOpen={() => setOpen(true)}
                   onGuideOpen={() => setOpenGuide(true)}
@@ -516,9 +526,9 @@ export default function App() {
           </Suspense>
         )}
 
-        {currentHash === '#experiencias' && (
+        {(currentHash === '#asistente' || currentHash === '#mesero' || currentHash === '#chat') && (
           <Suspense fallback={<LoadingScreen mode="skeleton" />}>
-            <ExperiencesPage />
+            <AIChatWaiterPage />
           </Suspense>
         )}
 
@@ -597,7 +607,7 @@ export default function App() {
           </>
         )}
 
-          {!isDemo && brand_slug && (
+          {!isDemo && brand_slug && !currentHash.startsWith('#asistente') && !currentHash.startsWith('#mesero') && !currentHash.startsWith('#chat') && !currentHash.startsWith('#checkout') && (
             <BottomTabBar
               currentHash={currentHash}
               onAllergensOpen={() => setOpenGuide(true)}
@@ -606,7 +616,7 @@ export default function App() {
 
           {/* Barra flotante y Drawer del carrito */}
           <Suspense fallback={<div />}>
-            {brand_slug && <FloatingCartBar items={cart.items} total={cart.total} onOpen={() => setOpen(true)} />}
+            {brand_slug && !currentHash.startsWith('#asistente') && !currentHash.startsWith('#mesero') && !currentHash.startsWith('#chat') && <FloatingCartBar items={cart.items} total={cart.total} onOpen={() => setOpen(true)} />}
           </Suspense>
           <Suspense fallback={<div />}>
             <CartModal open={open} onClose={() => setOpen(false)} />

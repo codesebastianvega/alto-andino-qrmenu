@@ -8,6 +8,8 @@ import { Icon } from '@iconify-icon/react';
 import { Loader2, Sparkles, Home, BookOpen, Layers, Palette, Cpu, Settings, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
 import AdminBranding from './AdminBranding';
 import { validateImageSize, compressAndWebp, getMaxImageSizeMB } from '../utils/images';
+import { AI_AVATAR_PRESETS, AI_PERSONALITY_PRESETS } from '../constants/aiPresets';
+import AIAvatar from '../components/ui/AIAvatar';
 
 const toast = {
   success: (msg) => toastFn(msg, { duration: 2000 }),
@@ -284,19 +286,50 @@ export default function AdminWebContent() {
         updated_at: new Date().toISOString()
       };
       
-      const upsertPayload = {
-        ...payload,
-        brand_id: activeBrand.id
-      };
-      if (data.id) {
-        upsertPayload.id = data.id;
+      let saveError = null;
+      let savedRecordId = data.id;
+
+      if (!savedRecordId) {
+        // Double check if record exists in DB for this brand
+        const { data: existingRecord } = await supabase
+          .from('home_settings')
+          .select('id')
+          .eq('brand_id', activeBrand.id)
+          .maybeSingle();
+
+        if (existingRecord?.id) {
+          savedRecordId = existingRecord.id;
+        }
       }
 
-      const { error } = await supabase.from('home_settings')
-        .upsert(upsertPayload, { 
-          onConflict: 'brand_id' 
-        });
-      if (error) throw error;
+      if (savedRecordId) {
+        const { error } = await supabase
+          .from('home_settings')
+          .update({
+            ...payload,
+            brand_id: activeBrand.id
+          })
+          .eq('id', savedRecordId);
+        saveError = error;
+      } else {
+        const { data: inserted, error } = await supabase
+          .from('home_settings')
+          .insert([{
+            ...payload,
+            brand_id: activeBrand.id
+          }])
+          .select('id')
+          .single();
+        saveError = error;
+        if (inserted?.id) {
+          savedRecordId = inserted.id;
+        }
+      }
+
+      if (saveError) throw saveError;
+      if (savedRecordId && savedRecordId !== data.id) {
+        setData(prev => ({ ...prev, id: savedRecordId }));
+      }
 
       // Sync brand description if footer_tagline was modified
       if (data.footer_tagline && activeBrand?.id) {
@@ -426,8 +459,7 @@ export default function AdminWebContent() {
   const tabs = [
     { id: 'inicio', label: 'Portada', icon: 'solar:home-smile-bold-duotone', color: 'indigo' },
     { id: 'menu', label: 'Carta Digital', icon: 'solar:book-bookmark-bold-duotone', color: 'emerald' },
-    { id: 'ai', label: 'Cerebro AI', icon: 'solar:cpu-bold-duotone', color: 'amber' },
-    { id: 'experiences', label: 'Experiencias', icon: 'solar:star-fall-bold-duotone', color: 'purple' },
+    { id: 'ai', label: 'Mesero AI', icon: 'solar:cpu-bold-duotone', color: 'amber' },
     { id: 'branding', label: 'Identidad', icon: 'solar:palette-bold-duotone', color: 'pink' }
   ];
 
@@ -1330,121 +1362,154 @@ export default function AdminWebContent() {
                     </div>
                     <h2 className="text-4xl font-bold text-white tracking-tight">Cerebro Digital <span className="text-emerald-400">Gemini</span></h2>
                     <p className="text-slate-400 text-sm max-w-xl font-medium leading-relaxed">
-                      Configura la personalidad y el conocimiento de tus asistentes virtuales. Estos parámetros dictan cómo la inteligencia artificial interactúa con tus clientes.
+                      Configura la identidad, tono y comportamiento de tu Mesero Digital con IA. Este asistente atenderá a tus clientes en el menú público, recomendará platos y gestionará pedidos.
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="flex -space-x-3">
-                      <div className="w-10 h-10 rounded-full bg-indigo-500 border-2 border-slate-950 flex items-center justify-center shadow-xl">
-                        <Icon icon="solar:cpu-bold" className="text-white text-lg" />
-                      </div>
-                      <div className="w-10 h-10 rounded-full bg-emerald-500 border-2 border-slate-950 flex items-center justify-center shadow-xl">
-                        <Icon icon="solar:sparkles-bold" className="text-white text-lg" />
-                      </div>
+                    <div className="w-10 h-10 rounded-full bg-emerald-500 border-2 border-slate-950 flex items-center justify-center shadow-xl">
+                      <Icon icon="solar:sparkles-bold" className="text-white text-lg" />
                     </div>
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2">Dual Model Config</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Mesero Digital Único</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
-                  {/* CONCIERGE BLOCK */}
-                  <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-[2.5rem] p-4 sm:p-8 space-y-8 hover:bg-white/[0.05] transition-colors duration-500">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-900/40">
-                        <Icon icon="solar:chef-hat-heart-bold-duotone" className="text-white text-3xl" />
+                <div className="max-w-4xl mx-auto">
+                  {/* UNIFIED CONCIERGE BLOCK */}
+                  <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-[2.5rem] p-6 sm:p-10 space-y-8 hover:bg-white/[0.05] transition-colors duration-500 shadow-2xl">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-900/40">
+                          <Icon icon="solar:chef-hat-heart-bold-duotone" className="text-white text-3xl" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-bold text-xl">Mesero & Conserje Digital</h3>
+                          <p className="text-emerald-400/80 text-xs font-semibold">Atención, recomendaciones de carta y cierre de ventas</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-white font-bold text-lg">Conserje Gastronómico</h3>
-                        <p className="text-emerald-400/60 text-[10px] font-bold uppercase tracking-wider">Módulo de Atención & Ventas</p>
-                      </div>
+                      <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+                        Activo en Menú
+                      </span>
                     </div>
 
                     <div className="space-y-6">
+                      {/* 1. Nombre y Subtítulo */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField label={<span className="text-slate-400">Título UI</span>}>
+                        <FormField label={<span className="text-slate-300 font-semibold text-xs">Nombre de tu Asistente</span>}>
                           <TextInput 
                             value={data.concierge_h1 || ''} 
                             onChange={(e) => setData({ ...data, concierge_h1: e.target.value })} 
                             className="bg-white/5 border-white/10 text-white focus:ring-emerald-500/20 rounded-xl"
-                            placeholder="Ej. Tu Asistente Personal" 
+                            placeholder="Ej. Boki, Lumi, Chef Boku" 
                           />
                         </FormField>
-                        <FormField label={<span className="text-slate-400">Color Marca</span>}>
-                          <div className="flex items-center gap-2">
-                             <input type="color" value={data.concierge_bg_color || '#000'} onChange={(e) => setData({...data, concierge_bg_color: e.target.value})} className="w-10 h-10 rounded-lg overflow-hidden bg-transparent border-none cursor-pointer" />
-                             <TextInput value={data.concierge_bg_color || ''} onChange={(e) => setData({...data, concierge_bg_color: e.target.value})} className="bg-white/5 border-white/10 text-white focus:ring-emerald-500/20 rounded-xl flex-1" />
-                          </div>
+                        <FormField label={<span className="text-slate-300 font-semibold text-xs">Rol / Subtítulo</span>}>
+                          <TextInput 
+                            value={data.concierge_subtitle || ''} 
+                            onChange={(e) => setData({ ...data, concierge_subtitle: e.target.value })} 
+                            className="bg-white/5 border-white/10 text-white focus:ring-emerald-500/20 rounded-xl"
+                            placeholder="Ej. Tu mesero digital en Boku Bento" 
+                          />
                         </FormField>
                       </div>
 
-                      <FormField label={<span className="text-slate-400">Instrucciones del Sistema (System Prompt)</span>}>
+                      {/* 2. Selector de Avatar SVG Prediseñado */}
+                      <div>
+                        <label className="block text-slate-300 font-semibold text-xs mb-3">
+                          Avatar del Asistente (Elige un SVG predeterminado o ingresa tu imagen)
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                          {AI_AVATAR_PRESETS.map((preset) => {
+                            const isSelected = data.concierge_img === preset.id || (!data.concierge_img && preset.id === 'lumi_spark');
+                            return (
+                              <button
+                                key={preset.id}
+                                type="button"
+                                onClick={() => setData({ ...data, concierge_img: preset.id })}
+                                className={`p-3 rounded-2xl border text-left transition-all flex items-center gap-3 relative ${
+                                  isSelected 
+                                    ? 'bg-emerald-500/20 border-emerald-400 ring-2 ring-emerald-500/30 shadow-lg' 
+                                    : 'bg-white/5 border-white/10 hover:bg-white/10 text-slate-400'
+                                }`}
+                              >
+                                <AIAvatar avatar={preset.id} className="w-10 h-10 shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-bold text-white truncate">{preset.name}</p>
+                                  <span className="text-[9px] uppercase tracking-wider text-emerald-400 font-semibold block">{preset.tag}</span>
+                                </div>
+                                {isSelected && (
+                                  <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] absolute top-2 right-2" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Input opcional para URL de imagen propia */}
+                        <div className="flex items-center gap-2">
+                          <TextInput 
+                            value={data.concierge_img?.startsWith('http') ? data.concierge_img : ''} 
+                            onChange={(e) => setData({ ...data, concierge_img: e.target.value })} 
+                            className="bg-white/5 border-white/10 text-white focus:ring-emerald-500/20 rounded-xl text-xs flex-1"
+                            placeholder="O pega una URL de imagen propia (https://...)" 
+                          />
+                          <div className="flex items-center gap-2">
+                             <input type="color" value={data.concierge_bg_color || '#1A2421'} onChange={(e) => setData({...data, concierge_bg_color: e.target.value})} className="w-9 h-9 rounded-xl overflow-hidden bg-transparent border-none cursor-pointer" title="Color de fondo de la sección" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3. Selector de Personalidad */}
+                      <div>
+                        <label className="block text-slate-300 font-semibold text-xs mb-3">
+                          Personalidad y Tono (Carga un estilo con un clic)
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                          {AI_PERSONALITY_PRESETS.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => {
+                                const assistantName = data.concierge_h1?.trim() || 'Lumi';
+                                const brandName = activeBrand?.name || 'nuestro restaurante';
+                                const newPrompt = p.template(assistantName, brandName);
+                                setData(prev => ({ ...prev, concierge_prompt_template: newPrompt }));
+                                toast.success(`Personalidad "${p.name}" aplicada`);
+                              }}
+                              className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-emerald-500/40 hover:bg-white/10 text-left transition-all group"
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-bold text-white group-hover:text-emerald-300">{p.name}</span>
+                                <span className="text-[9px] uppercase tracking-wider text-emerald-400/80 bg-emerald-500/10 px-2 py-0.5 rounded-full">{p.badge}</span>
+                              </div>
+                              <p className="text-[10px] text-slate-400 leading-snug">{p.description}</p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 4. Instrucciones del Sistema (Editable) */}
+                      <FormField label={<span className="text-slate-400 text-xs">Instrucciones del Sistema (System Prompt Maestro)</span>}>
                         <div className="relative group">
                            <div className="absolute -inset-px bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-2xl blur opacity-0 group-hover:opacity-100 transition duration-500" />
                            <textarea 
                              value={data.concierge_prompt_template || ''}
                              onChange={(e) => setData({ ...data, concierge_prompt_template: e.target.value })}
-                             className="relative w-full bg-[#0a0a0a] border border-white/10 rounded-2xl p-5 text-xs font-mono text-emerald-400 h-40 focus:ring-2 focus:ring-emerald-500/40 outline-none scrollbar-thin resize-none"
-                             placeholder="Eres un sumiller experto y conocedor de la carta de Aluna..."
+                             className="relative w-full bg-[#0a0a0a] border border-white/10 rounded-2xl p-4 text-xs font-mono text-emerald-400 h-36 focus:ring-2 focus:ring-emerald-500/40 outline-none scrollbar-thin resize-none leading-relaxed"
+                             placeholder="Instrucciones para Gemini..."
                            />
                         </div>
                       </FormField>
 
-                      <div className="p-5 bg-emerald-500/5 rounded-2xl border border-emerald-500/10 flex items-start gap-3">
-                         <Icon icon="solar:info-circle-bold-duotone" className="text-emerald-500 text-xl shrink-0 mt-0.5" />
-                         <p className="text-[10px] text-emerald-400 font-medium leading-relaxed italic">
-                           TIP: Define aquí el tono de voz (formal, jovial, experto) y las reglas de oro (no hablar de política, recomendar platos maridados, etc).
-                         </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* EVENT PLANNER BLOCK */}
-                  <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-[2.5rem] p-4 sm:p-8 space-y-8 hover:bg-white/[0.05] transition-colors duration-500">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-900/40">
-                        <Icon icon="solar:magic-stick-3-bold-duotone" className="text-white text-3xl" />
-                      </div>
-                      <div>
-                        <h3 className="text-white font-bold text-lg">Planner de Eventos</h3>
-                        <p className="text-indigo-400/60 text-[10px] font-bold uppercase tracking-wider">Módulo de Reservas & Social</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField label={<span className="text-slate-400">Título UI</span>}>
-                          <TextInput 
-                            value={data.event_planner_h1 || ''} 
-                            onChange={(e) => setData({ ...data, event_planner_h1: e.target.value })} 
-                            className="bg-white/5 border-white/10 text-white focus:ring-indigo-500/20 rounded-xl"
-                            placeholder="Ej. Planea tu Noche" 
-                          />
-                        </FormField>
-                        <FormField label={<span className="text-slate-400">Color Marca</span>}>
-                          <div className="flex items-center gap-2">
-                             <input type="color" value={data.event_planner_bg_color || '#000'} onChange={(e) => setData({...data, event_planner_bg_color: e.target.value})} className="w-10 h-10 rounded-lg overflow-hidden bg-transparent border-none cursor-pointer" />
-                             <TextInput value={data.event_planner_bg_color || ''} onChange={(e) => setData({...data, event_planner_bg_color: e.target.value})} className="bg-white/5 border-white/10 text-white focus:ring-indigo-500/20 rounded-xl flex-1" />
-                          </div>
-                        </FormField>
-                      </div>
-
-                      <FormField label={<span className="text-slate-400">Lógica Personalizada (System Prompt)</span>}>
-                        <div className="relative group">
-                           <div className="absolute -inset-px bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-2xl blur opacity-0 group-hover:opacity-100 transition duration-500" />
-                           <textarea 
-                             value={data.event_planner_prompt_template || ''}
-                             onChange={(e) => setData({ ...data, event_planner_prompt_template: e.target.value })}
-                             className="relative w-full bg-[#0a0a0a] border border-white/10 rounded-2xl p-5 text-xs font-mono text-indigo-400 h-40 focus:ring-2 focus:ring-indigo-500/40 outline-none scrollbar-thin resize-none"
-                             placeholder="Tu misión es diseñar eventos memorables..."
-                           />
+                      {/* 5. Vista Previa en Vivo */}
+                      <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-4">
+                        <AIAvatar avatar={data.concierge_img || 'lumi_spark'} className="w-12 h-12 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-white truncate">{data.concierge_h1 || 'Lumi'}</p>
+                          <p className="text-[11px] text-slate-400 truncate">{data.concierge_subtitle || 'Tu asistente gastronómico'}</p>
+                          <span className="inline-block mt-1 text-[9px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                            Vista Previa en Menú & Chat
+                          </span>
                         </div>
-                      </FormField>
-
-                      <div className="p-5 bg-indigo-500/5 rounded-2xl border border-indigo-500/10 flex items-start gap-3">
-                         <Icon icon="solar:notification-lines-remove-bold-duotone" className="text-indigo-500 text-xl shrink-0 mt-0.5" />
-                         <p className="text-[10px] text-indigo-400 font-medium leading-relaxed italic">
-                           TIP: Configúralo para que sea proactivo preguntando el número de personas, el motivo y si requieren decoración especial.
-                         </p>
                       </div>
                     </div>
                   </div>

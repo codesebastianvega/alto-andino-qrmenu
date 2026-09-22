@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Home, ReceiptText, ShieldAlert, Sparkles, Utensils } from "lucide-react";
 import { useMenuData } from "../../context/MenuDataContext";
 import { safeStorage as localStorage } from "../../utils/safeStorage";
+import { cleanAssistantName } from "@/utils/formatters";
 
 export default function BottomTabBar({ currentHash, onAllergensOpen, showExperiences = true }) {
-  const { restaurantSettings } = useMenuData();
+  const { restaurantSettings, homeSettings } = useMenuData();
   const [activeOrderId, setActiveOrderId] = useState(null);
   const primaryColor = restaurantSettings?.primary_color || "#BFAE78";
+  const assistantName = cleanAssistantName(homeSettings?.concierge_h1, "Boki");
 
   useEffect(() => {
     const readActiveOrder = () => {
@@ -33,11 +35,8 @@ export default function BottomTabBar({ currentHash, onAllergensOpen, showExperie
     const items = [
       { id: "inicio", label: "Inicio", icon: Home, hash: "#inicio" },
       { id: "menu", label: "Menú", icon: Utensils, hash: "#menu" },
+      { id: "asistente", label: assistantName, icon: Sparkles, hash: "#asistente", isAI: true },
     ];
-
-    if (showExperiences) {
-      items.push({ id: "experiencias", label: "Experiencias", icon: Sparkles, hash: "#experiencias" });
-    }
 
     items.push({ id: "alergenos", label: "Alérgenos", icon: ShieldAlert, action: onAllergensOpen });
 
@@ -46,11 +45,11 @@ export default function BottomTabBar({ currentHash, onAllergensOpen, showExperie
     }
 
     return items;
-  }, [activeOrderId, onAllergensOpen, showExperiences]);
+  }, [activeOrderId, onAllergensOpen, assistantName]);
 
   const activeTabId = useMemo(() => {
     if (currentHash === "#inicio") return "inicio";
-    if (currentHash === "#experiencias") return "experiencias";
+    if (currentHash === "#asistente" || currentHash === "#mesero" || currentHash === "#chat") return "asistente";
     if (currentHash?.startsWith("#order/")) return "pedido";
     if (!currentHash || currentHash === "#" || currentHash === "#menu") return "menu";
     return "menu";

@@ -4,16 +4,20 @@ import { Info, ShoppingBag } from "lucide-react";
 import { getTableId } from "@/utils/table";
 import { useMenuData } from "../context/MenuDataContext";
 import { safeStorage as localStorage } from "../utils/safeStorage";
+import { cleanAssistantName } from "@/utils/formatters";
 
 export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, currentHash = "" }) {
   const [table, setTable] = useState("");
   const [activeOrderId, setActiveOrderId] = useState(null);
   const [isScrolled, setIsScrolled] = useState(false);
-  const { restaurantSettings, brand } = useMenuData();
+  const { restaurantSettings, brand, homeSettings } = useMenuData();
 
-  const brandName = restaurantSettings?.business_name || brand?.name || "Aluna";
+  const brandName = (brand?.slug !== 'alto-andino' && brand?.name)
+    ? brand.name
+    : (restaurantSettings?.business_name || brand?.name || "Aluna");
   const logoUrl = restaurantSettings?.logo_url || brand?.logo_url;
   const primaryColor = restaurantSettings?.primary_color || "#BFAE78";
+  const assistantName = cleanAssistantName(homeSettings?.concierge_h1, "Asistente");
 
   useEffect(() => {
     try {
@@ -31,12 +35,12 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
   const navLinks = [
     { id: "inicio", label: "Inicio", hash: "#inicio" },
     { id: "menu", label: "Menú", hash: "#menu" },
-    { id: "experiencias", label: "Experiencias", hash: "#experiencias" },
+    { id: "asistente", label: assistantName, hash: "#asistente" },
   ];
 
   const getActiveTab = () => {
     if (currentHash === "#menu") return "menu";
-    if (currentHash === "#experiencias") return "experiencias";
+    if (currentHash === "#asistente" || currentHash === "#mesero" || currentHash === "#chat") return "asistente";
     if (!currentHash || currentHash === "" || currentHash === "#" || currentHash === "#inicio") return "inicio";
     return "inicio";
   };

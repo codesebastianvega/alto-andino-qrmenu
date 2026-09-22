@@ -20,6 +20,7 @@ import { trackAnalyticsEvent } from "@/utils/analytics";
 import { isRestaurantOpen } from "@/utils/businessHours";
 import { safeStorage as localStorage, safeSessionStorage as sessionStorage } from "@/utils/safeStorage";
 import { createClientOrderId, submitOrderResilient } from "@/services/orderSync";
+import { getFulfillmentModes } from "@/constants/businessTypes";
 
 
 const toast = {
@@ -209,12 +210,41 @@ export default function CartModal({ open, onClose }) {
   const [openNoteIndex, setOpenNoteIndex] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Fulfillment modes & Business Type
+  const fulfillmentModes = useMemo(() => {
+    return getFulfillmentModes(settings);
+  }, [settings]);
+
+  const isDarkKitchen = fulfillmentModes.operations_model === 'dark_kitchen' || 
+    (fulfillmentModes.delivery && !fulfillmentModes.dine_in && !fulfillmentModes.takeaway);
+
   // Fulfillment states
   const initialMesa = getTable();
   const flowFromStorage = localStorage.getItem("aa_fulfillment_flow");
-  const [fulfillmentType, setFulfillmentType] = useState(
-    initialMesa ? 'dine_in' : (flowFromStorage || 'takeaway')
-  );
+  const [fulfillmentType, setFulfillmentType] = useState(() => {
+    if (isDarkKitchen) return 'delivery';
+    if (initialMesa && fulfillmentModes.dine_in) return 'dine_in';
+    if (flowFromStorage && fulfillmentModes[flowFromStorage]) return flowFromStorage;
+    if (fulfillmentModes.takeaway) return 'takeaway';
+    if (fulfillmentModes.delivery) return 'delivery';
+    return 'dine_in';
+  });
+
+  // Delivery Address states
+  const [deliveryAddress, setDeliveryAddress] = useState(() => {
+    return localStorage.getItem("aa_delivery_address") || "";
+  });
+  const [deliveryNotes, setDeliveryNotes] = useState(() => {
+    return localStorage.getItem("aa_delivery_notes") || "";
+  });
+
+  useEffect(() => {
+    if (deliveryAddress) localStorage.setItem("aa_delivery_address", deliveryAddress);
+  }, [deliveryAddress]);
+
+  useEffect(() => {
+    if (deliveryNotes) localStorage.setItem("aa_delivery_notes", deliveryNotes);
+  }, [deliveryNotes]);
 
   // Sync fulfillmentType to storage
   useEffect(() => {
@@ -222,6 +252,7 @@ export default function CartModal({ open, onClose }) {
       localStorage.setItem("aa_fulfillment_flow", fulfillmentType);
     }
   }, [fulfillmentType]);
+
   const [scheduledTime, setScheduledTime] = useState("");
   const isPOSMode = sessionStorage.getItem("aa_pos_mode") === "true";
   const manualType = sessionStorage.getItem("aa_manual_type");
@@ -243,7 +274,12 @@ export default function CartModal({ open, onClose }) {
   const [whatsappLink, setWhatsappLink] = useState("");
 
   const isLeadRequired = !isPOSMode && (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' || fulfillmentType === 'scheduled');
-  const isLeadValid = !isLeadRequired || (customerName?.trim() && customerPhone?.trim());
+  const isAddressRequired = !isPOSMode && fulfillmentType === 'delivery';
+  const isLeadValid = !isLeadRequired || (
+    Boolean(customerName?.trim()) && 
+    Boolean(customerPhone?.trim()) && 
+    (!isAddressRequired || Boolean(deliveryAddress?.trim()))
+  );
 
   // Si estamos en POS y es manual (Takeaway/Delivery), forzamos el tipo
   useEffect(() => {
@@ -251,10 +287,16 @@ export default function CartModal({ open, onClose }) {
 
     if (isPOSMode && manualType) {
       setFulfillmentType(manualType);
-    } else if (initialMesa) {
+    } else if (isDarkKitchen) {
+      setFulfillmentType('delivery');
+    } else if (initialMesa && fulfillmentModes.dine_in) {
       setFulfillmentType('dine_in');
-    } else if (flowFromStorage) {
+    } else if (flowFromStorage && fulfillmentModes[flowFromStorage]) {
       setFulfillmentType(flowFromStorage);
+    } else if (fulfillmentModes.takeaway) {
+      setFulfillmentType('takeaway');
+    } else if (fulfillmentModes.delivery) {
+      setFulfillmentType('delivery');
     }
 
     // Load customer from session if set by Admin (Waiter)
@@ -269,7 +311,7 @@ export default function CartModal({ open, onClose }) {
         console.error("Error parsing stored customer:", e);
       }
     }
-  }, [isPOSMode, manualType, initialMesa, open]);
+  }, [isPOSMode, manualType, initialMesa, open, isDarkKitchen, fulfillmentModes]);
 
   useEffect(() => {
     if (activeMethods.length > 0 && !paymentMethod) {
@@ -389,6 +431,12 @@ export default function CartModal({ open, onClose }) {
 
       // Offline mode never attempts to merge a table order: it creates an
       // independent idempotent order that will be reconciled on reconnect.
+      const formattedAddress = deliveryAddress?.trim();
+      const formattedNotes = deliveryNotes?.trim();
+      const fullCustomerName = (fulfillmentType === 'delivery' && formattedAddress)
+        ? `${customerName.trim()} [Dir: ${formattedAddress}${formattedNotes ? ` - ${formattedNotes}` : ''}]`
+        : customerName.trim();
+
       if (!navigator.onLine) {
         const clientOrderId = createClientOrderId();
         const offlineItems = items.map((item) => ({
@@ -405,7 +453,7 @@ export default function CartModal({ open, onClose }) {
             status: orderStatus, origin: fulfillmentType === 'dine_in' ? 'table' : 'takeaway',
             fulfillment_type: fulfillmentType, table_id: tableId, brand_id: activeBrandId,
             location_id: orderLocationId || null, total_amount: finalTotal, service_fee: serviceFeeAmount,
-            customer_name: customerName, customer_phone: customerPhone, customer_id: customerId,
+            customer_name: fullCustomerName || customerName, customer_phone: customerPhone, customer_id: customerId,
             scheduled_time: scheduledTime || null, payment_status: isPaid ? 'paid' : 'pending',
             payment_method: isPaid ? paymentMethod : null,
           },
@@ -469,7 +517,7 @@ export default function CartModal({ open, onClose }) {
             location_id: orderLocationId || null,
             total_amount: finalTotal,
             service_fee: serviceFeeAmount,
-            customer_name: customerName,
+            customer_name: fullCustomerName || customerName,
             customer_phone: customerPhone,
             customer_id: customerId,
             scheduled_time: scheduledTime || null,
@@ -587,15 +635,19 @@ export default function CartModal({ open, onClose }) {
         
         if (whatsappNumber) {
           const cleanPhone = whatsappNumber.replace(/\D/g, "");
+          const deliveryInfo = fulfillmentType === 'delivery'
+            ? `*Modalidad:* 🛵 Domicilio\n*Dirección de Entrega:* ${formattedAddress || 'No especificada'}${formattedNotes ? `\n*Detalles Entrega:* ${formattedNotes}` : ''}\n`
+            : `*Modalidad:* ${fulfillmentType === 'dine_in' ? '🍽️ En Mesa' : fulfillmentType === 'takeaway' ? '🛍️ Para Llevar' : '📅 Programado'}\n*Mesa:* ${mesa || 'N/A'}\n`;
+
           const message = encodeURIComponent(
             `*NUEVO PEDIDO #${orderData.id.slice(-4).toUpperCase()}*\n\n` +
             `*Cliente:* ${customerName}\n` +
-            `*Mesa:* ${mesa || 'N/A'}\n` +
-            `*Tipo:* ${fulfillmentType}\n\n` +
-            `*Productos:*\n` +
+            `*Teléfono:* ${customerPhone}\n` +
+            deliveryInfo +
+            `\n*Productos:*\n` +
             items.map(it => `- ${it.qty}x ${it.name} (${formatCOP(getItemUnit(it) * it.qty)})`).join('\n') +
             `\n\n*Total:* ${formatCOP(finalTotal)}\n` +
-            `*Método de pago:* ${paymentMethod}\n\n` +
+            `*Método de pago:* ${paymentMethod || 'Por acordar'}\n\n` +
             `Ver pedido en: ${window.location.origin}/${brandSlug}/#order/${orderData.id}`
           );
           
@@ -781,10 +833,10 @@ export default function CartModal({ open, onClose }) {
                 disabled={!items.length}
                 className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] hover:bg-[#202c21] text-white shadow-[#2f4131]/20 hover:-translate-y-0.5 transition-all active:scale-[0.98]"
               >
-                <Icon icon="heroicons:sparkles" className="text-xl" />
-                Confirmar Pedido
+                <Icon icon={isDarkKitchen ? "heroicons:truck" : "heroicons:sparkles"} className="text-xl" />
+                {isDarkKitchen ? "Datos de Entrega a Domicilio" : "Confirmar Pedido"}
               </button>
-            ) : !showFulfillmentSelector && (initialMesa || isPOSMode) ? (
+            ) : !showFulfillmentSelector && (initialMesa || isPOSMode) && !isDarkKitchen ? (
               <button
                 type="button"
                 onClick={handleConfirmOrder}
@@ -806,29 +858,46 @@ export default function CartModal({ open, onClose }) {
               </button>
             ) : (
               <div className="flex flex-col gap-3 animate-in slide-in-from-bottom-4 duration-300">
-                {/* Fulfillment Picker */}
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { id: 'dine_in', label: 'En Mesa', icon: 'heroicons:map-pin' },
-                    { id: 'takeaway', label: 'Para Llevar', icon: 'heroicons:shopping-bag' },
-                    { id: 'delivery', label: 'Domicilio', icon: 'heroicons:truck' },
-                    { id: 'scheduled', label: 'Programado', icon: 'heroicons:calendar' }
-                  ].map(opt => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setFulfillmentType(opt.id)}
-                      className={`flex flex-col items-center justify-center py-2.5 rounded-xl border-2 transition-all gap-1 ${
-                        fulfillmentType === opt.id 
-                          ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-sm scale-[1.02]" 
-                          : "border-neutral-100 bg-neutral-50 text-neutral-500 grayscale opacity-70"
-                      }`}
-                    >
-                      <Icon icon={opt.icon} className="text-xl" />
-                      <span className="text-[10px] font-bold uppercase">{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
+                {/* Fulfillment Picker / Dark Kitchen Mode */}
+                {isDarkKitchen ? (
+                  <div className="flex items-center justify-between p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-950">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20 flex-shrink-0">
+                        <Icon icon="heroicons:truck" className="text-xl" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-xs font-black uppercase tracking-wider text-amber-950">Modalidad Solo Domicilios</p>
+                        <p className="text-[11px] font-medium text-amber-800/90">Despachamos directo desde nuestra cocina</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-950 px-2 py-0.5 rounded-md">
+                      Dark Kitchen
+                    </span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: 'dine_in', label: 'En Mesa', icon: 'heroicons:map-pin', enabled: fulfillmentModes.dine_in },
+                      { id: 'takeaway', label: 'Para Llevar', icon: 'heroicons:shopping-bag', enabled: fulfillmentModes.takeaway },
+                      { id: 'delivery', label: 'Domicilio', icon: 'heroicons:truck', enabled: fulfillmentModes.delivery },
+                      { id: 'scheduled', label: 'Programado', icon: 'heroicons:calendar', enabled: fulfillmentModes.scheduled }
+                    ].filter(opt => opt.enabled).map(opt => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setFulfillmentType(opt.id)}
+                        className={`flex flex-col items-center justify-center py-2.5 rounded-xl border-2 transition-all gap-1 ${
+                          fulfillmentType === opt.id 
+                            ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-sm scale-[1.02]" 
+                            : "border-neutral-100 bg-neutral-50 text-neutral-500 grayscale opacity-70"
+                        }`}
+                      >
+                        <Icon icon={opt.icon} className="text-xl" />
+                        <span className="text-[10px] font-bold uppercase">{opt.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {fulfillmentType === 'scheduled' && (
                   <div className="space-y-1.5">
@@ -846,12 +915,14 @@ export default function CartModal({ open, onClose }) {
                 {isLeadRequired && (
                   <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 shadow-sm animate-in slide-in-from-top-2 space-y-3">
                     <div className="flex items-center justify-between px-1">
-                      <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Datos de Contacto</label>
+                      <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest">
+                        {fulfillmentType === 'delivery' ? 'Datos de Contacto y Entrega' : 'Datos de Contacto'}
+                      </label>
                       <span className="text-[10px] font-bold text-amber-500 bg-white px-2 py-0.5 rounded-full border border-amber-100">REQUERIDO</span>
                     </div>
                     <div className="grid grid-cols-1 gap-2">
                        <div className="flex items-center gap-2 bg-white px-3 h-11 rounded-xl border border-amber-200 focus-within:ring-2 focus-within:ring-amber-200/50 transition-all">
-                          <Icon icon="heroicons:user" className="text-amber-400" />
+                          <Icon icon="heroicons:user" className="text-amber-500 text-lg flex-shrink-0" />
                           <input 
                             type="text" 
                             placeholder="Nombre Completo"
@@ -864,10 +935,10 @@ export default function CartModal({ open, onClose }) {
                           />
                        </div>
                        <div className="flex items-center gap-2 bg-white px-3 h-11 rounded-xl border border-amber-200 focus-within:ring-2 focus-within:ring-amber-200/50 transition-all">
-                          <Icon icon="heroicons:phone" className="text-amber-400" />
+                          <Icon icon="heroicons:phone" className="text-amber-500 text-lg flex-shrink-0" />
                           <input 
                             type="tel" 
-                            placeholder="Celular / WhatsApp"
+                            placeholder="Celular / WhatsApp (ej: 310 123 4567)"
                             value={customerPhone || ""}
                             onChange={e => {
                               setCustomerPhone(e.target.value);
@@ -876,6 +947,36 @@ export default function CartModal({ open, onClose }) {
                             className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium placeholder:text-amber-300"
                           />
                        </div>
+                       {fulfillmentType === 'delivery' && (
+                         <>
+                           <div className="flex items-center gap-2 bg-white px-3 h-11 rounded-xl border border-amber-200 focus-within:ring-2 focus-within:ring-amber-200/50 transition-all">
+                              <Icon icon="heroicons:map-pin" className="text-amber-500 text-lg flex-shrink-0" />
+                              <input 
+                                type="text" 
+                                placeholder="Dirección completa y barrio (ej: Calle 4 #5-20)"
+                                value={deliveryAddress || ""}
+                                onChange={e => {
+                                  setDeliveryAddress(e.target.value);
+                                  localStorage.setItem("aa_delivery_address", e.target.value);
+                                }}
+                                className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium placeholder:text-amber-300"
+                              />
+                           </div>
+                           <div className="flex items-center gap-2 bg-white px-3 h-11 rounded-xl border border-amber-200 focus-within:ring-2 focus-within:ring-amber-200/50 transition-all">
+                              <Icon icon="heroicons:chat-bubble-bottom-center-text" className="text-amber-500 text-lg flex-shrink-0" />
+                              <input 
+                                type="text" 
+                                placeholder="Indicaciones (Apto, torre, conjunto, timbre)"
+                                value={deliveryNotes || ""}
+                                onChange={e => {
+                                  setDeliveryNotes(e.target.value);
+                                  localStorage.setItem("aa_delivery_notes", e.target.value);
+                                }}
+                                className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium placeholder:text-amber-300"
+                              />
+                           </div>
+                         </>
+                       )}
                     </div>
                   </div>
                 )}

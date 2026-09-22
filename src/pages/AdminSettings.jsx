@@ -9,6 +9,7 @@ import { toast as toastFn } from '../components/Toast';
 import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton } from '../components/admin/ui';
 import { Icon } from '@iconify/react';
 import { Loader2 } from 'lucide-react';
+import { BUSINESS_TYPES, getFulfillmentModes } from '../constants/businessTypes';
 
 const toast = {
   success: (msg, opts) => toastFn.success(msg, { duration: 2500, ...opts }),
@@ -33,7 +34,12 @@ export default function AdminSettings() {
     kitchen_print_enabled: false,
     receipt_print_enabled: true,
     thermal_paper_width: '80',
-    electronic_invoicing_status: 'coming_soon'
+    electronic_invoicing_status: 'coming_soon',
+    business_type: 'restaurant',
+    allow_delivery: true,
+    allow_takeaway: true,
+    allow_dine_in: true,
+    allow_scheduled: true,
   });
   const [isSubmittingSettings, setIsSubmittingSettings] = useState(false);
 
@@ -81,6 +87,7 @@ export default function AdminSettings() {
       
       if (data) {
         setSettings(data);
+        const modes = getFulfillmentModes(data);
         setSettingsForm({
           whatsapp_number_orders: data.whatsapp_number_orders || '',
           is_service_fee_enabled: data.is_service_fee_enabled ?? false,
@@ -94,6 +101,11 @@ export default function AdminSettings() {
           receipt_print_enabled: data.receipt_print_enabled ?? true,
           thermal_paper_width: data.thermal_paper_width === '58' ? '50' : (data.thermal_paper_width || '80'),
           electronic_invoicing_status: data.electronic_invoicing_status || 'coming_soon',
+          business_type: modes.business_type,
+          allow_delivery: modes.delivery,
+          allow_takeaway: modes.takeaway,
+          allow_dine_in: modes.dine_in,
+          allow_scheduled: modes.scheduled,
         });
       } else {
         setSettings(null);
@@ -109,7 +121,12 @@ export default function AdminSettings() {
           kitchen_print_enabled: false,
           receipt_print_enabled: true,
           thermal_paper_width: '80',
-          electronic_invoicing_status: 'coming_soon'
+          electronic_invoicing_status: 'coming_soon',
+          business_type: 'restaurant',
+          allow_delivery: true,
+          allow_takeaway: true,
+          allow_dine_in: true,
+          allow_scheduled: true,
         });
       }
     } catch (err) {
@@ -160,6 +177,22 @@ export default function AdminSettings() {
     e.preventDefault();
     setIsSubmittingSettings(true);
     try {
+      const currentConcepts = Array.isArray(settings?.brand_concepts)
+        ? settings.brand_concepts.filter(c => c && c.id !== 'operations_model')
+        : [];
+      
+      const operationsModel = {
+        id: 'operations_model',
+        business_type: settingsForm.business_type,
+        fulfillment_modes: {
+          business_type: settingsForm.business_type,
+          allow_delivery: settingsForm.allow_delivery,
+          allow_takeaway: settingsForm.allow_takeaway,
+          allow_dine_in: settingsForm.allow_dine_in,
+          allow_scheduled: settingsForm.allow_scheduled,
+        }
+      };
+
       const payload = {
         brand_id: activeBrand.id,
         ...(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : { location_id: null }),
@@ -175,6 +208,7 @@ export default function AdminSettings() {
         receipt_print_enabled: settingsForm.receipt_print_enabled,
         thermal_paper_width: settingsForm.thermal_paper_width,
         electronic_invoicing_status: settingsForm.electronic_invoicing_status,
+        brand_concepts: [operationsModel, ...currentConcepts],
         updated_at: new Date().toISOString()
       };
 
@@ -345,6 +379,132 @@ export default function AdminSettings() {
               {/* LEFT: Operation Logic (Bento Layout) */}
               <div className="xl:col-span-7 space-y-8">
                 
+                {/* ── Business Model & Delivery Modes (Dark Kitchen vs Restaurant) */}
+                <div className="glass-glow bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-xl shadow-gray-50/50 relative overflow-hidden group">
+                  <div className="flex items-start justify-between mb-6 relative z-10">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm">
+                        <Icon icon="solar:shop-2-bold-duotone" className="text-3xl" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Modelo de Negocio</h3>
+                          <span className="bg-indigo-100 text-indigo-800 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
+                            {BUSINESS_TYPES.find(b => b.id === settingsForm.business_type)?.badge || 'Operación'}
+                          </span>
+                        </div>
+                        <p className="text-[12px] text-gray-400 font-medium">Define cómo reciben y piden tus comensales (Dark Kitchen, Restaurante, etc.)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Selector de tipo de negocio predefinido */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6 relative z-10">
+                    {BUSINESS_TYPES.map(bType => {
+                      const isSelected = settingsForm.business_type === bType.id;
+                      return (
+                        <button
+                          key={bType.id}
+                          type="button"
+                          onClick={() => {
+                            setSettingsForm(prev => ({
+                              ...prev,
+                              business_type: bType.id,
+                              allow_delivery: bType.defaults.allow_delivery,
+                              allow_takeaway: bType.defaults.allow_takeaway,
+                              allow_dine_in: bType.defaults.allow_dine_in,
+                              allow_scheduled: bType.defaults.allow_scheduled,
+                            }));
+                          }}
+                          className={`p-4 rounded-2xl border-2 text-left transition-all relative flex flex-col justify-between ${
+                            isSelected
+                              ? 'border-indigo-600 bg-indigo-50/40 text-gray-900 shadow-md ring-2 ring-indigo-500/20'
+                              : 'border-gray-100 bg-gray-50/50 hover:border-gray-200 text-gray-600 hover:bg-white'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <Icon icon={bType.icon} className={`text-2xl ${isSelected ? 'text-indigo-600' : 'text-gray-400'}`} />
+                            {isSelected && (
+                              <span className="text-[9px] font-black uppercase tracking-widest bg-indigo-600 text-white px-2 py-0.5 rounded-full">
+                                Activo
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-xs font-black uppercase tracking-tight text-gray-900">{bType.name}</p>
+                            <p className="text-[11px] text-gray-500 leading-snug mt-1">{bType.description}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Modalidades Activas (Toggles directos) */}
+                  <div className="p-5 bg-gray-50/70 rounded-2xl border border-gray-100 relative z-10 space-y-4">
+                    <p className="text-xs font-black text-gray-700 uppercase tracking-wide">Modalidades de Despacho Habilitadas</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <label className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${settingsForm.allow_delivery ? 'bg-white border-emerald-300 shadow-sm' : 'bg-transparent border-gray-200 opacity-60'}`}>
+                        <input
+                          type="checkbox"
+                          checked={settingsForm.allow_delivery}
+                          onChange={e => setSettingsForm({ ...settingsForm, allow_delivery: e.target.checked })}
+                          className="rounded text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <div>
+                          <p className="text-xs font-bold text-gray-900">🛵 Domicilios</p>
+                          <p className="text-[10px] text-gray-500">Pide dirección</p>
+                        </div>
+                      </label>
+
+                      <label className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${settingsForm.allow_takeaway ? 'bg-white border-emerald-300 shadow-sm' : 'bg-transparent border-gray-200 opacity-60'}`}>
+                        <input
+                          type="checkbox"
+                          checked={settingsForm.allow_takeaway}
+                          onChange={e => setSettingsForm({ ...settingsForm, allow_takeaway: e.target.checked })}
+                          className="rounded text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <div>
+                          <p className="text-xs font-bold text-gray-900">🛍️ Para Llevar</p>
+                          <p className="text-[10px] text-gray-500">Retiro en local</p>
+                        </div>
+                      </label>
+
+                      <label className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${settingsForm.allow_dine_in ? 'bg-white border-emerald-300 shadow-sm' : 'bg-transparent border-gray-200 opacity-60'}`}>
+                        <input
+                          type="checkbox"
+                          checked={settingsForm.allow_dine_in}
+                          onChange={e => setSettingsForm({ ...settingsForm, allow_dine_in: e.target.checked })}
+                          className="rounded text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <div>
+                          <p className="text-xs font-bold text-gray-900">🍽️ En Mesa</p>
+                          <p className="text-[10px] text-gray-500">Mesa física</p>
+                        </div>
+                      </label>
+
+                      <label className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${settingsForm.allow_scheduled ? 'bg-white border-emerald-300 shadow-sm' : 'bg-transparent border-gray-200 opacity-60'}`}>
+                        <input
+                          type="checkbox"
+                          checked={settingsForm.allow_scheduled}
+                          onChange={e => setSettingsForm({ ...settingsForm, allow_scheduled: e.target.checked })}
+                          className="rounded text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <div>
+                          <p className="text-xs font-bold text-gray-900">📅 Programados</p>
+                          <p className="text-[10px] text-gray-500">Fecha y hora</p>
+                        </div>
+                      </label>
+                    </div>
+
+                    {settingsForm.business_type === 'dark_kitchen' && (
+                      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-purple-50 border border-purple-200 text-purple-900 text-xs font-medium">
+                        <Icon icon="heroicons:sparkles" className="text-purple-600 shrink-0 text-base" />
+                        <span><strong>Modo Dark Kitchen activo:</strong> Tu carta pública y carrito irán directo a pedir dirección de entrega, ocultando números de mesa y opciones de retiro.</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* ── WhatsApp Module */}
                 <div className="glass-glow bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-xl shadow-gray-50/50 relative overflow-hidden group">
                   <div className="absolute -right-12 -top-12 w-48 h-48 bg-emerald-50 rounded-full blur-3xl opacity-50 group-hover:opacity-100 transition-opacity" />

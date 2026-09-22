@@ -1,8 +1,14 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Utensils, ArrowRight, Sparkles, ShoppingBag, Truck } from 'lucide-react';
+import { useRestaurantSettings } from '../hooks/useRestaurantSettings';
+import { getFulfillmentModes } from '../constants/businessTypes';
 
 export default function BrandWelcome({ brandName, logoUrl, bgUrl, mesa, onStart }) {
+  const { settings } = useRestaurantSettings();
+  const modes = getFulfillmentModes(settings);
+  const isDarkKitchen = modes.delivery && !modes.takeaway && !modes.dine_in;
+
   return (
     <motion.div
       exit={{ y: "-100%" }}
@@ -23,7 +29,6 @@ export default function BrandWelcome({ brandName, logoUrl, bgUrl, mesa, onStart 
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/80" />
       </motion.div>
 
-      {/* Content Container */}
       {/* Content Container */}
       <div className="relative z-10 w-full h-full max-w-sm md:max-w-xl lg:max-w-2xl px-8 py-16 md:py-24 flex flex-col items-center justify-between text-center outline-none">
         
@@ -51,27 +56,27 @@ export default function BrandWelcome({ brandName, logoUrl, bgUrl, mesa, onStart 
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 md:px-5 md:py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/70 text-[10px] md:text-[11px] font-bold tracking-[0.2em] uppercase mb-6 md:mb-8 transition-colors">
             <Sparkles size={14} className="text-[#E6B05C]" />
-            Experiencia Digital
+            {isDarkKitchen ? 'Cocina Oculta · Despachos' : 'Experiencia Digital'}
           </div>
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white mb-4 md:mb-6 tracking-tight drop-shadow-sm" style={{ fontFamily: "'DM Serif Display', serif" }}>
             {brandName}
           </h1>
           
-          {mesa ? (
+          {mesa && !isDarkKitchen ? (
             <p className="text-[#E6B05C] font-bold text-lg md:text-2xl mb-2 flex items-center justify-center gap-2">
               <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-[#E6B05C] animate-pulse" />
               Mesa {mesa}
             </p>
           ) : (
             <p className="text-white/60 text-sm md:text-lg font-medium max-w-md mx-auto">
-              Bienvenido a una nueva forma de explorar nuestra gastronomía.
+              {isDarkKitchen ? 'Pide tus platos favoritos recién preparados directo a tu ubicación.' : 'Bienvenido a una nueva forma de explorar nuestra gastronomía.'}
             </p>
           )}
         </motion.div>
 
         {/* Action & Footer (Bottom) */}
         <div className="w-full flex flex-col items-center gap-6 md:gap-10">
-          {!mesa ? (
+          {isDarkKitchen ? (
             <div className="flex flex-col gap-3 w-full md:w-96">
               <motion.button
                 initial={{ scale: 0.9, opacity: 0 }}
@@ -79,53 +84,82 @@ export default function BrandWelcome({ brandName, logoUrl, bgUrl, mesa, onStart 
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ delay: 1.0, duration: 0.5 }}
-                onClick={() => onStart('dine_in')}
-                className="group relative w-full py-4 bg-white rounded-2xl flex items-center justify-between px-6 shadow-xl transition-all hover:bg-[#fafafa]"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[#E6B05C]/10 flex items-center justify-center">
-                    <Utensils size={16} className="text-[#E6B05C]" />
-                  </div>
-                  <span className="text-[#1A1A1A] font-bold text-sm tracking-wide">PEDIR EN MESA</span>
-                </div>
-                <ArrowRight size={16} className="text-neutral-300 group-hover:translate-x-1 transition-transform" />
-              </motion.button>
-
-              <motion.button
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ delay: 1.2, duration: 0.5 }}
-                onClick={() => onStart('takeaway')}
-                className="group relative w-full py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl flex items-center justify-between px-6 shadow-xl transition-all hover:bg-white/20"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                    <ShoppingBag size={16} className="text-white" />
-                  </div>
-                  <span className="text-white font-bold text-sm tracking-wide">PARA LLEVAR</span>
-                </div>
-                <ArrowRight size={16} className="text-white/30 group-hover:translate-x-1 transition-transform" />
-              </motion.button>
-
-              <motion.button
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ delay: 1.4, duration: 0.5 }}
                 onClick={() => onStart('delivery')}
-                className="group relative w-full py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl flex items-center justify-between px-6 shadow-xl transition-all hover:bg-white/20"
+                className="group relative w-full py-4 bg-white rounded-2xl flex items-center justify-between px-6 shadow-2xl transition-all hover:bg-[#fafafa]"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                    <Truck size={16} className="text-white" />
+                  <div className="w-9 h-9 rounded-full bg-[#173D24]/10 flex items-center justify-center">
+                    <Truck size={18} className="text-[#173D24]" />
                   </div>
-                  <span className="text-white font-bold text-sm tracking-wide">DOMICILIO</span>
+                  <div className="text-left">
+                    <span className="text-[#1A1A1A] font-black text-sm tracking-wide block">PEDIR A DOMICILIO</span>
+                    <span className="text-neutral-400 text-[10px] font-semibold block">Explorar carta y ordenar</span>
+                  </div>
                 </div>
-                <ArrowRight size={16} className="text-white/30 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight size={18} className="text-[#1A1A1A] group-hover:translate-x-1 transition-transform" />
               </motion.button>
+            </div>
+          ) : !mesa ? (
+            <div className="flex flex-col gap-3 w-full md:w-96">
+              {modes.dine_in && (
+                <motion.button
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ delay: 1.0, duration: 0.5 }}
+                  onClick={() => onStart('dine_in')}
+                  className="group relative w-full py-4 bg-white rounded-2xl flex items-center justify-between px-6 shadow-xl transition-all hover:bg-[#fafafa]"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[#E6B05C]/10 flex items-center justify-center">
+                      <Utensils size={16} className="text-[#E6B05C]" />
+                    </div>
+                    <span className="text-[#1A1A1A] font-bold text-sm tracking-wide">PEDIR EN MESA</span>
+                  </div>
+                  <ArrowRight size={16} className="text-neutral-300 group-hover:translate-x-1 transition-transform" />
+                </motion.button>
+              )}
+
+              {modes.takeaway && (
+                <motion.button
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ delay: 1.2, duration: 0.5 }}
+                  onClick={() => onStart('takeaway')}
+                  className="group relative w-full py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl flex items-center justify-between px-6 shadow-xl transition-all hover:bg-white/20"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                      <ShoppingBag size={16} className="text-white" />
+                    </div>
+                    <span className="text-white font-bold text-sm tracking-wide">PARA LLEVAR</span>
+                  </div>
+                  <ArrowRight size={16} className="text-white/30 group-hover:translate-x-1 transition-transform" />
+                </motion.button>
+              )}
+
+              {modes.delivery && (
+                <motion.button
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ delay: 1.4, duration: 0.5 }}
+                  onClick={() => onStart('delivery')}
+                  className="group relative w-full py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl flex items-center justify-between px-6 shadow-xl transition-all hover:bg-white/20"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                      <Truck size={16} className="text-white" />
+                    </div>
+                    <span className="text-white font-bold text-sm tracking-wide">DOMICILIO</span>
+                  </div>
+                  <ArrowRight size={16} className="text-white/30 group-hover:translate-x-1 transition-transform" />
+                </motion.button>
+              )}
             </div>
           ) : (
             <motion.button

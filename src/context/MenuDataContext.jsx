@@ -154,11 +154,16 @@ export const MenuDataProvider = ({ children }) => {
         || allRS[0]
         || null;
 
-      if (bestRS && !bestRS.logo_url) {
-        const rowWithLogo = allRS.find(s => s.logo_url);
-        if (rowWithLogo) {
-          bestRS.logo_url = rowWithLogo.logo_url;
-          if (!bestRS.favicon_url) bestRS.favicon_url = rowWithLogo.favicon_url;
+      if (bestRS) {
+        if (!bestRS.logo_url) {
+          const rowWithLogo = allRS.find(s => s.logo_url);
+          if (rowWithLogo) {
+            bestRS.logo_url = rowWithLogo.logo_url;
+            if (!bestRS.favicon_url) bestRS.favicon_url = rowWithLogo.favicon_url;
+          }
+        }
+        if (brandRes.data?.name && (bestRS.business_name === 'Alto Andino' || !bestRS.business_name) && brandRes.data.slug !== 'alto-andino') {
+          bestRS.business_name = brandRes.data.name;
         }
       }
 

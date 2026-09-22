@@ -39,3 +39,11 @@ export const formatOrderType = (type) => {
   };
   return map[type] || type;
 };
+
+export const cleanAssistantName = (name, fallback = "Boki") => {
+  if (!name || typeof name !== "string") return fallback;
+  const cleaned = name.replace(/concierge/gi, "").trim();
+  if (!cleaned) return fallback;
+  if (cleaned.toLowerCase() === "boku" || cleaned.toLowerCase() === "boki") return "Boki";
+  return cleaned;
+};

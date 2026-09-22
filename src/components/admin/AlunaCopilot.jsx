@@ -229,6 +229,17 @@ function ConsolidationWorkflow({ categories, isExecuting, onApprove, onCancel })
   );
 }
 
+function LumiEmblem({ size = 22, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path d="M12 2L14.2 8.3L20.5 10.5L14.2 12.7L12 19L9.8 12.7L3.5 10.5L9.8 8.3L12 2Z" fill="currentColor" />
+      <circle cx="12" cy="10.5" r="2.5" fill="#FDE047" />
+      <circle cx="18" cy="5" r="1.5" fill="#FDE047" />
+      <circle cx="6" cy="16" r="1.2" fill="#FFFFFF" />
+    </svg>
+  );
+}
+
 export default function AlunaCopilot({ brand, location, locationId, onNavigate, recipesEnabled = false }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -483,20 +494,28 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
 
   return (
     <>
-      <button type="button" onClick={() => setIsOpen(true)} className="group fixed bottom-24 right-3 z-[70] flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-[#173D24] text-white shadow-[0_10px_28px_rgba(23,61,36,0.32)] transition hover:-translate-y-0.5 hover:scale-105 hover:bg-[#21542f] focus:outline-none focus:ring-4 focus:ring-emerald-200 md:bottom-5 md:right-5 md:h-14 md:w-14" aria-label="Abrir copiloto Aluna" aria-haspopup="dialog">
-        <Bot size={21} aria-hidden="true" />
-        <span className="pointer-events-none absolute right-full mr-2 hidden whitespace-nowrap rounded-lg bg-gray-950 px-3 py-1.5 text-xs font-bold text-white shadow-lg group-hover:block group-focus-visible:block">Abrir Aluna</span>
+      <button type="button" onClick={() => setIsOpen(true)} className="group fixed bottom-24 right-3 z-[70] flex h-12 w-12 items-center justify-center rounded-full border border-emerald-400/30 bg-gradient-to-br from-[#173D24] to-[#0A1F12] text-white shadow-[0_10px_28px_rgba(23,61,36,0.45)] transition hover:-translate-y-0.5 hover:scale-105 hover:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-200 md:bottom-5 md:right-5 md:h-14 md:w-14" aria-label="Abrir Lumi, copiloto operativo" aria-haspopup="dialog">
+        <LumiEmblem size={24} className="text-emerald-300 group-hover:rotate-12 transition-transform duration-300" aria-hidden="true" />
+        <span className="pointer-events-none absolute right-full mr-2 hidden whitespace-nowrap rounded-lg bg-gray-950 px-3 py-1.5 text-xs font-bold text-white shadow-lg group-hover:block group-focus-visible:block">Lumi · Copiloto Aluna</span>
       </button>
 
       {isOpen ? (
         <div className="fixed inset-0 z-[100]" role="presentation">
-          <button type="button" className="absolute inset-0 bg-black/35 backdrop-blur-[2px]" onClick={() => setIsOpen(false)} aria-label="Cerrar Aluna" />
+          <button type="button" className="absolute inset-0 bg-black/35 backdrop-blur-[2px]" onClick={() => setIsOpen(false)} aria-label="Cerrar Lumi" />
           <section role="dialog" aria-modal="true" aria-labelledby={titleId} className="absolute inset-y-0 right-0 flex w-full flex-col bg-[#F7F8F5] shadow-2xl sm:max-w-[640px] xl:max-w-[760px]">
             <header className="border-b border-gray-200 bg-white px-5 py-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#173D24] text-white"><Bot size={23} aria-hidden="true" /></div>
-                  <div><h2 id={titleId} className="font-bold text-gray-950">Aluna</h2><p className="text-xs text-gray-500">Espacio de trabajo inteligente</p></div>
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#173D24] to-[#0D2616] text-white shadow-md shadow-emerald-950/20">
+                    <LumiEmblem size={24} className="text-emerald-300" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <h2 id={titleId} className="font-bold text-gray-950 text-base">Lumi</h2>
+                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Copiloto Aluna</span>
+                    </div>
+                    <p className="text-xs text-gray-500">Tu asistente de apertura y operaciones</p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-1"><button type="button" onClick={openChanges} className="rounded-full p-2 text-gray-500 hover:bg-gray-100" aria-label="Ver historial de cambios"><History size={19} aria-hidden="true" /></button><button type="button" onClick={() => setIsOpen(false)} className="rounded-full p-2 text-gray-500 hover:bg-gray-100" aria-label="Cerrar panel"><X size={20} aria-hidden="true" /></button></div>
               </div>
@@ -524,13 +543,13 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
               ) : !audit ? (
                 <div className="space-y-5">
                   <div className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
-                    <p className="text-sm font-bold text-gray-900">Hola, estoy trabajando sobre {brandName}.</p>
-                    <p className="mt-2 text-sm leading-relaxed text-gray-600">Puedo revisar catálogo, recetas, horarios, pagos, impresión y presencia web para decirte qué falta antes de abrir.</p>
+                    <p className="text-sm font-bold text-gray-900">Hola, soy Lumi. Estoy trabajando sobre {brandName}.</p>
+                    <p className="mt-2 text-sm leading-relaxed text-gray-600">Puedo auditar tu catálogo, recetas, horarios, medios de pago e impresión para decirte exactamente qué falta antes de operar.</p>
                   </div>
                   <button type="button" onClick={executeAudit} disabled={isLoading} className="flex w-full items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:border-emerald-300 hover:shadow-md disabled:cursor-wait disabled:opacity-70">
                     <span className="flex items-center gap-3">
                       <span className="rounded-xl bg-emerald-50 p-2.5 text-emerald-700">{isLoading ? <Loader2 size={19} className="animate-spin" aria-hidden="true" /> : <Sparkles size={19} aria-hidden="true" />}</span>
-                      <span><span className="block text-sm font-bold text-gray-900">Auditar apertura</span><span className="mt-0.5 block text-xs text-gray-500">Diagnóstico real, sin modificar datos</span></span>
+                      <span><span className="block text-sm font-bold text-gray-900">Auditar apertura con Lumi</span><span className="mt-0.5 block text-xs text-gray-500">Diagnóstico real, sin modificar datos</span></span>
                     </span>
                     <ChevronRight size={18} className="text-gray-400" aria-hidden="true" />
                   </button>
