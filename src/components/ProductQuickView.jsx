@@ -69,7 +69,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
 
   // Derived values — safe with optional chaining when product is null
   const title = product?.title || product?.name || "";
-  const subtitle = product?.subtitle;
+  const subtitle = product?.subtitle || product?.description || product?.desc || "";
   const image = product ? getProductImage(product) : null;
 
   const productAllergens = (product?.tags || []).map(tagName => {

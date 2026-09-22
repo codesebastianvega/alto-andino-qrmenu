@@ -39,7 +39,7 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
 
   // Derived values
   const title = product?.title || product?.name || "";
-  const subtitle = product?.subtitle;
+  const subtitle = product?.subtitle || product?.description || product?.desc || "";
   const image = product ? getProductImage(product) : null;
   const assignedGroups = product?.modifierGroups || product?.modifier_groups || [];
   const rawModifierGroups = menuData?.rawModifierGroups || [];

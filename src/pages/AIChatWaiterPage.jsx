@@ -238,6 +238,23 @@ export default function AIChatWaiterPage() {
     }, 2000);
   };
 
+  const handleOpenProductDetail = (prod) => {
+    if (!prod) return;
+    const fullProd = allProducts.find(p => p.id === prod.id) || prod;
+    const desc = fullProd.description || fullProd.desc || fullProd.subtitle || "";
+    const enriched = {
+      ...fullProd,
+      title: fullProd.title || fullProd.name || "",
+      subtitle: desc,
+      description: desc,
+    };
+    if (enriched.is_diy || enriched.is_build_your_own) {
+      setSelectedDiyProduct(enriched);
+    } else {
+      setSelectedProduct(enriched);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -374,13 +391,7 @@ export default function AIChatWaiterPage() {
                         return (
                           <div
                             key={prod.id}
-                            onClick={() => {
-                              if (isDiy) {
-                                setSelectedDiyProduct(prod);
-                              } else {
-                                setSelectedProduct(prod);
-                              }
-                            }}
+                            onClick={() => handleOpenProductDetail(prod)}
                             className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.07] hover:border-emerald-500/40 transition-all group cursor-pointer"
                           >
                             <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
