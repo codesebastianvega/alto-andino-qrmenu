@@ -21,6 +21,7 @@ import { isRestaurantOpen } from "@/utils/businessHours";
 import { safeStorage as localStorage, safeSessionStorage as sessionStorage } from "@/utils/safeStorage";
 import { createClientOrderId, submitOrderResilient } from "@/services/orderSync";
 import { getFulfillmentModes } from "@/constants/businessTypes";
+import { sendTelegramOrderNotification } from "@/utils/telegramNotify";
 
 
 const toast = {
@@ -275,10 +276,68 @@ export default function CartModal({ open, onClose }) {
 
   const isLeadRequired = !isPOSMode && (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' || fulfillmentType === 'scheduled');
   const isAddressRequired = !isPOSMode && fulfillmentType === 'delivery';
+
+  // Order Totals
+  const packagingFeeTotal = items.reduce((acc, it) => acc + ((Number(it.packaging_fee) || 0) * (Number(it.qty) || 1)), 0);
+  const serviceFeeAmount = (isTipEnabled && includeTip) ? Math.round(total * (tipPercentage / 100)) : 0;
+  const finalTotal = useMemo(() => {
+    return fulfillmentType === 'takeaway' || fulfillmentType === 'delivery'
+      ? total + packagingFeeTotal + serviceFeeAmount
+      : total + serviceFeeAmount;
+  }, [fulfillmentType, total, packagingFeeTotal, serviceFeeAmount]);
+
+  // Customer Payment States (Delivery / Takeaway)
+  const [customerPaymentType, setCustomerPaymentType] = useState(() => {
+    return localStorage.getItem("aa_payment_type") || "cash";
+  });
+  const [cashTenderedType, setCashTenderedType] = useState("exact"); // 'exact' | '50000' | '100000' | 'custom'
+  const [customCashAmount, setCustomCashAmount] = useState("");
+
+  useEffect(() => {
+    if (customerPaymentType) localStorage.setItem("aa_payment_type", customerPaymentType);
+  }, [customerPaymentType]);
+
+  const effectiveCashAmount = useMemo(() => {
+    if (cashTenderedType === 'exact') return finalTotal;
+    if (cashTenderedType === 'custom') return Number(customCashAmount) || 0;
+    return Number(cashTenderedType) || finalTotal;
+  }, [cashTenderedType, customCashAmount, finalTotal]);
+
+  const cashChange = useMemo(() => {
+    if (customerPaymentType !== 'cash') return 0;
+    return Math.max(0, effectiveCashAmount - finalTotal);
+  }, [customerPaymentType, effectiveCashAmount, finalTotal]);
+
+  const isCashAmountValid = useMemo(() => {
+    if (customerPaymentType !== 'cash') return true;
+    if (cashTenderedType === 'exact') return true;
+    return effectiveCashAmount >= finalTotal;
+  }, [customerPaymentType, cashTenderedType, effectiveCashAmount, finalTotal]);
+
+  const paymentMethodSummary = useMemo(() => {
+    if (isPOSMode) {
+      return isPaid ? (paymentMethod || 'Pagado en caja') : 'Pendiente en caja';
+    }
+    if (customerPaymentType === 'cash') {
+      if (cashTenderedType === 'exact' || effectiveCashAmount === finalTotal) {
+        return `Efectivo (Pago exacto: ${formatCOP(finalTotal)})`;
+      }
+      return `Efectivo (Paga con: ${formatCOP(effectiveCashAmount)} - Cambio: ${formatCOP(cashChange)})`;
+    }
+    if (customerPaymentType === 'transfer') {
+      return 'Transferencia / Nequi / Bre-B';
+    }
+    if (customerPaymentType === 'card') {
+      return 'Datáfono contra entrega';
+    }
+    return 'Por acordar';
+  }, [isPOSMode, isPaid, paymentMethod, customerPaymentType, cashTenderedType, effectiveCashAmount, finalTotal, cashChange]);
+
   const isLeadValid = !isLeadRequired || (
     Boolean(customerName?.trim()) && 
     Boolean(customerPhone?.trim()) && 
-    (!isAddressRequired || Boolean(deliveryAddress?.trim()))
+    (!isAddressRequired || Boolean(deliveryAddress?.trim())) &&
+    isCashAmountValid
   );
 
   // Si estamos en POS y es manual (Takeaway/Delivery), forzamos el tipo
@@ -318,9 +377,6 @@ export default function CartModal({ open, onClose }) {
       setPaymentMethod(activeMethods[0].id);
     }
   }, [activeMethods, paymentMethod]);
-
-  const packagingFeeTotal = items.reduce((acc, it) => acc + ((Number(it.packaging_fee) || 0) * (Number(it.qty) || 1)), 0);
-  const serviceFeeAmount = (isTipEnabled && includeTip) ? Math.round(total * (tipPercentage / 100)) : 0;
 
   // --- UPSELLING LOGIC ---
   const upsellProducts = useMemo(() => {
@@ -419,13 +475,8 @@ export default function CartModal({ open, onClose }) {
       const finalTotal = fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount;
 
       // Status logic: Dine-in and Takeaway go straight to kitchen ('new').
-      // Only Delivery needs to wait for payment confirmation ('waiting_payment') unless already paid.
+      // Delivery orders with payment method selected are immediately sent to kitchen ('new') with pending payment status.
       let orderStatus = 'new';
-      if (fulfillmentType === 'delivery' && !isPaid) {
-        orderStatus = 'waiting_payment';
-      } else {
-        orderStatus = 'new';
-      }
 
       let orderData = null;
 
@@ -454,8 +505,8 @@ export default function CartModal({ open, onClose }) {
             fulfillment_type: fulfillmentType, table_id: tableId, brand_id: activeBrandId,
             location_id: orderLocationId || null, total_amount: finalTotal, service_fee: serviceFeeAmount,
             customer_name: fullCustomerName || customerName, customer_phone: customerPhone, customer_id: customerId,
-            scheduled_time: scheduledTime || null, payment_status: isPaid ? 'paid' : 'pending',
-            payment_method: isPaid ? paymentMethod : null,
+            scheduled_time: scheduledTime || null, payment_status: isPOSMode && isPaid ? 'paid' : 'pending',
+            payment_method: isPOSMode ? (isPaid ? paymentMethod : null) : paymentMethodSummary,
           },
           items: offlineItems,
         });
@@ -489,8 +540,8 @@ export default function CartModal({ open, onClose }) {
             total_amount: Number(existingOrder.total_amount) + Number(finalTotal),
             service_fee: Number(existingOrder.service_fee || 0) + Number(serviceFeeAmount),
             status: 'new',
-            payment_status: isPaid ? 'paid' : existingOrder.payment_status,
-            payment_method: isPaid ? paymentMethod : existingOrder.payment_method
+            payment_status: isPOSMode && isPaid ? 'paid' : existingOrder.payment_status,
+            payment_method: isPOSMode ? (isPaid ? paymentMethod : existingOrder.payment_method) : paymentMethodSummary
           };
 
           const { data: updatedOrder, error: updateError } = await supabase.from('orders')
@@ -521,8 +572,8 @@ export default function CartModal({ open, onClose }) {
             customer_phone: customerPhone,
             customer_id: customerId,
             scheduled_time: scheduledTime || null,
-            payment_status: isPaid ? 'paid' : 'pending',
-            payment_method: isPaid ? paymentMethod : null
+            payment_status: isPOSMode && isPaid ? 'paid' : 'pending',
+            payment_method: isPOSMode ? (isPaid ? paymentMethod : null) : paymentMethodSummary
           }])
           .select()
           .single();
@@ -628,6 +679,19 @@ export default function CartModal({ open, onClose }) {
       localStorage.setItem("aa_active_order", orderData.id);
       setLastOrderId(orderData.id);
 
+      // --- TELEGRAM AUTOMATED DISPATCH (Silent, Non-blocking) ---
+      if (!isPOSMode) {
+        sendTelegramOrderNotification({
+          order: orderData,
+          items,
+          brand: { id: activeBrandId, name: currentLocation?.business_name || settings?.business_name, slug: brandSlug },
+          location: currentLocation,
+          paymentMethodSummary,
+          finalTotal,
+          fulfillmentType
+        }).catch((tErr) => console.warn('Telegram notify error:', tErr));
+      }
+
       // --- WHATSAPP LINK GENERATION (Aluna Localization) ---
       // SKIP in POS mode to avoid interrupting staff workflow
       if (hasFeature('whatsapp_orders') && !isPOSMode) {
@@ -647,7 +711,7 @@ export default function CartModal({ open, onClose }) {
             `\n*Productos:*\n` +
             items.map(it => `- ${it.qty}x ${it.name} (${formatCOP(getItemUnit(it) * it.qty)})`).join('\n') +
             `\n\n*Total:* ${formatCOP(finalTotal)}\n` +
-            `*Método de pago:* ${paymentMethod || 'Por acordar'}\n\n` +
+            `*Método de pago:* ${paymentMethodSummary}\n\n` +
             `Ver pedido en: ${window.location.origin}/${brandSlug}/#order/${orderData.id}`
           );
           
@@ -670,7 +734,7 @@ export default function CartModal({ open, onClose }) {
         tableId: tableId || mesa || null,
         total: finalTotal,
         fulfillmentType: fulfillmentType,
-        paymentMethod: paymentMethod || 'unspecified'
+        paymentMethod: isPOSMode ? (paymentMethod || 'unspecified') : customerPaymentType
       });
       
     } catch (err) {
@@ -691,6 +755,9 @@ export default function CartModal({ open, onClose }) {
     setScheduledTime("");
     setIsPaid(false);
     setPaymentMethod("cash");
+    setCustomerPaymentType("cash");
+    setCashTenderedType("exact");
+    setCustomCashAmount("");
     setShowFulfillmentSelector(false);
     setWhatsappLink("");
     sessionStorage.removeItem("aa_current_customer");
@@ -763,7 +830,7 @@ export default function CartModal({ open, onClose }) {
     if (items.length === 0) return null;
     const toggleId = `paid-toggle-${idSuffix}`;
     return (
-      <div className="flex-shrink-0 bg-white border-t border-neutral-100 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] transition-all">
+      <div className="w-full bg-white border-t border-neutral-100 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] transition-all">
         <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-neutral-100/60 border-dashed">
           <div className="flex justify-between items-center mb-1">
             <span className="text-sm text-neutral-500 font-medium">Subtotal</span>
@@ -804,8 +871,8 @@ export default function CartModal({ open, onClose }) {
         </div>
         
         <div
-          className="px-4 pt-3 pb-3 sm:px-6 sm:pt-4 sm:pb-4"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 16px)" }}
+          className="px-4 pt-3 pb-8 sm:px-6 sm:pt-4 sm:pb-12"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 36px)" }}
         >
           <div className="flex items-center justify-between mb-4">
             <span className="text-base sm:text-lg font-bold text-neutral-900">Total</span>
@@ -978,6 +1045,202 @@ export default function CartModal({ open, onClose }) {
                          </>
                        )}
                     </div>
+                  </div>
+                )}
+                
+                {/* Customer Payment Method Section */}
+                {!isPOSMode && isLeadRequired && (
+                  <div className="p-4 bg-white rounded-2xl border border-amber-200/90 shadow-sm space-y-3.5 animate-in slide-in-from-top-2">
+                    <div className="flex items-center justify-between px-1">
+                      <label className="text-[10px] font-black text-amber-800 uppercase tracking-widest flex items-center gap-1.5">
+                        <Icon icon="heroicons:credit-card" className="text-sm text-amber-600" />
+                        Método de Pago
+                      </label>
+                      <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                        REQUERIDO
+                      </span>
+                    </div>
+
+                    {/* Options grid */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {/* 1. Efectivo */}
+                      <button
+                        type="button"
+                        onClick={() => setCustomerPaymentType('cash')}
+                        className={`flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all gap-1 text-center ${
+                          customerPaymentType === 'cash'
+                            ? 'border-emerald-600 bg-emerald-50 text-emerald-950 shadow-sm scale-[1.02]'
+                            : 'border-neutral-200 bg-neutral-50/70 text-neutral-600 hover:border-neutral-300'
+                        }`}
+                      >
+                        <div className={`p-1.5 rounded-lg ${customerPaymentType === 'cash' ? 'bg-emerald-600 text-white' : 'bg-neutral-200/80 text-neutral-600'}`}>
+                          <Icon icon="heroicons:banknotes" className="text-lg" />
+                        </div>
+                        <span className="text-[11px] font-black tracking-tight">Efectivo</span>
+                        <span className="text-[9px] text-neutral-400 font-semibold leading-none">Al recibir</span>
+                      </button>
+
+                      {/* 2. Transferencia / Nequi / Bre-B */}
+                      <button
+                        type="button"
+                        onClick={() => setCustomerPaymentType('transfer')}
+                        className={`flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all gap-1 text-center ${
+                          customerPaymentType === 'transfer'
+                            ? 'border-blue-600 bg-blue-50 text-blue-950 shadow-sm scale-[1.02]'
+                            : 'border-neutral-200 bg-neutral-50/70 text-neutral-600 hover:border-neutral-300'
+                        }`}
+                      >
+                        <div className={`p-1.5 rounded-lg ${customerPaymentType === 'transfer' ? 'bg-blue-600 text-white' : 'bg-neutral-200/80 text-neutral-600'}`}>
+                          <Icon icon="heroicons:device-phone-mobile" className="text-lg" />
+                        </div>
+                        <span className="text-[11px] font-black tracking-tight">Nequi / Bre-B</span>
+                        <span className="text-[9px] text-neutral-400 font-semibold leading-none">Transferencia</span>
+                      </button>
+
+                      {/* 3. Datáfono contra entrega */}
+                      <button
+                        type="button"
+                        onClick={() => setCustomerPaymentType('card')}
+                        className={`flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all gap-1 text-center ${
+                          customerPaymentType === 'card'
+                            ? 'border-indigo-600 bg-indigo-50 text-indigo-950 shadow-sm scale-[1.02]'
+                            : 'border-neutral-200 bg-neutral-50/70 text-neutral-600 hover:border-neutral-300'
+                        }`}
+                      >
+                        <div className={`p-1.5 rounded-lg ${customerPaymentType === 'card' ? 'bg-indigo-600 text-white' : 'bg-neutral-200/80 text-neutral-600'}`}>
+                          <Icon icon="heroicons:credit-card" className="text-lg" />
+                        </div>
+                        <span className="text-[11px] font-black tracking-tight">Datáfono</span>
+                        <span className="text-[9px] text-neutral-400 font-semibold leading-none">Tarjeta física</span>
+                      </button>
+                    </div>
+
+                    {/* Sub-panel: EFECTIVO */}
+                    {customerPaymentType === 'cash' && (
+                      <div className="p-3.5 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-2.5 animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-black text-emerald-900">¿Con cuánto vas a pagar?</span>
+                          <span className="text-[10px] text-emerald-700 font-medium">para alistar tu cambio</span>
+                        </div>
+                        
+                        {/* Denomination quick pills */}
+                        <div className="grid grid-cols-4 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setCashTenderedType('exact')}
+                            className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all border ${
+                              cashTenderedType === 'exact'
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                : 'bg-white text-emerald-900 border-emerald-200 hover:bg-emerald-100/50'
+                            }`}
+                          >
+                            Exacto
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCashTenderedType('50000')}
+                            className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all border ${
+                              cashTenderedType === '50000'
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                : 'bg-white text-emerald-900 border-emerald-200 hover:bg-emerald-100/50'
+                            }`}
+                          >
+                            $50.000
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCashTenderedType('100000')}
+                            className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all border ${
+                              cashTenderedType === '100000'
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                : 'bg-white text-emerald-900 border-emerald-200 hover:bg-emerald-100/50'
+                            }`}
+                          >
+                            $100.000
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCashTenderedType('custom')}
+                            className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all border ${
+                              cashTenderedType === 'custom'
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                : 'bg-white text-emerald-900 border-emerald-200 hover:bg-emerald-100/50'
+                            }`}
+                          >
+                            Otro
+                          </button>
+                        </div>
+
+                        {/* Custom Cash Input */}
+                        {cashTenderedType === 'custom' && (
+                          <div className="flex items-center gap-2 bg-white px-3 h-10 rounded-lg border border-emerald-300 focus-within:ring-2 focus-within:ring-emerald-400/30">
+                            <span className="text-emerald-700 font-bold text-sm">$</span>
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              placeholder={`Ingresa el monto (mínimo ${formatCOP(finalTotal)})`}
+                              value={customCashAmount}
+                              onChange={(e) => setCustomCashAmount(e.target.value)}
+                              className="w-full bg-transparent border-none focus:ring-0 text-sm font-bold text-neutral-900 placeholder:text-neutral-300"
+                            />
+                          </div>
+                        )}
+
+                        {/* Dynamic Change indicator pill */}
+                        {cashTenderedType === 'exact' ? (
+                          <div className="text-[11px] font-semibold text-emerald-800 flex items-center gap-1.5 pt-0.5">
+                            <Icon icon="heroicons:check-circle" className="text-emerald-600 text-base" />
+                            <span>Pagas el valor exacto: <strong>{formatCOP(finalTotal)}</strong> (no necesitas cambio).</span>
+                          </div>
+                        ) : effectiveCashAmount > finalTotal ? (
+                          <div className="p-2.5 rounded-xl bg-white border border-emerald-200 text-[11px] font-bold text-emerald-900 flex items-center justify-between shadow-xs">
+                            <span className="flex items-center gap-1.5 text-emerald-800">
+                              <Icon icon="heroicons:sparkles" className="text-base text-emerald-600" />
+                              Llevarte de cambio:
+                            </span>
+                            <span className="text-sm font-black text-emerald-700 tabular-nums">
+                              {formatCOP(cashChange)}
+                            </span>
+                          </div>
+                        ) : effectiveCashAmount === finalTotal ? (
+                          <div className="text-[11px] font-semibold text-emerald-800 flex items-center gap-1.5 pt-0.5">
+                            <Icon icon="heroicons:check-circle" className="text-emerald-600 text-base" />
+                            <span>Pagas el valor exacto: <strong>{formatCOP(finalTotal)}</strong>.</span>
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-[11px] font-bold text-red-700 flex items-center gap-1.5">
+                            <Icon icon="heroicons:exclamation-triangle" className="text-base text-red-500 flex-shrink-0" />
+                            <span>El monto (${formatCOP(effectiveCashAmount)}) debe ser mayor o igual al total ({formatCOP(finalTotal)}).</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Sub-panel: TRANSFERENCIA / NEQUI / BRE-B */}
+                    {customerPaymentType === 'transfer' && (
+                      <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl space-y-1.5 animate-in fade-in duration-200">
+                        <p className="text-[11px] font-bold text-blue-900 flex items-center gap-1.5">
+                          <Icon icon="heroicons:device-phone-mobile" className="text-base text-blue-600" />
+                          Transferencia Nequi, Daviplata o llave Bre-B
+                        </p>
+                        <p className="text-[11px] text-blue-800/90 leading-relaxed font-medium">
+                          Transfiere desde tu app bancaria a nuestra cuenta o llave Bre-B. Al confirmar tu pedido te compartiremos los datos y número para reportar el comprobante de pago.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Sub-panel: DATÁFONO */}
+                    {customerPaymentType === 'card' && (
+                      <div className="p-3.5 bg-indigo-50/80 border border-indigo-200 rounded-xl space-y-1.5 animate-in fade-in duration-200">
+                        <p className="text-[11px] font-bold text-indigo-900 flex items-center gap-1.5">
+                          <Icon icon="heroicons:credit-card" className="text-base text-indigo-600" />
+                          Cobro con Datáfono al entregar
+                        </p>
+                        <p className="text-[11px] text-indigo-800/90 leading-relaxed font-medium">
+                          El domiciliario llevará un datáfono inalámbrico para cobrarte en físico con tu tarjeta débito o crédito (Visa, Mastercard, etc.).
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
                 
@@ -1343,50 +1606,52 @@ export default function CartModal({ open, onClose }) {
           
           {/* Right Column (Upselling + Footer) - Visible only on Desktop */}
           {items.length > 0 && (
-            <div className="hidden md:flex w-full md:w-[380px] lg:w-[420px] flex-shrink-0 flex flex-col bg-neutral-50 md:border-l border-neutral-200 z-10 relative">
+            <div className="hidden md:flex w-full md:w-[390px] lg:w-[440px] flex-shrink-0 flex-col bg-neutral-50 md:border-l border-neutral-200 z-10 relative h-full overflow-y-auto overscroll-contain">
               
               {/* Upselling Banner (Scrollable) */}
-              <div className="flex-1 overflow-y-auto">
-                {upsellProducts.length > 0 && !showFulfillmentSelector && (
-                  <div className="bg-amber-50/40 py-5 px-4 sm:px-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <h4 className="text-sm font-bold text-[#cba258] flex items-center gap-1.5 leading-tight">
-                        <Icon icon="heroicons:sparkles" className="text-lg" />
-                        ¿Acompañas tu pedido con esto?
-                      </h4>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 gap-3">
-                      {upsellProducts.map(prod => (
-                        <div key={prod.id} className="bg-white rounded-2xl p-3 shadow-sm border border-amber-100/60 flex items-center gap-3 transition-colors hover:border-amber-200">
-                          <AAImage 
-                            src={getProductImage(prod)} 
-                            className="w-14 h-14 rounded-xl object-cover bg-neutral-100 shrink-0 border border-neutral-200/40" 
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-neutral-900 truncate" title={prod.name}>{prod.name}</p>
-                            <p className="text-xs font-semibold text-[#2f4131]">{formatCOP(prod.price)}</p>
-                          </div>
-                          <button 
-                            onClick={() => handleAddUpsell(prod)}
-                            className="w-8 h-8 rounded-full bg-amber-100 text-[#cba258] flex items-center justify-center shrink-0 hover:bg-[#cba258] hover:text-white transition-colors active:scale-95"
-                          >
-                            <Icon icon="heroicons:plus" className="text-lg" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+              {upsellProducts.length > 0 && !showFulfillmentSelector && (
+                <div className="bg-amber-50/40 py-5 px-4 sm:px-6 flex-shrink-0">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-sm font-bold text-[#cba258] flex items-center gap-1.5 leading-tight">
+                      <Icon icon="heroicons:sparkles" className="text-lg" />
+                      ¿Acompañas tu pedido con esto?
+                    </h4>
                   </div>
-                )}
-              </div>
+                  
+                  <div className="grid grid-cols-1 gap-3">
+                    {upsellProducts.map(prod => (
+                      <div key={prod.id} className="bg-white rounded-2xl p-3 shadow-sm border border-amber-100/60 flex items-center gap-3 transition-colors hover:border-amber-200">
+                        <AAImage 
+                          src={getProductImage(prod)} 
+                          className="w-14 h-14 rounded-xl object-cover bg-neutral-100 shrink-0 border border-neutral-200/40" 
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-neutral-900 truncate" title={prod.name}>{prod.name}</p>
+                          <p className="text-xs font-semibold text-[#2f4131]">{formatCOP(prod.price)}</p>
+                        </div>
+                        <button 
+                          onClick={() => handleAddUpsell(prod)}
+                          className="w-8 h-8 rounded-full bg-amber-100 text-[#cba258] flex items-center justify-center shrink-0 hover:bg-[#cba258] hover:text-white transition-colors active:scale-95"
+                        >
+                          <Icon icon="heroicons:plus" className="text-lg" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-              {/* Footer fijo (Receipt Style) */}
-              {renderCheckoutFooter('desktop')}
+              {/* Footer con formulario y checkout (Scrollable) */}
+              <div className="flex-1">
+                {renderCheckoutFooter('desktop')}
+              </div>
             </div>
           )}
 
-          {/* Mobile Fixed Footer */}
-          <div className="md:hidden flex-shrink-0">
+          {/* Mobile Footer (Scrollable when showing checkout/payment form) */}
+          <div className={`md:hidden flex-shrink-0 bg-white transition-all ${
+            showFulfillmentSelector ? 'max-h-[82dvh] overflow-y-auto overscroll-contain shadow-2xl border-t border-neutral-200' : ''
+          }`}>
             {renderCheckoutFooter('mobile')}
           </div>
         </div>

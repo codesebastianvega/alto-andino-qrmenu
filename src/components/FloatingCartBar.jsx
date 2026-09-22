@@ -11,17 +11,26 @@ export default function FloatingCartBar({ items, total, onOpen }) {
   const prevTotal = useRef(total);
   const cartCount = items?.length || 0;
 
-  // Handle click outside to close mini cart
+  // Handle click outside & escape key to close mini cart
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
         setShowMiniCart(false);
       }
     };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setShowMiniCart(false);
+      }
+    };
     if (showMiniCart) {
       document.addEventListener("mousedown", handleClickOutside);
+      window.addEventListener("keydown", handleKeyDown);
     }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [showMiniCart]);
 
   // Slide-up entrance when items appear
@@ -50,7 +59,7 @@ export default function FloatingCartBar({ items, total, onOpen }) {
   const handleClick = () => {
     const isDesktop = window.innerWidth >= 768;
     if (isDesktop) {
-      setShowMiniCart(!showMiniCart);
+      setShowMiniCart((prev) => !prev);
     } else {
       onOpen();
     }
@@ -68,19 +77,24 @@ export default function FloatingCartBar({ items, total, onOpen }) {
       className="fixed right-5 bottom-[96px] md:bottom-8 z-[70] pointer-events-none flex flex-col items-end"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px))" }}
     >
-      {/* Desktop Persistent Mini Window */}
-      <div className="hidden md:block relative w-full">
-        <MiniCartWindow 
-          items={items} 
-          total={total} 
-          onCheckout={handleCheckout} 
-        />
-      </div>
+      {/* Desktop Mini Window (Shown only when toggled open) */}
+      {showMiniCart && (
+        <div className="hidden md:block mb-3 relative animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <MiniCartWindow 
+            items={items} 
+            total={total} 
+            onCheckout={handleCheckout} 
+            onClose={() => setShowMiniCart(false)}
+          />
+        </div>
+      )}
 
-      {/* Mobile Floating Chip */}
+      {/* Floating Cart Button (Both Mobile & Desktop) */}
       <button
+        type="button"
         onClick={handleClick}
-        className={`md:hidden pointer-events-auto inline-flex items-center gap-4 rounded-full bg-[#1A1A1A]/90 backdrop-blur-md border border-white/10 px-6 py-3.5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A1A1A] ${
+        aria-label="Abrir carrito de compras"
+        className={`pointer-events-auto inline-flex items-center gap-4 rounded-full bg-[#1A1A1A]/95 backdrop-blur-md border border-white/15 px-6 py-3.5 text-white shadow-[0_8px_32px_rgba(0,0,0,0.35)] transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A1A1A] ${
           visible
             ? "translate-y-0 opacity-100 scale-100"
             : "translate-y-8 opacity-0 scale-95"

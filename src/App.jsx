@@ -616,7 +616,7 @@ export default function App() {
 
           {/* Barra flotante y Drawer del carrito */}
           <Suspense fallback={<div />}>
-            {brand_slug && !currentHash.startsWith('#asistente') && !currentHash.startsWith('#mesero') && !currentHash.startsWith('#chat') && <FloatingCartBar items={cart.items} total={cart.total} onOpen={() => setOpen(true)} />}
+            {brand_slug && !open && !currentHash.startsWith('#asistente') && !currentHash.startsWith('#mesero') && !currentHash.startsWith('#chat') && !currentHash.startsWith('#checkout') && <FloatingCartBar items={cart.items} total={cart.total} onOpen={() => setOpen(true)} />}
           </Suspense>
           <Suspense fallback={<div />}>
             <CartModal open={open} onClose={() => setOpen(false)} />

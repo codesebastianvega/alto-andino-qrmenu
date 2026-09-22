@@ -7,13 +7,23 @@ export default function MiniCartWindow({ items = [], total = 0, onCheckout, onCl
   if (items.length === 0) return null;
 
   return (
-    <div className="absolute bottom-0 right-0 w-[350px] glass-premium rounded-3xl overflow-hidden shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300 z-[80] pointer-events-auto">
+    <div className="w-[330px] sm:w-[350px] glass-premium rounded-3xl overflow-hidden shadow-2xl z-[80] pointer-events-auto border border-white/15">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between bg-white/5">
+      <div className="px-5 py-3.5 border-b border-white/10 flex items-center justify-between bg-white/5">
         <h3 className="text-white font-bold text-sm tracking-tight flex items-center gap-2">
           <Icon icon="solar:cart-check-bold" className="text-orange-400 text-lg" />
           Tu Pedido
         </h3>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar mini ventana"
+            className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex items-center justify-center transition-colors active:scale-95"
+          >
+            <Icon icon="solar:close-circle-bold" className="text-lg" />
+          </button>
+        )}
       </div>
 
       {/* Items List */}

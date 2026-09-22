@@ -163,12 +163,14 @@ END $$;
 -- global_settings: Solo superadmin puede modificar o insertar
 DROP POLICY IF EXISTS "Enable insert access for all authenticated users" ON public.global_settings;
 DROP POLICY IF EXISTS "Enable update access for all authenticated users" ON public.global_settings;
+DROP POLICY IF EXISTS "Superadmins can insert global_settings" ON public.global_settings;
 CREATE POLICY "Superadmins can insert global_settings" 
   ON public.global_settings 
   FOR INSERT 
   TO authenticated 
   WITH CHECK (public.is_superadmin());
 
+DROP POLICY IF EXISTS "Superadmins can update global_settings" ON public.global_settings;
 CREATE POLICY "Superadmins can update global_settings" 
   ON public.global_settings 
   FOR UPDATE 
@@ -180,8 +182,7 @@ CREATE POLICY "Superadmins can update global_settings"
 DROP POLICY IF EXISTS "Permitir actualizacion de features" ON public.plan_features;
 DROP POLICY IF EXISTS "Permitir eliminacion de features" ON public.plan_features;
 DROP POLICY IF EXISTS "Permitir insercion de features" ON public.plan_features;
-DROP POLICY IF EXISTS "Permitir actualizacion de planes" ON public.plans;
-
+DROP POLICY IF EXISTS "Superadmins can manage plan_features" ON public.plan_features;
 CREATE POLICY "Superadmins can manage plan_features" 
   ON public.plan_features 
   FOR ALL 
@@ -189,6 +190,8 @@ CREATE POLICY "Superadmins can manage plan_features"
   USING (public.is_superadmin())
   WITH CHECK (public.is_superadmin());
 
+DROP POLICY IF EXISTS "Permitir actualizacion de planes" ON public.plans;
+DROP POLICY IF EXISTS "Superadmins can manage plans" ON public.plans;
 CREATE POLICY "Superadmins can manage plans" 
   ON public.plans 
   FOR ALL 
@@ -200,7 +203,7 @@ CREATE POLICY "Superadmins can manage plans"
 DROP POLICY IF EXISTS "Permitir gestionar restaurant_settings" ON public.restaurant_settings;
 DROP POLICY IF EXISTS "Permitir insertar restaurant_settings" ON public.restaurant_settings;
 DROP POLICY IF EXISTS "Permitir insertar restaurant_settings inicial" ON public.restaurant_settings;
-
+DROP POLICY IF EXISTS "Manage own restaurant_settings" ON public.restaurant_settings;
 CREATE POLICY "Manage own restaurant_settings" 
   ON public.restaurant_settings 
   FOR ALL 
@@ -217,7 +220,7 @@ CREATE POLICY "Manage own restaurant_settings"
 DROP POLICY IF EXISTS "Permitir gestionar home_settings" ON public.home_settings;
 DROP POLICY IF EXISTS "Permitir gestionar home_settings inicial" ON public.home_settings;
 DROP POLICY IF EXISTS "Permitir insertar home_settings" ON public.home_settings;
-
+DROP POLICY IF EXISTS "Manage own home_settings" ON public.home_settings;
 CREATE POLICY "Manage own home_settings" 
   ON public.home_settings 
   FOR ALL 
@@ -235,6 +238,7 @@ CREATE POLICY "Manage own home_settings"
 -- Esto mantiene los pedidos públicos de comensales (anónimos) funcionando sin disparar alerta de linter
 DROP POLICY IF EXISTS "Public insert orders" ON public.orders;
 DROP POLICY IF EXISTS "secure_public_insert_orders" ON public.orders;
+DROP POLICY IF EXISTS "Public insert orders valid" ON public.orders;
 CREATE POLICY "Public insert orders valid" 
   ON public.orders 
   FOR INSERT 
@@ -243,6 +247,7 @@ CREATE POLICY "Public insert orders valid"
 
 DROP POLICY IF EXISTS "Public insert order_items" ON public.order_items;
 DROP POLICY IF EXISTS "secure_public_insert_order_items" ON public.order_items;
+DROP POLICY IF EXISTS "Public insert order_items valid" ON public.order_items;
 CREATE POLICY "Public insert order_items valid" 
   ON public.order_items 
   FOR INSERT 
@@ -250,6 +255,7 @@ CREATE POLICY "Public insert order_items valid"
   WITH CHECK (order_id IS NOT NULL);
 
 DROP POLICY IF EXISTS "secure_public_insert_order_payments" ON public.order_payments;
+DROP POLICY IF EXISTS "Public insert order_payments valid" ON public.order_payments;
 CREATE POLICY "Public insert order_payments valid" 
   ON public.order_payments 
   FOR INSERT 
@@ -258,6 +264,7 @@ CREATE POLICY "Public insert order_payments valid"
 
 -- analytics_events: Reemplazar WITH CHECK (true)
 DROP POLICY IF EXISTS "secure_public_insert_analytics_events" ON public.analytics_events;
+DROP POLICY IF EXISTS "Public insert analytics_events valid" ON public.analytics_events;
 CREATE POLICY "Public insert analytics_events valid" 
   ON public.analytics_events 
   FOR INSERT 
