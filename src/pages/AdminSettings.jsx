@@ -10,6 +10,7 @@ import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton } from
 import { Icon } from '@iconify/react';
 import { Loader2 } from 'lucide-react';
 import { BUSINESS_TYPES, getFulfillmentModes } from '../constants/businessTypes';
+import { sendTestTelegramNotification } from '../utils/telegramNotify';
 
 const toast = {
   success: (msg, opts) => toastFn.success(msg, { duration: 2500, ...opts }),
@@ -24,6 +25,9 @@ export default function AdminSettings() {
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ 
     whatsapp_number_orders: '',
+    telegram_enabled: false,
+    telegram_chat_id: '',
+    telegram_bot_token: '',
     is_service_fee_enabled: false,
     service_fee_percentage: 10,
     pay_before_service: false,
@@ -42,6 +46,7 @@ export default function AdminSettings() {
     allow_scheduled: true,
   });
   const [isSubmittingSettings, setIsSubmittingSettings] = useState(false);
+  const [isTestingTelegram, setIsTestingTelegram] = useState(false);
 
   const [hours, setHours] = useState([]);
   const [loadingHours, setLoadingHours] = useState(false);
@@ -88,8 +93,15 @@ export default function AdminSettings() {
       if (data) {
         setSettings(data);
         const modes = getFulfillmentModes(data);
+        const telegramConcept = Array.isArray(data?.brand_concepts)
+          ? data.brand_concepts.find(c => c && c.id === 'telegram_dispatch')
+          : null;
+
         setSettingsForm({
           whatsapp_number_orders: data.whatsapp_number_orders || '',
+          telegram_enabled: telegramConcept ? (telegramConcept.enabled ?? true) : false,
+          telegram_chat_id: telegramConcept?.chat_id || '',
+          telegram_bot_token: telegramConcept?.bot_token || '',
           is_service_fee_enabled: data.is_service_fee_enabled ?? false,
           service_fee_percentage: data.service_fee_percentage ?? 10,
           pay_before_service: data.pay_before_service ?? false,
@@ -111,6 +123,9 @@ export default function AdminSettings() {
         setSettings(null);
         setSettingsForm({
           whatsapp_number_orders: '',
+          telegram_enabled: false,
+          telegram_chat_id: '',
+          telegram_bot_token: '',
           is_service_fee_enabled: false,
           service_fee_percentage: 10,
           pay_before_service: false,
@@ -174,11 +189,11 @@ export default function AdminSettings() {
   };
 
   const handleSaveSettings = async (e) => {
-    e.preventDefault();
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     setIsSubmittingSettings(true);
     try {
       const currentConcepts = Array.isArray(settings?.brand_concepts)
-        ? settings.brand_concepts.filter(c => c && c.id !== 'operations_model')
+        ? settings.brand_concepts.filter(c => c && c.id !== 'operations_model' && c.id !== 'telegram_dispatch')
         : [];
       
       const operationsModel = {
@@ -191,6 +206,13 @@ export default function AdminSettings() {
           allow_dine_in: settingsForm.allow_dine_in,
           allow_scheduled: settingsForm.allow_scheduled,
         }
+      };
+
+      const telegramDispatch = {
+        id: 'telegram_dispatch',
+        enabled: Boolean(settingsForm.telegram_enabled),
+        chat_id: settingsForm.telegram_chat_id ? String(settingsForm.telegram_chat_id).trim() : '',
+        bot_token: settingsForm.telegram_bot_token ? String(settingsForm.telegram_bot_token).trim() : null
       };
 
       const payload = {
@@ -208,7 +230,7 @@ export default function AdminSettings() {
         receipt_print_enabled: settingsForm.receipt_print_enabled,
         thermal_paper_width: settingsForm.thermal_paper_width,
         electronic_invoicing_status: settingsForm.electronic_invoicing_status,
-        brand_concepts: [operationsModel, ...currentConcepts],
+        brand_concepts: [operationsModel, telegramDispatch, ...currentConcepts],
         updated_at: new Date().toISOString()
       };
 
@@ -247,6 +269,30 @@ export default function AdminSettings() {
       toast.error('Error guardando configuración');
     } finally {
       setIsSubmittingSettings(false);
+    }
+  };
+
+  const handleTestTelegram = async () => {
+    if (!settingsForm.telegram_chat_id) {
+      toast.error('Por favor ingresa primero el ID de Chat o Grupo de Telegram.');
+      return;
+    }
+    setIsTestingTelegram(true);
+    try {
+      const res = await sendTestTelegramNotification({
+        chatId: settingsForm.telegram_chat_id,
+        brandName: activeBrand?.name || 'Tu Restaurante',
+        botToken: settingsForm.telegram_bot_token || undefined
+      });
+      if (res.success) {
+        toast.success('¡Comanda de prueba enviada con éxito a Telegram! Revisa tu chat.');
+      } else {
+        toast.error(`Error de Telegram: ${res.error || 'Verifica el ID y que el bot esté en el grupo.'}`);
+      }
+    } catch (err) {
+      toast.error(`Error inesperado: ${err.message}`);
+    } finally {
+      setIsTestingTelegram(false);
     }
   };
 
@@ -505,18 +551,23 @@ export default function AdminSettings() {
                   </div>
                 </div>
 
-                {/* ── WhatsApp Module */}
+                {/* ── WhatsApp Module: Customer Support */}
                 <div className="glass-glow bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-xl shadow-gray-50/50 relative overflow-hidden group">
                   <div className="absolute -right-12 -top-12 w-48 h-48 bg-emerald-50 rounded-full blur-3xl opacity-50 group-hover:opacity-100 transition-opacity" />
                   
-                  <div className="flex items-start justify-between mb-8 relative z-10">
+                  <div className="flex items-start justify-between mb-6 relative z-10">
                     <div className="flex items-center gap-5">
                       <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-sm">
                         <Icon icon="logos:whatsapp-icon" className="text-3xl" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Recepción Directa</h3>
-                        <p className="text-[12px] text-gray-400 font-medium">WhatsApp donde recibirás las comandas digitales.</p>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Atención al Cliente</h3>
+                          <span className="text-[10px] font-black text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            Para Comensales
+                          </span>
+                        </div>
+                        <p className="text-[12px] text-gray-400 font-medium">WhatsApp visible para que tus comensales resuelvan dudas sobre su pedido.</p>
                       </div>
                     </div>
                   </div>
@@ -532,7 +583,7 @@ export default function AdminSettings() {
                           Falta Completar
                         </div>
                       )}
-                      <FormField label="Número de WhatsApp">
+                      <FormField label="Número de WhatsApp para Soporte">
                         <div className="relative">
                           <TextInput
                             value={settingsForm.whatsapp_number_orders}
@@ -543,17 +594,145 @@ export default function AdminSettings() {
                         </div>
                         <p className={`text-[10px] mt-3 font-medium flex items-center gap-2 ${!settingsForm.whatsapp_number_orders ? 'text-red-400' : 'text-gray-400'}`}>
                            <Icon icon="heroicons:information-circle" className={!settingsForm.whatsapp_number_orders ? "text-red-500" : "text-emerald-500"} />
-                           El número debe incluir el prefijo internacional (ej. +57 para Colombia).
+                           Tus comensales verán este canal en el seguimiento del pedido para escribirte si tienen preguntas.
                         </p>
                       </FormField>
                     </div>
 
                     <div className="flex justify-end pt-2">
                       <PrimaryButton type="submit" disabled={isSubmittingSettings} className="rounded-2xl px-10 py-4 shadow-xl shadow-gray-200">
-                        {isSubmittingSettings ? 'Sincronizando...' : 'Guardar Configuración'}
+                        {isSubmittingSettings ? 'Sincronizando...' : 'Guardar WhatsApp'}
                       </PrimaryButton>
                     </div>
                   </form>
+                </div>
+
+                {/* ── Telegram Module: Staff Kitchen Comandas (Add-on) */}
+                <div className="glass-glow bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-xl shadow-gray-50/50 relative overflow-hidden group">
+                  <div className="absolute -right-12 -top-12 w-48 h-48 bg-sky-50 rounded-full blur-3xl opacity-50 group-hover:opacity-100 transition-opacity" />
+                  
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 relative z-10">
+                    <div className="flex items-center gap-5">
+                      <div className="w-14 h-14 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-500 shadow-sm">
+                        <Icon icon="logos:telegram" className="text-3xl" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Comandas para Staff</h3>
+                          <span className="text-[10px] font-black text-sky-700 bg-sky-100/80 px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 border border-sky-200">
+                            <Icon icon="heroicons:bolt" className="text-xs text-sky-600" />
+                            Add-on Cocina
+                          </span>
+                        </div>
+                        <p className="text-[12px] text-gray-400 font-medium">
+                          Envía cada pedido confirmado automáticamente al grupo de Telegram de tus cocineros y repartidores.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Toggle Switch */}
+                    <div className="flex items-center gap-2.5 bg-gray-50 px-3.5 py-2 rounded-2xl border border-gray-200/60 self-start">
+                      <span className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+                        {settingsForm.telegram_enabled ? 'Activo' : 'Pausado'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSettingsForm({ ...settingsForm, telegram_enabled: !settingsForm.telegram_enabled })}
+                        className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors ${
+                          settingsForm.telegram_enabled ? 'bg-sky-500 justify-end' : 'bg-gray-200 justify-start'
+                        }`}
+                      >
+                        <div className="bg-white w-4 h-4 rounded-full shadow-md" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6 relative z-10">
+                    <div className="bg-sky-50/40 p-6 rounded-[2rem] border border-sky-100 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <label className="text-[11px] font-black uppercase tracking-wider text-sky-900">
+                          ID de Chat o Grupo de Cocina
+                        </label>
+                        <a
+                          href="https://t.me/AlunaOrdersBot?startgroup=true"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 bg-white px-3 py-1 rounded-xl border border-sky-200 shadow-2xs hover:shadow-xs transition-all w-fit"
+                        >
+                          <Icon icon="solar:user-plus-bold" className="text-sm" />
+                          1. Agregar @AlunaOrdersBot al Grupo
+                        </a>
+                      </div>
+
+                      <div className="relative">
+                        <TextInput
+                          value={settingsForm.telegram_chat_id || ''}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, telegram_chat_id: e.target.value })}
+                          placeholder="Ej: -10023481928 o tu ID personal"
+                          className="bg-white border border-sky-200 rounded-xl focus:ring-2 focus:ring-sky-400 text-base font-bold tracking-wider text-sky-950 placeholder:text-gray-300 p-3.5 w-full"
+                        />
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 text-[11px] text-sky-900/80">
+                        <p className="flex items-center gap-1.5">
+                          <Icon icon="heroicons:information-circle" className="text-sky-500 text-sm shrink-0" />
+                          <span>Canal 100% interno para tu personal; el cliente no interviene aquí.</span>
+                        </p>
+
+                        {/* Test Button */}
+                        <button
+                          type="button"
+                          onClick={handleTestTelegram}
+                          disabled={isTestingTelegram || !settingsForm.telegram_chat_id}
+                          className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                            !settingsForm.telegram_chat_id || isTestingTelegram
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : 'bg-sky-500 hover:bg-sky-600 text-white shadow-md shadow-sky-500/20 active:scale-95'
+                          }`}
+                        >
+                          {isTestingTelegram ? (
+                            <>
+                              <Icon icon="line-md:loading-loop" className="text-sm" />
+                              <span>Enviando prueba...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Icon icon="heroicons:beaker" className="text-sm" />
+                              <span>🧪 Probar Comanda</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Optional Custom Bot Token Accordion */}
+                    <details className="text-xs text-gray-500 group">
+                      <summary className="cursor-pointer font-bold hover:text-gray-700 select-none flex items-center gap-1.5">
+                        <Icon icon="heroicons:chevron-right" className="text-xs transition-transform group-open:rotate-90" />
+                        <span>Avanzado: Usar Token de Bot Propio (Opcional)</span>
+                      </summary>
+                      <div className="mt-3 p-4 bg-gray-50 rounded-2xl border border-gray-200/60 space-y-2">
+                        <p className="text-[11px] text-gray-400">Por defecto Aluna usa su bot central oficial. Si prefieres un bot con el logo y nombre de tu restaurante, pega tu Token de BotFather aquí:</p>
+                        <TextInput
+                          value={settingsForm.telegram_bot_token || ''}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, telegram_bot_token: e.target.value })}
+                          placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz..."
+                          className="bg-white text-xs font-mono p-2.5 rounded-xl border border-gray-200 w-full"
+                        />
+                      </div>
+                    </details>
+
+                    <div className="flex justify-end pt-2">
+                      <PrimaryButton
+                        type="button"
+                        onClick={handleSaveSettings}
+                        disabled={isSubmittingSettings}
+                        className="rounded-2xl px-10 py-4 shadow-xl shadow-gray-200"
+                      >
+                        {isSubmittingSettings ? 'Sincronizando...' : 'Guardar Configuración Telegram'}
+                      </PrimaryButton>
+                    </div>
+                  </div>
                 </div>
 
                 {/* ── Payment Modes Module */}

@@ -9,6 +9,7 @@ import { formatCOP } from './money';
  * @param {Array} params.items
  * @param {Object} params.brand
  * @param {Object} params.location
+ * @param {Object} [params.settings]
  * @param {string} params.paymentMethodSummary
  * @param {number} params.finalTotal
  * @param {string} params.fulfillmentType
@@ -18,16 +19,27 @@ export async function sendTelegramOrderNotification({
   items = [],
   brand = {},
   location = {},
+  settings = {},
   paymentMethodSummary = '',
   finalTotal = 0,
   fulfillmentType = 'delivery'
 }) {
   try {
-    const botToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN || location?.telegram_bot_token;
-    const chatId = import.meta.env.VITE_TELEGRAM_CHAT_ID || location?.telegram_chat_id;
+    const telegramConcept = Array.isArray(settings?.brand_concepts)
+      ? settings.brand_concepts.find(c => c && c.id === 'telegram_dispatch')
+      : null;
+
+    // Check if explicitly disabled in settings
+    if (telegramConcept && telegramConcept.enabled === false) {
+      console.info('ℹ️ [Telegram Notification] Notificaciones de Telegram desactivadas en Ajustes.');
+      return { success: false, reason: 'disabled' };
+    }
+
+    const botToken = telegramConcept?.bot_token || location?.telegram_bot_token || settings?.telegram_bot_token || import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
+    const chatId = telegramConcept?.chat_id || location?.telegram_chat_id || settings?.telegram_chat_id || import.meta.env.VITE_TELEGRAM_CHAT_ID;
 
     if (!botToken || !chatId) {
-      console.info('ℹ️ [Telegram Notification] No configurado (VITE_TELEGRAM_BOT_TOKEN / VITE_TELEGRAM_CHAT_ID ausentes).');
+      console.info('ℹ️ [Telegram Notification] No configurado (Bot Token o Chat ID ausentes).');
       return { success: false, reason: 'unconfigured' };
     }
 
@@ -142,3 +154,70 @@ export async function sendTelegramOrderNotification({
     return { success: false, error: err };
   }
 }
+
+/**
+ * Sends a test simulated comanda to verify Telegram connection.
+ * 
+ * @param {Object} params
+ * @param {string} params.chatId - The Telegram chat or group ID.
+ * @param {string} [params.brandName] - Name of the restaurant.
+ * @param {string} [params.botToken] - Optional custom bot token override.
+ * @returns {Promise<{ success: boolean, error?: string }>}
+ */
+export async function sendTestTelegramNotification({
+  chatId,
+  brandName = 'Restaurante',
+  botToken: customBotToken
+}) {
+  const botToken = customBotToken || import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
+  if (!botToken) {
+    return {
+      success: false,
+      error: 'Falta configurar el Token del Bot de Telegram (VITE_TELEGRAM_BOT_TOKEN).'
+    };
+  }
+  if (!chatId) {
+    return {
+      success: false,
+      error: 'Por favor ingresa el ID del Chat o Grupo de Telegram antes de probar.'
+    };
+  }
+
+  const cleanChatId = String(chatId).trim();
+  const testMessage = `⚡ *¡CONEXIÓN EXITOSA CON ALUNA!* 🍽️\n\n` +
+    `🏷️ *Marca:* ${brandName}\n` +
+    `👨‍🍳 *Canal de Cocina & Staff:* Notificaciones Activas\n\n` +
+    `✅ *¡Excelente!* Este grupo de Telegram está sincronizado correctamente.\n\n` +
+    `A partir de ahora, cuando un cliente confirme un pedido en tu menú digital, llegará de inmediato a este chat con mapa, notas de cocina, teléfono y botón de WhatsApp.\n\n` +
+    `_Prueba enviada el ${new Date().toLocaleTimeString('es-CO')}_`;
+
+  const payload = {
+    chat_id: cleanChatId,
+    text: testMessage,
+    parse_mode: 'Markdown',
+    disable_web_page_preview: true
+  };
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      let description = errText;
+      try {
+        const parsed = JSON.parse(errText);
+        description = parsed.description || errText;
+      } catch {}
+      return { success: false, error: description };
+    }
+
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message || 'Error de conexión con Telegram' };
+  }
+}
+

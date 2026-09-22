@@ -686,6 +686,7 @@ export default function CartModal({ open, onClose }) {
           items,
           brand: { id: activeBrandId, name: currentLocation?.business_name || settings?.business_name, slug: brandSlug },
           location: currentLocation,
+          settings,
           paymentMethodSummary,
           finalTotal,
           fulfillmentType
@@ -1779,14 +1780,22 @@ export default function CartModal({ open, onClose }) {
                         <Icon icon="solar:arrow-right-line-duotone" />
                       </button>
 
-                      {/* WhatsApp Option for Non-DineIn orders (Disabled for V1 MVP: All plans use Kanban) */}
-                      {false && (!isPOSMode && fulfillmentType !== 'dine_in' && whatsappLink) && (
+                      {/* Customer Support WhatsApp button */}
+                      {(!isPOSMode && (currentLocation?.whatsapp || settings?.whatsapp_number_orders)) && (
                         <button
-                          onClick={() => window.open(whatsappLink, '_blank')}
-                          className="w-full bg-[#25D366] text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg shadow-[#25D366]/20 hover:bg-[#128C7E]"
+                          type="button"
+                          onClick={() => {
+                            const rawPhone = currentLocation?.whatsapp || settings?.whatsapp_number_orders || '';
+                            const cleanPhone = rawPhone.replace(/\D/g, '');
+                            const orderNum = lastOrderId ? lastOrderId.slice(-4).toUpperCase() : '';
+                            const text = encodeURIComponent(`Hola, acabo de hacer el pedido #${orderNum} en ${currentLocation?.business_name || settings?.business_name || 'su restaurante'} y tengo una consulta.`);
+                            const targetPhone = cleanPhone.startsWith('57') ? cleanPhone : `57${cleanPhone}`;
+                            window.open(`https://wa.me/${targetPhone}?text=${text}`, '_blank');
+                          }}
+                          className="w-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 py-4 rounded-2xl font-bold flex items-center justify-center gap-2.5 transition-all active:scale-95 hover:bg-emerald-100/70"
                         >
                           <Icon icon="logos:whatsapp-icon" className="text-xl" />
-                          Enviar copia del pedido a WhatsApp
+                          ¿Dudas sobre tu pedido? Escríbenos
                         </button>
                       )}
                       
