@@ -8,6 +8,7 @@ import { toast } from "@/components/Toast";
 import AIAvatar from "@/components/ui/AIAvatar";
 import AAImage from "@/components/ui/AAImage";
 import { Icon } from "@iconify-icon/react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function AIChatWaiterPage() {
   const { 
@@ -185,10 +186,22 @@ export default function AIChatWaiterPage() {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-[#0c0d10] text-neutral-100 font-sans selection:bg-emerald-500/20">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className="relative flex flex-col h-[100dvh] bg-[#0c0d10] text-neutral-100 font-sans selection:bg-emerald-500/20 overflow-hidden"
+    >
+      {/* Ambient background glow for high-tech AI atmosphere */}
+      <div className="pointer-events-none absolute -top-28 left-1/2 -translate-x-1/2 w-96 h-48 bg-emerald-500/10 rounded-full blur-3xl" />
       
       {/* 1. MINIMAL HEADER */}
-      <header className="flex-shrink-0 z-20 flex items-center justify-between px-3 sm:px-4 py-2.5 bg-[#0e1014]/90 backdrop-blur-xl border-b border-white/[0.06]">
+      <motion.header
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+        className="flex-shrink-0 z-20 flex items-center justify-between px-3 sm:px-4 py-2.5 bg-[#0e1014]/90 backdrop-blur-xl border-b border-white/[0.06]"
+      >
         <div className="flex items-center gap-2.5">
           <button
             type="button"
@@ -200,9 +213,15 @@ export default function AIChatWaiterPage() {
           </button>
 
           <div className="flex items-center gap-2.5">
-            <AIAvatar avatar={assistantAvatar} className="w-8 h-8 rounded-full ring-1 ring-white/10" />
+            <div className="relative">
+              <AIAvatar avatar={assistantAvatar} className="w-8 h-8 rounded-full ring-1 ring-white/10" />
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#0e1014] animate-pulse" />
+            </div>
             <div>
-              <h1 className="text-sm font-semibold text-neutral-100 leading-tight tracking-tight">{assistantName}</h1>
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-sm font-semibold text-neutral-100 leading-tight tracking-tight">{assistantName}</h1>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-400 font-medium">IA</span>
+              </div>
               <p className="text-[11px] text-neutral-400 font-normal leading-tight">
                 {brandName || 'Mesero digital'}
               </p>
@@ -224,16 +243,19 @@ export default function AIChatWaiterPage() {
             </span>
           )}
         </button>
-      </header>
+      </motion.header>
 
       {/* 2. CHAT STREAM */}
       <main className="flex-1 overflow-y-auto px-4 py-5 space-y-4 scrollbar-thin scrollbar-thumb-white/5">
         <div className="max-w-2xl mx-auto space-y-4">
           
           {messages.map((msg) => (
-            <div
+            <motion.div
               key={msg.id}
-              className={`flex gap-2.5 animate-in fade-in duration-200 ${
+              initial={{ opacity: 0, y: 14, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className={`flex gap-2.5 ${
                 msg.sender === "user" ? "justify-end" : "justify-start"
               }`}
             >
@@ -257,21 +279,32 @@ export default function AIChatWaiterPage() {
                 {msg.suggestedChips && msg.suggestedChips.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 pt-0.5">
                     {msg.suggestedChips.map((chip, idx) => (
-                      <button
+                      <motion.button
                         key={idx}
                         type="button"
+                        initial={{ opacity: 0, y: 8, scale: 0.94 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.25, delay: 0.12 + idx * 0.05, ease: "easeOut" }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
                         onClick={() => handleSend(chip)}
-                        className="text-xs text-neutral-300 hover:text-white px-3 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/10 border border-white/[0.07] hover:border-white/20 transition-all text-left active:scale-95"
+                        disabled={isLoading}
+                        className="text-xs text-neutral-300 hover:text-white px-3 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/10 border border-white/[0.07] hover:border-white/20 transition-all text-left active:scale-95 disabled:opacity-50"
                       >
                         {chip}
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
                 )}
 
                 {/* Product Recommendation Cards */}
                 {msg.products && msg.products.length > 0 && (
-                  <div className="space-y-2 pt-1">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.1 }}
+                    className="space-y-2 pt-1"
+                  >
                     <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 px-0.5">
                       Sugerencias de la carta:
                     </p>
@@ -317,21 +350,25 @@ export default function AIChatWaiterPage() {
                         );
                       })}
                     </div>
-                  </div>
+                  </motion.div>
                 )}
               </div>
-            </div>
+            </motion.div>
           ))}
 
           {/* Loading Indicator */}
           {isLoading && (
-            <div className="flex gap-2.5 animate-in fade-in duration-200">
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex gap-2.5"
+            >
               <AIAvatar avatar={assistantAvatar} className="w-7 h-7 shrink-0 mt-0.5 rounded-full ring-1 ring-white/10" />
               <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-neutral-400 rounded-tl-sm text-xs">
-                <Icon icon="solar:sparkles-bold" className="text-emerald-400 text-sm" />
+                <Icon icon="solar:sparkles-bold" className="text-emerald-400 text-sm animate-spin" />
                 <span>{assistantName} está respondiendo...</span>
               </div>
-            </div>
+            </motion.div>
           )}
 
           <div ref={messagesEndRef} />
@@ -339,7 +376,12 @@ export default function AIChatWaiterPage() {
       </main>
 
       {/* 3. SLEEK FOOTER (Cart Strip + Minimal Input) */}
-      <footer className="flex-shrink-0 z-20 px-3 sm:px-4 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+10px)] bg-[#0e1014]/95 backdrop-blur-xl border-t border-white/[0.06]">
+      <motion.footer
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+        className="flex-shrink-0 z-20 px-3 sm:px-4 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+10px)] bg-[#0e1014]/95 backdrop-blur-xl border-t border-white/[0.06]"
+      >
         <div className="max-w-2xl mx-auto space-y-2">
           
           {/* Integrated Cart Strip - Responsive & No Overlap on Mobile */}
@@ -398,8 +440,8 @@ export default function AIChatWaiterPage() {
           </form>
 
         </div>
-      </footer>
+      </motion.footer>
 
-    </div>
+    </motion.div>
   );
 }
