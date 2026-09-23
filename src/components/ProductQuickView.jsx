@@ -8,6 +8,7 @@ import { formatCOP } from "@/utils/money";
 import { toast } from "./Toast";
 import { getProductImage } from "@/utils/images";
 import AAImage from "@/components/ui/AAImage";
+import { Icon } from "@iconify-icon/react";
 
 export default function ProductQuickView({ open: isOpen, product, onClose, onAdd }) {
   // ── All hooks MUST be called unconditionally, in the same order, every render ──
@@ -30,11 +31,13 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
 
   // Selections per group: required → string id, optional → array of ids
   const [selections, setSelections] = useState({});
+  const [specialInstructions, setSpecialInstructions] = useState("");
 
-  // Reset selections when product changes
+  // Reset selections and notes when product changes
   const productId = product?.id ?? null;
   useEffect(() => {
     setSelections({});
+    setSpecialInstructions("");
   }, [productId]);
 
   // Keyboard / focus trap
@@ -262,6 +265,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
       ...product, 
       price: finalPrice, 
       options: selectedModifiers,
+      note: specialInstructions.trim() || undefined,
       image_url: image || product.image_url || product.image,
       resolved_image: image // Extra field just in case
     };
@@ -493,6 +497,28 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                       </div>
                     );
                   })}
+
+                  {/* Instrucciones especiales para cocina */}
+                  <div className="mt-6 pt-5 border-t border-neutral-100">
+                    <label className="flex items-center gap-2 text-xs font-black text-neutral-800 uppercase tracking-wider mb-2.5">
+                      <Icon icon="solar:notes-bold" className="text-base text-[#2f4131]" />
+                      <span>Instrucciones para cocina</span>
+                      <span className="text-[10px] lowercase text-neutral-400 font-semibold">(opcional)</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={specialInstructions}
+                      onChange={(e) => setSpecialInstructions(e.target.value)}
+                      placeholder="Ej: Sin cebolla, término medio, salsa aparte..."
+                      className="w-full text-xs font-medium text-neutral-800 bg-neutral-50/80 hover:bg-neutral-50 focus:bg-white border border-neutral-200 rounded-2xl p-3.5 focus:outline-none focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131] resize-none transition-all placeholder:text-neutral-400"
+                      maxLength={150}
+                    />
+                    <div className="flex justify-end mt-1">
+                      <span className="text-[10px] font-semibold text-neutral-400 tabular-nums">
+                        {specialInstructions.length}/150
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
               

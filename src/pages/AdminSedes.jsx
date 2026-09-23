@@ -91,6 +91,7 @@ export default function AdminSedes({ isEmbedded = false }) {
     is_active: true,
     operational_modes: ['dine_in', 'takeaway'],
     delivery_radius_km: 5,
+    delivery_fee: 0,
     independent_payments: false
   });
 
@@ -111,6 +112,7 @@ export default function AdminSedes({ isEmbedded = false }) {
         is_active: loc.is_active ?? true,
         operational_modes: loc.operational_modes || ['dine_in', 'takeaway'],
         delivery_radius_km: loc.delivery_radius_km || 5,
+        delivery_fee: loc.delivery_fee || 0,
         independent_payments: loc.independent_payments || false
       });
     } else {
@@ -125,6 +127,7 @@ export default function AdminSedes({ isEmbedded = false }) {
         is_active: true,
         operational_modes: ['dine_in', 'takeaway'],
         delivery_radius_km: 5,
+        delivery_fee: 0,
         independent_payments: false
       });
     }
@@ -629,6 +632,26 @@ export default function AdminSedes({ isEmbedded = false }) {
                             ))}
                          </div>
                        </div>
+
+                       <FormField label="Tarifa Base de Domicilio ($ COP)">
+                          <div className="flex items-center gap-4 p-4 bg-white rounded-[2rem] border-2 border-gray-100">
+                             <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                                <Icon icon="solar:dollar-bold" width="24" />
+                             </div>
+                             <input 
+                                type="number" 
+                                min="0" 
+                                step="500"
+                                value={form.delivery_fee}
+                                onChange={(e) => setForm({...form, delivery_fee: Math.max(0, parseInt(e.target.value) || 0)})}
+                                placeholder="Ej: 4000"
+                                className="flex-1 font-bold text-gray-900 text-lg bg-transparent border-none outline-none focus:ring-0"
+                             />
+                             <div className="text-right">
+                                <span className="text-xs font-bold text-gray-400 block uppercase tracking-tight">COP</span>
+                             </div>
+                          </div>
+                       </FormField>
 
                        <FormField label="Radio de Cobertura Delivery (Kilómetros)">
                           <div className="flex items-center gap-6 p-6 bg-white rounded-[2rem] border-2 border-gray-100">

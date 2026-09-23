@@ -342,6 +342,11 @@ export default function App() {
     if (flow) {
       localStorage.setItem("aa_fulfillment_flow", flow);
     }
+
+    // Dirigir directamente a la carta de platos para no dejar al comensal varado en la landing
+    if (flow === 'delivery' || flow === 'takeaway' || flow === 'dine_in') {
+      window.location.hash = '#menu';
+    }
     
     setShowWelcome(false);
   };

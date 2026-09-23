@@ -166,6 +166,15 @@ export async function sendTelegramOrderNotification({
     });
 
     message += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+    if (deliveryFee > 0) {
+      message += `🛵 <b>Domicilio:</b> ${escapeHtml(formatCOP(deliveryFee))}\n`;
+    }
+    if (packagingFeeTotal > 0) {
+      message += `📦 <b>Empaque:</b> ${escapeHtml(formatCOP(packagingFeeTotal))}\n`;
+    }
+    if (serviceFeeAmount > 0) {
+      message += `✨ <b>Propina voluntaria:</b> ${escapeHtml(formatCOP(serviceFeeAmount))}\n`;
+    }
     message += `💰 <b>TOTAL:</b> <b>${escapeHtml(formatCOP(finalTotal))}</b>\n`;
     message += `💳 <b>MÉTODO DE PAGO:</b> <b>${escapeHtml(paymentMethodSummary || 'Por acordar')}</b>\n`;
 

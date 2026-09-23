@@ -51,7 +51,8 @@ export default function BottomTabBar({ currentHash, onAllergensOpen, showExperie
     if (currentHash === "#inicio") return "inicio";
     if (currentHash === "#asistente" || currentHash === "#mesero" || currentHash === "#chat") return "asistente";
     if (currentHash?.startsWith("#order/")) return "pedido";
-    if (!currentHash || currentHash === "#" || currentHash === "#menu") return "menu";
+    if (currentHash === "#menu") return "menu";
+    if (!currentHash || currentHash === "#") return "inicio";
     return "menu";
   }, [currentHash]);
 

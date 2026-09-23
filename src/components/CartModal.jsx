@@ -11,7 +11,7 @@ import AAImage from "@/components/ui/AAImage";
 import { Icon } from "@iconify-icon/react";
 import { QRCode } from "react-qr-code";
 import { supabase } from "@/config/supabase";
-import { translateGroup } from "@/utils/formatters";
+import { translateGroup, normalizeWhatsAppNumber } from "@/utils/formatters";
 import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useLocationPayments } from "@/hooks/useLocationPayments";
@@ -228,7 +228,18 @@ export default function CartModal({ open, onClose }) {
   
   const allDBProducts = useMemo(() => getAllProducts(), [getAllProducts]);
 
-  const [includeTip, setIncludeTip] = useState(true);
+  const [includeTip, setIncludeTip] = useState(() => {
+    const flow = localStorage.getItem("aa_fulfillment_flow");
+    return flow !== "delivery" && flow !== "takeaway";
+  });
+
+  useEffect(() => {
+    if (fulfillmentType === 'delivery' || fulfillmentType === 'takeaway') {
+      setIncludeTip(false);
+    } else if (fulfillmentType === 'dine_in') {
+      setIncludeTip(true);
+    }
+  }, [fulfillmentType]);
   const { settings: hookSettings } = useRestaurantSettings(activeBrandId);
   const settings = menuRestaurantSettings || hookSettings;
   const isTipEnabled = settings?.is_service_fee_enabled === true;
@@ -742,7 +753,7 @@ export default function CartModal({ open, onClose }) {
         const whatsappNumber = currentLocation?.whatsapp || settings?.whatsapp_number_orders;
         
         if (whatsappNumber) {
-          const cleanPhone = whatsappNumber.replace(/\D/g, "");
+          const cleanPhone = normalizeWhatsAppNumber(whatsappNumber);
           const deliveryInfo = fulfillmentType === 'delivery'
             ? `*Modalidad:* 🛵 Domicilio\n*Dirección de Entrega:* ${formattedAddress || 'No especificada'}${formattedNotes ? `\n*Detalles Entrega:* ${formattedNotes}` : ''}\n`
             : `*Modalidad:* ${fulfillmentType === 'dine_in' ? '🍽️ En Mesa' : fulfillmentType === 'takeaway' ? '🛍️ Para Llevar' : '📅 Programado'}\n*Mesa:* ${mesa || 'N/A'}\n`;
@@ -921,7 +932,7 @@ export default function CartModal({ open, onClose }) {
           <div className="flex items-center justify-between mb-4">
             <span className="text-base sm:text-lg font-bold text-neutral-900">Total</span>
             <span className="text-2xl sm:text-3xl font-black tracking-tight text-[#2f4131]">
-              {formatCOP(fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount)}
+              {formatCOP(finalTotal)}
             </span>
           </div>
           
@@ -1741,7 +1752,7 @@ export default function CartModal({ open, onClose }) {
                     )}
 
                     {!isPOSMode && fulfillmentType !== 'dine_in' && !isPaid && (() => {
-                      const proofPhone = (currentLocation?.whatsapp || settings?.whatsapp_number_orders || '').replace(/[\s+]/g, '');
+                      const proofPhone = normalizeWhatsAppNumber(currentLocation?.whatsapp || settings?.whatsapp_number_orders || '');
                       const proofOrderCode = lastOrderId ? lastOrderId.slice(-4).toUpperCase() : '';
                       const proofMsg = encodeURIComponent('¡Hola! 👋 Envío el comprobante de pago de mi pedido #' + proofOrderCode + '. ✨');
                       const proofUrl = 'https://wa.me/' + proofPhone + '?text=' + proofMsg;

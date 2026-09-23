@@ -47,3 +47,21 @@ export const cleanAssistantName = (name, fallback = "Boki") => {
   if (cleaned.toLowerCase() === "boku" || cleaned.toLowerCase() === "boki") return "Boki";
   return cleaned;
 };
+
+/**
+ * Normalizes a Colombian / International phone number for WhatsApp links.
+ * Adds Colombian country code (57) if 10 digits starting with 3.
+ * 
+ * @param {string|number} rawPhone 
+ * @returns {string}
+ */
+export const normalizeWhatsAppNumber = (rawPhone) => {
+  if (!rawPhone) return "";
+  const clean = String(rawPhone).replace(/\D/g, "");
+  if (!clean) return "";
+  // Colombian 10-digit mobile number starting with 3 (e.g., 3244402642 -> 573244402642)
+  if (clean.length === 10 && clean.startsWith("3")) {
+    return `57${clean}`;
+  }
+  return clean;
+};

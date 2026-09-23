@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
-import { translateGroup } from '../utils/formatters';
+import { translateGroup, normalizeWhatsAppNumber } from '../utils/formatters';
 import { useMenuData } from '../context/MenuDataContext';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -83,21 +83,19 @@ export default function OrderStatus({ orderId }) {
     
     try {
       setLoading(true);
-      const { error } = await supabase
-        .from('orders')
-        .update({ 
-          status: 'cancelled', 
-          cancelled_by: 'customer',
-          cancelled_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
+      const { data, error } = await supabase.rpc('cancel_order_by_customer', { 
+        p_order_id: orderId 
+      });
         
       if (error) throw error;
+      if (data && !data.success) {
+        throw new Error(data.error || "No se pudo cancelar el pedido.");
+      }
       
       // La suscripción de realtime actualizará el estado automáticamente
     } catch (err) {
       console.error("Error cancelling order:", err);
-      alert("No se pudo cancelar el pedido. Por favor contacta al local.");
+      alert(err.message || "No se pudo cancelar el pedido. Por favor contacta al local.");
     } finally {
       setLoading(false);
     }
@@ -176,7 +174,7 @@ export default function OrderStatus({ orderId }) {
   const fulfillmentText = isDineIn ? 'Consumo en local' : 
                           isTakeaway ? 'Para llevar' : 'Domicilio';
   
-  const whatsappNumber = (restaurantSettings?.whatsapp_number_orders || "573138830171").replace(/[\s+]/g, '');
+  const whatsappNumber = normalizeWhatsAppNumber(restaurantSettings?.whatsapp_number_orders || "573138830171");
   const wppMessage = encodeURIComponent(`¡Hola! 👋 Envío el comprobante de pago de mi pedido #${order.id.slice(0,4).toUpperCase()} en ${brandName}. ✨`);
 
 
