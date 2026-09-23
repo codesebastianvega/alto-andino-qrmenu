@@ -15,6 +15,7 @@ Bienvenido a la documentación centralizada de **Aluna Hospitality OS**. Este es
 ### 🛠️ Gestión y Operaciones
 *   **[SuperAdmin Audit](file:///d:/BUSSINESS%20CHAN/CHAN/Programacion/alto-andino-qrmenu/docs/SUPERADMIN_AUDIT.md)**: Análisis de control y seguridad para el panel maestro.
 *   **[Planes y Suscripciones](file:///d:/BUSSINESS%20CHAN/CHAN/Programacion/alto-andino-qrmenu/docs/planes.md)**: Definición de niveles de servicio.
+*   **[Estrategia de Notificaciones (Telegram & WhatsApp)](file:///d:/BUSSINESS%20CHAN/CHAN/Programacion/alto-andino-qrmenu/docs/ESTRATEGIA_NOTIFICACIONES_TELEGRAM_WHATSAPP.md)**: Arquitectura, análisis de costos, canales internos vs. externos y roadmap de monetización.
 
 ## 🚀 Guías Rápidas
 *   [Guía de Producción](file:///d:/BUSSINESS%20CHAN/CHAN/Programacion/alto-andino-qrmenu/docs/GUIA_PRODUCCION.md)

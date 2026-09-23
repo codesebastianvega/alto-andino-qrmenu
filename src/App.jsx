@@ -110,6 +110,17 @@ export default function App() {
       }
     }
   }, [profile, authLoading, brand_slug]);
+
+  // ✅ Redirección al login si un usuario no autenticado intenta acceder a #portal
+  useEffect(() => {
+    if (!authLoading && !profile) {
+      const hash = window.location.hash;
+      if (hash.startsWith('#portal') || hash.startsWith('#access_token')) {
+        console.warn("Usuario no autenticado en #portal. Redirigiendo a #login...");
+        window.location.hash = '#login';
+      }
+    }
+  }, [profile, authLoading]);
   const [showPOSCustomerModal, setShowPOSCustomerModal] = useState(false);
   const [hasDismissedCustomerModal, setHasDismissedCustomerModal] = useState(false);
   const { categories: dbCategories, restaurantSettings, homeSettings, loading: menuLoading, currentLocation } = useMenuData();
@@ -122,6 +133,7 @@ export default function App() {
   
   // (isNewAdminPanel already declared above)
   const isOnboardingView = currentHash === '#admin/onboarding';
+  const isPortalView = currentHash.startsWith('#portal') || currentHash.startsWith('#access_token');
   const orderTrackingId = currentHash.startsWith('#order/') ? currentHash.replace('#order/', '') : null;
   
   // ✅ Simplified Hash Routing logic
@@ -396,9 +408,9 @@ export default function App() {
 
 
   // Render loading screen if still authenticating or loading critical brand data
-  // El menú público no necesita esperar Auth. El panel sí requiere la sesión
-  // antes de elegir la marca que administrará.
-  const isGlobalLoading = loadingBrand || (brand_slug && menuLoading) || (isNewAdminPanel && authLoading);
+  // El menú público no necesita esperar Auth. El panel y el portal sí requieren la sesión
+  // antes de elegir la marca que administrará o renderizar el portal.
+  const isGlobalLoading = loadingBrand || (brand_slug && menuLoading) || ((isNewAdminPanel || isPortalView) && authLoading);
 
   // We use a small internal state to handle the fade-out duration
   const [actuallyDone, setActuallyDone] = useState(false);
@@ -516,12 +528,14 @@ export default function App() {
           </Suspense>
         )}
 
-        {(currentHash.startsWith('#portal') || currentHash.startsWith('#access_token')) && (
+        {isPortalView && (
           <Suspense fallback={<LoadingScreen mode="splash" />}>
             {profile ? (
               <GlobalPortal />
-            ) : (
+            ) : authLoading ? (
               <LoadingScreen mode="splash" />
+            ) : (
+              <Navigate to="/login" replace />
             )}
           </Suspense>
         )}

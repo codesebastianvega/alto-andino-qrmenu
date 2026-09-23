@@ -146,7 +146,7 @@ export default function CartModal({ open, onClose }) {
   } = cart;
 
   const { brandSlug } = useParams();
-  const { getAllProducts, hasFeature, activeBrandId, currentLocation: contextLocation, locations, businessHours } = useMenuData();
+  const { getAllProducts, hasFeature, activeBrandId, currentLocation: contextLocation, locations, businessHours, restaurantSettings: menuRestaurantSettings } = useMenuData();
   const { paymentMethods, loading: loadingPayments } = usePaymentMethods(activeBrandId);
   const { isWithinOrderLimit } = usePlan(activeBrandId);
   
@@ -195,11 +195,42 @@ export default function CartModal({ open, onClose }) {
     // Fallback to brand level active methods
     return paymentMethods.filter(m => m.is_active);
   }, [paymentMethods, locationPayments, currentLocation]);
+
+  const availablePaymentTypes = useMemo(() => {
+    // If methods haven't loaded or none exist, fallback safely
+    if (!activeMethods || activeMethods.length === 0) {
+      return [
+        { id: 'cash', label: 'Efectivo', sub: 'Al recibir', icon: 'heroicons:banknotes', color: 'emerald' },
+        { id: 'transfer', label: 'Nequi / Bre-B', sub: 'Transferencia', icon: 'heroicons:device-phone-mobile', color: 'blue' },
+        { id: 'card', label: 'Datáfono', sub: 'Tarjeta física', icon: 'heroicons:credit-card', color: 'indigo' }
+      ];
+    }
+
+    const types = [];
+    const hasCash = activeMethods.some(m => m.type === 'cash' || /efectivo/i.test(m.name || ''));
+    const hasTransfer = activeMethods.some(m => m.type === 'transfer' || m.type === 'qr' || /nequi|bre-b|bancolombia|daviplata|transferencia/i.test(m.name || ''));
+    const hasCard = activeMethods.some(m => m.type === 'card' || /dat[aá]fono|tarjeta|pos/i.test(m.name || ''));
+
+    if (hasCash) {
+      types.push({ id: 'cash', label: 'Efectivo', sub: 'Al recibir', icon: 'heroicons:banknotes', color: 'emerald' });
+    }
+    if (hasTransfer) {
+      types.push({ id: 'transfer', label: 'Nequi / Bre-B', sub: 'Transferencia', icon: 'heroicons:device-phone-mobile', color: 'blue' });
+    }
+    if (hasCard) {
+      types.push({ id: 'card', label: 'Datáfono', sub: 'Tarjeta física', icon: 'heroicons:credit-card', color: 'indigo' });
+    }
+
+    return types.length > 0 ? types : [
+      { id: 'cash', label: 'Efectivo', sub: 'Al recibir', icon: 'heroicons:banknotes', color: 'emerald' }
+    ];
+  }, [activeMethods]);
   
   const allDBProducts = useMemo(() => getAllProducts(), [getAllProducts]);
 
   const [includeTip, setIncludeTip] = useState(true);
-  const { settings } = useRestaurantSettings();
+  const { settings: hookSettings } = useRestaurantSettings(activeBrandId);
+  const settings = menuRestaurantSettings || hookSettings;
   const isTipEnabled = settings?.is_service_fee_enabled === true;
   const tipPercentage = settings?.service_fee_percentage || 0;
 
@@ -296,6 +327,16 @@ export default function CartModal({ open, onClose }) {
   useEffect(() => {
     if (customerPaymentType) localStorage.setItem("aa_payment_type", customerPaymentType);
   }, [customerPaymentType]);
+
+  // Auto-sync customerPaymentType with available active methods
+  useEffect(() => {
+    if (availablePaymentTypes && availablePaymentTypes.length > 0) {
+      const isAvailable = availablePaymentTypes.some(t => t.id === customerPaymentType);
+      if (!isAvailable) {
+        setCustomerPaymentType(availablePaymentTypes[0].id);
+      }
+    }
+  }, [availablePaymentTypes, customerPaymentType]);
 
   const effectiveCashAmount = useMemo(() => {
     if (cashTenderedType === 'exact') return finalTotal;
@@ -680,18 +721,20 @@ export default function CartModal({ open, onClose }) {
       setLastOrderId(orderData.id);
 
       // --- TELEGRAM AUTOMATED DISPATCH (Silent, Non-blocking) ---
-      if (!isPOSMode) {
-        sendTelegramOrderNotification({
-          order: orderData,
-          items,
-          brand: { id: activeBrandId, name: currentLocation?.business_name || settings?.business_name, slug: brandSlug },
-          location: currentLocation,
-          settings,
-          paymentMethodSummary,
-          finalTotal,
-          fulfillmentType
-        }).catch((tErr) => console.warn('Telegram notify error:', tErr));
-      }
+      sendTelegramOrderNotification({
+        order: orderData,
+        items,
+        brand: { id: activeBrandId, name: currentLocation?.business_name || settings?.business_name, slug: brandSlug },
+        location: currentLocation,
+        settings,
+        paymentMethodSummary,
+        finalTotal,
+        fulfillmentType,
+        mesa: mesa || null,
+        orderNote: note || '',
+        deliveryAddress: formattedAddress || '',
+        deliveryNotes: formattedNotes || ''
+      }).catch((tErr) => console.warn('Telegram notify error:', tErr));
 
       // --- WHATSAPP LINK GENERATION (Aluna Localization) ---
       // SKIP in POS mode to avoid interrupting staff workflow
@@ -1063,57 +1106,49 @@ export default function CartModal({ open, onClose }) {
                     </div>
 
                     {/* Options grid */}
-                    <div className="grid grid-cols-3 gap-2">
-                      {/* 1. Efectivo */}
-                      <button
-                        type="button"
-                        onClick={() => setCustomerPaymentType('cash')}
-                        className={`flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all gap-1 text-center ${
-                          customerPaymentType === 'cash'
-                            ? 'border-emerald-600 bg-emerald-50 text-emerald-950 shadow-sm scale-[1.02]'
-                            : 'border-neutral-200 bg-neutral-50/70 text-neutral-600 hover:border-neutral-300'
-                        }`}
-                      >
-                        <div className={`p-1.5 rounded-lg ${customerPaymentType === 'cash' ? 'bg-emerald-600 text-white' : 'bg-neutral-200/80 text-neutral-600'}`}>
-                          <Icon icon="heroicons:banknotes" className="text-lg" />
-                        </div>
-                        <span className="text-[11px] font-black tracking-tight">Efectivo</span>
-                        <span className="text-[9px] text-neutral-400 font-semibold leading-none">Al recibir</span>
-                      </button>
+                    <div className={`grid gap-2 ${
+                      availablePaymentTypes.length === 1 
+                        ? 'grid-cols-1' 
+                        : availablePaymentTypes.length === 2 
+                          ? 'grid-cols-2' 
+                          : 'grid-cols-3'
+                    }`}>
+                      {availablePaymentTypes.map(pt => {
+                        const isSelected = customerPaymentType === pt.id;
+                        const colorStyles = pt.color === 'emerald'
+                          ? {
+                              selected: 'border-emerald-600 bg-emerald-50 text-emerald-950 shadow-sm scale-[1.02]',
+                              iconBg: 'bg-emerald-600 text-white'
+                            }
+                          : pt.color === 'blue'
+                          ? {
+                              selected: 'border-blue-600 bg-blue-50 text-blue-950 shadow-sm scale-[1.02]',
+                              iconBg: 'bg-blue-600 text-white'
+                            }
+                          : {
+                              selected: 'border-indigo-600 bg-indigo-50 text-indigo-950 shadow-sm scale-[1.02]',
+                              iconBg: 'bg-indigo-600 text-white'
+                            };
 
-                      {/* 2. Transferencia / Nequi / Bre-B */}
-                      <button
-                        type="button"
-                        onClick={() => setCustomerPaymentType('transfer')}
-                        className={`flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all gap-1 text-center ${
-                          customerPaymentType === 'transfer'
-                            ? 'border-blue-600 bg-blue-50 text-blue-950 shadow-sm scale-[1.02]'
-                            : 'border-neutral-200 bg-neutral-50/70 text-neutral-600 hover:border-neutral-300'
-                        }`}
-                      >
-                        <div className={`p-1.5 rounded-lg ${customerPaymentType === 'transfer' ? 'bg-blue-600 text-white' : 'bg-neutral-200/80 text-neutral-600'}`}>
-                          <Icon icon="heroicons:device-phone-mobile" className="text-lg" />
-                        </div>
-                        <span className="text-[11px] font-black tracking-tight">Nequi / Bre-B</span>
-                        <span className="text-[9px] text-neutral-400 font-semibold leading-none">Transferencia</span>
-                      </button>
-
-                      {/* 3. Datáfono contra entrega */}
-                      <button
-                        type="button"
-                        onClick={() => setCustomerPaymentType('card')}
-                        className={`flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all gap-1 text-center ${
-                          customerPaymentType === 'card'
-                            ? 'border-indigo-600 bg-indigo-50 text-indigo-950 shadow-sm scale-[1.02]'
-                            : 'border-neutral-200 bg-neutral-50/70 text-neutral-600 hover:border-neutral-300'
-                        }`}
-                      >
-                        <div className={`p-1.5 rounded-lg ${customerPaymentType === 'card' ? 'bg-indigo-600 text-white' : 'bg-neutral-200/80 text-neutral-600'}`}>
-                          <Icon icon="heroicons:credit-card" className="text-lg" />
-                        </div>
-                        <span className="text-[11px] font-black tracking-tight">Datáfono</span>
-                        <span className="text-[9px] text-neutral-400 font-semibold leading-none">Tarjeta física</span>
-                      </button>
+                        return (
+                          <button
+                            key={pt.id}
+                            type="button"
+                            onClick={() => setCustomerPaymentType(pt.id)}
+                            className={`flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all gap-1 text-center ${
+                              isSelected
+                                ? colorStyles.selected
+                                : 'border-neutral-200 bg-neutral-50/70 text-neutral-600 hover:border-neutral-300'
+                            }`}
+                          >
+                            <div className={`p-1.5 rounded-lg ${isSelected ? colorStyles.iconBg : 'bg-neutral-200/80 text-neutral-600'}`}>
+                              <Icon icon={pt.icon} className="text-lg" />
+                            </div>
+                            <span className="text-[11px] font-black tracking-tight">{pt.label}</span>
+                            <span className="text-[9px] text-neutral-400 font-semibold leading-none">{pt.sub}</span>
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {/* Sub-panel: EFECTIVO */}
@@ -1710,28 +1745,78 @@ export default function CartModal({ open, onClose }) {
                       const proofOrderCode = lastOrderId ? lastOrderId.slice(-4).toUpperCase() : '';
                       const proofMsg = encodeURIComponent('¡Hola! 👋 Envío el comprobante de pago de mi pedido #' + proofOrderCode + '. ✨');
                       const proofUrl = 'https://wa.me/' + proofPhone + '?text=' + proofMsg;
-                      return (
-                      <div className="mt-6 w-full max-w-sm mx-auto">
-                        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 text-center">
-                          <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <Icon icon="solar:wallet-bold" className="text-2xl text-orange-500" />
+
+                      // Si es transferencia (Nequi / Bre-B / Daviplata / Banco), pedimos el comprobante por WhatsApp
+                      if (customerPaymentType === 'transfer') {
+                        return (
+                          <div className="mt-6 w-full max-w-sm mx-auto">
+                            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 text-center">
+                              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <Icon icon="solar:wallet-bold" className="text-2xl text-orange-500" />
+                              </div>
+                              <p className="text-sm font-bold text-gray-800 mb-1">Confirmación de Pago</p>
+                              <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+                                Para iniciar la preparación, envía tu comprobante de transferencia por WhatsApp.
+                              </p>
+                              <a
+                                href={proofUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full bg-[#25D366] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(37,211,102,0.3)] hover:shadow-[0_6px_20px_rgba(37,211,102,0.4)] hover:-translate-y-0.5 transition-all"
+                              >
+                                <Icon icon="logos:whatsapp-icon" className="text-xl" />
+                                Enviar Comprobante
+                              </a>
+                            </div>
                           </div>
-                          <p className="text-sm font-bold text-gray-800 mb-1">Confirmación de Pago</p>
-                          <p className="text-xs text-gray-500 mb-4 leading-relaxed">
-                            Para iniciar la preparación, envía tu comprobante de pago por WhatsApp.
-                          </p>
-                          <a
-                            href={proofUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full bg-[#25D366] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(37,211,102,0.3)] hover:shadow-[0_6px_20px_rgba(37,211,102,0.4)] hover:-translate-y-0.5 transition-all"
-                          >
-                            <Icon icon="logos:whatsapp-icon" className="text-xl" />
-                            Enviar Comprobante
-                          </a>
-                        </div>
-                      </div>
-                      );
+                        );
+                      }
+
+                      // Si es efectivo, recordamos tener listo el dinero y el cambio si aplica
+                      if (customerPaymentType === 'cash') {
+                        return (
+                          <div className="mt-6 w-full max-w-sm mx-auto">
+                            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center">
+                              <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <Icon icon="solar:bill-list-bold" className="text-2xl text-emerald-600" />
+                              </div>
+                              <p className="text-sm font-black text-gray-800 mb-1">Pago en Efectivo al Recibir</p>
+                              <p className="text-xs text-gray-500 leading-relaxed mb-2">
+                                Ten listo tu dinero en efectivo al momento de recibir tu pedido.
+                              </p>
+                              {cashChange > 0 ? (
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-bold">
+                                  <span>💵 Tu cambio a devolver:</span>
+                                  <span className="font-black">{formatCOP(cashChange)}</span>
+                                </div>
+                              ) : (
+                                <div className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-100/60 text-emerald-700 text-[11px] font-semibold">
+                                  <span>✅ Pago exacto al entregar</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Si es datáfono / tarjeta física contra entrega
+                      if (customerPaymentType === 'card') {
+                        return (
+                          <div className="mt-6 w-full max-w-sm mx-auto">
+                            <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 text-center">
+                              <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <Icon icon="solar:card-bold" className="text-2xl text-indigo-600" />
+                              </div>
+                              <p className="text-sm font-black text-gray-800 mb-1">Pago con Datáfono al Recibir</p>
+                              <p className="text-xs text-gray-500 leading-relaxed">
+                                El repartidor o personal llevará el datáfono para procesar tu pago con tarjeta física al momento de la entrega.
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return null;
                     })()}
                 </div>
 

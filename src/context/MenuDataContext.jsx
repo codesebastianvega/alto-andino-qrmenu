@@ -147,14 +147,19 @@ export const MenuDataProvider = ({ children }) => {
       setHomeSettings(hSettRes.data?.[0] || null);
 
       const allRS = rSettRes.data || [];
+      const brandLevelRS = allRS.find(s => !s.location_id) || null;
       const mainLoc = locsRes.data?.find(l => l.is_main);
       const bestRS = allRS.find(s => activeLocationId && s.location_id === activeLocationId)
         || allRS.find(s => mainLoc && s.location_id === mainLoc.id)
+        || brandLevelRS
         || allRS.find(s => s.logo_url)
         || allRS[0]
         || null;
 
       if (bestRS) {
+        if (brandLevelRS && (!bestRS.brand_concepts || bestRS.brand_concepts.length === 0)) {
+          bestRS.brand_concepts = brandLevelRS.brand_concepts;
+        }
         if (!bestRS.logo_url) {
           const rowWithLogo = allRS.find(s => s.logo_url);
           if (rowWithLogo) {
@@ -163,7 +168,7 @@ export const MenuDataProvider = ({ children }) => {
           }
         }
         if (brandRes.data?.name && (bestRS.business_name === 'Alto Andino' || !bestRS.business_name) && brandRes.data.slug !== 'alto-andino') {
-          bestRS.business_name = brandRes.data.name;
+          bestRS.business_name = brandLevelRS?.business_name || brandRes.data.name;
         }
       }
 

@@ -10,7 +10,8 @@ import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton } from
 import { Icon } from '@iconify/react';
 import { Loader2 } from 'lucide-react';
 import { BUSINESS_TYPES, getFulfillmentModes } from '../constants/businessTypes';
-import { sendTestTelegramNotification } from '../utils/telegramNotify';
+import { sendTestTelegramNotification, detectTelegramChatId } from '../utils/telegramNotify';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const toast = {
   success: (msg, opts) => toastFn.success(msg, { duration: 2500, ...opts }),
@@ -47,6 +48,8 @@ export default function AdminSettings() {
   });
   const [isSubmittingSettings, setIsSubmittingSettings] = useState(false);
   const [isTestingTelegram, setIsTestingTelegram] = useState(false);
+  const [isDetectingChatId, setIsDetectingChatId] = useState(false);
+  const [showTelegramGuide, setShowTelegramGuide] = useState(false);
 
   const [hours, setHours] = useState([]);
   const [loadingHours, setLoadingHours] = useState(false);
@@ -99,9 +102,9 @@ export default function AdminSettings() {
 
         setSettingsForm({
           whatsapp_number_orders: data.whatsapp_number_orders || '',
-          telegram_enabled: telegramConcept ? (telegramConcept.enabled ?? true) : false,
-          telegram_chat_id: telegramConcept?.chat_id || '',
-          telegram_bot_token: telegramConcept?.bot_token || '',
+          telegram_enabled: telegramConcept ? (telegramConcept.enabled ?? true) : Boolean(data.telegram_chat_id),
+          telegram_chat_id: telegramConcept?.chat_id || data.telegram_chat_id || '',
+          telegram_bot_token: telegramConcept?.bot_token || data.telegram_bot_token || '',
           is_service_fee_enabled: data.is_service_fee_enabled ?? false,
           service_fee_percentage: data.service_fee_percentage ?? 10,
           pay_before_service: data.pay_before_service ?? false,
@@ -273,6 +276,10 @@ export default function AdminSettings() {
   };
 
   const handleTestTelegram = async () => {
+    if (!settingsForm.telegram_bot_token && !import.meta.env.VITE_TELEGRAM_BOT_TOKEN) {
+      toast.error('Por favor ingresa primero el Token de tu Bot de Telegram (de @BotFather).');
+      return;
+    }
     if (!settingsForm.telegram_chat_id) {
       toast.error('Por favor ingresa primero el ID de Chat o Grupo de Telegram.');
       return;
@@ -293,6 +300,31 @@ export default function AdminSettings() {
       toast.error(`Error inesperado: ${err.message}`);
     } finally {
       setIsTestingTelegram(false);
+    }
+  };
+
+  const handleDetectChatId = async () => {
+    if (!settingsForm.telegram_bot_token) {
+      toast.error('Por favor ingresa primero el Token de tu Bot de Telegram.');
+      return;
+    }
+    setIsDetectingChatId(true);
+    try {
+      const res = await detectTelegramChatId(settingsForm.telegram_bot_token);
+      if (res.success) {
+        setSettingsForm(prev => ({
+          ...prev,
+          telegram_chat_id: res.chatId,
+          telegram_enabled: true
+        }));
+        toast.success(`¡Grupo detectado con éxito! "${res.chatTitle}" (${res.chatId})`);
+      } else {
+        toast.error(res.error);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Error al detectar el grupo.');
+    } finally {
+      setIsDetectingChatId(false);
     }
   };
 
@@ -648,43 +680,234 @@ export default function AdminSettings() {
                   </div>
 
                   <div className="space-y-6 relative z-10">
-                    <div className="bg-sky-50/40 p-6 rounded-[2rem] border border-sky-100 space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <label className="text-[11px] font-black uppercase tracking-wider text-sky-900">
-                          ID de Chat o Grupo de Cocina
-                        </label>
-                        <a
-                          href="https://t.me/AlunaOrdersBot?startgroup=true"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 bg-white px-3 py-1 rounded-xl border border-sky-200 shadow-2xs hover:shadow-xs transition-all w-fit"
+                    {/* Botón Guía Rápida */}
+                    <div className="flex items-center justify-between bg-sky-50/70 border border-sky-200/70 rounded-2xl p-4">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xl">💡</span>
+                        <div>
+                          <p className="text-xs font-bold text-sky-950">¿Cómo conectar tu grupo en 3 pasos?</p>
+                          <p className="text-[11px] text-sky-700">Aprende a crear tu bot y obtener el ID de tu grupo de cocina.</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowTelegramGuide(!showTelegramGuide)}
+                        className="text-xs font-bold text-sky-600 hover:text-sky-800 bg-white px-3.5 py-2 rounded-xl border border-sky-200 shadow-xs hover:shadow-sm transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                      >
+                        <Icon icon={showTelegramGuide ? "heroicons:chevron-up" : "heroicons:question-mark-circle"} className="text-sm" />
+                        <span>{showTelegramGuide ? 'Ocultar guía' : 'Ver guía paso a paso'}</span>
+                      </button>
+                    </div>
+
+                    {/* Contenido de la Guía Paso a Paso */}
+                    <AnimatePresence>
+                      {showTelegramGuide && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="bg-white rounded-3xl border border-sky-200/90 p-6 space-y-6 text-xs text-gray-700 shadow-md shadow-sky-500/5 overflow-hidden"
                         >
-                          <Icon icon="solar:user-plus-bold" className="text-sm" />
-                          1. Agregar @AlunaOrdersBot al Grupo
-                        </a>
-                      </div>
+                          {/* Paso 1 */}
+                          <div className="bg-sky-50/50 rounded-2xl p-4 border border-sky-100/80 space-y-3">
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-7 h-7 rounded-xl bg-sky-500 text-white font-black text-xs flex items-center justify-center shadow-sm shrink-0">1</span>
+                              <div>
+                                <h4 className="font-black text-gray-900 text-sm">Crea tu Bot Oficial en Telegram (1 minuto)</h4>
+                                <p className="text-[11px] text-gray-500">Este bot llevará el nombre y foto de tu marca para entregar las comandas.</p>
+                              </div>
+                            </div>
 
-                      <div className="relative">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                              <div className="bg-white p-3 rounded-xl border border-sky-100 space-y-1.5">
+                                <p className="font-bold text-gray-800 text-[11px] flex items-center gap-1.5">
+                                  <span>a. Abre</span>
+                                  <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-sky-600 underline font-black">@BotFather</a>
+                                </p>
+                                <p className="text-[11px] text-gray-500">
+                                  Envíale el comando <code className="bg-gray-100 text-pink-600 font-mono font-bold px-1.5 py-0.5 rounded text-[10px]">/newbot</code>.
+                                </p>
+                              </div>
+
+                              <div className="bg-white p-3 rounded-xl border border-sky-100 space-y-1.5">
+                                <p className="font-bold text-gray-800 text-[11px]">b. Escribe el Nombre del Bot</p>
+                                <p className="text-[11px] text-gray-500">
+                                  Es el nombre público visible (ej: <span className="font-semibold text-gray-700">Cocina {activeBrand?.name || 'Boku Bento'}</span>).
+                                </p>
+                              </div>
+
+                              <div className="bg-white p-3 rounded-xl border border-sky-100 space-y-1.5 md:col-span-2">
+                                <p className="font-bold text-gray-800 text-[11px] flex items-center gap-1.5">
+                                  <span>c. Escribe el Usuario (Username)</span>
+                                  <span className="bg-amber-100 text-amber-900 font-black px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">¡Regla Obligatoria!</span>
+                                </p>
+                                <p className="text-[11px] text-gray-600 leading-relaxed">
+                                  Telegram exige que el nombre de usuario termine estrictamente en <code className="bg-amber-50 text-amber-800 font-mono font-bold px-1.5 py-0.5 rounded border border-amber-200">bot</code> o <code className="bg-amber-50 text-amber-800 font-mono font-bold px-1.5 py-0.5 rounded border border-amber-200">_bot</code> (ej: <span className="font-mono font-bold text-sky-800">{activeBrand?.slug ? `${activeBrand.slug.replace(/[^a-zA-Z0-9]/g, '')}bot` : 'BokuBentobot'}</span> o <span className="font-mono font-bold text-sky-800">cocina_{activeBrand?.slug ? activeBrand.slug.replace(/[^a-zA-Z0-9]/g, '') : 'marca'}_bot</span>).
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Preview del mensaje de éxito */}
+                            <div className="bg-gray-900 text-gray-100 rounded-xl p-3 font-mono text-[10px] leading-relaxed relative overflow-hidden">
+                              <div className="flex items-center justify-between text-gray-400 text-[9px] mb-1.5 border-b border-gray-800 pb-1">
+                                <span>Respuesta de BotFather</span>
+                                <span className="text-emerald-400 font-bold">✓ Éxito</span>
+                              </div>
+                              <p className="text-gray-300">Done! Congratulations on your new bot... Use this token to access the HTTP API:</p>
+                              <p className="text-emerald-400 font-bold mt-1 bg-black/40 px-2 py-1 rounded inline-block">7123456789:AAGfuIeT-U78TBdup3hxyngmc...</p>
+                              <p className="text-gray-400 text-[9px] mt-1.5">↳ Copia ese código completo y pégalo abajo en el campo <strong>"Token del Bot"</strong>.</p>
+                            </div>
+                          </div>
+
+                          {/* Paso 2 */}
+                          <div className="bg-sky-50/50 rounded-2xl p-4 border border-sky-100/80 space-y-2">
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-7 h-7 rounded-xl bg-sky-500 text-white font-black text-xs flex items-center justify-center shadow-sm shrink-0">2</span>
+                              <div>
+                                <h4 className="font-black text-gray-900 text-sm">Crea tu Grupo de Cocina y agrega a tu Bot</h4>
+                                <p className="text-[11px] text-gray-500">Aquí llegará la comanda para tus cocineros y repartidores.</p>
+                              </div>
+                            </div>
+                            <div className="bg-white p-3 rounded-xl border border-sky-100 text-[11px] text-gray-600 space-y-1">
+                              <p>• En Telegram, pulsa <strong>Nuevo Grupo</strong> (ej: <em>"Cocina & Despacho - {activeBrand?.name || 'Mi Marca'}"</em>).</p>
+                              <p>• Añade a tu personal y busca el bot que acabas de crear (por su usuario con <em>...bot</em>) para agregarlo al grupo.</p>
+                              <p className="text-sky-700 font-medium">💡 <em>Tip:</em> Puedes nombrarlo Administrador del grupo para asegurarte de que lea y despache sin restricciones.</p>
+                            </div>
+                          </div>
+
+                          {/* Paso 3 */}
+                          <div className="bg-sky-50/50 rounded-2xl p-4 border border-sky-100/80 space-y-2">
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-7 h-7 rounded-xl bg-sky-500 text-white font-black text-xs flex items-center justify-center shadow-sm shrink-0">3</span>
+                              <div>
+                                <h4 className="font-black text-gray-900 text-sm">Pega tu Token y pulsa "Detectar ID Automáticamente"</h4>
+                                <p className="text-[11px] text-gray-500">Aluna reconocerá tu grupo y rellenará el ID solo.</p>
+                              </div>
+                            </div>
+                            <div className="bg-white p-3.5 rounded-xl border border-sky-100 text-[11px] text-gray-600 space-y-2">
+                              <p>
+                                <strong>1.</strong> Pega el Token de BotFather en el campo <strong>"1. Token del Bot de Telegram"</strong> de abajo.
+                              </p>
+                              <p>
+                                <strong>2.</strong> En tu grupo de Telegram (donde agregaste al bot), envía cualquier mensaje (ej: <code className="bg-sky-50 text-sky-800 font-mono font-bold px-1.5 py-0.5 rounded border border-sky-200">hola</code> o <code className="bg-sky-50 text-sky-800 font-mono font-bold px-1.5 py-0.5 rounded border border-sky-200">/start</code>).
+                              </p>
+                              <p>
+                                <strong>3.</strong> Pulsa el botón azul <strong>"🔍 Detectar ID Automáticamente"</strong> en el campo 2. <strong>¡Y listo! El ID se llena solo sin más.</strong>
+                              </p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Status Banner */}
+                    <div className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl border text-xs font-bold transition-all ${
+                      settingsForm.telegram_enabled
+                        ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+                        : 'bg-amber-50/80 border-amber-200 text-amber-900'
+                    }`}>
+                      <span className="flex h-2.5 w-2.5 relative shrink-0">
+                        {settingsForm.telegram_enabled && (
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        )}
+                        <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${settingsForm.telegram_enabled ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+                      </span>
+                      <span>
+                        {settingsForm.telegram_enabled
+                          ? 'Despacho en vivo ACTIVO: Cada nuevo pedido confirmado se enviará automáticamente al grupo de Telegram.'
+                          : 'Despacho en PAUSA: El envío automático está pausado. Haz clic en el botón superior para activarlo.'}
+                      </span>
+                    </div>
+
+                    {/* Campos de configuración */}
+                    <div className="bg-sky-50/40 p-6 rounded-[2rem] border border-sky-100 space-y-5">
+                      {/* Campo 1: Token del Bot */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-black uppercase tracking-wider text-sky-900 flex items-center gap-1.5">
+                            <span>1. Token del Bot de Telegram</span>
+                            <span className="text-[10px] text-sky-600 font-normal lowercase">(de @BotFather)</span>
+                          </label>
+                          <a
+                            href="https://t.me/BotFather"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] font-bold text-sky-600 hover:text-sky-800 underline flex items-center gap-1"
+                          >
+                            Abrir @BotFather
+                          </a>
+                        </div>
                         <TextInput
-                          value={settingsForm.telegram_chat_id || ''}
-                          onChange={(e) => setSettingsForm({ ...settingsForm, telegram_chat_id: e.target.value })}
-                          placeholder="Ej: -10023481928 o tu ID personal"
-                          className="bg-white border border-sky-200 rounded-xl focus:ring-2 focus:ring-sky-400 text-base font-bold tracking-wider text-sky-950 placeholder:text-gray-300 p-3.5 w-full"
+                          value={settingsForm.telegram_bot_token || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSettingsForm(prev => ({
+                              ...prev,
+                              telegram_bot_token: val,
+                              telegram_enabled: prev.telegram_enabled || Boolean(val.trim())
+                            }));
+                          }}
+                          placeholder="Ej: 7123456789:AAFlkJg_v0fL9q2s9s..."
+                          className="bg-white border border-sky-200 rounded-xl focus:ring-2 focus:ring-sky-400 text-xs font-mono p-3.5 w-full text-sky-950 placeholder:text-gray-300"
                         />
+                        <p className="text-[10px] text-gray-400">
+                          Identifica a tu bot para que las comandas lleguen con el nombre y logo de tu restaurante.
+                        </p>
                       </div>
 
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 text-[11px] text-sky-900/80">
+                      {/* Campo 2: Chat ID */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-black uppercase tracking-wider text-sky-900 flex items-center gap-1.5">
+                            <span>2. ID de Chat o Grupo de Cocina</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={handleDetectChatId}
+                            disabled={isDetectingChatId || !settingsForm.telegram_bot_token}
+                            className={`text-[10px] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all ${
+                              !settingsForm.telegram_bot_token || isDetectingChatId
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-sky-600 hover:bg-sky-700 text-white shadow-sm shadow-sky-500/20 cursor-pointer active:scale-95'
+                            }`}
+                          >
+                            <Icon icon={isDetectingChatId ? "line-md:loading-loop" : "heroicons:sparkles"} className="text-xs" />
+                            <span>{isDetectingChatId ? 'Buscando grupo...' : '🔍 Detectar ID Automáticamente'}</span>
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <TextInput
+                            value={settingsForm.telegram_chat_id || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setSettingsForm(prev => ({
+                                ...prev,
+                                telegram_chat_id: val,
+                                telegram_enabled: prev.telegram_enabled || Boolean(val.trim())
+                              }));
+                            }}
+                            placeholder="Ej: -10023481928"
+                            className="bg-white border border-sky-200 rounded-xl focus:ring-2 focus:ring-sky-400 text-sm font-mono font-bold tracking-wider text-sky-950 placeholder:text-gray-300 p-3.5 w-full"
+                          />
+                        </div>
+                        <p className="text-[10px] text-gray-400 flex items-center justify-between">
+                          <span>Identificador privado que inicia con <code className="font-bold text-sky-700">-100...</code></span>
+                          <span className="text-sky-600 font-medium">💡 Escribe en tu grupo y pulsa "Detectar ID Automáticamente"</span>
+                        </p>
+                      </div>
+
+                      {/* Botón de Prueba */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-sky-100/80 text-[11px] text-sky-900/80">
                         <p className="flex items-center gap-1.5">
                           <Icon icon="heroicons:information-circle" className="text-sky-500 text-sm shrink-0" />
-                          <span>Canal 100% interno para tu personal; el cliente no interviene aquí.</span>
+                          <span>Envía una comanda simulada para verificar que tu bot y grupo estén bien conectados.</span>
                         </p>
 
-                        {/* Test Button */}
                         <button
                           type="button"
                           onClick={handleTestTelegram}
                           disabled={isTestingTelegram || !settingsForm.telegram_chat_id}
-                          className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                          className={`inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                             !settingsForm.telegram_chat_id || isTestingTelegram
                               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                               : 'bg-sky-500 hover:bg-sky-600 text-white shadow-md shadow-sky-500/20 active:scale-95'
@@ -693,7 +916,7 @@ export default function AdminSettings() {
                           {isTestingTelegram ? (
                             <>
                               <Icon icon="line-md:loading-loop" className="text-sm" />
-                              <span>Enviando prueba...</span>
+                              <span>Enviando comanda...</span>
                             </>
                           ) : (
                             <>
@@ -704,23 +927,6 @@ export default function AdminSettings() {
                         </button>
                       </div>
                     </div>
-
-                    {/* Optional Custom Bot Token Accordion */}
-                    <details className="text-xs text-gray-500 group">
-                      <summary className="cursor-pointer font-bold hover:text-gray-700 select-none flex items-center gap-1.5">
-                        <Icon icon="heroicons:chevron-right" className="text-xs transition-transform group-open:rotate-90" />
-                        <span>Avanzado: Usar Token de Bot Propio (Opcional)</span>
-                      </summary>
-                      <div className="mt-3 p-4 bg-gray-50 rounded-2xl border border-gray-200/60 space-y-2">
-                        <p className="text-[11px] text-gray-400">Por defecto Aluna usa su bot central oficial. Si prefieres un bot con el logo y nombre de tu restaurante, pega tu Token de BotFather aquí:</p>
-                        <TextInput
-                          value={settingsForm.telegram_bot_token || ''}
-                          onChange={(e) => setSettingsForm({ ...settingsForm, telegram_bot_token: e.target.value })}
-                          placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz..."
-                          className="bg-white text-xs font-mono p-2.5 rounded-xl border border-gray-200 w-full"
-                        />
-                      </div>
-                    </details>
 
                     <div className="flex justify-end pt-2">
                       <PrimaryButton

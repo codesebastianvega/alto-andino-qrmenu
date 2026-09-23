@@ -982,73 +982,98 @@ export default function AdminOrders() {
             className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
             onClick={() => setSelectedOrder(null)}
           ></div>
-          <div className="bg-gray-50/50 w-full max-w-7xl h-[92vh] md:h-auto md:max-h-[90vh] rounded-t-[2.5rem] rounded-b-none md:rounded-b-[2.5rem] shadow-2xl overflow-hidden relative border border-white/20 backdrop-blur-xl flex flex-col mt-auto md:mt-0 animate-in slide-in-from-bottom-4 md:zoom-in duration-300">
-            {/* Header Modal */}
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-gray-100">
-                  <Icon icon="heroicons:clipboard-document-list" className="text-2xl text-[#2f4131]" />
+          <div className="relative z-10 bg-slate-50 w-full max-w-6xl h-[94vh] md:h-[88vh] max-h-[920px] rounded-t-[2rem] rounded-b-none md:rounded-b-[2rem] shadow-2xl overflow-hidden flex flex-col mt-auto md:mt-0 border border-slate-200/80 animate-in slide-in-from-bottom-4 md:zoom-in duration-300">
+            
+            {/* Header Modal (shrink-0) */}
+            <div className="shrink-0 px-6 py-4 md:px-8 md:py-5 border-b border-gray-200 bg-white flex justify-between items-center z-10 shadow-sm">
+              <div className="flex items-center gap-3.5">
+                <div className="h-11 w-11 bg-slate-100 rounded-2xl flex items-center justify-center border border-slate-200 text-[#2f4131]">
+                  <Icon icon="heroicons:clipboard-document-list" className="text-2xl" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-gray-900 leading-none mb-1">PEDIDO #{selectedOrder.id.slice(0,4).toUpperCase()}</h2>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-black px-2 py-0.5 rounded-lg ${getFulfillmentLabel(selectedOrder.fulfillment_type).color}`}>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h2 className="text-xl md:text-2xl font-black text-gray-900 leading-none">
+                      PEDIDO #{selectedOrder.id.slice(0,4).toUpperCase()}
+                    </h2>
+                    <span className={`text-[10px] md:text-xs font-black px-2.5 py-0.5 rounded-lg border ${getFulfillmentLabel(selectedOrder.fulfillment_type).color}`}>
                       {getFulfillmentLabel(selectedOrder.fulfillment_type).text}
                     </span>
-                    <span className="text-xs font-bold text-gray-400">
-                      Recibido a las {new Date(selectedOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-400">
+                    <Icon icon="solar:clock-circle-bold" className="text-sm" />
+                    <span>Recibido a las {new Date(selectedOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    {selectedOrder.scheduled_time && (
+                      <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md font-bold text-[10px]">
+                        📅 Programado: {new Date(selectedOrder.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
-              <button 
-                onClick={() => { setSelectedOrder(null); setIsCancelling(false); }}
-                className="h-10 w-10 bg-white hover:bg-red-50 hover:text-red-500 rounded-full flex items-center justify-center transition-all text-gray-400 shadow-sm border border-gray-100"
-              >
-                <Icon icon="heroicons:x-mark" className="text-2xl" />
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => { setSelectedOrder(null); setIsCancelling(false); }}
+                  className="h-9 w-9 md:h-10 md:w-10 bg-gray-100 hover:bg-red-50 hover:text-red-500 rounded-full flex items-center justify-center transition-all text-gray-400 border border-gray-200"
+                  title="Cerrar modal"
+                >
+                  <Icon icon="heroicons:x-mark" className="text-xl" />
+                </button>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 bg-white custom-scrollbar pb-56 md:pb-32">
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr,340px] gap-8">
+            {/* Scrollable Body: flex-1 min-h-0 overflow-y-auto */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 lg:p-7 custom-scrollbar bg-slate-50">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr,360px] gap-6 items-start">
                 
-                {/* Columna Izquierda: Consumo */}
-                <div className="space-y-6">
-                  {/* Alertas de Estado */}
+                {/* Columna Izquierda: Detalle de Platos, Notas y Totales */}
+                <div className="space-y-4">
+                  {/* Alertas de Estado (Delivered / Cancelled) */}
                   {(selectedOrder.status === 'delivered' || selectedOrder.status === 'cancelled') && (
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-2">
                       {selectedOrder.status === 'delivered' && (
-                        <div className="flex items-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm bg-green-50 text-green-700 border border-green-100">
-                          <Icon icon="heroicons:check-circle" className="text-lg" />
-                          Pedido Finalizado a las {new Date(selectedOrder.delivered_at).toLocaleTimeString()}
+                        <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl font-bold text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-sm">
+                          <Icon icon="heroicons:check-circle" className="text-lg text-emerald-600 shrink-0" />
+                          <span>Pedido Finalizado a las {new Date(selectedOrder.delivered_at || selectedOrder.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                       )}
                       {selectedOrder.status === 'cancelled' && (
-                        <div className="flex flex-col gap-2 px-4 py-3 rounded-2xl font-bold text-sm bg-red-50 text-red-700 border border-red-100">
-                          <div className="flex items-center gap-2 font-black uppercase text-xs">
-                            <Icon icon="heroicons:x-circle" className="text-lg" />
+                        <div className="flex flex-col gap-1 px-4 py-3 rounded-2xl font-bold text-xs bg-red-50 text-red-800 border border-red-200 shadow-sm">
+                          <div className="flex items-center gap-2 font-black uppercase text-xs text-red-700">
+                            <Icon icon="heroicons:x-circle" className="text-lg text-red-600 shrink-0" />
                             Pedido Cancelado
                           </div>
                           {selectedOrder.cancellation_reason && (
-                            <p className="text-xs font-medium opacity-80">Motivo: {selectedOrder.cancellation_reason}</p>
+                            <p className="text-xs font-medium text-red-600/90 pl-6">Motivo: {selectedOrder.cancellation_reason}</p>
                           )}
                         </div>
                       )}
                     </div>
                   )}
 
-                  <div className="bg-gray-50/50 rounded-[2rem] p-6 border border-gray-100">
-                    <h3 className="font-black text-gray-400 mb-6 uppercase tracking-widest text-[10px] flex items-center gap-2">
-                       <Icon icon="heroicons:shopping-cart" className="text-lg" />
-                       Detalle del Pedido
-                    </h3>
-                    <div className="space-y-4">
+                  {/* Tarjeta: Lista de Productos */}
+                  <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <h3 className="font-black text-slate-400 uppercase tracking-widest text-[10px] flex items-center gap-2">
+                        <Icon icon="heroicons:shopping-cart" className="text-base text-slate-400" />
+                        Detalle del Consumo ({selectedOrder.order_items?.length || 0} {selectedOrder.order_items?.length === 1 ? 'ítem' : 'ítems'})
+                      </h3>
+                      <span className="text-[11px] font-bold text-slate-500">
+                        Total items: {selectedOrder.order_items?.reduce((acc, it) => acc + (it.quantity || 1), 0) || 0}
+                      </span>
+                    </div>
+
+                    <div className="divide-y divide-slate-100">
                       {selectedOrder.order_items?.map(item => (
-                        <div key={item.id} className="flex gap-4 group">
-                          <span className="font-black text-xl text-[#2f4131] w-8">{item.quantity}x</span>
-                          <div className="flex flex-col flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-gray-900 group-hover:text-emerald-700 transition-colors uppercase text-sm tracking-tight">{item.products?.name}</span>
+                        <div key={item.id} className="py-3 first:pt-0 last:pb-0 flex items-start gap-3.5 group">
+                          <span className="font-black text-sm md:text-base text-[#2f4131] bg-slate-100 px-2.5 py-1 rounded-xl shrink-0 h-fit border border-slate-200">
+                            {item.quantity}x
+                          </span>
+                          <div className="flex flex-col flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-gray-900 group-hover:text-emerald-700 transition-colors uppercase text-sm tracking-tight">
+                                {item.products?.name}
+                              </span>
                               {item.is_paid && (
                                 <span className="bg-emerald-100 text-emerald-700 text-[8px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                                   <Icon icon="heroicons:check-circle-16-solid" />
@@ -1056,121 +1081,150 @@ export default function AdminOrders() {
                                 </span>
                               )}
                             </div>
+
                             {item.modifiers && Object.keys(item.modifiers).length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1.5">
                                 {Object.entries(item.modifiers).map(([k, v]) => (
-                                  <span key={k} className="text-[10px] bg-white border border-gray-200 text-gray-500 px-2 py-0.5 rounded-lg font-bold">
+                                  <span key={k} className="text-[10px] bg-slate-50 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-lg font-bold">
                                     {translateGroup(k)}: {Array.isArray(v) ? v.join(", ") : v}
                                   </span>
                                 ))}
                               </div>
                             )}
+
                             {item.notes && (
-                              <div className="mt-2 text-[11px] text-amber-700 bg-amber-50 px-3 py-1.5 rounded-xl italic font-medium border border-amber-100">
-                                <Icon icon="heroicons:chat-bubble-bottom-center-text" className="mr-1 inline" />
-                                "{item.notes}"
+                              <div className="mt-1.5 text-[11px] text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg italic font-medium border border-amber-200 flex items-center gap-1.5">
+                                <Icon icon="heroicons:chat-bubble-bottom-center-text" className="text-amber-500 shrink-0" />
+                                <span>"{item.notes}"</span>
                               </div>
                             )}
                           </div>
-                          <span className="font-bold text-gray-800">
+
+                          <span className="font-black text-sm text-gray-900 shrink-0 whitespace-nowrap pt-1">
                             ${(item.quantity * item.unit_price).toLocaleString()}
                           </span>
                         </div>
                       ))}
+                    </div>
+
+                    {/* Desglose de Totales */}
+                    <div className="pt-4 border-t border-slate-100 space-y-2">
+                      <div className="flex justify-between items-center text-xs font-semibold text-slate-500">
+                        <span>Subtotal consumo</span>
+                        <span>${selectedOrder.order_items?.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toLocaleString()}</span>
+                      </div>
                       
-                      <div className="mt-8 pt-6 border-t border-gray-200/60 space-y-3">
-                         <div className="flex justify-between items-center text-sm font-bold text-gray-500">
-                           <span>Subtotal</span>
-                           <span>${selectedOrder.order_items?.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toLocaleString()}</span>
-                         </div>
-                         
-                         {selectedOrder.service_fee > 0 && (
-                            <div className="flex justify-between items-center text-sm font-bold text-emerald-600">
-                              <span className="flex items-center gap-1">
-                                <Icon icon="heroicons:heart" />
-                                Servicio Voluntario
-                              </span>
-                              <span>${selectedOrder.service_fee.toLocaleString()}</span>
-                            </div>
-                         )}
+                      {selectedOrder.service_fee > 0 && (
+                        <div className="flex justify-between items-center text-xs font-semibold text-emerald-600">
+                          <span className="flex items-center gap-1">
+                            <Icon icon="heroicons:heart" />
+                            Servicio Voluntario
+                          </span>
+                          <span>${selectedOrder.service_fee.toLocaleString()}</span>
+                        </div>
+                      )}
 
-                         {selectedOrder.discount_amount > 0 && (
-                           <div className="flex justify-between items-center text-sm font-bold text-red-600">
-                             <span className="flex items-center gap-1">
-                               <Icon icon="heroicons:tag" />
-                               Descuento ({selectedOrder.discount_reason})
-                             </span>
-                             <span>-${selectedOrder.discount_amount.toLocaleString()}</span>
-                           </div>
-                         )}
+                      {selectedOrder.discount_amount > 0 && (
+                        <div className="flex justify-between items-center text-xs font-bold text-red-600">
+                          <span className="flex items-center gap-1">
+                            <Icon icon="heroicons:tag" />
+                            Descuento ({selectedOrder.discount_reason})
+                          </span>
+                          <span>-${selectedOrder.discount_amount.toLocaleString()}</span>
+                        </div>
+                      )}
 
-                         <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                            <span className="text-base font-black text-gray-900">TOTAL</span>
-                            <span className="text-3xl font-black text-[#2f4131] tracking-tighter">
-                              ${selectedOrder.total_amount?.toLocaleString()}
-                            </span>
-                         </div>
+                      <div className="flex justify-between items-center pt-2.5 border-t border-slate-200">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-gray-900">TOTAL A PAGAR</span>
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                            selectedOrder.payment_status === 'paid' 
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                              : 'bg-orange-100 text-orange-800 border border-orange-200'
+                          }`}>
+                            {selectedOrder.payment_status === 'paid' ? 'PAGADO' : 'PENDIENTE DE PAGO'}
+                          </span>
+                        </div>
+                        <span className="text-2xl md:text-3xl font-black text-[#2f4131] tracking-tight">
+                          ${selectedOrder.total_amount?.toLocaleString()}
+                        </span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Columna Derecha: Sidebar Admin */}
-                <div className="space-y-6">
-                  {/* Contexto: Cliente y Ubicación */}
-                  <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm space-y-5">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Información General</p>
-                    
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 border border-gray-100">
-                        <Icon icon="heroicons:user" className="text-xl" />
+                <div className="space-y-4">
+                  {/* Tarjeta: Información de Cliente & Ubicación */}
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Información General</p>
+                      <span className={`px-2.5 py-0.5 rounded-lg text-xs font-black ${
+                        selectedOrder.fulfillment_type === 'dine_in' 
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                          : 'bg-blue-100 text-blue-800 border border-blue-200'
+                      }`}>
+                        {selectedOrder.fulfillment_type === 'dine_in' 
+                          ? `🪑 MESA ${selectedOrder.restaurant_tables?.table_number || '?'}`
+                          : getFulfillmentLabel(selectedOrder.fulfillment_type).text}
+                      </span>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 border border-slate-200 mt-0.5">
+                        <Icon icon="heroicons:user" className="text-lg" />
                       </div>
-                      <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase leading-none mb-1">Cliente</p>
-                        <p className="font-bold text-gray-800 text-sm leading-none">{selectedOrder.customer_name || 'Sin nombre'}</p>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">Cliente</p>
+                        <p className="font-bold text-gray-900 text-sm leading-snug break-words">
+                          {selectedOrder.customer_name || 'Sin nombre'}
+                        </p>
                       </div>
                     </div>
 
                     {selectedOrder.customer_phone && (
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 border border-gray-100">
-                          <Icon icon="heroicons:phone" className="text-xl" />
+                      <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-50">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 border border-slate-200">
+                            <Icon icon="heroicons:phone" className="text-lg" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">Celular</p>
+                            <p className="font-bold text-gray-900 text-sm leading-none">{selectedOrder.customer_phone}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-[10px] font-black text-gray-400 uppercase leading-none mb-1">Celular</p>
-                          <p className="font-bold text-gray-800 text-sm leading-none">{selectedOrder.customer_phone}</p>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <a 
+                            href={`https://wa.me/${(selectedOrder.customer_phone.replace(/\D/g, '').startsWith('57') ? selectedOrder.customer_phone.replace(/\D/g, '') : `57${selectedOrder.customer_phone.replace(/\D/g, '')}`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors border border-emerald-200"
+                            title="Chat por WhatsApp"
+                          >
+                            <Icon icon="logos:whatsapp-icon" className="text-base" />
+                          </a>
+                          <a 
+                            href={`tel:${selectedOrder.customer_phone.replace(/\D/g, '')}`}
+                            className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200"
+                            title="Llamar directamente"
+                          >
+                            <Icon icon="heroicons:phone" className="text-base" />
+                          </a>
                         </div>
                       </div>
                     )}
-
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
-                        <Icon icon="heroicons:map-pin" className="text-xl" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black text-emerald-600 uppercase leading-none mb-1">Ubicación</p>
-                        <div className="flex items-center gap-2">
-                          <span className={`px-3 py-1 rounded-lg text-sm font-black ${
-                            selectedOrder.fulfillment_type === 'dine_in' 
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                              : 'bg-blue-100 text-blue-800 border border-blue-200'
-                          }`}>
-                            {selectedOrder.fulfillment_type === 'dine_in' 
-                              ? `MESA ${selectedOrder.restaurant_tables?.table_number || '?'}`
-                              : getFulfillmentLabel(selectedOrder.fulfillment_type).text}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Asignación de Mesero */}
-                  <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Mesero Asignado</p>
+                  {/* Tarjeta: Mesero Asignado */}
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2.5">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <Icon icon="solar:user-hand-up-bold" className="text-emerald-600 text-sm" />
+                      Mesero Asignado
+                    </p>
                     <select 
                       value={selectedOrder.waiter_id || ''}
                       onChange={(e) => assignWaiter(selectedOrder.id, e.target.value)}
-                      className="w-full p-3 rounded-2xl border border-gray-100 text-sm font-bold text-gray-700 bg-gray-50 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
+                      className="w-full p-3 rounded-xl border border-slate-200 text-xs font-bold text-gray-800 bg-slate-50 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all cursor-pointer"
                     >
                       <option value="">No asignado</option>
                       {waiters.map(w => (
@@ -1179,87 +1233,92 @@ export default function AdminOrders() {
                     </select>
                   </div>
 
-                  {/* Resumen de Pago */}
-                  <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm space-y-4">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Estado Financiero</p>
+                  {/* Tarjeta: Resumen Financiero y Pagos */}
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3.5">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                      <span>Estado Financiero</span>
+                      {selectedOrder.payment_method && (
+                        <span className="text-slate-500 font-bold lowercase text-[10px] truncate max-w-[170px]" title={selectedOrder.payment_method}>
+                          {selectedOrder.payment_method}
+                        </span>
+                      )}
+                    </p>
                     
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-gray-500">Monto Total</span>
-                      <span className="text-sm font-black text-gray-900">${selectedOrder.total_amount.toLocaleString()}</span>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-slate-500">Monto Total</span>
+                      <span className="font-black text-slate-900">${selectedOrder.total_amount?.toLocaleString()}</span>
                     </div>
 
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-gray-500">Pagado</span>
-                      <span className="text-sm font-black text-emerald-600">${(selectedOrder.paid_amount || 0).toLocaleString()}</span>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-slate-500">Pagado</span>
+                      <span className="font-black text-emerald-600">${(selectedOrder.paid_amount || 0).toLocaleString()}</span>
                     </div>
 
-                    <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
-                      <span className="text-xs font-black text-gray-900">PENDIENTE</span>
-                      <span className={`text-lg font-black ${selectedOrder.payment_status === 'paid' ? 'text-emerald-600' : 'text-orange-600'}`}>
-                        ${Math.max(0, selectedOrder.total_amount - (selectedOrder.paid_amount || 0)).toLocaleString()}
+                    <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
+                      <span className="text-xs font-black text-slate-900">PENDIENTE</span>
+                      <span className={`text-base font-black ${selectedOrder.payment_status === 'paid' ? 'text-emerald-600' : 'text-orange-600'}`}>
+                        ${Math.max(0, (selectedOrder.total_amount || 0) - (selectedOrder.paid_amount || 0)).toLocaleString()}
                       </span>
                     </div>
 
                     {selectedOrder.payment_status === 'paid' && (
-                      <div className="flex items-center gap-2 justify-center py-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100 mt-2">
-                        <Icon icon="heroicons:check-circle" className="text-lg" />
-                        <span className="text-[10px] font-black uppercase tracking-wider">Completamente Pagado</span>
+                      <div className="flex items-center gap-1.5 justify-center py-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200 text-[10px] font-black uppercase">
+                        <Icon icon="heroicons:check-circle" className="text-sm" />
+                        Completamente Pagado
+                      </div>
+                    )}
+
+                    {/* Historial de Pagos si hay pagos registrados */}
+                    {selectedOrder.order_payments?.length > 0 && (
+                      <div className="pt-3 border-t border-slate-100 space-y-2">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                          <Icon icon="heroicons:clipboard-document-check" className="text-xs" />
+                          Abonos Realizados
+                        </p>
+                        <div className="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
+                          {selectedOrder.order_payments.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).map(pay => (
+                            <div key={pay.id} className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-xs">
+                              <div>
+                                <span className="text-[10px] font-black text-slate-800 uppercase block">{pay.payment_method_name || 'Desconocido'}</span>
+                                <span className="text-[8px] font-bold text-slate-400">{new Date(pay.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-[11px] font-black text-emerald-600 block">${pay.amount.toLocaleString()}</span>
+                                {pay.change_amount > 0 && (
+                                  <span className="text-[8px] font-bold text-slate-400 block">Cambio: ${pay.change_amount.toLocaleString()}</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Historial de Pagos */}
-                  {selectedOrder.order_payments?.length > 0 && (
-                    <div className="bg-gray-50/80 p-6 rounded-[2rem] border border-gray-100 space-y-4 animate-in slide-in-from-right-4 duration-300">
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                        <Icon icon="heroicons:clipboard-document-check" className="text-sm" />
-                        Historial de Pagos
-                      </p>
-                      
-                      <div className="space-y-2">
-                        {selectedOrder.order_payments.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).map(pay => (
-                          <div key={pay.id} className="flex justify-between items-center bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
-                            <div className="flex flex-col">
-                              <span className="text-[10px] font-black text-gray-900 uppercase">{pay.payment_method_name || 'Desconocido'}</span>
-                              <span className="text-[8px] font-bold text-gray-400 uppercase">{new Date(pay.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-xs font-black text-emerald-600 block">${pay.amount.toLocaleString()}</span>
-                              {pay.change_amount > 0 && (
-                                <span className="text-[8px] font-bold text-gray-400 block italic">Cambio: ${pay.change_amount.toLocaleString()}</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Descuentos VIP */}
+                  {/* Tarjeta: Descuentos VIP */}
                   {selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
-                    <div className="bg-gray-900 p-6 rounded-[2rem] shadow-xl">
-                      <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <div className="bg-slate-900 p-5 rounded-2xl shadow-sm text-white space-y-3">
+                      <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
                         <Icon icon="heroicons:sparkles" />
-                        CORTESÍA / VIP
+                        Cortesía / Descuento Rápido
                       </p>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-4 gap-2">
                         {[10, 20, 50, 100].map(pct => (
                           <button
                             key={pct}
                             onClick={async () => {
                               await applyDiscount(selectedOrder.id, pct);
-                              // Auto move to 'new' if it was waiting_payment
                               if (selectedOrder.status === 'waiting_payment') {
                                 await updateOrderStatus(selectedOrder.id, "new", { 
                                   payment_status: "paid", 
                                   payment_method: selectedPaymentMethod 
                                 });
                               }
-                            } }
+                            }}
                             disabled={updatingStatus === selectedOrder.id}
-                            className="py-2.5 bg-gray-800 hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-all border border-gray-700 active:scale-95 disabled:opacity-50"
+                            className="py-2.5 bg-slate-800 hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-all border border-slate-700 active:scale-95 disabled:opacity-50"
                           >
-                            {pct}% {pct === 100 && 'OFF'}
+                            {pct}%
                           </button>
                         ))}
                       </div>
@@ -1269,182 +1328,188 @@ export default function AdminOrders() {
               </div>
             </div>
 
-            {/* Footer Fijo del Modal */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 pb-10 md:p-6 bg-white border-t border-gray-100 flex flex-col md:flex-row gap-4 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-10">
-               
-               <div className="flex-1 grid grid-cols-3 gap-2 w-full">
-                 <button 
-                   onClick={() => shareToWhatsApp(selectedOrder, 'summary')}
-                   className="w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-black text-[8px] md:text-sm flex flex-col md:flex-row items-center justify-center gap-1 transition-all active:scale-95"
-                 >
-                   <Icon icon="logos:whatsapp-icon" />
-                   RESUMEN
-                 </button>
+            {/* Footer Fijo Estructural (shrink-0): NUNCA tapa contenido */}
+            <div className="shrink-0 border-t border-slate-200 bg-white p-4 md:px-8 md:py-4 z-20 flex flex-col gap-3 shadow-[0_-4px_25px_rgba(0,0,0,0.06)]">
+              {/* Fila 1: Botones Secundarios Compactos */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button 
+                    onClick={() => shareToWhatsApp(selectedOrder, 'summary')}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 border border-slate-200"
+                  >
+                    <Icon icon="logos:whatsapp-icon" className="text-sm" />
+                    <span>WhatsApp</span>
+                  </button>
 
-                 <button 
-                   onClick={() => { 
-                     setIsMerging(true); 
-                     setMergeSourceOrder(selectedOrder); 
-                     setSelectedOrder(null); 
-                     toast("Ahora selecciona el pedido destino", { icon: '🎯' });
-                   }}
-                   className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-black text-[8px] md:text-sm flex flex-col md:flex-row items-center justify-center gap-1 transition-all active:scale-95"
-                 >
-                   <Icon icon="heroicons:arrows-right-left" />
-                   CONSOLIDAR
-                 </button>
+                  <button 
+                    onClick={() => { 
+                      setIsMerging(true); 
+                      setMergeSourceOrder(selectedOrder); 
+                      setSelectedOrder(null); 
+                      toast("Ahora selecciona el pedido destino", { icon: '🎯' });
+                    }}
+                    className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 border border-emerald-200"
+                  >
+                    <Icon icon="heroicons:arrows-right-left" className="text-sm" />
+                    <span>Consolidar</span>
+                  </button>
 
-                 {!isCancelling ? (
-                   <button 
-                     onClick={() => setIsCancelling(true)}
-                     className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-black text-[8px] md:text-sm flex flex-col md:flex-row items-center justify-center gap-1 transition-all active:scale-95"
-                   >
-                     <Icon icon="heroicons:trash" />
-                     CANCELAR
-                   </button>
-                 ) : (
-                   <div className="col-span-3 md:col-span-1 flex gap-2 items-center bg-red-50 p-2 rounded-2xl border border-red-100 animate-in fade-in slide-in-from-bottom-2">
-                     <input 
-                       type="text" 
-                       placeholder="Motivo..."
-                       value={cancellationReason}
-                       onChange={(e) => setCancellationReason(e.target.value)}
-                       className="flex-1 bg-white border-none text-xs font-bold p-2.5 rounded-xl focus:ring-1 focus:ring-red-300"
-                     />
-                     <button onClick={() => cancelOrder(selectedOrder.id)} className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-black">CONFIRMAR</button>
-                     <button onClick={() => setIsCancelling(false)} className="p-2 text-gray-400 hover:text-gray-600">
-                       <Icon icon="heroicons:x-mark" />
-                     </button>
-                   </div>
-                 )}
-               </div>
-
-                <div className="flex-[1.5]">
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    {restaurantSettings?.kitchen_print_enabled && (
-                      <button onClick={() => printThermalDocument({ order: selectedOrder, type: 'kitchen', width: restaurantSettings?.thermal_paper_width || '80', businessName: activeBrand?.name, business: activeBrand })} className="py-3 rounded-2xl border border-orange-200 bg-orange-50 text-orange-700 text-xs font-black">IMPRIMIR COMANDA</button>
-                    )}
-                    {restaurantSettings?.receipt_print_enabled !== false && (
-                      <button onClick={() => printThermalDocument({ order: selectedOrder, type: 'receipt', width: restaurantSettings?.thermal_paper_width || '80', businessName: activeBrand?.name, business: activeBrand })} className="py-3 rounded-2xl border border-gray-200 bg-white text-gray-700 text-xs font-black">IMPRIMIR RECIBO</button>
-                    )}
-                  </div>
-                  {/* BOTÓN: POS MODAL (Reemplaza Mark as Paid) */}
-                  {selectedOrder.payment_status !== 'paid' && (
+                  {restaurantSettings?.kitchen_print_enabled && (
                     <button 
-                      onClick={() => setIsPOSModalOpen(true)}
-                      disabled={updatingStatus === selectedOrder.id}
-                      className={`w-full py-3 md:py-4.5 rounded-[2.5rem] font-black text-lg shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50 mb-4 border-2 group relative overflow-hidden ${
-                        (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.status === 'new') || 
-                        (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.status === 'ready')
-                          ? 'bg-emerald-600 border-emerald-600 text-white shadow-emerald-200/50 hover:bg-emerald-700 hover:-translate-y-0.5'
-                          : 'bg-white border-emerald-600 text-emerald-600 hover:bg-emerald-50 shadow-emerald-100/50 hover:-translate-y-0.5'
-                      }`}
+                      onClick={() => printThermalDocument({ order: selectedOrder, type: 'kitchen', width: restaurantSettings?.thermal_paper_width || '80', businessName: activeBrand?.name, business: activeBrand })} 
+                      className="px-3 py-2 rounded-xl border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
                     >
-                      <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <Icon icon="solar:round-transfer-horizontal-bold" className="text-2xl group-hover:rotate-12 transition-transform" />
-                      <span className="relative">COBRAR / DESGLOSAR PAGO</span>
+                      <Icon icon="solar:printer-bold" className="text-sm" />
+                      <span>Comanda</span>
                     </button>
                   )}
 
-                  {/* BOTÓN: ENVIAR A COCINA */}
-                  {selectedOrder.status === 'new' && (
+                  {restaurantSettings?.receipt_print_enabled !== false && (
                     <button 
-                      onClick={() => updateOrderStatus(selectedOrder.id, 'preparing')}
-                      disabled={
-                        updatingStatus === selectedOrder.id || 
-                        (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid')
-                      }
-                      className={`w-full py-3 md:py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
-                        restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid'
-                          ? 'bg-neutral-200 text-neutral-400 border-2 border-neutral-100 shadow-none cursor-not-allowed grayscale'
-                          : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200/50 hover:-translate-y-0.5 border-2 border-blue-600'
-                      }`}
+                      onClick={() => printThermalDocument({ order: selectedOrder, type: 'receipt', width: restaurantSettings?.thermal_paper_width || '80', businessName: activeBrand?.name, business: activeBrand })} 
+                      className="px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
                     >
-                      <Icon icon="solar:fire-bold" className="text-2xl" />
-                      {restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid' 
-                        ? 'PAGO REQUERIDO PARA COCINA' 
-                        : 'ENVIAR A COCINA'}
-                    </button>
-                  )}
-
-                  {/* BOTÓN: LISTO PARA ENTREGA */}
-                  {selectedOrder.status === 'preparing' && (
-                    <button 
-                      onClick={() => updateOrderStatus(selectedOrder.id, 'ready')}
-                      disabled={updatingStatus === selectedOrder.id}
-                      className="w-full py-3 md:py-4.5 bg-amber-500 hover:bg-amber-600 text-white rounded-[2rem] font-black text-base shadow-2xl shadow-amber-200/50 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 border-2 border-amber-500 hover:-translate-y-0.5"
-                    >
-                      <Icon icon="solar:check-circle-bold" className="text-2xl" />
-                      LISTO PARA ENTREGA
-                    </button>
-                  )}
-
-                  {/* BOTÓN: SERVIR EN MESA / EN CAMINO / FINALIZAR */}
-                  {selectedOrder.status === 'ready' && (
-                    <div className="flex flex-col gap-3">
-                      {selectedOrder.fulfillment_type === 'dine_in' && (
-                        <button 
-                          onClick={() => updateOrderStatus(selectedOrder.id, 'on_table')}
-                          disabled={updatingStatus === selectedOrder.id}
-                          className="w-full py-3 md:py-4.5 bg-purple-600 hover:bg-purple-700 text-white rounded-[2rem] font-black text-base shadow-2xl shadow-purple-200/50 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 border-2 border-purple-600 hover:-translate-y-0.5"
-                        >
-                          <Icon icon="solar:shop-2-bold" className="text-2xl" />
-                          SERVIR EN MESA
-                        </button>
-                      )}
-
-                      {(selectedOrder.fulfillment_type === 'delivery' || selectedOrder.fulfillment_type === 'takeaway') && (
-                        <button 
-                          onClick={() => updateOrderStatus(selectedOrder.id, 'on_the_way')}
-                          disabled={updatingStatus === selectedOrder.id}
-                          className="w-full py-3 md:py-4.5 bg-purple-600 hover:bg-purple-700 text-white rounded-[2rem] font-black text-base shadow-2xl shadow-purple-200/50 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 border-2 border-purple-600 hover:-translate-y-0.5"
-                        >
-                          <Icon icon="solar:delivery-bold" className="text-2xl" />
-                          {selectedOrder.fulfillment_type === 'delivery' ? 'ENVIAR DOMICILIO' : 'LISTO PARA RECOGER'}
-                        </button>
-                      )}
-                      
-                      <button 
-                        onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
-                        disabled={
-                          updatingStatus === selectedOrder.id || 
-                          (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid')
-                        }
-                        className={`w-full py-3 md:py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
-                          restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
-                            ? 'bg-neutral-200 text-neutral-400 border-2 border-neutral-100 shadow-none cursor-not-allowed grayscale'
-                            : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200/50 hover:-translate-y-0.5 border-2 border-emerald-600'
-                        }`}
-                      >
-                        <Icon icon="solar:box-minimalistic-bold" className="text-2xl" />
-                        {restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
-                          ? 'PAGO REQUERIDO PARA FINALIZAR'
-                          : 'FINALIZAR PEDIDO'}
-                      </button>
-                    </div>
-                  )}
-
-                  {/* BOTÓN: FINALIZAR (Desde En Mesa / En Camino) */}
-                  {(selectedOrder.status === 'on_table' || selectedOrder.status === 'on_the_way') && (
-                    <button 
-                      onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
-                      disabled={
-                        updatingStatus === selectedOrder.id || 
-                        (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid')
-                      }
-                      className={`w-full py-3 md:py-4.5 rounded-[2rem] font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 ${
-                        restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
-                          ? 'bg-neutral-200 text-neutral-400 border-2 border-neutral-100 shadow-none cursor-not-allowed grayscale'
-                          : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200/50 hover:-translate-y-0.5 border-2 border-emerald-600'
-                      }`}
-                    >
-                      <Icon icon="solar:check-read-bold" className="text-2xl" />
-                      {restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
-                        ? 'PAGO REQUERIDO PARA FINALIZAR'
-                        : selectedOrder.status === 'on_the_way' ? 'PEDIDO ENTREGADO' : 'FINALIZAR PEDIDO'}
+                      <Icon icon="solar:bill-check-bold" className="text-sm" />
+                      <span>Recibo</span>
                     </button>
                   )}
                 </div>
+
+                {/* Cancelación */}
+                <div>
+                  {!isCancelling ? (
+                    <button 
+                      onClick={() => setIsCancelling(true)}
+                      className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 border border-red-200"
+                    >
+                      <Icon icon="heroicons:trash" className="text-sm" />
+                      <span>Cancelar</span>
+                    </button>
+                  ) : (
+                    <div className="flex gap-1.5 items-center bg-red-50 p-1.5 rounded-xl border border-red-200 animate-in fade-in">
+                      <input 
+                        type="text" 
+                        placeholder="Motivo de cancelación..."
+                        value={cancellationReason}
+                        onChange={(e) => setCancellationReason(e.target.value)}
+                        className="bg-white border border-red-200 text-xs font-medium p-1.5 px-2.5 rounded-lg focus:ring-1 focus:ring-red-400 w-48"
+                      />
+                      <button onClick={() => cancelOrder(selectedOrder.id)} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-black">
+                        Confirmar
+                      </button>
+                      <button onClick={() => setIsCancelling(false)} className="p-1 text-slate-400 hover:text-slate-600">
+                        <Icon icon="heroicons:x-mark" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Fila 2: Acciones Operativas Primarias (Grandes y Elegantes) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Botón: Cobrar / POS Modal */}
+                {selectedOrder.payment_status !== 'paid' && (
+                  <button 
+                    onClick={() => setIsPOSModalOpen(true)}
+                    disabled={updatingStatus === selectedOrder.id}
+                    className={`py-3 px-4 rounded-xl font-black text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 border ${
+                      (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.status === 'new') || 
+                      (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.status === 'ready')
+                        ? 'bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200/50'
+                        : 'bg-white border-emerald-600 text-emerald-700 hover:bg-emerald-50'
+                    }`}
+                  >
+                    <Icon icon="solar:round-transfer-horizontal-bold" className="text-xl" />
+                    <span>COBRAR / REGISTRAR PAGO</span>
+                  </button>
+                )}
+
+                {/* Botones de Estado */}
+                {selectedOrder.status === 'new' && (
+                  <button 
+                    onClick={() => updateOrderStatus(selectedOrder.id, 'preparing')}
+                    disabled={
+                      updatingStatus === selectedOrder.id || 
+                      (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid')
+                    }
+                    className={`py-3 px-4 rounded-xl font-black text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 ${
+                      restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid'
+                        ? 'bg-neutral-200 text-neutral-400 border border-neutral-300 cursor-not-allowed grayscale'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200/50'
+                    } ${selectedOrder.payment_status === 'paid' ? 'sm:col-span-2' : ''}`}
+                  >
+                    <Icon icon="solar:fire-bold" className="text-xl" />
+                    <span>
+                      {restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid' 
+                        ? 'PAGO REQUERIDO PARA COCINA' 
+                        : 'ENVIAR A COCINA'}
+                    </span>
+                  </button>
+                )}
+
+                {selectedOrder.status === 'preparing' && (
+                  <button 
+                    onClick={() => updateOrderStatus(selectedOrder.id, 'ready')}
+                    disabled={updatingStatus === selectedOrder.id}
+                    className={`py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-sm shadow-md shadow-amber-200/50 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 ${
+                      selectedOrder.payment_status === 'paid' ? 'sm:col-span-2' : ''
+                    }`}
+                  >
+                    <Icon icon="solar:check-circle-bold" className="text-xl" />
+                    <span>LISTO PARA ENTREGA</span>
+                  </button>
+                )}
+
+                {selectedOrder.status === 'ready' && (
+                  <>
+                    {selectedOrder.fulfillment_type === 'dine_in' ? (
+                      <button 
+                        onClick={() => updateOrderStatus(selectedOrder.id, 'on_table')}
+                        disabled={updatingStatus === selectedOrder.id}
+                        className={`py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black text-sm shadow-md shadow-purple-200/50 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 ${
+                          selectedOrder.payment_status === 'paid' ? 'sm:col-span-2' : ''
+                        }`}
+                      >
+                        <Icon icon="solar:shop-2-bold" className="text-xl" />
+                        <span>SERVIR EN MESA</span>
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => updateOrderStatus(selectedOrder.id, 'on_the_way')}
+                        disabled={updatingStatus === selectedOrder.id}
+                        className={`py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black text-sm shadow-md shadow-purple-200/50 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 ${
+                          selectedOrder.payment_status === 'paid' ? 'sm:col-span-2' : ''
+                        }`}
+                      >
+                        <Icon icon="solar:delivery-bold" className="text-xl" />
+                        <span>{selectedOrder.fulfillment_type === 'delivery' ? 'ENVIAR DOMICILIO' : 'LISTO PARA RECOGER'}</span>
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {(selectedOrder.status === 'on_table' || selectedOrder.status === 'on_the_way') && (
+                  <button 
+                    onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
+                    disabled={
+                      updatingStatus === selectedOrder.id || 
+                      (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid')
+                    }
+                    className={`py-3 px-4 rounded-xl font-black text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 ${
+                      restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
+                        ? 'bg-neutral-200 text-neutral-400 border border-neutral-300 cursor-not-allowed grayscale'
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200/50'
+                    } ${selectedOrder.payment_status === 'paid' ? 'sm:col-span-2' : ''}`}
+                  >
+                    <Icon icon="solar:check-read-bold" className="text-xl" />
+                    <span>
+                      {restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
+                        ? 'PAGO REQUERIDO PARA FINALIZAR'
+                        : selectedOrder.status === 'on_the_way' ? 'PEDIDO ENTREGADO' : 'FINALIZAR PEDIDO'}
+                    </span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1455,10 +1520,14 @@ export default function AdminOrders() {
         <PaymentPOSModal 
           order={selectedOrder}
           paymentMethods={activeMethods}
+          restaurantSettings={restaurantSettings}
           onClose={() => setIsPOSModalOpen(false)}
-          onSuccess={async () => {
+          onSuccess={async ({ autoFinalized } = {}) => {
+            if (autoFinalized) {
+              setSelectedOrder(null);
+              toast.success(`🎉 Pedido #${selectedOrder.id.slice(0,4).toUpperCase()} finalizado con éxito`);
+            }
             await fetchOrders();
-            // The sync useEffect will take care of updating selectedOrder
           }}
         />
       )}

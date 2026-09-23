@@ -3,18 +3,20 @@ import { supabase } from '../../config/supabase';
 import { Icon } from '@iconify-icon/react';
 import { toast } from '../Toast';
 import { useAuth } from '../../context/AuthContext';
+import { printThermalDocument } from '../../utils/thermalPrint';
 
 /**
  * PaymentPOSModal Component
  * Handles granular payments (partial quantity), multi-method (tenders), 
  * and features a 3-column professional layout.
  */
-export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMethods }) {
+export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMethods, restaurantSettings }) {
   const { user, activeBrand } = useAuth();
   
   // -- State --
   const [isSplitting, setIsSplitting] = useState(false);
   const [waiveServiceFee, setWaiveServiceFee] = useState(false);
+  const [wasAutoFinalized, setWasAutoFinalized] = useState(false);
   
   // Selection
   const [selectedQuantities, setSelectedQuantities] = useState(() => {
@@ -49,6 +51,24 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
       setCurrentMethod(defaultMethod);
     }
   }, [paymentMethods, currentMethod]);
+
+  // -- Escape/Enter Key to Close or Finalize --
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (showSuccessScreen) {
+        if (e.key === 'Escape' || e.key === 'Enter') {
+          onSuccess?.({ autoFinalized: wasAutoFinalized });
+          onClose();
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, onSuccess, showSuccessScreen, wasAutoFinalized]);
 
   // -- Search Customer Logic --
   useEffect(() => {
@@ -353,19 +373,27 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
       if (pError) throw pError;
 
       const { data: updatedOrder } = await supabase.from('orders').select('total_amount, paid_amount, status').eq('id', order.id).single();
-      if (updatedOrder && updatedOrder.paid_amount >= updatedOrder.total_amount - 1) {
-          if (updatedOrder.status === 'waiting_payment') {
-             await supabase.from('orders').update({ status: 'new' }).eq('id', order.id);
-          }
+      const isFullyPaid = updatedOrder && (Number(updatedOrder.paid_amount || 0) >= (Number(updatedOrder.total_amount || 0) - 1));
+      let autoFinalized = false;
+
+      if (isFullyPaid) {
+        if (updatedOrder.status === 'waiting_payment') {
+          await supabase.from('orders').update({ status: 'new', payment_status: 'paid' }).eq('id', order.id);
+        } else if (order.status === 'on_table' || order.status === 'on_the_way') {
+          // El comensal consumió y pagó: finalizamos automáticamente el pedido y liberamos la mesa
+          await supabase.from('orders').update({ 
+            status: 'delivered', 
+            delivered_at: new Date().toISOString(),
+            payment_status: 'paid'
+          }).eq('id', order.id);
+          autoFinalized = true;
+        } else {
+          await supabase.from('orders').update({ payment_status: 'paid' }).eq('id', order.id);
+        }
       }
 
-      if (totalChange > 0) {
-        setShowSuccessScreen(true);
-      } else {
-        toast.success('Pago completado');
-        onSuccess();
-        onClose();
-      }
+      setWasAutoFinalized(autoFinalized);
+      setShowSuccessScreen(true);
     } catch (err) {
       console.error(err);
       toast.error('Error al procesar la transacción');
@@ -374,112 +402,85 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
     }
   };
 
-  if (showSuccessScreen) {
-    return (
-      <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-xl animate-in fade-in duration-500">
-        <div className="bg-white rounded-[3rem] p-12 max-w-sm w-full text-center shadow-2xl relative overflow-hidden border border-white/20">
-          <div className="absolute -top-20 -right-20 h-64 w-64 bg-emerald-50 rounded-full opacity-50" />
-          <div className="relative z-10">
-            <div className="h-24 w-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Icon icon="solar:check-circle-bold" className="text-6xl" />
+  return (
+    <div className="fixed inset-0 z-[70] bg-slate-100 flex flex-col w-screen h-screen overflow-hidden animate-in fade-in duration-200">
+      {/* Header Full-Width */}
+      <div className="px-6 lg:px-8 py-3.5 lg:py-4 border-b border-gray-200 bg-white flex justify-between items-center shrink-0 shadow-sm z-20">
+        <div className="flex items-center gap-3.5">
+          <div className="h-11 w-11 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-md shadow-emerald-600/20 shrink-0">
+            <Icon icon="solar:calculator-minimalistic-bold" className="text-2xl text-white" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <h2 className="text-base lg:text-xl font-black text-gray-900 leading-none uppercase tracking-tight">CAJA / PUNTO DE VENTA</h2>
+              <span className="text-[10px] font-black bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg border border-slate-200">
+                PANTALLA COMPLETA
+              </span>
             </div>
-            <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight mb-2">PAGO EXITOSO</h2>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-8">TRANSACCIÓN COMPLETADA</p>
-            
-            <div className="bg-emerald-600 rounded-[2.5rem] p-8 text-white mb-10 shadow-xl shadow-emerald-200">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-80">CAMBIO A DEVOLVER</p>
-              <div className="text-5xl font-black tracking-tighter">
-                ${lastTransactionChange.toLocaleString()}
-              </div>
-            </div>
-
-            <button 
-              onClick={() => { onSuccess(); onClose(); }}
-              className="w-full py-6 bg-gray-900 hover:bg-black text-white rounded-[2rem] font-black text-xl transition-all shadow-xl active:scale-95"
-            >
-              CERRAR CAJA
-            </button>
+            <p className="text-[10px] lg:text-xs font-bold text-gray-500 uppercase tracking-wider">
+              PEDIDO #{order.id.slice(0,4).toUpperCase()} • {customerName || order.customer_name || 'MOSTRADOR'}
+            </p>
           </div>
         </div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="fixed inset-0 z-[70] flex items-end lg:items-center justify-center p-0 lg:p-4">
-      <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-md" onClick={onClose}></div>
-      
-      <div className="bg-white w-full max-w-7xl h-[95vh] lg:h-[90vh] rounded-t-[2.5rem] lg:rounded-[3rem] shadow-2xl overflow-hidden relative border border-white/20 flex flex-col animate-in slide-in-from-bottom-4 lg:zoom-in duration-300">
-        
-        {/* Header */}
-        <div className="p-4 lg:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="h-10 w-10 lg:h-12 lg:w-12 bg-emerald-600 rounded-xl lg:rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0">
-              <Icon icon="solar:calculator-minimalistic-bold" className="text-xl lg:text-2xl text-white" />
-            </div>
-            <div>
-              <h2 className="text-sm lg:text-xl font-black text-gray-900 leading-none mb-1 uppercase tracking-tight">CAJA / PUNTO DE VENTA</h2>
-              <p className="text-[9px] lg:text-xs font-bold text-gray-400 uppercase tracking-widest">PEDIDO #{order.id.slice(0,4)} • {customerName || order.customer_name || 'MOSTRADOR'}</p>
-            </div>
-          </div>
-
-          <div className="hidden lg:block flex-1 max-w-sm mx-auto px-8">
-            <div 
-              onClick={() => setInputFocus('customer_phone')}
-              className={`flex items-center gap-3 px-6 py-3 rounded-2xl border-2 transition-all cursor-pointer ${
-                inputFocus === 'customer_phone' ? 'bg-white border-blue-500 shadow-lg shadow-blue-500/10' : 'bg-white border-gray-100'
-              }`}
-            >
-              <div className="shrink-0 relative">
-                <Icon 
-                   icon={loyaltyStats.medal === 'emerald' ? "solar:dialog-2-bold" : loyaltyStats.medal === 'gold' ? "solar:medal-bold" : "solar:phone-bold"} 
-                   className={`text-xl ${loyaltyStats.medal === 'emerald' ? 'text-emerald-500' : loyaltyStats.medal === 'gold' ? 'text-amber-500' : 'text-gray-300'}`} 
-                />
-                {loyaltyStats.medal && (
-                   <div className={`absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-white ${
-                     loyaltyStats.medal === 'emerald' ? 'bg-emerald-500' : 'bg-amber-500'
-                   }`} />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">IDENTIFICAR CLIENTE</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-black text-gray-900 tabular-nums">
-                    {customerPhone || '____-____'}
-                  </span>
-                  {loyaltyStats.medal === 'emerald' && (
-                    <div className="flex items-center gap-1 bg-gradient-to-r from-emerald-50 to-teal-50 px-2 py-0.5 rounded-lg border border-emerald-100 shadow-sm shadow-emerald-500/10">
-                      <Icon icon="solar:star-bold" className="text-emerald-500 text-xs" />
-                      <span className="text-[9px] font-black text-emerald-700 uppercase">VIP EMERALD</span>
-                    </div>
-                  )}
-                  {loyaltyStats.medal === 'gold' && (
-                    <div className="flex items-center gap-1 bg-gradient-to-r from-amber-50 to-orange-50 px-2 py-0.5 rounded-lg border border-amber-100 shadow-sm shadow-amber-500/10">
-                      <Icon icon="solar:medal-star-bold" className="text-amber-500 text-xs" />
-                      <span className="text-[9px] font-black text-amber-700 uppercase">CUSTOMER GOLD</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              {isSearchingCustomer && (
-                <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+        <div className="hidden lg:block flex-1 max-w-sm mx-auto px-6">
+          <div 
+            onClick={() => setInputFocus('customer_phone')}
+            className={`flex items-center gap-3 px-5 py-2.5 rounded-2xl border-2 transition-all cursor-pointer ${
+              inputFocus === 'customer_phone' ? 'bg-white border-blue-500 shadow-lg shadow-blue-500/10' : 'bg-slate-50 border-gray-200 hover:border-slate-300'
+            }`}
+          >
+            <div className="shrink-0 relative">
+              <Icon 
+                 icon={loyaltyStats.medal === 'emerald' ? "solar:dialog-2-bold" : loyaltyStats.medal === 'gold' ? "solar:medal-bold" : "solar:phone-bold"} 
+                 className={`text-xl ${loyaltyStats.medal === 'emerald' ? 'text-emerald-500' : loyaltyStats.medal === 'gold' ? 'text-amber-500' : 'text-gray-400'}`} 
+              />
+              {loyaltyStats.medal && (
+                 <div className={`absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-white ${
+                   loyaltyStats.medal === 'emerald' ? 'bg-emerald-500' : 'bg-amber-500'
+                 }`} />
               )}
             </div>
-          </div>
-
-          <div className="flex items-center gap-4 lg:gap-6">
-            <div className="text-right hidden sm:block">
-              <p className="text-[9px] lg:text-xs font-black text-gray-400 uppercase tracking-widest leading-none mb-1">SALDO TOTAL ORDEN</p>
-              <p className="text-lg lg:text-2xl font-black text-[#2f4131] leading-none">${remainingOrderBalance.toLocaleString()}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">IDENTIFICAR CLIENTE</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs lg:text-sm font-black text-gray-900 tabular-nums">
+                  {customerPhone || '____-____'}
+                </span>
+                {loyaltyStats.medal === 'emerald' && (
+                  <div className="flex items-center gap-1 bg-gradient-to-r from-emerald-50 to-teal-50 px-2 py-0.5 rounded-lg border border-emerald-100 shadow-sm shadow-emerald-500/10">
+                    <Icon icon="solar:star-bold" className="text-emerald-500 text-xs" />
+                    <span className="text-[9px] font-black text-emerald-700 uppercase">VIP EMERALD</span>
+                  </div>
+                )}
+                {loyaltyStats.medal === 'gold' && (
+                  <div className="flex items-center gap-1 bg-gradient-to-r from-amber-50 to-orange-50 px-2 py-0.5 rounded-lg border border-amber-100 shadow-sm shadow-amber-500/10">
+                    <Icon icon="solar:medal-star-bold" className="text-amber-500 text-xs" />
+                    <span className="text-[9px] font-black text-amber-700 uppercase">CUSTOMER GOLD</span>
+                  </div>
+                )}
+              </div>
             </div>
-            <button 
-              onClick={onClose}
-              className="h-8 w-8 lg:h-10 lg:w-10 bg-white hover:bg-red-50 hover:text-red-500 rounded-full flex items-center justify-center transition-all text-gray-400 shadow-sm border border-gray-100 shrink-0"
-            >
-              <Icon icon="solar:close-circle-bold" className="text-xl lg:text-2xl" />
-            </button>
+            {isSearchingCustomer && (
+              <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+            )}
           </div>
         </div>
+
+        <div className="flex items-center gap-4 lg:gap-6">
+          <div className="text-right">
+            <p className="text-[9px] lg:text-xs font-black text-gray-400 uppercase tracking-widest leading-none mb-1">SALDO TOTAL ORDEN</p>
+            <p className="text-xl lg:text-3xl font-black text-[#2f4131] leading-none">${remainingOrderBalance.toLocaleString()}</p>
+          </div>
+          <button 
+            onClick={onClose}
+            className="h-10 w-10 lg:h-11 lg:w-11 bg-slate-100 hover:bg-red-50 hover:text-red-500 rounded-2xl flex items-center justify-center transition-all text-gray-500 shadow-sm border border-slate-200 shrink-0"
+            title="Cerrar Caja (Esc)"
+          >
+            <Icon icon="heroicons:x-mark" className="text-2xl" />
+          </button>
+        </div>
+      </div>
 
         {/* CONTENEDOR PRINCIPAL FLEX/GRID - Reordenado para Móvil */}
         <div className="flex-1 overflow-y-auto lg:overflow-hidden flex flex-col lg:grid lg:grid-cols-12 custom-scrollbar">
@@ -832,7 +833,70 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
              </div>
           </div>
         </div>
+
+        {/* Pop-up Modal de Confirmación de Pago y Finalización */}
+        {showSuccessScreen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full text-center shadow-2xl border border-slate-200 relative animate-in zoom-in-95 duration-200 space-y-5">
+              {/* Icono de Éxito */}
+              <div className="h-16 w-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+                <Icon icon="solar:check-circle-bold" className="text-4xl" />
+              </div>
+
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-gray-900 uppercase tracking-tight">
+                  {wasAutoFinalized ? '¡PAGO Y PEDIDO FINALIZADO!' : '¡PAGO REGISTRADO CON ÉXITO!'}
+                </h2>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">
+                  PEDIDO #{order.id.slice(0,4).toUpperCase()} • {customerName || order.customer_name || 'MOSTRADOR'}
+                </p>
+              </div>
+
+              {/* Tarjeta de Cambio (si hubo cambio) */}
+              {lastTransactionChange > 0 && (
+                <div className="bg-emerald-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-200/50">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-1 opacity-90">CAMBIO A ENTREGAR AL CLIENTE</p>
+                  <div className="text-4xl font-black tracking-tight">
+                    ${lastTransactionChange.toLocaleString()}
+                  </div>
+                </div>
+              )}
+
+              {/* Aviso de Mesa Liberada si fue finalizado */}
+              {wasAutoFinalized && (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-3 text-xs font-bold flex items-center justify-center gap-2">
+                  <Icon icon="solar:shop-2-bold" className="text-lg text-emerald-600" />
+                  <span>Mesa liberada • Pedido archivado como entregado</span>
+                </div>
+              )}
+
+              {/* Botones de Acción */}
+              <div className="space-y-2 pt-2">
+                <button 
+                  onClick={() => {
+                    onSuccess?.({ autoFinalized: wasAutoFinalized });
+                    onClose();
+                  }}
+                  className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl font-black text-sm uppercase tracking-wider transition-all shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2"
+                >
+                  <Icon icon="solar:check-read-bold" className="text-xl" />
+                  <span>VOLVER AL TABLERO DE PEDIDOS</span>
+                </button>
+
+                {restaurantSettings?.receipt_print_enabled !== false && (
+                  <button
+                    type="button"
+                    onClick={() => printThermalDocument({ order, type: 'receipt', width: restaurantSettings?.thermal_paper_width || '80', businessName: activeBrand?.name, business: activeBrand })}
+                    className="w-full py-3 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 border border-slate-200"
+                  >
+                    <Icon icon="solar:printer-bold" className="text-base" />
+                    <span>Imprimir Recibo de Caja</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
   );
 }

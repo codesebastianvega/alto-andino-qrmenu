@@ -5,7 +5,7 @@ import { useMenuData } from '../context/MenuDataContext';
 import { useAuth } from '../context/AuthContext';
 import { 
   ArrowLeft, CheckCircle2, ChefHat, ShoppingBag, Clock, XIcon, 
-  Loader2, AlertCircle, Banknote, Home, Truck, Utensils
+  Loader2, AlertCircle, Banknote, Home, Truck, Utensils, CreditCard
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import soundService from '../utils/soundService';
@@ -133,6 +133,9 @@ export default function OrderStatus({ orderId }) {
   const isTakeaway = order.fulfillment_type === 'takeaway';
   const isDineIn = order.fulfillment_type === 'dine_in';
   const isPaymentPending = order.payment_status !== 'paid';
+  const isCash = /efectivo|cash/i.test(order.payment_method || '');
+  const isCard = /dat[aá]fono|tarjeta|card/i.test(order.payment_method || '');
+  const isTransfer = !isCash && !isCard && isPaymentPending;
 
   const STATUS_STEPS = {
     cancelled: { label: 'Cancelado', icon: <AlertCircle size={48} />, color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-100', glow: 'bg-red-500/10', text: 'text-red-600', step: 0 },
@@ -301,7 +304,63 @@ export default function OrderStatus({ orderId }) {
         {/* =========================================
             ALERTA PAGO PENDIENTE (Si aplica)
         ========================================= */}
-        {isPaymentPending && order.status !== 'cancelled' && order.status !== 'delivered' && (
+        {/* Si es EFECTIVO: recordatorio de efectivo y cambio */}
+        {isCash && order.status !== 'cancelled' && order.status !== 'delivered' && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-emerald-200 mb-8 overflow-hidden relative"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-bl-full pointer-events-none" />
+            <div className="flex items-start gap-4 relative z-10">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0 border border-emerald-100">
+                <Banknote size={24} />
+              </div>
+              <div className="w-full">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h4 className="font-extrabold text-[#1A1A1A]">Pago en Efectivo al Recibir</h4>
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                    Contra Entrega
+                  </span>
+                </div>
+                <p className="text-xs font-semibold text-emerald-950 mb-1">
+                  {order.payment_method}
+                </p>
+                <p className="text-xs font-medium text-black/60 leading-relaxed">
+                  Tu pedido ya fue recibido por el restaurante. Recuerda tener listo el dinero en efectivo al momento de la entrega.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Si es DATÁFONO / TARJETA: recordatorio de datáfono físico */}
+        {isCard && order.status !== 'cancelled' && order.status !== 'delivered' && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-indigo-200 mb-8 overflow-hidden relative"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-bl-full pointer-events-none" />
+            <div className="flex items-start gap-4 relative z-10">
+              <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0 border border-indigo-100">
+                <CreditCard size={24} />
+              </div>
+              <div className="w-full">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h4 className="font-extrabold text-[#1A1A1A]">Pago con Datáfono al Recibir</h4>
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">
+                    Tarjeta Física
+                  </span>
+                </div>
+                <p className="text-xs font-medium text-black/60 leading-relaxed">
+                  El personal llevará la terminal bancaria (datáfono) para que realices tu pago con tarjeta física al recibir el pedido.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Si es TRANSFERENCIA (Nequi / Bre-B / Daviplata) y está pendiente: botón de comprobante */}
+        {isTransfer && order.status !== 'cancelled' && order.status !== 'delivered' && (
           <motion.div 
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-orange-200 mb-8 overflow-hidden relative"

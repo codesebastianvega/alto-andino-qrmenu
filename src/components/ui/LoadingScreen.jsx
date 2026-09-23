@@ -15,10 +15,15 @@ const LOADING_PHRASES = [
 const LoadingScreen = ({ mode = 'splash', brandLogo = null, businessType = 'restaurant' }) => {
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [showSlowWarning, setShowSlowWarning] = useState(false);
 
   // Cycle phrases
   useEffect(() => {
     if (mode === 'splash') {
+      const slowTimer = setTimeout(() => {
+        setShowSlowWarning(true);
+      }, 7000);
+
       const phraseInterval = setInterval(() => {
         setPhraseIndex((prev) => (prev + 1) % LOADING_PHRASES.length);
       }, 2500);
@@ -32,6 +37,7 @@ const LoadingScreen = ({ mode = 'splash', brandLogo = null, businessType = 'rest
       }, 800);
 
       return () => {
+        clearTimeout(slowTimer);
         clearInterval(phraseInterval);
         clearInterval(progressInterval);
       };
@@ -135,6 +141,41 @@ const LoadingScreen = ({ mode = 'splash', brandLogo = null, businessType = 'rest
               className="h-full bg-gradient-to-r from-orange-500 via-amber-400 to-orange-500 bg-[length:200%_100%] rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)]"
             />
           </div>
+
+          {showSlowWarning && (
+            <motion.div 
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6 flex flex-col items-center gap-2 text-center"
+            >
+              <p className="text-xs text-neutral-400">¿Está tardando más de lo normal?</p>
+              <div className="flex items-center gap-3">
+                <button 
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="text-xs text-amber-400 hover:text-amber-300 underline font-medium transition-colors cursor-pointer"
+                >
+                  Recargar página
+                </button>
+                <span className="text-neutral-600 text-xs">•</span>
+                <button 
+                  type="button"
+                  onClick={() => { window.location.href = '/#login'; }}
+                  className="text-xs text-neutral-400 hover:text-white underline transition-colors cursor-pointer"
+                >
+                  Iniciar sesión
+                </button>
+                <span className="text-neutral-600 text-xs">•</span>
+                <button 
+                  type="button"
+                  onClick={() => { window.location.href = '/'; }}
+                  className="text-xs text-neutral-400 hover:text-white underline transition-colors cursor-pointer"
+                >
+                  Ir al inicio
+                </button>
+              </div>
+            </motion.div>
+          )}
         </div>
 
         {/* Footer info */}

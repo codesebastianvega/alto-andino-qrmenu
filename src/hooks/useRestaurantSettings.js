@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 
-export const useRestaurantSettings = () => {
+export const useRestaurantSettings = (brandIdOverride = null) => {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const { activeBrand } = useAuth();
-  const activeBrandId = activeBrand?.id;
+  const activeBrandId = brandIdOverride || activeBrand?.id;
 
   useEffect(() => {
     const fetchSettings = async () => {
