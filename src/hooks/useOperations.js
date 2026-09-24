@@ -11,18 +11,15 @@ import { toast } from '../components/Toast';
  */
 function getStartOfDayColombia() {
   const now = new Date();
-  // Colombia es UTC-5 (sin horario de verano)
   const offsetMs = 5 * 60 * 60 * 1000;
   const localMs = now.getTime() - offsetMs;
   const localDate = new Date(localMs);
-  // Inicio del día local (00:00:00 COT)
   const startLocal = new Date(
     localDate.getUTCFullYear(),
     localDate.getUTCMonth(),
     localDate.getUTCDate(),
     0, 0, 0, 0
   );
-  // Convertir de vuelta a UTC
   return new Date(startLocal.getTime() + offsetMs).toISOString();
 }
 
@@ -38,6 +35,7 @@ export function useOperations() {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [liveEvents, setLiveEvents] = useState([]); // FIFO max 20
+  const [activeShift, setActiveShift] = useState(null);
 
   // Refs para evitar loops y cierres obsoletos en realtime
   const knownOrderIds = useRef(new Set());
@@ -62,7 +60,7 @@ export function useOperations() {
         id, status, total_amount, paid_amount, service_fee,
         fulfillment_type, payment_status, created_at, delivered_at,
         cancelled_at, discount_amount, waiter_id, table_id,
-        cancellation_reason, location_id,
+        cancellation_reason, location_id, payment_method,
         restaurant_tables ( id, table_number ),
         order_items (
           id, quantity, unit_price,
@@ -86,16 +84,13 @@ export function useOperations() {
       return;
     }
 
-    // Registrar IDs conocidos para evitar toasts duplicados en refresh
     (data || []).forEach(o => knownOrderIds.current.add(o.id));
     setOrders(data || []);
 
-    // Sembrar eventos iniciales si el feed está vacío (solo la primera vez)
     setLiveEvents(prev => {
       if (prev.length > 0) return prev;
       if (!data || data.length === 0) return prev;
       
-      // Tomar los últimos 20 eventos del turno actual
       const seedEvents = data.slice(0, 20).map(o => {
         let label = `Nuevo pedido — ${o.fulfillment_type === 'dine_in' ? `Mesa ${o.restaurant_tables?.table_number || '?'}` : 'Para llevar'}`;
         let icon = '🆕';
@@ -164,7 +159,6 @@ export function useOperations() {
     if (!brandId) return;
     const startOfDay = getStartOfDayColombia();
 
-    // Traemos los pagos del día a través de los pedidos del día
     let query = supabase
       .from('order_payments')
       .select(`
@@ -202,9 +196,125 @@ export function useOperations() {
     setSettings(data || { inactivity_threshold_mins: 30, target_prep_time_mins: 15 });
   }, [brandId]);
 
+  const fetchActiveShift = useCallback(async () => {
+    if (!brandId) return;
+    try {
+      let query = supabase
+        .from('cash_shifts')
+        .select('*')
+        .eq('brand_id', brandId)
+        .eq('status', 'open');
+
+      if (!isAllLocations && activeLocationId) {
+        query = query.eq('location_id', activeLocationId);
+      }
+
+      const { data, error } = await query
+        .order('opened_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('[useOperations] fetchActiveShift error:', error);
+        return;
+      }
+      setActiveShift(data || null);
+    } catch (err) {
+      console.error('[useOperations] fetchActiveShift catch:', err);
+    }
+  }, [brandId, isAllLocations, activeLocationId]);
+
+  const openCashShift = useCallback(async ({ locationId, initialCash, openedBy, staffId = null, openingNotes = '' }) => {
+    if (!brandId) throw new Error('No brand active');
+    try {
+      const payload = {
+        brand_id: brandId,
+        location_id: locationId || (isAllLocations ? null : activeLocationId),
+        status: 'open',
+        opened_at: new Date().toISOString(),
+        opened_by: openedBy,
+        opened_by_staff_id: staffId,
+        initial_cash: Number(initialCash || 0),
+        opening_notes: openingNotes
+      };
+
+      const { data, error } = await supabase
+        .from('cash_shifts')
+        .insert([payload])
+        .select()
+        .single();
+
+      if (error) throw error;
+      setActiveShift(data);
+      toast.success(`Turno abierto con base de $${Number(initialCash || 0).toLocaleString('es-CO')}`);
+      return { data, error: null };
+    } catch (err) {
+      console.error('[useOperations] openCashShift error:', err);
+      toast.error('Error al abrir turno de caja: ' + err.message);
+      return { data: null, error: err };
+    }
+  }, [brandId, isAllLocations, activeLocationId]);
+
+  const closeCashShift = useCallback(async ({ shiftId, actualCash, closedBy, staffId = null, closingNotes = '', cashBreakdown = {}, metricsData = {} }) => {
+    try {
+      const idToClose = shiftId || activeShift?.id;
+      if (!idToClose) throw new Error('No hay turno para cerrar');
+
+      const initialCash = Number(activeShift?.initial_cash || 0);
+      const cashSales = Number(metricsData.totalCashSales || 0);
+      const expectedCash = initialCash + cashSales;
+      const actual = Number(actualCash || 0);
+      const difference = actual - expectedCash;
+
+      const payload = {
+        status: 'closed',
+        closed_at: new Date().toISOString(),
+        closed_by: closedBy,
+        closed_by_staff_id: staffId,
+        expected_cash: expectedCash,
+        actual_cash: actual,
+        cash_difference: difference,
+        total_cash_sales: cashSales,
+        total_card_sales: Number(metricsData.totalCardSales || 0),
+        total_transfer_sales: Number(metricsData.totalTransferSales || 0),
+        total_other_sales: Number(metricsData.totalOtherSales || 0),
+        total_sales: Number(metricsData.totalRevenue || 0),
+        total_tips: Number(metricsData.totalTips || 0),
+        total_discounts: Number(metricsData.totalDiscounts || 0),
+        total_orders_count: Number(metricsData.deliveredCount || 0),
+        cash_breakdown: cashBreakdown,
+        closing_notes: closingNotes,
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from('cash_shifts')
+        .update(payload)
+        .eq('id', idToClose)
+        .select()
+        .single();
+
+      if (error) throw error;
+      setActiveShift(null);
+      toast.success('Turno de caja cerrado exitosamente');
+      return { data, error: null };
+    } catch (err) {
+      console.error('[useOperations] closeCashShift error:', err);
+      toast.error('Error al cerrar turno de caja: ' + err.message);
+      return { data: null, error: err };
+    }
+  }, [activeShift]);
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    await Promise.all([fetchOrders(), fetchTables(), fetchAreas(), fetchPayments(), fetchSettings(), fetchActiveShift()]);
+    await Promise.all([
+      fetchOrders(),
+      fetchTables(),
+      fetchAreas(),
+      fetchPayments(),
+      fetchSettings(),
+      fetchActiveShift()
+    ]);
     setLoading(false);
   }, [fetchOrders, fetchTables, fetchAreas, fetchPayments, fetchSettings, fetchActiveShift]);
 
@@ -223,16 +333,9 @@ export function useOperations() {
       return;
     }
 
-    // Initial fetch handled by the useEffect above triggered by location change
-    // fetchAll(); // Removed from here to avoid duplicate calls on mount
-
-    // Safety: don't subscribe if missing key identifiers
     if (!brandId || (!isAllLocations && !activeLocationId)) return;
 
     const channelId = isAllLocations ? `operations-all-${brandId}` : `operations-${activeLocationId}`;
-    
-    // Filtros de realtime: inyectamos location_id si no estamos en vista "Todas"
-    // Usamos el ID explícito para evitar "undefined" en el string del filtro
     const orderFilter = isAllLocations ? `brand_id=eq.${brandId}` : `location_id=eq.${activeLocationId}`;
     const tableFilter = isAllLocations ? `brand_id=eq.${brandId}` : `location_id=eq.${activeLocationId}`;
     const areaFilter  = isAllLocations ? `brand_id=eq.${brandId}` : `location_id=eq.${activeLocationId}`;
@@ -240,6 +343,13 @@ export function useOperations() {
 
     const channel = supabase
       .channel(channelId)
+
+      // ── Turnos de Caja ───────────────────────────────────────────────────
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cash_shifts', filter: `brand_id=eq.${brandId}` },
+        () => { fetchActiveShift(); }
+      )
 
       // ── Órdenes ──────────────────────────────────────────────────────────
       .on(
@@ -268,7 +378,6 @@ export function useOperations() {
           const updated = payload.new;
           const prev = payload.old;
 
-          // Detectar cambio de estado
           if (prev.status !== updated.status) {
             const statusLabels = {
               preparing: '🍳 En preparación',
@@ -298,12 +407,7 @@ export function useOperations() {
         { event: 'INSERT', schema: 'public', table: 'order_payments', filter: paymentFilter },
         (payload) => {
           const payment = payload.new;
-          
-          // Si estamos en una sede específica, verificamos si el pago pertenece a una orden de esa sede
-          // Usamos ordersRef para evitar que este effect dependa de 'orders' (loop)
           const orderExists = ordersRef.current.some(o => o.id === payment.order_id);
-          
-          // Si no es "Todas" y la orden no está en nuestra lista, ignoramos el evento
           if (!isAllLocations && !orderExists) return;
 
           toast('💳 Pago registrado', { icon: '💳' });
@@ -315,7 +419,7 @@ export function useOperations() {
             time: new Date().toISOString(),
           });
           fetchPayments();
-          fetchOrders(); // Actualizar paid_amount en orders
+          fetchOrders();
         }
       )
 
@@ -338,9 +442,9 @@ export function useOperations() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [brandId, activeLocationId, isAllLocations, fetchOrders, fetchPayments, fetchTables, fetchAreas, pushEvent]);
+  }, [brandId, activeLocationId, isAllLocations, fetchOrders, fetchPayments, fetchTables, fetchAreas, fetchActiveShift, pushEvent]);
 
-  // ─── Métricas Derivadas (calculadas, no en estado) ─────────────────────────
+  // ─── Métricas Derivadas ───────────────────────────────────────────────────
 
   const metrics = (() => {
     const delivered = orders.filter(o => o.status === 'delivered');
@@ -353,17 +457,52 @@ export function useOperations() {
     const avgTicket       = delivered.length ? totalRevenue / delivered.length : 0;
     const cancelledAmount = cancelled.reduce((s, o) => s + Number(o.total_amount  || 0), 0);
 
-    // Desglose por método de pago
     const byPaymentMethod = {};
+    let totalCashSales = 0;
+    let totalCardSales = 0;
+    let totalTransferSales = 0;
+    let totalOtherSales = 0;
+
     payments.forEach(p => {
       const name = p.payment_methods?.name || 'Otro';
       const type = p.payment_methods?.type || 'other';
       if (!byPaymentMethod[name]) {
         byPaymentMethod[name] = { name, type, total: 0, count: 0 };
       }
-      byPaymentMethod[name].total += Number(p.amount || 0);
+      const amt = Number(p.amount || 0);
+      byPaymentMethod[name].total += amt;
       byPaymentMethod[name].count += 1;
+
+      const key = (name + type).toLowerCase();
+      if (key.includes('efectivo') || key.includes('cash')) {
+        totalCashSales += amt;
+      } else if (key.includes('tarjeta') || key.includes('card') || key.includes('débito') || key.includes('crédito') || key.includes('datafono')) {
+        totalCardSales += amt;
+      } else if (key.includes('transfer') || key.includes('nequi') || key.includes('daviplata') || key.includes('bancolombia')) {
+        totalTransferSales += amt;
+      } else {
+        totalOtherSales += amt;
+      }
     });
+
+    if (payments.length === 0 && delivered.length > 0) {
+      delivered.forEach(o => {
+        const pm = (o.payment_method || '').toLowerCase();
+        const amt = Number(o.total_amount || 0);
+        if (pm.includes('efectivo') || pm.includes('cash')) {
+          totalCashSales += amt;
+        } else if (pm.includes('tarjeta') || pm.includes('card') || pm.includes('datafono')) {
+          totalCardSales += amt;
+        } else if (pm.includes('transfer') || pm.includes('nequi') || pm.includes('daviplata')) {
+          totalTransferSales += amt;
+        } else {
+          totalOtherSales += amt;
+        }
+      });
+    }
+
+    const initialCash = Number(activeShift?.initial_cash || 0);
+    const expectedCash = initialCash + totalCashSales;
 
     return {
       totalRevenue,
@@ -375,10 +514,16 @@ export function useOperations() {
       deliveredCount: delivered.length,
       activeCount: active.length,
       byPaymentMethod: Object.values(byPaymentMethod),
+      totalCashSales,
+      totalCardSales,
+      totalTransferSales,
+      totalOtherSales,
+      initialCash,
+      expectedCash,
     };
   })();
 
-  // ─── Estado de mesas (enriquecido con órdenes activas) ─────────────────────
+  // ─── Estado de mesas ───────────────────────────────────────────────────────
 
   const tablesWithStatus = tables.map(table => {
     const activeOrder = orders.find(
@@ -387,22 +532,17 @@ export function useOperations() {
         ['new', 'preparing', 'ready', 'on_table', 'waiting_payment'].includes(o.status)
     );
 
-    // El status base es el físico
     let status = table.physical_status || 'libre';
-    
-    // Opcional: si queremos mantener el override de 'needs_billing' cuando la orden está esperando pago
     if (activeOrder && ['ready', 'waiting_payment'].includes(activeOrder.status)) {
       status = 'needs_billing';
     }
 
-    // Calcular minutos desde la ocupación física
     let minutesSinceActivity = null;
     if (table.physical_status === 'ocupada' && table.occupied_at) {
       minutesSinceActivity = Math.floor(
         (Date.now() - new Date(table.occupied_at).getTime()) / 60000
       );
     } else if (activeOrder) {
-      // Fallback si por alguna razón no hay occupied_at
       minutesSinceActivity = Math.floor(
         (Date.now() - new Date(activeOrder.created_at).getTime()) / 60000
       );
@@ -410,14 +550,13 @@ export function useOperations() {
 
     return {
       ...table,
-      status, // 'libre', 'ocupada', 'sucia', o overrides temporales como 'needs_billing'
+      status,
       activeOrder: activeOrder || null,
       minutesSinceActivity,
     };
   });
 
   return {
-    // Raw data
     orders,
     tables,
     areas,
@@ -426,12 +565,14 @@ export function useOperations() {
     liveEvents,
     loading,
 
-    // Enriquecidos
     tablesWithStatus,
     metrics,
+    activeShift,
 
-    // Acciones
     refresh: fetchAll,
+    openCashShift,
+    closeCashShift,
+    fetchActiveShift,
 
     updateTablePhysicalStatus: async (tableId, nextStatus, shouldClearTimer) => {
       setTables(prev => prev.map(t => 
