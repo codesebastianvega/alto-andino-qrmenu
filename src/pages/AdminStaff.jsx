@@ -5,7 +5,7 @@ import { useStaff } from '../hooks/useStaff';
 import { useLocation } from '../context/LocationContext';
 import { useLocations } from '../hooks/useLocations';
 import { toast as toastFn } from '../components/Toast';
-import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton, SelectInput } from '../components/admin/ui';
+import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton, SelectInput, Switch } from '../components/admin/ui';
 import { Icon } from '@iconify/react';
 import { Loader2, Key, Building2, Trash2 } from 'lucide-react';
 
@@ -32,39 +32,39 @@ const RoleIcons = {
 
 const RoleColors = {
   admin: {
-    bg: 'bg-gray-900',
+    bg: 'bg-indigo-600',
     text: 'text-white',
-    light: 'bg-gray-50',
-    border: 'border-gray-100',
-    accent: 'text-indigo-400'
+    light: 'bg-indigo-50',
+    border: 'border-indigo-100',
+    accent: 'text-indigo-700'
   },
   waiter: {
     bg: 'bg-blue-600',
     text: 'text-white',
     light: 'bg-blue-50',
     border: 'border-blue-100',
-    accent: 'text-blue-600'
+    accent: 'text-blue-700'
   },
   kitchen: {
     bg: 'bg-amber-500',
     text: 'text-white',
     light: 'bg-amber-50',
     border: 'border-amber-100',
-    accent: 'text-amber-600'
+    accent: 'text-amber-800'
   },
   cashier: {
     bg: 'bg-emerald-600',
     text: 'text-white',
     light: 'bg-emerald-50',
     border: 'border-emerald-100',
-    accent: 'text-emerald-600'
+    accent: 'text-emerald-700'
   },
   promoter: {
-    bg: 'bg-rose-500',
+    bg: 'bg-purple-600',
     text: 'text-white',
-    light: 'bg-rose-50',
-    border: 'border-rose-100',
-    accent: 'text-rose-600'
+    light: 'bg-purple-50',
+    border: 'border-purple-100',
+    accent: 'text-purple-700'
   }
 };
 
@@ -154,41 +154,52 @@ export default function AdminStaff({ isEmbedded = false }) {
   }
 
   return (
-    <div className={isEmbedded ? "animate-fadeUp" : "p-4 sm:p-10 max-w-[1600px] mx-auto space-y-10"}>
+    <div className={isEmbedded ? "animate-fadeUp space-y-6" : "p-4 sm:p-10 max-w-[1600px] mx-auto space-y-8"}>
       {!isEmbedded && (
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 animate-fadeUp">
-          <PageHeader
-            badge="Operaciones"
-            title="Equipo de Trabajo"
-            subtitle="Gestiona el acceso de tus colaboradores y asigna roles operativos."
-          />
-          <PrimaryButton 
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-100 animate-fadeUp">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
+                Operaciones
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Equipo de Trabajo</h1>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">Gestiona el acceso de tus colaboradores y asigna roles operativos con PIN.</p>
+          </div>
+          <button 
+            type="button"
             onClick={() => openModal()}
-            className="rounded-[1.5rem] px-8 py-4 shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-[12px] self-start md:self-auto"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold shadow-sm transition-all cursor-pointer self-start md:self-auto"
           >
-            <Icon icon="solar:user-plus-bold" className="w-5 h-5" />
-            Vincular Staff
-          </PrimaryButton>
+            <Icon icon="solar:user-plus-bold" className="text-base" />
+            <span>Vincular Staff</span>
+          </button>
         </div>
       )}
 
       {isEmbedded && (
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-100">
           <div>
-            <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight italic">Equipo Registrado</h3>
-            <p className="text-[12px] text-gray-400 font-medium">Asigna PINs y permisos por rol.</p>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold text-gray-900 tracking-tight">Equipo Registrado</h3>
+              <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full">
+                {staffList.length} {staffList.length === 1 ? 'colaborador' : 'colaboradores'}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">Asigna PINs y permisos operativos por rol.</p>
           </div>
-          <PrimaryButton 
+          <button 
+            type="button"
             onClick={() => openModal()} 
-            className="rounded-2xl py-3 px-6 shadow-lg shadow-gray-100 text-[11px] font-black uppercase tracking-widest transition-transform active:scale-95"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer self-start sm:self-auto"
           >
-            <Icon icon="solar:user-plus-bold" className="w-4 h-4" />
-            Añadir Staff
-          </PrimaryButton>
+            <Icon icon="solar:user-plus-bold" className="text-base" />
+            <span>Añadir Staff</span>
+          </button>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         {staffList.map((staff) => {
           const assignedLocs = staff.access_all_locations 
             ? 'Todas las sedes' 
@@ -198,248 +209,305 @@ export default function AdminStaff({ isEmbedded = false }) {
           const roleCfg = RoleColors[staff.role] || RoleColors.waiter;
           
           return (
-            <div key={staff.id} className="glass-glow bg-white rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-50/50 hover:shadow-2xl hover:shadow-gray-200/50 transition-all group overflow-hidden flex flex-col relative">
-              
-              {/* Online Indicator Badge */}
-              <div className="absolute top-6 right-6 z-10">
-                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[9px] font-black uppercase tracking-widest shadow-sm ${
-                    staff.is_active ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-gray-50 border-gray-200 text-gray-400'
-                 }`}>
-                    <div className={`w-1.5 h-1.5 rounded-full ${staff.is_active ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-gray-300'}`} />
-                    {staff.is_active ? 'En Línea' : 'Offline'}
-                 </div>
-              </div>
-
-              <div className="p-8 flex-1 space-y-6">
-                <div className="flex items-start gap-4">
-                  <div className={`w-16 h-16 rounded-[1.8rem] flex items-center justify-center shadow-xl transition-transform group-hover:scale-110 duration-500 ${roleCfg.bg} ${roleCfg.text}`}>
-                    <Icon icon={RoleIcons[staff.role] || RoleIcons.waiter} width="28" />
+            <div 
+              key={staff.id} 
+              className="bg-white rounded-2xl border border-gray-200/80 hover:border-gray-300 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between overflow-hidden"
+            >
+              <div className="p-5 sm:p-6 space-y-4">
+                {/* Header: Avatar, Name, Role & Status */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${roleCfg.bg} ${roleCfg.text}`}>
+                      <Icon icon={RoleIcons[staff.role] || RoleIcons.waiter} className="text-lg" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-bold text-gray-900 tracking-tight truncate leading-snug">
+                        {staff.name}
+                      </h4>
+                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                        <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-md ${roleCfg.light} ${roleCfg.accent}`}>
+                          {RoleNames[staff.role]}
+                        </span>
+                        {staff.role === 'promoter' && staff.commission_rate > 0 && (
+                          <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-100/80">
+                            {staff.commission_rate}% com.
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="pt-1">
-                    <h4 className="text-lg font-black text-gray-900 leading-tight uppercase italic tracking-tight mb-1 pr-16">{staff.name}</h4>
-                    <span className={`text-[10px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-lg ${roleCfg.light} ${roleCfg.accent}`}>
-                      {RoleNames[staff.role]}
-                    </span>
-                    {staff.role === 'promoter' && staff.commission_rate > 0 && (
-                      <span className="ml-2 text-[10px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-lg bg-rose-100 text-rose-600">
-                        {staff.commission_rate}% Com.
-                      </span>
-                    )}
+
+                  <div className={`shrink-0 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
+                    staff.is_active 
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' 
+                      : 'bg-gray-100 text-gray-500 border-gray-200'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${staff.is_active ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                    {staff.is_active ? 'Activo' : 'Inactivo'}
                   </div>
                 </div>
 
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center gap-4 p-4 bg-gray-50/50 rounded-2xl border border-gray-50 group-hover:bg-white group-hover:border-gray-100 transition-colors">
-                    <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-gray-400 shadow-sm">
-                      <Building2 size={16} />
-                    </div>
-                    <div>
-                       <p className="text-[9px] font-black text-gray-300 uppercase leading-none mb-1">Sedes de Operación</p>
-                       <p className="text-[13px] text-gray-700 font-black truncate max-w-[200px]" title={assignedLocs}>{assignedLocs}</p>
-                    </div>
+                {/* Info rows */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center gap-2.5 text-xs text-gray-600 bg-gray-50/70 px-3 py-2 rounded-xl border border-gray-100">
+                    <Building2 size={14} className="text-gray-400 shrink-0" />
+                    <span className="truncate font-medium" title={assignedLocs}>{assignedLocs}</span>
                   </div>
 
-                  <div className="flex items-center gap-4 px-4">
-                    <div className="w-8 h-8 rounded-xl bg-transparent flex items-center justify-center text-gray-300">
-                      <Key size={16} />
-                    </div>
+                  <div className="flex items-center justify-between text-xs text-gray-500 bg-gray-50/50 px-3 py-1.5 rounded-xl border border-gray-100">
                     <div className="flex items-center gap-2">
-                       <div className="flex gap-1">
-                          {[1,2,3,4].map(i => (
-                             <div key={i} className="w-2 h-2 rounded-full bg-gray-200" />
-                          ))}
-                       </div>
-                       <span className="text-[10px] font-black text-gray-300 uppercase tracking-tighter">Acceso Protegido</span>
+                      <Key size={13} className="text-gray-400 shrink-0" />
+                      <span className="text-[11px] font-medium text-gray-600">Acceso PIN</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                      ))}
+                      <span className="text-[10px] font-mono text-gray-400 ml-1.5">4 dígitos</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="px-8 py-6 bg-gray-50/30 border-t border-gray-100 flex items-center justify-between group-hover:bg-gray-50 transition-colors">
-                 <div className="flex gap-2">
-                    <button 
-                      onClick={() => openModal(staff)} 
-                      className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-900 hover:text-white rounded-xl text-gray-600 text-[11px] font-black uppercase tracking-widest transition-all shadow-sm border border-gray-100"
-                    >
-                      <Icon icon="solar:pen-new-square-linear" className="text-lg" />
-                      Editar
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(staff.id, staff.name)} 
-                      className="p-2.5 bg-white hover:bg-rose-50 rounded-xl text-gray-300 hover:text-rose-500 transition-all border border-gray-100"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                 </div>
+              {/* Action Footer */}
+              <div className="px-5 py-3 bg-gray-50/70 border-t border-gray-100 flex items-center justify-between gap-2">
+                <button 
+                  type="button"
+                  onClick={() => openModal(staff)} 
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg border border-gray-200/80 shadow-2xs transition-colors cursor-pointer"
+                >
+                  <Icon icon="solar:pen-new-square-linear" className="text-sm" />
+                  <span>Editar</span>
+                </button>
 
-                 {staff.is_active && (
-                    <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 shadow-sm">
-                       <Icon icon="solar:shield-check-bold" width="20" />
-                    </div>
-                 )}
+                <button 
+                  type="button"
+                  onClick={() => handleDelete(staff.id, staff.name)} 
+                  className="p-1.5 rounded-lg bg-white hover:bg-rose-50 text-gray-400 hover:text-rose-600 border border-gray-200/80 shadow-2xs transition-colors cursor-pointer"
+                  title="Eliminar colaborador"
+                >
+                  <Trash2 size={15} />
+                </button>
               </div>
             </div>
           );
         })}
 
         {staffList.length === 0 && (
-          <div className="col-span-full glass-glow bg-white rounded-[3rem] border-4 border-dashed border-gray-50 p-20 flex flex-col items-center justify-center text-center group">
-             <div className="w-24 h-24 rounded-[2.5rem] bg-gray-50 flex items-center justify-center mb-8 shadow-inner ring-8 ring-white group-hover:scale-110 transition-transform duration-500">
-                <Icon icon="solar:user-broken-linear" className="text-gray-300" width="48" />
-             </div>
-             <h4 className="text-2xl font-black text-gray-400 uppercase tracking-tighter italic">Sin personal vinculado</h4>
-             <p className="text-sm text-gray-400 mt-4 max-w-[320px] font-medium leading-relaxed italic uppercase tracking-tighter">Registra a tus meseros y cocineros para que puedan operar el sistema con su PIN.</p>
-             <button onClick={() => openModal()} className="mt-10 bg-gray-900 text-white font-black py-4 px-10 rounded-[1.5rem] shadow-2xl shadow-gray-200 hover:bg-indigo-600 transition-all text-[12px] uppercase tracking-widest">Añadir Miembro</button>
+          <div className="col-span-full bg-white rounded-2xl border-2 border-dashed border-gray-200 p-12 flex flex-col items-center justify-center text-center">
+            <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 mb-4 border border-gray-200">
+              <Icon icon="solar:user-bold" className="text-2xl" />
+            </div>
+            <h4 className="text-base font-bold text-gray-900 tracking-tight">Sin personal vinculado</h4>
+            <p className="text-xs text-gray-500 mt-1 max-w-sm">Registra a tus meseros, cocineros y cajeros para que puedan operar el sistema con su PIN.</p>
+            <button 
+              type="button"
+              onClick={() => openModal()} 
+              className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+            >
+              <Icon icon="solar:user-plus-bold" className="text-base" />
+              <span>Añadir Colaborador</span>
+            </button>
           </div>
         )}
       </div>
 
       {isModalOpen && createPortal(
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xl flex items-center justify-center p-4 z-[9999] animate-in fade-in duration-300">
-           <div className="bg-white rounded-[3rem] w-full max-w-xl shadow-[0_40px_120px_-20px_rgba(0,0,0,0.2)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-5 duration-300">
-              <div className="px-10 py-8 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center">
-                 <div>
-                    <h3 className="text-2xl font-black text-gray-900 tracking-tight italic uppercase">{editingStaff ? 'Editar Perfil' : 'Nuevo Staff'}</h3>
-                    <p className="text-[12px] text-gray-500 font-medium italic mt-1 uppercase tracking-tight">Acceso y seguridad operativa.</p>
-                 </div>
-                 <button onClick={() => setIsModalOpen(false)} className="w-12 h-12 rounded-full hover:bg-rose-50 flex items-center justify-center text-gray-300 hover:text-rose-500 transition-all border border-gray-100 hover:border-rose-100">
-                    <Icon icon="solar:close-circle-bold" width="32" />
-                 </button>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-[9999] animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-gray-100 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
+            {/* Header */}
+            <div className="px-6 py-4.5 border-b border-gray-100 bg-white flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0 border border-indigo-100/60">
+                  <Icon icon="solar:shield-user-bold" className="text-xl" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 tracking-tight">
+                    {editingStaff ? 'Editar Colaborador' : 'Nuevo Colaborador'}
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Acceso y seguridad operativa por rol.</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setIsModalOpen(false)} 
+                className="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors flex items-center justify-center cursor-pointer"
+              >
+                <Icon icon="solar:close-circle-bold" className="text-xl" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField label="Nombre *">
+                    <TextInput 
+                      value={formData.name} 
+                      onChange={(e) => setFormData({...formData, name: e.target.value})} 
+                      placeholder="Ej. Alexander Martínez"
+                      required
+                    />
+                  </FormField>
+                  <FormField label="Rol Operativo *">
+                    <SelectInput 
+                      value={formData.role} 
+                      onChange={(e) => setFormData({...formData, role: e.target.value})}
+                    >
+                      {Object.entries(RoleNames).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </SelectInput>
+                  </FormField>
+                </div>
+
+                {formData.role === 'promoter' && (
+                  <FormField label="Comisión por Venta (%)">
+                    <TextInput 
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={formData.commission_rate} 
+                      onChange={(e) => setFormData({...formData, commission_rate: parseFloat(e.target.value) || 0})} 
+                      placeholder="Ej. 5.0"
+                    />
+                  </FormField>
+                )}
+
+                {/* PIN Security input */}
+                <FormField label="PIN de Seguridad (4 dígitos numéricos) *">
+                  <div className="relative">
+                    <input 
+                      type="password"
+                      inputMode="numeric"
+                      value={formData.pin} 
+                      onChange={(e) => setFormData({...formData, pin: e.target.value.replace(/\D/g, '')})} 
+                      placeholder="••••"
+                      maxLength={4}
+                      required
+                      className="w-full px-4 py-2.5 pl-10 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono tracking-widest text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#2f4131] focus:bg-white outline-none transition-all"
+                    />
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                      <Icon icon="solar:lock-password-bold" className="text-base" />
+                    </div>
+                  </div>
+                </FormField>
+
+                {/* Sede Assignment */}
+                <div className="space-y-3 pt-1">
+                  <div 
+                    onClick={() => setFormData({...formData, access_all_locations: !formData.access_all_locations})}
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                      formData.access_all_locations 
+                        ? 'bg-indigo-50/60 border-indigo-200/80 shadow-2xs' 
+                        : 'bg-white border-gray-200/80 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                        formData.access_all_locations ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400'
+                      }`}>
+                        <Icon icon="solar:global-bold" className="text-lg" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-gray-900 leading-tight">Acceso Global</p>
+                        <p className="text-[11px] text-gray-500">Operar en todas las sedes del negocio</p>
+                      </div>
+                    </div>
+                    <Switch 
+                      checked={formData.access_all_locations} 
+                      onChange={(val) => setFormData({...formData, access_all_locations: val})} 
+                    />
+                  </div>
+
+                  {!formData.access_all_locations && (
+                    <FormField label="Sedes Autorizadas">
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
+                        {locations.map(loc => {
+                          const isSelected = formData.location_ids?.includes(loc.id);
+                          return (
+                            <div 
+                              key={loc.id}
+                              onClick={() => {
+                                const newIds = isSelected
+                                  ? formData.location_ids.filter(id => id !== loc.id)
+                                  : [...(formData.location_ids || []), loc.id];
+                                setFormData({...formData, location_ids: newIds});
+                              }}
+                              className={`p-2.5 rounded-lg border text-xs font-medium flex items-center justify-between cursor-pointer transition-all ${
+                                isSelected 
+                                  ? 'bg-blue-50/80 border-blue-200 text-blue-800' 
+                                  : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 truncate">
+                                <Building2 size={13} className={isSelected ? 'text-blue-600' : 'text-gray-400'} />
+                                <span className="truncate">{loc.name}</span>
+                              </div>
+                              <span className={`text-[10px] font-semibold ${isSelected ? 'text-blue-600' : 'text-gray-400'}`}>
+                                {isSelected ? 'Autorizado' : 'Excluido'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </FormField>
+                  )}
+                </div>
+
+                {/* State toggle: Permitir Acceso */}
+                <div 
+                  onClick={() => setFormData({...formData, is_active: !formData.is_active})}
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                    formData.is_active 
+                      ? 'bg-emerald-50/60 border-emerald-200/80 shadow-2xs' 
+                      : 'bg-white border-gray-200/80 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                      formData.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      <Icon icon={formData.is_active ? "solar:shield-check-bold" : "solar:shield-warning-bold"} className="text-lg" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-900 leading-tight">Habilitar Acceso</p>
+                      <p className="text-[11px] text-gray-500">Permitir inicio de sesión con PIN en el POS</p>
+                    </div>
+                  </div>
+                  <Switch 
+                    checked={formData.is_active} 
+                    onChange={(val) => setFormData({...formData, is_active: val})} 
+                  />
+                </div>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-10 space-y-8">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <FormField label="Nombre del Colaborador">
-                       <TextInput 
-                          value={formData.name} 
-                          onChange={(e) => setFormData({...formData, name: e.target.value})} 
-                          placeholder="Ej. Alexander Martínez"
-                          required
-                          className="text-lg font-black py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white"
-                       />
-                    </FormField>
-                    <FormField label="Rol Administrativo">
-                       <SelectInput 
-                          value={formData.role} 
-                          onChange={(e) => setFormData({...formData, role: e.target.value})}
-                          className="text-lg font-black py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white"
-                       >
-                          {Object.entries(RoleNames).map(([key, label]) => (
-                             <option key={key} value={key}>{label}</option>
-                          ))}
-                       </SelectInput>
-                    </FormField>
-
-                    {formData.role === 'promoter' && (
-                       <FormField label="Comisión por Venta (%)">
-                          <TextInput 
-                             type="number"
-                             step="0.01"
-                             min="0"
-                             max="100"
-                             value={formData.commission_rate} 
-                             onChange={(e) => setFormData({...formData, commission_rate: parseFloat(e.target.value) || 0})} 
-                             placeholder="Ej. 5.0"
-                             className="text-lg font-black py-4 px-5 rounded-2xl bg-rose-50 border-rose-100 focus:bg-white focus:border-rose-300"
-                          />
-                       </FormField>
-                    )}
-                 </div>
-
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-6">
-                        <div className={`p-6 rounded-[2rem] border-2 transition-all cursor-pointer group ${formData.access_all_locations ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-xl shadow-indigo-50' : 'bg-white border-gray-100 hover:border-gray-200 text-gray-500'}`}
-                            onClick={() => setFormData({...formData, access_all_locations: !formData.access_all_locations})}
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${formData.access_all_locations ? 'bg-indigo-500 text-white' : 'bg-gray-50 text-gray-300'}`}>
-                                    <Icon icon="solar:global-bold" className="text-xl" />
-                                </div>
-                                <div className="flex-1">
-                                    <span className="block text-[11px] font-black uppercase tracking-widest leading-none mb-1">Acceso Global</span>
-                                    <span className="text-[9px] font-bold uppercase italic opacity-60">Visible en todas las sedes</span>
-                                </div>
-                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${formData.access_all_locations ? 'bg-indigo-500 border-white rotate-0' : 'bg-transparent border-gray-200 rotate-45'}`}>
-                                    {formData.access_all_locations && <Icon icon="solar:check-read-bold" className="text-white text-[10px]" />}
-                                </div>
-                            </div>
-                        </div>
-
-                        {!formData.access_all_locations && (
-                            <FormField label="Asignar Sedes Específicas">
-                                <div className="grid grid-cols-1 gap-2 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
-                                    {locations.map(loc => {
-                                        const isSelected = formData.location_ids?.includes(loc.id);
-                                        return (
-                                            <div 
-                                                key={loc.id}
-                                                onClick={() => {
-                                                    const newIds = isSelected
-                                                        ? formData.location_ids.filter(id => id !== loc.id)
-                                                        : [...(formData.location_ids || []), loc.id];
-                                                    setFormData({...formData, location_ids: newIds});
-                                                }}
-                                                className={`p-3 rounded-xl border flex items-center gap-3 cursor-pointer transition-all ${isSelected ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-sm' : 'bg-gray-50 border-gray-100 text-gray-400 hover:border-gray-200'}`}
-                                            >
-                                                <div className={`w-2 h-2 rounded-full ${isSelected ? 'bg-blue-500 animate-pulse' : 'bg-gray-200'}`} />
-                                                <span className="text-[11px] font-black uppercase tracking-tighter truncate">{loc.name}</span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </FormField>
-                        )}
-                    </div>
-
-                    <FormField label="PIN de Seguridad (4 dígitos)">
-                        <div className="relative">
-                           <TextInput 
-                             value={formData.pin} 
-                             onChange={(e) => setFormData({...formData, pin: e.target.value.replace(/\D/g, '')})} 
-                             placeholder="Ej. 1234"
-                             maxLength={4}
-                             required
-                             className="font-mono text-center tracking-[1em] font-black text-2xl py-4 pr-4 pl-10 rounded-2xl bg-gray-50 border-indigo-100 text-indigo-600 focus:bg-white transition-all shadow-inner"
-                           />
-                           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-300">
-                              <Icon icon="solar:lock-password-bold" width="20" />
-                           </div>
-                        </div>
-                    </FormField>
-                 </div>
-
-                 <div className={`flex items-center gap-5 p-6 rounded-[2rem] border-2 transition-all cursor-pointer group ${formData.is_active ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-xl shadow-emerald-50' : 'bg-white border-gray-100 hover:border-gray-200 text-gray-500'}`}
-                    onClick={() => setFormData({...formData, is_active: !formData.is_active})}
-                 >
-                    <div className={`w-12 h-12 rounded-[1.2rem] flex items-center justify-center shadow-sm transition-transform group-hover:scale-110 ${formData.is_active ? 'bg-emerald-500 text-white' : 'bg-gray-50 text-gray-300'}`}>
-                       <Icon icon={formData.is_active ? "solar:shield-check-bold" : "solar:shield-warning-bold"} className="text-2xl" />
-                    </div>
-                    <div className="flex-1 select-none">
-                       <span className="block text-[13px] font-black uppercase tracking-widest leading-none mb-1">Permitir Acceso</span>
-                       <span className={`text-[10px] font-bold uppercase italic ${formData.is_active ? 'text-emerald-500' : 'text-gray-300'}`}>
-                          Habilitar login con PIN en el POS
-                       </span>
-                    </div>
-                    <div className={`w-6 h-6 rounded-lg border-4 flex items-center justify-center transition-all ${formData.is_active ? 'bg-emerald-500 border-white rotate-0' : 'bg-transparent border-gray-100 rotate-45'}`}>
-                       {formData.is_active && <Icon icon="solar:check-read-bold" className="text-white text-xs" />}
-                    </div>
-                 </div>
-
-                 <div className="pt-8 border-t border-gray-100 flex gap-4">
-                    <SecondaryButton type="button" onClick={() => setIsModalOpen(false)} className="flex-1 rounded-[1.5rem] py-5 border-gray-100 font-black uppercase tracking-widest text-[11px] text-gray-400">
-                       Descartar
-                    </SecondaryButton>
-                    <PrimaryButton type="submit" disabled={isSaving} className="flex-[2] rounded-[1.5rem] py-5 shadow-2xl shadow-indigo-100 font-black uppercase tracking-widest text-[11px]">
-                       {isSaving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (
-                         <div className="flex items-center justify-center gap-3">
-                           <Icon icon="solar:diskette-bold-duotone" className="text-xl" />
-                           {editingStaff ? 'Actualizar Staff' : 'Validar & Crear Staff'}
-                         </div>
-                       )}
-                    </PrimaryButton>
-                 </div>
-              </form>
-           </div>
+              {/* Sticky Footer */}
+              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/60 flex items-center justify-end gap-2.5 rounded-b-2xl shrink-0">
+                <button 
+                  type="button" 
+                  onClick={() => setIsModalOpen(false)} 
+                  className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isSaving} 
+                  className="px-5 py-2 rounded-xl bg-[#2f4131] hover:bg-[#253527] text-white text-xs font-semibold shadow-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Icon icon="solar:diskette-bold-duotone" className="text-base" />
+                      <span>{editingStaff ? 'Actualizar Colaborador' : 'Crear Colaborador'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>,
         document.body
       )}

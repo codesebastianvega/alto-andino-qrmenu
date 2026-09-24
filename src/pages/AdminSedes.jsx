@@ -283,184 +283,245 @@ export default function AdminSedes({ isEmbedded = false }) {
   );
 
   return (
-    <div className={isEmbedded ? "animate-fadeUp" : "p-4 sm:p-10 max-w-[1600px] mx-auto space-y-10"}>
+    <div className={isEmbedded ? "animate-fadeUp space-y-6" : "p-4 sm:p-10 max-w-[1600px] mx-auto space-y-8"}>
       {!isEmbedded && (
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 animate-fadeUp">
-          <PageHeader
-            badge="Infraestructura"
-            title="Sedes y Locales"
-            subtitle="Gestiona las ubicaciones físicas de tu marca y centraliza tu operación."
-          />
-          <div className="flex flex-col items-end gap-3 self-start md:self-auto">
-            <PrimaryButton 
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-100 animate-fadeUp">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
+                Infraestructura
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Sedes y Locales</h1>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">Gestiona las ubicaciones físicas de tu marca y centraliza tu operación.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button 
+              type="button"
               onClick={() => handleOpenModal()} 
               disabled={!canAddMore}
-              className="rounded-[1.5rem] px-8 py-4 shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-[12px]"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold shadow-sm transition-all disabled:opacity-50 cursor-pointer"
             >
-              <Icon icon="solar:shop-2-bold" className="w-5 h-5" />
-              Nueva Sede
-            </PrimaryButton>
-            {!canAddMore && (
-              <p className="text-[10px] font-black text-amber-500 bg-amber-50 px-4 py-1.5 rounded-full border border-amber-100 flex items-center gap-2 uppercase tracking-tight italic animate-pulse">
-                <Icon icon="solar:lock-bold" /> Tu plan Pro permite sedes ilimitadas
-              </p>
-            )}
+              <Icon icon="solar:shop-2-bold" className="text-base" />
+              <span>Nueva Sede</span>
+            </button>
           </div>
         </div>
       )}
 
       {isEmbedded && (
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex-1">
-            <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight italic">Tus Puntos de Venta</h3>
-            <p className="text-[12px] text-gray-400 font-medium">Controla la información y visibilidad de cada sede.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold text-gray-900 tracking-tight">Puntos de Venta y Sedes</h3>
+              <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full">
+                {locations.length} {locations.length === 1 ? 'sede' : 'sedes'}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">Controla la información de contacto, cobertura de domicilios y horarios de cada sede.</p>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <PrimaryButton 
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <button 
+              type="button"
               onClick={() => handleOpenModal()} 
               disabled={!canAddMore}
-              className="rounded-2xl py-3 px-6 shadow-lg shadow-gray-100 text-[11px] font-black uppercase tracking-widest transition-transform active:scale-95"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold shadow-sm transition-all disabled:opacity-50 cursor-pointer"
             >
-              <Icon icon="solar:add-circle-bold" className="w-4 h-4" />
-              Añadir Sede
-            </PrimaryButton>
-            {!canAddMore && (
-              <span className="text-[9px] font-black text-amber-500 uppercase tracking-tighter italic">Mejorar plan para más sedes</span>
-            )}
+              <Icon icon="solar:add-circle-bold" className="text-base" />
+              <span>Añadir Sede</span>
+            </button>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         {locations.map((loc) => (
-          <div key={loc.id} className={`glass-glow bg-white rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-50/50 hover:shadow-2xl hover:shadow-gray-200/50 transition-all group overflow-hidden flex flex-col relative ${!loc.is_active ? 'opacity-60 grayscale-[0.5]' : ''}`}>
-            
-            {/* Status Floating Badge */}
-            <div className="absolute top-6 right-6 z-10">
-               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[9px] font-black uppercase tracking-widest shadow-sm ${
-                  loc.is_active ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-gray-50 border-gray-200 text-gray-400'
-               }`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${loc.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'}`} />
+          <div 
+            key={loc.id} 
+            className={`bg-white rounded-2xl border transition-all flex flex-col justify-between overflow-hidden shadow-xs hover:shadow-md ${
+              loc.is_main ? 'border-indigo-200/80 ring-1 ring-indigo-500/10' : 'border-gray-200/80 hover:border-gray-300'
+            } ${!loc.is_active ? 'opacity-60 bg-gray-50/50' : ''}`}
+          >
+            {/* Card Header */}
+            <div className="p-5 pb-4 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                    loc.is_main ? 'bg-gray-900 text-white shadow-xs' : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                  }`}>
+                    <Building2 size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-sm font-bold text-gray-900 truncate tracking-tight">{loc.name}</h4>
+                      {loc.is_main && (
+                        <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/60 text-[10px] font-bold uppercase tracking-wider">
+                          Principal
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-gray-400 font-medium">Sede operativa</p>
+                  </div>
+                </div>
+
+                {/* Status Indicator */}
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold shrink-0 border ${
+                  loc.is_active 
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/70' 
+                    : 'bg-gray-100 text-gray-600 border-gray-200'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${loc.is_active ? 'bg-emerald-500' : 'bg-gray-400'}`} />
                   {loc.is_active ? 'Activa' : 'Inactiva'}
-               </div>
-            </div>
-
-            <div className="p-8 flex-1 space-y-6">
-              <div className="flex items-start gap-4">
-                <div className={`w-16 h-16 rounded-[1.8rem] flex items-center justify-center shadow-inner relative transition-transform group-hover:scale-110 duration-500 ${loc.is_main ? 'bg-gray-900 text-white shadow-xl rotate-3' : 'bg-indigo-50 text-indigo-600'}`}>
-                  <Building2 size={24} />
-                  {loc.is_main && (
-                    <div className="absolute -bottom-2 -right-2 bg-indigo-500 text-white p-1.5 rounded-full border-4 border-white shadow-lg">
-                      <Icon icon="solar:star-bold" className="text-[12px]" />
-                    </div>
-                  )}
-                </div>
-                <div className="pt-2">
-                  <h4 className="text-lg font-black text-gray-900 leading-none uppercase italic tracking-tight mb-2 pr-12">{loc.name}</h4>
-                  {loc.is_main && (
-                    <span className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.2em]">Sede Principal</span>
-                  )}
-                </div>
+                </span>
               </div>
 
-              <div className="space-y-4 pt-2">
-                <div className="flex items-start gap-4 p-4 bg-gray-50/50 rounded-2xl border border-gray-50 group-hover:bg-white group-hover:border-gray-100 transition-colors">
-                  <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-gray-400 shadow-sm">
-                    <MapPin size={16} />
-                  </div>
-                  <p className="text-[13px] text-gray-500 font-black leading-tight">{loc.address || 'Sin dirección registrada'}</p>
+              {/* Information Rows */}
+              <div className="space-y-2 pt-1">
+                {/* Address */}
+                <div className="flex items-center gap-2.5 text-xs text-gray-600 bg-gray-50/70 px-3 py-2 rounded-xl border border-gray-100">
+                  <MapPin size={14} className="text-gray-400 shrink-0" />
+                  <span className="truncate font-medium">{loc.address || 'Sin dirección física registrada'}</span>
                 </div>
 
-                {loc.phone && (
-                  <div className="flex items-center gap-4 px-4">
-                    <div className="w-8 h-8 rounded-xl bg-transparent flex items-center justify-center text-gray-300">
-                      <Phone size={16} />
+                {/* Phone & WhatsApp Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {loc.phone ? (
+                    <div className="flex items-center gap-2 text-gray-600 bg-gray-50/50 px-3 py-1.5 rounded-xl border border-gray-100 truncate">
+                      <Phone size={13} className="text-gray-400 shrink-0" />
+                      <span className="font-mono text-[11px] truncate">{loc.phone}</span>
                     </div>
-                    <p className="text-[13px] text-gray-400 font-bold tracking-widest">{loc.phone}</p>
-                  </div>
-                )}
-
-                {loc.whatsapp && (
-                  <div className="flex items-center gap-4 px-4">
-                    <div className="w-8 h-8 rounded-xl bg-transparent flex items-center justify-center text-emerald-400">
-                      <Icon icon="solar:whatsapp-bold" width="18" />
+                  ) : (
+                    <div className="flex items-center gap-2 text-gray-400 bg-gray-50/30 px-3 py-1.5 rounded-xl border border-gray-100 text-[11px]">
+                      <Phone size={13} className="shrink-0 opacity-40" />
+                      <span>Sin teléfono fijo</span>
                     </div>
-                    <p className="text-[13px] text-emerald-600 font-black tracking-widest">{loc.whatsapp}</p>
-                  </div>
-                )}
-              </div>
-            </div>
+                  )}
 
-            <div className="px-8 py-6 bg-gray-50/30 border-t border-gray-100 flex items-center justify-between group-hover:bg-gray-50 transition-colors">
-               <div className="flex gap-2">
-                  <button 
-                    onClick={() => handleOpenModal(loc)} 
-                    className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-900 hover:text-white rounded-xl text-gray-600 text-[11px] font-black uppercase tracking-widest transition-all shadow-sm border border-gray-100"
-                  >
-                    <Icon icon="solar:pen-new-square-linear" className="text-lg" />
-                    Editar
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(loc.id)} 
-                    className="p-2.5 bg-white hover:bg-rose-50 rounded-xl text-gray-300 hover:text-rose-500 transition-all border border-gray-100"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-               </div>
-
-               <div className="flex gap-2">
-                 <button 
-                    onClick={() => setQrLocation(loc)} 
-                    className="w-11 h-11 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-500 hover:text-white hover:scale-110 active:scale-90 transition-all shadow-lg shadow-indigo-100/50"
-                    title="Generar QR de la Sede"
-                 >
-                    <QrCode size={18} />
-                 </button>
-
-                 {loc.maps_url && (
+                  {loc.whatsapp ? (
                     <a 
-                      href={loc.maps_url} 
+                      href={`https://wa.me/${loc.whatsapp.replace(/[^0-9]/g, '')}`} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="w-11 h-11 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-500 hover:text-white hover:scale-110 active:scale-90 transition-all shadow-lg shadow-emerald-100/50"
-                      title="Abrir en Google Maps"
+                      className="flex items-center gap-2 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100/60 px-3 py-1.5 rounded-xl border border-emerald-100 truncate transition-colors cursor-pointer"
+                      title="Chatear por WhatsApp"
                     >
-                      <ExternalLink size={18} />
+                      <Icon icon="logos:whatsapp-icon" className="text-xs shrink-0" />
+                      <span className="font-mono text-[11px] font-semibold truncate">{loc.whatsapp}</span>
                     </a>
-                 )}
-               </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-gray-400 bg-gray-50/30 px-3 py-1.5 rounded-xl border border-gray-100 text-[11px]">
+                      <Icon icon="solar:whatsapp-bold" className="text-xs shrink-0 opacity-40" />
+                      <span>Sin WhatsApp</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Delivery & Operational Badges */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100/80 px-2.5 py-0.5 rounded-lg">
+                    <Icon icon="solar:map-point-wave-bold" className="text-xs" />
+                    Radio: {loc.delivery_radius_km || 5} km
+                  </span>
+                  {Array.isArray(loc.operational_modes) && loc.operational_modes.includes('delivery') && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-100/80 px-2 py-0.5 rounded-lg">
+                      🛵 Domicilio
+                    </span>
+                  )}
+                  {Array.isArray(loc.operational_modes) && loc.operational_modes.includes('takeaway') && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-100/80 px-2 py-0.5 rounded-lg">
+                      🛍️ Retiro
+                    </span>
+                  )}
+                  {Array.isArray(loc.operational_modes) && loc.operational_modes.includes('dine_in') && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-100/80 px-2 py-0.5 rounded-lg">
+                      🍽️ Mesa
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Card Action Footer */}
+            <div className="px-5 py-3 bg-gray-50/70 border-t border-gray-100 flex items-center justify-between gap-2">
+              <button 
+                type="button"
+                onClick={() => handleOpenModal(loc)} 
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg border border-gray-200/80 shadow-2xs transition-colors cursor-pointer"
+              >
+                <Icon icon="solar:pen-new-square-linear" className="text-sm" />
+                <span>Editar</span>
+              </button>
+
+              <div className="flex items-center gap-1.5">
+                <button 
+                  type="button"
+                  onClick={() => setQrLocation(loc)} 
+                  className="p-1.5 rounded-lg bg-white hover:bg-indigo-50 text-gray-500 hover:text-indigo-600 border border-gray-200/80 shadow-2xs transition-colors cursor-pointer"
+                  title="Código QR de la sede"
+                >
+                  <QrCode size={15} />
+                </button>
+
+                {loc.maps_url && (
+                  <a 
+                    href={loc.maps_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded-lg bg-white hover:bg-emerald-50 text-gray-500 hover:text-emerald-600 border border-gray-200/80 shadow-2xs transition-colors cursor-pointer"
+                    title="Abrir en Google Maps"
+                  >
+                    <ExternalLink size={15} />
+                  </a>
+                )}
+
+                <button 
+                  type="button"
+                  onClick={() => handleDelete(loc.id)} 
+                  className="p-1.5 rounded-lg bg-white hover:bg-rose-50 text-gray-400 hover:text-rose-600 border border-gray-200/80 shadow-2xs transition-colors cursor-pointer"
+                  title="Eliminar sede"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
             </div>
           </div>
         ))}
 
         {locations.length === 0 && (
-          <div className="col-span-full glass-glow bg-white rounded-[3rem] border-4 border-dashed border-gray-50 p-20 flex flex-col items-center justify-center text-center group">
-             <div className="w-24 h-24 rounded-[2.5rem] bg-gray-50 flex items-center justify-center mb-8 shadow-inner ring-8 ring-white group-hover:scale-110 transition-transform duration-500">
-                <Icon icon="solar:map-point-remove-broken" className="text-gray-300" width="48" />
-             </div>
-             <h4 className="text-2xl font-black text-gray-400 uppercase tracking-tighter italic">No hay sedes operativas</h4>
-             <p className="text-sm text-gray-400 mt-4 max-w-[320px] font-medium leading-relaxed italic uppercase tracking-tighter">Centraliza tus inventarios y pedidos añadiendo la ubicación física de tu punto de venta.</p>
-             <button onClick={() => handleOpenModal()} className="mt-10 bg-gray-900 text-white font-black py-4 px-10 rounded-[1.5rem] shadow-2xl shadow-gray-200 hover:bg-indigo-600 transition-all text-[12px] uppercase tracking-widest">Crear Sede Principal</button>
+          <div className="col-span-full bg-white rounded-2xl border-2 border-dashed border-gray-200 p-12 flex flex-col items-center justify-center text-center">
+            <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 mb-4 border border-gray-200">
+              <Icon icon="solar:shop-2-bold" className="text-2xl" />
+            </div>
+            <h4 className="text-base font-bold text-gray-900 tracking-tight">No hay sedes registradas</h4>
+            <p className="text-xs text-gray-500 mt-1 max-w-sm">Registra la ubicación física de tu primer punto de venta para coordinar inventarios y domicilios.</p>
+            <button 
+              type="button"
+              onClick={() => handleOpenModal()} 
+              className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+            >
+              <Icon icon="solar:add-circle-bold" className="text-base" />
+              <span>Crear Sede Principal</span>
+            </button>
           </div>
         )}
       </div>
 
       {isModalOpen && createPortal(
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-[9999] animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl border border-gray-100 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-[9999] animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl border border-gray-100 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
               {/* Header */}
-              <div className="px-6 sm:px-8 py-5 border-b border-gray-100 bg-white flex justify-between items-center shrink-0">
+              <div className="px-6 sm:px-8 py-4.5 border-b border-gray-100 bg-white flex justify-between items-center shrink-0">
                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-[#2f4131]/10 text-[#2f4131] flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-[#2f4131]/10 text-[#2f4131] flex items-center justify-center shrink-0">
                        <Icon icon="solar:shop-2-bold" className="text-xl" />
                     </div>
                     <div>
                        <div className="flex items-center gap-2">
-                          <h3 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
+                          <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">
                             {editingLocation ? 'Gestionar Sede' : 'Nueva Sede'}
                           </h3>
                           {editingLocation?.is_main && (
-                             <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200/60 uppercase tracking-wider">
+                             <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] font-semibold border border-amber-200/60 uppercase tracking-wider">
                                Principal
                              </span>
                           )}
@@ -473,15 +534,15 @@ export default function AdminSedes({ isEmbedded = false }) {
                  <button 
                    type="button"
                    onClick={() => setIsModalOpen(false)} 
-                   className="w-9 h-9 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors flex items-center justify-center"
+                   className="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors flex items-center justify-center cursor-pointer"
                  >
-                    <Icon icon="solar:close-circle-bold" className="text-2xl" />
+                    <Icon icon="solar:close-circle-bold" className="text-xl" />
                  </button>
               </div>
 
-              {/* Tabs Navigation (Pills) */}
-              <div className="px-6 sm:px-8 py-3 border-b border-gray-100 bg-gray-50/60 shrink-0">
-                <div className="flex gap-1.5 p-1 bg-gray-200/50 rounded-2xl w-full sm:w-fit overflow-x-auto custom-scrollbar">
+              {/* Tabs Navigation (Segmented Control) */}
+              <div className="px-6 sm:px-8 py-2.5 border-b border-gray-100 bg-gray-50/70 shrink-0">
+                <div className="inline-flex gap-1 p-1 bg-gray-200/60 rounded-xl max-w-full overflow-x-auto custom-scrollbar">
                   {[
                     { id: 'info', label: 'Información', icon: 'solar:info-circle-bold' },
                     { id: 'hours', label: 'Horarios', icon: 'solar:clock-circle-bold' },
@@ -494,13 +555,13 @@ export default function AdminSedes({ isEmbedded = false }) {
                         key={tab.id}
                         type="button"
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+                        className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                           isActive 
-                            ? 'bg-[#2f4131] text-white shadow-sm' 
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-white/70'
+                            ? 'bg-white text-gray-900 shadow-xs' 
+                            : 'text-gray-500 hover:text-gray-900 hover:bg-white/50'
                         }`}
                       >
-                        <Icon icon={tab.icon} className="text-base" />
+                        <Icon icon={tab.icon} className="text-sm" />
                         <span>{tab.label}</span>
                       </button>
                     );
@@ -557,24 +618,24 @@ export default function AdminSedes({ isEmbedded = false }) {
                       </FormField>
 
                       {/* Toggles: Operación Base & Estado Online */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                         <div 
                           onClick={() => setForm({...form, is_main: !form.is_main})}
-                          className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 ${
+                          className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                             form.is_main 
-                              ? 'bg-amber-50/60 border-amber-200 shadow-sm' 
-                              : 'bg-white border-gray-200 hover:border-gray-300'
+                              ? 'bg-amber-50/60 border-amber-200/80 shadow-2xs' 
+                              : 'bg-white border-gray-200/80 hover:border-gray-300'
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
                               form.is_main ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-400'
                             }`}>
-                              <Icon icon="solar:star-bold" className="text-xl" />
+                              <Icon icon="solar:star-bold" className="text-lg" />
                             </div>
                             <div>
-                              <p className="text-sm font-bold text-gray-900 leading-tight">Sede Principal</p>
-                              <p className="text-xs text-gray-500">Punto de venta base y predeterminado</p>
+                              <p className="text-xs font-bold text-gray-900 leading-tight">Sede Principal</p>
+                              <p className="text-[11px] text-gray-500">Punto de venta predeterminado</p>
                             </div>
                           </div>
                           <Switch 
@@ -585,21 +646,21 @@ export default function AdminSedes({ isEmbedded = false }) {
 
                         <div 
                           onClick={() => setForm({...form, is_active: !form.is_active})}
-                          className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 ${
+                          className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                             form.is_active 
-                              ? 'bg-emerald-50/60 border-emerald-200 shadow-sm' 
-                              : 'bg-white border-gray-200 hover:border-gray-300'
+                              ? 'bg-emerald-50/60 border-emerald-200/80 shadow-2xs' 
+                              : 'bg-white border-gray-200/80 hover:border-gray-300'
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
                               form.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'
                             }`}>
-                              <Icon icon="solar:check-circle-bold" className="text-xl" />
+                              <Icon icon="solar:check-circle-bold" className="text-lg" />
                             </div>
                             <div>
-                              <p className="text-sm font-bold text-gray-900 leading-tight">Estado Online</p>
-                              <p className="text-xs text-gray-500">Visible para clientes en el menú digital</p>
+                              <p className="text-xs font-bold text-gray-900 leading-tight">Estado Online</p>
+                              <p className="text-[11px] text-gray-500">Visible en menú digital</p>
                             </div>
                           </div>
                           <Switch 
@@ -815,7 +876,7 @@ export default function AdminSedes({ isEmbedded = false }) {
                         </div>
 
                         <FormField label="Coordenadas GPS de la Sede (Punto de Partida)">
-                           <div className="p-4 bg-white rounded-2xl border border-gray-200 flex flex-col gap-3">
+                           <div className="p-4 bg-white rounded-xl border border-gray-200 flex flex-col gap-3">
                               <div className="flex items-center justify-between flex-wrap gap-2">
                                  <span className="text-xs text-gray-600 font-medium">
                                     {form.latitude && form.longitude 
@@ -825,7 +886,7 @@ export default function AdminSedes({ isEmbedded = false }) {
                                  <button
                                     type="button"
                                     onClick={handleCaptureSedeGPS}
-                                    className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-200/60"
+                                    className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-emerald-200/60 cursor-pointer"
                                  >
                                     <Icon icon="solar:gps-bold" />
                                     Capturar mi GPS actual
@@ -838,7 +899,7 @@ export default function AdminSedes({ isEmbedded = false }) {
                                     placeholder="Latitud (ej: 5.0260)"
                                     value={form.latitude ?? ''}
                                     onChange={(e) => setForm({...form, latitude: e.target.value === '' ? null : parseFloat(e.target.value)})}
-                                    className="p-2.5 bg-gray-50 rounded-xl text-xs font-semibold text-gray-800 border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2f4131]"
+                                    className="p-2.5 bg-gray-50 rounded-lg text-xs font-semibold text-gray-800 border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2f4131]"
                                  />
                                  <input
                                     type="number"
@@ -846,17 +907,17 @@ export default function AdminSedes({ isEmbedded = false }) {
                                     placeholder="Longitud (ej: -74.0040)"
                                     value={form.longitude ?? ''}
                                     onChange={(e) => setForm({...form, longitude: e.target.value === '' ? null : parseFloat(e.target.value)})}
-                                    className="p-2.5 bg-gray-50 rounded-xl text-xs font-semibold text-gray-800 border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2f4131]"
+                                    className="p-2.5 bg-gray-50 rounded-lg text-xs font-semibold text-gray-800 border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2f4131]"
                                  />
                               </div>
                            </div>
                         </FormField>
 
                         <FormField label="Radio Máximo de Cobertura Delivery">
-                           <div className="flex flex-col gap-3 p-4 bg-white rounded-2xl border border-gray-200">
+                           <div className="flex flex-col gap-3 p-4 bg-white rounded-xl border border-gray-200">
                               <div className="flex items-center gap-3 sm:gap-4">
-                                 <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700 shrink-0">
-                                    <Icon icon="solar:radius-bold" width="20" />
+                                 <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700 shrink-0">
+                                    <Icon icon="solar:radius-bold" width="18" />
                                  </div>
                                  <input 
                                     type="range" 
@@ -867,11 +928,11 @@ export default function AdminSedes({ isEmbedded = false }) {
                                     onChange={(e) => setForm({...form, delivery_radius_km: parseFloat(e.target.value) || 0.5})}
                                     className="flex-1 accent-[#2f4131] h-2 bg-gray-100 rounded-lg cursor-pointer"
                                  />
-                                 <div className="flex items-center gap-1 shrink-0 bg-gray-50 p-1 rounded-xl border border-gray-200">
+                                 <div className="flex items-center gap-1 shrink-0 bg-gray-50 p-1 rounded-lg border border-gray-200">
                                     <button
                                        type="button"
                                        onClick={() => setForm(f => ({ ...f, delivery_radius_km: Math.max(0.3, Number(((f.delivery_radius_km || 1) - 0.2).toFixed(1))) }))}
-                                       className="w-7 h-7 rounded-lg bg-white hover:bg-gray-200 flex items-center justify-center text-xs font-black text-gray-700 shadow-2xs transition-colors"
+                                       className="w-7 h-7 rounded-md bg-white hover:bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-700 shadow-2xs transition-colors cursor-pointer"
                                        title="Reducir 200m"
                                     >
                                        -
@@ -883,23 +944,23 @@ export default function AdminSedes({ isEmbedded = false }) {
                                        max="25"
                                        value={form.delivery_radius_km ?? ''}
                                        onChange={(e) => setForm({...form, delivery_radius_km: e.target.value === '' ? 1 : Math.max(0.3, parseFloat(e.target.value))})}
-                                       className="w-14 text-center font-extrabold text-sm bg-transparent border-none outline-none p-0 focus:ring-0 text-gray-900"
+                                       className="w-14 text-center font-bold text-sm bg-transparent border-none outline-none p-0 focus:ring-0 text-gray-900"
                                     />
                                     <button
                                        type="button"
                                        onClick={() => setForm(f => ({ ...f, delivery_radius_km: Math.min(25, Number(((f.delivery_radius_km || 1) + 0.2).toFixed(1))) }))}
-                                       className="w-7 h-7 rounded-lg bg-white hover:bg-gray-200 flex items-center justify-center text-xs font-black text-gray-700 shadow-2xs transition-colors"
+                                       className="w-7 h-7 rounded-md bg-white hover:bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-700 shadow-2xs transition-colors cursor-pointer"
                                        title="Aumentar 200m"
                                     >
                                        +
                                     </button>
-                                    <span className="text-[11px] font-bold text-gray-400 pr-1">km</span>
+                                    <span className="text-[11px] font-semibold text-gray-400 pr-1">km</span>
                                  </div>
                               </div>
 
                               {/* Quick Presets */}
                               <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-gray-100">
-                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">Rápido:</span>
+                                 <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mr-1">Rápido:</span>
                                  {[
                                     { label: '0.8 km (Barrio)', val: 0.8 },
                                     { label: '1.5 km (Sector)', val: 1.5 },
@@ -911,9 +972,9 @@ export default function AdminSedes({ isEmbedded = false }) {
                                        key={preset.val}
                                        type="button"
                                        onClick={() => setForm({...form, delivery_radius_km: preset.val})}
-                                       className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                                       className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
                                           form.delivery_radius_km === preset.val
-                                             ? 'bg-[#2f4131] text-white shadow-xs font-bold'
+                                             ? 'bg-[#2f4131] text-white shadow-2xs font-bold'
                                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                        }`}
                                     >

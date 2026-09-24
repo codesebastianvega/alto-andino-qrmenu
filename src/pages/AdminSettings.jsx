@@ -484,10 +484,10 @@ export default function AdminSettings() {
           </div>
         </div>
 
-        {/* ── Floating Tab Navigation (Vision OS Style) */}
+        {/* ── Sleek Segmented Tab Navigation */}
         <div className="relative z-10 animate-fadeUp w-full" style={{ animationDelay: '100ms' }}>
-          <div className="overflow-x-auto no-scrollbar pb-2 -mb-2 w-full">
-            <div className="flex w-max mx-auto bg-white/80 backdrop-blur-2xl p-1.5 rounded-[2rem] border border-white/60 shadow-xl shadow-gray-200/30 gap-1 glass-glow">
+          <div className="overflow-x-auto no-scrollbar pb-1 w-full flex justify-center">
+            <div className="inline-flex items-center bg-gray-100/90 p-1.5 rounded-2xl border border-gray-200/70 shadow-xs gap-1">
               {TABS.map((tab) => {
                 const isLocked = tab.feature && isFeatureLocked(tab.feature);
                 const isActive = activeTab === tab.id;
@@ -495,21 +495,18 @@ export default function AdminSettings() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2.5 px-6 py-3.5 rounded-[1.5rem] text-[13px] font-black transition-all relative group overflow-hidden ${
+                    className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-semibold transition-all relative cursor-pointer ${
                       isActive
-                        ? 'bg-gray-900 text-white shadow-xl shadow-gray-300'
-                        : 'text-gray-400 hover:text-gray-900 hover:bg-white/50'
+                        ? 'bg-white text-gray-900 shadow-sm border border-gray-200/60'
+                        : 'text-gray-500 hover:text-gray-900 hover:bg-white/50'
                     }`}
                   >
-                    <Icon icon={tab.icon} className={`text-lg transition-transform ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
-                    <span className="tracking-tight">{tab.label}</span>
+                    <Icon icon={tab.icon} className={`text-base ${isActive ? 'text-gray-900' : 'text-gray-400'}`} />
+                    <span>{tab.label}</span>
                     {isLocked && (
-                      <div className="ml-1 w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center border border-amber-200/50">
+                      <span className="ml-1 w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center border border-amber-200/50">
                         <Icon icon="heroicons:lock-closed-16-solid" className="text-[10px] text-amber-600" />
-                      </div>
-                    )}
-                    {isActive && (
-                      <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-transparent pointer-events-none" />
+                      </span>
                     )}
                   </button>
                 );
@@ -1358,31 +1355,31 @@ export default function AdminSettings() {
 
           {(activeTab === 'sedes' || activeTab === 'staff') && (
             <div className="relative animate-fadeUp" style={{ animationDelay: '200ms' }}>
-              <div className={`glass-glow bg-white rounded-[2.5rem] border border-gray-100 p-10 min-h-[600px] shadow-2xl shadow-gray-100/50 ${isFeatureLocked(activeTab === 'sedes' ? 'multi_location' : 'staff') ? 'blur-sm pointer-events-none grayscale-[0.5] opacity-40' : ''}`}>
+              <div className={`bg-white rounded-2xl border border-gray-200/80 p-6 sm:p-8 shadow-xs ${isFeatureLocked(activeTab === 'sedes' ? 'multi_location' : 'staff') ? 'blur-sm pointer-events-none grayscale-[0.5] opacity-40' : ''}`}>
                 {activeTab === 'sedes' ? <AdminSedes isEmbedded={true} /> : <AdminStaff isEmbedded={true} />}
               </div>
               
               {isFeatureLocked(activeTab === 'sedes' ? 'multi_location' : 'staff') && (
-                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-12 text-center translate-y-[-20%]">
-                   <div className="bg-white/80 backdrop-blur-2xl p-12 rounded-[4rem] border border-white shadow-[0_32px_100px_-20px_rgba(0,0,0,0.1)] flex flex-col items-center max-w-md ring-1 ring-black/[0.03] scale-105">
-                      <div className="w-24 h-24 rounded-[2.5rem] bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center text-amber-500 mb-8 border border-white shadow-xl relative animate-bounce-slow">
-                         <Icon icon="solar:lock-bold-duotone" className="text-5xl" />
-                         <div className="absolute -top-3 -right-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white text-[11px] font-black px-3 py-1 rounded-full shadow-lg uppercase tracking-tight ring-4 ring-white">
+                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 text-center">
+                   <div className="bg-white/95 backdrop-blur-xl p-8 sm:p-10 rounded-2xl border border-gray-200 shadow-xl flex flex-col items-center max-w-md ring-1 ring-black/[0.04]">
+                      <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500 mb-6 border border-amber-200/60 shadow-sm relative">
+                         <Icon icon="solar:lock-bold-duotone" className="text-3xl" />
+                         <div className="absolute -top-2.5 -right-2.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-md uppercase tracking-wider">
                            {activeTab === 'sedes' ? 'Plan Pro' : 'Plan Esencial'}
                          </div>
                       </div>
-                      <h3 className="text-3xl font-black text-gray-900 mb-4 tracking-tight">
+                      <h3 className="text-xl font-bold text-gray-900 mb-2 tracking-tight">
                         Módulo Bloqueado
                       </h3>
-                      <p className="text-sm text-gray-400 mb-10 font-bold leading-relaxed italic uppercase tracking-tighter">
+                      <p className="text-xs text-gray-500 mb-6 font-medium leading-relaxed">
                         {activeTab === 'sedes' 
                           ? 'La gestión multi-sede requiere el Plan Profesional para escalar tu operación regional.'
                           : 'Añade meseros y personal de cocina con accesos controlados para mayor seguridad.'}
                       </p>
                       <button 
                         onClick={() => window.open('https://wa.me/573214815152?text=Hola!%20Deseo%20mejorar%20mi%20plan%20en%20Aluna', '_blank')}
-                        className="bg-gray-900 text-white font-black py-5 px-12 rounded-[2rem] shadow-2xl hover:bg-indigo-600 hover:scale-105 active:scale-95 transition-all text-[14px] flex items-center gap-3 uppercase tracking-widest">
-                        <Icon icon="solar:stars-line-duotone" className="text-xl" />
+                        className="bg-gray-900 text-white font-semibold py-3 px-8 rounded-xl shadow-md hover:bg-gray-800 transition-all text-xs flex items-center gap-2 cursor-pointer">
+                        <Icon icon="solar:stars-line-duotone" className="text-base" />
                         Desbloquear Función
                       </button>
                    </div>
@@ -1393,7 +1390,7 @@ export default function AdminSettings() {
 
           {activeTab === 'payments' && (
             <div className="animate-fadeUp" style={{ animationDelay: '200ms' }}>
-               <div className="glass-glow bg-white rounded-[2.5rem] border border-gray-100 p-10 min-h-[600px] shadow-2xl shadow-gray-100/50">
+               <div className="bg-white rounded-2xl border border-gray-200/80 p-6 sm:p-8 shadow-xs">
                   <AdminPaymentMethods />
                </div>
             </div>
