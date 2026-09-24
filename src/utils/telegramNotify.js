@@ -142,6 +142,9 @@ export async function sendTelegramOrderNotification({
     }
     if (address) {
       message += `📍 <b>Dirección:</b> <b>${escapeHtml(address)}</b>\n`;
+      if (deliveryDistanceKm !== null && deliveryDistanceKm !== undefined) {
+        message += `📏 <b>Distancia estimada:</b> <code>${escapeHtml(deliveryDistanceKm)} km</code>\n`;
+      }
     }
     const finalNote = orderNote || order?.notes;
     if (finalNote) {

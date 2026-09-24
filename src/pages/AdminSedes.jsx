@@ -134,6 +134,27 @@ export default function AdminSedes({ isEmbedded = false }) {
     setIsModalOpen(true);
   };
 
+  const handleCaptureSedeGPS = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocalización no soportada en este navegador');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setForm(prev => ({
+          ...prev,
+          latitude: Number(pos.coords.latitude.toFixed(6)),
+          longitude: Number(pos.coords.longitude.toFixed(6))
+        }));
+        toast.success(`GPS capturado: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+      },
+      (err) => {
+        toast.error('No se pudo obtener la ubicación GPS');
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -649,6 +670,99 @@ export default function AdminSedes({ isEmbedded = false }) {
                              />
                              <div className="text-right">
                                 <span className="text-xs font-bold text-gray-400 block uppercase tracking-tight">COP</span>
+                             </div>
+                          </div>
+                       </FormField>
+
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField label="Distancia Cubierta por Tarifa Base (km)">
+                             <div className="flex items-center gap-3 p-4 bg-white rounded-[2rem] border-2 border-gray-100">
+                                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                                   <Icon icon="solar:route-bold" width="20" />
+                                </div>
+                                <input 
+                                   type="number" 
+                                   min="0.5" 
+                                   step="0.5"
+                                   value={form.base_delivery_distance_km}
+                                   onChange={(e) => setForm({...form, base_delivery_distance_km: Math.max(0.5, parseFloat(e.target.value) || 1)})}
+                                   className="flex-1 font-bold text-gray-900 text-base bg-transparent border-none outline-none focus:ring-0"
+                                />
+                                <span className="text-xs font-bold text-gray-400">km</span>
+                             </div>
+                          </FormField>
+
+                          <FormField label="Costo por Km Adicional ($ COP)">
+                             <div className="flex items-center gap-3 p-4 bg-white rounded-[2rem] border-2 border-gray-100">
+                                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+                                   <Icon icon="solar:tag-price-bold" width="20" />
+                                </div>
+                                <input 
+                                   type="number" 
+                                   min="0" 
+                                   step="200"
+                                   value={form.extra_km_fee}
+                                   onChange={(e) => setForm({...form, extra_km_fee: Math.max(0, parseInt(e.target.value) || 0)})}
+                                   placeholder="Ej: 1500"
+                                   className="flex-1 font-bold text-gray-900 text-base bg-transparent border-none outline-none focus:ring-0"
+                                />
+                                <span className="text-xs font-bold text-gray-400">COP/km</span>
+                             </div>
+                          </FormField>
+                       </div>
+
+                       <FormField label="Envío Gratis por Compras Superiores a ($ COP, 0 = Inactivo)">
+                          <div className="flex items-center gap-4 p-4 bg-white rounded-[2rem] border-2 border-gray-100">
+                             <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+                                <Icon icon="solar:gift-bold" width="20" />
+                             </div>
+                             <input 
+                                type="number" 
+                                min="0" 
+                                step="5000"
+                                value={form.free_delivery_threshold}
+                                onChange={(e) => setForm({...form, free_delivery_threshold: Math.max(0, parseInt(e.target.value) || 0)})}
+                                placeholder="Ej: 70000 (0 para desactivar)"
+                                className="flex-1 font-bold text-gray-900 text-base bg-transparent border-none outline-none focus:ring-0"
+                             />
+                             <span className="text-xs font-bold text-gray-400">COP</span>
+                          </div>
+                       </FormField>
+
+                       <FormField label="Coordenadas GPS de la Sede (Para cálculo de distancia)">
+                          <div className="p-5 bg-white rounded-[2rem] border-2 border-gray-100 flex flex-col gap-3">
+                             <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-500 font-medium">
+                                   {form.latitude && form.longitude 
+                                     ? `📍 Lat: ${form.latitude}, Lng: ${form.longitude}` 
+                                     : "Sin coordenadas configuradas"}
+                                </span>
+                                <button
+                                   type="button"
+                                   onClick={handleCaptureSedeGPS}
+                                   className="px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                                >
+                                   <Icon icon="solar:gps-bold" />
+                                   Capturar mi GPS actual
+                                </button>
+                             </div>
+                             <div className="grid grid-cols-2 gap-3">
+                                <input
+                                   type="number"
+                                   step="0.000001"
+                                   placeholder="Latitud (ej: 5.0260)"
+                                   value={form.latitude ?? ''}
+                                   onChange={(e) => setForm({...form, latitude: e.target.value === '' ? null : parseFloat(e.target.value)})}
+                                   className="p-3 bg-gray-50 rounded-xl text-xs font-bold text-gray-800 border border-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                                <input
+                                   type="number"
+                                   step="0.000001"
+                                   placeholder="Longitud (ej: -74.0040)"
+                                   value={form.longitude ?? ''}
+                                   onChange={(e) => setForm({...form, longitude: e.target.value === '' ? null : parseFloat(e.target.value)})}
+                                   className="p-3 bg-gray-50 rounded-xl text-xs font-bold text-gray-800 border border-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
                              </div>
                           </div>
                        </FormField>

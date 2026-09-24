@@ -8,6 +8,7 @@ import { getProductImage } from "@/utils/images";
 import { MILK_OPTIONS } from "@/config/milkOptions";
 import { formatCOP } from "@/utils/money";
 import AAImage from "@/components/ui/AAImage";
+import AddressInputWithMap from "./delivery/AddressInputWithMap";
 import { Icon } from "@iconify-icon/react";
 import { QRCode } from "react-qr-code";
 import { supabase } from "@/config/supabase";
@@ -279,6 +280,7 @@ export default function CartModal({ open, onClose }) {
   const [deliveryAddress, setDeliveryAddress] = useState(() => {
     return localStorage.getItem("aa_delivery_address") || "";
   });
+  const [deliveryLocationInfo, setDeliveryLocationInfo] = useState(null);
   const [deliveryNotes, setDeliveryNotes] = useState(() => {
     return localStorage.getItem("aa_delivery_notes") || "";
   });
