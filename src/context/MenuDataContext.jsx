@@ -245,18 +245,33 @@ export const MenuDataProvider = ({ children }) => {
   // Compute modifiers reactively and filter by location
   const modifiers = useMemo(() => {
     const modGroups = {};
-    const filteredGroups = (rawModifierGroups || []).filter(group => {
+    // 1. Identify primary groups visible in this location
+    const directlyAllowedGroups = (rawModifierGroups || []).filter(group => {
       if (!activeLocationId || activeLocationId === 'all') return true; 
       if (!locationModLinks || locationModLinks.length === 0) return true; // Brand fallback
 
-      // check if the location HAS any mod links at all. If yes, we check for THIS group.
-      const locHasAnyLinks = (locationModLinks || []).some(link => link.location_id === activeLocationId);
-      if (!locHasAnyLinks) return true; // Inherit all if none configured for this location
+      // If a group has NO records in locationModLinks anywhere, it is brand-wide and inherited by all locations
+      const groupHasAnyLinks = (locationModLinks || []).some(link => link.modifier_group_id === group.id);
+      if (!groupHasAnyLinks) return true;
 
+      // If it is explicitly linked to specific locations, only show if linked to active location
       return (locationModLinks || []).some(link => 
         link.modifier_group_id === group.id && link.location_id === activeLocationId
       );
     });
+
+    // 2. Also ensure any nested sub-groups referenced by options in allowed groups are included
+    const nestedGroupIds = new Set();
+    directlyAllowedGroups.forEach(group => {
+      (group.modifier_options || []).forEach(opt => {
+        if (opt.nested_group_id) nestedGroupIds.add(opt.nested_group_id);
+      });
+    });
+
+    const allowedGroupIds = new Set(directlyAllowedGroups.map(g => g.id));
+    const filteredGroups = (rawModifierGroups || []).filter(group => 
+      allowedGroupIds.has(group.id) || nestedGroupIds.has(group.id)
+    );
 
     filteredGroups.forEach(group => {
       const groupName = group.name;

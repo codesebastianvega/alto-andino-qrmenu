@@ -218,7 +218,19 @@ export default function ProductForm({ product, categories, recipes = [], allerge
     setFormData(prev => {
       const current = prev.modifier_groups || [];
       const isIn = current.includes(groupId);
-      const newGroups = isIn ? current.filter(id => id !== groupId) : [...current, groupId];
+      
+      const group = rawModifierGroups.find(g => g.id === groupId);
+      const associatedSubGroupIds = group ? getSubGroupsForGroup(group).map(sg => sg.id) : [];
+
+      let newGroups;
+      if (isIn) {
+        // Deselecting: remove this group AND any of its associated sub-groups
+        newGroups = current.filter(id => id !== groupId && !associatedSubGroupIds.includes(id));
+      } else {
+        // Selecting: add this group AND its associated sub-groups
+        newGroups = Array.from(new Set([...current, groupId, ...associatedSubGroupIds]));
+      }
+
       return {
         ...prev,
         modifier_groups: newGroups,
@@ -339,8 +351,18 @@ export default function ProductForm({ product, categories, recipes = [], allerge
       price: o.price === '' || o.price === undefined || o.price === null ? null : parseFloat(o.price)
     }));
 
+    // Ensure all sub-modifiers of selected main groups are preserved in modifier_groups
+    const resolvedModifierGroups = new Set(formData.modifier_groups || []);
+    (formData.modifier_groups || []).forEach(gId => {
+      const group = rawModifierGroups.find(g => g.id === gId);
+      if (group) {
+        getSubGroupsForGroup(group).forEach(sg => resolvedModifierGroups.add(sg.id));
+      }
+    });
+
     onSave({ 
       ...formData, 
+      modifier_groups: Array.from(resolvedModifierGroups),
       price: parseFloat(formData.price), 
       cost: parseFloat(formData.cost) || 0, 
       packaging_fee: parseFloat(formData.packaging_fee) || 0,

@@ -153,11 +153,21 @@ export const useAdminModifierGroups = (locationId) => {
 
       if (groupError) throw groupError;
 
-      // If we are in a specific location, link it automatically
-      if (locationId && locationId !== 'all') {
+      // Auto-link to locations: specific location if selected, otherwise all active brand locations
+      const { data: activeLocs } = await supabase
+        .from('locations')
+        .select('id')
+        .eq('brand_id', activeBrandId)
+        .eq('is_active', true);
+
+      if (activeLocs && activeLocs.length > 0) {
+        const locationsToLink = (locationId && locationId !== 'all')
+          ? [{ location_id: locationId, modifier_group_id: newGroup.id }]
+          : activeLocs.map(loc => ({ location_id: loc.id, modifier_group_id: newGroup.id }));
+
         await supabase
           .from('location_modifier_groups')
-          .insert([{ location_id: locationId, modifier_group_id: newGroup.id }]);
+          .insert(locationsToLink);
       }
 
       // 2. Clone the options
@@ -201,11 +211,23 @@ export const useAdminModifierGroups = (locationId) => {
         .single();
       if (error) throw error;
 
-      // If we are in a specific location, link it automatically
-      if (locationId && locationId !== 'all') {
-        await supabase
+      // Auto-link to locations: specific location if selected, otherwise all active brand locations
+      const { data: activeLocs } = await supabase
+        .from('locations')
+        .select('id')
+        .eq('brand_id', activeBrandId)
+        .eq('is_active', true);
+
+      if (activeLocs && activeLocs.length > 0) {
+        const locationsToLink = (locationId && locationId !== 'all')
+          ? [{ location_id: locationId, modifier_group_id: data.id }]
+          : activeLocs.map(loc => ({ location_id: loc.id, modifier_group_id: data.id }));
+
+        const { error: linkErr } = await supabase
           .from('location_modifier_groups')
-          .insert([{ location_id: locationId, modifier_group_id: data.id }]);
+          .insert(locationsToLink);
+        
+        if (linkErr) console.warn('Could not auto-link modifier group to locations:', linkErr);
       }
 
       toast.success('Grupo creado');
