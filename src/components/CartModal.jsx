@@ -233,13 +233,6 @@ export default function CartModal({ open, onClose }) {
     return flow !== "delivery" && flow !== "takeaway";
   });
 
-  useEffect(() => {
-    if (fulfillmentType === 'delivery' || fulfillmentType === 'takeaway') {
-      setIncludeTip(false);
-    } else if (fulfillmentType === 'dine_in') {
-      setIncludeTip(true);
-    }
-  }, [fulfillmentType]);
   const { settings: hookSettings } = useRestaurantSettings(activeBrandId);
   const settings = menuRestaurantSettings || hookSettings;
   const isTipEnabled = settings?.is_service_fee_enabled === true;
@@ -272,6 +265,15 @@ export default function CartModal({ open, onClose }) {
     if (fulfillmentModes.delivery) return 'delivery';
     return 'dine_in';
   });
+
+  // Auto-disable voluntary tip for delivery / takeaway
+  useEffect(() => {
+    if (fulfillmentType === 'delivery' || fulfillmentType === 'takeaway') {
+      setIncludeTip(false);
+    } else if (fulfillmentType === 'dine_in') {
+      setIncludeTip(true);
+    }
+  }, [fulfillmentType]);
 
   // Delivery Address states
   const [deliveryAddress, setDeliveryAddress] = useState(() => {
