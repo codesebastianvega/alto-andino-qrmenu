@@ -1201,8 +1201,20 @@ export default function AdminSettings() {
                       </FormField>
                     </div>
 
-                    <div className="flex justify-end pt-2">
-                      <PrimaryButton type="submit" disabled={isSubmittingSettings} className="rounded-2xl px-10 py-4 shadow-xl shadow-gray-200">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                      {settingsForm.whatsapp_number_orders ? (
+                        <a
+                          href={`https://wa.me/${settingsForm.whatsapp_number_orders.replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hola! Tengo una duda sobre mi pedido en Boku Bento.')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer self-start sm:self-auto"
+                        >
+                          <Icon icon="logos:whatsapp-icon" className="text-sm" />
+                          <span>Probar enlace comensal</span>
+                        </a>
+                      ) : <div />}
+
+                      <PrimaryButton type="submit" disabled={isSubmittingSettings} className="rounded-2xl px-8 py-3.5 shadow-xl shadow-gray-200 w-full sm:w-auto">
                         {isSubmittingSettings ? 'Sincronizando...' : 'Guardar WhatsApp'}
                       </PrimaryButton>
                     </div>
