@@ -121,7 +121,8 @@ export const getFulfillmentModes = (settings) => {
 
   // 3. Fallback based on business_type or brand name (e.g. Boku)
   if (!type) {
-    if (settings.business_name && /boku/i.test(settings.business_name)) {
+    const nameToCheck = (settings.business_name || settings.name || settings.slug || '').toLowerCase();
+    if (nameToCheck.includes('boku') || nameToCheck.includes('dark') || settings.business_type === 'dark_kitchen') {
       type = 'dark_kitchen';
     } else {
       type = 'restaurant';

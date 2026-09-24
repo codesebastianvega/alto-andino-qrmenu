@@ -5,6 +5,7 @@ import AdminPaymentMethods from './AdminPaymentMethods';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useLocations } from '../context/LocationContext';
+import { useMenuData } from '../context/MenuDataContext';
 import { toast as toastFn } from '../components/Toast';
 import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton } from '../components/admin/ui';
 import { Icon } from '@iconify/react';
@@ -21,6 +22,8 @@ const toast = {
 export default function AdminSettings() {
   const { isFeatureLocked, activePlan, activeBrand } = useAuth();
   const { activeLocationId, isAllLocations } = useLocations();
+  const menuData = useMenuData();
+  const refetchMenuData = menuData?.refetchMenuData;
   const [activeTab, setActiveTab] = useState('general');
   const [settings, setSettings] = useState(null);
   const [loadingSettings, setLoadingSettings] = useState(false);
@@ -79,8 +82,9 @@ export default function AdminSettings() {
 
       let { data, error } = await query.limit(1).maybeSingle();
       
-      // Fallback: If no location-specific settings row is found, check for brand-level settings (location_id IS NULL)
-      if (!data && !isAllLocations && activeLocationId) {
+      // Fallback: Check for brand-level settings (location_id IS NULL)
+      let brandLevelRow = null;
+      if (!isAllLocations && activeLocationId) {
         const fallbackRes = await supabase
           .from('restaurant_settings')
           .select('*')
@@ -88,14 +92,27 @@ export default function AdminSettings() {
           .is('location_id', null)
           .limit(1)
           .maybeSingle();
-        if (fallbackRes.data) {
-          data = fallbackRes.data;
+        brandLevelRow = fallbackRes.data;
+        if (!data && brandLevelRow) {
+          data = brandLevelRow;
         }
       }
       
       if (data) {
         setSettings(data);
-        const modes = getFulfillmentModes(data);
+        const hasOperationsModel = Array.isArray(data.brand_concepts) && data.brand_concepts.some(c => c && (c.id === 'operations_model' || c.fulfillment_modes));
+        const effectiveConcepts = hasOperationsModel
+          ? data.brand_concepts
+          : (brandLevelRow?.brand_concepts || data.brand_concepts || []);
+
+        const effectiveData = {
+          ...data,
+          brand_concepts: effectiveConcepts,
+          business_type: data.business_type || activeBrand?.business_type,
+          business_name: activeBrand?.name || data.business_name
+        };
+
+        const modes = getFulfillmentModes(effectiveData);
         const telegramConcept = Array.isArray(data?.brand_concepts)
           ? data.brand_concepts.find(c => c && c.id === 'telegram_dispatch')
           : null;
@@ -256,7 +273,51 @@ export default function AdminSettings() {
 
       if (error) throw error;
       
-      // Also update locations table so DB location record matches
+      // 1. Also update brand-level restaurant_settings operations_model if editing a specific location
+      if (!isAllLocations && activeLocationId && activeBrand?.id) {
+        const { data: bRow } = await supabase
+          .from('restaurant_settings')
+          .select('id, brand_concepts')
+          .eq('brand_id', activeBrand.id)
+          .is('location_id', null)
+          .maybeSingle();
+
+        if (bRow?.id) {
+          const bConcepts = Array.isArray(bRow.brand_concepts)
+            ? bRow.brand_concepts.filter(c => c && c.id !== 'operations_model')
+            : [];
+          await supabase
+            .from('restaurant_settings')
+            .update({
+              brand_concepts: [operationsModel, ...bConcepts],
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', bRow.id);
+        }
+      }
+
+      // 2. Synchronize brands.business_type
+      if (activeBrand?.id && settingsForm.business_type) {
+        await supabase
+          .from('brands')
+          .update({ business_type: settingsForm.business_type, updated_at: new Date().toISOString() })
+          .eq('id', activeBrand.id);
+      }
+
+      // 3. Synchronize locations.operational_modes
+      const activeModes = [];
+      if (settingsForm.allow_dine_in) activeModes.push('dine_in');
+      if (settingsForm.allow_takeaway) activeModes.push('takeaway');
+      if (settingsForm.allow_delivery) activeModes.push('delivery');
+      if (settingsForm.allow_scheduled) activeModes.push('scheduled');
+
+      if (!isAllLocations && activeLocationId) {
+        await supabase.from('locations').update({ operational_modes: activeModes, updated_at: new Date().toISOString() }).eq('id', activeLocationId);
+      } else if (activeBrand?.id) {
+        await supabase.from('locations').update({ operational_modes: activeModes, updated_at: new Date().toISOString() }).eq('brand_id', activeBrand.id);
+      }
+
+      // 4. Also update locations phone if whatsapp_number_orders is provided
       if (settingsForm.whatsapp_number_orders) {
         if (!isAllLocations && activeLocationId) {
           await supabase.from('locations').update({ phone: settingsForm.whatsapp_number_orders, whatsapp: settingsForm.whatsapp_number_orders }).eq('id', activeLocationId);
@@ -265,8 +326,9 @@ export default function AdminSettings() {
         }
       }
 
-      toast.success('Configuración guardada correctamente');
+      toast.success('Modelo de negocio y configuración guardados correctamente');
       await fetchSettings();
+      if (refetchMenuData) refetchMenuData();
     } catch (err) {
       console.error(err);
       toast.error('Error guardando configuración');
@@ -459,7 +521,7 @@ export default function AdminSettings() {
                 
                 {/* ── Business Model & Delivery Modes (Dark Kitchen vs Restaurant) */}
                 <div className="glass-glow bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-xl shadow-gray-50/50 relative overflow-hidden group">
-                  <div className="flex items-start justify-between mb-6 relative z-10">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 relative z-10">
                     <div className="flex items-center gap-4">
                       <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm">
                         <Icon icon="solar:shop-2-bold-duotone" className="text-3xl" />
@@ -474,6 +536,25 @@ export default function AdminSettings() {
                         <p className="text-[12px] text-gray-400 font-medium">Define cómo reciben y piden tus comensales (Dark Kitchen, Restaurante, etc.)</p>
                       </div>
                     </div>
+
+                    <PrimaryButton 
+                      type="button" 
+                      onClick={handleSaveSettings} 
+                      disabled={isSubmittingSettings}
+                      className="rounded-xl px-5 py-2.5 text-xs font-bold shadow-md shadow-indigo-500/10 flex items-center gap-2 self-start sm:self-auto shrink-0"
+                    >
+                      {isSubmittingSettings ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Guardando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Icon icon="solar:diskette-bold" className="text-base" />
+                          <span>Guardar Modelo</span>
+                        </>
+                      )}
+                    </PrimaryButton>
                   </div>
 
                   {/* Selector de tipo de negocio predefinido */}
@@ -580,6 +661,20 @@ export default function AdminSettings() {
                         <span><strong>Modo Dark Kitchen activo:</strong> Tu carta pública y carrito irán directo a pedir dirección de entrega, ocultando números de mesa y opciones de retiro.</span>
                       </div>
                     )}
+
+                    <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-gray-100">
+                      <p className="text-[11px] text-gray-500 font-medium">
+                        ⚠️ Recuerda presionar <strong>Guardar Modelo</strong> para aplicar el cambio a tus sedes y al menú digital.
+                      </p>
+                      <PrimaryButton 
+                        type="button" 
+                        onClick={handleSaveSettings} 
+                        disabled={isSubmittingSettings}
+                        className="rounded-xl px-5 py-2 text-xs font-bold w-full sm:w-auto"
+                      >
+                        {isSubmittingSettings ? 'Guardando...' : 'Guardar Modelo de Negocio'}
+                      </PrimaryButton>
+                    </div>
                   </div>
                 </div>
 
