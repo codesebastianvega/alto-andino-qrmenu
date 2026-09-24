@@ -654,7 +654,33 @@ export default function AdminSedes({ isEmbedded = false }) {
                          </div>
                        </div>
 
-                       <FormField label="Tarifa Base de Domicilio ($ COP)">
+                       {/* Guía Rápida de Domicilios */}
+                        <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-[2rem] p-6 text-xs text-emerald-950">
+                          <div className="flex items-center gap-2.5 font-black text-sm text-emerald-900 mb-3">
+                            <Icon icon="solar:lightbulb-bold" className="text-xl text-emerald-600 shrink-0" />
+                            <span>¿Cómo funciona el cálculo inteligente de domicilios?</span>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 leading-relaxed">
+                            <div className="space-y-2">
+                              <p>
+                                <strong>1. Ubicación de tu sede:</strong> En <em>Coordenadas GPS</em> (abajo), pulsa <strong>"Capturar mi GPS actual"</strong> para guardar el punto de partida exacto de tus repartidores.
+                              </p>
+                              <p>
+                                <strong>2. Radio de cobertura:</strong> Define hasta cuántos km entregas. Si un comensal pide desde más lejos, el sistema le avisará amablemente que está fuera de zona.
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              <p>
+                                <strong>3. Tarifa base y km extra:</strong> Cobras un valor fijo hasta cierta distancia (ej. 3 km) y un recargo por km adicional para cubrir trayectos lejanos.
+                              </p>
+                              <p>
+                                <strong>4. GPS del comensal:</strong> Tu cliente solo necesita pulsar <em>"Mi GPS"</em> en su teléfono al hacer el pedido para calcular la distancia real al instante sin costo de Google.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <FormField label="Tarifa Base de Domicilio ($ COP)">
                           <div className="flex items-center gap-4 p-4 bg-white rounded-[2rem] border-2 border-gray-100">
                              <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
                                 <Icon icon="solar:dollar-bold" width="24" />
