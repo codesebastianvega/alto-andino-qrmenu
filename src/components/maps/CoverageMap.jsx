@@ -83,12 +83,14 @@ export default function CoverageMap({
       if (!readOnly && onLocationChange) {
         marker.on('dragend', (e) => {
           const { lat, lng } = e.target.getLatLng();
+          if (circleRef.current) circleRef.current.setLatLng([lat, lng]);
           onLocationChange({ lat: Number(lat.toFixed(6)), lng: Number(lng.toFixed(6)) });
         });
 
         map.on('click', (e) => {
           const { lat, lng } = e.latlng;
           marker.setLatLng([lat, lng]);
+          if (circleRef.current) circleRef.current.setLatLng([lat, lng]);
           onLocationChange({ lat: Number(lat.toFixed(6)), lng: Number(lng.toFixed(6)) });
         });
       }
@@ -112,7 +114,18 @@ export default function CoverageMap({
       }, 250);
     }
 
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    });
+
+    if (mapContainerRef.current) {
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
     return () => {
+      resizeObserver.disconnect();
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;

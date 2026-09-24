@@ -93,7 +93,12 @@ export default function AdminSedes({ isEmbedded = false }) {
     operational_modes: ['dine_in', 'takeaway'],
     delivery_radius_km: 5,
     delivery_fee: 0,
-    independent_payments: false
+    independent_payments: false,
+    latitude: null,
+    longitude: null,
+    base_delivery_distance_km: 3,
+    extra_km_fee: 1000,
+    free_delivery_threshold: 0
   });
 
   const handleOpenModal = (loc = null) => {
@@ -112,9 +117,14 @@ export default function AdminSedes({ isEmbedded = false }) {
         is_main: loc.is_main || false,
         is_active: loc.is_active ?? true,
         operational_modes: loc.operational_modes || ['dine_in', 'takeaway'],
-        delivery_radius_km: loc.delivery_radius_km || 5,
-        delivery_fee: loc.delivery_fee || 0,
-        independent_payments: loc.independent_payments || false
+        delivery_radius_km: loc.delivery_radius_km != null ? Number(loc.delivery_radius_km) : 5,
+        delivery_fee: loc.delivery_fee != null ? Number(loc.delivery_fee) : 0,
+        independent_payments: loc.independent_payments || false,
+        latitude: loc.latitude != null ? Number(loc.latitude) : null,
+        longitude: loc.longitude != null ? Number(loc.longitude) : null,
+        base_delivery_distance_km: loc.base_delivery_distance_km != null ? Number(loc.base_delivery_distance_km) : 3,
+        extra_km_fee: loc.extra_km_fee != null ? Number(loc.extra_km_fee) : 1000,
+        free_delivery_threshold: loc.free_delivery_threshold != null ? Number(loc.free_delivery_threshold) : 0
       });
     } else {
       setEditingLocation(null);
@@ -129,7 +139,12 @@ export default function AdminSedes({ isEmbedded = false }) {
         operational_modes: ['dine_in', 'takeaway'],
         delivery_radius_km: 5,
         delivery_fee: 0,
-        independent_payments: false
+        independent_payments: false,
+        latitude: null,
+        longitude: null,
+        base_delivery_distance_km: 3,
+        extra_km_fee: 1000,
+        free_delivery_threshold: 0
       });
     }
     setIsModalOpen(true);
@@ -152,7 +167,7 @@ export default function AdminSedes({ isEmbedded = false }) {
       (err) => {
         toast.error('No se pudo obtener la ubicación GPS');
       },
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 

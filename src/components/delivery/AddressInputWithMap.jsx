@@ -127,7 +127,7 @@ export default function AddressInputWithMap({
           setGeoError("No se pudo obtener la ubicación actual.");
         }
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 

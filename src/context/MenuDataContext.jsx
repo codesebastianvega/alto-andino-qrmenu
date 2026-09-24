@@ -469,6 +469,12 @@ export const MenuDataProvider = ({ children }) => {
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
+        table: 'locations',
+        filter: `brand_id=eq.${activeBrandId}`
+      }, () => fetchMenuData(activeBrandId, { force: true }))
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
         table: 'categories',
         filter: `brand_id=eq.${activeBrandId}`
       }, () => fetchMenuData(activeBrandId, { force: true }))
