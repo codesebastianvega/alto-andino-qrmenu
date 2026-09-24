@@ -6,7 +6,7 @@ import { useLocations } from '../hooks/useLocations';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useLocationPayments } from '../hooks/useLocationPayments';
 import { toast as toastFn } from '../components/Toast';
-import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton, Modal, ModalHeader } from '../components/admin/ui';
+import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton, Switch, Modal, ModalHeader } from '../components/admin/ui';
 import { Icon } from '@iconify/react';
 import { Loader2, MapPin, Phone, Building2, ExternalLink, Trash2, QrCode } from 'lucide-react';
 import { QRCode } from "react-qr-code";
@@ -430,82 +430,104 @@ export default function AdminSedes({ isEmbedded = false }) {
       </div>
 
       {isModalOpen && createPortal(
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xl flex items-center justify-center p-4 z-[9999] animate-in fade-in duration-300">
-            <div className="bg-white rounded-[3rem] w-full max-w-2xl shadow-[0_40px_120px_-20px_rgba(0,0,0,0.2)] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-5 duration-300 flex flex-col max-h-[90vh]">
-              <div className="px-4 sm:px-10 pt-6 sm:pt-8 pb-4 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center shrink-0">
-                 <div>
-                    <h3 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight italic uppercase">{editingLocation ? 'Gestionar Sede' : 'Nueva Sede'}</h3>
-                    <p className="text-[10px] sm:text-[12px] text-gray-500 font-medium italic mt-1 uppercase tracking-tight">Parametrización operativa por punto de venta.</p>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-[9999] animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl border border-gray-100 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
+              {/* Header */}
+              <div className="px-6 sm:px-8 py-5 border-b border-gray-100 bg-white flex justify-between items-center shrink-0">
+                 <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[#2f4131]/10 text-[#2f4131] flex items-center justify-center shrink-0">
+                       <Icon icon="solar:shop-2-bold" className="text-xl" />
+                    </div>
+                    <div>
+                       <div className="flex items-center gap-2">
+                          <h3 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
+                            {editingLocation ? 'Gestionar Sede' : 'Nueva Sede'}
+                          </h3>
+                          {editingLocation?.is_main && (
+                             <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200/60 uppercase tracking-wider">
+                               Principal
+                             </span>
+                          )}
+                       </div>
+                       <p className="text-xs text-gray-500 mt-0.5">
+                         Configuración de contacto, horarios y logística de entrega por punto de venta.
+                       </p>
+                    </div>
                  </div>
-                 <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full hover:bg-rose-50 flex items-center justify-center text-gray-300 hover:text-rose-500 transition-all border border-gray-100 hover:border-rose-100 shrink-0 ml-4">
-                    <Icon icon="solar:close-circle-bold" className="text-2xl sm:text-3xl" />
+                 <button 
+                   type="button"
+                   onClick={() => setIsModalOpen(false)} 
+                   className="w-9 h-9 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors flex items-center justify-center"
+                 >
+                    <Icon icon="solar:close-circle-bold" className="text-2xl" />
                  </button>
               </div>
 
-              {/* Tabs Navigation */}
-              <div className="flex px-4 sm:px-10 gap-4 sm:gap-8 border-b border-gray-50 bg-gray-50/30 shrink-0 overflow-x-auto custom-scrollbar">
-                {[
-                  { id: 'info', label: 'Información', icon: 'solar:info-circle-bold' },
-                  { id: 'hours', label: 'Horarios', icon: 'solar:clock-circle-bold' },
-                  { id: 'ops', label: 'Operación', icon: 'solar:settings-minimalistic-bold' },
-                  { id: 'payments', label: 'Pagos', icon: 'solar:card-2-bold' }
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 py-4 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all whitespace-nowrap ${
-                      activeTab === tab.id 
-                        ? 'border-indigo-600 text-indigo-600' 
-                        : 'border-transparent text-gray-400 hover:text-gray-600'
-                    }`}
-                  >
-                    <Icon icon={tab.icon} className="text-lg" />
-                    {tab.label}
-                  </button>
-                ))}
+              {/* Tabs Navigation (Pills) */}
+              <div className="px-6 sm:px-8 py-3 border-b border-gray-100 bg-gray-50/60 shrink-0">
+                <div className="flex gap-1.5 p-1 bg-gray-200/50 rounded-2xl w-full sm:w-fit overflow-x-auto custom-scrollbar">
+                  {[
+                    { id: 'info', label: 'Información', icon: 'solar:info-circle-bold' },
+                    { id: 'hours', label: 'Horarios', icon: 'solar:clock-circle-bold' },
+                    { id: 'ops', label: 'Operación & Delivery', icon: 'solar:delivery-bold' },
+                    { id: 'payments', label: 'Pagos', icon: 'solar:card-2-bold' }
+                  ].map(tab => {
+                    const isActive = activeTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+                          isActive 
+                            ? 'bg-[#2f4131] text-white shadow-sm' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-white/70'
+                        }`}
+                      >
+                        <Icon icon={tab.icon} className="text-base" />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                 <div className="flex-1 overflow-y-auto p-4 sm:p-10 space-y-8 custom-scrollbar">
+                 <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 custom-scrollbar pb-8">
                  {activeTab === 'info' && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                          <FormField label="Identificación de la Sede">
+                    <div className="space-y-6 animate-in fade-in duration-200">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                          <FormField label="Identificación de la Sede *">
                             <TextInput 
                                 value={form.name} 
                                 onChange={(e) => setForm({...form, name: e.target.value})} 
-                                placeholder="Ej. Sede Norte Gourmet"
+                                placeholder="Ej. Sede Norte / Zipaquirá Centro"
                                 required
-                                className="text-lg font-black py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white"
                             />
                           </FormField>
-                          <FormField label="WhatsApp de Pedidos">
+                          <FormField label="WhatsApp de Pedidos *">
                             <TextInput 
                                 value={form.whatsapp} 
                                 onChange={(e) => setForm({...form, whatsapp: e.target.value})} 
                                 placeholder="+57 321 456 7890"
                                 required
-                                className="text-lg font-black py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white text-emerald-600"
                             />
                           </FormField>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <FormField label="Teléfono Fijo / Local">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <FormField label="Teléfono Fijo / Local (Opcional)">
                           <TextInput 
                               value={form.phone} 
                               onChange={(e) => setForm({...form, phone: e.target.value})} 
                               placeholder="601 234 5678"
-                              className="text-lg font-black py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white"
                           />
                         </FormField>
-                        <FormField label="Enlace de Google Maps">
+                        <FormField label="Enlace de Google Maps (Para compartir)">
                           <TextInput 
                               value={form.maps_url} 
                               onChange={(e) => setForm({...form, maps_url: e.target.value})} 
                               placeholder="https://maps.app.goo.gl/..."
-                              className="text-lg font-black py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white"
                           />
                         </FormField>
                       </div>
@@ -515,196 +537,215 @@ export default function AdminSedes({ isEmbedded = false }) {
                             value={form.address} 
                             onChange={(e) => setForm({...form, address: e.target.value})} 
                             placeholder="Calle 123 # 45-67, Ciudad"
-                            className="font-bold py-4 px-5 rounded-2xl bg-gray-50 border-gray-100 focus:bg-white"
                           />
                       </FormField>
 
-                      <div className="flex flex-col sm:flex-row gap-6">
-                        <label className={`flex-1 flex items-center gap-4 p-5 rounded-[2rem] border-2 transition-all cursor-pointer group ${form.is_main ? 'bg-gray-900 border-gray-900 text-white shadow-xl' : 'bg-white border-gray-100 hover:border-gray-200 text-gray-500'}`}>
-                          <input 
-                            type="checkbox" 
-                            checked={form.is_main} 
-                            onChange={(e) => setForm({...form, is_main: e.target.checked})} 
-                            className="sr-only"
-                          />
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${form.is_main ? 'bg-white/10' : 'bg-gray-50 text-gray-300'}`}>
+                      {/* Toggles: Operación Base & Estado Online */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                        <div 
+                          onClick={() => setForm({...form, is_main: !form.is_main})}
+                          className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 ${
+                            form.is_main 
+                              ? 'bg-amber-50/60 border-amber-200 shadow-sm' 
+                              : 'bg-white border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                              form.is_main ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-400'
+                            }`}>
                               <Icon icon="solar:star-bold" className="text-xl" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-gray-900 leading-tight">Sede Principal</p>
+                              <p className="text-xs text-gray-500">Punto de venta base y predeterminado</p>
+                            </div>
                           </div>
-                          <div className="flex flex-col">
-                              <span className="text-[12px] font-black uppercase tracking-widest leading-none mb-1">Operación Base</span>
-                              <span className={`text-[9px] font-bold uppercase ${form.is_main ? 'text-indigo-300' : 'text-gray-300'}`}>Punto principal</span>
-                          </div>
-                        </label>
-
-                        <label className={`flex-1 flex items-center gap-4 p-5 rounded-[2rem] border-2 transition-all cursor-pointer group ${form.is_active ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-xl shadow-emerald-50' : 'bg-white border-gray-100 hover:border-gray-200 text-gray-500'}`}>
-                          <input 
-                            type="checkbox" 
-                            checked={form.is_active} 
-                            onChange={(e) => setForm({...form, is_active: e.target.checked})} 
-                            className="sr-only"
+                          <Switch 
+                            checked={form.is_main} 
+                            onChange={(val) => setForm({...form, is_main: val})} 
                           />
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${form.is_active ? 'bg-emerald-500 text-white' : 'bg-gray-50 text-gray-300'}`}>
-                              <Icon icon="solar:check-read-bold" className="text-xl" />
+                        </div>
+
+                        <div 
+                          onClick={() => setForm({...form, is_active: !form.is_active})}
+                          className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 ${
+                            form.is_active 
+                              ? 'bg-emerald-50/60 border-emerald-200 shadow-sm' 
+                              : 'bg-white border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                              form.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'
+                            }`}>
+                              <Icon icon="solar:check-circle-bold" className="text-xl" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-gray-900 leading-tight">Estado Online</p>
+                              <p className="text-xs text-gray-500">Visible para clientes en el menú digital</p>
+                            </div>
                           </div>
-                          <div className="flex flex-col">
-                              <span className="text-[12px] font-black uppercase tracking-widest leading-none mb-1">Estado OnLine</span>
-                              <span className={`text-[9px] font-bold uppercase ${form.is_active ? 'text-emerald-500' : 'text-gray-300'}`}>Visible al cliente</span>
-                          </div>
-                        </label>
+                          <Switch 
+                            checked={form.is_active} 
+                            onChange={(val) => setForm({...form, is_active: val})} 
+                          />
+                        </div>
                       </div>
                     </div>
                  )}
 
                  {activeTab === 'hours' && (
-                   <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                     <div className="mb-6">
-                       <h4 className="text-lg font-black text-gray-900 uppercase italic tracking-tight">Horarios de la Sede</h4>
-                       <p className="text-[12px] text-gray-400 font-medium mt-1">Configura los horarios específicos para esta ubicación.</p>
-                     </div>
-                     {loadingHours ? (
-                       <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
-                     ) : (
-                       <div className="space-y-2">
-                         {hours.map((h, index) => {
-                           const isClosed = h.is_closed;
-                           return (
-                             <div key={h.day_of_week} 
-                               className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-2xl border transition-all gap-4 group ${
-                                 isClosed 
-                                   ? 'bg-gray-50/50 border-gray-100 opacity-60 grayscale' 
-                                   : 'bg-white border-gray-100 hover:border-indigo-100 hover:shadow-sm'
-                               }`}>
-                               
-                               <div className="flex items-center gap-4">
-                                 <div className={`w-10 font-black text-[12px] uppercase tracking-wider italic ${isClosed ? 'text-gray-400' : 'text-gray-900'}`}>
-                                   {['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][h.day_of_week]?.substring(0, 3)}
-                                 </div>
-                                 <div className="flex items-center gap-1">
-                                   <input 
-                                     type="time" 
-                                     value={h.open_time || '08:00'} 
-                                     onChange={(e) => handleUpdateHour(index, 'open_time', e.target.value)}
-                                     disabled={isClosed}
-                                     className="bg-gray-50 border-none rounded-lg px-2 py-1.5 text-[13px] font-black text-gray-700 focus:bg-white focus:ring-2 focus:ring-indigo-50 outline-none disabled:opacity-30 tabular-nums w-20 text-center"
-                                   />
-                                   <span className="text-gray-200 text-xs">—</span>
-                                   <input 
-                                     type="time" 
-                                     value={h.close_time || '22:00'} 
-                                     onChange={(e) => handleUpdateHour(index, 'close_time', e.target.value)}
-                                     disabled={isClosed}
-                                     className="bg-gray-50 border-none rounded-lg px-2 py-1.5 text-[13px] font-black text-gray-700 focus:bg-white focus:ring-2 focus:ring-indigo-50 outline-none disabled:opacity-30 tabular-nums w-20 text-center"
-                                   />
-                                 </div>
-                               </div>
+                    <div className="space-y-5 animate-in fade-in duration-200">
+                      <div>
+                        <h4 className="text-base font-bold text-gray-900">Horarios de Atención</h4>
+                        <p className="text-xs text-gray-500 mt-0.5">Configura los horarios de atención y turnos específicos para esta sede.</p>
+                      </div>
+                      {loadingHours ? (
+                        <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+                      ) : (
+                        <div className="space-y-2.5">
+                          {hours.map((h, index) => {
+                            const isClosed = h.is_closed;
+                            return (
+                              <div key={h.day_of_week} 
+                                className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all gap-3 ${
+                                  isClosed 
+                                    ? 'bg-gray-50/60 border-gray-200/60 opacity-60' 
+                                    : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-xs'
+                                }`}>
+                                
+                                <div className="flex items-center gap-4">
+                                  <div className={`w-12 font-bold text-xs uppercase tracking-wider ${isClosed ? 'text-gray-400' : 'text-gray-800'}`}>
+                                    {['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][h.day_of_week]?.substring(0, 3)}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <input 
+                                      type="time" 
+                                      value={h.open_time || '08:00'} 
+                                      onChange={(e) => handleUpdateHour(index, 'open_time', e.target.value)}
+                                      disabled={isClosed}
+                                      className="bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-800 focus:bg-white focus:ring-1 focus:ring-[#2f4131] outline-none disabled:opacity-30 tabular-nums w-24 text-center"
+                                    />
+                                    <span className="text-gray-300 text-xs">—</span>
+                                    <input 
+                                      type="time" 
+                                      value={h.close_time || '22:00'} 
+                                      onChange={(e) => handleUpdateHour(index, 'close_time', e.target.value)}
+                                      disabled={isClosed}
+                                      className="bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-800 focus:bg-white focus:ring-1 focus:ring-[#2f4131] outline-none disabled:opacity-30 tabular-nums w-24 text-center"
+                                    />
+                                  </div>
+                                </div>
 
-                               <button 
-                                 type="button"
-                                 onClick={() => handleUpdateHour(index, 'is_closed', !isClosed)}
-                                 className={`w-full sm:w-auto justify-center px-4 py-2 rounded-xl border text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${
-                                   isClosed 
-                                     ? 'bg-rose-50 border-rose-100 text-rose-500 shadow-rose-50/50' 
-                                     : 'bg-emerald-50 border-emerald-100 text-emerald-600 shadow-emerald-50/50'
-                                 }`}
-                               >
-                                 <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isClosed ? 'bg-rose-500' : 'bg-emerald-500'}`} />
-                                 {isClosed ? 'Cerrado' : 'Abierto'}
-                               </button>
-                             </div>
-                           );
-                         })}
-                       </div>
-                     )}
-                   </div>
+                                <button 
+                                  type="button"
+                                  onClick={() => handleUpdateHour(index, 'is_closed', !isClosed)}
+                                  className={`w-full sm:w-auto justify-center px-3.5 py-1.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${
+                                    isClosed 
+                                      ? 'bg-rose-50 border-rose-100 text-rose-600' 
+                                      : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                                  }`}
+                                >
+                                  <div className={`w-1.5 h-1.5 rounded-full ${isClosed ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                                  {isClosed ? 'Cerrado' : 'Abierto'}
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                  )}
 
                  {activeTab === 'ops' && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                       <div className="bg-gray-50/50 p-8 rounded-[2.5rem] border border-gray-100">
-                         <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6 flex items-center gap-2">
-                           <Icon icon="solar:delivery-bold" /> Modos de Operación
-                         </h4>
-                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            {[
-                              { id: 'dine_in', label: 'En Local', icon: 'solar:plate-bold' },
-                              { id: 'takeaway', label: 'Para Llevar', icon: 'solar:bag-3-bold' },
-                              { id: 'delivery', label: 'Delivery', icon: 'solar:delivery-bold' }
-                            ].map(mode => (
-                              <button
-                                key={mode.id}
-                                type="button"
-                                onClick={() => {
-                                  const modes = form.operational_modes || [];
-                                  if (modes.includes(mode.id)) {
-                                    setForm({...form, operational_modes: modes.filter(m => m !== mode.id)});
-                                  } else {
-                                    setForm({...form, operational_modes: [...modes, mode.id]});
-                                  }
-                                }}
-                                className={`flex flex-col items-center gap-3 p-6 rounded-[2rem] border-2 transition-all ${
-                                  form.operational_modes?.includes(mode.id)
-                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg'
-                                    : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
-                                }`}
-                              >
-                                <Icon icon={mode.icon} width="24" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">{mode.label}</span>
-                              </button>
-                            ))}
-                         </div>
-                       </div>
-
-                       {/* Guía Rápida de Domicilios */}
-                        <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-[2rem] p-6 text-xs text-emerald-950">
-                          <div className="flex items-center gap-2.5 font-black text-sm text-emerald-900 mb-3">
-                            <Icon icon="solar:lightbulb-bold" className="text-xl text-emerald-600 shrink-0" />
-                            <span>¿Cómo funciona el cálculo inteligente de domicilios?</span>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 leading-relaxed">
-                            <div className="space-y-2">
-                              <p>
-                                <strong>1. Ubicación de tu sede:</strong> En <em>Coordenadas GPS</em> (abajo), pulsa <strong>"Capturar mi GPS actual"</strong> para guardar el punto de partida exacto de tus repartidores.
-                              </p>
-                              <p>
-                                <strong>2. Radio de cobertura:</strong> Define hasta cuántos km entregas. Si un comensal pide desde más lejos, el sistema le avisará amablemente que está fuera de zona.
-                              </p>
-                            </div>
-                            <div className="space-y-2">
-                              <p>
-                                <strong>3. Tarifa base y km extra:</strong> Cobras un valor fijo hasta cierta distancia (ej. 3 km) y un recargo por km adicional para cubrir trayectos lejanos.
-                              </p>
-                              <p>
-                                <strong>4. GPS del comensal:</strong> Tu cliente solo necesita pulsar <em>"Mi GPS"</em> en su teléfono al hacer el pedido para calcular la distancia real al instante sin costo de Google.
-                              </p>
-                            </div>
+                    <div className="space-y-6 animate-in fade-in duration-200">
+                        <div className="bg-gray-50/70 p-5 rounded-2xl border border-gray-200/80">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4 flex items-center gap-2">
+                            <Icon icon="solar:delivery-bold" className="text-base text-gray-700" /> Modos de Operación Habilitados
+                          </h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                             {[
+                               { id: 'dine_in', label: 'En Mesa / Local', icon: 'solar:plate-bold' },
+                               { id: 'takeaway', label: 'Para Llevar', icon: 'solar:bag-3-bold' },
+                               { id: 'delivery', label: 'A Domicilio', icon: 'solar:delivery-bold' }
+                             ].map(mode => {
+                               const isSelected = form.operational_modes?.includes(mode.id);
+                               return (
+                                 <button
+                                   key={mode.id}
+                                   type="button"
+                                   onClick={() => {
+                                     const modes = form.operational_modes || [];
+                                     if (modes.includes(mode.id)) {
+                                       setForm({...form, operational_modes: modes.filter(m => m !== mode.id)});
+                                     } else {
+                                       setForm({...form, operational_modes: [...modes, mode.id]});
+                                     }
+                                   }}
+                                   className={`flex items-center sm:flex-col justify-center gap-2.5 p-4 rounded-xl border transition-all ${
+                                     isSelected
+                                       ? 'bg-[#2f4131] border-[#2f4131] text-white shadow-md shadow-[#2f4131]/20 font-bold'
+                                       : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 font-medium'
+                                   }`}
+                                 >
+                                   <Icon icon={mode.icon} width="22" />
+                                   <span className="text-xs">{mode.label}</span>
+                                 </button>
+                               );
+                             })}
                           </div>
                         </div>
 
-                        <FormField label="Tarifa Base de Domicilio ($ COP)">
-                          <div className="flex items-center gap-4 p-4 bg-white rounded-[2rem] border-2 border-gray-100">
-                             <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-                                <Icon icon="solar:dollar-bold" width="24" />
+                        {/* Guía Rápida de Domicilios */}
+                        <div className="bg-emerald-50/80 border border-emerald-200/90 rounded-2xl p-5 text-xs text-emerald-950">
+                           <div className="flex items-center gap-2 font-bold text-sm text-emerald-900 mb-2.5">
+                             <Icon icon="solar:lightbulb-bold" className="text-lg text-emerald-600 shrink-0" />
+                             <span>¿Cómo funciona el cálculo inteligente de domicilios?</span>
+                           </div>
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 leading-relaxed text-emerald-900/90">
+                             <div className="space-y-1.5">
+                               <p>
+                                 <strong>1. Ubicación de tu sede:</strong> En <em>Coordenadas GPS</em> (abajo), pulsa <strong>"Capturar mi GPS actual"</strong> para fijar el punto de partida de tus repartidores.
+                               </p>
+                               <p>
+                                 <strong>2. Radio de cobertura:</strong> Define el alcance máximo en km. Si un cliente está más lejos, se le avisará amablemente que está fuera de zona.
+                               </p>
                              </div>
-                             <input 
-                                type="number" 
-                                min="0" 
-                                step="500"
-                                value={form.delivery_fee}
-                                onChange={(e) => setForm({...form, delivery_fee: Math.max(0, parseInt(e.target.value) || 0)})}
-                                placeholder="Ej: 4000"
-                                className="flex-1 font-bold text-gray-900 text-lg bg-transparent border-none outline-none focus:ring-0"
-                             />
-                             <div className="text-right">
-                                <span className="text-xs font-bold text-gray-400 block uppercase tracking-tight">COP</span>
+                             <div className="space-y-1.5">
+                               <p>
+                                 <strong>3. Tarifa base y km extra:</strong> Cobras un valor base hasta cierta distancia (ej. 3 km) y un recargo por km adicional.
+                               </p>
+                               <p>
+                                 <strong>4. GPS del comensal:</strong> Tu cliente pulsa <em>"Mi GPS"</em> al ordenar y el sistema calcula la tarifa exacta en segundos.
+                               </p>
                              </div>
-                          </div>
-                       </FormField>
+                           </div>
+                        </div>
 
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                          <FormField label="Tarifa Base de Domicilio ($ COP)">
+                            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200 focus-within:border-[#2f4131] transition-all">
+                               <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700 shrink-0">
+                                  <Icon icon="solar:dollar-bold" width="18" />
+                               </div>
+                               <input 
+                                  type="number" 
+                                  min="0" 
+                                  step="500"
+                                  value={form.delivery_fee}
+                                  onChange={(e) => setForm({...form, delivery_fee: Math.max(0, parseInt(e.target.value) || 0)})}
+                                  placeholder="Ej: 4000"
+                                  className="flex-1 font-semibold text-gray-900 text-sm bg-transparent border-none outline-none focus:ring-0"
+                               />
+                               <span className="text-xs font-semibold text-gray-400">COP</span>
+                            </div>
+                          </FormField>
+
                           <FormField label="Distancia Cubierta por Tarifa Base (km)">
-                             <div className="flex items-center gap-3 p-4 bg-white rounded-[2rem] border-2 border-gray-100">
-                                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-                                   <Icon icon="solar:route-bold" width="20" />
+                             <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200 focus-within:border-[#2f4131] transition-all">
+                                <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-700 shrink-0">
+                                   <Icon icon="solar:route-bold" width="18" />
                                 </div>
                                 <input 
                                    type="number" 
@@ -712,220 +753,237 @@ export default function AdminSedes({ isEmbedded = false }) {
                                    step="0.5"
                                    value={form.base_delivery_distance_km}
                                    onChange={(e) => setForm({...form, base_delivery_distance_km: Math.max(0.5, parseFloat(e.target.value) || 1)})}
-                                   className="flex-1 font-bold text-gray-900 text-base bg-transparent border-none outline-none focus:ring-0"
+                                   className="flex-1 font-semibold text-gray-900 text-sm bg-transparent border-none outline-none focus:ring-0"
                                 />
-                                <span className="text-xs font-bold text-gray-400">km</span>
+                                <span className="text-xs font-semibold text-gray-400">km</span>
                              </div>
                           </FormField>
+                        </div>
 
-                          <FormField label="Costo por Km Adicional ($ COP)">
-                             <div className="flex items-center gap-3 p-4 bg-white rounded-[2rem] border-2 border-gray-100">
-                                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
-                                   <Icon icon="solar:tag-price-bold" width="20" />
-                                </div>
-                                <input 
-                                   type="number" 
-                                   min="0" 
-                                   step="200"
-                                   value={form.extra_km_fee}
-                                   onChange={(e) => setForm({...form, extra_km_fee: Math.max(0, parseInt(e.target.value) || 0)})}
-                                   placeholder="Ej: 1500"
-                                   className="flex-1 font-bold text-gray-900 text-base bg-transparent border-none outline-none focus:ring-0"
-                                />
-                                <span className="text-xs font-bold text-gray-400">COP/km</span>
-                             </div>
-                          </FormField>
-                       </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                           <FormField label="Costo por Km Adicional ($ COP)">
+                              <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200 focus-within:border-[#2f4131] transition-all">
+                                 <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center text-purple-700 shrink-0">
+                                    <Icon icon="solar:tag-price-bold" width="18" />
+                                 </div>
+                                 <input 
+                                    type="number" 
+                                    min="0" 
+                                    step="200"
+                                    value={form.extra_km_fee}
+                                    onChange={(e) => setForm({...form, extra_km_fee: Math.max(0, parseInt(e.target.value) || 0)})}
+                                    placeholder="Ej: 1500"
+                                    className="flex-1 font-semibold text-gray-900 text-sm bg-transparent border-none outline-none focus:ring-0"
+                                 />
+                                 <span className="text-xs font-semibold text-gray-400">COP/km</span>
+                              </div>
+                           </FormField>
 
-                       <FormField label="Envío Gratis por Compras Superiores a ($ COP, 0 = Inactivo)">
-                          <div className="flex items-center gap-4 p-4 bg-white rounded-[2rem] border-2 border-gray-100">
-                             <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
-                                <Icon icon="solar:gift-bold" width="20" />
-                             </div>
-                             <input 
-                                type="number" 
-                                min="0" 
-                                step="5000"
-                                value={form.free_delivery_threshold}
-                                onChange={(e) => setForm({...form, free_delivery_threshold: Math.max(0, parseInt(e.target.value) || 0)})}
-                                placeholder="Ej: 70000 (0 para desactivar)"
-                                className="flex-1 font-bold text-gray-900 text-base bg-transparent border-none outline-none focus:ring-0"
-                             />
-                             <span className="text-xs font-bold text-gray-400">COP</span>
-                          </div>
-                       </FormField>
+                           <FormField label="Envío Gratis por Compras Superiores a ($ COP, 0 = Inactivo)">
+                              <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200 focus-within:border-[#2f4131] transition-all">
+                                 <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center text-amber-700 shrink-0">
+                                    <Icon icon="solar:gift-bold" width="18" />
+                                 </div>
+                                 <input 
+                                    type="number" 
+                                    min="0" 
+                                    step="5000"
+                                    value={form.free_delivery_threshold}
+                                    onChange={(e) => setForm({...form, free_delivery_threshold: Math.max(0, parseInt(e.target.value) || 0)})}
+                                    placeholder="Ej: 70000"
+                                    className="flex-1 font-semibold text-gray-900 text-sm bg-transparent border-none outline-none focus:ring-0"
+                                 />
+                                 <span className="text-xs font-semibold text-gray-400">COP</span>
+                              </div>
+                           </FormField>
+                        </div>
 
-                       <FormField label="Coordenadas GPS de la Sede (Para cálculo de distancia)">
-                          <div className="p-5 bg-white rounded-[2rem] border-2 border-gray-100 flex flex-col gap-3">
-                             <div className="flex items-center justify-between">
-                                <span className="text-xs text-gray-500 font-medium">
-                                   {form.latitude && form.longitude 
-                                     ? `📍 Lat: ${form.latitude}, Lng: ${form.longitude}` 
-                                     : "Sin coordenadas configuradas"}
-                                </span>
-                                <button
-                                   type="button"
-                                   onClick={handleCaptureSedeGPS}
-                                   className="px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-1.5 transition-colors"
-                                >
-                                   <Icon icon="solar:gps-bold" />
-                                   Capturar mi GPS actual
-                                </button>
-                             </div>
-                             <div className="grid grid-cols-2 gap-3">
-                                <input
-                                   type="number"
-                                   step="0.000001"
-                                   placeholder="Latitud (ej: 5.0260)"
-                                   value={form.latitude ?? ''}
-                                   onChange={(e) => setForm({...form, latitude: e.target.value === '' ? null : parseFloat(e.target.value)})}
-                                   className="p-3 bg-gray-50 rounded-xl text-xs font-bold text-gray-800 border border-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                />
-                                <input
-                                   type="number"
-                                   step="0.000001"
-                                   placeholder="Longitud (ej: -74.0040)"
-                                   value={form.longitude ?? ''}
-                                   onChange={(e) => setForm({...form, longitude: e.target.value === '' ? null : parseFloat(e.target.value)})}
-                                   className="p-3 bg-gray-50 rounded-xl text-xs font-bold text-gray-800 border border-gray-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                />
-                             </div>
-                          </div>
-                       </FormField>
+                        <FormField label="Coordenadas GPS de la Sede (Punto de Partida)">
+                           <div className="p-4 bg-white rounded-2xl border border-gray-200 flex flex-col gap-3">
+                              <div className="flex items-center justify-between flex-wrap gap-2">
+                                 <span className="text-xs text-gray-600 font-medium">
+                                    {form.latitude && form.longitude 
+                                      ? `📍 Lat: ${Number(form.latitude).toFixed(6)}, Lng: ${Number(form.longitude).toFixed(6)}` 
+                                      : "Sin coordenadas configuradas"}
+                                 </span>
+                                 <button
+                                    type="button"
+                                    onClick={handleCaptureSedeGPS}
+                                    className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center gap-1.5 transition-colors border border-emerald-200/60"
+                                 >
+                                    <Icon icon="solar:gps-bold" />
+                                    Capturar mi GPS actual
+                                 </button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                 <input
+                                    type="number"
+                                    step="0.000001"
+                                    placeholder="Latitud (ej: 5.0260)"
+                                    value={form.latitude ?? ''}
+                                    onChange={(e) => setForm({...form, latitude: e.target.value === '' ? null : parseFloat(e.target.value)})}
+                                    className="p-2.5 bg-gray-50 rounded-xl text-xs font-semibold text-gray-800 border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2f4131]"
+                                 />
+                                 <input
+                                    type="number"
+                                    step="0.000001"
+                                    placeholder="Longitud (ej: -74.0040)"
+                                    value={form.longitude ?? ''}
+                                    onChange={(e) => setForm({...form, longitude: e.target.value === '' ? null : parseFloat(e.target.value)})}
+                                    className="p-2.5 bg-gray-50 rounded-xl text-xs font-semibold text-gray-800 border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#2f4131]"
+                                 />
+                              </div>
+                           </div>
+                        </FormField>
 
-                       <FormField label="Radio de Cobertura Delivery (Kilómetros)">
-                          <div className="flex items-center gap-6 p-6 bg-white rounded-[2rem] border-2 border-gray-100">
-                             <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-                                <Icon icon="solar:radius-bold" width="24" />
-                             </div>
-                             <input 
-                                type="range" 
-                                min="1" 
-                                max="50" 
-                                step="0.5"
-                                value={form.delivery_radius_km}
-                                onChange={(e) => setForm({...form, delivery_radius_km: parseFloat(e.target.value)})}
-                                className="flex-1 accent-indigo-600 h-1.5 bg-gray-100 rounded-lg cursor-pointer"
-                             />
-                             <div className="w-16 text-center">
-                                <span className="text-lg font-black text-gray-900">{form.delivery_radius_km}</span>
-                                <span className="text-[10px] font-bold text-gray-400 block -mt-1 uppercase tracking-tight">km</span>
-                             </div>
-                          </div>
-                       </FormField>
+                        <FormField label="Radio Máximo de Cobertura Delivery">
+                           <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-200">
+                              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-700 shrink-0">
+                                 <Icon icon="solar:radius-bold" width="20" />
+                              </div>
+                              <input 
+                                 type="range" 
+                                 min="1" 
+                                 max="50" 
+                                 step="0.5"
+                                 value={form.delivery_radius_km}
+                                 onChange={(e) => setForm({...form, delivery_radius_km: parseFloat(e.target.value)})}
+                                 className="flex-1 accent-[#2f4131] h-2 bg-gray-100 rounded-lg cursor-pointer"
+                              />
+                              <div className="w-16 text-right">
+                                 <span className="text-base font-bold text-gray-900">{form.delivery_radius_km}</span>
+                                 <span className="text-xs font-medium text-gray-500 ml-1">km</span>
+                              </div>
+                           </div>
+                        </FormField>
                     </div>
                  )}
 
                  {activeTab === 'payments' && (
-                   <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                      <div className={`p-8 rounded-[2.5rem] border-2 transition-all ${form.independent_payments ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-gray-100'}`}>
-                         <div className="flex items-center justify-between gap-6">
-                            <div className="flex-1">
-                               <h4 className="text-sm font-black text-gray-900 uppercase italic tracking-tight mb-1">Pagos Independientes</h4>
-                               <p className="text-[11px] text-gray-400 font-medium leading-relaxed">
-                                 {form.independent_payments 
-                                  ? "Esta sede gestiona sus propios métodos de pago (Cuentas bancarias, pasarelas, etc)." 
-                                  : "Esta sede utilizará los métodos de pago configurados a nivel de marca."}
-                               </p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setForm({...form, independent_payments: !form.independent_payments})}
-                              className={`w-16 h-8 rounded-full transition-all relative ${form.independent_payments ? 'bg-indigo-600' : 'bg-gray-300'}`}
-                            >
-                              <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${form.independent_payments ? 'right-1' : 'left-1'}`} />
-                            </button>
-                         </div>
-                      </div>
-
-                      {form.independent_payments && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                          <div className="flex items-center justify-between px-2">
-                             <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">Métodos Disponibles</h5>
-                             <span className="text-[9px] font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded-full uppercase tracking-tighter italic">Selecciona los activos para esta sede</span>
+                    <div className="flex flex-col gap-6 animate-in fade-in duration-200">
+                       <div className={`p-5 rounded-2xl border transition-all ${
+                         form.independent_payments 
+                           ? 'bg-emerald-50/60 border-emerald-200' 
+                           : 'bg-gray-50/70 border-gray-200'
+                       }`}>
+                          <div className="flex items-center justify-between gap-4">
+                             <div className="flex-1">
+                                <h4 className="text-sm font-bold text-gray-900 mb-0.5">Pagos Independientes</h4>
+                                <p className="text-xs text-gray-500 leading-relaxed">
+                                  {form.independent_payments 
+                                   ? "Esta sede gestiona sus propios métodos de pago (cuentas bancarias, datáfonos locales)." 
+                                   : "Esta sede utilizará los métodos de pago configurados a nivel general de la marca."}
+                                </p>
+                             </div>
+                             <Switch 
+                               checked={form.independent_payments} 
+                               onChange={(val) => setForm({...form, independent_payments: val})} 
+                             />
                           </div>
+                       </div>
 
-                          <div className="grid grid-cols-1 gap-4">
-                            {brandPaymentMethods.map(method => {
-                              const locPay = locationPayments.find(lp => lp.payment_method_id === method.id);
-                              const isEnabled = locPay?.is_active ?? false;
+                       {form.independent_payments && (
+                         <div className="space-y-4 animate-in fade-in duration-200">
+                           <div className="flex items-center justify-between px-1">
+                              <h5 className="text-xs font-bold uppercase tracking-wider text-gray-500">Métodos Disponibles</h5>
+                              <span className="text-[11px] text-gray-400">Activa los que aplican a esta sede</span>
+                           </div>
 
-                              return (
-                                <div key={method.id} className={`group relative flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all ${isEnabled ? 'bg-white border-indigo-100 shadow-xl shadow-indigo-50/50' : 'bg-gray-50 border-transparent opacity-60 grayscale-[0.5] hover:opacity-100 hover:grayscale-0'}`}>
-                                  <div className="flex items-center gap-5">
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm transition-transform group-hover:scale-110 ${isEnabled ? 'bg-indigo-600 text-white' : 'bg-white text-gray-300'}`}>
-                                      <Icon icon={method.type === 'transfer' ? 'solar:card-transfer-bold' : 'solar:wad-of-money-bold'} width="24" />
-                                    </div>
-                                    <div>
-                                      <h6 className="text-[13px] font-black text-gray-900 uppercase italic tracking-tight leading-none mb-1">{method.name}</h6>
-                                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{method.type === 'transfer' ? 'Transferencia' : 'Efectivo / Datáfono'}</p>
-                                    </div>
-                                  </div>
+                           <div className="grid grid-cols-1 gap-3">
+                             {brandPaymentMethods.map(method => {
+                               const locPay = locationPayments.find(lp => lp.payment_method_id === method.id);
+                               const isEnabled = locPay?.is_active ?? false;
 
-                                  <button
-                                    type="button"
-                                    onClick={() => togglePaymentMethod(method.id, !isEnabled)}
-                                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
-                                      isEnabled 
-                                        ? 'bg-indigo-50 border-indigo-100 text-indigo-600' 
-                                        : 'bg-white border-gray-100 text-gray-400 hover:text-indigo-600'
-                                    }`}
-                                  >
-                                    <Icon icon={isEnabled ? 'solar:check-circle-bold' : 'solar:add-circle-bold'} className="text-base" />
-                                    {isEnabled ? 'Activo' : 'Activar'}
-                                  </button>
+                               return (
+                                 <div 
+                                   key={method.id} 
+                                   className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                                     isEnabled 
+                                       ? 'bg-white border-emerald-200 shadow-sm' 
+                                       : 'bg-gray-50/50 border-gray-200/80 opacity-70'
+                                   }`}
+                                 >
+                                   <div className="flex items-center gap-3.5">
+                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                                       isEnabled ? 'bg-[#2f4131] text-white' : 'bg-gray-100 text-gray-400'
+                                     }`}>
+                                       <Icon icon={method.type === 'transfer' ? 'solar:card-transfer-bold' : 'solar:wad-of-money-bold'} width="20" />
+                                     </div>
+                                     <div>
+                                       <h6 className="text-sm font-bold text-gray-900 leading-tight">{method.name}</h6>
+                                       <p className="text-xs text-gray-400">{method.type === 'transfer' ? 'Transferencia QR / Cuenta' : 'Efectivo / Datáfono'}</p>
+                                     </div>
+                                   </div>
 
-                                  {isEnabled && method.type === 'transfer' && (
-                                    <div className="absolute -bottom-2 right-12 z-10 px-4 py-1.5 bg-indigo-600 text-white rounded-full text-[8px] font-black uppercase tracking-widest shadow-lg shadow-indigo-200 border-2 border-white translate-y-1/2">
-                                      Requiere QR Local
-                                    </div>
-                                  )}
+                                   <button
+                                     type="button"
+                                     onClick={() => togglePaymentMethod(method.id, !isEnabled)}
+                                     className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                                       isEnabled 
+                                         ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                                         : 'bg-white border-gray-200 text-gray-500 hover:text-gray-800'
+                                     }`}
+                                   >
+                                     <Icon icon={isEnabled ? 'solar:check-circle-bold' : 'solar:add-circle-bold'} className="text-sm" />
+                                     {isEnabled ? 'Activo' : 'Activar'}
+                                   </button>
+                                 </div>
+                               );
+                             })}
+
+                             {brandPaymentMethods.length === 0 && (
+                               <div className="p-8 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-center">
+                                 <Icon icon="solar:card-transfer-broken" width="36" className="text-gray-300 mb-2" />
+                                 <p className="text-xs font-semibold text-gray-500">No hay métodos configurados en la marca.</p>
+                               </div>
+                             )}
+                           </div>
+                           
+                           {locationPayments.some(lp => lp.is_active && lp.payment_method?.type === 'transfer') && (
+                             <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200/80 flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0">
+                                   <Icon icon="solar:qr-code-bold" width="18" />
                                 </div>
-                              );
-                            })}
-
-                            {brandPaymentMethods.length === 0 && (
-                              <div className="p-12 border-2 border-dashed border-gray-100 rounded-[2.5rem] flex flex-col items-center justify-center text-center">
-                                <Icon icon="solar:card-transfer-broken" width="40" className="text-gray-200 mb-4" />
-                                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest max-w-[200px]">No hay métodos configurados en la marca.</p>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {locationPayments.some(lp => lp.is_active && lp.payment_method?.type === 'transfer') && (
-                            <div className="mt-10 p-6 bg-amber-50 rounded-[2rem] border border-amber-100 flex items-start gap-4">
-                               <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-amber-200">
-                                  <Icon icon="solar:qr-code-bold" width="20" />
-                               </div>
-                               <div>
-                                  <h6 className="text-[11px] font-black text-amber-800 uppercase tracking-tight mb-1">Nota sobre QRs de Transferencia</h6>
-                                  <p className="text-[10px] font-medium text-amber-600 uppercase tracking-tighter leading-relaxed italic">
-                                    Pronto podrás subir una imagen de QR específica para esta sede. Por ahora se usará el número de cuenta registrado en la marca.
-                                  </p>
-                               </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                   </div>
+                                <div>
+                                   <h6 className="text-xs font-bold text-amber-900 mb-0.5">Nota sobre QRs de Transferencia</h6>
+                                   <p className="text-xs text-amber-800/80 leading-relaxed">
+                                     Pronto podrás subir una imagen de QR específica para esta sede. Por ahora se usará el número de cuenta registrado en la marca.
+                                   </p>
+                                </div>
+                             </div>
+                           )}
+                         </div>
+                       )}
+                    </div>
                  )}
 
                  </div>
-                 <div className="p-4 sm:p-10 sm:pt-6 pt-4 border-t border-gray-100 bg-white flex flex-col sm:flex-row gap-4 shrink-0 z-10">
-                    <SecondaryButton type="button" onClick={() => setIsModalOpen(false)} className="flex-1 rounded-[1.5rem] py-4 sm:py-5 border-gray-100 font-black uppercase tracking-widest text-[11px] text-gray-400">
+                 {/* Footer Sticky */}
+                 <div className="px-6 sm:px-8 py-4 border-t border-gray-100 bg-gray-50/50 flex flex-col-reverse sm:flex-row items-center justify-end gap-3 shrink-0">
+                    <button 
+                      type="button" 
+                      onClick={() => setIsModalOpen(false)} 
+                      className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                    >
                        Cancelar
-                    </SecondaryButton>
-                    <PrimaryButton type="submit" disabled={isSubmitting} className="flex-[2] rounded-[1.5rem] py-4 sm:py-5 shadow-2xl shadow-indigo-100 font-black uppercase tracking-widest text-[11px]">
-                       {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (
-                         <div className="flex items-center justify-center gap-3">
-                           <Icon icon="solar:diskette-bold-duotone" className="text-xl" />
-                           {editingLocation ? 'Guardar Cambios' : 'Crear Sede'}
-                         </div>
+                    </button>
+                    <button 
+                      type="submit" 
+                      disabled={isSubmitting} 
+                      className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#2f4131] hover:bg-[#253527] text-white text-xs font-semibold shadow-md shadow-[#2f4131]/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                       {isSubmitting ? (
+                         <Loader2 className="w-4 h-4 animate-spin" />
+                       ) : (
+                         <>
+                           <Icon icon="solar:diskette-bold-duotone" className="text-base" />
+                           <span>{editingLocation ? 'Guardar Cambios' : 'Crear Sede'}</span>
+                         </>
                        )}
-                    </PrimaryButton>
+                    </button>
                  </div>
               </form>
-           </div>
+            </div>
         </div>,
         document.body
       )}
