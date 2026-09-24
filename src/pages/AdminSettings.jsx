@@ -521,7 +521,7 @@ export default function AdminSettings() {
         {/* ── Tab Content Container */}
         <div className="mt-4 pb-20">
           {activeTab === 'general' && (
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 animate-fadeUp" style={{ animationDelay: '200ms' }}>
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start animate-fadeUp" style={{ animationDelay: '200ms' }}>
               
               {/* LEFT: Operation Logic (Bento Layout) */}
               <div className="xl:col-span-7 space-y-8">
@@ -683,62 +683,6 @@ export default function AdminSettings() {
                       </PrimaryButton>
                     </div>
                   </div>
-                </div>
-
-                {/* ── WhatsApp Module: Customer Support */}
-                <div className="glass-glow bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-xl shadow-gray-50/50 relative overflow-hidden group">
-                  <div className="absolute -right-12 -top-12 w-48 h-48 bg-emerald-50 rounded-full blur-3xl opacity-50 group-hover:opacity-100 transition-opacity" />
-                  
-                  <div className="flex items-start justify-between mb-6 relative z-10">
-                    <div className="flex items-center gap-5">
-                      <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-sm">
-                        <Icon icon="logos:whatsapp-icon" className="text-3xl" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Atención al Cliente</h3>
-                          <span className="text-[10px] font-black text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            Para Comensales
-                          </span>
-                        </div>
-                        <p className="text-[12px] text-gray-400 font-medium">WhatsApp visible para que tus comensales resuelvan dudas sobre su pedido.</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <form onSubmit={handleSaveSettings} className="space-y-6 relative z-10">
-                    <div className={`relative bg-gray-50/50 p-6 rounded-[2rem] border ${!settingsForm.whatsapp_number_orders ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-100'} transition-all hover:bg-white focus-within:bg-white focus-within:ring-4 ${!settingsForm.whatsapp_number_orders ? 'focus-within:ring-red-50' : 'focus-within:ring-emerald-50'}`}>
-                      {!settingsForm.whatsapp_number_orders && (
-                        <div className="absolute top-6 right-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-red-500 bg-red-50 px-3 py-1.5 rounded-full border border-red-100 shadow-sm">
-                          <span className="flex h-2 w-2 relative">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                          </span>
-                          Falta Completar
-                        </div>
-                      )}
-                      <FormField label="Número de WhatsApp para Soporte">
-                        <div className="relative">
-                          <TextInput
-                            value={settingsForm.whatsapp_number_orders}
-                            onChange={(e) => setSettingsForm({ ...settingsForm, whatsapp_number_orders: e.target.value })}
-                            placeholder="Ej. +573001234567"
-                            className="bg-transparent border-none focus:ring-0 text-lg font-black tracking-widest text-[#2f4131] placeholder:text-gray-300 placeholder:font-medium p-0"
-                          />
-                        </div>
-                        <p className={`text-[10px] mt-3 font-medium flex items-center gap-2 ${!settingsForm.whatsapp_number_orders ? 'text-red-400' : 'text-gray-400'}`}>
-                           <Icon icon="heroicons:information-circle" className={!settingsForm.whatsapp_number_orders ? "text-red-500" : "text-emerald-500"} />
-                           Tus comensales verán este canal en el seguimiento del pedido para escribirte si tienen preguntas.
-                        </p>
-                      </FormField>
-                    </div>
-
-                    <div className="flex justify-end pt-2">
-                      <PrimaryButton type="submit" disabled={isSubmittingSettings} className="rounded-2xl px-10 py-4 shadow-xl shadow-gray-200">
-                        {isSubmittingSettings ? 'Sincronizando...' : 'Guardar WhatsApp'}
-                      </PrimaryButton>
-                    </div>
-                  </form>
                 </div>
 
                 {/* ── Telegram Module: Staff Kitchen Comandas (Add-on) */}
@@ -1045,11 +989,24 @@ export default function AdminSettings() {
 
                 {/* ── Payment Modes Module */}
                 <div className="glass-glow bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-xl shadow-gray-50/50 relative overflow-hidden">
-                  <div className="flex items-center gap-4 mb-8">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                       <Icon icon="solar:card-search-linear" className="text-2xl" />
+                  <div className="flex items-center justify-between gap-4 mb-8">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                         <Icon icon="solar:card-search-linear" className="text-2xl" />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-black text-gray-900 uppercase tracking-tight">Estrategia de Recaudo</h4>
+                        <p className="text-[12px] text-gray-400 font-medium">Momento en que se solicita el pago a comensales.</p>
+                      </div>
                     </div>
-                    <h4 className="text-lg font-black text-gray-900 uppercase tracking-tight">Estrategia de Recaudo</h4>
+                    <PrimaryButton 
+                      type="button" 
+                      onClick={handleSaveSettings} 
+                      disabled={isSubmittingSettings} 
+                      className="rounded-xl px-5 py-2.5 text-xs font-bold shadow-md shadow-indigo-500/10 flex items-center gap-2"
+                    >
+                      {isSubmittingSettings ? 'Guardando...' : 'Guardar Flujo'}
+                    </PrimaryButton>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1122,7 +1079,137 @@ export default function AdminSettings() {
                   <div className="flex justify-end mt-6"><PrimaryButton type="button" onClick={handleSaveSettings} disabled={isSubmittingSettings}>Guardar impresion</PrimaryButton></div>
                 </div>
 
-                {/* ── Kitchen & Table Intelligence Module (NEW) */}
+              </div>
+
+              {/* RIGHT: Service Schedule, Customer Support & Intelligence */}
+              <div className="xl:col-span-5 space-y-8">
+                
+                {/* ── Horarios de Servicio */}
+                <div className="glass-glow bg-white rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-50/50 flex flex-col overflow-hidden">
+                  <div className="px-8 py-6 sm:px-10 sm:py-8 border-b border-gray-100 bg-gray-50/30 flex justify-between items-end">
+                    <div>
+                      <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight italic">Horarios de Servicio</h3>
+                      <p className="text-[12px] text-gray-400 mt-1 font-medium">Controla la disponibilidad del menú digital por día.</p>
+                    </div>
+                    <PrimaryButton onClick={handleSaveHours} disabled={isSubmittingHours} className="rounded-xl px-5 py-2.5 text-[11px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">
+                      {isSubmittingHours ? 'Guardando' : 'Actualizar'}
+                    </PrimaryButton>
+                  </div>
+
+                  <div className="p-6 sm:p-8">
+                    <div className="space-y-2">
+                      {hours.map((h, index) => {
+                        const isClosed = h.is_closed;
+                        return (
+                          <div key={h.day_of_week} 
+                            className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all gap-3 group ${
+                              isClosed 
+                                ? 'bg-gray-50/50 border-gray-100 opacity-60 grayscale' 
+                                : 'bg-white border-gray-100 hover:border-indigo-100 hover:shadow-sm'
+                            }`}>
+                            
+                            <div className="flex items-center gap-3 sm:gap-4">
+                              <div className={`w-10 font-black text-[12px] uppercase tracking-wider italic ${isClosed ? 'text-gray-400' : 'text-gray-900'}`}>
+                                {getDayName(h.day_of_week).substring(0, 3)}
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <input 
+                                  type="time" 
+                                  value={h.open_time || '08:00'} 
+                                  onChange={(e) => handleUpdateHour(index, 'open_time', e.target.value)}
+                                  disabled={isClosed}
+                                  className="bg-gray-50 border-none rounded-lg px-2.5 py-1.5 text-[13px] font-black text-gray-700 focus:bg-white focus:ring-2 focus:ring-indigo-50 outline-none disabled:opacity-30 tabular-nums w-24 text-center cursor-pointer"
+                                />
+                                <span className="text-gray-300 text-xs">—</span>
+                                <input 
+                                  type="time" 
+                                  value={h.close_time || '22:00'} 
+                                  onChange={(e) => handleUpdateHour(index, 'close_time', e.target.value)}
+                                  disabled={isClosed}
+                                  className="bg-gray-50 border-none rounded-lg px-2.5 py-1.5 text-[13px] font-black text-gray-700 focus:bg-white focus:ring-2 focus:ring-indigo-50 outline-none disabled:opacity-30 tabular-nums w-24 text-center cursor-pointer"
+                                />
+                              </div>
+                            </div>
+
+                            <button 
+                              onClick={() => handleUpdateHour(index, 'is_closed', !isClosed)}
+                              className={`w-full sm:w-auto justify-center px-4 py-2 rounded-xl border text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 cursor-pointer ${
+                                isClosed 
+                                  ? 'bg-rose-50 border-rose-100 text-rose-500 shadow-rose-50/50' 
+                                  : 'bg-emerald-50 border-emerald-100 text-emerald-600 shadow-emerald-50/50'
+                              }`}
+                            >
+                              <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isClosed ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                              {isClosed ? 'Cerrado' : 'Abierto'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  
+                  <div className="px-8 py-4 sm:px-10 bg-indigo-50/30 border-t border-indigo-50 text-center">
+                     <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Gestión de Disponibilidad Digital</p>
+                  </div>
+                </div>
+
+                {/* ── WhatsApp Module: Customer Support */}
+                <div className="glass-glow bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-xl shadow-gray-50/50 relative overflow-hidden group">
+                  <div className="absolute -right-12 -top-12 w-48 h-48 bg-emerald-50 rounded-full blur-3xl opacity-50 group-hover:opacity-100 transition-opacity" />
+                  
+                  <div className="flex items-start justify-between mb-6 relative z-10">
+                    <div className="flex items-center gap-5">
+                      <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-sm">
+                        <Icon icon="logos:whatsapp-icon" className="text-3xl" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Atención al Cliente</h3>
+                          <span className="text-[10px] font-black text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            Para Comensales
+                          </span>
+                        </div>
+                        <p className="text-[12px] text-gray-400 font-medium">WhatsApp visible para que tus comensales resuelvan dudas sobre su pedido.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleSaveSettings} className="space-y-6 relative z-10">
+                    <div className={`relative bg-gray-50/50 p-6 rounded-[2rem] border ${!settingsForm.whatsapp_number_orders ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-100'} transition-all hover:bg-white focus-within:bg-white focus-within:ring-4 ${!settingsForm.whatsapp_number_orders ? 'focus-within:ring-red-50' : 'focus-within:ring-emerald-50'}`}>
+                      {!settingsForm.whatsapp_number_orders && (
+                        <div className="absolute top-6 right-6 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-red-500 bg-red-50 px-3 py-1.5 rounded-full border border-red-100 shadow-sm">
+                          <span className="flex h-2 w-2 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                          </span>
+                          Falta Completar
+                        </div>
+                      )}
+                      <FormField label="Número de WhatsApp para Soporte">
+                        <div className="relative">
+                          <TextInput
+                            value={settingsForm.whatsapp_number_orders}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, whatsapp_number_orders: e.target.value })}
+                            placeholder="Ej. +573001234567"
+                            className="bg-transparent border-none focus:ring-0 text-lg font-black tracking-widest text-[#2f4131] placeholder:text-gray-300 placeholder:font-medium p-0"
+                          />
+                        </div>
+                        <p className={`text-[10px] mt-3 font-medium flex items-center gap-2 ${!settingsForm.whatsapp_number_orders ? 'text-red-400' : 'text-gray-400'}`}>
+                           <Icon icon="heroicons:information-circle" className={!settingsForm.whatsapp_number_orders ? "text-red-500" : "text-emerald-500"} />
+                           Tus comensales verán este canal en el seguimiento del pedido para escribirte si tienen preguntas.
+                        </p>
+                      </FormField>
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                      <PrimaryButton type="submit" disabled={isSubmittingSettings} className="rounded-2xl px-10 py-4 shadow-xl shadow-gray-200">
+                        {isSubmittingSettings ? 'Sincronizando...' : 'Guardar WhatsApp'}
+                      </PrimaryButton>
+                    </div>
+                  </form>
+                </div>
+
+                {/* ── Kitchen & Table Intelligence Module */}
                 <div className="glass-glow bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-xl shadow-gray-50/50 relative overflow-hidden group">
                   <div className="absolute -left-12 -top-12 w-48 h-48 bg-indigo-50 rounded-full blur-3xl opacity-30 group-hover:opacity-60 transition-opacity" />
                   
@@ -1133,7 +1220,7 @@ export default function AdminSettings() {
                     <h4 className="text-lg font-black text-gray-900 uppercase tracking-tight">Inteligencia Operativa</h4>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-6 relative z-10">
                     {/* Inactivity Threshold */}
                     <div className="bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100 hover:bg-white transition-all group/item">
                        <div className="flex items-center justify-between mb-4">
@@ -1182,7 +1269,7 @@ export default function AdminSettings() {
                   </div>
                 </div>
 
-                {/* ── Economy & Privacy Module (Enhanced) */}
+                {/* ── Economy & Privacy Module */}
                 <div className="glass-glow bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-xl shadow-gray-50/50 relative overflow-hidden group">
                   <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-rose-50 rounded-full blur-3xl opacity-30 group-hover:opacity-60 transition-opacity" />
                   
@@ -1253,77 +1340,6 @@ export default function AdminSettings() {
                   </div>
                 </div>
 
-              </div>
-
-              {/* RIGHT: Service Schedule (Technical Schedule) */}
-              <div className="xl:col-span-5">
-                <div className="glass-glow bg-white rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-50/50 flex flex-col h-full overflow-hidden">
-                  <div className="px-10 py-8 border-b border-gray-100 bg-gray-50/30 flex justify-between items-end">
-                    <div>
-                      <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight italic">Horarios de Servicio</h3>
-                      <p className="text-[12px] text-gray-400 mt-1 font-medium">Controla la disponibilidad del menú digital por día.</p>
-                    </div>
-                    <PrimaryButton onClick={handleSaveHours} disabled={isSubmittingHours} className="rounded-xl px-6 py-2.5 text-[11px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">
-                      {isSubmittingHours ? 'Guardando' : 'Actualizar'}
-                    </PrimaryButton>
-                  </div>
-
-                  <div className="p-8 flex-1">
-                    <div className="space-y-2">
-                      {hours.map((h, index) => {
-                        const isClosed = h.is_closed;
-                        return (
-                          <div key={h.day_of_week} 
-                            className={`flex flex-col xl:flex-row items-start xl:items-center justify-between p-4 rounded-2xl border transition-all gap-4 group ${
-                              isClosed 
-                                ? 'bg-gray-50/50 border-gray-100 opacity-60 grayscale' 
-                                : 'bg-white border-gray-100 hover:border-indigo-100 hover:shadow-sm'
-                            }`}>
-                            
-                            <div className="flex items-center gap-4">
-                              <div className={`w-10 font-black text-[12px] uppercase tracking-wider italic ${isClosed ? 'text-gray-400' : 'text-gray-900'}`}>
-                                {getDayName(h.day_of_week).substring(0, 3)}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <input 
-                                  type="time" 
-                                  value={h.open_time || '08:00'} 
-                                  onChange={(e) => handleUpdateHour(index, 'open_time', e.target.value)}
-                                  disabled={isClosed}
-                                  className="bg-gray-50 border-none rounded-lg px-2 py-1.5 text-[13px] font-black text-gray-700 focus:bg-white focus:ring-2 focus:ring-indigo-50 outline-none disabled:opacity-30 tabular-nums w-20 text-center"
-                                />
-                                <span className="text-gray-200 text-xs">—</span>
-                                <input 
-                                  type="time" 
-                                  value={h.close_time || '22:00'} 
-                                  onChange={(e) => handleUpdateHour(index, 'close_time', e.target.value)}
-                                  disabled={isClosed}
-                                  className="bg-gray-50 border-none rounded-lg px-2 py-1.5 text-[13px] font-black text-gray-700 focus:bg-white focus:ring-2 focus:ring-indigo-50 outline-none disabled:opacity-30 tabular-nums w-20 text-center"
-                                />
-                              </div>
-                            </div>
-
-                            <button 
-                              onClick={() => handleUpdateHour(index, 'is_closed', !isClosed)}
-                              className={`w-full xl:w-auto justify-center px-4 py-2 rounded-xl border text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${
-                                isClosed 
-                                  ? 'bg-rose-50 border-rose-100 text-rose-500 shadow-rose-50/50' 
-                                  : 'bg-emerald-50 border-emerald-100 text-emerald-600 shadow-emerald-50/50'
-                              }`}
-                            >
-                              <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isClosed ? 'bg-rose-500' : 'bg-emerald-500'}`} />
-                              {isClosed ? 'Cerrado' : 'Abierto'}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  
-                  <div className="px-10 py-6 bg-indigo-50/30 border-t border-indigo-50 text-center">
-                     <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Gestión de Disponibilidad Digital</p>
-                  </div>
-                </div>
               </div>
             </div>
           )}
