@@ -10,26 +10,26 @@ const createCustomIcon = (bgColor, iconName) => {
     html: `
       <div style="
         background-color: ${bgColor};
-        width: 36px;
-        height: 36px;
+        width: 38px;
+        height: 38px;
         border-radius: 50% 50% 50% 0;
         transform: rotate(-45deg);
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 4px 14px rgba(0,0,0,0.3);
-        border: 2px solid #ffffff;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+        border: 2.5px solid #ffffff;
       ">
         <div style="transform: rotate(45deg); color: white; display: flex; align-items: center; justify-content: center;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
           </svg>
         </div>
       </div>
     `,
-    iconSize: [36, 36],
-    iconAnchor: [18, 36],
-    popupAnchor: [0, -36]
+    iconSize: [38, 38],
+    iconAnchor: [19, 38],
+    popupAnchor: [0, -38]
   });
 };
 
@@ -39,7 +39,7 @@ export default function CoverageMap({
   radiusKm = 5,
   onLocationChange,
   readOnly = false,
-  height = '280px',
+  height = '300px',
   sedeName = 'Nuestra Sede'
 }) {
   const mapContainerRef = useRef(null);
@@ -61,15 +61,15 @@ export default function CoverageMap({
     if (!mapInstanceRef.current) {
       const map = L.map(mapContainerRef.current, {
         center: [currentLat, currentLng],
-        zoom: 13,
+        zoom: 14,
         zoomControl: true,
         attributionControl: false
       });
 
-      // CartoDB Positron / OSM tiles for clean, modern aesthetics
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      // Official OpenStreetMap tile layer (Crisp, colorful, 100% free, NO watermarks/API keys)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        subdomains: 'abcd'
+        attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
 
       // Sede Marker
@@ -93,28 +93,26 @@ export default function CoverageMap({
         });
       }
 
-      // Coverage Radius Circle
+      // Coverage Radius Circle (meters)
       const circle = L.circle([currentLat, currentLng], {
         radius: (radiusKm || 5) * 1000,
-        color: '#10b981',
-        weight: 2,
+        color: '#059669',
+        weight: 2.5,
         fillColor: '#10b981',
-        fillOpacity: 0.15,
-        dashArray: '4, 6'
+        fillOpacity: 0.18,
+        dashArray: '6, 6'
       }).addTo(map);
 
       mapInstanceRef.current = map;
       markerRef.current = marker;
       circleRef.current = circle;
 
-      // Ensure proper rendering in modals
       setTimeout(() => {
         map.invalidateSize();
       }, 250);
     }
 
     return () => {
-      // Cleanup on unmount
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -147,13 +145,14 @@ export default function CoverageMap({
         className="z-0"
       />
       {!readOnly && (
-        <div className="absolute top-2.5 left-2.5 z-[400] bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-gray-200/80 shadow-xs flex items-center gap-1.5 text-[11px] font-semibold text-gray-700">
-          <Icon icon="solar:hand-shake-bold" className="text-emerald-600 text-sm" />
-          <span>Haz clic o arrastra el pin para ubicar tu sede</span>
+        <div className="absolute top-3 left-12 z-[400] bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-gray-200/80 shadow-sm flex items-center gap-1.5 text-xs font-semibold text-gray-800">
+          <Icon icon="solar:hand-shake-bold" className="text-emerald-700 text-sm" />
+          <span>Arrastra el pin o toca el mapa para fijar tu sede</span>
         </div>
       )}
-      <div className="absolute bottom-2.5 right-2.5 z-[400] bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-gray-200/60 shadow-xs text-[10px] font-bold text-emerald-800">
-        Cobertura: {radiusKm || 5} km
+      <div className="absolute bottom-3 right-3 z-[400] bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-gray-200 shadow-sm text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+        <span>Radio: {radiusKm || 5} km (Diámetro: {((radiusKm || 5) * 2).toFixed(1)} km)</span>
       </div>
     </div>
   );
