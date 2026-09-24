@@ -113,15 +113,16 @@ export default function AdminSettings() {
         };
 
         const modes = getFulfillmentModes(effectiveData);
-        const telegramConcept = Array.isArray(data?.brand_concepts)
-          ? data.brand_concepts.find(c => c && c.id === 'telegram_dispatch')
-          : null;
+        const telegramConcept = (Array.isArray(effectiveConcepts) && effectiveConcepts.find(c => c && c.id === 'telegram_dispatch'))
+          || (Array.isArray(brandLevelRow?.brand_concepts) && brandLevelRow.brand_concepts.find(c => c && c.id === 'telegram_dispatch'))
+          || (Array.isArray(data?.brand_concepts) && data.brand_concepts.find(c => c && c.id === 'telegram_dispatch'))
+          || null;
 
         setSettingsForm({
-          whatsapp_number_orders: data.whatsapp_number_orders || '',
-          telegram_enabled: telegramConcept ? (telegramConcept.enabled ?? true) : Boolean(data.telegram_chat_id),
-          telegram_chat_id: telegramConcept?.chat_id || data.telegram_chat_id || '',
-          telegram_bot_token: telegramConcept?.bot_token || data.telegram_bot_token || '',
+          whatsapp_number_orders: data.whatsapp_number_orders || brandLevelRow?.whatsapp_number_orders || '',
+          telegram_enabled: telegramConcept ? (telegramConcept.enabled ?? true) : Boolean(data.telegram_chat_id || brandLevelRow?.telegram_chat_id),
+          telegram_chat_id: telegramConcept?.chat_id || data.telegram_chat_id || brandLevelRow?.telegram_chat_id || '',
+          telegram_bot_token: telegramConcept?.bot_token || data.telegram_bot_token || brandLevelRow?.telegram_bot_token || '',
           is_service_fee_enabled: data.is_service_fee_enabled ?? false,
           service_fee_percentage: data.service_fee_percentage ?? 10,
           pay_before_service: data.pay_before_service ?? false,
@@ -228,11 +229,17 @@ export default function AdminSettings() {
         }
       };
 
+      const existingTelegram = Array.isArray(settings?.brand_concepts)
+        ? settings.brand_concepts.find(c => c && c.id === 'telegram_dispatch')
+        : null;
+
       const telegramDispatch = {
         id: 'telegram_dispatch',
-        enabled: Boolean(settingsForm.telegram_enabled),
-        chat_id: settingsForm.telegram_chat_id ? String(settingsForm.telegram_chat_id).trim() : '',
-        bot_token: settingsForm.telegram_bot_token ? String(settingsForm.telegram_bot_token).trim() : null
+        enabled: settingsForm.telegram_chat_id 
+          ? Boolean(settingsForm.telegram_enabled) 
+          : (existingTelegram ? Boolean(existingTelegram.enabled) : Boolean(settingsForm.telegram_enabled)),
+        chat_id: settingsForm.telegram_chat_id ? String(settingsForm.telegram_chat_id).trim() : (existingTelegram?.chat_id || ''),
+        bot_token: settingsForm.telegram_bot_token ? String(settingsForm.telegram_bot_token).trim() : (existingTelegram?.bot_token || null)
       };
 
       const payload = {
@@ -284,12 +291,12 @@ export default function AdminSettings() {
 
         if (bRow?.id) {
           const bConcepts = Array.isArray(bRow.brand_concepts)
-            ? bRow.brand_concepts.filter(c => c && c.id !== 'operations_model')
+            ? bRow.brand_concepts.filter(c => c && c.id !== 'operations_model' && c.id !== 'telegram_dispatch')
             : [];
           await supabase
             .from('restaurant_settings')
             .update({
-              brand_concepts: [operationsModel, ...bConcepts],
+              brand_concepts: [operationsModel, telegramDispatch, ...bConcepts],
               updated_at: new Date().toISOString()
             })
             .eq('id', bRow.id);
