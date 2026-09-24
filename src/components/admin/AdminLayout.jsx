@@ -252,6 +252,25 @@ export default function AdminLayout() {
     setCurrentPage(pageId);
   };
 
+  // ─── Aluna Copilot: listener para navegación y atajos asistidos (Camino 3) ───
+  useEffect(() => {
+    const handleAlunaAction = (e) => {
+      const pageId = e.detail?.target || e.detail?.pageId;
+      if (pageId) {
+        handleSelectPage(pageId);
+      }
+    };
+
+    window.addEventListener('aluna:navigate', handleAlunaAction);
+    window.addEventListener('aluna:prefill', handleAlunaAction);
+    window.addEventListener('aluna:open-modal', handleAlunaAction);
+    return () => {
+      window.removeEventListener('aluna:navigate', handleAlunaAction);
+      window.removeEventListener('aluna:prefill', handleAlunaAction);
+      window.removeEventListener('aluna:open-modal', handleAlunaAction);
+    };
+  }, [can, planLoading]);
+
   const logoUrl = activeBrand?.logo_url || restaurantSettings?.logo_url || "/favicon.png";
   const restaurantName = activeBrand?.name || restaurantSettings?.business_name || "Mi Negocio";
 

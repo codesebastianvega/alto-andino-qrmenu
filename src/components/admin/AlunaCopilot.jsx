@@ -4,6 +4,7 @@ import { chatWithAluna, executeAlunaAction, executeAlunaCatalogManagementAction,
 import CostedProductWorkflow from './aluna/CostedProductWorkflow';
 import OperationsWorkflow from './aluna/OperationsWorkflow';
 import ChangeHistory from './aluna/ChangeHistory';
+import { GuidanceCard, AgenticProposalCard, DeepLinkCard, PlanInfoCard } from './aluna/CaminoCards';
 
 const STATUS_STYLES = {
   ready: { icon: CheckCircle2, label: 'Listo', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -240,6 +241,45 @@ function LumiEmblem({ size = 22, className = '' }) {
   );
 }
 
+const KEYWORD_PAGES = {
+  'producto': 'products', 'plato': 'products', 'carta': 'products', 'precios': 'products',
+  'categoria': 'categories', 'categoría': 'categories',
+  'modificador': 'modifier_groups', 'extra': 'modifier_groups', 'opcion': 'modifier_groups', 'opción': 'modifier_groups',
+  'horario': 'settings', 'domicilio': 'settings', 'whatsapp': 'settings', 'propina': 'settings', 'impresion': 'settings', 'impresión': 'settings', 'pago': 'settings',
+  'receta': 'recipes', 'costo': 'recipes', 'costeo': 'recipes',
+  'inventario': 'inventory', 'stock': 'inventory', 'insumo': 'inventory',
+  'mesa': 'tables', 'mesas': 'tables', 'qr': 'tables', 'salon': 'tables', 'salón': 'tables',
+  'sede': 'sedes', 'sucursal': 'sedes',
+  'web': 'web', 'portada': 'web', 'banner': 'web', 'color': 'web',
+  'personal': 'staff', 'mesero': 'staff', 'turno': 'staff',
+};
+
+function detectTargetPage(text) {
+  const norm = String(text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  for (const [kw, page] of Object.entries(KEYWORD_PAGES)) {
+    if (new RegExp(`\\b${kw}\\b`, 'i').test(norm)) return page;
+  }
+  return null;
+}
+
+function parseStepsFromText(text) {
+  const lines = String(text || '').split('\n');
+  const steps = [];
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    const match = trimmed.match(/^(?:(?:\d+[\.\)]\s*)|(?:paso\s*\d+[:\.]?\s*)|(?:[-•*]\s+))(.*)/i);
+    if (match && match[1] && match[1].trim().length > 5) {
+      steps.push(match[1].trim());
+    }
+  });
+  return steps;
+}
+
+function extractTipFromText(text) {
+  const match = String(text || '').match(/(?:consejo|tip|recomendaci[oó]n|nota|recuerda):\s*([^\n\.]+[\.]?)/i);
+  return match ? match[1].trim() : null;
+}
+
 export default function AlunaCopilot({ brand, location, locationId, onNavigate, recipesEnabled = false }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -319,6 +359,40 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
 
   const openChanges = () => { setWorkflow('change_history'); loadChanges(); };
 
+  const handleDeepNavigate = (pageId) => {
+    setIsOpen(false);
+    if (onNavigate) onNavigate(pageId);
+    window.dispatchEvent(new CustomEvent('aluna:navigate', { detail: { target: pageId } }));
+  };
+
+  const handleDeepPrefill = (pageId, prefillData) => {
+    setIsOpen(false);
+    if (onNavigate) onNavigate(pageId);
+    window.dispatchEvent(new CustomEvent('aluna:prefill', { 
+      detail: { target: pageId, data: prefillData } 
+    }));
+  };
+
+  const handleApproveProposalCard = (card) => {
+    if (!card) return;
+    if (card.action === 'create_catalog') {
+      setWorkflow('create_catalog');
+    } else if (card.action === 'create_costed_product') {
+      setWorkflow('create_costed_product');
+    } else if (card.action === 'create_location') {
+      setWorkflow('create_location');
+    } else if (card.action === 'edit_product_price' && card.product) {
+      setSelectedProduct(card.product);
+      setWorkflow('edit_product_price');
+    } else if (['update_business_hours', 'create_payment_method', 'update_printing_settings', 'create_modifier_group'].includes(card.action)) {
+      setWorkflow(card.action);
+    }
+  };
+
+  const handleDismissCard = (index) => {
+    setMessages((current) => current.map((m, i) => i === index ? { ...m, card: null } : m));
+  };
+
   const sendMessage = async (rawMessage) => {
     const userMessage = String(rawMessage || '').trim();
     if (!userMessage || isLoading) return;
@@ -331,7 +405,84 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
     try {
       const response = await chatWithAluna({ brandId, locationId, message: userMessage, history: messages, draft: catalogDraft, features: { recipes_enabled: recipesEnabled } });
       const assistantReply = safeAssistantReply(response.reply);
-      setMessages((current) => [...current, { role: 'assistant', content: assistantReply }]);
+
+      // ─── Detect Camino Card representation ───
+      let card = null;
+      const lowerUser = userMessage.toLowerCase();
+      const isPlanQuery = /cu[aá]l.*plan|cu[aá]ntos?.*token|cu[aá]ntas?.*consulta|mi.*plan|l[ií]mite.*ia|cuota/i.test(lowerUser);
+
+      if (isPlanQuery) {
+        const planId = brand?.plan_id || 'plan_esencial';
+        const planName = brand?.plans?.name || (planId.includes('premium') ? 'Premium' : planId.includes('profesional') ? 'Profesional' : planId.includes('esencial') ? 'Esencial' : 'Emprendedor');
+        const allowedCaminos = planId.includes('premium') || planId.includes('profesional') ? [1, 2, 3] : planId.includes('esencial') ? [1, 2] : [1];
+        const monthlyLimit = planId.includes('premium') ? 1000 : planId.includes('profesional') ? 300 : planId.includes('esencial') ? 100 : 30;
+        card = {
+          type: 'plan_info',
+          planName,
+          usage: brand?.ai_generations_used || 0,
+          monthlyLimit,
+          caminos: allowedCaminos,
+        };
+      } else if (response.proposal_ready || ['create_catalog', 'create_costed_product', 'create_location', 'update_business_hours', 'create_payment_method', 'create_modifier_group'].includes(response.intent)) {
+        // Camino 2: Propuesta Agéntica
+        const isProduct = response.intent === 'create_catalog' || response.intent === 'create_costed_product';
+        const draft = response.catalog_draft || {};
+        const beforeAfter = isProduct ? [
+          { label: 'Producto', before: 'No existía', after: draft.product_name || 'Nuevo plato' },
+          { label: 'Precio', before: '—', after: draft.price ? `$ ${Number(draft.price).toLocaleString('es-CO')}` : 'Por definir' },
+          { label: 'Categoría', before: '—', after: draft.category_name || 'Sin categoría' },
+        ] : [];
+
+        card = {
+          type: 'proposal',
+          title: isProduct ? `Crear plato: ${draft.product_name || 'Nuevo plato'}` : `Modificación de ${response.intent}`,
+          summary: assistantReply,
+          beforeAfter,
+          riskLevel: isProduct ? 'medium' : 'low',
+          action: response.intent,
+          draft,
+        };
+      } else if (response.matched_product && /precio|costo|editar/i.test(userMessage)) {
+        // Camino 2: Propuesta de Precio
+        card = {
+          type: 'proposal',
+          title: `Actualizar precio de ${response.matched_product.name}`,
+          summary: 'Aluna preparó la actualización de precio para este producto.',
+          beforeAfter: [
+            { label: 'Precio actual', before: `$ ${Number(response.matched_product.price || 0).toLocaleString('es-CO')}`, after: 'Nuevo precio' }
+          ],
+          riskLevel: 'low',
+          action: 'edit_product_price',
+          product: response.matched_product,
+        };
+      } else if (/d[oó]nde|ir a|c[oó]mo llego|atajo|acceso|abr[ir|e]|mu[eé]strame/i.test(lowerUser)) {
+        // Camino 3: Deep Link / Atajo Asistido
+        const target = detectTargetPage(userMessage + ' ' + assistantReply);
+        if (target) {
+          card = {
+            type: 'deep_link',
+            title: `Acceso rápido a ${target}`,
+            description: `Haz clic para ir directamente a esta sección del administrador sin navegar por los menús.`,
+            targetPage: target,
+            prefillData: response.catalog_draft && Object.keys(response.catalog_draft).length > 0 ? response.catalog_draft : null,
+          };
+        }
+      } else {
+        // Camino 1: Guía Manual (si hay pasos en el texto o si la pregunta es instructiva)
+        const steps = parseStepsFromText(assistantReply);
+        const target = detectTargetPage(userMessage + ' ' + assistantReply);
+        if (steps.length >= 2 || /c[oó]mo|paso|qu[eé] hago/i.test(lowerUser)) {
+          card = {
+            type: 'guidance',
+            title: `Guía paso a paso`,
+            steps: steps.length >= 2 ? steps : [assistantReply],
+            tip: extractTipFromText(assistantReply),
+            targetPage: target,
+          };
+        }
+      }
+
+      setMessages((current) => [...current, { role: 'assistant', content: assistantReply, card }]);
       setSuggestedIntent(response.intent);
       const remoteReplies = Array.isArray(response.suggested_replies)
         ? response.suggested_replies.filter((reply) => typeof reply === 'string' && reply.trim()).map((reply) => reply.trim()).slice(0, 4)
@@ -559,8 +710,62 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
               {workflow == null && messages.length > 0 ? (
                 <div className="mt-5 space-y-3" aria-live="polite">
                   {messages.map((message, index) => (
-                    <div key={`${message.role}-${index}`} className={`max-w-[94%] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[86%] ${message.role === 'user' ? 'ml-auto bg-[#173D24] text-white' : 'border border-emerald-100 bg-white text-gray-700'}`}>
-                      {message.content}
+                    <div key={`${message.role}-${index}`} className="space-y-2">
+                      <div className={`max-w-[94%] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[86%] ${message.role === 'user' ? 'ml-auto bg-[#173D24] text-white' : 'border border-emerald-100 bg-white text-gray-700'}`}>
+                        {message.content}
+                      </div>
+
+                      {message.card?.type === 'guidance' && (
+                        <div className="w-full">
+                          <GuidanceCard
+                            title={message.card.title}
+                            steps={message.card.steps}
+                            tip={message.card.tip}
+                            targetPage={message.card.targetPage}
+                            onNavigate={handleDeepNavigate}
+                          />
+                        </div>
+                      )}
+
+                      {message.card?.type === 'deep_link' && (
+                        <div className="w-full">
+                          <DeepLinkCard
+                            title={message.card.title}
+                            description={message.card.description}
+                            targetPage={message.card.targetPage}
+                            pageLabel={message.card.pageLabel}
+                            prefillData={message.card.prefillData}
+                            onNavigate={handleDeepNavigate}
+                            onPrefill={handleDeepPrefill}
+                          />
+                        </div>
+                      )}
+
+                      {message.card?.type === 'proposal' && (
+                        <div className="w-full">
+                          <AgenticProposalCard
+                            title={message.card.title}
+                            summary={message.card.summary}
+                            beforeAfter={message.card.beforeAfter}
+                            riskLevel={message.card.riskLevel}
+                            isExecuting={isLoading}
+                            onApprove={() => handleApproveProposalCard(message.card)}
+                            onCancel={() => handleDismissCard(index)}
+                            details={message.card.details}
+                          />
+                        </div>
+                      )}
+
+                      {message.card?.type === 'plan_info' && (
+                        <div className="w-full">
+                          <PlanInfoCard
+                            planName={message.card.planName}
+                            usage={message.card.usage}
+                            monthlyLimit={message.card.monthlyLimit}
+                            caminos={message.card.caminos}
+                          />
+                        </div>
+                      )}
                     </div>
                   ))}
                   {selectedProduct ? <ProductContextCard product={selectedProduct} recipesEnabled={recipesEnabled} onEditPrice={() => setWorkflow('edit_product_price')} onCreateRecipe={() => setWorkflow('create_costed_product')} /> : null}
