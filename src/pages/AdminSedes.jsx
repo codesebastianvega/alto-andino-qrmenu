@@ -838,22 +838,73 @@ export default function AdminSedes({ isEmbedded = false }) {
                         </FormField>
 
                         <FormField label="Radio Máximo de Cobertura Delivery">
-                           <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-200">
-                              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-700 shrink-0">
-                                 <Icon icon="solar:radius-bold" width="20" />
+                           <div className="flex flex-col gap-3 p-4 bg-white rounded-2xl border border-gray-200">
+                              <div className="flex items-center gap-3 sm:gap-4">
+                                 <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700 shrink-0">
+                                    <Icon icon="solar:radius-bold" width="20" />
+                                 </div>
+                                 <input 
+                                    type="range" 
+                                    min="0.3" 
+                                    max="25" 
+                                    step="0.1" 
+                                    value={form.delivery_radius_km || 1}
+                                    onChange={(e) => setForm({...form, delivery_radius_km: parseFloat(e.target.value) || 0.5})}
+                                    className="flex-1 accent-[#2f4131] h-2 bg-gray-100 rounded-lg cursor-pointer"
+                                 />
+                                 <div className="flex items-center gap-1 shrink-0 bg-gray-50 p-1 rounded-xl border border-gray-200">
+                                    <button
+                                       type="button"
+                                       onClick={() => setForm(f => ({ ...f, delivery_radius_km: Math.max(0.3, Number(((f.delivery_radius_km || 1) - 0.2).toFixed(1))) }))}
+                                       className="w-7 h-7 rounded-lg bg-white hover:bg-gray-200 flex items-center justify-center text-xs font-black text-gray-700 shadow-2xs transition-colors"
+                                       title="Reducir 200m"
+                                    >
+                                       -
+                                    </button>
+                                    <input
+                                       type="number"
+                                       step="0.1"
+                                       min="0.3"
+                                       max="25"
+                                       value={form.delivery_radius_km ?? ''}
+                                       onChange={(e) => setForm({...form, delivery_radius_km: e.target.value === '' ? 1 : Math.max(0.3, parseFloat(e.target.value))})}
+                                       className="w-14 text-center font-extrabold text-sm bg-transparent border-none outline-none p-0 focus:ring-0 text-gray-900"
+                                    />
+                                    <button
+                                       type="button"
+                                       onClick={() => setForm(f => ({ ...f, delivery_radius_km: Math.min(25, Number(((f.delivery_radius_km || 1) + 0.2).toFixed(1))) }))}
+                                       className="w-7 h-7 rounded-lg bg-white hover:bg-gray-200 flex items-center justify-center text-xs font-black text-gray-700 shadow-2xs transition-colors"
+                                       title="Aumentar 200m"
+                                    >
+                                       +
+                                    </button>
+                                    <span className="text-[11px] font-bold text-gray-400 pr-1">km</span>
+                                 </div>
                               </div>
-                              <input 
-                                 type="range" 
-                                 min="1" 
-                                 max="50" 
-                                 step="0.5"
-                                 value={form.delivery_radius_km}
-                                 onChange={(e) => setForm({...form, delivery_radius_km: parseFloat(e.target.value)})}
-                                 className="flex-1 accent-[#2f4131] h-2 bg-gray-100 rounded-lg cursor-pointer"
-                              />
-                              <div className="w-16 text-right">
-                                 <span className="text-base font-bold text-gray-900">{form.delivery_radius_km}</span>
-                                 <span className="text-xs font-medium text-gray-500 ml-1">km</span>
+
+                              {/* Quick Presets */}
+                              <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-gray-100">
+                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">Rápido:</span>
+                                 {[
+                                    { label: '0.8 km (Barrio)', val: 0.8 },
+                                    { label: '1.5 km (Sector)', val: 1.5 },
+                                    { label: '3.0 km (Urbano)', val: 3.0 },
+                                    { label: '5.0 km (Municipio)', val: 5.0 },
+                                    { label: '10 km (Regional)', val: 10.0 }
+                                 ].map(preset => (
+                                    <button
+                                       key={preset.val}
+                                       type="button"
+                                       onClick={() => setForm({...form, delivery_radius_km: preset.val})}
+                                       className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                                          form.delivery_radius_km === preset.val
+                                             ? 'bg-[#2f4131] text-white shadow-xs font-bold'
+                                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                       }`}
+                                    >
+                                       {preset.label}
+                                    </button>
+                                 ))}
                               </div>
                            </div>
                         </FormField>

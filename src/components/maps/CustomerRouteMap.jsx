@@ -62,7 +62,6 @@ export default function CustomerRouteMap({
         doubleClickZoom: false
       });
 
-      // Official OpenStreetMap tile layer (Crisp, colorful, no watermark)
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap contributors'
@@ -105,15 +104,24 @@ export default function CustomerRouteMap({
     };
   }, [sedeCoords, customerCoords, isCovered]);
 
-  // 2. Initialize Full-Screen Interactive Modal Map when modal opens
+  // 2. Initialize Full-Screen Interactive Modal Map with Bulletproof ResizeObserver
   useEffect(() => {
-    if (!isModalOpen || !modalMapContainerRef.current) return;
+    if (!isModalOpen) return;
     if (!sedeCoords?.[0] || !customerCoords?.[0]) return;
+
+    let map = null;
+    let resizeObserver = null;
 
     const timer = setTimeout(() => {
       if (!modalMapContainerRef.current) return;
 
-      const map = L.map(modalMapContainerRef.current, {
+      // Clean up previous instance if any
+      if (modalMapInstanceRef.current) {
+        modalMapInstanceRef.current.remove();
+        modalMapInstanceRef.current = null;
+      }
+
+      map = L.map(modalMapContainerRef.current, {
         zoomControl: true,
         attributionControl: false,
         dragging: true,
@@ -154,7 +162,7 @@ export default function CustomerRouteMap({
           color: '#059669',
           weight: 2,
           fillColor: '#10b981',
-          fillOpacity: 0.12,
+          fillOpacity: 0.15,
           dashArray: '6, 6'
         }).addTo(map);
       }
@@ -163,11 +171,28 @@ export default function CustomerRouteMap({
       map.fitBounds(bounds, { padding: [50, 50] });
 
       modalMapInstanceRef.current = map;
+
+      // Watch container resize (e.g. animation finished or modal layout computed)
+      if (window.ResizeObserver && modalMapContainerRef.current) {
+        resizeObserver = new ResizeObserver(() => {
+          if (map) {
+            map.invalidateSize();
+          }
+        });
+        resizeObserver.observe(modalMapContainerRef.current);
+      }
+
+      // Staggered invalidations for immediate rendering
       map.invalidateSize();
-    }, 150);
+      setTimeout(() => map && map.invalidateSize(), 150);
+      setTimeout(() => map && map.invalidateSize(), 400);
+    }, 100);
 
     return () => {
       clearTimeout(timer);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
       if (modalMapInstanceRef.current) {
         modalMapInstanceRef.current.remove();
         modalMapInstanceRef.current = null;
@@ -203,8 +228,8 @@ export default function CustomerRouteMap({
 
       {/* Full-Screen Interactive Detail Modal */}
       {isModalOpen && createPortal(
-        <div className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] border border-gray-100 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-gray-100">
             {/* Modal Header */}
             <div className="px-5 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
               <div className="flex items-center gap-3">
@@ -231,14 +256,14 @@ export default function CustomerRouteMap({
               </button>
             </div>
 
-            {/* Interactive Leaflet Map Container */}
-            <div className="relative flex-1 min-h-[380px] sm:min-h-[460px] w-full bg-gray-100">
-              <div ref={modalMapContainerRef} className="w-full h-full" />
+            {/* Interactive Leaflet Map Container with EXPLICIT pixel height */}
+            <div className="relative w-full bg-gray-100" style={{ height: '420px', minHeight: '420px' }}>
+              <div ref={modalMapContainerRef} style={{ width: '100%', height: '100%' }} className="z-0" />
               
               {/* Instructions Badge */}
               <div className="absolute top-3 left-14 z-[400] bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-gray-200 shadow-sm text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                 <Icon icon="solar:cursor-square-bold" className="text-emerald-700" />
-                <span>Usa dos dedos o la rueda para hacer zoom</span>
+                <span>Haz zoom o arrastra libremente para explorar las calles</span>
               </div>
             </div>
 
