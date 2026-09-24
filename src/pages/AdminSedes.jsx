@@ -508,7 +508,7 @@ export default function AdminSedes({ isEmbedded = false }) {
                 </div>
               </div>
 
-              <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+              <form noValidate onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
                  <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 custom-scrollbar pb-8">
                  {activeTab === 'info' && (
                     <div className="space-y-6 animate-in fade-in duration-200">
@@ -748,7 +748,7 @@ export default function AdminSedes({ isEmbedded = false }) {
                                <input 
                                   type="number" 
                                   min="0" 
-                                  step="500"
+                                  step="any"
                                   value={form.delivery_fee}
                                   onChange={(e) => setForm({...form, delivery_fee: Math.max(0, parseInt(e.target.value) || 0)})}
                                   placeholder="Ej: 4000"
@@ -766,7 +766,7 @@ export default function AdminSedes({ isEmbedded = false }) {
                                 <input 
                                    type="number" 
                                    min="0.5" 
-                                   step="0.5"
+                                   step="any"
                                    value={form.base_delivery_distance_km}
                                    onChange={(e) => setForm({...form, base_delivery_distance_km: Math.max(0.5, parseFloat(e.target.value) || 1)})}
                                    className="flex-1 font-semibold text-gray-900 text-sm bg-transparent border-none outline-none focus:ring-0"
@@ -785,7 +785,7 @@ export default function AdminSedes({ isEmbedded = false }) {
                                  <input 
                                     type="number" 
                                     min="0" 
-                                    step="200"
+                                    step="any"
                                     value={form.extra_km_fee}
                                     onChange={(e) => setForm({...form, extra_km_fee: Math.max(0, parseInt(e.target.value) || 0)})}
                                     placeholder="Ej: 1500"
@@ -803,7 +803,7 @@ export default function AdminSedes({ isEmbedded = false }) {
                                  <input 
                                     type="number" 
                                     min="0" 
-                                    step="5000"
+                                    step="any"
                                     value={form.free_delivery_threshold}
                                     onChange={(e) => setForm({...form, free_delivery_threshold: Math.max(0, parseInt(e.target.value) || 0)})}
                                     placeholder="Ej: 70000"
@@ -834,7 +834,7 @@ export default function AdminSedes({ isEmbedded = false }) {
                               <div className="grid grid-cols-2 gap-3">
                                  <input
                                     type="number"
-                                    step="0.000001"
+                                    step="any"
                                     placeholder="Latitud (ej: 5.0260)"
                                     value={form.latitude ?? ''}
                                     onChange={(e) => setForm({...form, latitude: e.target.value === '' ? null : parseFloat(e.target.value)})}
@@ -842,7 +842,7 @@ export default function AdminSedes({ isEmbedded = false }) {
                                  />
                                  <input
                                     type="number"
-                                    step="0.000001"
+                                    step="any"
                                     placeholder="Longitud (ej: -74.0040)"
                                     value={form.longitude ?? ''}
                                     onChange={(e) => setForm({...form, longitude: e.target.value === '' ? null : parseFloat(e.target.value)})}
