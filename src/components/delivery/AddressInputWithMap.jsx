@@ -3,6 +3,7 @@ import { Icon } from '@iconify-icon/react';
 import { useGooglePlaces } from '@/hooks/useGooglePlaces';
 import { estimateRoadDistance, calculateDynamicDeliveryFee } from '@/utils/geoDistance';
 import { formatCOP } from '@/utils/money';
+import CustomerRouteMap from '@/components/maps/CustomerRouteMap';
 
 export default function AddressInputWithMap({
   value,
@@ -17,6 +18,8 @@ export default function AddressInputWithMap({
   const [geoError, setGeoError] = useState(null);
   const [calculatedDistance, setCalculatedDistance] = useState(null);
   const [feeDetails, setFeeDetails] = useState(null);
+  const [userCoords, setUserCoords] = useState(null);
+  const [showMiniMap, setShowMiniMap] = useState(true);
 
   const { isLoaded: isGoogleLoaded, attachAutocomplete } = useGooglePlaces();
 
@@ -55,9 +58,12 @@ export default function AddressInputWithMap({
     attachAutocomplete(inputRef.current, (selectedPlace) => {
       onChange(selectedPlace.address);
 
-      if (hasSedeCoords && selectedPlace.lat && selectedPlace.lng) {
-        const roadDist = estimateRoadDistance(sedeLat, sedeLng, selectedPlace.lat, selectedPlace.lng);
-        setCalculatedDistance(roadDist);
+      if (selectedPlace.lat && selectedPlace.lng) {
+        setUserCoords({ lat: selectedPlace.lat, lng: selectedPlace.lng });
+        if (hasSedeCoords) {
+          const roadDist = estimateRoadDistance(sedeLat, sedeLng, selectedPlace.lat, selectedPlace.lng);
+          setCalculatedDistance(roadDist);
+        }
       }
     });
   }, [isGoogleLoaded, attachAutocomplete, hasSedeCoords, sedeLat, sedeLng, onChange]);
@@ -76,6 +82,7 @@ export default function AddressInputWithMap({
       async (pos) => {
         const userLat = pos.coords.latitude;
         const userLng = pos.coords.longitude;
+        setUserCoords({ lat: userLat, lng: userLng });
 
         let detectedAddress = `Ubicación GPS (${userLat.toFixed(4)}, ${userLng.toFixed(4)})`;
 
@@ -138,10 +145,13 @@ export default function AddressInputWithMap({
           onChange={(e) => {
             onChange(e.target.value);
             // Reset distance if manual typing changes significantly
-            if (!e.target.value) setCalculatedDistance(null);
+            if (!e.target.value) {
+              setCalculatedDistance(null);
+              setUserCoords(null);
+            }
           }}
           placeholder={placeholder}
-          className="w-full pl-10 pr-28 py-3 text-xs sm:text-sm font-semibold text-neutral-800 bg-neutral-50/80 hover:bg-neutral-50 focus:bg-white border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 transition-all placeholder:text-neutral-400 placeholder:font-normal"
+          className="w-full pl-10 pr-24 py-3 text-xs sm:text-sm font-semibold text-neutral-800 bg-white hover:bg-neutral-50/50 focus:bg-white border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 transition-all placeholder:text-amber-300 placeholder:font-normal"
         />
 
         {/* GPS Location Button */}
@@ -157,7 +167,7 @@ export default function AddressInputWithMap({
           ) : (
             <Icon icon="solar:gps-bold" className="text-xs text-emerald-600" />
           )}
-          <span>{isLocating ? "Localizando..." : "Mi GPS"}</span>
+          <span>{isLocating ? "Detectando..." : "Mi GPS"}</span>
         </button>
       </div>
 
@@ -171,41 +181,60 @@ export default function AddressInputWithMap({
 
       {/* Distance and Coverage Indicator */}
       {feeDetails && calculatedDistance !== null && (
-        <div
-          className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all ${
-            feeDetails.isCovered
-              ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
-              : 'bg-rose-50 border-rose-200 text-rose-800 animate-pulse'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <Icon
-              icon={feeDetails.isCovered ? "solar:routing-2-bold" : "solar:danger-triangle-bold"}
-              className={`text-base ${feeDetails.isCovered ? 'text-emerald-600' : 'text-rose-600'}`}
-            />
-            <div>
-              <span className="block leading-tight">
-                {feeDetails.isCovered
-                  ? `Aprox. ${calculatedDistance} km de la sede`
-                  : `Fuera de cobertura: ${calculatedDistance} km`}
+        <div className="space-y-2">
+          <div
+            className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all ${
+              feeDetails.isCovered
+                ? 'bg-emerald-50/90 border-emerald-200 text-emerald-900'
+                : 'bg-rose-50 border-rose-200 text-rose-800'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Icon
+                icon={feeDetails.isCovered ? "solar:routing-2-bold" : "solar:danger-triangle-bold"}
+                className={`text-base shrink-0 ${feeDetails.isCovered ? 'text-emerald-600' : 'text-rose-600'}`}
+              />
+              <div>
+                <span className="block leading-tight font-extrabold">
+                  {feeDetails.isCovered
+                    ? `Aprox. ${calculatedDistance} km de la sede`
+                    : `Fuera de cobertura: ${calculatedDistance} km`}
+                </span>
+                <span className="text-[10px] font-medium opacity-80 block">
+                  {feeDetails.message}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-black">
+                {feeDetails.isCovered 
+                  ? (feeDetails.isFree ? 'GRATIS' : formatCOP(feeDetails.fee)) 
+                  : 'No disponible'}
               </span>
-              <span className="text-[10px] font-medium opacity-75">
-                {feeDetails.message}
-              </span>
+              {hasSedeCoords && userCoords && (
+                <button
+                  type="button"
+                  onClick={() => setShowMiniMap(prev => !prev)}
+                  className="p-1 rounded-lg hover:bg-black/5 text-gray-500 text-[10px] font-semibold"
+                  title="Ver mapa"
+                >
+                  <Icon icon={showMiniMap ? "solar:eye-closed-bold" : "solar:map-bold"} className="text-sm" />
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="text-right shrink-0">
-            {feeDetails.isCovered ? (
-              <span className="text-xs font-black">
-                {feeDetails.isFree ? 'GRATIS' : formatCOP(feeDetails.fee)}
-              </span>
-            ) : (
-              <span className="text-[10px] uppercase font-black text-rose-600">
-                No disponible
-              </span>
-            )}
-          </div>
+          {/* Mini Interactive Route Map */}
+          {hasSedeCoords && userCoords && showMiniMap && (
+            <CustomerRouteMap
+              sedeCoords={[sedeLat, sedeLng]}
+              customerCoords={[userCoords.lat, userCoords.lng]}
+              isCovered={feeDetails.isCovered}
+              radiusKm={currentLocation?.delivery_radius_km}
+              distanceKm={calculatedDistance}
+            />
+          )}
         </div>
       )}
     </div>

@@ -8,6 +8,7 @@ import { useLocationPayments } from '../hooks/useLocationPayments';
 import { toast as toastFn } from '../components/Toast';
 import { PageHeader, PrimaryButton, FormField, TextInput, SecondaryButton, Switch, Modal, ModalHeader } from '../components/admin/ui';
 import { Icon } from '@iconify/react';
+import CoverageMap from '../components/maps/CoverageMap';
 import { Loader2, MapPin, Phone, Building2, ExternalLink, Trash2, QrCode } from 'lucide-react';
 import { QRCode } from "react-qr-code";
 
@@ -855,6 +856,18 @@ export default function AdminSedes({ isEmbedded = false }) {
                                  <span className="text-xs font-medium text-gray-500 ml-1">km</span>
                               </div>
                            </div>
+                        </FormField>
+
+                        <FormField label="Visualización de Cobertura en Mapa">
+                           <CoverageMap
+                             latitude={form.latitude}
+                             longitude={form.longitude}
+                             radiusKm={form.delivery_radius_km}
+                             sedeName={form.name || "Nuestra Sede"}
+                             onLocationChange={({ lat, lng }) => {
+                               setForm(prev => ({ ...prev, latitude: lat, longitude: lng }));
+                             }}
+                           />
                         </FormField>
                     </div>
                  )}

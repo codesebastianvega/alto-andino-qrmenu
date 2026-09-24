@@ -326,11 +326,19 @@ export default function CartModal({ open, onClose }) {
   // Order Totals
   const packagingFeeTotal = items.reduce((acc, it) => acc + ((Number(it.packaging_fee) || 0) * (Number(it.qty) || 1)), 0);
   const serviceFeeAmount = (isTipEnabled && includeTip) ? Math.round(total * (tipPercentage / 100)) : 0;
+  const deliveryFee = useMemo(() => {
+    if (fulfillmentType !== 'delivery') return 0;
+    if (deliveryLocationInfo && typeof deliveryLocationInfo.fee === 'number') {
+      return deliveryLocationInfo.fee;
+    }
+    return Number(currentLocation?.delivery_fee) || 0;
+  }, [fulfillmentType, deliveryLocationInfo, currentLocation]);
+
   const finalTotal = useMemo(() => {
-    return fulfillmentType === 'takeaway' || fulfillmentType === 'delivery'
-      ? total + packagingFeeTotal + serviceFeeAmount
-      : total + serviceFeeAmount;
-  }, [fulfillmentType, total, packagingFeeTotal, serviceFeeAmount]);
+    const delivery = fulfillmentType === 'delivery' ? deliveryFee : 0;
+    const packaging = (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery') ? packagingFeeTotal : 0;
+    return total + delivery + packaging + serviceFeeAmount;
+  }, [fulfillmentType, total, deliveryFee, packagingFeeTotal, serviceFeeAmount]);
 
   // Customer Payment States (Delivery / Takeaway)
   const [customerPaymentType, setCustomerPaymentType] = useState(() => {
@@ -629,7 +637,11 @@ export default function CartModal({ open, onClose }) {
             customer_id: customerId,
             scheduled_time: scheduledTime || null,
             payment_status: isPOSMode && isPaid ? 'paid' : 'pending',
-            payment_method: isPOSMode ? (isPaid ? paymentMethod : null) : paymentMethodSummary
+            payment_method: isPOSMode ? (isPaid ? paymentMethod : null) : paymentMethodSummary,
+            delivery_address: fulfillmentType === 'delivery' ? (deliveryAddress || null) : null,
+            delivery_notes: fulfillmentType === 'delivery' ? (deliveryNotes || null) : null,
+            delivery_distance_km: fulfillmentType === 'delivery' ? (deliveryLocationInfo?.distanceKm || null) : null,
+            delivery_fee: fulfillmentType === 'delivery' ? (deliveryFee || 0) : 0
           }])
           .select()
           .single();
@@ -759,7 +771,7 @@ export default function CartModal({ open, onClose }) {
         if (whatsappNumber) {
           const cleanPhone = normalizeWhatsAppNumber(whatsappNumber);
           const deliveryInfo = fulfillmentType === 'delivery'
-            ? `*Modalidad:* 🛵 Domicilio\n*Dirección de Entrega:* ${formattedAddress || 'No especificada'}${formattedNotes ? `\n*Detalles Entrega:* ${formattedNotes}` : ''}\n`
+            ? `*Modalidad:* 🛵 Domicilio\n*Dirección de Entrega:* ${formattedAddress || 'No especificada'}${formattedNotes ? `\n*Detalles Entrega:* ${formattedNotes}` : ''}${deliveryLocationInfo?.distanceKm ? `\n*Distancia:* ${deliveryLocationInfo.distanceKm} km` : ''}${deliveryFee > 0 ? `\n*Costo domicilio:* ${formatCOP(deliveryFee)}` : ''}\n`
             : `*Modalidad:* ${fulfillmentType === 'dine_in' ? '🍽️ En Mesa' : fulfillmentType === 'takeaway' ? '🛍️ Para Llevar' : '📅 Programado'}\n*Mesa:* ${mesa || 'N/A'}\n`;
 
           const message = encodeURIComponent(
@@ -899,6 +911,12 @@ export default function CartModal({ open, onClose }) {
             <div className="flex justify-between items-center mb-1 animate-in fade-in slide-in-from-right-2">
               <span className="text-sm text-neutral-500 font-medium">Empaque</span>
               <span className="text-sm font-semibold text-neutral-700">{formatCOP(packagingFeeTotal)}</span>
+            </div>
+          )}
+          {fulfillmentType === 'delivery' && deliveryFee > 0 && (
+            <div className="flex justify-between items-center mb-1 animate-in fade-in slide-in-from-right-2">
+              <span className="text-sm text-neutral-500 font-medium">Costo de Domicilio</span>
+              <span className="text-sm font-semibold text-emerald-700">{formatCOP(deliveryFee)}</span>
             </div>
           )}
           {isTipEnabled && (
@@ -1075,19 +1093,18 @@ export default function CartModal({ open, onClose }) {
                        </div>
                        {fulfillmentType === 'delivery' && (
                          <>
-                           <div className="flex items-center gap-2 bg-white px-3 h-11 rounded-xl border border-amber-200 focus-within:ring-2 focus-within:ring-amber-200/50 transition-all">
-                              <Icon icon="heroicons:map-pin" className="text-amber-500 text-lg flex-shrink-0" />
-                              <input 
-                                type="text" 
-                                placeholder="Dirección completa y barrio (ej: Calle 4 #5-20)"
-                                value={deliveryAddress || ""}
-                                onChange={e => {
-                                  setDeliveryAddress(e.target.value);
-                                  localStorage.setItem("aa_delivery_address", e.target.value);
-                                }}
-                                className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium placeholder:text-amber-300"
-                              />
-                           </div>
+                           <AddressInputWithMap
+                             value={deliveryAddress || ""}
+                             onChange={(newAddress) => {
+                               setDeliveryAddress(newAddress);
+                               localStorage.setItem("aa_delivery_address", newAddress);
+                             }}
+                             onLocationSelect={(info) => {
+                               setDeliveryLocationInfo(info);
+                             }}
+                             currentLocation={currentLocation}
+                             orderSubtotal={total}
+                           />
                            <div className="flex items-center gap-2 bg-white px-3 h-11 rounded-xl border border-amber-200 focus-within:ring-2 focus-within:ring-amber-200/50 transition-all">
                               <Icon icon="heroicons:chat-bubble-bottom-center-text" className="text-amber-500 text-lg flex-shrink-0" />
                               <input 
@@ -1421,12 +1438,22 @@ export default function CartModal({ open, onClose }) {
               <div className="bg-[#2f4131]/10 p-2 rounded-full hidden sm:flex items-center justify-center">
                 <Icon icon="heroicons:shopping-cart" className="text-[24px] text-[#2f4131]" />
               </div>
+              {showFulfillmentSelector && (
+                <button
+                  type="button"
+                  onClick={() => setShowFulfillmentSelector(false)}
+                  className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold transition-colors shrink-0"
+                >
+                  <Icon icon="heroicons:arrow-left" className="text-base" />
+                  <span>Volver</span>
+                </button>
+              )}
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900">
-                  Tu Pedido
+                <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-neutral-900">
+                  {showFulfillmentSelector ? "Entrega y Pago" : "Tu Pedido"}
                 </h2>
-                <p className="text-sm text-neutral-500 font-medium sm:mt-0.5">
-                  {items.length} {items.length === 1 ? "artículo" : "artículos"}
+                <p className="text-xs sm:text-sm text-neutral-500 font-medium sm:mt-0.5">
+                  {showFulfillmentSelector ? "Completa tus datos de despacho" : `${items.length} ${items.length === 1 ? "artículo" : "artículos"}`}
                 </p>
               </div>
             </div>
@@ -1456,7 +1483,7 @@ export default function CartModal({ open, onClose }) {
           {/* Body Container */}
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col md:flex-row relative">
             {/* Left Column (Items) */}
-            <div className="flex-1 min-h-0 overflow-y-auto bg-neutral-50/50 sm:bg-white relative flex flex-col custom-scrollbar">
+            <div className={`flex-1 min-h-0 overflow-y-auto bg-neutral-50/50 sm:bg-white relative flex flex-col custom-scrollbar ${showFulfillmentSelector ? 'hidden md:flex' : 'flex'}`}>
               
               {/* Fulfillment Type Selector (Only if not in POS mode or if allowed) */}
               {!isPOSMode && items.length > 0 && (
@@ -1703,13 +1730,20 @@ export default function CartModal({ open, onClose }) {
             </div>
           )}
 
-          {/* Mobile Footer (Scrollable when showing checkout/payment form) */}
-          <div className={`md:hidden flex-shrink-0 bg-white transition-all ${
-            showFulfillmentSelector ? 'max-h-[82dvh] overflow-y-auto overscroll-contain shadow-2xl border-t border-neutral-200' : ''
-          }`}>
-            {renderCheckoutFooter('mobile')}
+            {/* Mobile Checkout Form (Full height view when in checkout step) */}
+            {showFulfillmentSelector && (
+              <div className="md:hidden flex-1 min-h-0 overflow-y-auto overscroll-contain bg-white">
+                {renderCheckoutFooter('mobile')}
+              </div>
+            )}
           </div>
-        </div>
+
+          {/* Mobile Footer (Only when in items review step) */}
+          {!showFulfillmentSelector && (
+            <div className="md:hidden flex-shrink-0 bg-white border-t border-neutral-100 shadow-[0_-10px_30px_rgba(0,0,0,0.04)]">
+              {renderCheckoutFooter('mobile')}
+            </div>
+          )}
           
           {/* Full-drawer Success View */}
 
