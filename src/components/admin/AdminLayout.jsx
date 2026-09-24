@@ -212,7 +212,7 @@ export default function AdminLayout() {
   };
 
   const { user: authUser, profile, loading: authLoading, activeBrand, activePlan } = useAuth();
-  const { can, loading: planLoading, isTrialActive, trialEndsAt, startTrial } = usePlan();
+  const { can, loading: planLoading, isTrialActive, trialEndsAt, startTrial, trialAlreadyUsed } = usePlan();
   const { activeLocationId, activeLocation, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id || profile?.brand_id;
   const [user, setUser] = useState(null);
@@ -903,8 +903,24 @@ export default function AdminLayout() {
               );
             })()}
 
-            {/* Trial start CTA (no plan, no active trial) */}
-            {!planLoading && !isTrialActive && !activePlan && !isCollapsed && (
+            {/* Upgrade Plan CTA if trial already used */}
+            {!planLoading && !isTrialActive && !activePlan && !isCollapsed && trialAlreadyUsed && (
+              <button
+                onClick={() => setShowPlanSelector(true)}
+                className="w-full px-4 py-2.5 text-left group"
+              >
+                <div className="rounded-xl bg-gradient-to-r from-emerald-500/20 to-blue-500/10 border border-emerald-500/30 px-3 py-2 flex items-center gap-2 hover:from-emerald-500/30 transition-all">
+                  <span className="text-base">⭐</span>
+                  <div>
+                    <p className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.18em]">Suscripción</p>
+                    <p className="text-[11px] font-semibold text-white/80">Elegir o Activar Plan</p>
+                  </div>
+                </div>
+              </button>
+            )}
+
+            {/* Trial start CTA (no plan, no active trial, not used yet) */}
+            {!planLoading && !isTrialActive && !activePlan && !isCollapsed && !trialAlreadyUsed && (
               <button
                 onClick={async () => {
                   const { error } = await startTrial();
@@ -1094,6 +1110,7 @@ export default function AdminLayout() {
             onSelectPage={handleSelectPage}
             startTrial={startTrial}
             isTrialActive={isTrialActive}
+            trialAlreadyUsed={trialAlreadyUsed}
           />
         </div>
       </main>
@@ -1240,8 +1257,27 @@ export default function AdminLayout() {
                   );
                 })()}
 
-                {/* Trial start CTA (no plan, no active trial) */}
-                {!planLoading && !isTrialActive && !activePlan && (
+                {/* Upgrade Plan CTA if trial already used (Mobile) */}
+                {!planLoading && !isTrialActive && !activePlan && trialAlreadyUsed && (
+                  <button
+                    onClick={() => {
+                      setIsMobileDrawerOpen(false);
+                      setShowPlanSelector(true);
+                    }}
+                    className="w-full group text-left"
+                  >
+                    <div className="rounded-xl bg-gradient-to-r from-emerald-500/20 to-blue-500/10 border border-emerald-500/30 px-3 py-2 flex items-center gap-2 hover:from-emerald-500/30 transition-all">
+                      <span className="text-base">⭐</span>
+                      <div>
+                        <p className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.18em]">Suscripción</p>
+                        <p className="text-[11px] font-semibold text-white/80">Elegir o Activar Plan</p>
+                      </div>
+                    </div>
+                  </button>
+                )}
+
+                {/* Trial start CTA (no plan, no active trial, not used yet) (Mobile) */}
+                {!planLoading && !isTrialActive && !activePlan && !trialAlreadyUsed && (
                   <button
                     onClick={async () => {
                       const { error } = await startTrial();

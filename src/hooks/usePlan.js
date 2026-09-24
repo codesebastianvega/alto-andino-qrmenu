@@ -4,7 +4,6 @@ import { PLAN_HIERARCHY, FEATURE_MIN_LEVEL } from '../config/plans';
 import { useAuth } from '../context/AuthContext';
 import { useMenuData } from '../context/MenuDataContext';
 
-
 /**
  * usePlan — returns the current brand's plan details and feature flags.
  * Supports both Admin (via useAuth) and Customer (via useMenuData or manual brandId).
@@ -40,7 +39,7 @@ export function usePlan(manualBrandId = null) {
         const [brandRes, orderCountRes, productCountRes] = await Promise.all([
           supabase
             .from('brands')
-            .select('plan_id, has_ai_addon, trial_end_date, is_active, subscription_status, payment_verified, plans(*)')
+            .select('plan_id, has_ai_addon, trial_end_date, is_active, subscription_status, payment_verified, trial_already_used, plans(*)')
             .eq('id', brandId)
             .maybeSingle(),
           supabase.rpc('get_monthly_order_count', { p_brand_id: brandId }),
@@ -70,7 +69,8 @@ export function usePlan(manualBrandId = null) {
           trial_end_date: brand.trial_end_date,
           is_active: brand.is_active,
           subscription_status: brand.subscription_status,
-          payment_verified: brand.payment_verified
+          payment_verified: brand.payment_verified,
+          trial_already_used: brand.trial_already_used ?? false
         });
 
         // 2. Get plan features
@@ -180,6 +180,8 @@ export function usePlan(manualBrandId = null) {
     hasAiAddon: plan?.has_ai_addon ?? false,
     isTrialActive,
     trialEndDate: plan?.trial_end_date || null,
+    trialEndsAt: plan?.trial_end_date || null,
+    trialAlreadyUsed: plan?.trial_already_used ?? false,
     trialDaysLeft,
     isSuspended,
     subscriptionStatus: plan?.subscription_status || 'trialing',
@@ -190,34 +192,33 @@ export function usePlan(manualBrandId = null) {
     maxCategories: plan?.max_categories ?? null,
     maxAdmins: plan?.max_admins ?? 1,
     /**
-     * startTrial — activates a 21-day trial for the current brand.
+     * startTrial — activates a 21-day trial for the current brand via secure RPC.
      */
     startTrial: async () => {
-      if (!brandId) return { error: 'No brand active' };
+      if (!brandId) return { error: new Error('No hay un negocio activo seleccionado.') };
       
-      const trialEndsAt = new Date();
-      trialEndsAt.setDate(trialEndsAt.getDate() + 21);
+      try {
+        const { data, error } = await supabase.rpc('start_brand_trial', { p_brand_id: brandId });
 
-      const { error } = await supabase
-        .from('brands')
-        .update({ 
-          trial_end_date: trialEndsAt.toISOString(),
-          subscription_status: 'trialing'
-        })
-        .eq('id', brandId);
+        if (error) {
+          return { error };
+        }
 
-      if (!error) {
+        const newTrialEnd = data?.trial_end_date || new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString();
+
         // Refresh plan data
         setPlan(prev => prev ? {
           ...prev,
-          trial_end_date: trialEndsAt.toISOString(),
+          trial_end_date: newTrialEnd,
+          trial_already_used: true,
           subscription_status: 'trialing',
           payment_verified: false
         } : null);
-      }
 
-      return { error };
+        return { data, error: null };
+      } catch (err) {
+        return { error: err };
+      }
     }
   };
 }
-

@@ -16,7 +16,10 @@ import {
   Mail,
   User,
   Phone,
-  Globe
+  MessageCircle,
+  Clock,
+  Sparkles,
+  Info
 } from 'lucide-react';
 import { usePlan } from '../../hooks/usePlan';
 import { supabase } from '../../config/supabase';
@@ -43,7 +46,7 @@ export default function UniversalCheckout({ onSelectPage }) {
   const navigate = useNavigate();
   const { activeBrand, profile, user: authUser } = useAuth();
   const { restaurantSettings } = useMenuData();
-  const { startTrial } = usePlan();
+  const { startTrial, trialAlreadyUsed, isTrialActive } = usePlan();
   
   const [plan, setPlan] = useState(null);
   const [loadingPlan, setLoadingPlan] = useState(true);
@@ -51,11 +54,12 @@ export default function UniversalCheckout({ onSelectPage }) {
   // Robust plan detection
   const planParam = searchParams.get('plan') || new URLSearchParams(window.location.search).get('plan');
 
-  const [selectedMethod, setSelectedMethod] = useState('trial'); // trial, whatsapp, card
+  const [selectedMethod, setSelectedMethod] = useState(trialAlreadyUsed ? 'whatsapp' : 'trial'); // trial, whatsapp
   const [step, setStep] = useState('form'); // form, processing, success
   const [processingStatus, setProcessingStatus] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activationError, setActivationError] = useState('');
+  const [trackingId, setTrackingId] = useState('');
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -63,6 +67,13 @@ export default function UniversalCheckout({ onSelectPage }) {
     whatsapp: '',
     country: 'Colombia'
   });
+
+  // Switch default method if trial already used
+  useEffect(() => {
+    if (trialAlreadyUsed && selectedMethod === 'trial') {
+      setSelectedMethod('whatsapp');
+    }
+  }, [trialAlreadyUsed]);
 
   useEffect(() => {
     async function fetchPlan() {
@@ -139,7 +150,6 @@ export default function UniversalCheckout({ onSelectPage }) {
   const planIcon = plan ? (IconMap[plan.icon]?.(`w-6 h-6`) || <Zap className="w-6 h-6" />) : <Zap className="w-6 h-6" />;
 
   const handleBack = () => {
-    // If we came from admin, go back to admin
     if (window.location.pathname.startsWith('/admin')) {
       navigate('/admin');
     } else {
@@ -147,14 +157,23 @@ export default function UniversalCheckout({ onSelectPage }) {
     }
   };
 
-  const handleWhatsAppRedirect = () => {
-    const text = WHATSAPP_CONFIG.templates.activatePlan(
-      plan.name, 
-      formData.businessName, 
-      formData.fullName, 
-      formData.email, 
-      formData.whatsapp
-    );
+  const generateWhatsAppMessage = (refCode = '') => {
+    const codeTag = refCode ? ` [Ref: ${refCode}]` : '';
+    const priceText = plan?.price ? `$${Number(plan.price).toLocaleString()} COP / mes` : 'A convenir';
+    return `¡Hola Aluna Soporte! 👋 Quiero activar el Plan *${plan?.name || 'Profesional'}* para mi negocio *${formData.businessName || 'mi restaurante'}*${codeTag}.
+
+📋 *Datos del Restaurante:*
+- Titular: ${formData.fullName}
+- Correo: ${formData.email}
+- WhatsApp: ${formData.whatsapp}
+- Plan solicitado: *${plan?.name || 'Profesional'}* (${priceText})
+
+💳 *Coordinación de Pago:*
+Por favor envíenme los datos de cuenta (Bancolombia, Nequi, Daviplata o pasarela Wompi) para formalizar el pago y activar mi cuenta de inmediato. ¡Muchas gracias!`;
+  };
+
+  const handleWhatsAppRedirect = (refCode = trackingId) => {
+    const text = generateWhatsAppMessage(refCode);
     const url = `https://wa.me/${WHATSAPP_CONFIG.MAIN_CONTACT}?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
@@ -167,28 +186,67 @@ export default function UniversalCheckout({ onSelectPage }) {
     
     try {
       if (selectedMethod === 'trial') {
+        if (trialAlreadyUsed) {
+          throw new Error('Este negocio ya utilizó su periodo de prueba de 21 días. Elige la opción de Activar Plan con Soporte para coordinar tu suscripción.');
+        }
+
         setProcessingStatus('Activando tu periodo de prueba de 21 días...');
         const { error } = await startTrial();
         if (error) throw error;
-        await new Promise(resolve => setTimeout(resolve, 1500));
-      } else {
-        const statuses = [
-          'Validando información del negocio...',
-          'Cifrando datos de contacto...',
-          'Configurando privilegios del Plan ' + plan.name + '...',
-          'Preparando entorno administrativo...',
-          '¡Todo listo!'
-        ];
-        
-        for (const status of statuses) {
-          setProcessingStatus(status);
-          await new Promise(resolve => setTimeout(resolve, 800));
+
+        // Log SaaS lead in background
+        try {
+          await supabase.from('leads').insert({
+            name: formData.fullName,
+            email: formData.email,
+            restaurant_name: formData.businessName,
+            phone: formData.whatsapp,
+            plan_interest: 'Prueba Gratis (21 Días)',
+            status: 'converted',
+            source: 'checkout',
+            brand_id: null,
+            notes: `Prueba de 21 días iniciada desde Checkout para ${formData.businessName}.`
+          });
+        } catch (leadErr) {
+          console.warn('Non-fatal lead insert warning:', leadErr);
         }
+
+        await new Promise(resolve => setTimeout(resolve, 1200));
+        setStep('success');
+      } else {
+        // Assisted Activation / WhatsApp Flow
+        setProcessingStatus('Registrando solicitud de activación...');
+        const newTrackingId = `ALU-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+        setTrackingId(newTrackingId);
+
+        // Record lead in Supabase for SuperAdmin to view and track
+        try {
+          await supabase.from('leads').insert({
+            name: formData.fullName,
+            email: formData.email,
+            restaurant_name: formData.businessName,
+            phone: formData.whatsapp,
+            plan_interest: plan.name,
+            status: 'pending_activation',
+            source: 'checkout',
+            brand_id: null, // Keep null so it appears in SuperAdmin SaaS Leads dashboard
+            notes: `Solicitud de Activación [${newTrackingId}]: Plan ${plan.name} ($${Number(plan.price || 0).toLocaleString()} COP/mes). Titular: ${formData.fullName}. WhatsApp: ${formData.whatsapp}. Esperando coordinación de pago vía Nequi, Daviplata, Bancolombia o Wompi.`
+          });
+        } catch (leadError) {
+          console.warn('Leads recording warning:', leadError);
+        }
+
+        setProcessingStatus('Conectando con Soporte Aluna para coordinar el pago...');
+        await new Promise(resolve => setTimeout(resolve, 900));
+
+        // Open WhatsApp automatically
+        handleWhatsAppRedirect(newTrackingId);
+
+        setStep('success');
       }
-      setStep('success');
     } catch (err) {
       console.error('Checkout Activation Error:', err);
-      setActivationError(err?.message || 'No pudimos activar tu prueba. Intenta de nuevo o escríbenos por WhatsApp.');
+      setActivationError(err?.message || 'No pudimos procesar tu solicitud. Intenta de nuevo o escríbenos a soporte.');
       setStep('form');
     } finally {
       setIsSubmitting(false);
@@ -223,8 +281,8 @@ export default function UniversalCheckout({ onSelectPage }) {
 
           <div className="hidden md:flex items-center gap-6">
             <div className="flex items-center gap-2 text-white/40 text-[11px] font-bold uppercase tracking-widest">
-              <ShieldCheck className="w-4 h-4" />
-              Pago Seguro
+              <ShieldCheck className="w-4 h-4 text-brand-primary" />
+              Activación Asistida y Segura
             </div>
           </div>
         </div>
@@ -252,9 +310,9 @@ export default function UniversalCheckout({ onSelectPage }) {
               <div className="lg:col-span-5 space-y-5">
                 <div className="space-y-2">
                   <span className="text-brand-primary font-black uppercase tracking-widest text-[10px] px-2.5 py-0.5 bg-brand-primary/10 rounded-full border border-brand-primary/20">
-                    Suscripción Anual / Mensual
+                    Suscripción Aluna Restaurantes
                   </span>
-                  <h1 className="text-3xl md:text-4xl font-black leading-[1] tracking-tighter">
+                  <h1 className="text-3xl md:text-4xl font-black leading-[1.05] tracking-tighter">
                     Activa tu Plan <br />
                     <span className="text-brand-primary">{plan.name}</span>
                   </h1>
@@ -267,7 +325,7 @@ export default function UniversalCheckout({ onSelectPage }) {
                   
                   <div className="flex items-baseline gap-1.5 mb-4">
                     <span className="text-2xl font-black">${plan.price?.toLocaleString()}</span>
-                    <span className="text-white/40 text-xs font-bold uppercase tracking-widest">/ Mes</span>
+                    <span className="text-white/40 text-xs font-bold uppercase tracking-widest">/ Mes COP</span>
                   </div>
 
                   <ul className="space-y-2.5 mb-5">
@@ -282,55 +340,63 @@ export default function UniversalCheckout({ onSelectPage }) {
                   </ul>
 
                   <div className="pt-4 border-t border-white/10 flex items-center justify-between">
-                    <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Estado</span>
+                    <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Activación</span>
                     <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      Disponible para Activación
+                      Disponible de Inmediato
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-500/5 border border-blue-500/10 text-blue-400">
-                  <Icon icon="solar:info-circle-bold" className="w-4 h-4 shrink-0" />
-                  <p className="text-[11px] leading-relaxed font-medium">
-                    No se realizará ningún cargo automático hoy. El equipo comercial te contactará para formalizar la facturación.
-                  </p>
+                <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300">
+                  <Info className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="text-[11px] leading-relaxed font-medium">
+                    <p className="font-bold mb-0.5">Integración Wompi en Proceso</p>
+                    <p className="text-white/70">
+                      Mientras habilitamos los pagos directos con tarjeta en línea, nuestro equipo de soporte gestiona y activa tu plan vía WhatsApp con <strong>Nequi, Daviplata o Bancolombia</strong>.
+                    </p>
+                  </div>
                 </div>
               </div>
 
               {/* Right Side: Form */}
               <div className="lg:col-span-7">
                 <div className="p-6 rounded-2xl bg-gradient-to-br from-white/[0.08] to-transparent border border-white/10 shadow-2xl relative overflow-hidden">
-                  <h2 className="text-lg font-bold mb-5">Información de Contacto</h2>
+                  <h2 className="text-lg font-bold mb-5 flex items-center justify-between">
+                    <span>Información de tu Restaurante</span>
+                    <span className="text-[10px] text-white/40 font-normal">Paso 1 de 2</span>
+                  </h2>
+
                   {activationError && (
-                    <div className="mb-5 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200">
-                      {activationError}
+                    <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+                      <span>{activationError}</span>
                     </div>
                   )}
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-1">Nombre Completo</label>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-1">Nombre del Responsable</label>
                       <div className="relative group">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 group-focus-within:text-brand-primary transition-colors" />
                         <input 
                           type="text" 
                           value={formData.fullName}
                           onChange={e => setFormData({...formData, fullName: e.target.value})}
-                          placeholder="Tu nombre..."
+                          placeholder="Tu nombre completo..."
                           className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:border-brand-primary/50 focus:bg-white/[0.08] transition-all"
                         />
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-1">Correo Corporativo</label>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-1">Correo Electrónico</label>
                       <div className="relative group">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20 group-focus-within:text-brand-primary transition-colors" />
                         <input 
                           type="email" 
                           value={formData.email}
                           onChange={e => setFormData({...formData, email: e.target.value})}
-                          placeholder="tu@negocio.com"
+                          placeholder="tu@restaurante.com"
                           className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:border-brand-primary/50 focus:bg-white/[0.08] transition-all"
                         />
                       </div>
@@ -346,7 +412,7 @@ export default function UniversalCheckout({ onSelectPage }) {
                           type="text" 
                           value={formData.businessName}
                           onChange={e => setFormData({...formData, businessName: e.target.value})}
-                          placeholder="Restaurante..."
+                          placeholder="Nombre del restaurante..."
                           className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:border-brand-primary/50 focus:bg-white/[0.08] transition-all"
                         />
                       </div>
@@ -359,29 +425,76 @@ export default function UniversalCheckout({ onSelectPage }) {
                           type="tel" 
                           value={formData.whatsapp}
                           onChange={e => setFormData({...formData, whatsapp: e.target.value})}
-                          placeholder="+57..."
+                          placeholder="+57 300 000 0000"
                           className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:border-brand-primary/50 focus:bg-white/[0.08] transition-all"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="mb-5">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-3 ml-1">Método de Activación</h3>
-                    <div className="grid grid-cols-2 gap-3">
+                  <div className="mb-6">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-3 ml-1">Modalidad de Activación</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Option 1: Trial (if available) */}
                       <button 
-                        onClick={() => setSelectedMethod('trial')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${selectedMethod === 'trial' ? 'bg-brand-primary/10 border-brand-primary text-brand-primary shadow-lg shadow-brand-primary/10' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/[0.08]'}`}
+                        type="button"
+                        onClick={() => {
+                          if (trialAlreadyUsed) {
+                            setActivationError('Este negocio ya utilizó su prueba gratuita de 21 días. Por favor elige Activar Plan con Soporte.');
+                            return;
+                          }
+                          setActivationError('');
+                          setSelectedMethod('trial');
+                        }}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-left relative ${
+                          selectedMethod === 'trial' 
+                            ? 'bg-brand-primary/10 border-brand-primary text-brand-primary shadow-lg shadow-brand-primary/10' 
+                            : trialAlreadyUsed 
+                              ? 'bg-white/[0.02] border-white/5 text-white/25 cursor-not-allowed opacity-60' 
+                              : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/[0.08]'
+                        }`}
                       >
-                        <Zap className="w-5 h-5" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-center">Prueba Gratis (21 Días)</span>
+                        <div className="flex items-center gap-2">
+                          <Zap className="w-5 h-5 shrink-0" />
+                          <span className="text-xs font-black uppercase tracking-wider text-center">
+                            Prueba Gratis 21 Días
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-center font-medium opacity-80">
+                          {trialAlreadyUsed ? 'Ya disfrutada por este negocio' : 'Sin tarjeta · Acceso inmediato'}
+                        </span>
+                        {trialAlreadyUsed && (
+                          <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/10 text-white/50">
+                            Usado
+                          </span>
+                        )}
                       </button>
+
+                      {/* Option 2: Assisted Activation via Support */}
                       <button 
-                        onClick={() => setSelectedMethod('whatsapp')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${selectedMethod === 'whatsapp' ? 'bg-brand-primary/10 border-brand-primary text-brand-primary shadow-lg shadow-brand-primary/10' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/[0.08]'}`}
+                        type="button"
+                        onClick={() => {
+                          setActivationError('');
+                          setSelectedMethod('whatsapp');
+                        }}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-left ${
+                          selectedMethod === 'whatsapp' 
+                            ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-lg shadow-emerald-500/10' 
+                            : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/[0.08]'
+                        }`}
                       >
-                        <Icon icon="logos:whatsapp-icon" className="w-5 h-5" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-center">Activar Plan Pago</span>
+                        <div className="flex items-center gap-2">
+                          <Icon icon="logos:whatsapp-icon" className="w-5 h-5 shrink-0" />
+                          <span className="text-xs font-black uppercase tracking-wider text-center">
+                            Activar Plan con Soporte
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-center font-medium opacity-80">
+                          Nequi · Bancolombia · Daviplata
+                        </span>
+                        <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">
+                          Recomendado
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -389,17 +502,32 @@ export default function UniversalCheckout({ onSelectPage }) {
                   <button 
                     onClick={handleActivate}
                     disabled={!formData.fullName || !formData.email || isSubmitting}
-                    className="w-full py-3.5 bg-white text-black rounded-xl font-black text-sm flex items-center justify-center gap-2 hover:bg-brand-primary transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 shadow-xl shadow-white/10"
+                    className="w-full py-4 bg-white text-black rounded-xl font-black text-sm flex items-center justify-center gap-2 hover:bg-brand-primary transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 shadow-xl shadow-white/10"
                   >
                     {isSubmitting ? (
                       <Icon icon="eos-icons:loading" className="w-5 h-5" />
                     ) : (
                       <>
-                        <Zap className="w-4 h-4 fill-current" />
-                        {selectedMethod === 'trial' ? 'Comenzar Prueba Gratis' : `Activar Plan ${plan.name}`}
+                        {selectedMethod === 'trial' ? (
+                          <>
+                            <Zap className="w-4 h-4 fill-current" />
+                            Comenzar Prueba Gratis (21 Días)
+                          </>
+                        ) : (
+                          <>
+                            <Icon icon="logos:whatsapp-icon" className="w-4 h-4" />
+                            Solicitar Activación Plan {plan.name}
+                          </>
+                        )}
                       </>
                     )}
                   </button>
+
+                  <p className="text-center text-[10px] text-white/30 mt-3">
+                    {selectedMethod === 'trial' 
+                      ? 'Sin compromisos. Cancela o cambia de plan en cualquier momento.'
+                      : 'Un asesor de Aluna (+57 322 228 5900) activará tu suscripción al confirmar el comprobante.'}
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -411,17 +539,23 @@ export default function UniversalCheckout({ onSelectPage }) {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 1.1, opacity: 0 }}
-              className="max-w-md w-full text-center space-y-10 py-20"
+              className="max-w-md w-full text-center space-y-8 py-20"
             >
-              <div className="relative w-32 h-32 mx-auto">
+              <div className="relative w-28 h-28 mx-auto">
                 <div className="absolute inset-0 border-4 border-brand-primary/20 rounded-full" />
                 <div className="absolute inset-0 border-4 border-brand-primary rounded-full border-t-transparent animate-spin" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                   <Zap className="w-8 h-8 text-brand-primary animate-pulse" />
+                   {selectedMethod === 'trial' ? (
+                     <Zap className="w-8 h-8 text-brand-primary animate-pulse" />
+                   ) : (
+                     <Icon icon="logos:whatsapp-icon" className="w-8 h-8 animate-pulse" />
+                   )}
                 </div>
               </div>
-              <div className="space-y-3">
-                <h3 className="text-2xl font-black">Procesando Activación</h3>
+              <div className="space-y-2">
+                <h3 className="text-2xl font-black">
+                  {selectedMethod === 'trial' ? 'Activando Acceso Total' : 'Preparando Activación'}
+                </h3>
                 <p className="text-white/40 text-sm font-medium animate-pulse">{processingStatus}</p>
               </div>
             </motion.div>
@@ -432,50 +566,101 @@ export default function UniversalCheckout({ onSelectPage }) {
               key="success"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="max-w-md w-full text-center space-y-10"
+              className="max-w-lg w-full text-center space-y-6 py-6"
             >
               <div className="flex justify-center">
-                <div className="w-24 h-24 bg-brand-primary/20 rounded-full flex items-center justify-center relative">
-                   <div className="absolute inset-0 bg-brand-primary/20 rounded-full animate-ping" />
-                   <div className="w-16 h-16 bg-brand-primary rounded-full flex items-center justify-center">
-                      <Check className="w-8 h-8 text-black stroke-[3px]" />
+                <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center relative">
+                   <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping" />
+                   <div className="w-14 h-14 bg-emerald-500 rounded-full flex items-center justify-center">
+                      <Check className="w-7 h-7 text-black stroke-[3px]" />
                    </div>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h2 className="text-4xl font-black">¡Bienvenido a Bordo!</h2>
-                <p className="text-white/50 text-lg leading-relaxed">
-                  Hemos configurado tu acceso prioritario. Tu ID de seguimiento es: <br />
-                  <span className="text-brand-primary font-mono font-bold">ALU-{Math.random().toString(36).substring(2, 7).toUpperCase()}</span>
-                </p>
-              </div>
+              {selectedMethod === 'trial' ? (
+                <div className="space-y-3">
+                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-brand-primary/15 text-brand-primary rounded-full border border-brand-primary/30">
+                    21 Días de Acceso Completo
+                  </span>
+                  <h2 className="text-3xl font-black">¡Prueba Gratuita Activada!</h2>
+                  <p className="text-white/60 text-sm leading-relaxed max-w-sm mx-auto">
+                    Tu restaurante ya tiene todas las funcionalidades desbloqueadas. Empieza a configurar tus productos, sedes y domicilios.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-emerald-500/15 text-emerald-400 rounded-full border border-emerald-500/30">
+                    Solicitud Registrada con Éxito
+                  </span>
+                  <h2 className="text-3xl font-black">¡Casi listo! Contacta a Soporte</h2>
+                  <p className="text-white/60 text-sm leading-relaxed max-w-md mx-auto">
+                    Hemos registrado tu solicitud para el <strong className="text-white">Plan {plan.name}</strong> ({formData.businessName}).
+                  </p>
+                  {trackingId && (
+                    <div className="inline-block px-3 py-1.5 bg-white/5 rounded-lg border border-white/10 font-mono text-xs text-brand-primary font-bold">
+                      Referencia: {trackingId}
+                    </div>
+                  )}
+                </div>
+              )}
 
-              <div className="space-y-4 pt-6">
-                <button 
-                  onClick={() => {
-                    // Redirect to the actual brand dashboard if available
-                    const slug = activeBrand?.slug || profile?.brand_slug || '';
-                    window.location.href = slug ? `/${slug}/?admin_page=dashboard#admin` : '/admin';
-                  }}
-                  className="w-full py-5 bg-white text-black rounded-[24px] font-black text-lg flex items-center justify-center gap-3 hover:bg-brand-primary transition-colors group"
-                >
-                  <Icon icon="solar:widget-bold" className="w-6 h-6" />
-                  Ir al Panel de Control
-                </button>
-                
-                <button 
-                  onClick={handleWhatsAppRedirect}
-                  className="w-full py-5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-[24px] font-black text-lg flex items-center justify-center gap-3 hover:bg-emerald-500/20 transition-all"
-                >
-                  <Icon icon="logos:whatsapp-icon" className="w-6 h-6" />
-                  Confirmar por WhatsApp
-                </button>
-              </div>
+              {selectedMethod === 'whatsapp' && (
+                <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 text-left space-y-2">
+                  <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
+                    <MessageCircle className="w-4 h-4 shrink-0" />
+                    <span>Activación Directa por WhatsApp</span>
+                  </div>
+                  <p className="text-xs text-white/60 leading-relaxed">
+                    Nuestro equipo de soporte (+57 322 228 5900) coordinará contigo el medio de pago (Nequi, Daviplata o Bancolombia) mientras se habilita la pasarela en línea Wompi, y activará tu cuenta de inmediato.
+                  </p>
+                </div>
+              )}
 
-              <p className="text-white/30 text-xs font-medium">
-                Un consultor te escribirá en los próximos minutos <br /> para agendar tu capacitación inicial.
-              </p>
+              <div className="space-y-3 pt-2">
+                {selectedMethod === 'whatsapp' ? (
+                  <>
+                    <button 
+                      onClick={() => handleWhatsAppRedirect(trackingId)}
+                      className="w-full py-4 bg-emerald-500 text-black hover:bg-emerald-400 rounded-xl font-black text-sm flex items-center justify-center gap-2.5 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                    >
+                      <Icon icon="logos:whatsapp-icon" className="w-5 h-5" />
+                      Abrir WhatsApp con Soporte (+57 322 228 5900)
+                    </button>
+                    
+                    <button 
+                      onClick={() => {
+                        const slug = activeBrand?.slug || profile?.brand_slug || '';
+                        window.location.href = slug ? `/${slug}/?admin_page=dashboard#admin` : '/admin';
+                      }}
+                      className="w-full py-3.5 bg-white/10 hover:bg-white/15 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <Building2 className="w-4 h-4 text-white/50" />
+                      Ir a mi Panel de Control
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button 
+                      onClick={() => {
+                        const slug = activeBrand?.slug || profile?.brand_slug || '';
+                        window.location.href = slug ? `/${slug}/?admin_page=dashboard#admin` : '/admin';
+                      }}
+                      className="w-full py-4 bg-white text-black hover:bg-brand-primary rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-xl active:scale-95"
+                    >
+                      <Zap className="w-4 h-4 fill-current" />
+                      Ir al Panel de Control
+                    </button>
+
+                    <button 
+                      onClick={() => handleWhatsAppRedirect()}
+                      className="w-full py-3.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <Icon icon="logos:whatsapp-icon" className="w-4 h-4" />
+                      ¿Tienes dudas? Escríbenos a WhatsApp
+                    </button>
+                  </>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

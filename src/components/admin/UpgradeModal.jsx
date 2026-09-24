@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Check, X, Zap, ArrowRight, Clock, Users, Star, ShoppingBag, Package, FolderOpen, MapPin } from 'lucide-react';
+import { Check, X, Zap, ArrowRight, Clock, Users, Star, ShoppingBag, Package, FolderOpen, MapPin, MessageCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../../config/supabase';
 
 /* ── Global styles injected once ─────────────────────────────────── */
@@ -76,10 +76,11 @@ const TRIAL_UNLOCKS = [
 
 
 /* ═══════════════════════════════════════════════════════════════════ */
-export default function UpgradeModal({ isOpen, onClose, currentPlanSlug, startTrial, isTrialActive }) {
+export default function UpgradeModal({ isOpen, onClose, currentPlanSlug, startTrial, isTrialActive, trialAlreadyUsed }) {
   const navigate = useNavigate();
   const [trialLoading, setTrialLoading] = useState(false);
   const [trialDone, setTrialDone] = useState(false);
+  const [trialError, setTrialError] = useState('');
   const [plans, setPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
 
@@ -123,10 +124,16 @@ export default function UpgradeModal({ isOpen, onClose, currentPlanSlug, startTr
 
   const handleTrial = async () => {
     if (!startTrial) return;
+    setTrialError('');
     setTrialLoading(true);
     const { error } = await startTrial();
     setTrialLoading(false);
-    if (!error) { setTrialDone(true); setTimeout(() => onClose?.(), 1800); }
+    if (!error) { 
+      setTrialDone(true); 
+      setTimeout(() => onClose?.(), 1800); 
+    } else {
+      setTrialError(error.message || 'Error al iniciar la prueba.');
+    }
   };
 
   return (
@@ -144,8 +151,16 @@ export default function UpgradeModal({ isOpen, onClose, currentPlanSlug, startTr
             <div className="hidden lg:flex flex-col w-[340px] shrink-0 border-r border-white/[0.06] overflow-y-auto">
               <div className="absolute -top-20 -left-20 w-72 h-72 rounded-full bg-brand-primary/[0.05] blur-[80px] pointer-events-none" />
 
-              <div className="flex flex-col flex-1 p-7">
-
+              <div className="p-7 flex-1 flex flex-col">
+                {/* Brand */}
+                <div className="flex items-center gap-2 mb-8">
+                  <div className="w-6 h-6 rounded-lg bg-brand-primary flex items-center justify-center">
+                    <span className="text-black font-black text-xs">A</span>
+                  </div>
+                  <span className="text-white font-bold text-sm tracking-tight">Aluna</span>
+                  <span className="text-white/20 text-xs">·</span>
+                  <span className="text-white/30 text-xs">Planes y suscripciones</span>
+                </div>
 
                 {/* Social proof */}
                 <div className="flex items-center gap-2 mb-7 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
@@ -159,8 +174,33 @@ export default function UpgradeModal({ isOpen, onClose, currentPlanSlug, startTr
                   </p>
                 </div>
 
-                {/* Trial card */}
-                {!isTrialActive && !trialDone ? (
+                {/* Trial card or Expired notice */}
+                {trialAlreadyUsed ? (
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-white font-black text-sm">Prueba Completada</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest bg-white/10 text-white/60 px-2 py-0.5 rounded-full">
+                          21 Días Usados
+                        </span>
+                      </div>
+                      <p className="text-white/40 text-xs mb-4">Este negocio ya disfrutó su periodo de prueba gratuita.</p>
+                      
+                      <div className="p-3 rounded-xl bg-brand-primary/[0.05] border border-brand-primary/15 text-white/70 text-xs leading-relaxed mb-4">
+                        Para reactivar tu acceso total y disfrutar de soporte prioritario, selecciona un plan a la derecha para coordinar la activación con soporte.
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => openWhatsApp('Hola Aluna, deseo activar un plan para mi restaurante. ¿Podrías darme los datos para pagar y habilitar mi cuenta?')}
+                      className="w-full h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold text-xs flex items-center justify-center gap-2 hover:bg-emerald-500/25 transition-all"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      Contactar Soporte (+57 322 228 5900)
+                    </button>
+                  </div>
+                ) : !isTrialActive && !trialDone ? (
                   <div className="rounded-2xl border border-brand-primary/20 bg-brand-primary/[0.04] p-5 flex-1 flex flex-col">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-brand-primary font-black text-sm">21 días gratis</span>
@@ -189,6 +229,13 @@ export default function UpgradeModal({ isOpen, onClose, currentPlanSlug, startTr
                         </li>
                       ))}
                     </ul>
+
+                    {trialError && (
+                      <div className="mb-3 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                        <span>{trialError}</span>
+                      </div>
+                    )}
 
                     <button type="button" onClick={handleTrial} disabled={trialLoading}
                       className="w-full h-10 rounded-xl bg-brand-primary text-black font-black text-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-brand-primary/10 mb-4">
@@ -408,82 +455,6 @@ export default function UpgradeModal({ isOpen, onClose, currentPlanSlug, startTr
                         </button>
                       </div>
                     </motion.div>
-
-                    {/* AI Agent — green aurora (Oculto temporalmente MVP V1) */}
-                    {false && (
-                      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.33 }}
-                        className="aurora-green rounded-2xl border border-emerald-500/[0.12] flex flex-col relative">
-                        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/25 to-transparent rounded-t-2xl" />
-
-                        <div className="relative p-5">
-                          {/* Agent header */}
-                          <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-                            <div className="relative w-8 h-8 rounded-full flex items-center justify-center text-base"
-                              style={{ background: 'linear-gradient(135deg,#4ade80,#22d3ee,#818cf8)' }}>
-                              🤖
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <p className="text-white font-bold text-sm">Aluna IA</p>
-                                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-400/10">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                  <span className="text-emerald-400 text-[9px] font-medium">En línea</span>
-                                </div>
-                              </div>
-                              <p className="text-white/30 text-[10px]">Lista para atender tu restaurante</p>
-                            </div>
-                          </div>
-
-                          {/* Mini chat mock */}
-                          <div className="mb-4 space-y-2">
-                            <div className="flex gap-2 items-end">
-                              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[9px]">👤</div>
-                              <div className="px-3 py-1.5 rounded-2xl rounded-bl-sm bg-white/[0.06] border border-white/[0.08]">
-                                <p className="text-white/55 text-[11px]">¿Qué me recomiendas hoy?</p>
-                              </div>
-                            </div>
-                            <div className="flex gap-2 items-end justify-end">
-                              <div className="px-3 py-1.5 rounded-2xl rounded-br-sm max-w-[75%]"
-                                style={{ background: 'linear-gradient(135deg,rgba(74,222,128,0.15),rgba(34,211,238,0.1))' }}>
-                                <p className="text-white/70 text-[11px]">🔥 El lomo saltado — muy pedido esta semana. También el tiramisú, que agotó ayer.</p>
-                              </div>
-                              <div className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px]"
-                                style={{ background: 'linear-gradient(135deg,#4ade80,#22d3ee)' }}>🤖</div>
-                            </div>
-                          </div>
-
-                          {/* Capabilities */}
-                          <div className="grid grid-cols-2 gap-x-3 gap-y-2 mb-5">
-                            {[
-                              ['🧠','Analiza ventas y sugiere acciones'],
-                              ['💬','Mesero IA en WhatsApp 24/7'],
-                              ['🎯','Recomienda platos personalizados'],
-                              ['📊','Resúmenes diarios automáticos'],
-                              ['✨','Aprende de tu carta y clientes'],
-                              ['🔔','Alertas de bajo stock en tiempo real'],
-                            ].map(([emoji, text], i) => (
-                              <div key={i} className="flex items-start gap-1.5">
-                                <span className="text-xs mt-px shrink-0">{emoji}</span>
-                                <span className="text-white/40 text-[10px] leading-tight">{text}</span>
-                              </div>
-                            ))}
-                          </div>
-
-                          <div className="flex items-center justify-between pt-3 border-t border-white/[0.07]">
-                            <div>
-                              <span className="text-white font-black text-sm">+$49.900</span>
-                              <span className="text-white/25 text-[10px]">/mes · a cualquier plan</span>
-                            </div>
-                            <button type="button"
-                               onClick={() => openWhatsApp('Hola, quiero agregar el módulo de Aluna IA (+$49.900/mes) a mi plan actual. ¿Cómo lo activo?')}
-                               className="h-8 px-4 rounded-xl text-[11px] font-black text-black flex items-center gap-1.5 transition-all active:scale-[0.97] hover:opacity-90"
-                               style={{ background: 'linear-gradient(135deg,#4ade80,#22d3ee)' }}>
-                               Agregar ✨
-                             </button>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
                   </div>
 
                 </div>

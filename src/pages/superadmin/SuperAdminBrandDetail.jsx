@@ -80,6 +80,8 @@ export default function SuperAdminBrandDetail() {
           description: brand.description,
           google_maps_url: brand.google_maps_url,
           payment_verified: brand.payment_verified,
+          subscription_status: brand.payment_verified ? 'active' : (brand.subscription_status || 'trialing'),
+          trial_already_used: brand.trial_already_used || false,
           trial_end_date: brand.trial_end_date,
           is_active: brand.is_active
         })
@@ -355,6 +357,22 @@ export default function SuperAdminBrandDetail() {
                       onChange={(e) => setBrand({...brand, has_ai_addon: e.target.checked})}
                     />
                     <div className="w-11 h-6 bg-blue-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-blue-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-amber-50 rounded-xl border border-amber-100 shadow-sm hover:border-amber-200 transition-colors">
+                  <div>
+                    <h4 className="font-bold text-amber-900 text-sm">Prueba 21 Días Usada</h4>
+                    <p className="text-xs text-amber-700 mt-0.5">Evita reiniciar trial sin autorización</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={brand.trial_already_used || false}
+                      onChange={(e) => setBrand({...brand, trial_already_used: e.target.checked})}
+                    />
+                    <div className="w-11 h-6 bg-amber-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-amber-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
                   </label>
                 </div>
 

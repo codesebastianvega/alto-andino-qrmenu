@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarClock, CheckCircle2, Clock3, Mail, MessageSquare, Phone, Plus, RefreshCw, Search, Store, Target, Trash2, UserRound } from 'lucide-react';
+import { CalendarClock, CheckCircle2, Clock3, Mail, MessageSquare, Phone, Plus, RefreshCw, Search, Store, Target, Trash2, UserRound, Zap } from 'lucide-react';
 import { supabase } from '../../config/supabase';
 
 const STATUS_OPTIONS = [
   { value: 'new', label: 'Nuevo', tone: 'bg-amber-50 text-amber-700 border-amber-100' },
+  { value: 'pending_activation', label: 'Pendiente Activación', tone: 'bg-orange-50 text-orange-700 border-orange-200' },
   { value: 'contacted', label: 'Contactado', tone: 'bg-blue-50 text-blue-700 border-blue-100' },
   { value: 'demo_scheduled', label: 'Demo agendada', tone: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
   { value: 'converted', label: 'Convertido', tone: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
@@ -16,6 +17,7 @@ const SOURCE_LABELS = {
   demo_request: 'Demo',
   manual: 'Manual',
   whatsapp: 'WhatsApp',
+  checkout: 'Checkout Plan',
 };
 
 const EMPTY_FORM = {
@@ -99,6 +101,7 @@ export default function SuperAdminLeads() {
 
   const stats = useMemo(() => {
     const total = leads.length;
+    const pendingActivation = leads.filter(lead => lead.status === 'pending_activation').length;
     const contacted = leads.filter(lead => ['contacted', 'demo_scheduled', 'converted'].includes(lead.status)).length;
     const demos = leads.filter(lead => lead.status === 'demo_scheduled').length;
     const converted = leads.filter(lead => lead.status === 'converted').length;
@@ -107,7 +110,7 @@ export default function SuperAdminLeads() {
       return new Date(lead.next_follow_up_at) <= new Date();
     }).length;
 
-    return { total, contacted, demos, converted, dueFollowUps };
+    return { total, pendingActivation, contacted, demos, converted, dueFollowUps };
   }, [leads]);
 
   const sources = useMemo(() => {
@@ -155,13 +158,13 @@ export default function SuperAdminLeads() {
         brand_id: null,
       };
 
-      const { data, error: createError } = await supabase
+      const { data, error: insertError } = await supabase
         .from('leads')
         .insert(payload)
         .select()
         .single();
 
-      if (createError) throw createError;
+      if (insertError) throw insertError;
       setLeads(prev => [data, ...prev]);
       setForm(EMPTY_FORM);
       setShowCreate(false);
@@ -174,7 +177,7 @@ export default function SuperAdminLeads() {
   };
 
   const deleteLead = async (lead) => {
-    if (!window.confirm(`Eliminar el lead de ${lead.name || lead.email}?`)) return;
+    if (!window.confirm(`¿Eliminar el lead de ${lead.name || lead.email}?`)) return;
     try {
       const { error: deleteError } = await supabase.from('leads').delete().eq('id', lead.id);
       if (deleteError) throw deleteError;
@@ -195,7 +198,7 @@ export default function SuperAdminLeads() {
           <h1 className="text-3xl text-[#1A1A1A] font-bold" style={{ fontFamily: "'DM Serif Display', serif" }}>
             Leads de Aluna
           </h1>
-          <p className="text-sm text-gray-500 mt-1">Prospectos interesados en comprar la plataforma.</p>
+          <p className="text-sm text-gray-500 mt-1">Prospectos interesados en comprar y activar la plataforma.</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -212,8 +215,9 @@ export default function SuperAdminLeads() {
 
       {error && <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <Metric title="Total" value={stats.total} icon={Target} tone="bg-slate-900 text-white" />
+        <Metric title="Por Activar" value={stats.pendingActivation} icon={Zap} tone="bg-orange-50 text-orange-700 border border-orange-200" />
         <Metric title="Contactados" value={stats.contacted} icon={MessageSquare} tone="bg-blue-50 text-blue-700" />
         <Metric title="Demos" value={stats.demos} icon={CalendarClock} tone="bg-indigo-50 text-indigo-700" />
         <Metric title="Convertidos" value={stats.converted} icon={CheckCircle2} tone="bg-emerald-50 text-emerald-700" />
@@ -226,10 +230,10 @@ export default function SuperAdminLeads() {
             <Input label="Nombre" value={form.name} onChange={value => setForm({ ...form, name: value })} required />
             <Input label="Restaurante" value={form.restaurant_name} onChange={value => setForm({ ...form, restaurant_name: value })} />
             <Input label="Correo" type="email" value={form.email} onChange={value => setForm({ ...form, email: value })} required />
-            <Input label="Telefono" value={form.phone} onChange={value => setForm({ ...form, phone: value })} />
+            <Input label="Teléfono" value={form.phone} onChange={value => setForm({ ...form, phone: value })} />
             <Input label="Ciudad" value={form.city} onChange={value => setForm({ ...form, city: value })} />
             <Input label="Tipo de negocio" value={form.business_type} onChange={value => setForm({ ...form, business_type: value })} />
-            <Input label="Plan de interes" value={form.plan_interest} onChange={value => setForm({ ...form, plan_interest: value })} />
+            <Input label="Plan de interés" value={form.plan_interest} onChange={value => setForm({ ...form, plan_interest: value })} />
             <Select label="Estado" value={form.status} onChange={value => setForm({ ...form, status: value })} options={STATUS_OPTIONS} />
             <Input label="Fuente" value={form.source} onChange={value => setForm({ ...form, source: value })} />
           </div>
@@ -248,7 +252,7 @@ export default function SuperAdminLeads() {
         <div className="p-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
           <div className="relative min-w-[280px] flex-1 max-w-xl">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por restaurante, contacto, correo, telefono..." className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por restaurante, contacto, correo, teléfono..." className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
           </div>
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-medium bg-white">
             <option value="all">Todos los estados</option>
