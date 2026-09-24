@@ -204,9 +204,9 @@ export function useOperations() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    await Promise.all([fetchOrders(), fetchTables(), fetchAreas(), fetchPayments(), fetchSettings()]);
+    await Promise.all([fetchOrders(), fetchTables(), fetchAreas(), fetchPayments(), fetchSettings(), fetchActiveShift()]);
     setLoading(false);
-  }, [fetchOrders, fetchTables, fetchAreas, fetchPayments, fetchSettings]);
+  }, [fetchOrders, fetchTables, fetchAreas, fetchPayments, fetchSettings, fetchActiveShift]);
 
   // Re-fetch everything when location context changes
   useEffect(() => {

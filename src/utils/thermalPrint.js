@@ -104,3 +104,103 @@ export function printThermalDocument({ order, type = 'receipt', width = '80', bu
   </style></head><body>${businessHeader}${orderInfo}<main>${itemRows}</main>${totals}${footer}<script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}</script></body></html>`);
   target.document.close();
 }
+
+
+export function printThermalShiftReport({ shift, metrics = {}, type = 'Z', width = '80', businessName = 'Aluna', business = {} }) {
+  const pageWidth = width === '80' ? '80mm' : '50mm';
+  const compact = width !== '80';
+  const isZ = type === 'Z';
+  const title = isZ ? 'CIERRE DE CAJA — REPORTE Z' : 'CORTE PARCIAL — REPORTE X';
+  const shiftNumber = shift?.shift_number || 1;
+  const businessLabel = business.name || businessName;
+  const taxId = business.nit || business.tax_id || business.document_number;
+  const locationLabel = shift?.locations?.name || business.address || '';
+
+  const initialCash = Number(shift?.initial_cash || 0);
+  const cashSales = Number(metrics.totalCashSales || 0);
+  const cardSales = Number(metrics.totalCardSales || 0);
+  const transferSales = Number(metrics.totalTransferSales || 0);
+  const otherSales = Number(metrics.totalOtherSales || 0);
+  const totalSales = Number(metrics.totalRevenue || 0);
+  const totalTips = Number(metrics.totalTips || 0);
+  const expectedCash = Number(shift?.expected_cash ?? (initialCash + cashSales));
+  const actualCash = shift?.actual_cash != null ? Number(shift.actual_cash) : null;
+  const cashDiff = shift?.cash_difference != null ? Number(shift.cash_difference) : null;
+
+  const openedAtStr = shift?.opened_at ? new Date(shift.opened_at).toLocaleString('es-CO') : '-';
+  const closedAtStr = isZ ? (shift?.closed_at ? new Date(shift.closed_at).toLocaleString('es-CO') : new Date().toLocaleString('es-CO')) : 'EN CURSO';
+
+  let diffText = 'N/A';
+  if (cashDiff !== null) {
+    if (cashDiff === 0) diffText = '$0 (CUADRADA)';
+    else if (cashDiff > 0) diffText = `+${formatCOP(cashDiff)} (SOBRANTE)`;
+    else diffText = `${formatCOP(cashDiff)} (FALTANTE)`;
+  }
+
+  const businessHeader = `<header class="center">
+    <div class="brand">${escapeHtml(businessLabel)}</div>
+    ${taxId ? `<div>NIT ${escapeHtml(taxId)}</div>` : ''}
+    ${locationLabel ? `<div>${escapeHtml(locationLabel)}</div>` : ''}
+    <div class="document-title">${title}</div>
+  </header>`;
+
+  const metaSection = `<section class="meta">
+    ${row('Turno #', String(shiftNumber), 'strong')}
+    ${row('Apertura', openedAtStr)}
+    ${row('Cierre', closedAtStr)}
+    ${row('Cajero(a)', shift?.opened_by || 'Caja')}
+    ${shift?.closed_by && isZ ? row('Cerrado por', shift.closed_by) : ''}
+  </section>`;
+
+  const cashAuditSection = `<section class="totals">
+    <div class="pair strong" style="border-bottom: 1px dotted #000; padding-bottom: 3px; margin-bottom: 5px;">
+      <span>ARQUEO DE EFECTIVO</span><span></span>
+    </div>
+    ${row('Base Inicial (+)', formatCOP(initialCash))}
+    ${row('Ventas Efectivo (+)', formatCOP(cashSales))}
+    ${row('Esperado en Gaveta (=)', formatCOP(expectedCash), 'strong')}
+    ${actualCash !== null ? row('Efectivo Real Contado', formatCOP(actualCash), 'strong') : ''}
+    ${diffText !== 'N/A' ? row('Diferencia / Cuadre', diffText, 'strong') : ''}
+  </section>`;
+
+  const paymentsSection = `<section class="totals">
+    <div class="pair strong" style="border-bottom: 1px dotted #000; padding-bottom: 3px; margin-bottom: 5px;">
+      <span>VENTAS POR MEDIO</span><span></span>
+    </div>
+    ${row('Efectivo', formatCOP(cashSales))}
+    ${row('Tarjetas / POS', formatCOP(cardSales))}
+    ${row('Nequi / Transferencia', formatCOP(transferSales))}
+    ${otherSales > 0 ? row('Otros Medios', formatCOP(otherSales)) : ''}
+  </section>`;
+
+  const totalsSection = `<section class="totals">
+    ${row('TOTAL FACTURADO', formatCOP(totalSales), 'grand-total')}
+    ${row('Propinas recaudadas', formatCOP(totalTips))}
+    ${row('Pedidos finalizados', String(metrics.deliveredCount || 0))}
+    ${row('Pedidos cancelados', String(metrics.cancelledCount || 0))}
+  </section>`;
+
+  const footer = `<footer class="center">
+    ${isZ ? `
+      <div style="margin-top: 18px; text-align: left;">
+        <div style="margin-bottom: 22px;">Firma Cajero(a): ___________________</div>
+        <div>Firma Administrador(a): ______________</div>
+      </div>
+    ` : '<div>Documento informativo no definitivo.</div>'}
+    <div class="legal" style="margin-top: 10px;">Aluna QR Menu — Sistema POS</div>
+  </footer>`;
+
+  const target = window.open('', '_blank', 'width=480,height=720');
+  if (!target) throw new Error('El navegador bloqueó la ventana de impresión');
+  target.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
+    @page{size:${pageWidth} auto;margin:0}
+    *{box-sizing:border-box}
+    html,body{width:${pageWidth};max-width:${pageWidth};margin:0;padding:0;background:#fff;color:#000}
+    body{padding:${compact ? '2.5mm' : '4mm'};font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:${compact ? '9.5px' : '11.5px'};line-height:1.3}
+    .center{text-align:center}.brand{font-size:1.35em;font-weight:900;text-transform:uppercase}.document-title{font-weight:900;margin-top:5px;letter-spacing:.08em}
+    .meta,.totals,footer{border-top:1px dashed #000;margin-top:8px;padding-top:7px}.pair{display:flex;justify-content:space-between;align-items:flex-start;gap:7px;margin:3px 0}.pair span:last-child{text-align:right}.strong{font-weight:900}
+    .grand-total{border-top:2px solid #000;border-bottom:2px solid #000;padding:6px 0;margin:6px 0;font-size:1.25em;font-weight:900}.legal{font-size:.85em;margin-top:7px}
+    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  </style></head><body>${businessHeader}${metaSection}${cashAuditSection}${paymentsSection}${totalsSection}${footer}<script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();};</script></body></html>`);
+  target.document.close();
+}

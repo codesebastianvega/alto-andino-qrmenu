@@ -1,45 +1,132 @@
-import React from 'react';
-import { Icon } from '@iconify-icon/react';
+import React, { useState, useEffect } from 'react';
+import { Icon } from '@iconify/react';
 import { useOperations } from '../hooks/useOperations';
+import { useAuth } from '../context/AuthContext';
+import { useLocation } from '../context/LocationContext';
+import { supabase } from '../config/supabase';
+import { toast } from '../components/Toast';
+import { printThermalShiftReport } from '../utils/thermalPrint';
+
 import ShiftCashSummary from '../components/admin/ShiftCashSummary';
 import TableMap from '../components/admin/TableMap';
 import KitchenStats from '../components/admin/KitchenStats';
 import ActiveStaff from '../components/admin/ActiveStaff';
+import OpenShiftModal from '../components/admin/OpenShiftModal';
+import CloseShiftModal from '../components/admin/CloseShiftModal';
 
-/**
- * AdminOperations — Centro de Operaciones
- * Bloque 3: Vista unificada del turno en tiempo real.
- * 3.1 useOperations hook ✅
- * 3.2 ShiftCashSummary ✅
- * 3.3 TableMap ✅
- * 3.4 KitchenStats + LiveEventFeed ✅
- * 3.5 ActiveStaff ✅
- * 3.6 Roles en sidebar (próximo)
- */
 export default function AdminOperations() {
-  const { orders, metrics, tablesWithStatus, areas, liveEvents, loading, refresh, updateTablePhysicalStatus } = useOperations();
+  const { activeBrand } = useAuth();
+  const { activeLocationId, isAllLocations, activeLocation } = useLocation();
+
+  const {
+    orders,
+    metrics,
+    tablesWithStatus,
+    areas,
+    liveEvents,
+    loading,
+    refresh,
+    updateTablePhysicalStatus,
+    activeShift,
+    openCashShift,
+    closeCashShift,
+    settings
+  } = useOperations();
+
+  const [staffList, setStaffList] = useState([]);
+  const [isOpenShiftModalOpen, setIsOpenShiftModalOpen] = useState(false);
+  const [isCloseShiftModalOpen, setIsCloseShiftModalOpen] = useState(false);
+
+  // Cargar lista de staff activo para asignar cajeros/responsables
+  useEffect(() => {
+    async function loadStaff() {
+      if (!activeBrand?.id) return;
+      try {
+        let query = supabase
+          .from('staff')
+          .select('id, name, role, location_id')
+          .eq('brand_id', activeBrand.id)
+          .eq('is_active', true);
+
+        if (!isAllLocations && activeLocationId) {
+          query = query.eq('location_id', activeLocationId);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        setStaffList(data || []);
+      } catch (err) {
+        console.error('Error cargando staff:', err);
+      }
+    }
+    loadStaff();
+  }, [activeBrand?.id, activeLocationId, isAllLocations]);
+
+  // Pop-up automático de preconfiguración diaria si la sede no tiene turno abierto
+  useEffect(() => {
+    if (loading) return;
+    const skipKey = `skip_open_shift_${activeBrand?.id}_${activeLocationId || 'all'}`;
+    const wasDismissed = sessionStorage.getItem(skipKey);
+
+    if (!activeShift && !wasDismissed) {
+      setIsOpenShiftModalOpen(true);
+    }
+  }, [loading, activeShift, activeBrand?.id, activeLocationId]);
+
+  const handleDismissOpenShift = () => {
+    const skipKey = `skip_open_shift_${activeBrand?.id}_${activeLocationId || 'all'}`;
+    sessionStorage.setItem(skipKey, 'true');
+    setIsOpenShiftModalOpen(false);
+  };
+
+  const handlePrintReportX = () => {
+    if (!activeShift) return;
+    try {
+      printThermalShiftReport({
+        shift: activeShift,
+        metrics,
+        type: 'X',
+        width: settings?.thermal_paper_width || '80',
+        businessName: activeBrand?.name || 'Aluna',
+        business: activeBrand
+      });
+      toast.success('Reporte X enviado a impresión térmica');
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al generar Reporte X');
+    }
+  };
+
+  const currentLocationName = activeLocation?.name || (isAllLocations ? 'Todas las Sedes' : 'Sede Principal');
 
   return (
     <div className="p-4 md:p-8 pb-28 max-w-[1700px] mx-auto min-h-screen">
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="flex items-center justify-between mb-8">
+      <header className="flex items-center justify-between mb-8 flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <span className="inline-block w-1.5 h-8 bg-[#2f4131] rounded-full" />
-            Centro de Operaciones
-          </h1>
-          <p className="text-gray-400 text-sm font-medium mt-1 pl-5">
-            Visión en tiempo real del turno activo
+            <h1 className="text-2xl md:text-3xl font-black text-gray-900 uppercase tracking-tight">
+              Centro de Operaciones
+            </h1>
+          </div>
+          <p className="text-gray-400 text-xs md:text-sm font-medium mt-1 pl-4 flex items-center gap-2">
+            <span>Visión en vivo del turno activo</span>
+            <span>•</span>
+            <span className="text-emerald-700 font-bold">{currentLocationName}</span>
           </p>
         </div>
-        <button
-          onClick={refresh}
-          disabled={loading}
-          className="p-3 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 text-gray-600 transition-colors shadow-sm flex items-center gap-2 font-bold text-sm disabled:opacity-50"
-        >
-          <Icon icon="heroicons:arrow-path" className={`text-xl ${loading ? 'animate-spin' : ''}`} />
-          Actualizar
-        </button>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={refresh}
+            disabled={loading}
+            className="p-3 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 text-gray-700 transition-colors shadow-2xs flex items-center gap-2 font-bold text-xs md:text-sm disabled:opacity-50"
+          >
+            <Icon icon="solar:restart-bold" className={`text-lg ${loading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </button>
+        </div>
       </header>
 
       {loading ? (
@@ -53,17 +140,18 @@ export default function AdminOperations() {
             <ShiftCashSummary
               metrics={metrics}
               orders={orders}
-              onCloseShift={() => {/* futuro: registrar cierre de turno */}}
+              activeShift={activeShift}
+              onOpenShift={() => setIsOpenShiftModalOpen(true)}
+              onCloseShift={() => setIsCloseShiftModalOpen(true)}
+              onPrintReportX={handlePrintReportX}
             />
           </div>
 
           {/* ── 3.3 Mapa de Mesas ────────────────────────────────────────── */}
           <div className="bg-[#0F170F] rounded-3xl border border-white/5 shadow-xl p-6">
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="text-white/50">
-                  <rect x="4" y="3" width="16" height="4" rx="1"/><path d="M6 7v14M18 7v14M12 7v14M4 14h16"/>
-                </svg>
+              <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white/50">
+                <Icon icon="solar:chair-2-bold" width="18" />
               </div>
               <div>
                 <h2 className="text-sm font-bold text-white uppercase tracking-wider">Mapa de Mesas</h2>
@@ -92,6 +180,25 @@ export default function AdminOperations() {
           </div>
         </div>
       )}
+
+      {/* ── Modales de Turno ──────────────────────────────────────────────── */}
+      <OpenShiftModal
+        isOpen={isOpenShiftModalOpen}
+        onClose={handleDismissOpenShift}
+        onOpenShift={openCashShift}
+        staffList={staffList}
+        currentLocationName={currentLocationName}
+      />
+
+      <CloseShiftModal
+        isOpen={isCloseShiftModalOpen}
+        onClose={() => setIsCloseShiftModalOpen(false)}
+        shift={activeShift}
+        metrics={metrics}
+        onConfirmClose={closeCashShift}
+        business={activeBrand}
+        restaurantSettings={settings}
+      />
     </div>
   );
 }
