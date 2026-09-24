@@ -6,14 +6,16 @@ import { PLAN_LIMITS_BY_ID } from '../config/plans';
  * Obtiene las opciones de compresión según el plan.
  */
 export const getCompressionOptions = (planId) => {
-  const planLimits = PLAN_LIMITS_BY_ID[planId] || { image_max_mb: 0.1, max_width: 800 };
+  const planLimits = PLAN_LIMITS_BY_ID[planId] || { compressed_target_mb: 0.1, max_width: 800 };
+  const targetMB = planLimits.compressed_target_mb || 0.10;
+  const maxWidth = planLimits.max_width || 800;
   
   return {
-    maxSizeMB: planLimits.image_max_mb || 0.1, // Peso final objetivo WebP
-    maxWidthOrHeight: planLimits.max_width || 800, // Resolución máxima
+    maxSizeMB: targetMB, // Peso final objetivo WebP (~80-120 KB)
+    maxWidthOrHeight: maxWidth, // Resolución máxima óptima para móviles (Retina 2x)
     useWebWorker: true,
     fileType: 'image/webp',
-    initialQuality: planLimits.image_max_mb > 0.5 ? 0.85 : 0.75, // Mejor calidad para planes altos
+    initialQuality: 0.8, // Calidad WebP óptima
   };
 };
 
@@ -21,8 +23,8 @@ export const getCompressionOptions = (planId) => {
  * Obtiene el límite en MB según el plan_id para mostrar en la interfaz.
  */
 export const getMaxImageSizeMB = (planId) => {
-  const planLimits = PLAN_LIMITS_BY_ID[planId] || { image_max_mb: 0.1 };
-  return planLimits.image_max_mb || 0.1;
+  const planLimits = PLAN_LIMITS_BY_ID[planId];
+  return planLimits?.initial_max_mb || planLimits?.image_max_mb || 10;
 };
 
 /**
@@ -121,14 +123,15 @@ export const getSafeImageUrl = (url, fallback = null) => {
   return value;
 };
 
-export const validateImageSize = (file, toast = null) => {
+export const validateImageSize = (file, toast = null, planId = null) => {
   if (!file) return false;
   
-  const maxBytes = MAX_INITIAL_FILE_MB * 1024 * 1024;
+  const maxAllowedMB = planId ? getMaxImageSizeMB(planId) : MAX_INITIAL_FILE_MB;
+  const maxBytes = maxAllowedMB * 1024 * 1024;
 
   if (file.size > maxBytes) {
     const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-    const errorMsg = `La imagen original es demasiado grande (${sizeMB}MB). Por favor selecciona una imagen de menos de ${MAX_INITIAL_FILE_MB}MB.`;
+    const errorMsg = `La imagen original es demasiado grande (${sizeMB}MB). Por favor selecciona una imagen de menos de ${maxAllowedMB}MB.`;
     
     if (toast && typeof toast.error === 'function') {
       toast.error(errorMsg);

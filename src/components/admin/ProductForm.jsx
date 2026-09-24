@@ -242,8 +242,8 @@ export default function ProductForm({ product, categories, recipes = [], allerge
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Aunque comprimamos, validamos el tamaño inicial por seguridad (ahora 4MB)
-    if (!validateImageSize(file, toast)) return;
+    // Aunque comprimamos, validamos el tamaño inicial por seguridad según el plan
+    if (!validateImageSize(file, toast, activeBrand?.plan_id)) return;
 
     try {
       setIsUploading(true);
@@ -1041,7 +1041,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                         {isUploading ? 'Subiendo e incorporando...' : 'Seleccionar imagen'}
                       </p>
                       <p className="text-[10px] text-gray-400 mt-1">
-                        JPG, PNG o WebP hasta <span className="font-bold text-gray-500">4.0 MB</span>
+                        JPG, PNG o WebP hasta <span className="font-bold text-gray-500">{getMaxImageSizeMB(activeBrand?.plan_id).toFixed(0)} MB</span>
                       </p>
                     </div>
                   </label>

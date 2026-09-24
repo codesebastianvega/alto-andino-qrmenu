@@ -148,7 +148,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!validateImageSize(file, toast)) return;
+    if (!validateImageSize(file, toast, activeBrand?.plan_id)) return;
 
     setIsUploading(true);
     setUploadStats(null);
@@ -397,7 +397,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                     <p className="text-sm font-bold text-gray-700">
                       {isUploading ? 'Procesando...' : 'Cambiar Imagen'}
                     </p>
-                    <p className="text-[10px] text-gray-400 mt-1 font-medium">PNG, JPG hasta 4MB</p>
+                    <p className="text-[10px] text-gray-400 mt-1 font-medium">PNG, JPG o WebP hasta {getMaxImageSizeMB(activeBrand?.plan_id).toFixed(0)}MB</p>
                   </div>
                 </label>
 

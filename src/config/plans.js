@@ -126,11 +126,14 @@ export const getPlanIdBySlug = (slug) => {
 
 /**
  * Límites operativos por Plan ID
+ * - initial_max_mb: Tamaño máximo del archivo original que el usuario puede elegir (cámara / carrete).
+ * - compressed_target_mb: Peso objetivo tras compresión en cliente a WebP (~80KB - 120KB) para ultra velocidad y blindaje contra egress.
+ * - max_width: Resolución máxima (800px-900px, óptimo para pantallas Retina móviles sin desperdicio de datos).
  */
 export const PLAN_LIMITS_BY_ID = {
-  [PLAN_IDS.emprendedor]: { image_max_mb: 2 },
-  [PLAN_IDS.esencial]:    { image_max_mb: 4 },
-  [PLAN_IDS.profesional]: { image_max_mb: 6 },
-  [PLAN_IDS.premium]:     { image_max_mb: 8 },
-  [PLAN_IDS.enterprise]:  { image_max_mb: 15 },
+  [PLAN_IDS.emprendedor]: { initial_max_mb: 8,  compressed_target_mb: 0.08, max_width: 800, image_max_mb: 8 },
+  [PLAN_IDS.esencial]:    { initial_max_mb: 10, compressed_target_mb: 0.10, max_width: 800, image_max_mb: 10 },
+  [PLAN_IDS.profesional]: { initial_max_mb: 12, compressed_target_mb: 0.10, max_width: 850, image_max_mb: 12 },
+  [PLAN_IDS.premium]:     { initial_max_mb: 15, compressed_target_mb: 0.12, max_width: 900, image_max_mb: 15 },
+  [PLAN_IDS.enterprise]:  { initial_max_mb: 20, compressed_target_mb: 0.15, max_width: 1000, image_max_mb: 20 },
 };

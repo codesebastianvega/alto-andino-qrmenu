@@ -209,7 +209,7 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!validateImageSize(file, toast)) return;
+    if (!validateImageSize(file, toast, activeBrand?.plan_id)) return;
 
     if (type === 'logo') setUploadingLogo(true);
     else setUploadingFavicon(true);
