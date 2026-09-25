@@ -5,6 +5,7 @@ import CostedProductWorkflow from './aluna/CostedProductWorkflow';
 import OperationsWorkflow from './aluna/OperationsWorkflow';
 import ChangeHistory from './aluna/ChangeHistory';
 import { GuidanceCard, AgenticProposalCard, DeepLinkCard, PlanInfoCard } from './aluna/CaminoCards';
+import { getPlanQuota } from '../../config/quotas';
 
 const STATUS_STYLES = {
   ready: { icon: CheckCircle2, label: 'Listo', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -295,11 +296,13 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
   const [availableCategories, setAvailableCategories] = useState([]);
   const [changes, setChanges] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [aiUsage, setAiUsage] = useState(brand?.ai_generations_used || 0);
   const promptRef = useRef(null);
   const titleId = useId();
   const brandId = brand?.id;
   const brandName = brand?.name || 'tu negocio';
   const locationName = location?.name || (locationId ? 'Sede seleccionada' : 'Todas las sedes');
+  const planQuota = getPlanQuota(brand?.plan_id);
 
   useEffect(() => {
     setAudit(null);
@@ -314,8 +317,9 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
     setAvailableCategories([]);
     setChanges([]);
     setSelectedProduct(null);
+    setAiUsage(brand?.ai_generations_used || 0);
     setIsOpen(false);
-  }, [brandId]);
+  }, [brandId, brand?.ai_generations_used]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -497,8 +501,8 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
         setSuggestedReplies([]);
         setWorkflow('create_costed_product');
       }
-      if (Array.isArray(response.existing_categories)) setAvailableCategories(response.existing_categories);
       if (response.intent === 'audit') setAudit(await runOpeningAudit({ brandId, locationId }));
+      if (typeof response.current_usage === 'number') setAiUsage(response.current_usage);
     } catch (chatError) {
       setError(chatError.message || 'No pude responder el mensaje.');
     } finally {
@@ -673,6 +677,10 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
               <div className="mt-4 flex flex-wrap gap-2 text-xs">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 font-semibold text-emerald-800"><ShieldCheck size={13} aria-hidden="true" /> {brandName}</span>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 font-medium text-gray-600"><MapPin size={13} aria-hidden="true" /> {locationName}</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-3 py-1.5 font-semibold text-violet-800 border border-violet-100/80">
+                  <Sparkles size={12} className="text-violet-600" aria-hidden="true" />
+                  <span>Plan {planQuota.label}: {Math.max(planQuota.monthly_limit - aiUsage, 0)} consultas disp.</span>
+                </span>
               </div>
             </header>
 
