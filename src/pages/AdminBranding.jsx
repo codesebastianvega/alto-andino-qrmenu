@@ -250,37 +250,65 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
   );
 
   return (
-    <div className={isEmbedded ? "" : "p-4 sm:p-8 max-w-7xl mx-auto space-y-8"}>
+    <div className={isEmbedded ? "" : "min-h-screen bg-[#FDFDFB] text-gray-900 selection:bg-indigo-100 italic-none p-4 sm:p-10 max-w-[1600px] mx-auto space-y-10 animate-fadeUp"}>
       {!isEmbedded && (
-        <PageHeader
-          badge="Configuración Visual"
-          title="Identidad de Marca"
-          subtitle={`Ajusta la apariencia visual de ${activeBrand?.name || 'tu marca'}.`}
-        >
-          <PrimaryButton onClick={handleSaveSettings} disabled={isSubmittingSettings}>
-             {isSubmittingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon icon="solar:check-read-linear" className="w-4 h-4" />}
-             Guardar Todo
-          </PrimaryButton>
-        </PageHeader>
-      )}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-fadeUp">
+            <PageHeader
+              badge="Configuración Visual"
+              title="Identidad de Marca"
+              subtitle={`Ajusta la apariencia visual, colores y logotipos de ${activeBrand?.name || 'tu marca'}.`}
+            />
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Forms */}
-        <div className="xl:col-span-8 space-y-8">
-          
-          {/* Section: Basic Identity */}
-           <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden transition-all hover:shadow-md">
-            <div className="px-6 py-5 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
-               <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-brand-primary/10 flex items-center justify-center text-brand-primary">
-                     <Icon icon="solar:shop-2-bold-duotone" width="20" />
-                  </div>
-                  <div>
-                     <h3 className="text-base font-bold text-gray-900 leading-tight">Identidad Visual</h3>
-                     <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase mt-0.5">Logotipos y Favicon</p>
-                  </div>
-               </div>
+            <div className="flex items-center gap-3 self-start md:self-auto">
+              <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-200/80 px-4 py-2.5 shadow-2xs">
+                <div className="w-8 h-8 rounded-lg bg-pink-50 flex items-center justify-center text-pink-600 shrink-0 border border-pink-100/60">
+                   <Icon icon="solar:palette-bold-duotone" className="text-base" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Marca Activa</p>
+                  <p className="text-xs font-bold text-gray-900">{activeBrand?.name || 'Cargando...'}</p>
+                </div>
+              </div>
+
+              <button 
+                type="button" 
+                onClick={handleSaveSettings} 
+                disabled={isSubmittingSettings}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold shadow-xs transition-all cursor-pointer shrink-0 disabled:opacity-50"
+              >
+                {isSubmittingSettings ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Guardando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Icon icon="solar:diskette-bold-duotone" className="text-base" />
+                    <span>Guardar Todo</span>
+                  </>
+                )}
+              </button>
             </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+          {/* Left Column: Forms */}
+          <div className="xl:col-span-8 space-y-6">
+            
+            {/* Section: Basic Identity */}
+            <section className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden transition-all">
+              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white">
+                 <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700 shrink-0 border border-emerald-100/60">
+                       <Icon icon="solar:shop-2-bold-duotone" className="text-xl" />
+                    </div>
+                    <div>
+                       <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">Identidad Visual</h3>
+                       <p className="text-xs text-gray-500 mt-0.5">Logotipo principal y favicon para la pestaña del navegador</p>
+                    </div>
+                 </div>
+              </div>
             
             <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="space-y-6">
@@ -355,14 +383,14 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
 
 
           {/* Section: Palette & Fonts */}
-          <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden transition-all hover:shadow-md">
-            <div className="px-6 py-5 border-b border-gray-50 flex items-center gap-3 bg-gray-50/30">
-               <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
-                  <Icon icon="solar:cosmetic-linear" width="20" />
+          <section className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden transition-all">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center gap-3.5 bg-white">
+               <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0 border border-purple-100/60">
+                  <Icon icon="solar:cosmetic-linear" className="text-xl" />
                </div>
                <div>
-                  <h3 className="text-base font-bold text-gray-900 leading-tight">Colores y Tipografía</h3>
-                  <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase mt-0.5">Personalización Avanzada</p>
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">Colores y Tipografía</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Personalización de fuentes y paleta cromática del menú digital</p>
                </div>
             </div>
             
@@ -453,41 +481,41 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
           </section>
 
           {/* BRAND CONCEPTS SECTION */}
-          <section className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-            <div className="p-8">
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl">
-                    <Icon icon="solar:star-rainbow-bold" width="24" />
+          <section className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
+            <div className="p-6 sm:p-7">
+              <div className="flex items-center justify-between mb-6 pb-5 border-b border-gray-100">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 border border-amber-100/60">
+                    <Icon icon="solar:star-rainbow-bold" className="text-xl" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 leading-tight">Conceptos de Marca</h3>
-                    <p className="text-[13px] text-gray-400 font-medium mt-0.5">Sub-marcas o líneas de negocio (ej: Delicattesen)</p>
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">Conceptos de Marca</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">Sub-marcas o líneas de negocio (ej: Delicattesen)</p>
                   </div>
                 </div>
                 <button 
                   type="button"
                   onClick={addConcept}
-                  className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-sm font-bold hover:bg-amber-100 transition-all border border-amber-100"
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-xs font-bold hover:bg-amber-100 transition-all border border-amber-200/60 cursor-pointer"
                 >
-                  <Icon icon="solar:add-circle-bold" width="18" />
-                  Nuevo Concepto
+                  <Icon icon="solar:add-circle-bold" className="text-base" />
+                  <span>Nuevo Concepto</span>
                 </button>
               </div>
 
               <div className="space-y-4">
                 {(settingsForm.brand_concepts || []).length === 0 ? (
-                  <div className="py-12 px-6 border-2 border-dashed border-gray-100 rounded-[2rem] text-center">
+                  <div className="py-12 px-6 border-2 border-dashed border-gray-100 rounded-2xl text-center">
                     <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Icon icon="solar:box-minimalistic-linear" width="32" className="text-gray-200" />
                     </div>
                     <p className="text-sm font-medium text-gray-400">No hay conceptos creados.</p>
-                    <p className="text-[11px] text-gray-300 mt-1 uppercase tracking-widest font-black">Empieza añadiendo uno para tu marca</p>
+                    <p className="text-[11px] text-gray-400 mt-1 uppercase tracking-widest font-bold">Empieza añadiendo uno para tu marca</p>
                   </div>
                 ) : (
                   <div className="grid gap-4">
                     {settingsForm.brand_concepts.map((concept) => (
-                      <div key={concept.id} className="p-6 bg-gray-50/50 rounded-[2rem] border border-gray-100 relative group animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      <div key={concept.id} className="p-5 bg-gray-50/60 rounded-xl border border-gray-200/80 relative group animate-in fade-in slide-in-from-bottom-2 duration-300">
                         <button 
                           type="button"
                           onClick={() => removeConcept(concept.id)}
@@ -608,14 +636,14 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
               </div>
            </div>
 
-           <div className="bg-brand-primary/5 rounded-3xl p-6 border border-brand-primary/10">
-              <div className="flex items-start gap-4">
-                 <div className="w-10 h-10 rounded-2xl bg-brand-primary/10 flex items-center justify-center text-brand-primary shrink-0">
-                    <Icon icon="solar:magic-stick-3-bold-duotone" width="20" />
+           <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-2xs">
+              <div className="flex items-start gap-3.5">
+                 <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-100/60">
+                    <Icon icon="solar:magic-stick-3-bold-duotone" className="text-xl" />
                  </div>
                  <div>
                     <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Previsualización Live</h4>
-                    <p className="text-[11px] text-gray-500 mt-2 leading-relaxed font-medium">
+                    <p className="text-[11px] text-gray-500 mt-1 leading-relaxed font-medium">
                       Simulación en tiempo real de tu menú móvil. Recuerda guardar los cambios para aplicarlos.
                     </p>
                  </div>

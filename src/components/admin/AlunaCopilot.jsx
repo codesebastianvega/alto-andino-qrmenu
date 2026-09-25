@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { AlertTriangle, Bot, CheckCircle2, ChevronRight, History, Loader2, MapPin, Pencil, Send, ShieldCheck, Sparkles, UtensilsCrossed, X, XCircle } from 'lucide-react';
+import { AlertTriangle, Bot, CheckCircle2, ChevronRight, History, Loader2, MapPin, Maximize2, Minimize2, Pencil, Send, ShieldCheck, Sparkles, UtensilsCrossed, X, XCircle } from 'lucide-react';
 import { chatWithAluna, executeAlunaAction, executeAlunaCatalogManagementAction, executeAlunaKitchenAction, executeAlunaOperationsAction, executeAlunaBrandWebAction, executeAlunaInventoryAction, executeAlunaVenueAction, listAlunaChanges, runOpeningAudit } from '../../services/alunaCopilot';
 import CostedProductWorkflow from './aluna/CostedProductWorkflow';
 import OperationsWorkflow from './aluna/OperationsWorkflow';
@@ -508,6 +508,7 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
   const [changes, setChanges] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [aiUsage, setAiUsage] = useState(brand?.ai_generations_used || 0);
+  const [isExpanded, setIsExpanded] = useState(false);
   const promptRef = useRef(null);
   const titleId = useId();
   const brandId = brand?.id;
@@ -1225,7 +1226,7 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
       {isOpen ? (
         <div className="fixed inset-0 z-[100]" role="presentation">
           <button type="button" className="absolute inset-0 bg-black/35 backdrop-blur-[2px]" onClick={() => setIsOpen(false)} aria-label="Cerrar Lumi" />
-          <section role="dialog" aria-modal="true" aria-labelledby={titleId} className="absolute inset-y-0 right-0 flex w-full flex-col bg-[#F7F8F5] shadow-2xl sm:max-w-[640px] xl:max-w-[760px]">
+          <section role="dialog" aria-modal="true" aria-labelledby={titleId} className={`absolute inset-y-0 right-0 flex w-full flex-col bg-[#F7F8F5] shadow-2xl transition-all duration-300 ease-in-out ${isExpanded ? 'sm:max-w-[96vw] xl:max-w-[1240px]' : 'sm:max-w-[640px] xl:max-w-[760px]'}`}>
             <header className="border-b border-gray-200 bg-white px-5 py-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -1240,7 +1241,23 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
                     <p className="text-xs text-gray-500">Tu asistente de apertura y operaciones</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1"><button type="button" onClick={openChanges} className="rounded-full p-2 text-gray-500 hover:bg-gray-100" aria-label="Ver historial de cambios"><History size={19} aria-hidden="true" /></button><button type="button" onClick={() => setIsOpen(false)} className="rounded-full p-2 text-gray-500 hover:bg-gray-100" aria-label="Cerrar panel"><X size={20} aria-hidden="true" /></button></div>
+                <div className="flex items-center gap-1">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsExpanded(prev => !prev)} 
+                    className="rounded-full p-2 text-gray-500 hover:bg-gray-100 transition-colors" 
+                    title={isExpanded ? "Reducir a panel lateral" : "Pantalla completa / Modo Enfoque"} 
+                    aria-label={isExpanded ? "Reducir a panel lateral" : "Pantalla completa / Modo Enfoque"}
+                  >
+                    {isExpanded ? <Minimize2 size={19} aria-hidden="true" /> : <Maximize2 size={19} aria-hidden="true" />}
+                  </button>
+                  <button type="button" onClick={openChanges} className="rounded-full p-2 text-gray-500 hover:bg-gray-100" aria-label="Ver historial de cambios">
+                    <History size={19} aria-hidden="true" />
+                  </button>
+                  <button type="button" onClick={() => setIsOpen(false)} className="rounded-full p-2 text-gray-500 hover:bg-gray-100" aria-label="Cerrar panel">
+                    <X size={20} aria-hidden="true" />
+                  </button>
+                </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2 text-xs">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 font-semibold text-emerald-800"><ShieldCheck size={13} aria-hidden="true" /> {brandName}</span>

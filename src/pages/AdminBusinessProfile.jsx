@@ -212,259 +212,285 @@ export default function AdminBusinessProfile({ isEmbedded = false }) {
   );
 
   return (
-    <div className={isEmbedded ? "" : "p-4 sm:p-8 max-w-7xl mx-auto space-y-8"}>
-      {!isEmbedded && (
-        <PageHeader
-          badge="Gestión del Negocio"
-          title="Perfil Comercial"
-          subtitle={`Gestiona la información pública y legal de ${activeBrand?.name || 'tu marca'}.`}
-        >
-          <PrimaryButton onClick={handleSaveProfile} disabled={isSubmitting}>
-             {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon icon="solar:check-read-linear" className="w-4 h-4" />}
-             Guardar Todo
-          </PrimaryButton>
-        </PageHeader>
-      )}
+    <div className={isEmbedded ? "" : "min-h-screen bg-[#FDFDFB] text-gray-900 selection:bg-indigo-100 italic-none"}>
+      <div className={isEmbedded ? "" : "p-4 sm:p-10 max-w-[1600px] mx-auto space-y-10"}>
+        {!isEmbedded && (
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-fadeUp">
+            <PageHeader
+              badge="Gestión del Negocio"
+              title="Perfil Comercial"
+              subtitle={`Gestiona la identidad pública, información de contacto y datos legales de ${activeBrand?.name || 'tu marca'}.`}
+            />
 
-      <div className="grid grid-cols-1 gap-8 items-start">
-        <div className="space-y-8">
+            <div className="flex items-center gap-3 self-start md:self-auto">
+              <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-200/80 px-4 py-2.5 shadow-2xs">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700 shrink-0 border border-emerald-100/60">
+                   <Icon icon="solar:shop-2-bold" className="text-base" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Marca Activa</p>
+                  <p className="text-xs font-bold text-gray-900">{activeBrand?.name || 'Cargando...'}</p>
+                </div>
+              </div>
 
-          {/* ── Section: Brand Identity (NEW) ── */}
-          <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden transition-all hover:shadow-md">
-            <div className="px-6 py-5 border-b border-gray-50 flex items-center gap-3 bg-gray-50/30">
-              <div className="w-9 h-9 rounded-xl bg-[#2f4131]/10 flex items-center justify-center text-[#2f4131]">
-                <Icon icon="solar:star-bold-duotone" width="20" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-gray-900 leading-tight">Identidad de Marca</h3>
-                <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase mt-0.5">Nombre público y URL del menú QR</p>
-              </div>
+              <button 
+                type="button" 
+                onClick={handleSaveProfile} 
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold shadow-xs transition-all cursor-pointer shrink-0 disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Guardando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Icon icon="solar:diskette-bold-duotone" className="text-base" />
+                    <span>Guardar Todo</span>
+                  </>
+                )}
+              </button>
             </div>
+          </div>
+        )}
 
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Brand Name */}
-              <div>
-                <FormField label="Nombre de la Marca">
-                  <TextInput
+        <div className="grid grid-cols-1 gap-6 items-start">
+          <div className="space-y-6">
+
+            {/* ── Section: Brand Identity ── */}
+            <section className="bg-white rounded-2xl border border-gray-200/80 p-6 sm:p-7 shadow-xs relative overflow-hidden animate-fadeUp">
+              <div className="flex items-center gap-3.5 pb-5 border-b border-gray-100 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0 border border-indigo-100/60">
+                  <Icon icon="solar:star-bold-duotone" className="text-xl" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">Identidad de Marca</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Nombre público y dirección URL única para tu menú digital y códigos QR</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Brand Name */}
+                <div>
+                  <label className="text-xs font-bold text-gray-700 mb-1.5 block">
+                    Nombre de la Marca
+                  </label>
+                  <input
+                    type="text"
                     value={brandForm.name}
                     onChange={(e) => handleNameChange(e.target.value)}
                     placeholder="Ej. Alto Andino"
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-medium text-gray-900 placeholder:text-gray-400 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all shadow-2xs"
                   />
-                </FormField>
-              </div>
+                  <p className="text-[11px] text-gray-400 mt-1.5">Nombre principal que identificarán tus clientes en cartas y comandas.</p>
+                </div>
 
-              {/* Slug */}
-              <div>
-                <label className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2 block">
-                  Slug (URL del menú)
-                </label>
-                <div className="relative">
-                  <div className="flex items-center bg-[#f9f9f9] border border-black/5 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-[#2f4131] transition-all">
-                    <span className="pl-4 pr-1 text-xs text-gray-400 font-medium whitespace-nowrap shrink-0">aluna.app/</span>
-                    <input
-                      type="text"
-                      value={brandForm.slug}
-                      onChange={(e) => handleSlugChange(e.target.value)}
-                      placeholder="mi-restaurante"
-                      className="flex-1 bg-transparent py-3 pr-10 text-sm font-medium text-gray-900 outline-none"
-                    />
-                    {/* Status icon */}
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      {slugStatus === 'checking' && (
-                        <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                      )}
-                      {slugStatus === 'available' && (
-                        <Icon icon="solar:check-circle-bold" className="text-emerald-500 text-lg" />
-                      )}
-                      {slugStatus === 'taken' && (
-                        <Icon icon="solar:close-circle-bold" className="text-red-500 text-lg" />
-                      )}
+                {/* Slug */}
+                <div>
+                  <label className="text-xs font-bold text-gray-700 mb-1.5 block">
+                    Slug (URL del menú)
+                  </label>
+                  <div className="relative">
+                    <div className="flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden focus-within:border-emerald-600 focus-within:ring-1 focus-within:ring-emerald-600 transition-all shadow-2xs">
+                      <span className="pl-3.5 pr-1 text-xs text-gray-400 font-semibold whitespace-nowrap shrink-0">aluna.app/</span>
+                      <input
+                        type="text"
+                        value={brandForm.slug}
+                        onChange={(e) => handleSlugChange(e.target.value)}
+                        placeholder="mi-restaurante"
+                        className="flex-1 bg-transparent py-2.5 pr-10 text-sm font-medium text-gray-900 outline-none"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {slugStatus === 'checking' && (
+                          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                        )}
+                        {slugStatus === 'available' && (
+                          <Icon icon="solar:check-circle-bold" className="text-emerald-500 text-lg" />
+                        )}
+                        {slugStatus === 'taken' && (
+                          <Icon icon="solar:close-circle-bold" className="text-red-500 text-lg" />
+                        )}
+                      </div>
                     </div>
                   </div>
+                  <div className="mt-1.5 min-h-[18px]">
+                    {slugStatus === 'available' && (
+                      <p className="text-[11px] font-semibold text-emerald-600">✓ Slug disponible</p>
+                    )}
+                    {slugStatus === 'taken' && (
+                      <p className="text-[11px] font-semibold text-red-500">✗ Este slug ya está en uso</p>
+                    )}
+                    {slugStatus === 'idle' && brandForm.slug && (
+                      <p className="text-[11px] text-gray-400">Identificador en los códigos QR impresos y enlaces directos</p>
+                    )}
+                  </div>
                 </div>
-                {/* Status message */}
-                <div className="mt-1.5 min-h-[18px]">
-                  {slugStatus === 'available' && (
-                    <p className="text-[11px] font-bold text-emerald-600">✓ Slug disponible</p>
-                  )}
-                  {slugStatus === 'taken' && (
-                    <p className="text-[11px] font-bold text-red-500">✗ Este slug ya está en uso</p>
-                  )}
-                  {slugStatus === 'idle' && brandForm.slug && (
-                    <p className="text-[11px] text-gray-400">Sin cambios</p>
-                  )}
+
+                {/* URL Preview */}
+                <div className="md:col-span-2">
+                  <div className="flex items-center gap-2.5 bg-gray-50 border border-gray-200/70 rounded-xl px-4 py-3">
+                    <Icon icon="solar:link-bold" className="text-gray-400 text-base shrink-0" />
+                    <span className="text-xs text-gray-500 font-medium">Vista previa del menú:</span>
+                    <span className="text-xs font-semibold text-emerald-800 break-all select-all font-mono">
+                      {window.location.origin}/#/menu/{brandForm.slug || '...'}
+                    </span>
+                  </div>
                 </div>
               </div>
+            </section>
 
-              {/* URL Preview */}
-              <div className="md:col-span-2">
-                <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3">
-                  <Icon icon="solar:link-bold" className="text-gray-400 text-base shrink-0" />
-                  <span className="text-xs text-gray-400 font-medium">Vista previa del menú:</span>
-                  <span className="text-xs font-bold text-[#2f4131] break-all">
-                    {window.location.origin}/#/menu/{brandForm.slug || '...'}
-                  </span>
+            {/* ── Section: Public Information ── */}
+            <section className="bg-white rounded-2xl border border-gray-200/80 p-6 sm:p-7 shadow-xs relative overflow-hidden animate-fadeUp" style={{ animationDelay: '100ms' }}>
+              <div className="flex items-center gap-3.5 pb-5 border-b border-gray-100 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 border border-blue-100/60">
+                  <Icon icon="solar:document-text-bold-duotone" className="text-xl" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">Contacto Público</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Información visible para tus clientes y comunicación de pedidos</p>
                 </div>
               </div>
-            </div>
-          </section>
-
-          {/* Section: Public Information */}
-          <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden transition-all hover:shadow-md">
-            <div className="px-6 py-5 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
-               <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-                     <Icon icon="solar:document-text-bold-duotone" width="20" />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-gray-700 block">Email Público de Contacto</label>
+                    {!profileForm.contact_email && (
+                      <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/70 px-2 py-0.5 rounded-md">Recomendado</span>
+                    )}
                   </div>
-                  <div>
-                     <h3 className="text-base font-bold text-gray-900 leading-tight">Contacto Público</h3>
-                     <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase mt-0.5">Información visible para tus clientes</p>
+                  <input
+                    type="email"
+                    value={profileForm.contact_email}
+                    onChange={(e) => setProfileForm({ ...profileForm, contact_email: e.target.value })}
+                    placeholder="contacto@minegocio.com"
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-medium text-gray-900 placeholder:text-gray-400 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all shadow-2xs"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1.5">Correo para soporte o consultas que verán tus comensales.</p>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-gray-700 block">Teléfono Público / WhatsApp</label>
+                    {!profileForm.contact_phone && (
+                      <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/70 px-2 py-0.5 rounded-md">Recomendado</span>
+                    )}
                   </div>
-               </div>
-            </div>
-            
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className={`relative transition-all ${!profileForm.contact_email ? 'bg-red-50/30 p-4 rounded-2xl border border-red-200' : ''}`}>
-                  {!profileForm.contact_email && (
-                    <div className="absolute top-4 right-4 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-100/50 px-2 py-1 rounded-lg">
-                      <span className="flex h-1.5 w-1.5 relative">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
-                      </span>
-                      Falta
-                    </div>
-                  )}
-                  <FormField label="Email Público de Contacto">
-                    <TextInput
-                      value={profileForm.contact_email}
-                      type="email"
-                      onChange={(e) => setProfileForm({ ...profileForm, contact_email: e.target.value })}
-                      placeholder="contacto@minegocio.com"
-                    />
-                  </FormField>
+                  <input
+                    type="tel"
+                    value={profileForm.contact_phone}
+                    onChange={(e) => setProfileForm({ ...profileForm, contact_phone: e.target.value })}
+                    placeholder="+57 300 000 0000"
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-medium text-gray-900 placeholder:text-gray-400 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all shadow-2xs"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1.5">Línea directa para confirmaciones de domicilios o reservas.</p>
                 </div>
 
-                <div className={`relative transition-all ${!profileForm.contact_phone ? 'bg-red-50/30 p-4 rounded-2xl border border-red-200' : ''}`}>
-                  {!profileForm.contact_phone && (
-                    <div className="absolute top-4 right-4 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-100/50 px-2 py-1 rounded-lg">
-                      <span className="flex h-1.5 w-1.5 relative">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
-                      </span>
-                      Falta
-                    </div>
-                  )}
-                  <FormField label="Teléfono Público / WhatsApp">
-                    <TextInput
-                      value={profileForm.contact_phone}
-                      type="tel"
-                      onChange={(e) => setProfileForm({ ...profileForm, contact_phone: e.target.value })}
-                      placeholder="+57 300 000 0000"
-                    />
-                  </FormField>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-gray-700 block">Ciudad</label>
+                    {!profileForm.city && (
+                      <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/70 px-2 py-0.5 rounded-md">Recomendado</span>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={profileForm.city}
+                    onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
+                    placeholder="Ej. Bogotá"
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-medium text-gray-900 placeholder:text-gray-400 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all shadow-2xs"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1.5">Ciudad principal de operación de la marca.</p>
                 </div>
 
-                <div className={`relative transition-all ${!profileForm.city ? 'bg-red-50/30 p-4 rounded-2xl border border-red-200' : ''}`}>
-                  {!profileForm.city && (
-                    <div className="absolute top-4 right-4 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-100/50 px-2 py-1 rounded-lg">
-                      <span className="flex h-1.5 w-1.5 relative">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
-                      </span>
-                      Falta
-                    </div>
-                  )}
-                  <FormField label="Ciudad">
-                    <TextInput
-                      value={profileForm.city}
-                      onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
-                      placeholder="Ej. Bogotá"
-                    />
-                  </FormField>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-gray-700 block">País</label>
+                    {!profileForm.country && (
+                      <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/70 px-2 py-0.5 rounded-md">Recomendado</span>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={profileForm.country}
+                    onChange={(e) => setProfileForm({ ...profileForm, country: e.target.value })}
+                    placeholder="Ej. Colombia"
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-medium text-gray-900 placeholder:text-gray-400 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all shadow-2xs"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1.5">País para configuración regional y moneda.</p>
                 </div>
 
-                <div className={`relative transition-all ${!profileForm.country ? 'bg-red-50/30 p-4 rounded-2xl border border-red-200' : ''}`}>
-                  {!profileForm.country && (
-                    <div className="absolute top-4 right-4 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-100/50 px-2 py-1 rounded-lg">
-                      <span className="flex h-1.5 w-1.5 relative">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
-                      </span>
-                      Falta
-                    </div>
-                  )}
-                  <FormField label="País">
-                    <TextInput
-                      value={profileForm.country}
-                      onChange={(e) => setProfileForm({ ...profileForm, country: e.target.value })}
-                      placeholder="Ej. Colombia"
-                    />
-                  </FormField>
+                <div className="md:col-span-2">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-gray-700 block">Dirección Principal</label>
+                    {!profileForm.address && (
+                      <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/70 px-2 py-0.5 rounded-md">Recomendado</span>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={profileForm.address}
+                    onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                    placeholder="Ej. Calle 123 #45-67, Local 1"
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-medium text-gray-900 placeholder:text-gray-400 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all shadow-2xs"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1.5">Dirección de la sede principal o punto de despacho.</p>
                 </div>
 
-                <div className={`relative transition-all md:col-span-2 ${!profileForm.address ? 'bg-red-50/30 p-4 rounded-2xl border border-red-200' : ''}`}>
-                  {!profileForm.address && (
-                    <div className="absolute top-4 right-4 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-100/50 px-2 py-1 rounded-lg">
-                      <span className="flex h-1.5 w-1.5 relative">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
-                      </span>
-                      Falta
-                    </div>
-                  )}
-                  <FormField label="Dirección Completa">
-                    <TextInput
-                      value={profileForm.address}
-                      onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
-                      placeholder="Ej. Calle 123 #45-67, Local 1"
-                    />
-                  </FormField>
-                </div>
-                <div className="md:col-span-2 mt-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2 block">Descripción Corta</label>
+                <div className="md:col-span-2">
+                  <label className="text-xs font-bold text-gray-700 mb-1.5 block">Descripción del Negocio</label>
                   <textarea
                     value={profileForm.description}
                     onChange={(e) => setProfileForm({ ...profileForm, description: e.target.value })}
-                    placeholder="Escribe una breve descripción de tu negocio para que tus clientes te conozcan..."
-                    className="w-full bg-[#f9f9f9] border border-black/5 rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-brand-primary focus:border-brand-primary transition-all outline-none resize-none min-h-[100px]"
+                    placeholder="Escribe una breve descripción de tu propuesta culinaria para que tus comensales te conozcan..."
+                    className="w-full bg-white border border-gray-200 rounded-xl p-3.5 text-sm font-medium text-gray-900 placeholder:text-gray-400 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all resize-none min-h-[110px] shadow-2xs"
                   />
+                  <p className="text-[11px] text-gray-400 mt-1">Aparece en la biografía del menú digital y en la landing page del restaurante.</p>
                 </div>
-            </div>
-          </section>
+              </div>
+            </section>
 
-          {/* Section: Legal Information */}
-          <section className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden transition-all hover:shadow-md">
-            <div className="px-6 py-5 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
-               <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600">
-                     <Icon icon="solar:shield-check-bold-duotone" width="20" />
-                  </div>
-                  <div>
-                     <h3 className="text-base font-bold text-gray-900 leading-tight">Información Legal</h3>
-                     <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase mt-0.5">Datos tributarios y legales (Opcional por ahora)</p>
-                  </div>
-               </div>
-            </div>
-            
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField label="Razón Social">
-                  <TextInput
+            {/* ── Section: Legal Information ── */}
+            <section className="bg-white rounded-2xl border border-gray-200/80 p-6 sm:p-7 shadow-xs relative overflow-hidden animate-fadeUp" style={{ animationDelay: '200ms' }}>
+              <div className="flex items-center gap-3.5 pb-5 border-b border-gray-100 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 border border-slate-200/60">
+                  <Icon icon="solar:shield-check-bold-duotone" className="text-xl" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">Información Legal y Tributaria</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Datos tributarios y legales para facturación electrónica y recibos (Opcional)</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 mb-1.5 block">Razón Social</label>
+                  <input
+                    type="text"
                     value={profileForm.legal_name}
                     onChange={(e) => setProfileForm({ ...profileForm, legal_name: e.target.value })}
                     placeholder="Ej. Restaurantes del Sur S.A.S."
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-medium text-gray-900 placeholder:text-gray-400 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all shadow-2xs"
                   />
-                </FormField>
+                  <p className="text-[11px] text-gray-400 mt-1.5">Nombre legal de la persona natural o jurídica propietaria.</p>
+                </div>
 
-                <FormField label="Identificación Tributaria (NIT / RUT)">
-                  <TextInput
+                <div>
+                  <label className="text-xs font-bold text-gray-700 mb-1.5 block">Identificación Tributaria (NIT / RUT / RUC)</label>
+                  <input
+                    type="text"
                     value={profileForm.legal_id}
                     onChange={(e) => setProfileForm({ ...profileForm, legal_id: e.target.value })}
                     placeholder="Ej. 900.000.000-1"
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-medium text-gray-900 placeholder:text-gray-400 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all shadow-2xs"
                   />
-                </FormField>
-            </div>
-          </section>
+                  <p className="text-[11px] text-gray-400 mt-1.5">Número de identificación tributaria para comprobantes fiscales.</p>
+                </div>
+              </div>
+            </section>
 
+          </div>
         </div>
       </div>
     </div>

@@ -464,84 +464,118 @@ export default function AdminWebContent() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] pb-32">
-      <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="min-h-screen bg-[#FDFDFB] text-gray-900 selection:bg-indigo-100 italic-none pb-32">
+      <div className="p-4 sm:p-10 max-w-[1600px] mx-auto space-y-10 animate-fadeUp">
         
-        <PageHeader 
-          badge="Gestión de Contenido"
-          title="Página Web & Landing"
-          subtitle="Modifica el escaparate digital de tu negocio y la inteligencia de tus asistentes."
-        >
-           <div className="flex items-center gap-3">
-              <SecondaryButton onClick={() => window.open(`/${activeBrand?.slug}`, '_blank')} className="rounded-2xl px-6 py-3 border-gray-100 bg-white shadow-sm flex items-center gap-2 group">
-                 <Icon icon="solar:round-alt-arrow-right-bold" className="text-xl text-gray-400 group-hover:translate-x-1 transition-transform" />
-                 Ver Web
-              </SecondaryButton>
-              <PrimaryButton onClick={handleSave} disabled={submitting} className="rounded-2xl px-8 py-3 shadow-xl">
-                 {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Icon icon="solar:diskette-bold-duotone" className="text-xl" />}
-                 {submitting ? 'Guardando...' : 'Publicar Cambios'}
-              </PrimaryButton>
-           </div>
-        </PageHeader>
-
-        {/* Tabs Menu */}
-        <div className="flex flex-row overflow-x-auto no-scrollbar w-full sm:w-max border border-gray-100 bg-gray-100/50 p-2 rounded-3xl overflow-y-hidden shrink-0 whitespace-nowrap shadow-inner">
-          {tabs.map(tab => (
+        {/* ── Global Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-fadeUp">
+          <PageHeader 
+            badge="Gestión de Contenido"
+            title="Página Web & Landing"
+            subtitle="Modifica el escaparate digital de tu negocio y la inteligencia de tus asistentes."
+          />
+          
+          <div className="flex items-center gap-3 self-start md:self-auto">
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-3 px-6 py-3.5 rounded-2xl text-[11px] font-bold uppercase tracking-wider transition-all shrink-0 ${
-                activeTab === tab.id 
-                ? 'bg-white text-gray-900 shadow-xl shadow-gray-200/50 ring-1 ring-gray-100 scale-[1.02]' 
-                : 'text-gray-400 hover:text-gray-600 hover:bg-white/50'
-              }`}
+              type="button"
+              onClick={() => window.open(`/${activeBrand?.slug}`, '_blank')}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200/80 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer group"
             >
-              <Icon icon={tab.icon} className={`text-xl transition-transform ${activeTab === tab.id ? 'scale-110' : ''}`} /> 
-              {tab.label}
+              <Icon icon="solar:round-alt-arrow-right-bold" className="text-base text-gray-400 group-hover:translate-x-0.5 transition-transform" />
+              <span>Ver Web</span>
             </button>
-          ))}
+
+            <button 
+              type="button" 
+              onClick={handleSave} 
+              disabled={submitting} 
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold shadow-xs transition-all cursor-pointer shrink-0 disabled:opacity-50"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Guardando...</span>
+                </>
+              ) : (
+                <>
+                  <Icon icon="solar:diskette-bold-duotone" className="text-base" />
+                  <span>Publicar Cambios</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* ── Sleek Segmented Tab Navigation */}
+        <div className="relative z-10 animate-fadeUp w-full" style={{ animationDelay: '100ms' }}>
+          <div className="overflow-x-auto no-scrollbar pb-1 w-full flex justify-center">
+            <div className="inline-flex items-center bg-gray-100/90 p-1.5 rounded-2xl border border-gray-200/70 shadow-xs gap-1">
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-semibold transition-all relative cursor-pointer ${
+                      isActive
+                        ? 'bg-white text-gray-900 shadow-sm border border-gray-200/60'
+                        : 'text-gray-500 hover:text-gray-900 hover:bg-white/50'
+                    }`}
+                  >
+                    <Icon icon={tab.icon} className={`text-base ${isActive ? 'text-gray-900' : 'text-gray-400'}`} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* TAB 1: INICIO (HERO + COMUNIDAD) */}
         {activeTab === 'inicio' && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-500">
+          <div className="space-y-6 animate-fadeUp">
             {/* HERO SETTINGS */}
-            <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden group hover:shadow-xl hover:shadow-gray-200/20 transition-all duration-500">
-              <div className="px-4 sm:px-8 py-6 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm">
-                    <Icon icon="solar:crown-bold-duotone" className="text-2xl" />
+            <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
+              <div className="px-6 py-5 border-b border-gray-100 bg-white flex items-center justify-between">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0 border border-indigo-100/60">
+                    <Icon icon="solar:crown-bold-duotone" className="text-xl" />
                   </div>
                   <div>
-                    <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-1">Landing Experience</h3>
-                    <h2 className="text-lg font-bold text-gray-900 leading-tight">Portada Principal (Hero)</h2>
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">Portada Principal (Hero)</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">Encabezado principal visible cuando los clientes abren tu página web</p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 sm:p-8 space-y-8">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="space-y-6">
-                    <FormField 
-                      label="Título de Alto Impacto (H1)" 
-                      subtitle="Separa con un 'Enter' para crear saltos de línea elegantes."
-                    >
+              <div className="p-6 sm:p-7 space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-5">
+                    <div>
+                      <label className="text-xs font-bold text-gray-700 mb-1.5 block">
+                        Título de Alto Impacto (H1)
+                      </label>
                       <textarea 
                         value={data.hero_h1 || ''} 
                         onChange={(e) => setData({ ...data, hero_h1: e.target.value })} 
-                        className="w-full bg-gray-50 border-2 border-gray-50 rounded-[1.5rem] p-5 text-lg font-bold text-gray-900 outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50/50 transition-all placeholder:text-gray-300 min-h-[140px] shadow-inner"
+                        className="w-full bg-white border border-gray-200 rounded-xl p-3.5 text-base font-bold text-gray-900 outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all placeholder:text-gray-400 min-h-[120px] shadow-2xs resize-none"
                         placeholder={`Descubre tus\nplatos favoritos`}
                       />
-                    </FormField>
+                      <p className="text-[11px] text-gray-400 mt-1.5">Separa con saltos de línea para estructurar el mensaje.</p>
+                    </div>
 
-                    <FormField label="Subtítulo Convencedor">
+                    <div>
+                      <label className="text-xs font-bold text-gray-700 mb-1.5 block">
+                        Subtítulo Convencedor
+                      </label>
                       <textarea 
                         value={data.hero_subtitle || ''} 
                         onChange={(e) => setData({ ...data, hero_subtitle: e.target.value })} 
-                        className="w-full bg-gray-50 border-2 border-gray-50 rounded-[1.5rem] p-5 text-sm font-medium text-gray-600 outline-none focus:bg-white focus:border-indigo-100 transition-all placeholder:text-gray-300 min-h-[100px] shadow-inner"
+                        className="w-full bg-white border border-gray-200 rounded-xl p-3.5 text-sm font-medium text-gray-700 outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all placeholder:text-gray-400 min-h-[90px] shadow-2xs resize-none"
                         placeholder="Ej. Explora una experiencia gastronómica andina..."
                       />
-                    </FormField>
+                      <p className="text-[11px] text-gray-400 mt-1.5">Frase de apoyo que complementa la propuesta de valor.</p>
+                    </div>
                   </div>
 
                   <div className="space-y-8">
@@ -595,21 +629,21 @@ export default function AdminWebContent() {
                       })()}
                     </div>
 
-                    <div className="space-y-4">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400">Bienvenida Global (Ritual)</label>
-                      <div className="group relative rounded-[2rem] overflow-hidden bg-gray-900 border-4 border-white shadow-2xl h-48 transition-all hover:scale-[1.02]">
+                    <div className="space-y-3">
+                      <label className="text-xs font-bold text-gray-700 block">Bienvenida Global (Ritual)</label>
+                      <div className="group relative rounded-2xl overflow-hidden bg-gray-900 border border-gray-200/80 shadow-xs h-48 transition-all">
                          {data.welcome_bg_img ? (
                             <img src={data.welcome_bg_img} alt="Welcome Ritual" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
                          ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center text-gray-600 gap-2">
-                               <Icon icon="solar:gallery-wide-bold-duotone" className="text-4xl" />
-                               <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Sin Imagen Definida</span>
+                               <Icon icon="solar:gallery-wide-bold-duotone" className="text-4xl text-gray-400" />
+                               <span className="text-[11px] font-semibold uppercase tracking-wider text-white/50">Sin Imagen Definida</span>
                             </div>
                          )}
                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-5">
-                            <label className="flex items-center justify-center gap-3 w-full py-4 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 rounded-2xl text-white text-xs font-bold uppercase tracking-wider cursor-pointer transition-all">
-                               {uploadingImage ? <Loader2 className="animate-spin" /> : <Icon icon="solar:upload-bold-duotone" className="text-lg" />}
-                               {uploadingImage ? 'Procesando...' : 'Cambiar Imagen de Fondo'}
+                            <label className="flex items-center justify-center gap-2.5 w-full py-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 rounded-xl text-white text-xs font-bold uppercase tracking-wider cursor-pointer transition-all">
+                               {uploadingImage ? <Loader2 className="animate-spin w-4 h-4" /> : <Icon icon="solar:upload-bold-duotone" className="text-base" />}
+                               <span>{uploadingImage ? 'Procesando...' : 'Cambiar Imagen de Fondo'}</span>
                                <input 
                                  type="file" 
                                  accept="image/*" 
@@ -625,19 +659,19 @@ export default function AdminWebContent() {
                 </div>
 
                 {/* CONFIGURACIÓN DEL FOOTER (PIE DE PÁGINA) */}
-                <div className="p-6 bg-gray-50/50 rounded-[2rem] border border-gray-100 space-y-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-                      <Icon icon="solar:document-text-bold-duotone" className="text-emerald-600 text-xl" />
+                <div className="bg-white rounded-2xl border border-gray-200/80 p-6 sm:p-7 shadow-xs space-y-6">
+                  <div className="flex items-center gap-3.5 pb-5 border-b border-gray-100">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-100/60">
+                      <Icon icon="solar:document-text-bold-duotone" className="text-xl" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-gray-900 uppercase tracking-tight">Pie de Página (Footer)</h4>
-                      <p className="text-[11px] text-gray-500 font-medium">Personaliza los mensajes por franja horaria y la descripción de tu marca que se muestran al final de la carta.</p>
+                      <h4 className="text-base font-bold text-gray-900 tracking-tight">Pie de Página (Footer)</h4>
+                      <p className="text-xs text-gray-500 mt-0.5">Personaliza los mensajes dinámicos de agradecimiento y la bio al final del menú digital</p>
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider">
+                    <label className="block text-xs font-bold text-gray-700">
                       Mensajes de Agradecimiento Dinámicos (Según la Hora del Día)
                     </label>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -668,14 +702,16 @@ export default function AdminWebContent() {
                   </div>
 
                   <div className="pt-2">
-                    <FormField label="Descripción de la Marca (Footer)" subtitle="Texto explicativo breve bajo el logo en el pie de página.">
-                      <textarea 
-                        value={data.footer_tagline || ''}
-                        onChange={(e) => setData({ ...data, footer_tagline: e.target.value })}
-                        className="w-full bg-white border-2 border-gray-100 rounded-[1.5rem] p-4 text-xs font-medium text-gray-700 outline-none focus:border-indigo-200 transition-all placeholder:text-gray-300 min-h-[90px] shadow-sm"
-                        placeholder="Ej. Elevando la experiencia de la comida saludable. Raíces locales, nutrición consciente y un espacio para respirar..."
-                      />
-                    </FormField>
+                    <label className="text-xs font-bold text-gray-700 mb-1.5 block">
+                      Descripción de la Marca (Footer)
+                    </label>
+                    <textarea 
+                      value={data.footer_tagline || ''}
+                      onChange={(e) => setData({ ...data, footer_tagline: e.target.value })}
+                      className="w-full bg-white border border-gray-200 rounded-xl p-3.5 text-sm font-medium text-gray-900 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all placeholder:text-gray-400 min-h-[90px] shadow-2xs resize-none"
+                      placeholder="Ej. Elevando la experiencia de la comida saludable. Raíces locales, nutrición consciente y un espacio para respirar..."
+                    />
+                    <p className="text-[11px] text-gray-400 mt-1.5">Texto explicativo breve bajo el logo en el pie de página.</p>
                   </div>
                 </div>
 
@@ -1113,32 +1149,32 @@ export default function AdminWebContent() {
         {/* TAB 2: MENÚ */}
         {/* TAB 2: MENÚ (CARTA DIGITAL) */}
         {activeTab === 'menu' && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-500">
+          <div className="space-y-6 animate-fadeUp">
             {/* HERO SETTINGS */}
-            <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden group hover:shadow-xl hover:shadow-gray-200/20 transition-all duration-500">
-              <div className="px-4 sm:px-8 py-6 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-sm">
-                    <Icon icon="solar:book-bookmark-bold-duotone" className="text-2xl" />
+            <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
+              <div className="px-6 py-5 border-b border-gray-100 bg-white flex items-center justify-between">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-100/60">
+                    <Icon icon="solar:book-bookmark-bold-duotone" className="text-xl" />
                   </div>
                   <div>
-                    <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em] mb-1">Digital Menu Hero</h3>
-                    <h2 className="text-lg font-bold text-gray-900 leading-tight">Portada de la Carta</h2>
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">Portada de la Carta Digital</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">Encabezado y banner superior que da la bienvenida a tus comensales</p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 sm:p-8">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              <div className="p-6 sm:p-7">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* Form Side */}
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 gap-6">
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-1 gap-5">
                       <FormField label="Título del Encabezado del Menú (H1)">
                         <TextInput 
                           value={data.hero_h1 || ''} 
                           onChange={(e) => setData({ ...data, hero_h1: e.target.value })} 
                           placeholder="Ej. Comer sano nunca fue tan fácil" 
-                          className="bg-gray-50 border-gray-50 focus:bg-white focus:border-emerald-100 rounded-2xl p-4 font-bold"
+                          className="bg-white border-gray-200 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 rounded-xl px-3.5 py-2.5 text-sm font-bold shadow-2xs"
                         />
                       </FormField>
 
@@ -1147,7 +1183,7 @@ export default function AdminWebContent() {
                           value={data.hero_subtitle || ''} 
                           onChange={(e) => setData({ ...data, hero_subtitle: e.target.value })} 
                           placeholder="Ej. Ingredientes locales, directo a tu mesa." 
-                          className="bg-gray-50 border-gray-50 focus:bg-white focus:border-emerald-100 rounded-2xl p-4"
+                          className="bg-white border-gray-200 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 rounded-xl px-3.5 py-2.5 text-sm font-medium shadow-2xs"
                         />
                       </FormField>
 
@@ -1156,7 +1192,7 @@ export default function AdminWebContent() {
                           value={data.menu_banner_title || ''} 
                           onChange={(e) => setData({ ...data, menu_banner_title: e.target.value })} 
                           placeholder="Ej. Nuestra Carta Fusión" 
-                          className="bg-gray-50 border-gray-50 focus:bg-white focus:border-emerald-100 rounded-2xl p-4"
+                          className="bg-white border-gray-200 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 rounded-xl px-3.5 py-2.5 text-sm font-medium shadow-2xs"
                         />
                       </FormField>
 
@@ -1165,52 +1201,56 @@ export default function AdminWebContent() {
                           value={data.menu_banner_tag || ''} 
                           onChange={(e) => setData({ ...data, menu_banner_tag: e.target.value })} 
                           placeholder="Ej. Menú BOKU [僕] • Balance & Sabor" 
-                          className="bg-gray-50 border-gray-50 focus:bg-white focus:border-emerald-100 rounded-2xl p-4"
+                          className="bg-white border-gray-200 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 rounded-xl px-3.5 py-2.5 text-sm font-medium shadow-2xs"
                         />
                       </FormField>
                     </div>
 
-                    <FormField label="Descripción / Copy de Bienvenida del Banner">
+                    <div>
+                      <label className="text-xs font-bold text-gray-700 mb-1.5 block">
+                        Descripción / Copy de Bienvenida del Banner
+                      </label>
                       <textarea 
                         value={data.menu_banner_subtitle || ''} 
                         onChange={(e) => setData({ ...data, menu_banner_subtitle: e.target.value })} 
-                        className="w-full bg-gray-50 border-2 border-gray-50 rounded-[1.5rem] p-5 text-sm font-medium text-gray-600 outline-none focus:bg-white focus:border-emerald-100 transition-all placeholder:text-gray-300 min-h-[120px] shadow-inner resize-none"
+                        className="w-full bg-white border border-gray-200 rounded-xl p-3.5 text-sm font-medium text-gray-900 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all placeholder:text-gray-400 min-h-[110px] shadow-2xs resize-none"
                         placeholder="Describe brevemente la esencia de tu cocina..."
                       />
-                    </FormField>
+                      <p className="text-[11px] text-gray-400 mt-1.5">Texto introductorio sobre la propuesta gastronómica.</p>
+                    </div>
                   </div>
 
                   {/* Preview Side */}
-                  <div className="space-y-6">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400">Previsualización del Banner</label>
-                    <div className="relative aspect-[16/9] rounded-[2.5rem] overflow-hidden bg-gray-100 shadow-2xl border-4 border-white group">
+                  <div className="space-y-4">
+                    <label className="text-xs font-bold text-gray-700 block">Previsualización del Banner</label>
+                    <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-gray-900 shadow-xs border border-gray-200/80 group">
                       {data.menu_banner_img ? (
-                        <img src={data.menu_banner_img} alt="Menu Banner" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                        <img src={data.menu_banner_img} alt="Menu Banner" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                       ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-3 border-2 border-dashed border-gray-200 m-2 rounded-[2rem]">
-                          <Icon icon="solar:gallery-upload-bold-duotone" className="text-4xl opacity-50" />
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-300">Sube una imagen de fondo</span>
+                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-3 border border-dashed border-gray-300 m-3 rounded-xl bg-gray-50">
+                          <Icon icon="solar:gallery-upload-bold-duotone" className="text-4xl text-gray-300" />
+                          <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Sube una imagen de fondo</span>
                         </div>
                       )}
                       
                       {/* Floating Badge (Preview of tag) */}
                       {data.menu_banner_tag && (
-                        <div className="absolute top-6 left-6 px-4 py-1.5 bg-white/20 backdrop-blur-md border border-white/30 rounded-full text-white text-[10px] font-bold uppercase tracking-wider shadow-lg">
+                        <div className="absolute top-4 left-4 px-3 py-1 bg-black/40 backdrop-blur-md border border-white/20 rounded-full text-white text-[10px] font-bold uppercase tracking-wider shadow-sm">
                           {data.menu_banner_tag}
                         </div>
                       )}
 
                       {/* Content Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex flex-col justify-end p-4 sm:p-8">
-                        <h4 className="text-white text-2xl font-bold leading-tight mb-2 drop-shadow-md">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-5">
+                        <h4 className="text-white text-xl font-bold leading-tight mb-1 drop-shadow-sm">
                           {data.menu_banner_title || 'Título del Menú'}
                         </h4>
                       </div>
 
                       {/* Upload Button */}
                       <div className="absolute top-4 right-4 group-hover:opacity-100 transition-opacity">
-                        <label className="w-12 h-12 flex items-center justify-center bg-white rounded-2xl shadow-xl cursor-pointer hover:bg-emerald-500 hover:text-white transition-all">
-                          {uploadingImage ? <Loader2 className="w-5 h-5 animate-spin" /> : <Icon icon="solar:camera-bold-duotone" className="text-xl" />}
+                        <label className="w-10 h-10 flex items-center justify-center bg-white/90 hover:bg-white text-gray-700 hover:text-emerald-700 rounded-xl shadow-md cursor-pointer transition-all">
+                          {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon icon="solar:camera-bold-duotone" className="text-lg" />}
                           <input 
                             type="file" 
                             accept="image/*" 
@@ -1221,19 +1261,18 @@ export default function AdminWebContent() {
                         </label>
                       </div>
                     </div>
-                    <p className="text-[10px] text-gray-400 text-center font-medium italic">Recomendamos imágenes horizontales de 1920x1080px</p>
+                    <p className="text-[11px] text-gray-400 text-center font-medium">Recomendamos imágenes horizontales de 1920x1080px (JPG o WebP).</p>
                   </div>
                 </div>
 
                 {/* HELP CARD MENU */}
-                <div className="mt-12 p-6 bg-emerald-50/50 border-2 border-emerald-50 rounded-[2rem] flex flex-col sm:flex-row gap-6 items-center relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-100/20 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-emerald-200/30 transition-colors" />
-                  <div className="w-16 h-16 rounded-2xl bg-emerald-500 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-200">
-                    <Icon icon="solar:lightbulb-bold-duotone" className="text-white text-3xl" />
+                <div className="mt-8 p-5 bg-emerald-50/60 border border-emerald-100/80 rounded-2xl flex flex-col sm:flex-row gap-4 items-center relative overflow-hidden">
+                  <div className="w-11 h-11 rounded-xl bg-emerald-600 flex items-center justify-center shrink-0 shadow-xs text-white">
+                    <Icon icon="solar:lightbulb-bold-duotone" className="text-2xl" />
                   </div>
                   <div className="relative z-10 flex-1">
-                    <h4 className="text-[14px] font-bold text-emerald-900 uppercase tracking-tight">Consejo de Diseño Digital</h4>
-                    <p className="text-[11px] text-emerald-700/80 mt-1 font-bold leading-relaxed">
+                    <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wider">Consejo de Diseño Digital</h4>
+                    <p className="text-xs text-emerald-800/90 mt-0.5 font-medium leading-relaxed">
                       "Menos es más". Usa un título corto y directo. Una imagen limpia de tu local o un plano detalle de un plato genera más confianza y apetito visual.
                     </p>
                   </div>
@@ -1342,51 +1381,51 @@ export default function AdminWebContent() {
         )}
         {/* TAB 4: ASISTENTES AI (BRAIN) */}
         {activeTab === 'ai' && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
+          <div className="space-y-6 animate-fadeUp">
             {/* AI BRAIN HUB */}
-            <div className="bg-slate-950 rounded-[3rem] overflow-hidden shadow-2xl relative border border-white/5 group">
+            <div className="bg-slate-950 rounded-2xl overflow-hidden shadow-xl relative border border-white/10 group">
               {/* Dynamic Glows */}
               <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] -mr-64 -mt-64 animate-pulse" />
               <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-600/5 rounded-full blur-[100px] -ml-48 -mb-48" />
               
-              <div className="relative z-10 p-4 sm:p-10 lg:p-14 space-y-12">
+              <div className="relative z-10 p-6 sm:p-10 space-y-8">
                 {/* Header AI */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                  <div className="space-y-4">
-                    <div className="inline-flex items-center gap-2 bg-white/5 backdrop-blur-md border border-white/10 px-4 py-1.5 rounded-full">
+                  <div className="space-y-3">
+                    <div className="inline-flex items-center gap-2 bg-white/5 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full">
                       <div className="relative">
                         <div className="w-2 h-2 bg-emerald-400 rounded-full animate-ping absolute inset-0" />
                         <div className="w-2 h-2 bg-emerald-500 rounded-full relative" />
                       </div>
-                      <span className="text-[10px] font-bold text-white uppercase tracking-[0.2em]">Neural Engine Active</span>
+                      <span className="text-[10px] font-bold text-white uppercase tracking-wider">Neural Engine Active</span>
                     </div>
-                    <h2 className="text-4xl font-bold text-white tracking-tight">Cerebro Digital <span className="text-emerald-400">Gemini</span></h2>
-                    <p className="text-slate-400 text-sm max-w-xl font-medium leading-relaxed">
+                    <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Cerebro Digital <span className="text-emerald-400">Gemini</span></h2>
+                    <p className="text-slate-400 text-xs sm:text-sm max-w-xl font-medium leading-relaxed">
                       Configura la identidad, tono y comportamiento de tu Mesero Digital con IA. Este asistente atenderá a tus clientes en el menú público, recomendará platos y gestionará pedidos.
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-emerald-500 border-2 border-slate-950 flex items-center justify-center shadow-xl">
-                      <Icon icon="solar:sparkles-bold" className="text-white text-lg" />
+                  <div className="flex items-center gap-2.5 bg-white/5 border border-white/10 px-3.5 py-2 rounded-xl self-start md:self-auto">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center shadow-md">
+                      <Icon icon="solar:sparkles-bold" className="text-white text-sm" />
                     </div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Mesero Digital Único</span>
+                    <span className="text-[11px] font-bold text-slate-300">Mesero Digital Único</span>
                   </div>
                 </div>
 
                 <div className="max-w-4xl mx-auto">
                   {/* UNIFIED CONCIERGE BLOCK */}
-                  <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-[2.5rem] p-6 sm:p-10 space-y-8 hover:bg-white/[0.05] transition-colors duration-500 shadow-2xl">
+                  <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 sm:p-8 space-y-6 hover:bg-white/[0.05] transition-colors duration-500 shadow-xl">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-900/40">
-                          <Icon icon="solar:chef-hat-heart-bold-duotone" className="text-white text-3xl" />
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-md shadow-emerald-950/40">
+                          <Icon icon="solar:chef-hat-heart-bold-duotone" className="text-white text-2xl" />
                         </div>
                         <div>
-                          <h3 className="text-white font-bold text-xl">Mesero & Conserje Digital</h3>
-                          <p className="text-emerald-400/80 text-xs font-semibold">Atención, recomendaciones de carta y cierre de ventas</p>
+                          <h3 className="text-white font-bold text-lg">Mesero & Conserje Digital</h3>
+                          <p className="text-emerald-400/90 text-xs font-semibold">Atención, recomendaciones de carta y cierre de ventas</p>
                         </div>
                       </div>
-                      <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+                      <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
                         Activo en Menú
                       </span>
                     </div>
