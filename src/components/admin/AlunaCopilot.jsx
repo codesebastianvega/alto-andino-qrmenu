@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { AlertTriangle, Bot, CheckCircle2, ChevronRight, History, Loader2, MapPin, Pencil, Send, ShieldCheck, Sparkles, UtensilsCrossed, X, XCircle } from 'lucide-react';
-import { chatWithAluna, executeAlunaAction, executeAlunaCatalogManagementAction, executeAlunaKitchenAction, executeAlunaOperationsAction, listAlunaChanges, runOpeningAudit } from '../../services/alunaCopilot';
+import { chatWithAluna, executeAlunaAction, executeAlunaCatalogManagementAction, executeAlunaKitchenAction, executeAlunaOperationsAction, executeAlunaBrandWebAction, listAlunaChanges, runOpeningAudit } from '../../services/alunaCopilot';
 import CostedProductWorkflow from './aluna/CostedProductWorkflow';
 import OperationsWorkflow from './aluna/OperationsWorkflow';
 import ChangeHistory from './aluna/ChangeHistory';
@@ -390,6 +390,10 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
       setWorkflow('edit_product_price');
     } else if (['update_business_hours', 'create_payment_method', 'update_printing_settings', 'create_modifier_group'].includes(card.action)) {
       setWorkflow(card.action);
+    } else if (['update_delivery_settings', 'update_support_whatsapp', 'update_service_fee'].includes(card.action)) {
+      approveOperations(card.action, card.operationsDraft || card.draft || {});
+    } else if (['update_branding', 'update_branding_urls', 'update_web_content'].includes(card.action)) {
+      approveBrandWeb(card.action, card.webDraft || card.draft || {});
     }
   };
 
@@ -426,6 +430,89 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
           usage: brand?.ai_generations_used || 0,
           monthlyLimit,
           caminos: allowedCaminos,
+        };
+      } else if (response.intent === 'update_delivery_settings') {
+        const opDraft = response.operations_draft || {};
+        const beforeFee = response.current_delivery_fee !== null ? `$ ${Number(response.current_delivery_fee).toLocaleString('es-CO')}` : 'Sin costo';
+        const afterFee = opDraft.delivery_fee !== undefined ? `$ ${Number(opDraft.delivery_fee).toLocaleString('es-CO')}` : beforeFee;
+        const beforeRad = response.current_delivery_radius ? `${response.current_delivery_radius} km` : 'Radio estándar';
+        const afterRad = opDraft.delivery_radius_km ? `${opDraft.delivery_radius_km} km` : beforeRad;
+
+        card = {
+          type: 'proposal',
+          title: 'Tarifas y cobertura de domicilios',
+          summary: assistantReply,
+          beforeAfter: [
+            { label: 'Costo base domicilio', before: beforeFee, after: afterFee },
+            { label: 'Radio de cobertura', before: beforeRad, after: afterRad },
+          ],
+          riskLevel: 'medium',
+          action: 'update_delivery_settings',
+          operationsDraft: opDraft,
+        };
+      } else if (response.intent === 'update_support_whatsapp') {
+        const opDraft = response.operations_draft || {};
+        const beforeWa = response.current_whatsapp || 'No configurado';
+        const afterWa = opDraft.whatsapp_number_orders || opDraft.support_phone || 'Por definir';
+
+        card = {
+          type: 'proposal',
+          title: 'Canal de WhatsApp para pedidos',
+          summary: assistantReply,
+          beforeAfter: [
+            { label: 'Línea de WhatsApp', before: beforeWa, after: afterWa },
+          ],
+          riskLevel: 'low',
+          action: 'update_support_whatsapp',
+          operationsDraft: opDraft,
+        };
+      } else if (response.intent === 'update_service_fee') {
+        const opDraft = response.operations_draft || {};
+        const beforeFee = response.current_service_fee !== null ? `${response.current_service_fee}%` : 'Desactivado';
+        const afterFee = opDraft.service_fee_percentage !== undefined ? `${opDraft.service_fee_percentage}% (${opDraft.is_service_fee_enabled !== false ? 'Activo' : 'Inactivo'})` : beforeFee;
+
+        card = {
+          type: 'proposal',
+          title: 'Propina y servicio sugerido',
+          summary: assistantReply,
+          beforeAfter: [
+            { label: 'Servicio sugerido', before: beforeFee, after: afterFee },
+          ],
+          riskLevel: 'medium',
+          action: 'update_service_fee',
+          operationsDraft: opDraft,
+        };
+      } else if (response.intent === 'update_branding') {
+        const webDraft = response.web_draft || {};
+        const beforeColor = response.current_primary_color || '#7db87a';
+        const afterColor = webDraft.primary_color || beforeColor;
+
+        card = {
+          type: 'proposal',
+          title: 'Color e identidad de marca',
+          summary: assistantReply,
+          beforeAfter: [
+            { label: 'Color principal', before: beforeColor, after: afterColor },
+          ],
+          riskLevel: 'low',
+          action: 'update_branding',
+          webDraft,
+        };
+      } else if (response.intent === 'update_web_content') {
+        const webDraft = response.web_draft || {};
+        const beforeAfter = [];
+        if (webDraft.hero_h1) beforeAfter.push({ label: 'Título portada', before: 'Actual', after: webDraft.hero_h1 });
+        if (webDraft.hero_subtitle) beforeAfter.push({ label: 'Subtítulo portada', before: 'Actual', after: webDraft.hero_subtitle });
+        if (webDraft.menu_banner_title) beforeAfter.push({ label: 'Banner menú', before: 'Actual', after: webDraft.menu_banner_title });
+
+        card = {
+          type: 'proposal',
+          title: 'Contenido de la página web',
+          summary: assistantReply,
+          beforeAfter: beforeAfter.length ? beforeAfter : [{ label: 'Textos web', before: 'Actual', after: 'Nuevos textos sugeridos' }],
+          riskLevel: 'low',
+          action: 'update_web_content',
+          webDraft,
         };
       } else if (response.proposal_ready || ['create_catalog', 'create_costed_product', 'create_location', 'update_business_hours', 'create_payment_method', 'create_modifier_group'].includes(response.intent)) {
         // Camino 2: Propuesta Agéntica
@@ -626,11 +713,31 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
         create_payment_method: `creó el método ${result.payment_method?.name || 'de pago'}`,
         update_printing_settings: `configuró la impresión en ${result.settings?.thermal_paper_width || proposal.thermal_paper_width} mm`,
         create_modifier_group: `creó el grupo ${result.modifier_group?.name || 'de modificadores'}`,
+        update_delivery_settings: 'actualizó las tarifas y cobertura de domicilios',
+        update_support_whatsapp: 'actualizó el número de WhatsApp y soporte',
+        update_service_fee: 'actualizó el porcentaje de propina y servicio sugerido',
       };
-      setSuccess(`Aluna ${labels[action] || 'aplicó el cambio'} correctamente.`);
+      setSuccess(`Aluna ${labels[action] || 'aplicó el cambio operativo'} correctamente.`);
       setWorkflow(null);
       setAudit(await runOpeningAudit({ brandId, locationId }));
     } catch (actionError) { setError(actionError.message || 'No pude aplicar el cambio operativo.'); }
+    finally { setIsLoading(false); }
+  };
+
+  const approveBrandWeb = async (action, proposal) => {
+    setIsLoading(true); setError('');
+    try {
+      const result = await executeAlunaBrandWebAction({ brandId, action, proposal });
+      const labels = {
+        update_branding_urls: 'actualizó la identidad y color de la marca',
+        update_branding: 'actualizó la identidad y color de la marca',
+        update_web_content: 'actualizó los textos de la página web',
+        update_business_profile: 'actualizó los datos del perfil comercial',
+      };
+      setSuccess(`Aluna ${labels[action] || 'aplicó el cambio de diseño'} correctamente.`);
+      setWorkflow(null);
+      setAudit(await runOpeningAudit({ brandId, locationId }));
+    } catch (actionError) { setError(actionError.message || 'No pude aplicar el cambio de diseño o web.'); }
     finally { setIsLoading(false); }
   };
 

@@ -95,3 +95,19 @@ export async function executeAlunaOperationsAction({ brandId, locationId = null,
   if (data?.error) throw new Error(data.error);
   return data;
 }
+
+export async function executeAlunaBrandWebAction({ brandId, action, proposal }) {
+  const { data, error } = await supabase.functions.invoke('aluna-brand-web-action', {
+    body: {
+      brand_id: brandId,
+      action,
+      proposal,
+      approved: true,
+      idempotency_key: crypto.randomUUID(),
+    },
+  });
+  if (error) throw new Error(await functionErrorMessage(error, 'No fue posible ejecutar el cambio web o de marca.'));
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+

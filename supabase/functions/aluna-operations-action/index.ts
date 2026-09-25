@@ -13,6 +13,9 @@ const ACTIONS = new Set([
   'create_payment_method',
   'update_printing_settings',
   'create_modifier_group',
+  'update_delivery_settings',
+  'update_support_whatsapp',
+  'update_service_fee',
 ]);
 const PAYMENT_TYPES = new Set(['cash', 'transfer', 'card', 'digital_wallet', 'other']);
 type JsonObject = Record<string, unknown>;
@@ -257,9 +260,152 @@ serve(async (req: Request) => {
       return response({ success: true, change_set_id: changeSetId, settings: saved });
     }
 
-    if (!hasOnly(proposal, ['name', 'description', 'is_required', 'min_select', 'max_select', 'is_submodifier', 'options', 'location_ids'])) {
-      return response({ error: 'Unexpected modifier group fields' }, 400);
+    if (actionName === 'update_delivery_settings') {
+      const allowedKeys = ['delivery_fee', 'delivery_radius_km', 'base_delivery_distance_km', 'extra_km_fee', 'free_delivery_threshold'];
+      if (!hasOnly(proposal, allowedKeys) || Object.keys(proposal).length === 0) {
+        return response({ error: 'Campos inválidos en la configuración de domicilios' }, 400);
+      }
+      const updates: JsonObject = {};
+      for (const key of allowedKeys) {
+        if (proposal[key] !== undefined) {
+          const num = Number(proposal[key]);
+          if (!Number.isFinite(num) || num < 0) {
+            return response({ error: `${key} debe ser un número positivo válido` }, 400);
+          }
+          updates[key] = num;
+        }
+      }
+      let query = admin.from('locations').select('id,name,delivery_fee,delivery_radius_km,base_delivery_distance_km,extra_km_fee,free_delivery_threshold').eq('brand_id', brandId);
+      if (locationId) {
+        query = query.eq('id', locationId);
+      }
+      const { data: before, error: beforeError } = await query;
+      if (beforeError) throw beforeError;
+      if (!before || before.length === 0) {
+        return response({ error: 'No se encontraron sedes para actualizar' }, 404);
+      }
+
+      await createTrace({
+        title: 'Actualizar tarifas y cobertura de domicilios',
+        summary: `Aluna actualizará tarifas de domicilio para ${before.length} sede(s) en ${brand.name}.`,
+        risk: 'medium',
+        entityType: 'locations',
+        operation: 'update',
+        before: { locations: before },
+        proposed: updates,
+      });
+
+      let updateQuery = admin.from('locations').update(updates).eq('brand_id', brandId);
+      if (locationId) {
+        updateQuery = updateQuery.eq('id', locationId);
+      }
+      const { data: updated, error: updateError } = await updateQuery.select('id,name,delivery_fee,delivery_radius_km,base_delivery_distance_km,extra_km_fee,free_delivery_threshold');
+      if (updateError) throw updateError;
+
+      await completeTrace(locationId || (updated?.[0]?.id ?? null), { updated_locations: updated });
+      return response({ success: true, change_set_id: changeSetId, updated_locations: updated });
     }
+
+    if (actionName === 'update_support_whatsapp') {
+      const allowedKeys = ['whatsapp_number_orders', 'support_phone'];
+      if (!hasOnly(proposal, allowedKeys) || Object.keys(proposal).length === 0) {
+        return response({ error: 'Campos inválidos en la configuración de WhatsApp' }, 400);
+      }
+      const updates: JsonObject = {};
+      for (const key of allowedKeys) {
+        if (proposal[key] !== undefined) {
+          const val = cleanText(proposal[key], 40);
+          if (val && !/^\+?[0-9\s\-]{7,25}$/.test(val)) {
+            return response({ error: `${key} debe ser un número de teléfono válido (7-25 dígitos)` }, 400);
+          }
+          updates[key] = val || null;
+        }
+      }
+
+      const query = admin.from('restaurant_settings').select('*').eq('brand_id', brandId);
+      const { data: current, error: currentError } = locationId
+        ? await query.eq('location_id', locationId).maybeSingle()
+        : await query.is('location_id', null).maybeSingle();
+      if (currentError) throw currentError;
+
+      const settings = { ...updates, brand_id: brandId, location_id: locationId, updated_at: approvedAt };
+
+      await createTrace({
+        title: 'Actualizar número de WhatsApp y soporte',
+        summary: `Aluna configurará los canales de contacto de WhatsApp para ${brand.name}.`,
+        risk: 'low',
+        entityType: 'restaurant_settings',
+        operation: current ? 'update' : 'create',
+        before: current || null,
+        proposed: settings,
+      });
+
+      const mutation = current?.id
+        ? admin.from('restaurant_settings').update(settings).eq('id', current.id).eq('brand_id', brandId).select('*').single()
+        : admin.from('restaurant_settings').insert(settings).select('*').single();
+      const { data: saved, error: saveError } = await mutation;
+      if (saveError) throw saveError;
+
+      if (updates.whatsapp_number_orders) {
+        await admin.from('brands').update({ whatsapp: updates.whatsapp_number_orders }).eq('id', brandId);
+      }
+
+      await completeTrace(saved.id, { settings: saved });
+      return response({ success: true, change_set_id: changeSetId, settings: saved });
+    }
+
+    if (actionName === 'update_service_fee') {
+      const allowedKeys = ['is_service_fee_enabled', 'service_fee_percentage'];
+      if (!hasOnly(proposal, allowedKeys) || Object.keys(proposal).length === 0) {
+        return response({ error: 'Campos inválidos en la configuración de propina/servicio' }, 400);
+      }
+      const updates: JsonObject = {};
+      if (proposal.is_service_fee_enabled !== undefined) {
+        if (typeof proposal.is_service_fee_enabled !== 'boolean') {
+          return response({ error: 'is_service_fee_enabled debe ser booleano' }, 400);
+        }
+        updates.is_service_fee_enabled = proposal.is_service_fee_enabled;
+      }
+      if (proposal.service_fee_percentage !== undefined) {
+        const pct = Number(proposal.service_fee_percentage);
+        if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+          return response({ error: 'service_fee_percentage debe estar entre 0 y 100' }, 400);
+        }
+        updates.service_fee_percentage = pct;
+      }
+
+      const query = admin.from('restaurant_settings').select('*').eq('brand_id', brandId);
+      const { data: current, error: currentError } = locationId
+        ? await query.eq('location_id', locationId).maybeSingle()
+        : await query.is('location_id', null).maybeSingle();
+      if (currentError) throw currentError;
+
+      const settings = { ...updates, brand_id: brandId, location_id: locationId, updated_at: approvedAt };
+
+      await createTrace({
+        title: 'Actualizar configuración de propina y servicio sugerido',
+        summary: `Aluna configurará el porcentaje de servicio sugerido para ${brand.name}.`,
+        risk: 'medium',
+        entityType: 'restaurant_settings',
+        operation: current ? 'update' : 'create',
+        before: current || null,
+        proposed: settings,
+      });
+
+      const mutation = current?.id
+        ? admin.from('restaurant_settings').update(settings).eq('id', current.id).eq('brand_id', brandId).select('*').single()
+        : admin.from('restaurant_settings').insert(settings).select('*').single();
+      const { data: saved, error: saveError } = await mutation;
+      if (saveError) throw saveError;
+
+      await completeTrace(saved.id, { settings: saved });
+      return response({ success: true, change_set_id: changeSetId, settings: saved });
+    }
+
+    if (actionName === 'create_modifier_group') {
+      if (!hasOnly(proposal, ['name', 'description', 'is_required', 'min_select', 'max_select', 'is_submodifier', 'options', 'location_ids'])) {
+        return response({ error: 'Unexpected modifier group fields' }, 400);
+      }
     const name = cleanText(proposal.name, 120);
     if ((proposal.description !== undefined && typeof proposal.description !== 'string') || (proposal.is_submodifier !== undefined && typeof proposal.is_submodifier !== 'boolean')) {
       return response({ error: 'Invalid modifier group field types' }, 400);
@@ -318,7 +464,10 @@ serve(async (req: Request) => {
     const result = { modifier_group: group, options: savedOptions || [], linked_location_ids: linksError ? [] : locationIds, options_error: optionsError?.message || null, link_error: linksError?.message || null };
     await completeTrace(group.id, result, partial);
     return response({ success: !partial, partial, change_set_id: changeSetId, ...result }, partial ? 207 : 200);
-  } catch (error) {
+  }
+
+  return response({ error: 'Acción operativa no reconocida' }, 400);
+} catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (message === 'INVALID_HOURS') return response({ error: 'Invalid business hours proposal' }, 400);
     if (message === 'INVALID_MODIFIERS') return response({ error: 'Invalid modifier option proposal' }, 400);

@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const ACTIONS = new Set(['update_business_profile', 'update_branding_urls', 'update_web_content']);
+const ACTIONS = new Set(['update_business_profile', 'update_branding_urls', 'update_branding', 'update_web_content']);
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager', 'encargado', 'superadmin']);
 const BUSINESS_TYPES = new Set(['restaurant', 'cafe', 'bakery', 'dark_kitchen', 'store', 'other']);
 
@@ -80,10 +80,17 @@ function sanitizeProfile(proposal: JsonObject) {
 }
 
 function sanitizeBranding(proposal: JsonObject) {
-  assertOnlyKeys(proposal, new Set(['logo_url', 'favicon_url']));
+  assertOnlyKeys(proposal, new Set(['logo_url', 'favicon_url', 'primary_color']));
   const result: JsonObject = {};
   for (const field of ['logo_url', 'favicon_url']) {
     if (proposal[field] !== undefined) result[field] = optionalUrl(proposal[field], field);
+  }
+  if (proposal.primary_color !== undefined) {
+    const color = optionalText(proposal.primary_color, 32, 'primary_color');
+    if (color !== null && color !== undefined && !/^#[0-9a-f]{3,8}$/i.test(color)) {
+      throw new Error('INVALID_FIELD:primary_color');
+    }
+    result.primary_color = color;
   }
   if (!Object.keys(result).length) throw new Error('EMPTY_PROPOSAL');
   return result;
@@ -212,11 +219,11 @@ serve(async (req: Request) => {
       const { data: currentBrand, error } = await admin.from('brands').select('id,name,slug,email,phone,city,country,address,description,whatsapp,instagram,google_maps_url,business_type').eq('id', brandId).single();
       if (error) throw error;
       before = { brand: currentBrand, settings: globalSettings ? { id: globalSettings.id, legal_name: globalSettings.legal_name, legal_id: globalSettings.legal_id } : null };
-    } else if (body.action === 'update_branding_urls') {
+    } else if (body.action === 'update_branding_urls' || body.action === 'update_branding') {
       proposed = sanitizeBranding(body.proposal);
       const { data: currentBrand, error } = await admin.from('brands').select('id,name,logo_url').eq('id', brandId).single();
       if (error) throw error;
-      before = { brand: currentBrand, settings: globalSettings ? { id: globalSettings.id, logo_url: globalSettings.logo_url, favicon_url: globalSettings.favicon_url } : null };
+      before = { brand: currentBrand, settings: globalSettings ? { id: globalSettings.id, logo_url: globalSettings.logo_url, favicon_url: globalSettings.favicon_url, primary_color: globalSettings.primary_color } : null };
     } else {
       proposed = sanitizeWeb(body.proposal);
       const { data: currentHome, error } = await admin.from('home_settings').select('*').eq('brand_id', brandId).maybeSingle();
@@ -274,10 +281,11 @@ serve(async (req: Request) => {
       if (verifyBrandError || verifySettingsError) throw verifyBrandError || verifySettingsError;
       if (!matchesSubset(verifiedBrand, profileProposal.brand) || !matchesSubset(verifiedSettings, profileProposal.settings)) throw new Error('VERIFY_FAILED');
       result = { brand: verifiedBrand, settings: verifiedSettings };
-    } else if (body.action === 'update_branding_urls') {
+    } else if (body.action === 'update_branding_urls' || body.action === 'update_branding') {
       const settingsPayload: JsonObject = {};
       if ('logo_url' in proposed) settingsPayload.logo_url = proposed.logo_url;
       if ('favicon_url' in proposed) settingsPayload.favicon_url = proposed.favicon_url;
+      if ('primary_color' in proposed) settingsPayload.primary_color = proposed.primary_color;
       if ('logo_url' in proposed) {
         const { error } = await admin.from('brands').update({ logo_url: proposed.logo_url }).eq('id', brandId);
         if (error) throw error;
@@ -289,7 +297,7 @@ serve(async (req: Request) => {
       if (error) throw error;
       const [{ data: verifiedBrand, error: verifyBrandError }, { data: verifiedSettings, error: verifySettingsError }] = await Promise.all([
         admin.from('brands').select('id,logo_url').eq('id', brandId).single(),
-        admin.from('restaurant_settings').select('id,logo_url,favicon_url').eq('brand_id', brandId).is('location_id', null).single(),
+        admin.from('restaurant_settings').select('id,logo_url,favicon_url,primary_color').eq('brand_id', brandId).is('location_id', null).single(),
       ]);
       if (verifyBrandError || verifySettingsError) throw verifyBrandError || verifySettingsError;
       if (('logo_url' in proposed && (verifiedBrand.logo_url ?? null) !== (proposed.logo_url ?? null)) || !matchesSubset(verifiedSettings, settingsPayload)) throw new Error('VERIFY_FAILED');

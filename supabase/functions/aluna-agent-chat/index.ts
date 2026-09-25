@@ -33,13 +33,17 @@ serve(async (req: Request) => {
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
     if (userError || !userData.user) return jsonResponse({ error: 'Invalid session' }, 401);
 
-    const [{ data: brand }, { data: profile }, locationsRes, categoriesRes, productsRes, ingredientsRes] = await Promise.all([
-      supabase.from('brands').select('id,name,owner_id,plan_id,ai_generations_used').eq('id', brandId).maybeSingle(),
+    const [{ data: brand }, { data: profile }, locationsRes, categoriesRes, productsRes, ingredientsRes, settingsRes, locationRes] = await Promise.all([
+      supabase.from('brands').select('id,name,owner_id,plan_id,ai_generations_used,whatsapp').eq('id', brandId).maybeSingle(),
       supabase.from('profiles').select('id,brand_id,role').eq('id', userData.user.id).maybeSingle(),
       supabase.from('locations').select('id', { count: 'exact', head: true }).eq('brand_id', brandId).eq('is_active', true),
       supabase.from('categories').select('id,name,slug').eq('brand_id', brandId).eq('is_active', true).order('sort_order').limit(100),
       supabase.from('products').select('id,category_id,name,price,recipe_id,is_active').eq('brand_id', brandId).eq('is_addon', false).limit(300),
       supabase.from('ingredients').select('id,name,purchase_price,purchase_quantity,purchase_unit,usage_unit,unit_cost,is_active').eq('brand_id', brandId).eq('is_active', true).limit(100),
+      supabase.from('restaurant_settings').select('whatsapp_number_orders,support_phone,is_service_fee_enabled,service_fee_percentage,primary_color').eq('brand_id', brandId).is('location_id', null).maybeSingle(),
+      locationId && UUID_PATTERN.test(locationId)
+        ? supabase.from('locations').select('id,name,delivery_fee,delivery_radius_km').eq('id', locationId).maybeSingle()
+        : supabase.from('locations').select('id,name,delivery_fee,delivery_radius_km').eq('brand_id', brandId).eq('is_main', true).maybeSingle(),
     ]);
     if (!brand) return jsonResponse({ error: 'Brand not found' }, 404);
     const allowedRoles = new Set(['owner', 'admin', 'manager', 'encargado', 'superadmin']);
@@ -112,7 +116,26 @@ serve(async (req: Request) => {
         unit_cost: ingredient.unit_cost,
         usage_unit: ingredient.usage_unit,
       })),
-      available_tools: ['opening_audit', 'create_location_with_approval', 'create_catalog_with_approval', 'create_costed_product_with_approval', 'consolidate_categories_with_approval', 'update_business_hours_with_approval', 'create_payment_method_with_approval', 'update_printing_settings_with_approval', 'create_modifier_group_with_approval', 'open_admin_module'],
+      delivery_settings: locationRes?.data ? {
+        delivery_fee: locationRes.data.delivery_fee,
+        delivery_radius_km: locationRes.data.delivery_radius_km,
+      } : null,
+      restaurant_settings: settingsRes?.data ? {
+        whatsapp_number_orders: settingsRes.data.whatsapp_number_orders || brand.whatsapp || null,
+        support_phone: settingsRes.data.support_phone,
+        is_service_fee_enabled: settingsRes.data.is_service_fee_enabled,
+        service_fee_percentage: settingsRes.data.service_fee_percentage,
+        primary_color: settingsRes.data.primary_color,
+      } : null,
+      available_tools: [
+        'opening_audit', 'create_location_with_approval', 'create_catalog_with_approval',
+        'create_costed_product_with_approval', 'consolidate_categories_with_approval',
+        'update_business_hours_with_approval', 'create_payment_method_with_approval',
+        'update_printing_settings_with_approval', 'create_modifier_group_with_approval',
+        'update_delivery_settings_with_approval', 'update_support_whatsapp_with_approval',
+        'update_service_fee_with_approval', 'update_web_content_with_approval',
+        'update_branding_with_approval', 'open_admin_module'
+      ],
       current_catalog_draft: previousDraft,
       enabled_features: { recipes: features?.recipes_enabled === true },
     };
@@ -140,7 +163,12 @@ serve(async (req: Request) => {
       'La falta de ingredientes, cantidades o costos nunca debe bloquear la creación comercial. Explica brevemente que dentro del flujo podrán elegir crear ahora sin receta/costos y completarlos después. Si piden explícitamente creación rápida usa create_catalog.',
       'Pregunta solamente por el siguiente dato obligatorio faltante. No repitas explicaciones ni listas largas.',
       'Cuando hagas una pregunta o el usuario deba elegir, devuelve 2 a 4 suggested_replies cortas y accionables. Usa únicamente valores u opciones presentes en el mensaje, historial o CONTEXTO_REAL; nunca inventes alternativas.',
-      'Usa intent audit para revisar apertura, create_location para crear sede, create_catalog para creación rápida, create_costed_product para producto con receta/costos, consolidate_catalog para consolidar categorías, update_business_hours para horarios, create_payment_method para pagos, update_printing_settings para impresión, create_modifier_group para extras/modificadores, y general para lo demás.',
+      'Usa intent audit para revisar apertura, create_location para crear sede, create_catalog para creación rápida, create_costed_product para producto con receta/costos, consolidate_catalog para consolidar categorías, update_business_hours para horarios, create_payment_method para pagos, update_printing_settings para impresión, create_modifier_group para extras/modificadores, update_delivery_settings para tarifas y cobertura de domicilios, update_support_whatsapp para WhatsApp y soporte, update_service_fee para propina o servicio sugerido, update_web_content para textos de portada y web, update_branding para color principal y logos, y general para lo demás.',
+      'Si el usuario pide cambiar domicilio, tarifa, radio o cobertura, usa intent update_delivery_settings y extrae los números en operations_draft.',
+      'Si el usuario pide cambiar WhatsApp de pedidos o soporte, usa intent update_support_whatsapp y extrae el número en operations_draft.',
+      'Si el usuario pide activar o ajustar propina o porcentaje de servicio, usa intent update_service_fee y extrae en operations_draft.',
+      'Si el usuario pide cambiar textos web o portada, usa intent update_web_content y extrae en web_draft.',
+      'Si el usuario pide cambiar color principal de marca o logo, usa intent update_branding y extrae en web_draft.',
       'Si la capacidad aún no existe, dilo claramente. Responde en español, directo y en máximo 45 palabras.',
     ].join('\n');
 
@@ -157,7 +185,16 @@ serve(async (req: Request) => {
             type: 'OBJECT',
             properties: {
               reply: { type: 'STRING' },
-              intent: { type: 'STRING', enum: ['audit', 'create_location', 'create_catalog', 'create_costed_product', 'consolidate_catalog', 'update_business_hours', 'create_payment_method', 'update_printing_settings', 'create_modifier_group', 'general'] },
+              intent: {
+                type: 'STRING',
+                enum: [
+                  'audit', 'create_location', 'create_catalog', 'create_costed_product',
+                  'consolidate_catalog', 'update_business_hours', 'create_payment_method',
+                  'update_printing_settings', 'create_modifier_group',
+                  'update_delivery_settings', 'update_support_whatsapp', 'update_service_fee',
+                  'update_web_content', 'update_branding', 'general'
+                ]
+              },
               catalog_draft: {
                 type: 'OBJECT',
                 properties: {
@@ -168,7 +205,6 @@ serve(async (req: Request) => {
                   tags: { type: 'ARRAY', items: { type: 'STRING' } },
                   requires_kitchen: { type: 'BOOLEAN' },
                 },
-                required: ['category_name', 'product_name', 'description', 'price', 'tags', 'requires_kitchen'],
               },
               recipe_draft: {
                 type: 'OBJECT',
@@ -188,12 +224,32 @@ serve(async (req: Request) => {
                     },
                   },
                 },
-                required: ['servings', 'quantities_are_estimates', 'ingredients'],
+              },
+              operations_draft: {
+                type: 'OBJECT',
+                properties: {
+                  delivery_fee: { type: 'NUMBER' },
+                  delivery_radius_km: { type: 'NUMBER' },
+                  whatsapp_number_orders: { type: 'STRING' },
+                  support_phone: { type: 'STRING' },
+                  service_fee_percentage: { type: 'NUMBER' },
+                  is_service_fee_enabled: { type: 'BOOLEAN' },
+                },
+              },
+              web_draft: {
+                type: 'OBJECT',
+                properties: {
+                  hero_h1: { type: 'STRING' },
+                  hero_subtitle: { type: 'STRING' },
+                  menu_banner_title: { type: 'STRING' },
+                  menu_banner_subtitle: { type: 'STRING' },
+                  primary_color: { type: 'STRING' },
+                },
               },
               missing_fields: { type: 'ARRAY', items: { type: 'STRING' } },
               suggested_replies: { type: 'ARRAY', items: { type: 'STRING' } },
             },
-            required: ['reply', 'intent', 'catalog_draft', 'recipe_draft', 'missing_fields', 'suggested_replies'],
+            required: ['reply', 'intent'],
           },
         },
       }),
@@ -203,7 +259,13 @@ serve(async (req: Request) => {
     if (!response.ok) return jsonResponse({ error: 'Gemini request failed' }, 502);
     const rawText = data?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || '').join('').trim();
     const parsed = JSON.parse(rawText || '{}');
-    const allowedIntents = new Set(['audit', 'create_location', 'create_catalog', 'create_costed_product', 'consolidate_catalog', 'update_business_hours', 'create_payment_method', 'update_printing_settings', 'create_modifier_group', 'general']);
+    const allowedIntents = new Set([
+      'audit', 'create_location', 'create_catalog', 'create_costed_product',
+      'consolidate_catalog', 'update_business_hours', 'create_payment_method',
+      'update_printing_settings', 'create_modifier_group',
+      'update_delivery_settings', 'update_support_whatsapp', 'update_service_fee',
+      'update_web_content', 'update_branding', 'general'
+    ]);
     const parsedDraft = parsed.catalog_draft && typeof parsed.catalog_draft === 'object' ? parsed.catalog_draft : {};
     const stringValue = (next: unknown, previous: unknown) => typeof next === 'string' && next.trim() ? next.trim() : typeof previous === 'string' ? previous : '';
     const priceValue = Number(parsedDraft.price) > 0 ? Number(parsedDraft.price) : Number(previousDraft.price) > 0 ? Number(previousDraft.price) : 0;
@@ -270,9 +332,18 @@ serve(async (req: Request) => {
       reply: typeof parsed.reply === 'string' && parsed.reply.trim() ? parsed.reply.trim() : 'No pude interpretar esa solicitud con suficiente precisión.',
       intent: allowedIntents.has(parsed.intent) ? parsed.intent : 'general',
       catalog_draft: catalogDraft,
+      operations_draft: parsed.operations_draft && typeof parsed.operations_draft === 'object' ? parsed.operations_draft : null,
+      web_draft: parsed.web_draft && typeof parsed.web_draft === 'object' ? parsed.web_draft : null,
+      current_delivery_fee: locationRes?.data?.delivery_fee ?? null,
+      current_delivery_radius: locationRes?.data?.delivery_radius_km ?? null,
+      current_whatsapp: settingsRes?.data?.whatsapp_number_orders || brand.whatsapp || null,
+      current_service_fee: settingsRes?.data?.service_fee_percentage ?? null,
+      current_service_fee_enabled: settingsRes?.data?.is_service_fee_enabled ?? null,
+      current_primary_color: settingsRes?.data?.primary_color || null,
       missing_fields: missingFields,
       suggested_replies: suggestedReplies,
-      proposal_ready: parsed.intent === 'create_catalog' && missingFields.length === 0,
+      proposal_ready: (parsed.intent === 'create_catalog' && missingFields.length === 0)
+        || ['update_delivery_settings', 'update_support_whatsapp', 'update_service_fee', 'update_web_content', 'update_branding'].includes(parsed.intent),
       matched_product: matchedProduct ? { ...matchedProduct, category_name: matchedCategory?.name || '' } : null,
       recipe_draft: recipeDraft,
       current_usage: currentUsage + 1,
