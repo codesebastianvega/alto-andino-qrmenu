@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { AlertTriangle, Bot, CheckCircle2, ChevronRight, History, Loader2, MapPin, Pencil, Send, ShieldCheck, Sparkles, UtensilsCrossed, X, XCircle } from 'lucide-react';
-import { chatWithAluna, executeAlunaAction, executeAlunaCatalogManagementAction, executeAlunaKitchenAction, executeAlunaOperationsAction, executeAlunaBrandWebAction, listAlunaChanges, runOpeningAudit } from '../../services/alunaCopilot';
+import { chatWithAluna, executeAlunaAction, executeAlunaCatalogManagementAction, executeAlunaKitchenAction, executeAlunaOperationsAction, executeAlunaBrandWebAction, executeAlunaInventoryAction, listAlunaChanges, runOpeningAudit } from '../../services/alunaCopilot';
 import CostedProductWorkflow from './aluna/CostedProductWorkflow';
 import OperationsWorkflow from './aluna/OperationsWorkflow';
 import ChangeHistory from './aluna/ChangeHistory';
@@ -394,6 +394,8 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
       approveOperations(card.action, card.operationsDraft || card.draft || {});
     } else if (['update_branding', 'update_branding_urls', 'update_web_content'].includes(card.action)) {
       approveBrandWeb(card.action, card.webDraft || card.draft || {});
+    } else if (['batch_stock_entry', 'generate_shopping_list'].includes(card.action)) {
+      approveInventory(card.action, card.inventoryDraft || card.draft || {});
     }
   };
 
@@ -513,6 +515,36 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
           riskLevel: 'low',
           action: 'update_web_content',
           webDraft,
+        };
+      } else if (response.intent === 'batch_stock_entry') {
+        const invDraft = response.inventory_draft || {};
+        const entries = Array.isArray(invDraft.entries) ? invDraft.entries : [];
+        const beforeAfter = entries.map((e) => ({
+          label: e.ingredient_name || 'Insumo',
+          before: 'Stock actual',
+          after: `+${e.quantity_added} ingresadas`
+        }));
+
+        card = {
+          type: 'proposal',
+          title: 'Registrar entrada de insumos al inventario',
+          summary: assistantReply,
+          beforeAfter: beforeAfter.length ? beforeAfter : [{ label: 'Insumos', before: 'Actual', after: 'Ingreso al inventario' }],
+          riskLevel: 'medium',
+          action: 'batch_stock_entry',
+          inventoryDraft: invDraft,
+        };
+      } else if (response.intent === 'generate_shopping_list') {
+        card = {
+          type: 'proposal',
+          title: 'Lista de compras inteligente (Mercado)',
+          summary: assistantReply,
+          beforeAfter: [
+            { label: 'Estado', before: 'Monitoreo de stock', after: 'Calcular faltantes y generar lista consolidada' }
+          ],
+          riskLevel: 'low',
+          action: 'generate_shopping_list',
+          inventoryDraft: {},
         };
       } else if (response.proposal_ready || ['create_catalog', 'create_costed_product', 'create_location', 'update_business_hours', 'create_payment_method', 'create_modifier_group'].includes(response.intent)) {
         // Camino 2: Propuesta Agéntica
@@ -739,6 +771,32 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
       setAudit(await runOpeningAudit({ brandId, locationId }));
     } catch (actionError) { setError(actionError.message || 'No pude aplicar el cambio de diseño o web.'); }
     finally { setIsLoading(false); }
+  };
+
+  const approveInventory = async (action, proposal) => {
+    setIsLoading(true); setError('');
+    try {
+      const result = await executeAlunaInventoryAction({ brandId, locationId, action, proposal });
+      if (action === 'generate_shopping_list') {
+        const text = result.formatted_text || 'Lista de mercado generada.';
+        if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(text).catch(() => {});
+        }
+        setSuccess(`Aluna generó la lista de mercado (${result.items_count || 0} insumos). ¡Copiada al portapapeles!`);
+        setMessages((current) => [...current, {
+          role: 'assistant',
+          content: text,
+        }]);
+      } else {
+        const count = result.updated_ingredients?.length || 0;
+        setSuccess(`Aluna registró la entrada de ${count} insumo(s) al inventario correctamente.`);
+      }
+      setWorkflow(null);
+    } catch (actionError) {
+      setError(actionError.message || 'No pude procesar la acción de inventario.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const resolveFinding = (finding) => {

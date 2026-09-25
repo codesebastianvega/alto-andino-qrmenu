@@ -134,7 +134,8 @@ serve(async (req: Request) => {
         'update_printing_settings_with_approval', 'create_modifier_group_with_approval',
         'update_delivery_settings_with_approval', 'update_support_whatsapp_with_approval',
         'update_service_fee_with_approval', 'update_web_content_with_approval',
-        'update_branding_with_approval', 'open_admin_module'
+        'update_branding_with_approval', 'batch_stock_entry_with_approval',
+        'generate_shopping_list', 'open_admin_module'
       ],
       current_catalog_draft: previousDraft,
       enabled_features: { recipes: features?.recipes_enabled === true },
@@ -163,12 +164,14 @@ serve(async (req: Request) => {
       'La falta de ingredientes, cantidades o costos nunca debe bloquear la creación comercial. Explica brevemente que dentro del flujo podrán elegir crear ahora sin receta/costos y completarlos después. Si piden explícitamente creación rápida usa create_catalog.',
       'Pregunta solamente por el siguiente dato obligatorio faltante. No repitas explicaciones ni listas largas.',
       'Cuando hagas una pregunta o el usuario deba elegir, devuelve 2 a 4 suggested_replies cortas y accionables. Usa únicamente valores u opciones presentes en el mensaje, historial o CONTEXTO_REAL; nunca inventes alternativas.',
-      'Usa intent audit para revisar apertura, create_location para crear sede, create_catalog para creación rápida, create_costed_product para producto con receta/costos, consolidate_catalog para consolidar categorías, update_business_hours para horarios, create_payment_method para pagos, update_printing_settings para impresión, create_modifier_group para extras/modificadores, update_delivery_settings para tarifas y cobertura de domicilios, update_support_whatsapp para WhatsApp y soporte, update_service_fee para propina o servicio sugerido, update_web_content para textos de portada y web, update_branding para color principal y logos, y general para lo demás.',
+      'Usa intent audit para revisar apertura, create_location para crear sede, create_catalog para creación rápida, create_costed_product para producto con receta/costos, consolidate_catalog para consolidar categorías, update_business_hours para horarios, create_payment_method para pagos, update_printing_settings para impresión, create_modifier_group para extras/modificadores, update_delivery_settings para tarifas y cobertura de domicilios, update_support_whatsapp para WhatsApp y soporte, update_service_fee para propina o servicio sugerido, update_web_content para textos de portada y web, update_branding para color principal y logos, batch_stock_entry para registrar entrada de compras o insumos, generate_shopping_list para lista de compras del mercado, y general para lo demás.',
       'Si el usuario pide cambiar domicilio, tarifa, radio o cobertura, usa intent update_delivery_settings y extrae los números en operations_draft.',
       'Si el usuario pide cambiar WhatsApp de pedidos o soporte, usa intent update_support_whatsapp y extrae el número en operations_draft.',
       'Si el usuario pide activar o ajustar propina o porcentaje de servicio, usa intent update_service_fee y extrae en operations_draft.',
       'Si el usuario pide cambiar textos web o portada, usa intent update_web_content y extrae en web_draft.',
       'Si el usuario pide cambiar color principal de marca o logo, usa intent update_branding y extrae en web_draft.',
+      'Si el usuario reporta que compró insumos o que llegaron compras (ej. llegaron 10 kg de arroz, 5 kg de carne), usa intent batch_stock_entry y extrae los insumos en inventory_draft.entries.',
+      'Si el usuario pide qué hay que comprar, lista de mercado o insumos bajos de stock, usa intent generate_shopping_list.',
       'Si la capacidad aún no existe, dilo claramente. Responde en español, directo y en máximo 45 palabras.',
     ].join('\n');
 
@@ -192,7 +195,8 @@ serve(async (req: Request) => {
                   'consolidate_catalog', 'update_business_hours', 'create_payment_method',
                   'update_printing_settings', 'create_modifier_group',
                   'update_delivery_settings', 'update_support_whatsapp', 'update_service_fee',
-                  'update_web_content', 'update_branding', 'general'
+                  'update_web_content', 'update_branding', 'batch_stock_entry',
+                  'generate_shopping_list', 'general'
                 ]
               },
               catalog_draft: {
@@ -246,6 +250,23 @@ serve(async (req: Request) => {
                   primary_color: { type: 'STRING' },
                 },
               },
+              inventory_draft: {
+                type: 'OBJECT',
+                properties: {
+                  entries: {
+                    type: 'ARRAY',
+                    items: {
+                      type: 'OBJECT',
+                      properties: {
+                        ingredient_name: { type: 'STRING' },
+                        quantity_added: { type: 'NUMBER' },
+                        unit_cost: { type: 'NUMBER' },
+                      },
+                      required: ['ingredient_name', 'quantity_added'],
+                    },
+                  },
+                },
+              },
               missing_fields: { type: 'ARRAY', items: { type: 'STRING' } },
               suggested_replies: { type: 'ARRAY', items: { type: 'STRING' } },
             },
@@ -264,7 +285,8 @@ serve(async (req: Request) => {
       'consolidate_catalog', 'update_business_hours', 'create_payment_method',
       'update_printing_settings', 'create_modifier_group',
       'update_delivery_settings', 'update_support_whatsapp', 'update_service_fee',
-      'update_web_content', 'update_branding', 'general'
+      'update_web_content', 'update_branding', 'batch_stock_entry',
+      'generate_shopping_list', 'general'
     ]);
     const parsedDraft = parsed.catalog_draft && typeof parsed.catalog_draft === 'object' ? parsed.catalog_draft : {};
     const stringValue = (next: unknown, previous: unknown) => typeof next === 'string' && next.trim() ? next.trim() : typeof previous === 'string' ? previous : '';
@@ -334,6 +356,7 @@ serve(async (req: Request) => {
       catalog_draft: catalogDraft,
       operations_draft: parsed.operations_draft && typeof parsed.operations_draft === 'object' ? parsed.operations_draft : null,
       web_draft: parsed.web_draft && typeof parsed.web_draft === 'object' ? parsed.web_draft : null,
+      inventory_draft: parsed.inventory_draft && typeof parsed.inventory_draft === 'object' ? parsed.inventory_draft : null,
       current_delivery_fee: locationRes?.data?.delivery_fee ?? null,
       current_delivery_radius: locationRes?.data?.delivery_radius_km ?? null,
       current_whatsapp: settingsRes?.data?.whatsapp_number_orders || brand.whatsapp || null,
@@ -343,7 +366,7 @@ serve(async (req: Request) => {
       missing_fields: missingFields,
       suggested_replies: suggestedReplies,
       proposal_ready: (parsed.intent === 'create_catalog' && missingFields.length === 0)
-        || ['update_delivery_settings', 'update_support_whatsapp', 'update_service_fee', 'update_web_content', 'update_branding'].includes(parsed.intent),
+        || ['update_delivery_settings', 'update_support_whatsapp', 'update_service_fee', 'update_web_content', 'update_branding', 'batch_stock_entry', 'generate_shopping_list'].includes(parsed.intent),
       matched_product: matchedProduct ? { ...matchedProduct, category_name: matchedCategory?.name || '' } : null,
       recipe_draft: recipeDraft,
       current_usage: currentUsage + 1,

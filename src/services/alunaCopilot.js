@@ -111,3 +111,20 @@ export async function executeAlunaBrandWebAction({ brandId, action, proposal }) 
   return data;
 }
 
+export async function executeAlunaInventoryAction({ brandId, locationId = null, action, proposal }) {
+  const { data, error } = await supabase.functions.invoke('aluna-inventory-action', {
+    body: {
+      brand_id: brandId,
+      location_id: locationId && locationId !== 'all' ? locationId : null,
+      action,
+      proposal,
+      approved: true,
+      idempotency_key: crypto.randomUUID(),
+    },
+  });
+  if (error) throw new Error(await functionErrorMessage(error, 'No fue posible ejecutar la acción de inventario.'));
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
+

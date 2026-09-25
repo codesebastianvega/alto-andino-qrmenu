@@ -252,7 +252,7 @@ serve(async (req: Request) => {
     );
     const packagingFee = finiteNonNegative(productInput.packaging_fee, MAX_MONEY) ?? 0;
     const fullCost = totalCost + packagingFee;
-    const margin = productPrice > 0 ? ((productPrice - fullCost) / productPrice) * 100 : 0;
+    const margin = productPrice > 0 ? Math.round(((productPrice - fullCost) / productPrice) * 1000) / 10 : 0;
     if (!Number.isFinite(totalCost) || totalCost <= 0) throw new HttpError(400, 'The calculated recipe cost must be positive');
 
     const approvedAt = new Date().toISOString();
