@@ -151,11 +151,12 @@ serve(async (req: Request) => {
       'No inventes datos del negocio, productos, precios, direcciones, costos ni configuraciones.',
       'No afirmes que ejecutaste cambios. Toda escritura requiere una propuesta visible y aprobación humana posterior.',
       'Nunca digas que una propuesta fue enviada, está procesándose, se registró o se creó: esta función solo conversa y no ejecuta escrituras.',
-      'Si quieren crear un plato o producto, usa intent create_catalog y extrae literalmente cualquier dato dado en catalog_draft. Conserva CURRENT_CATALOG_DRAFT; no borres datos previos.',
+      'Si quieren crear un plato, bebida o producto, usa intent create_catalog y extrae en catalog_draft: category_name, product_name, description, price y suggested_modifiers (ej. ["Hielo", "Endulzante"] para bebidas, ["Término", "Adiciones"] para platos). Conserva CURRENT_CATALOG_DRAFT; no borres datos previos.',
       'Si el usuario menciona o describe una categoría que ya aparece en existing_categories, usa exactamente su nombre. No propongas crear una variante duplicada.',
       'Antes de decir si un producto existe, revisa si coincide con matched_product o sample_products. No uses intent audit para buscar un producto.',
       'Si el producto mencionado ya existe, dilo claramente e indica si tiene receta. No propongas crear otro producto con el mismo nombre.',
       'Si existe y no tiene receta, usa intent create_costed_product. La interfaz mostrará su card real y permitirá crear y vincular la receta sin duplicar el producto.',
+      'Si falta el nombre o precio de un producto nuevo, pregunta por ellos y ofrece la opción de vincular receta para inventario o crearlo como producto simple. Devuelve suggested_replies como ["Producto simple (sin receta)", "Con receta e inventario"].',
       'Para este MVP procesa exactamente un producto por conversación. Si el mensaje contiene una receta, extrae sus ingredientes y cantidades en recipe_draft.',
       'Si el usuario autoriza cantidades aproximadas o sugeridas, propone cantidades conservadoras para una porción. Marca quantities_are_estimates=true y no vuelvas a pedir la lista.',
       'Cuando recipe_draft tenga al menos un ingrediente, no hagas otra pregunta: confirma en una frase que la propuesta está lista para revisión y devuelve suggested_replies=[].',
@@ -209,6 +210,7 @@ serve(async (req: Request) => {
                   price: { type: 'NUMBER' },
                   tags: { type: 'ARRAY', items: { type: 'STRING' } },
                   requires_kitchen: { type: 'BOOLEAN' },
+                  suggested_modifiers: { type: 'ARRAY', items: { type: 'STRING' } },
                 },
               },
               recipe_draft: {
@@ -309,6 +311,9 @@ serve(async (req: Request) => {
       price: priceValue,
       tags: Array.isArray(parsedDraft.tags) && parsedDraft.tags.length ? parsedDraft.tags.filter((tag: unknown) => typeof tag === 'string').slice(0, 10) : Array.isArray(previousDraft.tags) ? previousDraft.tags : [],
       requires_kitchen: typeof parsedDraft.requires_kitchen === 'boolean' ? parsedDraft.requires_kitchen : previousDraft.requires_kitchen !== false,
+      suggested_modifiers: Array.isArray(parsedDraft.suggested_modifiers) && parsedDraft.suggested_modifiers.length
+        ? parsedDraft.suggested_modifiers.filter((m: unknown) => typeof m === 'string').slice(0, 5)
+        : (Array.isArray(previousDraft.suggested_modifiers) ? previousDraft.suggested_modifiers : []),
     };
     const requiredDraftFields = ['category_name', 'product_name', 'description', 'price'];
     const missingFields = requiredDraftFields.filter((field) => field === 'price' ? catalogDraft.price <= 0 : !catalogDraft[field as keyof typeof catalogDraft]);

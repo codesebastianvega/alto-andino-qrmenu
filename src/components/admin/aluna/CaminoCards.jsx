@@ -13,7 +13,9 @@ import {
   Lightbulb,
   Layers,
   Clock,
-  ArrowUpRight
+  ArrowUpRight,
+  MessageSquare,
+  Pencil
 } from 'lucide-react';
 
 const PAGE_NAMES = {
@@ -119,33 +121,43 @@ export function AgenticProposalCard({
   beforeAfter = [], 
   riskLevel = 'low', 
   isExecuting = false, 
+  isDraft = false,
+  productMode = 'simple',
+  onChangeProductMode,
+  suggestedModifiers = [],
+  onToggleModifier,
+  onFieldChange,
+  canApprove = true,
   onApprove, 
   onCancel,
+  onSendToChat,
   details
 }) {
-  const riskMeta = {
-    low: { label: 'Riesgo Bajo', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    medium: { label: 'Riesgo Medio', className: 'bg-amber-50 text-amber-700 border-amber-200' },
-    high: { label: 'Riesgo Alto', className: 'bg-red-50 text-red-700 border-red-200' },
-  }[riskLevel] || { label: 'Verificado', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+  const riskMeta = isDraft
+    ? { label: 'Borrador en Curso', className: 'bg-amber-50 text-amber-800 border-amber-300' }
+    : {
+        low: { label: 'Riesgo Bajo', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+        medium: { label: 'Riesgo Medio', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+        high: { label: 'Riesgo Alto', className: 'bg-red-50 text-red-700 border-red-200' },
+      }[riskLevel] || { label: 'Verificado', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
 
   return (
-    <article className="overflow-hidden rounded-2xl border-2 border-emerald-200/90 bg-white shadow-sm transition-all">
-      <div className="border-b border-emerald-100 bg-gradient-to-r from-emerald-50/80 via-emerald-50/40 to-transparent px-4 py-3 flex items-center justify-between gap-2">
+    <article className={`overflow-hidden rounded-2xl border-2 ${isDraft ? 'border-amber-300/80' : 'border-emerald-200/90'} bg-white shadow-sm transition-all`}>
+      <div className={`border-b ${isDraft ? 'border-amber-200 bg-gradient-to-r from-amber-50/80 via-amber-50/40 to-transparent' : 'border-emerald-100 bg-gradient-to-r from-emerald-50/80 via-emerald-50/40 to-transparent'} px-4 py-3 flex items-center justify-between gap-2`}>
         <div className="flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#173D24] text-white">
-            <Sparkles size={13} />
+          <span className={`flex h-6 w-6 items-center justify-center rounded-lg ${isDraft ? 'bg-amber-700' : 'bg-[#173D24]'} text-white`}>
+            {isDraft ? <Pencil size={13} /> : <Sparkles size={13} />}
           </span>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-950">
-            Camino 2 · Propuesta Agéntica
+          <span className={`text-[11px] font-bold uppercase tracking-wider ${isDraft ? 'text-amber-950' : 'text-emerald-950'}`}>
+            {isDraft ? 'Camino 2 · Borrador Editable' : 'Camino 2 · Propuesta Agéntica'}
           </span>
         </div>
-        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${riskMeta.className}`}>
+        <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${riskMeta.className}`}>
           {riskMeta.label}
         </span>
       </div>
 
-      <div className="p-4 space-y-4">
+      <div className="p-4 space-y-3.5">
         <div>
           <h4 className="text-sm font-bold text-gray-950 leading-snug">
             {title || 'Cambio preparado para confirmación'}
@@ -157,6 +169,45 @@ export function AgenticProposalCard({
           )}
         </div>
 
+        {/* Trazabilidad de Inventario: Selector Simple vs Receta */}
+        {productMode && onChangeProductMode && (
+          <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-2.5 space-y-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+              Trazabilidad de Inventario
+            </span>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => onChangeProductMode('simple')}
+                className={`flex items-center justify-center gap-1.5 rounded-lg py-1.5 px-2 font-semibold transition-all border ${
+                  productMode === 'simple'
+                    ? 'bg-[#173D24] text-white border-emerald-950 shadow-xs'
+                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                <span>🍹 Simple (Sin receta)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onChangeProductMode('recipe')}
+                className={`flex items-center justify-center gap-1.5 rounded-lg py-1.5 px-2 font-semibold transition-all border ${
+                  productMode === 'recipe'
+                    ? 'bg-[#173D24] text-white border-emerald-950 shadow-xs'
+                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                <span>📋 Con receta e insumos</span>
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-500 italic">
+              {productMode === 'simple'
+                ? 'Se crea de inmediato en la carta digital (no descuenta insumos de stock).'
+                : 'Permite vincular ingredientes y descontar inventario con cada venta.'}
+            </p>
+          </div>
+        )}
+
+        {/* Tabla Antes vs Después (con inputs editables) */}
         {Array.isArray(beforeAfter) && beforeAfter.length > 0 && (
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50/50">
             <div className="grid grid-cols-3 border-b border-gray-200/70 bg-gray-100/70 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">
@@ -168,11 +219,52 @@ export function AgenticProposalCard({
               {beforeAfter.map((item, idx) => (
                 <div key={idx} className="grid grid-cols-3 px-3 py-2 items-center gap-2">
                   <span className="font-medium text-gray-700 truncate">{item.label}</span>
-                  <span className="text-gray-400 line-through truncate">{String(item.before ?? '—')}</span>
-                  <span className="font-semibold text-emerald-900 truncate bg-emerald-50/60 rounded px-1 py-0.5">
-                    {String(item.after ?? '—')}
-                  </span>
+                  <span className="text-gray-400 line-through truncate text-[11px]">{String(item.before ?? '—')}</span>
+                  <div className="flex items-center">
+                    {item.editable && onFieldChange ? (
+                      <input
+                        type={item.type || 'text'}
+                        value={item.value !== undefined ? item.value : (item.after === 'Por definir' || item.after === 'Nuevo plato' ? '' : item.after)}
+                        placeholder={item.placeholder || 'Escribe aquí...'}
+                        onChange={(e) => onFieldChange(item.key || item.label, item.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
+                        className="w-full rounded-lg border border-emerald-300 bg-white px-2.5 py-1 text-xs font-semibold text-emerald-950 placeholder:text-gray-400 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 shadow-2xs transition-all"
+                      />
+                    ) : (
+                      <span className="font-semibold text-emerald-900 truncate bg-emerald-50/60 rounded px-1.5 py-0.5 w-full">
+                        {String(item.after ?? '—')}
+                      </span>
+                    )}
+                  </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Modificadores sugeridos por Aluna (con nota de reutilización) */}
+        {Array.isArray(suggestedModifiers) && suggestedModifiers.length > 0 && (
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-2.5 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-emerald-950 flex items-center gap-1.5">
+                <Sparkles size={12} className="text-emerald-700" />
+                <span>Modificadores sugeridos</span>
+              </span>
+              <span className="text-[10px] text-emerald-700 font-medium">Reutiliza si ya existen</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {suggestedModifiers.map((mod, idx) => (
+                <label key={idx} className="flex items-center justify-between p-2 rounded-lg bg-white border border-emerald-100 cursor-pointer hover:bg-emerald-50/40 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={mod.selected !== false}
+                      onChange={() => onToggleModifier && onToggleModifier(mod.name)}
+                      className="rounded border-gray-300 text-emerald-700 focus:ring-emerald-500"
+                    />
+                    <span className="text-xs font-semibold text-gray-800">{mod.name}</span>
+                  </div>
+                  <span className="text-[10px] text-gray-400 truncate max-w-[100px]">{mod.description || 'Opciones estándar'}</span>
+                </label>
               ))}
             </div>
           </div>
@@ -192,22 +284,36 @@ export function AgenticProposalCard({
         <div className="space-y-2 pt-1">
           <button
             type="button"
-            disabled={isExecuting}
+            disabled={isExecuting || !canApprove}
             onClick={onApprove}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#173D24] py-3 text-sm font-bold text-white shadow-sm hover:bg-[#21542f] active:scale-[0.99] transition-all disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#173D24] py-3 text-sm font-bold text-white shadow-sm hover:bg-[#21542f] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isExecuting ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
                 <span>Ejecutando cambio…</span>
               </>
+            ) : !canApprove ? (
+              <span>Completa nombre y precio en el cuadro</span>
             ) : (
               <>
                 <CheckCircle2 size={16} />
-                <span>Aprobar y Ejecutar</span>
+                <span>{productMode === 'recipe' ? 'Continuar con Receta e Insumos' : 'Aprobar y Crear Producto'}</span>
               </>
             )}
           </button>
+
+          {onSendToChat && (
+            <button
+              type="button"
+              disabled={isExecuting}
+              onClick={onSendToChat}
+              className="flex items-center justify-center gap-1.5 w-full py-1 text-xs font-semibold text-emerald-800 hover:text-emerald-950 transition-colors"
+            >
+              <MessageSquare size={13} />
+              <span>Continuar afinando por chat</span>
+            </button>
+          )}
 
           {onCancel && (
             <button

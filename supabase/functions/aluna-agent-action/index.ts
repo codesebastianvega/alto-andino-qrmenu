@@ -109,14 +109,148 @@ serve(async (req: Request) => {
       const rawProducts = Array.isArray(proposal.products) ? proposal.products.slice(0, 10) : [];
       const products = rawProducts.map((item: Record<string, unknown>) => ({
         name: typeof item.name === 'string' ? item.name.trim().slice(0, 120) : '',
-        description: typeof item.description === 'string' ? item.description.trim().slice(0, 800) : '',
+        description: typeof item.description === 'string' && item.description.trim() ? item.description.trim().slice(0, 800) : `${typeof item.name === 'string' ? item.name.trim() : 'Producto'} preparado fresco.`,
         price: Number(item.price),
         tags: Array.isArray(item.tags) ? item.tags.filter((tag) => typeof tag === 'string').map((tag) => tag.trim().slice(0, 40)).filter(Boolean).slice(0, 10) : [],
         requires_kitchen: item.requires_kitchen !== false,
       }));
-      if (!categoryName || products.length === 0 || products.some((item) => !item.name || !item.description || !Number.isFinite(item.price) || item.price <= 0)) {
+      if (!categoryName || products.length === 0 || products.some((item) => !item.name || !Number.isFinite(item.price) || item.price <= 0)) {
         return jsonResponse({ error: 'Category and complete product data are required' }, 400);
       }
+
+      const { data: activeLocations } = await admin.from('locations').select('id').eq('brand_id', brandId).eq('is_active', true);
+
+      // Collect requested modifier groups (explicit IDs or group names)
+      const requestedGroupNames: string[] = [];
+      const explicitGroupIds: string[] = [];
+
+      rawProducts.forEach((item: Record<string, unknown>) => {
+        if (Array.isArray(item.modifier_groups)) {
+          item.modifier_groups.forEach((g) => {
+            if (typeof g === 'string') {
+              if (UUID_PATTERN.test(g)) explicitGroupIds.push(g);
+              else if (g.trim()) requestedGroupNames.push(g.trim());
+            }
+          });
+        }
+        if (Array.isArray(item.modifier_group_names)) {
+          item.modifier_group_names.forEach((name) => {
+            if (typeof name === 'string' && name.trim()) requestedGroupNames.push(name.trim());
+          });
+        }
+      });
+
+      if (Array.isArray(proposal.modifier_group_names)) {
+        proposal.modifier_group_names.forEach((name: unknown) => {
+          if (typeof name === 'string' && name.trim()) requestedGroupNames.push(name.trim());
+        });
+      }
+      if (Array.isArray(proposal.modifier_groups)) {
+        proposal.modifier_groups.forEach((g: unknown) => {
+          if (typeof g === 'string') {
+            if (UUID_PATTERN.test(g)) explicitGroupIds.push(g);
+            else if (g.trim()) requestedGroupNames.push(g.trim());
+          }
+        });
+      }
+
+      // Check existing modifier groups in the brand to reuse without duplicating
+      const resolvedGroupIds = new Set<string>(explicitGroupIds);
+
+      if (requestedGroupNames.length > 0) {
+        const { data: existingBrandGroups } = await admin
+          .from('modifier_groups')
+          .select('id, name')
+          .eq('brand_id', brandId);
+
+        const existingMap = new Map<string, string>();
+        (existingBrandGroups || []).forEach((g: { id: string; name: string }) => {
+          existingMap.set(g.name.trim().toLowerCase(), g.id);
+        });
+
+        const STANDARD_TEMPLATES: Record<string, { description: string; options: { name: string; price: number }[] }> = {
+          hielo: {
+            description: 'Nivel de hielo preferido',
+            options: [{ name: 'Normal', price: 0 }, { name: 'Poco hielo', price: 0 }, { name: 'Sin hielo', price: 0 }],
+          },
+          endulzante: {
+            description: 'Preferencia de endulzante',
+            options: [{ name: 'Normal', price: 0 }, { name: 'Sin azúcar', price: 0 }, { name: 'Stevia', price: 0 }],
+          },
+          azucar: {
+            description: 'Nivel de azúcar',
+            options: [{ name: 'Normal', price: 0 }, { name: 'Bajo en azúcar', price: 0 }, { name: 'Sin azúcar', price: 0 }],
+          },
+          leche: {
+            description: 'Tipo de leche',
+            options: [{ name: 'Entera', price: 0 }, { name: 'Deslactosada', price: 0 }, { name: 'Almendras', price: 2000 }],
+          },
+        };
+
+        for (const rawName of requestedGroupNames) {
+          const norm = rawName.toLowerCase();
+          let matchedId = existingMap.get(norm);
+          if (!matchedId) {
+            for (const [existingName, id] of existingMap.entries()) {
+              if (existingName.includes(norm) || norm.includes(existingName)) {
+                matchedId = id;
+                break;
+              }
+            }
+          }
+
+          if (matchedId) {
+            // Reuse existing!
+            resolvedGroupIds.add(matchedId);
+          } else {
+            // Create new group with options
+            const templateKey = Object.keys(STANDARD_TEMPLATES).find((k) => norm.includes(k));
+            const template = templateKey ? STANDARD_TEMPLATES[templateKey] : {
+              description: `Opciones para ${rawName}`,
+              options: [{ name: 'Estándar', price: 0 }, { name: 'Personalizado', price: 0 }],
+            };
+
+            const { data: newGroup, error: newGroupError } = await admin
+              .from('modifier_groups')
+              .insert({
+                brand_id: brandId,
+                name: rawName,
+                description: template.description,
+                is_required: false,
+                min_select: 0,
+                max_select: 1,
+                is_submodifier: false,
+              })
+              .select('id, name')
+              .single();
+
+            if (!newGroupError && newGroup?.id) {
+              resolvedGroupIds.add(newGroup.id);
+              existingMap.set(norm, newGroup.id);
+
+              await admin.from('modifier_options').insert(
+                template.options.map((opt, idx) => ({
+                  group_id: newGroup.id,
+                  name: opt.name,
+                  price: opt.price,
+                  sort_order: idx,
+                }))
+              );
+
+              if (activeLocations?.length) {
+                await admin.from('location_modifier_groups').insert(
+                  activeLocations.map((loc: { id: string }) => ({
+                    location_id: loc.id,
+                    modifier_group_id: newGroup.id,
+                  }))
+                );
+              }
+            }
+          }
+        }
+      }
+
+      const assignedModifierGroups = Array.from(resolvedGroupIds);
 
       const baseSlug = categoryName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 70) || 'categoria';
       const { data: matchingCategories, error: matchingCategoryError } = await admin
@@ -139,6 +273,7 @@ serve(async (req: Request) => {
         stock_status: 'in',
         is_active: true,
         is_addon: false,
+        modifier_groups: assignedModifierGroups,
       }));
       const approvedAt = new Date().toISOString();
       const { data: changeSet, error: changeSetError } = await admin.from('agent_change_sets').insert({

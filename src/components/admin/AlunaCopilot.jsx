@@ -379,7 +379,39 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
 
   const handleApproveProposalCard = (card) => {
     if (!card) return;
-    if (card.action === 'create_catalog') {
+    if (card.action === 'create_catalog' || card.draftType === 'catalog') {
+      const draft = card.draft || catalogDraft;
+      const productName = String(draft.product_name || '').trim();
+      const price = Number(draft.price);
+      const categoryName = String(draft.category_name || '').trim() || 'General';
+      const description = String(draft.description || '').trim() || `${productName} preparado fresco.`;
+      const selectedMods = (card.suggestedModifiers || [])
+        .filter((m) => m.selected !== false)
+        .map((m) => m.name);
+
+      if (productName && price > 0) {
+        if (card.productMode === 'recipe') {
+          setSelectedProduct({ name: productName, price, category_name: categoryName });
+          setCatalogDraft((prev) => ({ ...prev, product_name: productName, price, category_name: categoryName, description }));
+          setWorkflow('create_costed_product');
+          return;
+        }
+
+        approveCatalog({
+          category_name: categoryName,
+          modifier_group_names: selectedMods,
+          products: [{
+            name: productName,
+            description,
+            price,
+            tags: draft.tags || [],
+            requires_kitchen: draft.requires_kitchen !== false,
+            modifier_group_names: selectedMods,
+          }],
+        });
+        return;
+      }
+
       setWorkflow('create_catalog');
     } else if (card.action === 'create_costed_product') {
       setWorkflow('create_costed_product');
@@ -403,6 +435,60 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
 
   const handleDismissCard = (index) => {
     setMessages((current) => current.map((m, i) => i === index ? { ...m, card: null } : m));
+  };
+
+  const handleCardFieldChange = (messageIndex, fieldKey, value) => {
+    setMessages((current) => current.map((m, idx) => {
+      if (idx !== messageIndex || !m.card) return m;
+      const updatedCard = { ...m.card };
+      const updatedDraft = { ...(updatedCard.draft || {}), [fieldKey]: value };
+      updatedCard.draft = updatedDraft;
+
+      updatedCard.beforeAfter = (updatedCard.beforeAfter || []).map((item) => {
+        if (item.key === fieldKey) {
+          return { ...item, after: value, value };
+        }
+        return item;
+      });
+
+      const hasName = Boolean(String(updatedDraft.product_name || '').trim());
+      const hasPrice = Number(updatedDraft.price) > 0;
+      updatedCard.isDraft = !hasName || !hasPrice;
+
+      return { ...m, card: updatedCard };
+    }));
+
+    setCatalogDraft((prev) => ({ ...prev, [fieldKey]: value }));
+  };
+
+  const handleCardProductModeChange = (messageIndex, mode) => {
+    setMessages((current) => current.map((m, idx) => {
+      if (idx !== messageIndex || !m.card) return m;
+      return { ...m, card: { ...m.card, productMode: mode } };
+    }));
+  };
+
+  const handleCardToggleModifier = (messageIndex, modifierName) => {
+    setMessages((current) => current.map((m, idx) => {
+      if (idx !== messageIndex || !m.card) return m;
+      const updatedMods = (m.card.suggestedModifiers || []).map((mod) => {
+        if (mod.name === modifierName) {
+          return { ...mod, selected: !mod.selected };
+        }
+        return mod;
+      });
+      return { ...m, card: { ...m.card, suggestedModifiers: updatedMods } };
+    }));
+  };
+
+  const handleCardSendToChat = (card) => {
+    const draft = card.draft || {};
+    const name = draft.product_name ? `"${draft.product_name}"` : 'el producto';
+    const price = draft.price ? ` a $${Number(draft.price).toLocaleString('es-CO')}` : '';
+    const cat = draft.category_name ? ` en la categoría ${draft.category_name}` : '';
+    const mode = card.productMode === 'recipe' ? 'con receta e inventario' : 'simple sin receta';
+    const text = `Quiero crear ${name}${price}${cat}, como producto ${mode}.`;
+    sendMessage(text);
   };
 
   const sendMessage = async (rawMessage) => {
@@ -573,16 +659,77 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
         // Camino 2: Propuesta Agéntica
         const isProduct = response.intent === 'create_catalog' || response.intent === 'create_costed_product';
         const draft = response.catalog_draft || {};
+        const isDraft = isProduct && (!draft.product_name || !draft.price || Number(draft.price) <= 0);
+
+        const rawSuggestedMods = Array.isArray(draft.suggested_modifiers) && draft.suggested_modifiers.length > 0
+          ? draft.suggested_modifiers
+          : (draft.category_name?.toLowerCase().includes('bebida') || userMessage.toLowerCase().includes('bebida')
+              ? ['Hielo', 'Endulzante']
+              : ['Adiciones']);
+
+        const suggestedModifiers = rawSuggestedMods.map((modName) => ({
+          name: modName,
+          selected: true,
+          description: modName.toLowerCase().includes('hielo')
+            ? 'Normal, Poco hielo, Sin hielo'
+            : modName.toLowerCase().includes('endulzante') || modName.toLowerCase().includes('azucar')
+              ? 'Normal, Sin azúcar, Stevia'
+              : 'Opciones estándar',
+        }));
+
         const beforeAfter = isProduct ? [
-          { label: 'Producto', before: 'No existía', after: draft.product_name || 'Nuevo plato' },
-          { label: 'Precio', before: '—', after: draft.price ? `$ ${Number(draft.price).toLocaleString('es-CO')}` : 'Por definir' },
-          { label: 'Categoría', before: '—', after: draft.category_name || 'Sin categoría' },
+          {
+            key: 'product_name',
+            label: 'Producto',
+            before: 'No existía',
+            after: draft.product_name || '',
+            value: draft.product_name || '',
+            editable: true,
+            placeholder: 'Ej: Limonada de Coco',
+            type: 'text',
+          },
+          {
+            key: 'price',
+            label: 'Precio',
+            before: '—',
+            after: draft.price ? Number(draft.price) : '',
+            value: draft.price ? Number(draft.price) : '',
+            editable: true,
+            placeholder: 'Ej: 12000',
+            type: 'number',
+          },
+          {
+            key: 'category_name',
+            label: 'Categoría',
+            before: '—',
+            after: draft.category_name || (userMessage.toLowerCase().includes('bebida') ? 'Bebidas' : 'General'),
+            value: draft.category_name || (userMessage.toLowerCase().includes('bebida') ? 'Bebidas' : 'General'),
+            editable: true,
+            placeholder: 'Ej: Bebidas',
+            type: 'text',
+          },
+          {
+            key: 'description',
+            label: 'Descripción',
+            before: '—',
+            after: draft.description || '',
+            value: draft.description || '',
+            editable: true,
+            placeholder: 'Descripción para el menú...',
+            type: 'text',
+          },
         ] : [];
 
         card = {
           type: 'proposal',
-          title: isProduct ? `Crear plato: ${draft.product_name || 'Nuevo plato'}` : `Modificación de ${response.intent}`,
-          summary: assistantReply,
+          isDraft,
+          draftType: isProduct ? 'catalog' : 'general',
+          productMode: 'simple',
+          suggestedModifiers: isProduct ? suggestedModifiers : [],
+          title: isProduct 
+            ? (draft.product_name ? `Crear producto: ${draft.product_name}` : `Crear nuevo producto en ${draft.category_name || 'Bebidas'}`) 
+            : `Modificación de ${response.intent}`,
+          summary: isDraft ? 'Completa los campos en el cuadro o respóndele a Aluna para aprobar.' : assistantReply,
           beforeAfter,
           riskLevel: isProduct ? 'medium' : 'low',
           action: response.intent,
@@ -959,8 +1106,16 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
                             beforeAfter={message.card.beforeAfter}
                             riskLevel={message.card.riskLevel}
                             isExecuting={isLoading}
+                            isDraft={message.card.isDraft}
+                            productMode={message.card.productMode}
+                            onChangeProductMode={(mode) => handleCardProductModeChange(index, mode)}
+                            suggestedModifiers={message.card.suggestedModifiers}
+                            onToggleModifier={(modName) => handleCardToggleModifier(index, modName)}
+                            onFieldChange={(fieldKey, value) => handleCardFieldChange(index, fieldKey, value)}
+                            canApprove={!message.card.isDraft || Boolean(message.card.draft?.product_name && Number(message.card.draft?.price) > 0)}
                             onApprove={() => handleApproveProposalCard(message.card)}
                             onCancel={() => handleDismissCard(index)}
+                            onSendToChat={() => handleCardSendToChat(message.card)}
                             details={message.card.details}
                           />
                         </div>
