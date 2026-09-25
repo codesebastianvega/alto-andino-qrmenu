@@ -76,26 +76,212 @@ export default function OperationsWorkflow({ action, brandName, locationName, is
       <div><h3 className="text-lg font-bold text-gray-950">{TITLES[action]}</h3><p className="mt-1 text-sm text-gray-600">Aluna preparará el cambio y no lo guardará hasta que revises y apruebes.</p></div>
 
       {action === 'update_business_hours' ? (
-        <div className="space-y-2">{hours.map((day, index) => (
-          <div key={day.day_of_week} className="rounded-xl border border-gray-200 bg-white p-3">
-            <div className="flex items-center justify-between"><span className="text-xs font-bold text-gray-700">{DAYS[day.day_of_week]}</span><label className="flex items-center gap-2 text-[11px] text-gray-500"><input type="checkbox" checked={day.is_closed} onChange={(event) => setHours((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, is_closed: event.target.checked } : item))} /> Cerrado</label></div>
-            <div className="mt-2 grid grid-cols-2 gap-2"><input type="time" disabled={day.is_closed} value={day.open_time} onChange={(event) => setHours((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, open_time: event.target.value } : item))} className="rounded-lg border border-gray-200 px-2 py-2 text-xs disabled:opacity-40" /><input type="time" disabled={day.is_closed} value={day.close_time} onChange={(event) => setHours((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, close_time: event.target.value } : item))} className="rounded-lg border border-gray-200 px-2 py-2 text-xs disabled:opacity-40" /></div>
-          </div>
-        ))}</div>
+        <div className="space-y-2">
+          <p className="text-xs text-gray-500 px-1">Define los días de apertura y el horario continuo de atención al público.</p>
+          {hours.map((day, index) => (
+            <div key={day.day_of_week} className="rounded-xl border border-gray-200 bg-white p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-700">{DAYS[day.day_of_week]}</span>
+                <label className="flex items-center gap-2 text-[11px] text-gray-500 cursor-pointer">
+                  <input type="checkbox" checked={day.is_closed} onChange={(event) => setHours((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, is_closed: event.target.checked } : item))} className="rounded border-gray-300 text-emerald-700" />
+                  <span>Cerrado todo el día</span>
+                </label>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <div>
+                  <span className="text-[10px] text-gray-400 font-semibold block mb-0.5">Hora apertura</span>
+                  <input type="time" disabled={day.is_closed} value={day.open_time} onChange={(event) => setHours((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, open_time: event.target.value } : item))} className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs disabled:opacity-40" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-gray-400 font-semibold block mb-0.5">Hora cierre</span>
+                  <input type="time" disabled={day.is_closed} value={day.close_time} onChange={(event) => setHours((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, close_time: event.target.value } : item))} className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs disabled:opacity-40" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : null}
 
       {action === 'create_payment_method' ? (
-        <div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4"><input value={payment.name} onChange={(event) => setPayment((current) => ({ ...current, name: event.target.value }))} placeholder="Nombre visible *" className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm" /><select value={payment.type} onChange={(event) => setPayment((current) => ({ ...current, type: event.target.value }))} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"><option value="cash">Efectivo</option><option value="transfer">Transferencia</option><option value="card">Tarjeta</option><option value="digital_wallet">Billetera digital</option><option value="other">Otro</option></select></div>
+        <div className="space-y-3.5 rounded-2xl border border-gray-200 bg-white p-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-700">Nombre visible del método de pago *</label>
+            <input 
+              value={payment.name} 
+              onChange={(event) => setPayment((current) => ({ ...current, name: event.target.value }))} 
+              placeholder="Ej: Transferencia Bancolombia / Nequi" 
+              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+            />
+            <p className="mt-1 text-[11px] text-gray-400">Cómo verá el cliente esta opción en el checkout al pagar su pedido.</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-700">Tipo de método de pago *</label>
+            <select 
+              value={payment.type} 
+              onChange={(event) => setPayment((current) => ({ ...current, type: event.target.value }))} 
+              className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            >
+              <option value="cash">Efectivo contra entrega</option>
+              <option value="transfer">Transferencia bancaria (Bancolombia, Nequi, Daviplata)</option>
+              <option value="card">Tarjeta de débito / crédito (Datáfono)</option>
+              <option value="digital_wallet">Billetera digital</option>
+              <option value="other">Otro medio</option>
+            </select>
+            <p className="mt-1 text-[11px] text-gray-400">Clasificación para el arqueo y cuadre de caja diario.</p>
+          </div>
+        </div>
       ) : null}
 
       {action === 'update_printing_settings' ? (
-        <div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4"><label className="flex items-center justify-between text-sm font-semibold text-gray-700">Imprimir comandas<input type="checkbox" checked={printing.kitchen_print_enabled} onChange={(event) => setPrinting((current) => ({ ...current, kitchen_print_enabled: event.target.checked }))} /></label><label className="flex items-center justify-between text-sm font-semibold text-gray-700">Imprimir recibos<input type="checkbox" checked={printing.receipt_print_enabled} onChange={(event) => setPrinting((current) => ({ ...current, receipt_print_enabled: event.target.checked }))} /></label><label className="block text-xs font-bold text-gray-700">Ancho térmico<select value={printing.thermal_paper_width} onChange={(event) => setPrinting((current) => ({ ...current, thermal_paper_width: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-normal"><option value="80">80 mm</option><option value="50">50 mm</option></select></label></div>
+        <div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
+          <label className="flex items-center justify-between text-sm font-semibold text-gray-700 cursor-pointer">
+            <div>
+              <span>Imprimir comandas de cocina</span>
+              <p className="text-[11px] font-normal text-gray-400">Envía ticket a cocina automáticamente al recibir una orden.</p>
+            </div>
+            <input type="checkbox" checked={printing.kitchen_print_enabled} onChange={(event) => setPrinting((current) => ({ ...current, kitchen_print_enabled: event.target.checked }))} className="rounded border-gray-300 text-emerald-700" />
+          </label>
+          <div className="border-t border-gray-100 pt-2">
+            <label className="flex items-center justify-between text-sm font-semibold text-gray-700 cursor-pointer">
+              <div>
+                <span>Imprimir recibos de cuenta</span>
+                <p className="text-[11px] font-normal text-gray-400">Imprime el recibo o ticket para el comensal en caja.</p>
+              </div>
+              <input type="checkbox" checked={printing.receipt_print_enabled} onChange={(event) => setPrinting((current) => ({ ...current, receipt_print_enabled: event.target.checked }))} className="rounded border-gray-300 text-emerald-700" />
+            </label>
+          </div>
+          <div className="border-t border-gray-100 pt-2">
+            <label className="block text-xs font-bold text-gray-700">Ancho del papel térmico</label>
+            <select value={printing.thermal_paper_width} onChange={(event) => setPrinting((current) => ({ ...current, thermal_paper_width: event.target.value }))} className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-normal outline-none focus:border-emerald-500">
+              <option value="80">80 mm (Estándar para comanderas Epson, Bixolon, Star)</option>
+              <option value="50">50 mm / 58 mm (Mini-impresoras portátiles o datáfonos)</option>
+            </select>
+            <p className="mt-1 text-[11px] text-gray-400">Formato del rollo de papel instalado en tu impresora térmica.</p>
+          </div>
+        </div>
       ) : null}
 
       {action === 'create_modifier_group' ? (
-        <div className="space-y-3"><div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4"><input value={modifier.name} onChange={(event) => setModifier((current) => ({ ...current, name: event.target.value }))} placeholder="Nombre del grupo *" className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm" /><textarea value={modifier.description} onChange={(event) => setModifier((current) => ({ ...current, description: event.target.value }))} placeholder="Descripción opcional" rows={2} className="w-full resize-none rounded-xl border border-gray-200 px-3 py-2.5 text-sm" /><label className="flex items-center gap-2 text-xs font-semibold text-gray-600"><input type="checkbox" checked={modifier.is_required} onChange={(event) => setModifier((current) => ({ ...current, is_required: event.target.checked, min_select: event.target.checked ? Math.max(1, Number(current.min_select)) : 0 }))} /> Selección obligatoria</label><div className="grid grid-cols-2 gap-2"><input type="number" min="0" value={modifier.min_select} onChange={(event) => setModifier((current) => ({ ...current, min_select: Number(event.target.value) }))} placeholder="Mínimo" className="rounded-xl border border-gray-200 px-3 py-2 text-sm" /><input type="number" min="1" value={modifier.max_select} onChange={(event) => setModifier((current) => ({ ...current, max_select: Number(event.target.value) }))} placeholder="Máximo" className="rounded-xl border border-gray-200 px-3 py-2 text-sm" /></div></div>
-          {modifier.options.map((option, index) => <div key={index} className="flex gap-2 rounded-xl border border-gray-200 bg-white p-3"><input value={option.name} onChange={(event) => setModifier((current) => ({ ...current, options: current.options.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item) }))} placeholder={`Opción ${index + 1} *`} className="min-w-0 flex-1 rounded-lg border border-gray-200 px-2 py-2 text-xs" /><input type="number" min="0" value={option.price} onChange={(event) => setModifier((current) => ({ ...current, options: current.options.map((item, itemIndex) => itemIndex === index ? { ...item, price: event.target.value } : item) }))} placeholder="Precio extra" className="w-24 rounded-lg border border-gray-200 px-2 py-2 text-xs" />{modifier.options.length > 1 ? <button type="button" onClick={() => setModifier((current) => ({ ...current, options: current.options.filter((_, itemIndex) => itemIndex !== index) }))} aria-label="Quitar opción"><Trash2 size={15} className="text-red-500" /></button> : null}</div>)}
-          <button type="button" onClick={() => setModifier((current) => ({ ...current, options: [...current.options, { ...EMPTY_OPTION }] }))} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-300 py-3 text-xs font-bold text-emerald-700"><Plus size={15} /> Añadir opción</button>
+        <div className="space-y-3.5">
+          <div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs">
+            <div>
+              <label className="block text-xs font-bold text-gray-700">Nombre del grupo de extras u opciones *</label>
+              <input 
+                value={modifier.name} 
+                onChange={(event) => setModifier((current) => ({ ...current, name: event.target.value }))} 
+                placeholder="Ej: Nivel de Azúcar, Tipo de Término, Acompañamiento" 
+                className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+              />
+              <p className="mt-1 text-[11px] text-gray-400">Título que aparecerá en el modal de personalización del plato.</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700">Instrucción para el comensal (opcional)</label>
+              <textarea 
+                value={modifier.description} 
+                onChange={(event) => setModifier((current) => ({ ...current, description: event.target.value }))} 
+                placeholder="Ej: Elige 1 término para tu corte de carne" 
+                rows={2} 
+                className="mt-1 w-full resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+              />
+              <p className="mt-1 text-[11px] text-gray-400">Aclaración o regla rápida para guiar al cliente.</p>
+            </div>
+
+            <div className="pt-1 border-t border-gray-100">
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={modifier.is_required} 
+                  onChange={(event) => setModifier((current) => ({ ...current, is_required: event.target.checked, min_select: event.target.checked ? Math.max(1, Number(current.min_select)) : 0 }))} 
+                  className="rounded border-gray-300 text-emerald-700 focus:ring-emerald-500"
+                /> 
+                <span>Selección obligatoria</span>
+              </label>
+              <p className="ml-5 mt-0.5 text-[11px] text-gray-400">Si está marcado, el comensal no podrá agregar el plato sin elegir al menos una opción.</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="block text-xs font-bold text-gray-700">Mínimo de opciones *</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  value={modifier.min_select} 
+                  onChange={(event) => setModifier((current) => ({ ...current, min_select: Number(event.target.value) }))} 
+                  placeholder="0" 
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+                />
+                <p className="mt-0.5 text-[10px] text-gray-400">0 si es opcional, 1+ si es requerido.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700">Máximo de opciones *</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  value={modifier.max_select} 
+                  onChange={(event) => setModifier((current) => ({ ...current, max_select: Number(event.target.value) }))} 
+                  placeholder="1" 
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+                />
+                <p className="mt-0.5 text-[10px] text-gray-400">Límite de opciones que puede marcar.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Opciones del Grupo</span>
+              <span className="text-[11px] text-gray-400">Deja $0 si está incluida sin recargo</span>
+            </div>
+
+            {modifier.options.map((option, index) => (
+              <div key={index} className="flex gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-2xs items-start">
+                <div className="min-w-0 flex-1">
+                  <label className="block text-[11px] font-semibold text-gray-600">Nombre de la opción *</label>
+                  <input 
+                    value={option.name} 
+                    onChange={(event) => setModifier((current) => ({ ...current, options: current.options.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item) }))} 
+                    placeholder={`Ej: Opción ${index + 1} (ej. Bien cocido / Sin Azúcar)`} 
+                    className="mt-1 w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs outline-none focus:border-emerald-500" 
+                  />
+                </div>
+                <div className="w-28 shrink-0">
+                  <label className="block text-[11px] font-semibold text-gray-600">Precio extra</label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-2 top-1.5 text-xs font-bold text-gray-400">$</span>
+                    <input 
+                      type="number" 
+                      min="0" 
+                      value={option.price} 
+                      onChange={(event) => setModifier((current) => ({ ...current, options: current.options.map((item, itemIndex) => itemIndex === index ? { ...item, price: event.target.value } : item) }))} 
+                      placeholder="0" 
+                      className="w-full rounded-lg border border-gray-200 pl-5 pr-2 py-1.5 text-xs outline-none focus:border-emerald-500" 
+                    />
+                  </div>
+                </div>
+                {modifier.options.length > 1 ? (
+                  <button 
+                    type="button" 
+                    onClick={() => setModifier((current) => ({ ...current, options: current.options.filter((_, itemIndex) => itemIndex !== index) }))} 
+                    aria-label="Quitar opción"
+                    className="mt-5 rounded-lg p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                ) : null}
+              </div>
+            ))}
+
+            <button 
+              type="button" 
+              onClick={() => setModifier((current) => ({ ...current, options: [...current.options, { ...EMPTY_OPTION }] }))} 
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-300 py-2.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50/50 transition-colors"
+            >
+              <Plus size={15} /> Añadir otra opción
+            </button>
+          </div>
         </div>
       ) : null}
 

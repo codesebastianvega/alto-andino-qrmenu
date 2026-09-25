@@ -138,15 +138,65 @@ function LocationWorkflow({ brandName, isExecuting, onApprove, onCancel }) {
 
   return (
     <div className="space-y-4">
-      <div><h3 className="text-lg font-bold text-gray-950">Crear la primera sede</h3><p className="mt-1 text-sm text-gray-600">No inventaré estos datos. Complétalos y prepararé el cambio para tu aprobación.</p></div>
-      <div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
-        <label className="block text-xs font-bold text-gray-700">Nombre de la sede<input value={form.name} onChange={(event) => updateField('name', event.target.value)} className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-emerald-500" /></label>
-        <label className="block text-xs font-bold text-gray-700">Dirección *<input value={form.address} onChange={(event) => updateField('address', event.target.value)} placeholder="Dirección completa" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-emerald-500" /></label>
-        <label className="block text-xs font-bold text-gray-700">Teléfono<input value={form.phone} onChange={(event) => updateField('phone', event.target.value)} placeholder="Opcional" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-emerald-500" /></label>
-        <label className="block text-xs font-bold text-gray-700">WhatsApp<input value={form.whatsapp} onChange={(event) => updateField('whatsapp', event.target.value)} placeholder="Usará el teléfono si lo dejas vacío" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-emerald-500" /></label>
+      <div>
+        <h3 className="text-lg font-bold text-gray-950">Crear la primera sede</h3>
+        <p className="mt-1 text-sm text-gray-600">Aluna preparará los datos de tu punto de venta para tu revisión y aprobación.</p>
       </div>
-      <button type="button" disabled={!canContinue} onClick={() => setStep('review')} className="w-full rounded-xl bg-[#173D24] py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">Revisar propuesta</button>
-      <button type="button" onClick={onCancel} className="w-full py-2 text-xs font-semibold text-gray-500">Volver al diagnóstico</button>
+
+      <div className="space-y-3.5 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs">
+        <div>
+          <label className="block text-xs font-bold text-gray-700">Nombre de la sede *</label>
+          <input 
+            value={form.name} 
+            onChange={(event) => updateField('name', event.target.value)} 
+            placeholder="Ej: Sede Principal, Sede Poblado, Chapinero" 
+            className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+          />
+          <p className="mt-1 text-[11px] text-gray-400">Identificador visible de este punto de venta.</p>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-gray-700">Dirección física completa *</label>
+          <input 
+            value={form.address} 
+            onChange={(event) => updateField('address', event.target.value)} 
+            placeholder="Ej: Calle 93 # 12-45, Local 102" 
+            className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+          />
+          <p className="mt-1 text-[11px] text-gray-400">Dirección completa del local para cálculo de domicilios y cobertura.</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-bold text-gray-700">Teléfono de contacto</label>
+            <input 
+              value={form.phone} 
+              onChange={(event) => updateField('phone', event.target.value)} 
+              placeholder="Ej: +57 601 234 5678" 
+              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+            />
+            <p className="mt-1 text-[11px] text-gray-400">Línea fija o móvil de atención al cliente.</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-700">WhatsApp de pedidos</label>
+            <input 
+              value={form.whatsapp} 
+              onChange={(event) => updateField('whatsapp', event.target.value)} 
+              placeholder="Ej: +57 310 987 6543" 
+              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+            />
+            <p className="mt-1 text-[11px] text-gray-400">Número celular para confirmaciones de órdenes.</p>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" disabled={!canContinue} onClick={() => setStep('review')} className="w-full rounded-xl bg-[#173D24] py-3 text-sm font-bold text-white hover:bg-[#21542f] disabled:cursor-not-allowed disabled:opacity-40 transition-all">
+        Revisar propuesta
+      </button>
+      <button type="button" onClick={onCancel} className="w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-700">
+        Volver al diagnóstico
+      </button>
     </div>
   );
 }
@@ -176,33 +226,149 @@ function CatalogWorkflow({ brandName, initialDraft, isExecuting, onApprove, onCa
   if (step === 'review') {
     return (
       <div className="space-y-4">
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-bold uppercase tracking-wide text-amber-800">Propuesta pendiente de aprobación</p><p className="mt-2 text-sm text-amber-900">Aluna creará la categoría y vinculará sus productos a las sedes activas de {brandName}.</p></div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-4">
-          <p className="text-xs text-gray-500">Categoría</p><p className="font-bold text-gray-950">{categoryName}</p>
-          <div className="mt-4 space-y-3">{normalizedProducts.map((product, index) => <div key={`${product.name}-${index}`} className="rounded-xl bg-gray-50 p-3"><div className="flex justify-between gap-3"><p className="text-sm font-bold text-gray-900">{product.name}</p><p className="text-sm font-bold text-emerald-700">$ {product.price.toLocaleString('es-CO')}</p></div><p className="mt-1 text-xs text-gray-600">{product.description}</p><p className="mt-2 text-[10px] uppercase tracking-wide text-gray-400">{product.tags.length ? product.tags.join(' · ') : 'Sin etiquetas'} · {product.requires_kitchen ? 'Requiere cocina' : 'No requiere cocina'}</p></div>)}</div>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-amber-800">Propuesta pendiente de aprobación</p>
+          <p className="mt-2 text-sm text-amber-900">Aluna creará la categoría y vinculará sus productos a las sedes activas de {brandName}.</p>
         </div>
-        <button type="button" disabled={isExecuting} onClick={() => onApprove({ category_name: categoryName.trim(), products: normalizedProducts })} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#173D24] py-3 text-sm font-bold text-white disabled:opacity-60">{isExecuting ? <><Loader2 size={17} className="animate-spin" /> Creando catálogo…</> : 'Aprobar y crear catálogo'}</button>
-        <button type="button" disabled={isExecuting} onClick={() => setStep('form')} className="w-full py-2 text-xs font-semibold text-gray-500">Corregir propuesta</button>
+        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+          <p className="text-xs text-gray-500">Categoría</p>
+          <p className="font-bold text-gray-950 text-base">{categoryName}</p>
+          <div className="mt-4 space-y-3">
+            {normalizedProducts.map((product, index) => (
+              <div key={`${product.name}-${index}`} className="rounded-xl bg-gray-50 p-3 border border-gray-100">
+                <div className="flex justify-between gap-3">
+                  <p className="text-sm font-bold text-gray-900">{product.name}</p>
+                  <p className="text-sm font-bold text-emerald-700">$ {product.price.toLocaleString('es-CO')} COP</p>
+                </div>
+                <p className="mt-1 text-xs text-gray-600">{product.description}</p>
+                <p className="mt-2 text-[10px] uppercase tracking-wide text-gray-400">
+                  {product.tags.length ? product.tags.join(' · ') : 'Sin etiquetas'} · {product.requires_kitchen ? 'Requiere cocina (KDS)' : 'No requiere cocina'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <button type="button" disabled={isExecuting} onClick={() => onApprove({ category_name: categoryName.trim(), products: normalizedProducts })} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#173D24] py-3 text-sm font-bold text-white hover:bg-[#21542f] disabled:opacity-60 transition-all">
+          {isExecuting ? <><Loader2 size={17} className="animate-spin" /> Creando catálogo…</> : 'Aprobar y crear catálogo'}
+        </button>
+        <button type="button" disabled={isExecuting} onClick={() => setStep('form')} className="w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-700">
+          Corregir propuesta
+        </button>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div><h3 className="text-lg font-bold text-gray-950">Crear catálogo inicial</h3><p className="mt-1 text-sm text-gray-600">Escribe únicamente datos reales. Puedes preparar hasta diez productos en una aprobación.</p></div>
-      <label className="block rounded-2xl border border-gray-200 bg-white p-4 text-xs font-bold text-gray-700">Nombre de la categoría *<input value={categoryName} onChange={(event) => setCategoryName(event.target.value)} placeholder="Ej: Bento Boxes" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-emerald-500" /></label>
-      <div className="space-y-3">{products.map((product, index) => (
-        <div key={index} className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
-          <div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wide text-gray-500">Producto {index + 1}</p>{products.length > 1 ? <button type="button" onClick={() => removeProduct(index)} className="text-xs font-bold text-red-500">Quitar</button> : null}</div>
-          <input value={product.name} onChange={(event) => updateProduct(index, 'name', event.target.value)} placeholder="Nombre *" className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-500" />
-          <textarea value={product.description} onChange={(event) => updateProduct(index, 'description', event.target.value)} placeholder="Descripción real *" rows={3} className="w-full resize-none rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-500" />
-          <div className="grid grid-cols-2 gap-3"><input type="number" min="1" step="1" value={product.price} onChange={(event) => updateProduct(index, 'price', event.target.value)} placeholder="Precio *" className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-500" /><input value={product.tags} onChange={(event) => updateProduct(index, 'tags', event.target.value)} placeholder="Etiquetas, separadas" className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-emerald-500" /></div>
-          <label className="flex items-center gap-2 text-xs font-semibold text-gray-600"><input type="checkbox" checked={product.requires_kitchen} onChange={(event) => updateProduct(index, 'requires_kitchen', event.target.checked)} className="rounded border-gray-300 text-emerald-700" /> Requiere preparación en cocina</label>
-        </div>
-      ))}</div>
-      {products.length < 10 ? <button type="button" onClick={() => setProducts((current) => [...current, { ...EMPTY_PRODUCT }])} className="w-full rounded-xl border border-dashed border-emerald-300 py-3 text-xs font-bold text-emerald-700">+ Añadir otro producto</button> : null}
-      <button type="button" disabled={!canContinue} onClick={() => setStep('review')} className="w-full rounded-xl bg-[#173D24] py-3 text-sm font-bold text-white disabled:opacity-40">Revisar propuesta</button>
-      <button type="button" onClick={onCancel} className="w-full py-2 text-xs font-semibold text-gray-500">Volver al diagnóstico</button>
+      <div>
+        <h3 className="text-lg font-bold text-gray-950">Crear catálogo inicial</h3>
+        <p className="mt-1 text-sm text-gray-600">Completa los datos de tu menú. Puedes preparar hasta diez productos en una sola aprobación.</p>
+      </div>
+
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs">
+        <label className="block text-xs font-bold text-gray-700">Nombre de la categoría principal *</label>
+        <input 
+          value={categoryName} 
+          onChange={(event) => setCategoryName(event.target.value)} 
+          placeholder="Ej: Bento Boxes, Platos Fuertes, Bebidas Frías" 
+          className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+        />
+        <p className="mt-1 text-[11px] text-gray-400">Sección principal de tu menú QR donde se agruparán estos productos.</p>
+      </div>
+
+      <div className="space-y-3.5">
+        {products.map((product, index) => (
+          <div key={index} className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-700">Producto #{index + 1}</p>
+              {products.length > 1 ? (
+                <button type="button" onClick={() => removeProduct(index)} className="text-xs font-bold text-red-500 hover:text-red-700">
+                  Quitar producto
+                </button>
+              ) : null}
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700">Nombre del plato o producto *</label>
+              <input 
+                value={product.name} 
+                onChange={(event) => updateProduct(index, 'name', event.target.value)} 
+                placeholder="Ej: Bento Salmón Teriyaki" 
+                className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+              />
+              <p className="mt-1 text-[11px] text-gray-400">Nombre visible en el menú QR para los clientes.</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700">Descripción para el menú QR *</label>
+              <textarea 
+                value={product.description} 
+                onChange={(event) => updateProduct(index, 'description', event.target.value)} 
+                placeholder="Ej: Salmón fresco glaseado en salsa teriyaki casera, arroz al vapor, edamames y ensalada wakame..." 
+                rows={2} 
+                className="mt-1 w-full resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+              />
+              <p className="mt-1 text-[11px] text-gray-400">Describe ingredientes y sabor para despertar el apetito del comensal.</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-700">Precio de venta al público (COP) *</label>
+                <div className="relative mt-1">
+                  <span className="absolute left-3 top-2 text-xs font-bold text-gray-400">$</span>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    step="1" 
+                    value={product.price} 
+                    onChange={(event) => updateProduct(index, 'price', event.target.value)} 
+                    placeholder="Ej: 32000" 
+                    className="w-full rounded-xl border border-gray-200 pl-7 pr-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-gray-400">Precio final en pesos colombianos con impuestos.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700">Etiquetas / Badges (opcional)</label>
+                <input 
+                  value={product.tags} 
+                  onChange={(event) => updateProduct(index, 'tags', event.target.value)} 
+                  placeholder="Ej: Recomendado, Sin Gluten, Nuevo" 
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+                />
+                <p className="mt-1 text-[11px] text-gray-400">Palabras clave separadas por comas para filtros.</p>
+              </div>
+            </div>
+
+            <div className="pt-1 border-t border-gray-100">
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={product.requires_kitchen} 
+                  onChange={(event) => updateProduct(index, 'requires_kitchen', event.target.checked)} 
+                  className="rounded border-gray-300 text-emerald-700 focus:ring-emerald-500" 
+                /> 
+                <span>Requiere preparación en cocina (KDS)</span>
+              </label>
+              <p className="ml-5 mt-0.5 text-[11px] text-gray-400">Si está marcado, los pedidos enviarán comanda a la pantalla de cocina o impresora.</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {products.length < 10 ? (
+        <button type="button" onClick={() => setProducts((current) => [...current, { ...EMPTY_PRODUCT }])} className="w-full rounded-xl border border-dashed border-emerald-300 py-3 text-xs font-bold text-emerald-700 hover:bg-emerald-50/50 transition-colors">
+          + Añadir otro producto
+        </button>
+      ) : null}
+
+      <button type="button" disabled={!canContinue} onClick={() => setStep('review')} className="w-full rounded-xl bg-[#173D24] py-3 text-sm font-bold text-white hover:bg-[#21542f] disabled:opacity-40 transition-all">
+        Revisar propuesta
+      </button>
+      <button type="button" onClick={onCancel} className="w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-700">
+        Volver al diagnóstico
+      </button>
     </div>
   );
 }
@@ -213,20 +379,65 @@ function ConsolidationWorkflow({ categories, isExecuting, onApprove, onCancel })
   const [reviewing, setReviewing] = useState(false);
   const source = categories.find((category) => category.id === sourceId);
   const target = categories.find((category) => category.id === targetId);
+
   if (reviewing && source && target) return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-4"><p className="text-xs font-bold uppercase tracking-wide text-red-700">Cambio de riesgo alto</p><p className="mt-2 text-sm text-red-900">Aluna moverá {source.product_count} producto(s) de <strong>{source.name}</strong> a <strong>{target.name}</strong> y desactivará la categoría duplicada. No borrará productos.</p></div>
-      <button type="button" disabled={isExecuting} onClick={() => onApprove({ source_category_id: source.id, target_category_id: target.id })} className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white disabled:opacity-60">{isExecuting ? <><Loader2 size={17} className="animate-spin" /> Consolidando…</> : 'Aprobar consolidación'}</button>
-      <button type="button" disabled={isExecuting} onClick={() => setReviewing(false)} className="w-full py-2 text-xs font-semibold text-gray-500">Cambiar selección</button>
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-red-700">Cambio de riesgo alto</p>
+        <p className="mt-2 text-sm text-red-900 leading-relaxed">
+          Aluna moverá <strong>{source.product_count} producto(s)</strong> de <strong>{source.name}</strong> a <strong>{target.name}</strong> y desactivará la categoría repetida. Ningún plato será eliminado.
+        </p>
+      </div>
+      <button type="button" disabled={isExecuting} onClick={() => onApprove({ source_category_id: source.id, target_category_id: target.id })} className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-60 transition-all">
+        {isExecuting ? <><Loader2 size={17} className="animate-spin" /> Consolidando…</> : 'Aprobar consolidación'}
+      </button>
+      <button type="button" disabled={isExecuting} onClick={() => setReviewing(false)} className="w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-700">
+        Cambiar selección
+      </button>
     </div>
   );
+
   return (
     <div className="space-y-4">
-      <div><h3 className="text-lg font-bold text-gray-950">Consolidar categorías</h3><p className="mt-1 text-sm text-gray-600">Elige cuál está repetida y cuál debe conservarse.</p></div>
-      <label className="block text-xs font-bold text-gray-700">Categoría duplicada<select value={sourceId} onChange={(event) => { setSourceId(event.target.value); if (event.target.value === targetId) setTargetId(''); }} className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-normal"><option value="">Seleccionar…</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name} ({category.product_count} productos)</option>)}</select></label>
-      <label className="block text-xs font-bold text-gray-700">Categoría que se conservará<select value={targetId} onChange={(event) => setTargetId(event.target.value)} className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-normal"><option value="">Seleccionar…</option>{categories.filter((category) => category.id !== sourceId).map((category) => <option key={category.id} value={category.id}>{category.name} ({category.product_count} productos)</option>)}</select></label>
-      <button type="button" disabled={!source || !target} onClick={() => setReviewing(true)} className="w-full rounded-xl bg-[#173D24] py-3 text-sm font-bold text-white disabled:opacity-40">Revisar consolidación</button>
-      <button type="button" onClick={onCancel} className="w-full py-2 text-xs font-semibold text-gray-500">Cancelar</button>
+      <div>
+        <h3 className="text-lg font-bold text-gray-950">Consolidar categorías duplicadas</h3>
+        <p className="mt-1 text-sm text-gray-600">Unifica productos repetidos en una sola categoría oficial sin perder historial.</p>
+      </div>
+
+      <div className="space-y-3.5 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs">
+        <div>
+          <label className="block text-xs font-bold text-gray-700">Categoría duplicada que se desactivará *</label>
+          <select value={sourceId} onChange={(event) => { setSourceId(event.target.value); if (event.target.value === targetId) setTargetId(''); }} className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-emerald-500">
+            <option value="">Seleccionar categoría a mover…</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name} ({category.product_count} productos)
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-[11px] text-gray-400">Sus productos se trasladarán y la categoría quedará inactiva.</p>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-gray-700">Categoría destino que se conservará *</label>
+          <select value={targetId} onChange={(event) => setTargetId(event.target.value)} className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-emerald-500">
+            <option value="">Seleccionar categoría principal…</option>
+            {categories.filter((category) => category.id !== sourceId).map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name} ({category.product_count} productos)
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-[11px] text-gray-400">Esta categoría permanecerá activa en el menú con todos los productos consolidados.</p>
+        </div>
+      </div>
+
+      <button type="button" disabled={!source || !target} onClick={() => setReviewing(true)} className="w-full rounded-xl bg-[#173D24] py-3 text-sm font-bold text-white hover:bg-[#21542f] disabled:opacity-40 transition-all">
+        Revisar consolidación
+      </button>
+      <button type="button" onClick={onCancel} className="w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-700">
+        Cancelar
+      </button>
     </div>
   );
 }
@@ -681,41 +892,49 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
           {
             key: 'product_name',
             label: 'Producto',
+            fieldLabel: 'Nombre del producto o plato *',
+            helper: 'El nombre comercial y atractivo que verán los comensales en la carta digital.',
             before: 'No existía',
             after: draft.product_name || '',
             value: draft.product_name || '',
             editable: true,
-            placeholder: 'Ej: Limonada de Coco',
+            placeholder: 'Ej: Limonada de Coco 16oz',
             type: 'text',
           },
           {
             key: 'price',
             label: 'Precio',
+            fieldLabel: 'Precio de venta al público (COP) *',
+            helper: 'Valor final al comensal en pesos colombianos con impuestos incluidos.',
             before: '—',
             after: draft.price ? Number(draft.price) : '',
             value: draft.price ? Number(draft.price) : '',
             editable: true,
-            placeholder: 'Ej: 12000',
+            placeholder: 'Ej: 14000',
             type: 'number',
           },
           {
             key: 'category_name',
             label: 'Categoría',
+            fieldLabel: 'Categoría en el menú *',
+            helper: 'Sección donde se exhibirá este producto en el menú digital.',
             before: '—',
             after: draft.category_name || (userMessage.toLowerCase().includes('bebida') ? 'Bebidas' : 'General'),
             value: draft.category_name || (userMessage.toLowerCase().includes('bebida') ? 'Bebidas' : 'General'),
             editable: true,
-            placeholder: 'Ej: Bebidas',
+            placeholder: 'Ej: Bebidas Frías',
             type: 'text',
           },
           {
             key: 'description',
             label: 'Descripción',
+            fieldLabel: 'Descripción para el menú QR (opcional)',
+            helper: 'Frase llamativa que resalte los ingredientes y despierte el apetito del comensal.',
             before: '—',
             after: draft.description || '',
             value: draft.description || '',
             editable: true,
-            placeholder: 'Descripción para el menú...',
+            placeholder: 'Ej: Refrescante bebida preparada con frutas frescas y hielo frappé...',
             type: 'text',
           },
         ] : [];
@@ -1151,7 +1370,7 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
               {audit ? <button type="button" onClick={executeAudit} disabled={isLoading} className="mb-3 w-full rounded-xl border border-gray-200 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-60">{isLoading ? 'Actualizando auditoría…' : 'Volver a auditar'}</button> : null}
               <form onSubmit={handleSubmit} className="flex items-end gap-2">
                 <label htmlFor={`${titleId}-prompt`} className="sr-only">Escribe a Aluna</label>
-                <textarea ref={promptRef} id={`${titleId}-prompt`} value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={handlePromptKeyDown} placeholder="Escribe o pega aquí el menú, receta o tarea…" rows={1} className="max-h-48 min-h-12 min-w-0 flex-1 resize-none overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm leading-relaxed outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100" />
+                <textarea ref={promptRef} id={`${titleId}-prompt`} value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={handlePromptKeyDown} placeholder="Pídele algo a Aluna (ej: Crea el plato Limonada de Coco a $14.000, o ajusta el costo de domicilio a $6.000)…" rows={1} className="max-h-48 min-h-12 min-w-0 flex-1 resize-none overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm leading-relaxed outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100" />
                 <button type="submit" disabled={!prompt.trim() || isLoading} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#173D24] text-white hover:bg-[#21542f] disabled:cursor-not-allowed disabled:opacity-40" aria-label="Enviar mensaje"><Send size={17} aria-hidden="true" /></button>
               </form>
               <div className="mt-2 flex items-center justify-between gap-3 text-[10px] text-gray-400"><span>Enter para enviar · Shift + Enter para una nueva línea</span><span>{prompt.length.toLocaleString('es-CO')} caracteres</span></div>

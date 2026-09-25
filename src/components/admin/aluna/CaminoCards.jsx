@@ -207,38 +207,122 @@ export function AgenticProposalCard({
           </div>
         )}
 
-        {/* Tabla Antes vs Después (con inputs editables) */}
+        {/* Parámetros de la propuesta: Formulario Espacioso si es editable, o Tabla Comparativa si es informativa */}
         {Array.isArray(beforeAfter) && beforeAfter.length > 0 && (
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50/50">
-            <div className="grid grid-cols-3 border-b border-gray-200/70 bg-gray-100/70 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">
-              <span>Parámetro</span>
-              <span>Antes</span>
-              <span className="text-emerald-800">Después (Propuesta)</span>
+          beforeAfter.some((item) => item.editable) ? (
+            <div className="space-y-3 rounded-xl border border-emerald-200/90 bg-emerald-50/20 p-3.5">
+              <div className="border-b border-emerald-100 pb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
+                  <Pencil size={12} className="text-emerald-700" />
+                  <span>Campos de la propuesta (Puedes editarlos antes de aprobar)</span>
+                </span>
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  Ajusta los valores que Aluna enviará a la carta digital.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {beforeAfter.map((item, idx) => {
+                  const isDescription = item.key === 'description' || item.label.toLowerCase().includes('descrip');
+                  const isPrice = item.key === 'price' || item.label.toLowerCase().includes('precio');
+                  const isProduct = item.key === 'product_name' || item.label.toLowerCase().includes('producto') || item.label.toLowerCase().includes('plato');
+                  const isCategory = item.key === 'category_name' || item.label.toLowerCase().includes('categor');
+
+                  const defaultLabel = isProduct 
+                    ? 'Nombre del producto o plato *'
+                    : isPrice
+                      ? 'Precio de venta al público (COP) *'
+                      : isCategory
+                        ? 'Categoría en el menú *'
+                        : isDescription
+                          ? 'Descripción para el menú QR (opcional)'
+                          : `${item.label}${item.editable ? ' *' : ''}`;
+
+                  const defaultHelper = isProduct
+                    ? 'El nombre comercial y visible que verá el cliente en la carta digital (ej. Limonada de Coco 16oz).'
+                    : isPrice
+                      ? 'Precio final al comensal en pesos colombianos con impuestos incluidos.'
+                      : isCategory
+                        ? 'Sección de la carta donde se agrupará (ej. Bebidas Frías, Platos Fuertes, Postres).'
+                        : isDescription
+                          ? 'Frase atractiva que resalte los ingredientes y despierte el apetito del comensal.'
+                          : item.helper || '';
+
+                  if (!item.editable) {
+                    return (
+                      <div key={idx} className="flex items-center justify-between text-xs bg-white p-2.5 rounded-lg border border-gray-100">
+                        <span className="font-semibold text-gray-700">{item.label}</span>
+                        <span className="text-emerald-900 font-bold bg-emerald-50 px-2 py-0.5 rounded">{String(item.after ?? '—')}</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={idx}>
+                      <label className="block text-xs font-bold text-gray-800">
+                        {item.fieldLabel || defaultLabel}
+                      </label>
+
+                      {isDescription ? (
+                        <textarea
+                          rows={2}
+                          value={item.value !== undefined ? item.value : (item.after === 'Por definir' || item.after === 'Nuevo plato' ? '' : item.after)}
+                          placeholder={item.placeholder || 'Ej: Deliciosa combinación con ingredientes frescos...'}
+                          onChange={(e) => onFieldChange && onFieldChange(item.key || item.label, e.target.value)}
+                          className="mt-1 w-full resize-none rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-medium text-gray-900 placeholder:text-gray-400 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 shadow-2xs transition-all"
+                        />
+                      ) : isPrice ? (
+                        <div className="relative mt-1">
+                          <span className="absolute left-3 top-2 text-xs font-bold text-emerald-800">$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={item.value !== undefined ? item.value : (item.after === 'Por definir' || item.after === 'Nuevo plato' ? '' : item.after)}
+                            placeholder={item.placeholder || 'Ej: 14000'}
+                            onChange={(e) => onFieldChange && onFieldChange(item.key || item.label, e.target.value === '' ? '' : Number(e.target.value))}
+                            className="w-full rounded-lg border border-emerald-300 bg-white pl-7 pr-3 py-1.5 text-xs font-bold text-emerald-950 placeholder:text-gray-400 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 shadow-2xs transition-all"
+                          />
+                        </div>
+                      ) : (
+                        <input
+                          type={item.type || 'text'}
+                          value={item.value !== undefined ? item.value : (item.after === 'Por definir' || item.after === 'Nuevo plato' ? '' : item.after)}
+                          placeholder={item.placeholder || (isCategory ? 'Ej: Bebidas Frías' : 'Ej: Limonada de Coco 16oz')}
+                          onChange={(e) => onFieldChange && onFieldChange(item.key || item.label, item.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
+                          className="mt-1 w-full rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-900 placeholder:text-gray-400 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 shadow-2xs transition-all"
+                        />
+                      )}
+
+                      {defaultHelper && (
+                        <p className="mt-1 text-[11px] text-gray-500 leading-tight">
+                          {defaultHelper}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="divide-y divide-gray-100 text-xs">
-              {beforeAfter.map((item, idx) => (
-                <div key={idx} className="grid grid-cols-3 px-3 py-2 items-center gap-2">
-                  <span className="font-medium text-gray-700 truncate">{item.label}</span>
-                  <span className="text-gray-400 line-through truncate text-[11px]">{String(item.before ?? '—')}</span>
-                  <div className="flex items-center">
-                    {item.editable && onFieldChange ? (
-                      <input
-                        type={item.type || 'text'}
-                        value={item.value !== undefined ? item.value : (item.after === 'Por definir' || item.after === 'Nuevo plato' ? '' : item.after)}
-                        placeholder={item.placeholder || 'Escribe aquí...'}
-                        onChange={(e) => onFieldChange(item.key || item.label, item.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
-                        className="w-full rounded-lg border border-emerald-300 bg-white px-2.5 py-1 text-xs font-semibold text-emerald-950 placeholder:text-gray-400 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 shadow-2xs transition-all"
-                      />
-                    ) : (
-                      <span className="font-semibold text-emerald-900 truncate bg-emerald-50/60 rounded px-1.5 py-0.5 w-full">
-                        {String(item.after ?? '—')}
-                      </span>
-                    )}
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50/50">
+              <div className="grid grid-cols-3 border-b border-gray-200/70 bg-gray-100/70 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                <span>Parámetro</span>
+                <span>Antes</span>
+                <span className="text-emerald-800">Después (Propuesta)</span>
+              </div>
+              <div className="divide-y divide-gray-100 text-xs">
+                {beforeAfter.map((item, idx) => (
+                  <div key={idx} className="grid grid-cols-3 px-3 py-2 items-center gap-2">
+                    <span className="font-medium text-gray-700 truncate">{item.label}</span>
+                    <span className="text-gray-400 line-through truncate text-[11px]">{String(item.before ?? '—')}</span>
+                    <span className="font-semibold text-emerald-900 truncate bg-emerald-50/60 rounded px-1.5 py-0.5 w-full">
+                      {String(item.after ?? '—')}
+                    </span>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )
         )}
 
         {/* Modificadores sugeridos por Aluna (con nota de reutilización) */}
@@ -247,11 +331,16 @@ export function AgenticProposalCard({
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-emerald-950 flex items-center gap-1.5">
                 <Sparkles size={12} className="text-emerald-700" />
-                <span>Modificadores sugeridos</span>
+                <span>Modificadores sugeridos para este producto</span>
               </span>
-              <span className="text-[10px] text-emerald-700 font-medium">Reutiliza si ya existen</span>
+              <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-100/60 px-2 py-0.5 rounded-full">
+                Reutiliza si ya existen
+              </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            <p className="text-[10px] text-emerald-800 leading-normal">
+              Marca las opciones que aplican. Si ya existen en tu sede se vincularán para no duplicar datos en inventario.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5">
               {suggestedModifiers.map((mod, idx) => (
                 <label key={idx} className="flex items-center justify-between p-2 rounded-lg bg-white border border-emerald-100 cursor-pointer hover:bg-emerald-50/40 transition-colors">
                   <div className="flex items-center gap-2">
