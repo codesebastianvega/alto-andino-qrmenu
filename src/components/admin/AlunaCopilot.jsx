@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { AlertTriangle, Bot, CheckCircle2, ChevronRight, History, Loader2, MapPin, Pencil, Send, ShieldCheck, Sparkles, UtensilsCrossed, X, XCircle } from 'lucide-react';
-import { chatWithAluna, executeAlunaAction, executeAlunaCatalogManagementAction, executeAlunaKitchenAction, executeAlunaOperationsAction, executeAlunaBrandWebAction, executeAlunaInventoryAction, listAlunaChanges, runOpeningAudit } from '../../services/alunaCopilot';
+import { chatWithAluna, executeAlunaAction, executeAlunaCatalogManagementAction, executeAlunaKitchenAction, executeAlunaOperationsAction, executeAlunaBrandWebAction, executeAlunaInventoryAction, executeAlunaVenueAction, listAlunaChanges, runOpeningAudit } from '../../services/alunaCopilot';
 import CostedProductWorkflow from './aluna/CostedProductWorkflow';
 import OperationsWorkflow from './aluna/OperationsWorkflow';
 import ChangeHistory from './aluna/ChangeHistory';
@@ -396,6 +396,8 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
       approveBrandWeb(card.action, card.webDraft || card.draft || {});
     } else if (['batch_stock_entry', 'generate_shopping_list'].includes(card.action)) {
       approveInventory(card.action, card.inventoryDraft || card.draft || {});
+    } else if (card.action === 'create_table_batch') {
+      approveVenue(card.action, card.tableDraft || card.draft || {});
     }
   };
 
@@ -545,6 +547,27 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
           riskLevel: 'low',
           action: 'generate_shopping_list',
           inventoryDraft: {},
+        };
+      } else if (response.intent === 'create_table_batch') {
+        const tblDraft = response.table_draft || {};
+        const count = tblDraft.count || (tblDraft.end_number && tblDraft.start_number ? (tblDraft.end_number - tblDraft.start_number + 1) : 5);
+        const prefix = tblDraft.prefix !== undefined ? tblDraft.prefix : 'Mesa ';
+        const start = tblDraft.start_number || 1;
+        const end = tblDraft.end_number || (start + count - 1);
+        const areaName = tblDraft.area_name ? ` (Área: ${tblDraft.area_name})` : '';
+
+        card = {
+          type: 'proposal',
+          title: `Crear lote de ${count} mesas y códigos QR${areaName}`,
+          summary: assistantReply,
+          beforeAfter: [
+            { label: 'Mesas a crear', before: 'Sin crear', after: `${count} mesas (${prefix}${start} a ${prefix}${end})` },
+            { label: 'Área / Salón', before: '—', after: tblDraft.area_name || 'Salón Principal / General' },
+            { label: 'Códigos QR', before: 'Inexistentes', after: 'Generación automática con URLs' },
+          ],
+          riskLevel: 'low',
+          action: 'create_table_batch',
+          tableDraft: tblDraft,
         };
       } else if (response.proposal_ready || ['create_catalog', 'create_costed_product', 'create_location', 'update_business_hours', 'create_payment_method', 'create_modifier_group'].includes(response.intent)) {
         // Camino 2: Propuesta Agéntica
@@ -794,6 +817,20 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
       setWorkflow(null);
     } catch (actionError) {
       setError(actionError.message || 'No pude procesar la acción de inventario.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const approveVenue = async (action, proposal) => {
+    setIsLoading(true); setError('');
+    try {
+      const result = await executeAlunaVenueAction({ brandId, locationId, action, proposal });
+      const count = result.created_count || result.tables?.length || 0;
+      setSuccess(`Aluna creó ${count} mesa(s) exitosamente${result.area_name ? ` en ${result.area_name}` : ''}. Códigos QR listos.`);
+      setWorkflow(null);
+    } catch (actionError) {
+      setError(actionError.message || 'No pude procesar la acción de mesas.');
     } finally {
       setIsLoading(false);
     }

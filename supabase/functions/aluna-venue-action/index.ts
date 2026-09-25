@@ -13,6 +13,7 @@ const ACTIONS = new Set([
   'create_restaurant_table',
   'update_restaurant_table',
   'update_staff_member',
+  'create_table_batch',
 ]);
 const MANAGER_ROLES = new Set(['owner', 'admin', 'manager', 'encargado', 'superadmin']);
 
@@ -97,7 +98,7 @@ serve(async (req: Request) => {
     actorId = userData.user.id;
 
     const [{ data: brand }, { data: profile }] = await Promise.all([
-      admin.from('brands').select('id,name,owner_id').eq('id', brandId).maybeSingle(),
+      admin.from('brands').select('id,name,owner_id,slug').eq('id', brandId).maybeSingle(),
       admin.from('profiles').select('id,brand_id,role').eq('id', actorId).maybeSingle(),
     ]);
     if (!brand) return response({ error: 'Brand not found' }, 404);
@@ -391,7 +392,160 @@ serve(async (req: Request) => {
       return response({ success: true, change_set_id: changeSetId, table: verified, trace });
     }
 
-    if (!hasOnly(proposal, ['staff_id', 'is_active'])) return response({ error: 'Staff may only be activated or deactivated' }, 400);
+    if (actionName === 'create_table_batch') {
+      let effectiveLocationId = locationId || nullableUuid(proposal.location_id) || null;
+      if (!effectiveLocationId) {
+        const { data: firstLoc } = await admin.from('locations')
+          .select('id')
+          .eq('brand_id', brandId)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        effectiveLocationId = firstLoc?.id || null;
+      }
+      if (!effectiveLocationId) {
+        return response({ error: 'Se requiere una sede para crear mesas' }, 400);
+      }
+
+      let effectiveAreaId = nullableUuid(proposal.area_id) || null;
+      let areaCreatedOrFoundName: string | null = null;
+
+      if (!effectiveAreaId && typeof proposal.area_name === 'string' && proposal.area_name.trim()) {
+        const areaName = cleanText(proposal.area_name, 100);
+        const { data: existingArea } = await admin.from('table_areas')
+          .select('id, name')
+          .eq('brand_id', brandId)
+          .eq('location_id', effectiveLocationId)
+          .ilike('name', areaName)
+          .maybeSingle();
+
+        if (existingArea?.id) {
+          effectiveAreaId = existingArea.id;
+          areaCreatedOrFoundName = existingArea.name;
+        } else {
+          const { data: newArea, error: newAreaError } = await admin.from('table_areas')
+            .insert({
+              brand_id: brandId,
+              location_id: effectiveLocationId,
+              name: areaName,
+              sort_order: 1,
+            })
+            .select('id, name')
+            .single();
+          if (!newAreaError && newArea?.id) {
+            effectiveAreaId = newArea.id;
+            areaCreatedOrFoundName = newArea.name;
+          }
+        }
+      } else if (effectiveAreaId) {
+        const { data: areaObj } = await admin.from('table_areas')
+          .select('id, name')
+          .eq('id', effectiveAreaId)
+          .eq('brand_id', brandId)
+          .eq('location_id', effectiveLocationId)
+          .maybeSingle();
+        if (areaObj) areaCreatedOrFoundName = areaObj.name;
+      }
+
+      const prefix = typeof proposal.prefix === 'string' ? proposal.prefix : 'Mesa ';
+      const startNum = Number.isInteger(proposal.start_number) && Number(proposal.start_number) > 0 ? Number(proposal.start_number) : 1;
+      let endNum = Number.isInteger(proposal.end_number) && Number(proposal.end_number) >= startNum
+        ? Number(proposal.end_number)
+        : (Number.isInteger(proposal.count) && Number(proposal.count) > 0 ? startNum + Number(proposal.count) - 1 : startNum + 4);
+
+      if (endNum - startNum + 1 > 100) {
+        endNum = startNum + 99;
+      }
+
+      const { data: existingTables, error: existingError } = await admin.from('restaurant_tables')
+        .select('table_number')
+        .eq('brand_id', brandId)
+        .eq('location_id', effectiveLocationId);
+      if (existingError) throw existingError;
+
+      const existingSet = new Set((existingTables || []).map((t: any) => String(t.table_number || '').trim().toLowerCase()));
+
+      const toInsert: Array<{
+        brand_id: string;
+        location_id: string;
+        area_id: string | null;
+        table_number: string;
+        is_active: boolean;
+        physical_status: string;
+      }> = [];
+
+      for (let n = startNum; n <= endNum; n++) {
+        const tableNum = `${prefix}${n}`.trim();
+        if (!existingSet.has(tableNum.toLowerCase())) {
+          toInsert.push({
+            brand_id: brandId,
+            location_id: effectiveLocationId,
+            area_id: effectiveAreaId,
+            table_number: tableNum,
+            is_active: true,
+            physical_status: 'available',
+          });
+        }
+      }
+
+      if (toInsert.length === 0) {
+        return response({
+          success: true,
+          created_count: 0,
+          message: 'Todas las mesas de este rango ya existían en esta sede.',
+          tables: [],
+        });
+      }
+
+      const proposedTraceData = {
+        brand_id: brandId,
+        location_id: effectiveLocationId,
+        area_id: effectiveAreaId,
+        count: toInsert.length,
+        prefix,
+        start_number: startNum,
+        end_number: endNum,
+        table_numbers: toInsert.map((t) => t.table_number),
+      };
+
+      await createTrace({
+        title: `Crear lote de ${toInsert.length} mesas`,
+        summary: `Aluna creará ${toInsert.length} mesas (${toInsert[0].table_number} a ${toInsert[toInsert.length - 1].table_number}) en ${brand.name}${areaCreatedOrFoundName ? ` (Área: ${areaCreatedOrFoundName})` : ''}.`,
+        risk: 'low',
+        entityType: 'restaurant_table_batch',
+        operation: 'create',
+        proposed: proposedTraceData,
+      });
+
+      const { data: createdTables, error: insertError } = await admin.from('restaurant_tables')
+        .insert(toInsert)
+        .select('id,table_number,area_id,is_active,physical_status,brand_id,location_id,created_at');
+      if (insertError) throw insertError;
+
+      const slug = brand.slug || brand.id;
+      const tablesWithUrls = (createdTables || []).map((table: any) => ({
+        ...table,
+        url_path: `/${slug}/?mesa=${encodeURIComponent(table.table_number)}&loc=${table.location_id}`,
+      }));
+
+      const trace = await completeTrace(
+        createdTables?.[0]?.id || 'batch',
+        null,
+        { created_count: tablesWithUrls.length, tables: tablesWithUrls }
+      );
+
+      return response({
+        success: true,
+        change_set_id: changeSetId,
+        created_count: tablesWithUrls.length,
+        area_name: areaCreatedOrFoundName,
+        tables: tablesWithUrls,
+        trace,
+      });
+    }
+
+    if (actionName === 'update_staff_member') {
+      if (!hasOnly(proposal, ['staff_id', 'is_active'])) return response({ error: 'Staff may only be activated or deactivated' }, 400);
     const staffId = nullableUuid(proposal.staff_id);
     if (!staffId || typeof proposal.is_active !== 'boolean') return response({ error: 'A valid staff_id and boolean is_active are required' }, 400);
 
