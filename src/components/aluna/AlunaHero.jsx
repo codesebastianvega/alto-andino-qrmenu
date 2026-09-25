@@ -139,11 +139,11 @@ export default function AlunaHero() {
               <div className="pt-3 flex items-center justify-center md:justify-start">
                 <Link 
                   to="/comparar" 
-                  className="inline-flex items-center gap-2 text-xs uppercase tracking-widest font-bold text-[#D4A853] hover:text-white px-4 py-2 rounded-full border border-[#D4A853]/30 bg-[#D4A853]/10 hover:bg-[#D4A853]/20 transition-all shadow-lg shadow-[#D4A853]/5 group"
+                  className="inline-flex items-center justify-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs uppercase tracking-wider sm:tracking-widest font-bold text-[#D4A853] hover:text-white px-3.5 sm:px-4 py-2 rounded-full border border-[#D4A853]/30 bg-[#D4A853]/10 hover:bg-[#D4A853]/20 transition-all shadow-lg shadow-[#D4A853]/5 group text-center max-w-full"
                 >
-                  <TrendingUp className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                  <span>Ver Comparador: Fotos IA vs Fotos Reales</span>
-                  <ChevronRight className="w-3.5 h-3.5 opacity-70 group-hover:translate-x-0.5 transition-transform" />
+                  <TrendingUp className="w-3.5 h-3.5 group-hover:scale-110 transition-transform shrink-0" />
+                  <span>Ver Comparador: Fotos IA vs Reales</span>
+                  <ChevronRight className="w-3.5 h-3.5 opacity-70 group-hover:translate-x-0.5 transition-transform shrink-0" />
                 </Link>
               </div>
             </div>

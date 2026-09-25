@@ -4,9 +4,39 @@ import { Utensils, ArrowRight, Sparkles, ShoppingBag, Truck } from 'lucide-react
 import { useRestaurantSettings } from '../hooks/useRestaurantSettings';
 import { getFulfillmentModes } from '../constants/businessTypes';
 
-export default function BrandWelcome({ brandName, logoUrl, bgUrl, mesa, onStart }) {
-  const { settings } = useRestaurantSettings();
-  const modes = getFulfillmentModes(settings);
+export default function BrandWelcome({ 
+  brandName, 
+  logoUrl, 
+  bgUrl, 
+  mesa, 
+  onStart,
+  settings: propSettings,
+  currentLocation,
+  brand
+}) {
+  const { settings: hookSettings } = useRestaurantSettings(brand?.id);
+  const settings = propSettings || hookSettings;
+
+  const modes = React.useMemo(() => {
+    // 1. Si la sede tiene operational_modes definidos, respetarlos directamente
+    if (currentLocation?.operational_modes && Array.isArray(currentLocation.operational_modes) && currentLocation.operational_modes.length > 0) {
+      const op = currentLocation.operational_modes;
+      return {
+        dine_in: op.includes('dine_in'),
+        takeaway: op.includes('takeaway'),
+        delivery: op.includes('delivery'),
+        scheduled: op.includes('scheduled'),
+        allow_dine_in: op.includes('dine_in'),
+        allow_takeaway: op.includes('takeaway'),
+        allow_delivery: op.includes('delivery'),
+        allow_scheduled: op.includes('scheduled'),
+        business_type: brand?.business_type || 'restaurant',
+        operations_model: op.includes('dine_in') ? 'dine_in_takeaway' : 'dark_kitchen'
+      };
+    }
+    return getFulfillmentModes(settings);
+  }, [currentLocation, settings, brand]);
+
   const isDarkKitchen = modes.delivery && !modes.takeaway && !modes.dine_in;
 
   return (

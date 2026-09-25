@@ -508,6 +508,9 @@ export default function App() {
                     bgUrl={homeSettings?.welcome_bg_img}
                     mesa={new URLSearchParams(window.location.search).get('mesa')}
                     onStart={handleStartExperience}
+                    settings={restaurantSettings}
+                    currentLocation={currentLocation}
+                    brand={activeBrand}
                   />
                 )}
               </AnimatePresence>
