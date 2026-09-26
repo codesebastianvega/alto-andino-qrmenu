@@ -17,26 +17,26 @@ export const PLAN_LABELS = {
   emprendedor: { 
     name: 'Emprendedor',     
     color: '#6B7280',
-    price: '49.900',
+    price: '29.900',
     desc: 'Validar mercado',
     icon: 'zap',
     features: [
       'Menú Digital Premium',
       '20 Productos',
       'Panel Kanban Básico',
-      'Hasta 100 Pedidos/mes',
+      'Hasta 60 Pedidos/mes',
       '1 Usuario (Dueño)'
     ]
   },
   esencial: { 
     name: 'Esencial',        
     color: '#2D6A4F',
-    price: '99.900',
+    price: '59.900',
     desc: 'Operación regular',
     icon: 'star',
     features: [
       '50 Productos',
-      'Hasta 300 Pedidos/mes',
+      'Hasta 250 Pedidos/mes',
       'Panel para Meseros',
       '3 Usuarios / 1 Sede',
       'Landing Page Propia'
@@ -50,7 +50,7 @@ export const PLAN_LABELS = {
     icon: 'crown',
     features: [
       '150 Productos / 50 Recetas',
-      'Hasta 1.000 Pedidos/mes',
+      'Hasta 800 Pedidos/mes',
       'Pantalla KDS Cocina',
       'Mesas QR / 10 Usuarios',
       'Hasta 3 Sedes'
@@ -64,7 +64,7 @@ export const PLAN_LABELS = {
     icon: 'crown',
     features: [
       '300 Productos / 200 Recetas',
-      'Hasta 3.000 Pedidos/mes',
+      'Hasta 2.000 Pedidos/mes',
       '25 Usuarios',
       'Hasta 5 Sedes',
       'CRM y Fidelización'

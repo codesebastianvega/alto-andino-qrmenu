@@ -1340,7 +1340,7 @@ export default function ImpactComparisonPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6 max-w-7xl mx-auto items-stretch">
           
-          {/* Plan 1: Despegue Llave en Mano ($150k + $35k/mes) */}
+          {/* Plan 1: Despegue Llave en Mano ($150k + $29.900/mes) */}
           <div className="rounded-2xl sm:rounded-3xl bg-[#121216] border border-white/15 p-5 sm:p-7 relative flex flex-col justify-between hover:border-white/30 transition-all duration-300 group">
             <div>
               <div className="flex items-center justify-between gap-2 mb-3.5">
@@ -1363,10 +1363,10 @@ export default function ImpactComparisonPage() {
                   <span className="text-2xl sm:text-3xl font-black text-white">$150.000</span>
                   <span className="text-xs text-gray-400 font-medium">COP (Setup & Fotos único)</span>
                 </div>
-                <p className="text-[11px] text-[#D4A853] font-medium">+ $35.000 COP/mes (desde el mes 2)</p>
+                <p className="text-[11px] text-[#D4A853] font-medium">+ $29.900 COP/mes (desde el mes 2)</p>
                 <div className="pt-1">
                   <span className="inline-block text-[9px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    🎁 Mes 1 de Aluna 100% Gratis
+                    🎁 Mes 1 de Aluna Emprendedor Gratis
                   </span>
                 </div>
               </div>
@@ -1390,7 +1390,7 @@ export default function ImpactComparisonPage() {
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span><strong>Plataforma Aluna Incluida:</strong> Pedidos en mesa, WhatsApp directo y panel administrador móvil.</span>
+                  <span><strong>Aluna Emprendedor Incluida:</strong> Pedidos en mesa, WhatsApp directo y panel móvil (hasta 60 pedidos/mes; escala a Esencial $59.900 para meseros y mayor volumen).</span>
                 </li>
               </ul>
             </div>
@@ -1411,7 +1411,7 @@ export default function ImpactComparisonPage() {
           <div className="rounded-2xl sm:rounded-3xl bg-gradient-to-b from-[#1C1810] via-[#121216] to-[#121216] border-2 border-[#D4A853] p-5 sm:p-7 relative flex flex-col justify-between shadow-[0_0_50px_rgba(212,168,83,0.18)] group">
             <div>
               <div className="flex items-center justify-between gap-2 mb-3.5">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#D4A853]">Alianza Creativa</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#D4A853]">Alianza Growth</span>
                 <span className="px-2.5 py-0.5 rounded-full bg-[#D4A853] text-black text-[9px] font-black uppercase">
                   Más Vendido
                 </span>
@@ -1433,7 +1433,7 @@ export default function ImpactComparisonPage() {
                 <p className="text-[11px] text-emerald-400 font-medium">Todo incluido • Cero cobro de montaje</p>
                 <div className="pt-1">
                   <span className="inline-block text-[9px] uppercase font-bold px-2 py-0.5 rounded bg-[#D4A853]/20 text-[#D4A853] border border-[#D4A853]/30">
-                    ✨ Contenido Uxio + Plataforma Aluna Pro
+                    ✨ Contenido Uxio + Aluna Profesional Incluida
                   </span>
                 </div>
               </div>
@@ -1457,7 +1457,7 @@ export default function ImpactComparisonPage() {
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-[#D4A853] shrink-0 mt-0.5" />
-                  <span><strong>Aluna Pro Incluida ($0 extra):</strong> Pantalla KDS cocina, domicilios propios y reseñas 5★.</span>
+                  <span><strong>Aluna Profesional Incluida (Ahorras $149.900/mes):</strong> Pantalla KDS cocina, meseros, domicilios propios y hasta 800 pedidos/mes.</span>
                 </li>
               </ul>
             </div>
@@ -1478,7 +1478,7 @@ export default function ImpactComparisonPage() {
           <div className="rounded-2xl sm:rounded-3xl bg-[#121216] border border-white/20 p-5 sm:p-7 relative flex flex-col justify-between hover:border-[#D4A853]/40 transition-all duration-300 group">
             <div>
               <div className="flex items-center justify-between gap-2 mb-3.5">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-purple-300">Partner VIP</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-purple-300">Partner VIP Growth</span>
                 <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[9px] font-bold uppercase">
                   Cupos Limitados
                 </span>
@@ -1500,7 +1500,7 @@ export default function ImpactComparisonPage() {
                 <p className="text-[11px] text-purple-300 font-medium">Servicio integral llave en mano</p>
                 <div className="pt-1">
                   <span className="inline-block text-[9px] uppercase font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-200 border border-purple-500/40">
-                    👑 1 Video Semanal + Dirección Visual
+                    👑 1 Video Semanal + Aluna Premium Incluida
                   </span>
                 </div>
               </div>
@@ -1520,7 +1520,7 @@ export default function ImpactComparisonPage() {
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
-                  <span><strong>Aluna Premium Multisede:</strong> Pedidos ilimitados, panel para meseros y analítica avanzada.</span>
+                  <span><strong>Aluna Premium Multisede (Ahorras $249.900/mes):</strong> Hasta 2.000 pedidos/mes, CRM de clientes, meseros y analítica avanzada.</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
@@ -1551,17 +1551,15 @@ export default function ImpactComparisonPage() {
               <span className="text-[9px] uppercase px-2 py-0.5 rounded bg-white/10 text-gray-300 font-mono">Modo Autoservicio</span>
             </div>
             <p className="text-xs sm:text-sm text-gray-300 font-light">
-              Si ya tienes tus propias fotografías profesionales y creador de contenido, contrata solo la plataforma <strong>Aluna SaaS desde $35.000 COP / mes</strong>.
+              Si ya tienes tus propias fotografías profesionales y creador de contenido, contrata directamente la plataforma <strong>Aluna SaaS desde $29.900 COP / mes</strong> (Emprendedor $29.900, Esencial $59.900, Profesional $149.900, Premium $249.900).
             </p>
           </div>
-          <a
-            href="https://wa.me/?text=Hola%20quiero%20contratar%20unicamente%20la%20plataforma%20Aluna%20SaaS"
-            target="_blank"
-            rel="noreferrer"
+          <Link
+            to="/#planes"
             className="shrink-0 bg-white/10 hover:bg-white/20 text-white font-bold px-5 py-2.5 rounded-full text-xs uppercase tracking-wider transition border border-white/15"
           >
             Ver Planes Solo Software
-          </a>
+          </Link>
         </div>
       </section>
 

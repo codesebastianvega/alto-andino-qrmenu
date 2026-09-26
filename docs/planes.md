@@ -8,8 +8,8 @@ El límite de pedidos mensuales es el motor principal para el upgrade de planes.
 
 | Plan | Precio (COP/mes) | Pedidos al Mes | Beneficios Clave |
 | :--- | :--- | :--- | :--- |
-| **Emprendedor** | $49.900 | 60 | Subdominio propio, QR Menu, Soporte Base. |
-| **Esencial** | $99.900 | 250 | Todo lo anterior + Multi-sedes (hasta 2). **Exclusivo Takeout/Delivery**. |
+| **Emprendedor** | $29.900 | 60 | Subdominio propio, QR Menu, Soporte Base. |
+| **Esencial** | $59.900 | 250 | Todo lo anterior + Multi-sedes (hasta 2). **Exclusivo Takeout/Delivery**. |
 | **Profesional** | $149.900 | 800 | Todo lo anterior + Gestión de Mesas QR, KDS y Meseros. |
 | **Premium** | $249.900 | 2.000 | Todo lo anterior + Negocios de alto volumen. |
 | **Enterprise** | Custom | Ilimitados | Todo lo anterior + API Access, Soporte VIP. |
