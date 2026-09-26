@@ -30,6 +30,7 @@ import {
   Layers,
   Check
 } from 'lucide-react';
+import { WHATSAPP_CONFIG } from '../config/whatsapp';
 
 const KPIS = [
   {
@@ -1397,7 +1398,7 @@ export default function ImpactComparisonPage() {
 
             <div className="pt-6 sm:pt-7">
               <a 
-                href="https://wa.me/?text=Hola%20quiero%20el%20Plan%20Despegue%20Llave%20en%20Mano%20($150k)"
+                href={WHATSAPP_CONFIG.getLink(WHATSAPP_CONFIG.templates.growthPlan1())}
                 target="_blank"
                 rel="noreferrer"
                 className="w-full block text-center bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-full text-xs uppercase tracking-wider transition border border-white/20"
@@ -1464,7 +1465,7 @@ export default function ImpactComparisonPage() {
 
             <div className="pt-6 sm:pt-7">
               <a 
-                href="https://wa.me/?text=Hola%20quiero%20conocer%20el%20Plan%20Crecimiento%20y%20Contenido%20($790k)"
+                href={WHATSAPP_CONFIG.getLink(WHATSAPP_CONFIG.templates.growthPlan2())}
                 target="_blank"
                 rel="noreferrer"
                 className="w-full block text-center bg-[#D4A853] hover:brightness-110 text-black font-bold py-3 rounded-full text-xs uppercase tracking-wider transition shadow-lg shadow-[#D4A853]/20"
@@ -1531,7 +1532,7 @@ export default function ImpactComparisonPage() {
 
             <div className="pt-6 sm:pt-7">
               <a 
-                href="https://wa.me/?text=Hola%20quiero%20el%20Plan%20Dominio%20Gastron%C3%B3mico%20VIP%20($1.49M)"
+                href={WHATSAPP_CONFIG.getLink(WHATSAPP_CONFIG.templates.growthPlan3())}
                 target="_blank"
                 rel="noreferrer"
                 className="w-full block text-center bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-full text-xs uppercase tracking-wider transition border border-white/20"
