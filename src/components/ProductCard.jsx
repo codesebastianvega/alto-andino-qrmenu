@@ -124,7 +124,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
       role="button"
     >
       {imageSrc ? (
-        <div className={`overflow-hidden ${
+        <div className={`relative overflow-hidden ${
           isCompact ? "h-20 w-20 rounded-xl flex-shrink-0" 
           : isHero ? "w-full aspect-[4/3] lg:w-1/2 lg:aspect-auto lg:h-auto rounded-xl lg:rounded-l-xl" 
           : "w-full aspect-[4/3] rounded-xl"
@@ -138,10 +138,32 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             width={isCompact ? 80 : isHero ? 600 : 400}
             height={isCompact ? 80 : isHero ? 600 : 400}
           />
+          {(productAllergens.length > 0 || productDiets.length > 0) && !isCompact && (
+             <div className="absolute top-2 right-2 flex gap-1 items-center z-10 pointer-events-none">
+               {productDiets.length > 0 && (
+                 <div className="flex gap-1 items-center bg-black/50 backdrop-blur-md rounded-full px-1.5 py-0.5 border border-white/20 text-white shadow-sm">
+                    {productDiets.map((diet) => (
+                       <span key={diet.id} title={diet.name} className="text-[11px] leading-none">
+                          {diet.emoji}
+                       </span>
+                    ))}
+                 </div>
+               )}
+               {productAllergens.length > 0 && (
+                 <div className="flex gap-1 items-center bg-red-950/70 backdrop-blur-md rounded-full px-1.5 py-0.5 border border-red-400/30 text-white shadow-sm">
+                    {productAllergens.map((alg) => (
+                       <span key={alg.id} title={alg.name} className="text-[11px] leading-none">
+                          {alg.emoji}
+                       </span>
+                    ))}
+                 </div>
+               )}
+             </div>
+          )}
         </div>
       ) : (
         !isCompact && (
-          <div className={`flex items-center justify-center bg-gradient-to-br from-neutral-50 to-neutral-100 ${
+          <div className={`relative flex items-center justify-center bg-gradient-to-br from-neutral-50 to-neutral-100 ${
             isHero ? "w-full aspect-[4/3] lg:w-1/2 lg:aspect-auto lg:h-auto rounded-xl lg:rounded-l-xl" 
             : "w-full aspect-[4/3] rounded-xl"
           }`}>
@@ -151,6 +173,28 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
               </svg>
               <span className="text-[10px] font-medium uppercase tracking-wider">Sin foto</span>
             </div>
+            {(productAllergens.length > 0 || productDiets.length > 0) && (
+               <div className="absolute top-2 right-2 flex gap-1 items-center z-10 pointer-events-none">
+                 {productDiets.length > 0 && (
+                   <div className="flex gap-1 items-center bg-[#2f4131]/10 rounded-full px-1.5 py-0.5 border border-[#2f4131]/20 shadow-sm">
+                      {productDiets.map((diet) => (
+                         <span key={diet.id} title={diet.name} className="text-[11px] leading-none">
+                            {diet.emoji}
+                         </span>
+                      ))}
+                   </div>
+                 )}
+                 {productAllergens.length > 0 && (
+                   <div className="flex gap-1 items-center bg-red-50 rounded-full px-1.5 py-0.5 border border-red-200 shadow-sm">
+                      {productAllergens.map((alg) => (
+                         <span key={alg.id} title={alg.name} className="text-[11px] leading-none">
+                            {alg.emoji}
+                         </span>
+                      ))}
+                   </div>
+                 )}
+               </div>
+            )}
           </div>
         )
       )}
@@ -160,28 +204,6 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
           <h3 className={`font-bold text-neutral-900 line-clamp-2 tracking-tight ${isCompact || isCompactGrid ? "text-[13px] md:text-sm" : "text-[15px] md:text-base leading-[1.15]"}`}>
             {item.name}
           </h3>
-          {(productAllergens.length > 0 || productDiets.length > 0) && !isCompact && (
-             <div className="flex gap-2 items-center shrink-0">
-               {productDiets.length > 0 && (
-                 <div className="flex gap-1 items-center bg-[#2f4131]/10 rounded-full px-1.5 py-0.5 border border-[#2f4131]/10">
-                    {productDiets.map((diet) => (
-                       <span key={diet.id} title={diet.name} className="text-[12px] leading-none">
-                          {diet.emoji}
-                       </span>
-                    ))}
-                 </div>
-               )}
-               {productAllergens.length > 0 && (
-                 <div className="flex gap-1 items-center bg-red-50 rounded-full px-1.5 py-0.5 border border-red-100">
-                    {productAllergens.map((alg) => (
-                       <span key={alg.id} title={alg.name} className="text-[12px] leading-none">
-                          {alg.emoji}
-                       </span>
-                    ))}
-                 </div>
-               )}
-             </div>
-          )}
         </div>
 
         {item.desc && !isCompact && (
@@ -208,7 +230,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             onClick={handleAdd}
             disabled={isOut}
             className={`flex items-center justify-center rounded-full bg-brand-secondary text-white font-bold shadow-md shadow-brand-secondary/30 transition-all duration-200 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 hover:scale-110 ${
-              isCompact || isCompactGrid ? "h-6 w-6 md:h-7 md:w-7 text-[16px]" : "h-9 w-9 md:h-10 md:w-10 text-[20px] md:text-[22px] leading-none"
+              isCompact || isCompactGrid ? "h-8 w-8 text-[18px]" : "h-9 w-9 md:h-10 md:w-10 text-[20px] md:text-[22px] leading-none"
             }`}
           >
             <span style={{ transform: "translateY(-1px)" }}>+</span>

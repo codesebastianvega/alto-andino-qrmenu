@@ -38,7 +38,12 @@ export default function BottomTabBar({ currentHash, onAllergensOpen, showExperie
       { id: "asistente", label: assistantName, icon: Sparkles, hash: "#asistente", isAI: true },
     ];
 
-    items.push({ id: "alergenos", label: "Alérgenos", icon: ShieldAlert, action: onAllergensOpen });
+    items.push({ 
+      id: "alergenos", 
+      label: activeOrderId ? "Guía" : "Alérgenos", 
+      icon: ShieldAlert, 
+      action: onAllergensOpen 
+    });
 
     if (activeOrderId) {
       items.push({ id: "pedido", label: "Pedido", icon: ReceiptText, hash: `#order/${activeOrderId}` });
@@ -69,7 +74,7 @@ export default function BottomTabBar({ currentHash, onAllergensOpen, showExperie
         >
           <Icon size={19} strokeWidth={isActive ? 2.6 : 2.2} />
         </span>
-        <span className={`max-w-full truncate text-[10px] font-black leading-none ${isActive ? "text-[#1A1A1A]" : "text-[#1A1A1A]/45"}`}>
+        <span className={`max-w-full truncate text-[9px] sm:text-[10px] font-black leading-none ${isActive ? "text-[#1A1A1A]" : "text-[#1A1A1A]/45"}`}>
           {tab.label}
         </span>
         <span
@@ -82,9 +87,9 @@ export default function BottomTabBar({ currentHash, onAllergensOpen, showExperie
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-[100] md:hidden" aria-label="Navegación principal">
-      <div className="mx-auto max-w-md px-3 pb-[calc(env(safe-area-inset-bottom,0px)+8px)]">
-        <div className="rounded-t-[1.5rem] border border-black/5 border-b-0 bg-white px-2 pt-2 shadow-[0_-14px_36px_rgba(0,0,0,0.08)]">
-          <div className="grid grid-flow-col auto-cols-fr items-end gap-1">
+      <div className="mx-auto max-w-md px-2 sm:px-3 pb-[calc(env(safe-area-inset-bottom,0px)+8px)]">
+        <div className="rounded-t-[1.5rem] border border-black/5 border-b-0 bg-white px-1 sm:px-2 pt-2 shadow-[0_-14px_36px_rgba(0,0,0,0.08)]">
+          <div className="grid grid-flow-col auto-cols-fr items-end gap-0.5 sm:gap-1">
             {tabs.map((tab) => {
               const isActive = activeTabId === tab.id;
               const className = "flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1.5 transition-colors active:scale-95";

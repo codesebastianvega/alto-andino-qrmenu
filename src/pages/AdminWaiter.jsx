@@ -323,7 +323,7 @@ export default function AdminWaiter() {
               </div>
             )}
 
-            <div className="flex items-center gap-4 text-[9px] font-black text-gray-400 bg-white/80 p-2 rounded-full border border-gray-100 shadow-sm px-4">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-4 text-[9px] font-black text-gray-400 bg-white/80 p-2 rounded-2xl sm:rounded-full border border-gray-100 shadow-sm px-3 sm:px-4">
                <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> DISPONIBLE</div>
                <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-amber-500" /> EN SERVICIO</div>
                <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-orange-500" /> SUCIA</div>

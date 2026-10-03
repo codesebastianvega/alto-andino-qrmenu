@@ -127,6 +127,7 @@ export default function AdminOrders() {
   const [isMergeConfirmOpen, setIsMergeConfirmOpen] = useState(false);
   const [showCancelledHistory, setShowCancelledHistory] = useState(false);
   const [showDeliveredHistory, setShowDeliveredHistory] = useState(false);
+  const [mobileActiveStatus, setMobileActiveStatus] = useState('new');
 
   const { activeBrand } = useAuth();
   const { activeLocationId, isAllLocations } = useLocations();
@@ -796,8 +797,36 @@ export default function AdminOrders() {
         </div>
       ) : (
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="pb-8 h-[calc(100vh-280px)] min-h-[600px]">
-            <div className="flex flex-nowrap md:grid md:grid-cols-4 gap-4 md:gap-8 h-[calc(100vh-280px)] min-h-[600px] items-start overflow-x-auto md:overflow-visible snap-x snap-mandatory pb-6 custom-scrollbar scroll-smooth">
+          <div className="pb-8 h-auto md:h-[calc(100vh-280px)] min-h-[600px]">
+            {/* Selector de Pestañas en Móvil */}
+            <div className="flex md:hidden items-center gap-1.5 p-1 bg-white border border-gray-100 rounded-2xl shadow-sm mb-4 overflow-x-auto no-scrollbar">
+              {ORDER_STATUSES.map(sc => {
+                const count = sc.id === 'new'
+                  ? orders.filter(o => o.status === 'new' || o.status === 'waiting_payment').length
+                  : sc.id === 'on_table'
+                    ? orders.filter(o => o.status === 'on_table' || o.status === 'on_the_way').length
+                    : orders.filter(o => o.status === sc.id).length;
+                const isSelected = mobileActiveStatus === sc.id;
+                return (
+                  <button
+                    key={sc.id}
+                    onClick={() => setMobileActiveStatus(sc.id)}
+                    className={`flex-1 py-2 px-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all flex items-center justify-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-[#2f4131] text-white shadow-md'
+                        : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    <span>{sc.label.split(' ')[0]}</span>
+                    <span className={`text-[9px] px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-col md:grid md:grid-cols-4 gap-4 md:gap-8 h-auto md:h-[calc(100vh-280px)] min-h-[500px] md:min-h-[600px] items-start pb-6">
               {ORDER_STATUSES.map((statusCol, index) => {
                 const fTypeWeights = { 'dine_in': 1, 'takeaway': 2, 'delivery': 3 };
                 
@@ -828,7 +857,7 @@ export default function AdminOrders() {
                   <Droppable key={`status-column-${statusCol.id}-${index}`} droppableId={statusCol.id} isCombineEnabled>
                   {(provided, snapshot) => (
                     <div 
-                      className={`min-w-[80vw] md:min-w-0 snap-center shrink-0 flex flex-col rounded-[2.5rem] p-4 md:p-6 border-2 transition-all duration-300 bg-gradient-to-b ${
+                      className={`${mobileActiveStatus === statusCol.id ? 'flex' : 'hidden md:flex'} w-full md:w-auto md:min-w-0 shrink-0 flex-col rounded-[2.5rem] p-4 md:p-6 border-2 transition-all duration-300 bg-gradient-to-b ${
                         snapshot.isDraggingOver 
                           ? 'bg-white/80 border-emerald-300 shadow-2xl' 
                           : `${themes[statusCol.id]} shadow-xl`
@@ -1329,7 +1358,7 @@ export default function AdminOrders() {
             </div>
 
             {/* Footer Fijo Estructural (shrink-0): NUNCA tapa contenido */}
-            <div className="shrink-0 border-t border-slate-200 bg-white p-4 md:px-8 md:py-4 z-20 flex flex-col gap-3 shadow-[0_-4px_25px_rgba(0,0,0,0.06)]">
+            <div className="shrink-0 border-t border-slate-200 bg-white p-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] md:px-8 md:py-4 z-20 flex flex-col gap-3 shadow-[0_-4px_25px_rgba(0,0,0,0.06)]">
               {/* Fila 1: Botones Secundarios Compactos */}
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -1392,7 +1421,7 @@ export default function AdminOrders() {
                         placeholder="Motivo de cancelación..."
                         value={cancellationReason}
                         onChange={(e) => setCancellationReason(e.target.value)}
-                        className="bg-white border border-red-200 text-xs font-medium p-1.5 px-2.5 rounded-lg focus:ring-1 focus:ring-red-400 w-48"
+                        className="bg-white border border-red-200 text-base sm:text-xs font-medium p-1.5 px-2.5 rounded-lg focus:ring-1 focus:ring-red-400 w-full sm:w-48"
                       />
                       <button onClick={() => cancelOrder(selectedOrder.id)} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-black">
                         Confirmar

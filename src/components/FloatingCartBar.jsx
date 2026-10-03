@@ -74,8 +74,7 @@ export default function FloatingCartBar({ items, total, onOpen }) {
     <div
       ref={containerRef}
       data-aa-cartbar
-      className="fixed right-5 bottom-[96px] md:bottom-8 z-[70] pointer-events-none flex flex-col items-end"
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px))" }}
+      className="fixed right-4 sm:right-5 bottom-[calc(env(safe-area-inset-bottom,0px)+76px)] md:bottom-8 z-[105] pointer-events-none flex flex-col items-end"
     >
       {/* Desktop Mini Window (Shown only when toggled open) */}
       {showMiniCart && (

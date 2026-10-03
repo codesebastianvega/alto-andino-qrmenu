@@ -549,17 +549,17 @@ export default function AdminKitchen() {
   }
 
   return (
-    <div className="min-h-screen bg-[#020617] p-4 md:p-8 text-white overflow-x-hidden font-sans selection:bg-emerald-500/30">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 pb-6 border-b border-white/5 relative">
+    <div className="min-h-screen bg-[#020617] p-3 sm:p-4 md:p-8 pb-[calc(env(safe-area-inset-bottom,0px)+96px)] lg:pb-8 text-white overflow-x-hidden font-sans selection:bg-emerald-500/30">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-6 md:mb-8 pb-4 md:pb-6 border-b border-white/5 relative">
         {/* Header Ambient Glow */}
         <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[80%] h-32 bg-emerald-500/10 blur-[100px] pointer-events-none" />
         
-        <div className="flex items-center gap-5">
-          <div className="bg-emerald-600/20 p-3 rounded-2xl border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
-            <Icon icon="heroicons:fire-solid" className="text-3xl text-emerald-500 animate-pulse" />
+        <div className="flex items-center gap-4 sm:gap-5">
+          <div className="bg-emerald-600/20 p-2.5 sm:p-3 rounded-2xl border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
+            <Icon icon="heroicons:fire-solid" className="text-2xl sm:text-3xl text-emerald-500 animate-pulse" />
           </div>
           <div>
-            <h1 className="text-lg md:text-xl font-black tracking-tight text-white uppercase leading-none mb-1" style={{ fontFamily: "'Outfit', sans-serif" }}>
+            <h1 className="text-base sm:text-lg md:text-xl font-black tracking-tight text-white uppercase leading-none mb-1" style={{ fontFamily: "'Outfit', sans-serif" }}>
               Digital <span className="text-emerald-500">Tickets</span>
             </h1>
             <div className="flex items-center gap-2">
@@ -569,9 +569,9 @@ export default function AdminKitchen() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 relative z-10">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 relative z-10">
             {/* View Mode Toggles */}
-            <div className="flex bg-white/5 p-1.5 rounded-[1.25rem] border border-white/10 backdrop-blur-md">
+            <div className="flex bg-white/5 p-1 rounded-2xl sm:rounded-[1.25rem] border border-white/10 backdrop-blur-md">
                 {[
                   { id: 'tower', label: 'Torre', icon: 'heroicons:squares-2x2-solid' },
                   { id: 'all', label: 'Todo', icon: 'heroicons:list-bullet-solid' },
@@ -580,14 +580,14 @@ export default function AdminKitchen() {
                   <button 
                     key={mode.id}
                     onClick={() => setViewMode(mode.id)}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all duration-300 ${
+                    className={`flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-[11px] sm:text-xs font-black uppercase transition-all duration-300 ${
                       viewMode === mode.id 
-                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 scale-105' 
+                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 scale-[1.02]' 
                         : 'text-white/40 hover:text-white/70 hover:bg-white/5'
                     }`}
                   >
-                    <Icon icon={mode.icon} className="text-lg" />
-                    <span className="hidden sm:inline">{mode.label}</span>
+                    <Icon icon={mode.icon} className="text-base sm:text-lg" />
+                    <span>{mode.label}</span>
                   </button>
                 ))}
             </div>

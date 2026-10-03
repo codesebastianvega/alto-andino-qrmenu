@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from "react";
 
-function getCartBarHeight() {
+function getBottomOffset() {
   try {
-    const el = document.querySelector("[data-aa-cartbar]");
-    return el ? el.offsetHeight : 0;
+    const cartEl = document.querySelector("[data-aa-cartbar]");
+    if (cartEl && cartEl.offsetHeight > 0) return cartEl.offsetHeight;
+
+    const adminBarEl = document.querySelector("[data-aa-admin-bottombar]");
+    if (adminBarEl && window.innerWidth < 1024) {
+      return 76;
+    }
+    return 0;
   } catch {
     return 0;
   }
@@ -16,7 +22,7 @@ export default function Toast() {
   const [action, setAction] = useState(null);
 
   useEffect(() => {
-    const update = () => setOffset(getCartBarHeight());
+    const update = () => setOffset(getBottomOffset());
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
@@ -38,7 +44,7 @@ export default function Toast() {
       });
       setAction(actionLabel ? { label: actionLabel, onAction } : null);
       setShow(true);
-      const updateOffset = () => setOffset(getCartBarHeight());
+      const updateOffset = () => setOffset(getBottomOffset());
       updateOffset();
       offsetId = setTimeout(updateOffset, 0);
       hideId = setTimeout(() => {

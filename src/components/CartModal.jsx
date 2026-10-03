@@ -1075,7 +1075,7 @@ export default function CartModal({ open, onClose }) {
                               setCustomerName(e.target.value);
                               localStorage.setItem("aa_customer_name", e.target.value);
                             }}
-                            className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium placeholder:text-amber-300"
+                            className="w-full bg-transparent border-none focus:ring-0 text-base sm:text-sm font-medium placeholder:text-amber-300"
                           />
                        </div>
                        <div className="flex items-center gap-2 bg-white px-3 h-11 rounded-xl border border-amber-200 focus-within:ring-2 focus-within:ring-amber-200/50 transition-all">
@@ -1088,7 +1088,7 @@ export default function CartModal({ open, onClose }) {
                               setCustomerPhone(e.target.value);
                               localStorage.setItem("aa_customer_phone", e.target.value);
                             }}
-                            className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium placeholder:text-amber-300"
+                            className="w-full bg-transparent border-none focus:ring-0 text-base sm:text-sm font-medium placeholder:text-amber-300"
                           />
                        </div>
                        {fulfillmentType === 'delivery' && (
@@ -1115,7 +1115,7 @@ export default function CartModal({ open, onClose }) {
                                   setDeliveryNotes(e.target.value);
                                   localStorage.setItem("aa_delivery_notes", e.target.value);
                                 }}
-                                className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium placeholder:text-amber-300"
+                                className="w-full bg-transparent border-none focus:ring-0 text-base sm:text-sm font-medium placeholder:text-amber-300"
                               />
                            </div>
                          </>
@@ -1167,7 +1167,7 @@ export default function CartModal({ open, onClose }) {
                             key={pt.id}
                             type="button"
                             onClick={() => setCustomerPaymentType(pt.id)}
-                            className={`flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all gap-1 text-center ${
+                            className={`flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border-2 transition-all gap-0.5 sm:gap-1 text-center min-w-0 ${
                               isSelected
                                 ? colorStyles.selected
                                 : 'border-neutral-200 bg-neutral-50/70 text-neutral-600 hover:border-neutral-300'
@@ -1176,8 +1176,8 @@ export default function CartModal({ open, onClose }) {
                             <div className={`p-1.5 rounded-lg ${isSelected ? colorStyles.iconBg : 'bg-neutral-200/80 text-neutral-600'}`}>
                               <Icon icon={pt.icon} className="text-lg" />
                             </div>
-                            <span className="text-[11px] font-black tracking-tight">{pt.label}</span>
-                            <span className="text-[9px] text-neutral-400 font-semibold leading-none">{pt.sub}</span>
+                            <span className="text-[10px] sm:text-[11px] font-black tracking-tight truncate max-w-full">{pt.label}</span>
+                            <span className="text-[8px] sm:text-[9px] text-neutral-400 font-semibold leading-none">{pt.sub}</span>
                           </button>
                         );
                       })}
@@ -1192,7 +1192,7 @@ export default function CartModal({ open, onClose }) {
                         </div>
                         
                         {/* Denomination quick pills */}
-                        <div className="grid grid-cols-4 gap-1.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                           <button
                             type="button"
                             onClick={() => setCashTenderedType('exact')}
@@ -1748,39 +1748,39 @@ export default function CartModal({ open, onClose }) {
           {/* Full-drawer Success View */}
 
           {showSuccess && (
-            <div className="absolute inset-0 z-[200] bg-white flex flex-col items-center justify-start sm:justify-center p-8 text-center animate-in fade-in zoom-in duration-300 rounded-t-[28px] sm:rounded-[32px] overflow-y-auto overflow-x-hidden min-h-[500px]">
-                <div className="flex flex-col items-center justify-center py-6 sm:py-10 px-6 text-center space-y-6 sm:space-y-8 animate-in fade-in zoom-in duration-300 w-full max-w-md mx-auto">
-                    <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 shadow-sm shadow-emerald-100/50">
-                      <Icon icon="solar:check-circle-bold" className="text-6xl" />
+            <div className="absolute inset-0 z-[200] bg-white flex flex-col items-center justify-start sm:justify-center p-4 sm:p-8 pb-[calc(env(safe-area-inset-bottom,0px)+24px)] text-center animate-in fade-in zoom-in duration-300 rounded-t-[28px] sm:rounded-[32px] overflow-y-auto overflow-x-hidden min-h-[500px]">
+                <div className="flex flex-col items-center justify-center py-4 sm:py-8 px-2 sm:px-6 text-center space-y-4 sm:space-y-6 animate-in fade-in zoom-in duration-300 w-full max-w-md mx-auto">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 shadow-sm shadow-emerald-100/50">
+                      <Icon icon="solar:check-circle-bold" className="text-5xl sm:text-6xl" />
                     </div>
                     
-                    <div className="space-y-2">
-                      <h2 className="text-3xl sm:text-4xl font-black text-gray-900 leading-tight">
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <h2 className="text-2xl sm:text-4xl font-black text-gray-900 leading-tight">
                         {isPOSMode ? "¡Pedido Confirmado!" : "¡Pedido Recibido!"}
                       </h2>
-                      <p className="text-gray-500 font-medium text-lg">
-                        Tu pedido <span className="text-gray-900 font-black text-xl">#{lastOrderId ? lastOrderId.slice(-4).toUpperCase() : ""}</span> ha sido registrado.
+                      <p className="text-gray-500 font-medium text-base sm:text-lg">
+                        Tu pedido <span className="text-gray-900 font-black text-lg sm:text-xl">#{lastOrderId ? lastOrderId.slice(-4).toUpperCase() : ""}</span> ha sido registrado.
                       </p>
                     </div>
                       
                     {/* Mesa o Cliente info */}
                     {(fulfillmentType === 'dine_in' && getTable()) && (
-                      <div className="mt-4 inline-flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
+                      <div className="mt-2 sm:mt-4 inline-flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
                         <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Mesa</span>
-                        <span className="text-lg font-black text-brand-primary">{getTable()}</span>
+                        <span className="text-base sm:text-lg font-black text-brand-primary">{getTable()}</span>
                       </div>
                     )}
                     {isPOSMode && (
-                      <div className="mt-8 p-6 sm:p-10 bg-white border border-gray-100 rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center gap-6 animate-in slide-in-from-bottom-6 delay-150 duration-700 w-full">
-                        <div className="flex flex-col items-center gap-1.5">
-                          <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.25em]">QR Seguimiento Cliente</p>
-                          <p className="text-sm font-medium text-gray-400">Escanea para seguir el estado en tiempo real</p>
+                      <div className="mt-4 sm:mt-8 p-4 sm:p-8 bg-white border border-gray-100 rounded-3xl sm:rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center gap-4 sm:gap-6 animate-in slide-in-from-bottom-6 delay-150 duration-700 w-full">
+                        <div className="flex flex-col items-center gap-1">
+                          <p className="text-[10px] sm:text-[11px] font-black text-gray-400 uppercase tracking-[0.25em]">QR Seguimiento Cliente</p>
+                          <p className="text-xs sm:text-sm font-medium text-gray-400">Escanea para seguir el estado en tiempo real</p>
                         </div>
-                        <div className="p-8 bg-white rounded-[2.5rem] ring-[12px] ring-gray-50/50 flex items-center justify-center shadow-inner">
+                        <div className="p-4 sm:p-8 bg-white rounded-2xl sm:rounded-[2.5rem] ring-8 sm:ring-[12px] ring-gray-50/50 flex items-center justify-center shadow-inner max-w-[200px] sm:max-w-none">
                           <div className="relative">
                             <QRCode 
                               value={`${window.location.origin}/${brandSlug}/#order/${lastOrderId}`}
-                              size={220}
+                              size={180}
                               level="H"
                               style={{ height: "auto", maxWidth: "100%", width: "100%" }}
                             />
@@ -1798,22 +1798,22 @@ export default function CartModal({ open, onClose }) {
                       // Si es transferencia (Nequi / Bre-B / Daviplata / Banco), pedimos el comprobante por WhatsApp
                       if (customerPaymentType === 'transfer') {
                         return (
-                          <div className="mt-6 w-full max-w-sm mx-auto">
-                            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 text-center">
-                              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <Icon icon="solar:wallet-bold" className="text-2xl text-orange-500" />
+                          <div className="mt-4 sm:mt-6 w-full max-w-sm mx-auto">
+                            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 sm:p-5 text-center">
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2.5 sm:mb-3">
+                                <Icon icon="solar:wallet-bold" className="text-xl sm:text-2xl text-orange-500" />
                               </div>
-                              <p className="text-sm font-bold text-gray-800 mb-1">Confirmación de Pago</p>
-                              <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+                              <p className="text-xs sm:text-sm font-bold text-gray-800 mb-1">Confirmación de Pago</p>
+                              <p className="text-xs text-gray-500 mb-3 sm:mb-4 leading-relaxed">
                                 Para iniciar la preparación, envía tu comprobante de transferencia por WhatsApp.
                               </p>
                               <a
                                 href={proofUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="w-full bg-[#25D366] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(37,211,102,0.3)] hover:shadow-[0_6px_20px_rgba(37,211,102,0.4)] hover:-translate-y-0.5 transition-all"
+                                className="w-full bg-[#25D366] text-white font-bold py-3 sm:py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm shadow-[0_4px_14px_rgba(37,211,102,0.3)] hover:shadow-[0_6px_20px_rgba(37,211,102,0.4)] hover:-translate-y-0.5 transition-all"
                               >
-                                <Icon icon="logos:whatsapp-icon" className="text-xl" />
+                                <Icon icon="logos:whatsapp-icon" className="text-lg sm:text-xl" />
                                 Enviar Comprobante
                               </a>
                             </div>
@@ -1824,12 +1824,12 @@ export default function CartModal({ open, onClose }) {
                       // Si es efectivo, recordamos tener listo el dinero y el cambio si aplica
                       if (customerPaymentType === 'cash') {
                         return (
-                          <div className="mt-6 w-full max-w-sm mx-auto">
-                            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center">
-                              <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <Icon icon="solar:bill-list-bold" className="text-2xl text-emerald-600" />
+                          <div className="mt-4 sm:mt-6 w-full max-w-sm mx-auto">
+                            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 sm:p-5 text-center">
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2.5 sm:mb-3">
+                                <Icon icon="solar:bill-list-bold" className="text-xl sm:text-2xl text-emerald-600" />
                               </div>
-                              <p className="text-sm font-black text-gray-800 mb-1">Pago en Efectivo al Recibir</p>
+                              <p className="text-xs sm:text-sm font-black text-gray-800 mb-1">Pago en Efectivo al Recibir</p>
                               <p className="text-xs text-gray-500 leading-relaxed mb-2">
                                 Ten listo tu dinero en efectivo al momento de recibir tu pedido.
                               </p>
@@ -1851,12 +1851,12 @@ export default function CartModal({ open, onClose }) {
                       // Si es datáfono / tarjeta física contra entrega
                       if (customerPaymentType === 'card') {
                         return (
-                          <div className="mt-6 w-full max-w-sm mx-auto">
-                            <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 text-center">
-                              <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <Icon icon="solar:card-bold" className="text-2xl text-indigo-600" />
+                          <div className="mt-4 sm:mt-6 w-full max-w-sm mx-auto">
+                            <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 sm:p-5 text-center">
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-2.5 sm:mb-3">
+                                <Icon icon="solar:card-bold" className="text-xl sm:text-2xl text-indigo-600" />
                               </div>
-                              <p className="text-sm font-black text-gray-800 mb-1">Pago con Datáfono al Recibir</p>
+                              <p className="text-xs sm:text-sm font-black text-gray-800 mb-1">Pago con Datáfono al Recibir</p>
                               <p className="text-xs text-gray-500 leading-relaxed">
                                 El repartidor o personal llevará el datáfono para procesar tu pago con tarjeta física al momento de la entrega.
                               </p>
@@ -1869,7 +1869,7 @@ export default function CartModal({ open, onClose }) {
                     })()}
                 </div>
 
-                <div className="w-full space-y-3">
+                <div className="w-full max-w-md mx-auto space-y-2.5 sm:space-y-3 pb-2">
                   {isPOSMode ? (
                     <>
                       <button
@@ -1882,9 +1882,9 @@ export default function CartModal({ open, onClose }) {
                           const targetUrl = `/${brandSlug}/?admin_page=waiter#admin`;
                           window.location.href = targetUrl;
                         }}
-                        className="w-full bg-gray-900 text-white py-5 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-black/10 hover:bg-black"
+                        className="w-full bg-gray-900 text-white py-3.5 sm:py-5 min-h-[48px] rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-black/10 hover:bg-black"
                       >
-                        <Icon icon="solar:hamburger-menu-bold" className="text-xl" />
+                        <Icon icon="solar:hamburger-menu-bold" className="text-lg sm:text-xl" />
                         Ir al Mapa de Mesas
                       </button>
                       
@@ -1895,9 +1895,9 @@ export default function CartModal({ open, onClose }) {
                           setShowSuccess(false);
                           onClose();
                         }}
-                        className="w-full bg-white text-gray-900 border-2 border-gray-100 py-5 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95 hover:bg-gray-50 hover:border-gray-200"
+                        className="w-full bg-white text-gray-900 border-2 border-gray-100 py-3.5 sm:py-5 min-h-[48px] rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-3 transition-all active:scale-95 hover:bg-gray-50 hover:border-gray-200"
                       >
-                        <Icon icon="solar:camera-add-bold" className="text-xl" />
+                        <Icon icon="solar:camera-add-bold" className="text-lg sm:text-xl" />
                         Tomar Nuevo Pedido
                       </button>
                     </>
@@ -1908,10 +1908,10 @@ export default function CartModal({ open, onClose }) {
                           window.location.href = `#order/${lastOrderId}`;
                           setShowSuccess(false);
                         }}
-                        className="w-full bg-brand-primary text-white py-5 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-brand-primary/20"
+                        className="w-full bg-brand-primary text-white py-3.5 sm:py-5 min-h-[48px] rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2.5 sm:gap-3 transition-all active:scale-95 shadow-xl shadow-brand-primary/20"
                       >
                         Seguir Mi Pedido
-                        <Icon icon="solar:arrow-right-line-duotone" />
+                        <Icon icon="solar:arrow-right-line-duotone" className="text-lg sm:text-xl" />
                       </button>
 
                       {/* Customer Support WhatsApp button */}
@@ -1926,9 +1926,9 @@ export default function CartModal({ open, onClose }) {
                             const targetPhone = cleanPhone.startsWith('57') ? cleanPhone : `57${cleanPhone}`;
                             window.open(`https://wa.me/${targetPhone}?text=${text}`, '_blank');
                           }}
-                          className="w-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 py-4 rounded-2xl font-bold flex items-center justify-center gap-2.5 transition-all active:scale-95 hover:bg-emerald-100/70"
+                          className="w-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 py-3 sm:py-4 min-h-[44px] rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all active:scale-95 hover:bg-emerald-100/70"
                         >
-                          <Icon icon="logos:whatsapp-icon" className="text-xl" />
+                          <Icon icon="logos:whatsapp-icon" className="text-lg sm:text-xl" />
                           ¿Dudas sobre tu pedido? Escríbenos
                         </button>
                       )}
@@ -1938,7 +1938,7 @@ export default function CartModal({ open, onClose }) {
                           setShowSuccess(false);
                           onClose();
                         }}
-                        className="w-full py-4 text-gray-400 font-bold hover:text-gray-600 transition-colors"
+                        className="w-full py-2.5 sm:py-4 text-xs sm:text-sm text-gray-400 font-bold hover:text-gray-600 transition-colors"
                       >
                         Cerrar Menú
                       </button>

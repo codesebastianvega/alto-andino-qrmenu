@@ -301,7 +301,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
           className="pointer-events-auto relative z-[110] w-full max-w-md md:max-w-4xl focus-visible:outline-none"
         >
           {/* Mobile bottom-sheet style, Desktop center-card style */}
-          <div className="relative bg-white shadow-2xl overflow-hidden flex flex-col md:flex-row h-[90vh] md:h-[80vh] rounded-t-3xl sm:rounded-3xl">
+          <div className="relative bg-white shadow-2xl overflow-hidden flex flex-col md:flex-row h-[90dvh] md:h-[80vh] rounded-t-3xl sm:rounded-3xl">
             
             {/* Close button */}
             <button
@@ -314,7 +314,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
             </button>
 
             {/* Left Column: Image (Desktop) / Top Image (Mobile) */}
-            <div className="w-full h-1/3 md:h-full md:w-5/12 lg:w-1/2 flex-shrink-0 relative bg-neutral-100">
+            <div className="w-full h-44 sm:h-52 md:h-full md:w-5/12 lg:w-1/2 flex-shrink-0 relative bg-neutral-100">
               <AAImage
                 src={image}
                 alt={title || "Producto"}
@@ -510,7 +510,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                       value={specialInstructions}
                       onChange={(e) => setSpecialInstructions(e.target.value)}
                       placeholder="Ej: Sin cebolla, término medio, salsa aparte..."
-                      className="w-full text-xs font-medium text-neutral-800 bg-neutral-50/80 hover:bg-neutral-50 focus:bg-white border border-neutral-200 rounded-2xl p-3.5 focus:outline-none focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131] resize-none transition-all placeholder:text-neutral-400"
+                      className="w-full text-base sm:text-xs font-medium text-neutral-800 bg-neutral-50/80 hover:bg-neutral-50 focus:bg-white border border-neutral-200 rounded-2xl p-3.5 focus:outline-none focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131] resize-none transition-all placeholder:text-neutral-400"
                       maxLength={150}
                     />
                     <div className="flex justify-end mt-1">
@@ -523,7 +523,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
               </div>
               
               {/* Fixed Footer for Price and Button */}
-              <div className="flex-shrink-0 bg-white border-t border-neutral-100 shadow-[0_-10px_30px_rgba(0,0,0,0.04)] p-5 md:px-8 z-10" style={stagger(4 + groups.length)}>
+              <div className="flex-shrink-0 bg-white border-t border-neutral-100 shadow-[0_-10px_30px_rgba(0,0,0,0.04)] p-5 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] md:px-8 z-10" style={stagger(4 + groups.length)}>
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-1">Total a pagar</p>

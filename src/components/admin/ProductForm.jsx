@@ -383,7 +383,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-end md:items-start justify-center z-[100] p-0 md:p-4 overflow-hidden backdrop-blur-sm">
-      <div className="bg-white rounded-t-[2rem] md:rounded-[2rem] w-full max-w-6xl h-[95vh] md:h-auto md:max-h-[90vh] md:my-8 flex flex-col shadow-2xl animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200">
+      <div className="bg-white rounded-t-[2rem] md:rounded-[2rem] w-full max-w-6xl h-[92dvh] md:h-auto md:max-h-[90vh] md:my-8 flex flex-col shadow-2xl animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200">
 
         {/* ── Header */}
         <div className="flex items-start justify-between px-5 md:px-8 py-4 md:py-6 border-b border-gray-100 shrink-0">
@@ -1119,7 +1119,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
         </div>
 
         {/* Sticky Footer */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-100 px-5 md:px-8 py-4 flex items-center justify-end gap-3 z-10 shrink-0">
+        <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 md:px-8 py-3.5 pb-[calc(env(safe-area-inset-bottom,0px)+14px)] grid grid-cols-2 sm:flex sm:justify-end gap-3 z-10 shrink-0">
           <SecondaryButton type="button" onClick={onCancel} className="w-full sm:w-auto px-6 py-2.5">
             Cancelar
           </SecondaryButton>

@@ -174,27 +174,28 @@ export default function OrderStatus({ orderId }) {
   const fulfillmentText = isDineIn ? 'Consumo en local' : 
                           isTakeaway ? 'Para llevar' : 'Domicilio';
   
-  const whatsappNumber = normalizeWhatsAppNumber(restaurantSettings?.whatsapp_number_orders || "573138830171");
+  const rawPhone = restaurantSettings?.whatsapp_number_orders || activeBrand?.phone || "";
+  const whatsappNumber = normalizeWhatsAppNumber(rawPhone);
   const wppMessage = encodeURIComponent(`¡Hola! 👋 Envío el comprobante de pago de mi pedido #${order.id.slice(0,4).toUpperCase()} en ${brandName}. ✨`);
 
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-[#1A1A1A] font-sans selection:bg-[#E6B05C] selection:text-white pb-24">
+    <div className="min-h-screen bg-[#FAFAFA] text-[#1A1A1A] font-sans selection:bg-[#E6B05C] selection:text-white pb-[calc(env(safe-area-inset-bottom,0px)+96px)]">
       
       {/* HEADER NAVBAR */}
-      <nav className="bg-white px-6 py-4 flex items-center gap-4 sticky top-0 z-50 border-b border-black/5 shadow-sm">
+      <nav className="bg-white px-4 sm:px-6 py-3.5 sm:py-4 pt-[calc(env(safe-area-inset-top,0px)+14px)] flex items-center gap-3 sm:gap-4 sticky top-0 z-50 border-b border-black/5 shadow-sm">
         <button onClick={() => window.location.hash = '#menu'} className="w-10 h-10 shrink-0 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-colors text-black/70">
           <ArrowLeft size={20} />
         </button>
         <div className="min-w-0">
-          <h1 className="font-extrabold text-lg leading-tight truncate">Pedido #{order.id.slice(0, 4).toUpperCase()}</h1>
-          <p className="text-xs font-medium text-black/50 truncate">
+          <h1 className="font-extrabold text-base sm:text-lg leading-tight truncate">Pedido #{order.id.slice(0, 4).toUpperCase()}</h1>
+          <p className="text-[11px] sm:text-xs font-medium text-black/50 truncate">
             {new Date(order.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} • {fulfillmentText}
           </p>
         </div>
       </nav>
 
-      <main className="container mx-auto max-w-2xl px-6 pt-8">
+      <main className="container mx-auto max-w-2xl px-4 sm:px-6 pt-6 sm:pt-8">
         
         {/* =========================================
             1. TRACKER DINÁMICO EXPRESIVO
@@ -243,7 +244,7 @@ export default function OrderStatus({ orderId }) {
             </div>
 
             {/* Progress Bar Visual Lineal */}
-            <div className="relative flex justify-between items-center z-10 px-2 md:px-6">
+            <div className="relative flex justify-between items-center z-10 px-2 sm:px-4 md:px-6">
               {/* Línea de fondo */}
               <div className="absolute top-1/2 left-4 right-4 h-1 bg-black/5 -translate-y-1/2 z-0 rounded-full" />
               
@@ -265,7 +266,7 @@ export default function OrderStatus({ orderId }) {
                     <motion.div 
                       animate={isActive ? { scale: [1, 1.15, 1] } : {}}
                       transition={{ repeat: isActive ? Infinity : 0, duration: 2 }}
-                      className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center border-4 transition-all duration-500 ${
+                      className={`w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center border-4 transition-all duration-500 ${
                         isActive 
                           ? 'bg-white border-[#E6B05C] text-[#E6B05C] shadow-lg scale-110' 
                           : isPast 
@@ -275,8 +276,8 @@ export default function OrderStatus({ orderId }) {
                     >
                       {step.icon}
                     </motion.div>
-                    <div className="text-center absolute -bottom-8 w-24">
-                      <p className={`text-[9px] md:text-[10px] font-bold uppercase tracking-widest ${isActive || isPast ? 'text-[#1A1A1A]' : 'text-black/30'}`}>
+                    <div className="text-center absolute -bottom-8 left-1/2 -translate-x-1/2 w-16 sm:w-20">
+                      <p className={`text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-tight sm:tracking-widest truncate ${isActive || isPast ? 'text-[#1A1A1A]' : 'text-black/30'}`}>
                         {step.title}
                       </p>
                     </div>
@@ -290,7 +291,7 @@ export default function OrderStatus({ orderId }) {
                <div className="mt-6 pt-4 border-t border-black/5 relative z-10 flex justify-center">
                  <button 
                    onClick={handleCancelOrder}
-                   className="text-xs font-bold text-black/30 hover:text-red-500 transition-colors flex items-center justify-center gap-1.5 py-2 px-4 rounded-full hover:bg-black/5"
+                   className="text-xs font-bold text-red-600/80 hover:text-red-700 bg-red-50/60 hover:bg-red-50 transition-colors flex items-center justify-center gap-1.5 py-2 px-4 rounded-full border border-red-200/50"
                  >
                    <XIcon size={14} /> Cancelar Pedido
                  </button>
@@ -373,14 +374,20 @@ export default function OrderStatus({ orderId }) {
                 <p className="text-xs font-medium text-black/60 mb-4 leading-relaxed max-w-[90%]">
                   Para iniciar la preparación de tu pedido, necesitamos confirmar tu pago. Por favor envía el comprobante a nuestro WhatsApp.
                 </p>
-                <a 
-                  href={`https://wa.me/${whatsappNumber}?text=${wppMessage}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-[#25D366] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(37,211,102,0.3)] hover:shadow-[0_6px_20px_rgba(37,211,102,0.4)] hover:-translate-y-0.5 transition-all cursor-pointer"
-                >
-                  Enviar Comprobante
-                </a>
+                {whatsappNumber ? (
+                  <a 
+                    href={`https://wa.me/${whatsappNumber}?text=${wppMessage}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-[#25D366] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(37,211,102,0.3)] hover:shadow-[0_6px_20px_rgba(37,211,102,0.4)] hover:-translate-y-0.5 transition-all cursor-pointer text-sm"
+                  >
+                    Enviar Comprobante
+                  </a>
+                ) : (
+                  <p className="text-xs font-semibold text-amber-800 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+                    Comunícate con el local para enviar tu comprobante.
+                  </p>
+                )}
               </div>
             </div>
           </motion.div>
