@@ -1,5 +1,5 @@
 import React from "react";
-import { Leaf, MapPin, Instagram, MessageCircle } from "lucide-react";
+import { Leaf, MapPin, Instagram, MessageCircle, Smartphone, Download, CheckCircle2 } from "lucide-react";
 import { useMenuData } from "../context/MenuDataContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -33,7 +33,7 @@ function getGreetingMessage(homeSettings) {
   return night || homeSettings?.footer_greeting_night || "Gracias por acompañarnos esta noche 🌙";
 }
 
-export default function Footer({ hasCartBar }) {
+export default function Footer({ hasCartBar, onInstallPWA, isPWAInstalled }) {
   const { restaurantSettings, homeSettings, locations, businessHours } = useMenuData();
   const { activeBrand } = useAuth();
   
@@ -239,6 +239,48 @@ export default function Footer({ hasCartBar }) {
             </ul>
           </div>
         </div>
+
+        {/* PWA App Download Card */}
+        {onInstallPWA && (
+          <div className="mb-10 md:mb-16 bg-white/[0.06] border border-white/10 rounded-2xl md:rounded-3xl p-5 md:p-8 backdrop-blur-sm flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+            <div className="flex items-center gap-4 text-center md:text-left flex-col md:flex-row">
+              <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0 text-amber-400 shadow-inner">
+                <Smartphone size={28} />
+              </div>
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-wider mb-2">
+                  <span>⚡ Sin descargas pesadas</span>
+                </div>
+                <h4 className="text-lg md:text-xl font-black text-white">
+                  Lleva a {brandName} en tu celular
+                </h4>
+                <p className="text-white/60 text-xs md:text-sm max-w-xl mt-1 leading-relaxed">
+                  {isPWAInstalled
+                    ? "Ya tienes instalada la aplicación oficial en tu dispositivo. ¡Gracias por preferirnos!"
+                    : "Instala nuestra aplicación web oficial en tu pantalla de inicio. Acceso instantáneo a la carta, seguimiento en vivo de pedidos y sin ocupar memoria de tu teléfono."}
+                </p>
+              </div>
+            </div>
+
+            <div className="shrink-0 w-full md:w-auto">
+              {isPWAInstalled ? (
+                <div className="inline-flex items-center justify-center gap-2 w-full md:w-auto bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-5 py-3.5 rounded-xl font-bold text-xs md:text-sm">
+                  <CheckCircle2 size={18} />
+                  <span>App Instalada</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onInstallPWA}
+                  className="w-full md:w-auto bg-white text-neutral-900 hover:bg-[#E6B05C] hover:text-[#1A1A1A] transition-all font-black text-xs md:text-sm px-6 py-3.5 rounded-xl flex items-center justify-center gap-2.5 shadow-lg shadow-black/20 active:scale-95 cursor-pointer"
+                >
+                  <Download size={18} />
+                  <span>Instalar App en mi Celular</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Bottom Bar */}
         <div className="border-t border-white/10 pt-6 md:pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-white/40">

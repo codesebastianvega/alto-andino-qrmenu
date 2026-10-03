@@ -63,6 +63,11 @@ import { useCart } from "./context/CartContext";
 // Póster QR
 import Toast from "./components/Toast";
 
+// PWA Installation
+import { usePWAInstall } from "./hooks/usePWAInstall";
+const PWAInstallBanner = lazy(() => import("./components/pwa/PWAInstallBanner"));
+const PWAInstallModalIOS = lazy(() => import("./components/pwa/PWAInstallModalIOS"));
+
 
 export default function App() {
   const { brand_slug } = useParams();
@@ -124,6 +129,19 @@ export default function App() {
   const [showPOSCustomerModal, setShowPOSCustomerModal] = useState(false);
   const [hasDismissedCustomerModal, setHasDismissedCustomerModal] = useState(false);
   const { categories: dbCategories, restaurantSettings, homeSettings, loading: menuLoading, currentLocation } = useMenuData();
+
+  // PWA Brand-Specific Install State
+  const pwaBrandName = restaurantSettings?.business_name || activeBrand?.name || "Restaurante";
+  const pwaLogoUrl = restaurantSettings?.logo_url || activeBrand?.logo_url;
+  const {
+    isInstalled: isPWAInstalled,
+    isIOS: isPWAIOS,
+    showBanner: showPWABanner,
+    showIOSGuide: showPWAIOSGuide,
+    setShowIOSGuide: setShowPWAIOSGuide,
+    promptInstall: promptPWAInstall,
+    dismissBanner: dismissPWABanner,
+  } = usePWAInstall({ brandId: activeBrand?.id, delayMs: 6000 });
 
   // ✅ View Detection & UI States (Moved up to avoid initialization errors)
   const searchParams = useMemo(() => new URLSearchParams(window.location.search), [window.location.search]);
@@ -625,7 +643,13 @@ export default function App() {
                 hideNav={true}
               />
             </main>
-            {!isDemo && <Footer hasCartBar={hasFloatingCartBar} />}
+            {!isDemo && (
+              <Footer
+                hasCartBar={hasFloatingCartBar}
+                onInstallPWA={promptPWAInstall}
+                isPWAInstalled={isPWAInstalled}
+              />
+            )}
           </>
         )}
 
@@ -666,6 +690,26 @@ export default function App() {
         </>
       )}
         </motion.div>
+      )}
+
+      {/* PWA Smart Install Banner & iOS Step-by-Step Guide */}
+      {brand_slug && !isDemo && !isSpecialPlatformView && !isNewAdminPanel && (
+        <Suspense fallback={null}>
+          <PWAInstallBanner
+            show={showPWABanner && !isPWAInstalled}
+            brandName={pwaBrandName}
+            logoUrl={pwaLogoUrl}
+            isIOS={isPWAIOS}
+            onInstall={promptPWAInstall}
+            onDismiss={dismissPWABanner}
+          />
+          <PWAInstallModalIOS
+            open={showPWAIOSGuide}
+            onClose={() => setShowPWAIOSGuide(false)}
+            brandName={pwaBrandName}
+            logoUrl={pwaLogoUrl}
+          />
+        </Suspense>
       )}
 
       <Toast />
