@@ -7,6 +7,7 @@ import { useMenuData } from '../context/MenuDataContext';
 import { useAuth } from '../context/AuthContext';
 import { categoryIcons } from '../data/categoryIcons';
 import { cleanAssistantName } from '../utils/formatters';
+import { useLogoContrast } from '../hooks/useLogoContrast';
 
 const HERO_CATEGORY_ICONS = {
   todos: 'ph:squares-four',
@@ -220,6 +221,8 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
 
   const brandName = restaurantSettings?.business_name || activeBrand?.name || 'Aluna';
   const logoUrl = restaurantSettings?.logo_url || activeBrand?.logo_url;
+  const logoContrast = useLogoContrast(logoUrl, 'light');
+  const isLightLogo = logoContrast === 'light';
   const primaryColor = restaurantSettings?.primary_color || '#4A7856';
   const accentColor = restaurantSettings?.theme_secondary || '#E6B05C';
   const heroBg = restaurantSettings?.theme_background || '#F5F5F7';
@@ -481,13 +484,14 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
         >
           <div className="mb-3 flex flex-col items-start gap-2">
             <div className="flex items-center gap-3 md:hidden">
-              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white/75 shadow-[0_12px_24px_rgba(0,0,0,0.07)] ring-1 ring-white/80 backdrop-blur-xl">
+              <div className={`flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl shadow-[0_12px_24px_rgba(0,0,0,0.07)] ring-1 backdrop-blur-xl transition-colors ${
+                isLightLogo ? 'bg-neutral-900 ring-neutral-800' : 'bg-white/85 ring-white/80'
+              }`}>
                 {logoUrl ? (
                   <img
                     src={logoUrl}
                     alt={brandName}
-                    className="h-full w-full object-contain p-2"
-                    style={{ filter: 'brightness(0) saturate(100%)' }}
+                    className="h-full w-full object-contain p-2 drop-shadow-sm"
                   />
                 ) : (
                   <span className="text-sm font-black uppercase" style={{ color: primaryColor }}>

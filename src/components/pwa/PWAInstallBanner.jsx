@@ -1,6 +1,7 @@
 import React from 'react';
 import { Download, X, Smartphone, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLogoContrast } from '../../hooks/useLogoContrast';
 
 export default function PWAInstallBanner({
   show,
@@ -10,6 +11,9 @@ export default function PWAInstallBanner({
   onInstall,
   onDismiss,
 }) {
+  const contrast = useLogoContrast(logoUrl, 'light');
+  const isLightLogo = contrast === 'light';
+
   if (!show) return null;
 
   return (
@@ -26,7 +30,9 @@ export default function PWAInstallBanner({
           {/* Logo or Icon */}
           <div className="relative shrink-0">
             {logoUrl ? (
-              <div className="w-11 h-11 rounded-xl bg-neutral-900 border border-neutral-800 p-1.5 shadow-md flex items-center justify-center overflow-hidden">
+              <div className={`w-11 h-11 rounded-xl p-1.5 shadow-md flex items-center justify-center overflow-hidden transition-colors ${
+                isLightLogo ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-neutral-200'
+              }`}>
                 <img
                   src={logoUrl}
                   alt={brandName}

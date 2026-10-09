@@ -61,9 +61,13 @@ export default async function handler(req, res) {
         title = `${siteName} | Menú Digital`;
         description = homeSettings?.hero_subtitle || brand.description || 'Explora nuestra carta digital, opciones saludables y realiza tu pedido.';
         
-        const rawLogo = settings?.logo_url || brand.logo_url || homeSettings?.menu_banner_img;
-        if (rawLogo) {
-          logo = rawLogo.startsWith('http') ? rawLogo : `${baseUrl}/${rawLogo.replace(/^\//, '')}`;
+        // Para la vista previa de WhatsApp y redes sociales (Open Graph):
+        // WhatsApp aplana imágenes transparentes sobre un lienzo blanco (#FFFFFF).
+        // Si usamos un logo transparente con letras claras, queda invisible.
+        // Además, una foto gastronómica de los platos del restaurante genera mucho más apetito y clics.
+        const rawPreviewImage = homeSettings?.menu_banner_img || homeSettings?.welcome_bg_img || settings?.logo_url || brand.logo_url;
+        if (rawPreviewImage) {
+          logo = rawPreviewImage.startsWith('http') ? rawPreviewImage : `${baseUrl}/${rawPreviewImage.replace(/^\//, '')}`;
         }
         pageUrl = `${baseUrl}/${brandSlug}`;
       }

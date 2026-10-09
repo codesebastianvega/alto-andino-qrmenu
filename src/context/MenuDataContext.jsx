@@ -597,7 +597,7 @@ export const MenuDataProvider = ({ children }) => {
     if (!brand) return;
     const bName = restaurantSettings?.business_name || brand?.name || "Boku Bento";
     const bDesc = homeSettings?.hero_subtitle || brand?.description || "Menú Digital Interactivo";
-    const bLogo = restaurantSettings?.logo_url || brand?.logo_url;
+    const bShareImage = homeSettings?.menu_banner_img || homeSettings?.welcome_bg_img || restaurantSettings?.logo_url || brand?.logo_url;
 
     document.title = `${bName} | Menú Digital`;
 
@@ -614,10 +614,10 @@ export const MenuDataProvider = ({ children }) => {
 
     setMeta('property', 'og:title', `${bName} | Menú Digital`);
     setMeta('property', 'og:description', bDesc);
-    if (bLogo) {
-      setMeta('property', 'og:image', bLogo);
-      setMeta('property', 'og:image:secure_url', bLogo);
-      setMeta('name', 'twitter:image', bLogo);
+    if (bShareImage) {
+      setMeta('property', 'og:image', bShareImage);
+      setMeta('property', 'og:image:secure_url', bShareImage);
+      setMeta('name', 'twitter:image', bShareImage);
     }
     setMeta('property', 'og:url', window.location.href);
     setMeta('property', 'og:type', 'website');

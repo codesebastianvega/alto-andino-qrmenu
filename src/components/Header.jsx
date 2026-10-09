@@ -5,6 +5,7 @@ import { getTableId } from "@/utils/table";
 import { useMenuData } from "../context/MenuDataContext";
 import { safeStorage as localStorage } from "../utils/safeStorage";
 import { cleanAssistantName } from "@/utils/formatters";
+import { useLogoContrast } from "../hooks/useLogoContrast";
 
 export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, currentHash = "" }) {
   const [table, setTable] = useState("");
@@ -18,6 +19,8 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
   const logoUrl = restaurantSettings?.logo_url || brand?.logo_url;
   const primaryColor = restaurantSettings?.primary_color || "#BFAE78";
   const assistantName = cleanAssistantName(homeSettings?.concierge_h1, "Asistente");
+  const logoContrast = useLogoContrast(logoUrl, 'light');
+  const isLightLogo = logoContrast === 'light';
 
   useEffect(() => {
     try {
@@ -75,7 +78,9 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
       >
         <div className="flex min-w-0 items-center justify-self-start">
           <a href="#inicio" className="group flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-neutral-900 ring-1 ring-black/10 md:h-10 md:w-10 shadow-xs">
+            <div className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl ring-1 transition-colors md:h-10 md:w-10 shadow-xs ${
+              isLightLogo ? 'bg-neutral-900 ring-neutral-800' : 'bg-white ring-black/10'
+            }`}>
               {logoUrl ? (
                 <img
                   src={logoUrl}
