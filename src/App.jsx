@@ -523,7 +523,7 @@ export default function App() {
                       "Aluna"
                     }
                     logoUrl={restaurantSettings?.logo_url || activeBrand?.logo_url}
-                    bgUrl={homeSettings?.welcome_bg_img}
+                    bgUrl={homeSettings?.welcome_bg_img || homeSettings?.menu_banner_img}
                     mesa={new URLSearchParams(window.location.search).get('mesa')}
                     onStart={handleStartExperience}
                     settings={restaurantSettings}

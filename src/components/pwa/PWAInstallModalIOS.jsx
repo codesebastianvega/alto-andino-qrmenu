@@ -27,13 +27,15 @@ export default function PWAInstallModalIOS({ open, onClose, brandName, logoUrl }
             <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
               <div className="flex items-center gap-3">
                 {logoUrl ? (
-                  <img
-                    src={logoUrl}
-                    alt={brandName}
-                    className="w-10 h-10 rounded-xl object-contain bg-neutral-50 p-1 border border-neutral-200"
-                  />
+                  <div className="w-10 h-10 rounded-xl bg-neutral-900 border border-neutral-800 p-1.5 shadow-md flex items-center justify-center overflow-hidden shrink-0">
+                    <img
+                      src={logoUrl}
+                      alt={brandName}
+                      className="w-full h-full object-contain drop-shadow-sm"
+                    />
+                  </div>
                 ) : (
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                  <div className="w-10 h-10 rounded-xl bg-neutral-900 text-amber-400 flex items-center justify-center font-bold border border-neutral-800 shrink-0">
                     <Smartphone size={20} />
                   </div>
                 )}

@@ -26,13 +26,15 @@ export default function PWAInstallBanner({
           {/* Logo or Icon */}
           <div className="relative shrink-0">
             {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt={brandName}
-                className="w-11 h-11 rounded-xl object-contain bg-neutral-50 p-1 border border-neutral-100 shadow-sm"
-              />
+              <div className="w-11 h-11 rounded-xl bg-neutral-900 border border-neutral-800 p-1.5 shadow-md flex items-center justify-center overflow-hidden">
+                <img
+                  src={logoUrl}
+                  alt={brandName}
+                  className="w-full h-full object-contain drop-shadow-sm"
+                />
+              </div>
             ) : (
-              <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shadow-sm">
+              <div className="w-11 h-11 rounded-xl bg-neutral-900 text-amber-400 flex items-center justify-center font-bold shadow-md border border-neutral-800">
                 <Smartphone size={22} />
               </div>
             )}

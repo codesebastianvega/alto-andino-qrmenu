@@ -75,7 +75,7 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
       >
         <div className="flex min-w-0 items-center justify-self-start">
           <a href="#inicio" className="group flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-white/70 ring-1 ring-black/5 md:h-10 md:w-10">
+            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-neutral-900 ring-1 ring-black/10 md:h-10 md:w-10 shadow-xs">
               {logoUrl ? (
                 <img
                   src={logoUrl}
@@ -83,7 +83,7 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
                   className="h-full w-full object-contain p-1.5 transition-transform group-hover:scale-105"
                 />
               ) : (
-                <span className="text-sm font-black uppercase" style={{ color: primaryColor }}>
+                <span className="text-sm font-black uppercase text-amber-400">
                   {brandName.slice(0, 2)}
                 </span>
               )}

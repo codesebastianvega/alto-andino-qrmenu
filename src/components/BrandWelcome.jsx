@@ -52,8 +52,8 @@ export default function BrandWelcome({
         className="absolute inset-0 z-0"
       >
         <img 
-          src={bgUrl || "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=2070&auto=format&fit=crop"} 
-          className="w-full h-full object-cover opacity-60 grayscale-[20%]"
+          src={bgUrl || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=2070&auto=format&fit=crop"} 
+          className="w-full h-full object-cover opacity-60"
           alt="Restaurant background"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/80" />
