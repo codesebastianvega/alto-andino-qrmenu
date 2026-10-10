@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../config/supabase';
 import { Icon } from '@iconify-icon/react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { useLocations } from '../context/LocationContext';
@@ -30,7 +29,17 @@ const isBarItem = (item) => {
   return barKeywords.some(kw => name.includes(kw) || desc.includes(kw));
 };
 
-function BarTicketTimer({ createdAt }) {
+const isKitchenItem = (item) => {
+  if (!item) return false;
+  const prod = item.products;
+  if (!prod) return false;
+  if (prod.station === 'kitchen') return true;
+  if (prod.station === 'bar' || prod.station === 'none') return false;
+  if (prod.requires_kitchen === false) return false;
+  return !isBarItem(item);
+};
+
+function BarTicketTimer({ createdAt, isDark }) {
   const [mins, setMins] = useState(0);
 
   useEffect(() => {
@@ -42,12 +51,23 @@ function BarTicketTimer({ createdAt }) {
     return () => clearInterval(interval);
   }, [createdAt]);
 
-  let badgeColor = 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20';
-  if (mins >= 7) badgeColor = 'text-amber-400 bg-amber-500/10 border-amber-500/20';
-  if (mins >= 15) badgeColor = 'text-rose-400 bg-rose-500/10 border-rose-500/30 animate-pulse';
+  let badgeColor = isDark 
+    ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' 
+    : 'text-cyan-800 bg-cyan-50 border-cyan-200 font-bold';
+
+  if (mins >= 7) {
+    badgeColor = isDark 
+      ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' 
+      : 'text-amber-800 bg-amber-50 border-amber-200 font-bold';
+  }
+  if (mins >= 15) {
+    badgeColor = isDark 
+      ? 'text-rose-400 bg-rose-500/10 border-rose-500/30 animate-pulse' 
+      : 'text-rose-700 bg-rose-50 border-rose-300 animate-pulse font-bold';
+  }
 
   return (
-    <div className={`text-xs font-mono font-bold px-2 py-0.5 rounded border flex items-center gap-1 ${badgeColor}`}>
+    <div className={`text-xs font-mono px-2 py-0.5 rounded border flex items-center gap-1 ${badgeColor}`}>
       <Icon icon="heroicons:clock" className="text-xs" />
       {mins}m
     </div>
@@ -60,11 +80,29 @@ export default function AdminBar() {
   const [updatingStatus, setUpdatingStatus] = useState(null);
 
   const [viewMode, setViewMode] = useState('all'); // 'all' | 'new' | 'preparing' | 'batch'
-  const { settings: restaurantSettings } = useRestaurantSettings();
+  const [stationFilter, setStationFilter] = useState('bar'); // 'bar' | 'kitchen' | 'all'
 
+  // Tema claro tipo Bistró Nórdico por defecto, sincronizado con KDS
+  const [isDark, setIsDark] = useState(() => {
+    try {
+      return localStorage.getItem('aluna_kds_dark') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const { settings: restaurantSettings } = useRestaurantSettings();
   const { activeBrand } = useAuth();
   const { activeLocationId, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id;
+
+  const toggleTheme = () => {
+    setIsDark(prev => {
+      const next = !prev;
+      try { localStorage.setItem('aluna_kds_dark', String(next)); } catch {}
+      return next;
+    });
+  };
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
@@ -95,12 +133,7 @@ export default function AdminBar() {
 
       if (error) throw error;
 
-      // Filtrar órdenes que contengan al menos un producto para la barra
-      const barRelevantOrders = (data || []).filter(order =>
-        order.order_items?.some(item => isBarItem(item))
-      );
-
-      const sortedData = barRelevantOrders.sort((a, b) => {
+      const sortedData = (data || []).sort((a, b) => {
         const priority = { 'dine_in': 1, 'takeaway': 2, 'delivery': 3 };
         const pA = priority[a.fulfillment_type] || 4;
         const pB = priority[b.fulfillment_type] || 4;
@@ -117,18 +150,33 @@ export default function AdminBar() {
     }
   }, [activeBrandId, isAllLocations, activeLocationId]);
 
+  // Filtrado de pedidos según estación
+  const stationOrders = useMemo(() => {
+    if (stationFilter === 'all') return orders;
+    if (stationFilter === 'kitchen') {
+      return orders.filter(o => o.order_items?.some(it => isKitchenItem(it)));
+    }
+    return orders.filter(o => o.order_items?.some(it => isBarItem(it)));
+  }, [orders, stationFilter]);
+
   const displayedOrders = useMemo(() => {
-    if (viewMode === 'new') return orders.filter(o => o.status === 'new');
-    if (viewMode === 'preparing') return orders.filter(o => o.status === 'preparing');
-    return orders;
-  }, [orders, viewMode]);
+    if (viewMode === 'new') return stationOrders.filter(o => o.status === 'new');
+    if (viewMode === 'preparing') return stationOrders.filter(o => o.status === 'preparing');
+    return stationOrders;
+  }, [stationOrders, viewMode]);
 
   // Rondas acumuladas para bartenders
   const batchOrders = useMemo(() => {
     const batches = {};
-    const targetOrders = orders.filter(o => o.status === 'preparing' || o.status === 'new');
+    const targetOrders = stationOrders.filter(o => o.status === 'preparing' || o.status === 'new');
     targetOrders.forEach(order => {
-      order.order_items?.filter(item => isBarItem(item)).forEach(item => {
+      const itemsToBatch = order.order_items?.filter(item => {
+        if (stationFilter === 'bar') return isBarItem(item);
+        if (stationFilter === 'kitchen') return isKitchenItem(item);
+        return true;
+      }) || [];
+
+      itemsToBatch.forEach(item => {
         const mods = item.modifiers ? Object.entries(item.modifiers).sort((a, b) => a[0].localeCompare(b[0])) : [];
         const variantKey = `${item.product_id}-${JSON.stringify(mods)}-${item.notes || ''}`;
 
@@ -151,7 +199,7 @@ export default function AdminBar() {
       });
     });
     return Object.values(batches);
-  }, [orders]);
+  }, [stationOrders, stationFilter]);
 
   const markAsPreparing = async (orderId) => {
     try {
@@ -241,80 +289,128 @@ export default function AdminBar() {
   }, [fetchBarOrders, activeBrandId, activeLocationId, isAllLocations]);
 
   const renderOrderTicket = (order) => {
-    const barItems = order.order_items?.filter(it => isBarItem(it)) || [];
-    const kitchenCount = (order.order_items || []).filter(it => !isBarItem(it)).length;
-    if (barItems.length === 0) return null;
+    const itemsToShow = order.order_items?.filter(it => {
+      if (stationFilter === 'bar') return isBarItem(it);
+      if (stationFilter === 'kitchen') return isKitchenItem(it);
+      return true;
+    }) || [];
+
+    const otherItemsCount = (order.order_items || []).length - itemsToShow.length;
+    if (itemsToShow.length === 0) return null;
 
     const isPreparing = order.status === 'preparing';
 
     return (
       <div
         key={order.id}
-        className={`flex flex-col bg-[#111827] rounded-xl border transition-all shadow-md overflow-hidden ${
-          isPreparing
-            ? 'border-cyan-500/50 shadow-cyan-950/20'
-            : 'border-gray-800 hover:border-gray-700'
+        className={`flex flex-col rounded-xl border transition-all overflow-hidden ${
+          isDark
+            ? `bg-[#111827] ${isPreparing ? 'border-cyan-500/60 shadow-lg shadow-cyan-950/20' : 'border-gray-800'}`
+            : `bg-white ${isPreparing ? 'border-cyan-400 shadow-md ring-1 ring-cyan-400/20' : 'border-slate-200 shadow-xs'}`
         }`}
       >
         {/* Top Status Stripe */}
-        <div className={`h-1 w-full ${isPreparing ? 'bg-cyan-500' : 'bg-sky-500'}`} />
+        <div className={`h-1.5 w-full ${isPreparing ? 'bg-cyan-500' : isDark ? 'bg-sky-600' : 'bg-slate-800'}`} />
 
         {/* Ticket Header */}
-        <div className="p-3.5 pb-2.5 border-b border-gray-800/80 bg-gray-900/60">
+        <div className={`p-3.5 pb-2.5 border-b ${
+          isDark ? 'border-gray-800/80 bg-gray-900/60' : 'border-slate-100 bg-slate-50/70'
+        }`}>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap">
               {order.fulfillment_type === 'dine_in' ? (
-                <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-black px-2 py-0.5 rounded uppercase">
+                <span className={`text-xs font-black px-2 py-0.5 rounded uppercase tracking-wider ${
+                  isDark ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-slate-900 text-white shadow-2xs'
+                }`}>
                   Mesa {order.restaurant_tables?.table_number || '?'}
                 </span>
               ) : order.fulfillment_type === 'takeaway' ? (
-                <span className="bg-blue-500/20 text-blue-300 border border-blue-500/30 text-xs font-black px-2 py-0.5 rounded uppercase">
+                <span className={`text-xs font-black px-2 py-0.5 rounded uppercase tracking-wider ${
+                  isDark ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-blue-100 text-blue-900 border border-blue-200'
+                }`}>
                   Llevar
                 </span>
               ) : (
-                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-black px-2 py-0.5 rounded uppercase">
+                <span className={`text-xs font-black px-2 py-0.5 rounded uppercase tracking-wider ${
+                  isDark ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-amber-100 text-amber-900 border border-amber-200'
+                }`}>
                   Domicilio
                 </span>
               )}
 
-              <span className="text-gray-400 font-mono text-xs font-bold">
+              <span className={`font-mono text-xs font-bold ${isDark ? 'text-gray-400' : 'text-slate-400'}`}>
                 #{order.id.slice(0, 4)}
               </span>
 
-              {kitchenCount > 0 && (
-                <span className="text-[10px] font-semibold text-orange-400 bg-orange-950/60 border border-orange-800/50 px-1.5 py-0.2 rounded">
-                  🍳 +{kitchenCount} cocina
+              {stationFilter === 'bar' && otherItemsCount > 0 && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${
+                  isDark 
+                    ? 'text-orange-400 bg-orange-950/60 border-orange-800/50' 
+                    : 'text-orange-800 bg-orange-50 border-orange-200'
+                }`}>
+                  🍳 +{otherItemsCount} cocina
+                </span>
+              )}
+
+              {stationFilter === 'kitchen' && otherItemsCount > 0 && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${
+                  isDark 
+                    ? 'text-cyan-400 bg-cyan-950/60 border-cyan-800/50' 
+                    : 'text-cyan-800 bg-cyan-50 border-cyan-200'
+                }`}>
+                  🍸 +{otherItemsCount} bar
                 </span>
               )}
             </div>
 
-            <BarTicketTimer createdAt={order.created_at} />
+            <BarTicketTimer createdAt={order.created_at} isDark={isDark} />
           </div>
 
           {order.customer_name && (
-            <p className="text-gray-400 text-xs font-medium truncate mt-1">
-              Cliente: <span className="text-gray-200">{order.customer_name}</span>
+            <p className={`text-xs font-medium truncate mt-1 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+              Cliente: <span className={isDark ? 'text-gray-200 font-bold' : 'text-slate-800 font-bold'}>{order.customer_name}</span>
             </p>
           )}
         </div>
 
         {/* Ticket Items List */}
-        <div className="p-3.5 space-y-2.5 flex-1 min-h-[140px] max-h-[45vh] overflow-y-auto">
-          {barItems.map((item, idx) => (
-            <div key={idx} className="flex items-start gap-2.5 py-1 border-b border-gray-800/40 last:border-0">
-              <span className="w-6 h-6 rounded bg-gray-800 text-white font-mono text-xs font-black flex items-center justify-center shrink-0 mt-0.5">
+        <div className={`p-3.5 space-y-2.5 flex-1 min-h-[140px] max-h-[46vh] overflow-y-auto ${
+          isDark ? 'bg-[#111827]' : 'bg-white'
+        }`}>
+          {itemsToShow.map((item, idx) => (
+            <div key={idx} className={`flex items-start gap-2.5 py-1 border-b last:border-0 ${
+              isDark ? 'border-gray-800/40' : 'border-slate-100'
+            }`}>
+              <span className={`w-6 h-6 rounded font-mono text-xs font-black flex items-center justify-center shrink-0 mt-0.5 ${
+                isDark ? 'bg-gray-800 text-white' : 'bg-slate-900 text-white'
+              }`}>
                 {item.quantity}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white uppercase leading-tight truncate">
-                  {item.products?.name}
-                </p>
+                <div className="flex items-baseline justify-between gap-1">
+                  <p className={`text-sm font-bold uppercase leading-tight truncate ${
+                    isDark ? 'text-white' : 'text-slate-900'
+                  }`}>
+                    {item.products?.name}
+                  </p>
+                  {stationFilter === 'all' && (
+                    <span className={`text-[9px] font-bold px-1 rounded uppercase shrink-0 border ${
+                      isBarItem(item) 
+                        ? (isDark ? 'text-cyan-400 bg-cyan-950 border-cyan-800' : 'text-cyan-800 bg-cyan-50 border-cyan-200')
+                        : (isDark ? 'text-orange-400 bg-orange-950 border-orange-800' : 'text-orange-800 bg-orange-50 border-orange-200')
+                    }`}>
+                      {isBarItem(item) ? 'Bar' : 'Cocina'}
+                    </span>
+                  )}
+                </div>
 
                 {/* Modificadores */}
                 {item.modifiers && Object.keys(item.modifiers).length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">
                     {Object.entries(item.modifiers).map(([group, choice]) => (
-                      <span key={group} className="text-[11px] text-cyan-300 font-medium">
+                      <span key={group} className={`text-[11px] font-medium ${
+                        isDark ? 'text-cyan-300' : 'text-slate-600'
+                      }`}>
                         • {choice}
                       </span>
                     ))}
@@ -323,7 +419,11 @@ export default function AdminBar() {
 
                 {/* Notas de Ítem */}
                 {item.notes && (
-                  <div className="mt-1 text-xs text-amber-300 bg-amber-950/40 border border-amber-900/50 rounded px-2 py-0.5">
+                  <div className={`mt-1 text-xs rounded px-2 py-0.5 border ${
+                    isDark 
+                      ? 'text-amber-300 bg-amber-950/40 border-amber-900/50' 
+                      : 'text-amber-900 bg-amber-50 border-amber-200 font-medium'
+                  }`}>
                     ⚠️ {item.notes}
                   </div>
                 )}
@@ -332,19 +432,29 @@ export default function AdminBar() {
           ))}
 
           {order.notes && (
-            <div className="text-xs text-cyan-300 bg-cyan-950/30 border border-cyan-900/40 rounded p-2 mt-2">
+            <div className={`text-xs rounded p-2 mt-2 border ${
+              isDark 
+                ? 'text-cyan-300 bg-cyan-950/30 border-cyan-900/40' 
+                : 'text-slate-700 bg-slate-50 border-slate-200'
+            }`}>
               <span className="font-bold">Nota General:</span> {order.notes}
             </div>
           )}
         </div>
 
         {/* Ticket Action Footer */}
-        <div className="p-2.5 pt-2 border-t border-gray-800/80 bg-gray-900/40 flex items-center gap-2">
+        <div className={`p-2.5 pt-2 border-t flex items-center gap-2 ${
+          isDark ? 'border-gray-800/80 bg-gray-900/40' : 'border-slate-100 bg-slate-50/80'
+        }`}>
           {restaurantSettings?.kitchen_print_enabled && (
             <button
               onClick={() => printThermalDocument({ order, type: 'kitchen', width: restaurantSettings?.thermal_paper_width || '80', businessName: activeBrand?.name, business: activeBrand })}
               title="Imprimir comanda de barra"
-              className="h-10 px-3 rounded-lg border border-gray-800 hover:border-gray-700 bg-gray-800/60 text-gray-300 hover:text-white flex items-center justify-center transition-all"
+              className={`h-9 px-2.5 rounded-lg border flex items-center justify-center transition-all ${
+                isDark 
+                  ? 'border-gray-800 hover:border-gray-700 bg-gray-800/60 text-gray-300 hover:text-white' 
+                  : 'border-slate-200 hover:bg-white text-slate-600 shadow-2xs'
+              }`}
             >
               <Icon icon="solar:printer-2-linear" className="text-base" />
             </button>
@@ -354,7 +464,9 @@ export default function AdminBar() {
             <button
               onClick={() => markAsPreparing(order.id)}
               disabled={updatingStatus === order.id}
-              className="flex-1 h-10 rounded-lg bg-cyan-600 hover:bg-cyan-500 active:scale-98 text-white text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow"
+              className={`flex-1 h-9 rounded-lg text-white text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-2xs ${
+                isDark ? 'bg-cyan-600 hover:bg-cyan-500' : 'bg-slate-900 hover:bg-slate-800'
+              }`}
             >
               {updatingStatus === order.id ? <Icon icon="line-md:loading-loop" /> : 'Preparar Tragos'}
             </button>
@@ -362,7 +474,7 @@ export default function AdminBar() {
             <button
               onClick={() => markAsReady(order.id)}
               disabled={updatingStatus === order.id}
-              className="flex-1 h-10 rounded-lg bg-teal-600 hover:bg-teal-500 active:scale-98 text-white text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow"
+              className="flex-1 h-9 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-2xs"
             >
               {updatingStatus === order.id ? <Icon icon="line-md:loading-loop" /> : 'Bebidas Listas ✓'}
             </button>
@@ -374,35 +486,67 @@ export default function AdminBar() {
 
   if (loading && orders.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-gray-400">
-        <Icon icon="line-md:loading-loop" className="text-4xl mb-3 text-cyan-400" />
+      <div className={`flex flex-col items-center justify-center min-h-[60vh] ${isDark ? 'text-gray-400' : 'text-slate-400'}`}>
+        <Icon icon="line-md:loading-loop" className="text-4xl mb-3 text-cyan-500" />
         <p className="text-sm font-bold uppercase tracking-wider">Cargando barra...</p>
       </div>
     );
   }
 
-  const activeCount = orders.length;
-  const newCount = orders.filter(o => o.status === 'new').length;
-  const preparingCount = orders.filter(o => o.status === 'preparing').length;
+  const activeCount = stationOrders.length;
+  const newCount = stationOrders.filter(o => o.status === 'new').length;
+  const preparingCount = stationOrders.filter(o => o.status === 'preparing').length;
 
   return (
-    <div className="min-h-screen bg-[#090d16] p-3 sm:p-5 text-gray-100 font-sans">
+    <div className={`min-h-screen p-3 sm:p-5 font-sans transition-colors ${
+      isDark ? 'bg-[#090d16] text-gray-100' : 'bg-[#f4f5f8] text-slate-900'
+    }`}>
       {/* Top Professional Control Bar */}
-      <div className="mb-4 pb-3 border-b border-gray-800/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className={`mb-4 pb-3 border-b flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+        isDark ? 'border-gray-800/80' : 'border-slate-200'
+      }`}>
         {/* Left: Station & Brand */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-lg">🍸</span>
-            <h1 className="text-base sm:text-lg font-black tracking-tight text-white uppercase">
-              BDS <span className="text-cyan-400">Barra & Coctelería</span>
+            <span className="text-xl">🍸</span>
+            <h1 className={`text-base sm:text-lg font-black tracking-tight uppercase ${
+              isDark ? 'text-white' : 'text-slate-900'
+            }`}>
+              BDS <span className="text-cyan-600">Barra & Tragos</span>
             </h1>
+          </div>
+
+          {/* Selector de Estación */}
+          <div className={`flex rounded-lg p-0.5 border ${
+            isDark ? 'bg-gray-900 border-gray-800' : 'bg-slate-200/70 border-slate-300/60'
+          }`}>
+            {[
+              { id: 'bar', label: 'Barra', emoji: '🍸' },
+              { id: 'kitchen', label: 'Cocina', emoji: '🍳' },
+              { id: 'all', label: 'Pase Expo', emoji: '📋' }
+            ].map(st => (
+              <button
+                key={st.id}
+                onClick={() => setStationFilter(st.id)}
+                className={`px-2.5 py-1 text-xs font-bold rounded flex items-center gap-1 transition-all ${
+                  stationFilter === st.id
+                    ? (isDark ? 'bg-cyan-600 text-white' : 'bg-white text-slate-900 shadow-xs')
+                    : (isDark ? 'text-gray-400 hover:text-gray-200' : 'text-slate-600 hover:text-slate-900')
+                }`}
+              >
+                <span>{st.emoji}</span>
+                <span>{st.label}</span>
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Right: View Modes & Quick Tools */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Filtros de Estado */}
-          <div className="flex bg-gray-900 border border-gray-800 rounded-lg p-0.5">
+          <div className={`flex rounded-lg p-0.5 border ${
+            isDark ? 'bg-gray-900 border-gray-800' : 'bg-slate-200/70 border-slate-300/60'
+          }`}>
             {[
               { id: 'all', label: 'Todos', count: activeCount },
               { id: 'new', label: 'En Cola', count: newCount },
@@ -414,14 +558,16 @@ export default function AdminBar() {
                 onClick={() => setViewMode(vm.id)}
                 className={`px-2.5 py-1 text-xs font-bold rounded flex items-center gap-1.5 transition-all ${
                   viewMode === vm.id
-                    ? 'bg-gray-800 text-white shadow-xs'
-                    : 'text-gray-400 hover:text-gray-200'
+                    ? (isDark ? 'bg-gray-800 text-white' : 'bg-white text-slate-900 shadow-xs')
+                    : (isDark ? 'text-gray-400 hover:text-gray-200' : 'text-slate-600 hover:text-slate-900')
                 }`}
               >
                 <span>{vm.label}</span>
                 {vm.count !== undefined && (
                   <span className={`text-[10px] px-1 rounded font-mono ${
-                    viewMode === vm.id ? 'bg-gray-700 text-white' : 'bg-gray-800 text-gray-400'
+                    viewMode === vm.id 
+                      ? (isDark ? 'bg-gray-700 text-white' : 'bg-slate-100 text-slate-800') 
+                      : (isDark ? 'bg-gray-800 text-gray-400' : 'bg-slate-300/60 text-slate-700')
                   }`}>
                     {vm.count}
                   </span>
@@ -430,19 +576,34 @@ export default function AdminBar() {
             ))}
           </div>
 
-          {/* Quick Actions */}
-          <div className="flex items-center gap-1 bg-gray-900 border border-gray-800 rounded-lg p-0.5">
+          {/* Quick Actions (Theme, Refresh, Fullscreen) */}
+          <div className={`flex items-center gap-1 rounded-lg p-0.5 border ${
+            isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-slate-200 shadow-2xs'
+          }`}>
+            <button
+              onClick={toggleTheme}
+              title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              className={`w-8 h-7 flex items-center justify-center rounded transition-colors ${
+                isDark ? 'text-amber-400 hover:bg-gray-800' : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <Icon icon={isDark ? 'solar:sun-2-bold' : 'solar:moon-stars-bold'} className="text-sm" />
+            </button>
             <button
               onClick={() => fetchBarOrders()}
               title="Refrescar comanda"
-              className="w-8 h-7 flex items-center justify-center rounded hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+              className={`w-8 h-7 flex items-center justify-center rounded transition-colors ${
+                isDark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
             >
               <Icon icon="heroicons:arrow-path" className="text-sm" />
             </button>
             <button
               onClick={toggleFullScreen}
               title="Pantalla Completa"
-              className="w-8 h-7 flex items-center justify-center rounded hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+              className={`w-8 h-7 flex items-center justify-center rounded transition-colors ${
+                isDark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
             >
               <Icon icon="heroicons:arrows-pointing-out" className="text-sm" />
             </button>
@@ -452,21 +613,26 @@ export default function AdminBar() {
 
       {/* Main Grid View */}
       {viewMode === 'batch' ? (
-        /* Vista de Rondas / Agrupados */
         batchOrders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-            <p className="text-sm font-medium">No hay bebidas acumuladas en este momento</p>
+          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+            <p className="text-sm font-medium">No hay bebidas agrupadas en este momento</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {batchOrders.map((batch, idx) => (
-              <div key={idx} className="bg-gray-900/90 border border-gray-800 rounded-xl p-3 flex flex-col justify-between">
+              <div key={idx} className={`rounded-xl p-3 flex flex-col justify-between border ${
+                isDark ? 'bg-gray-900/90 border-gray-800' : 'bg-white border-slate-200 shadow-xs'
+              }`}>
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <p className="text-sm font-bold text-white uppercase leading-tight">
+                    <p className={`text-sm font-bold uppercase leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                       {batch.name}
                     </p>
-                    <span className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-mono text-base font-black flex items-center justify-center shrink-0">
+                    <span className={`w-8 h-8 rounded-lg font-mono text-base font-black flex items-center justify-center shrink-0 border ${
+                      isDark 
+                        ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' 
+                        : 'bg-cyan-50 text-cyan-800 border-cyan-200'
+                    }`}>
                       {batch.totalQuantity}
                     </span>
                   </div>
@@ -474,7 +640,7 @@ export default function AdminBar() {
                   {batch.modifiers && Object.keys(batch.modifiers).length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-2">
                       {Object.values(batch.modifiers).map((mod, i) => (
-                        <span key={i} className="text-[10px] text-cyan-300 font-medium">
+                        <span key={i} className={`text-[10px] font-medium ${isDark ? 'text-cyan-300' : 'text-slate-600'}`}>
                           • {mod}
                         </span>
                       ))}
@@ -482,14 +648,18 @@ export default function AdminBar() {
                   )}
 
                   {batch.notes && (
-                    <p className="text-xs text-amber-300 italic mb-2">⚠️ {batch.notes}</p>
+                    <p className="text-xs text-rose-500 italic mb-2">⚠️ {batch.notes}</p>
                   )}
                 </div>
 
-                <div className="pt-2 border-t border-gray-800 flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] text-gray-500 uppercase font-bold">Mesas:</span>
+                <div className={`pt-2 border-t flex items-center gap-1.5 flex-wrap ${
+                  isDark ? 'border-gray-800' : 'border-slate-100'
+                }`}>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold">Mesas:</span>
                   {batch.orders.map((ord, i) => (
-                    <span key={i} className="text-[10px] bg-gray-800 text-gray-200 px-1.5 py-0.5 rounded font-mono font-bold">
+                    <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
+                      isDark ? 'bg-gray-800 text-gray-200' : 'bg-slate-100 text-slate-800'
+                    }`}>
                       {ord}
                     </span>
                   ))}
@@ -499,12 +669,11 @@ export default function AdminBar() {
           </div>
         )
       ) : (
-        /* Vista de Tickets Grid */
         displayedOrders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-            <Icon icon="heroicons:check-badge" className="text-5xl text-gray-700 mb-2" />
-            <p className="text-sm font-bold uppercase tracking-wider text-gray-400">Barra Despejada</p>
-            <p className="text-xs text-gray-600 mt-0.5">No hay bebidas pendientes en este momento</p>
+          <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+            <Icon icon="heroicons:check-badge" className={`text-5xl mb-2 ${isDark ? 'text-gray-700' : 'text-slate-300'}`} />
+            <p className={`text-sm font-bold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>Barra Despejada</p>
+            <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-600' : 'text-slate-400'}`}>No hay comandas pendientes para la barra</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5">
