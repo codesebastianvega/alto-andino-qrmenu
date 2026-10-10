@@ -21,7 +21,7 @@ import { useLocation } from '../context/LocationContext';
 import { LinkCatalogModal } from '../components/admin/LinkCatalogModal';
 import { Link as LinkIcon } from 'lucide-react';
 import { useMenuData } from '../context/MenuDataContext';
-import { Eye, EyeOff, Clock, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff, Clock, AlertTriangle, Printer } from 'lucide-react';
 
 const STOCK_BADGE = {
   in:  { label: 'Disponible', variant: 'green' },
@@ -419,6 +419,19 @@ export default function AdminProducts() {
               {products.length} / {maxProducts} PRODS
             </span>
           </div>
+          
+          <button
+            type="button"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('aluna:action', { detail: { target: 'menu_print' } }));
+            }}
+            className="flex items-center gap-1.5 py-2.5 px-3.5 sm:py-3 sm:px-4 text-xs font-bold rounded-xl border border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50 shadow-xs transition-colors shrink-0"
+            title="Generador de Carta Imprimible y PDF para Rappi / DiDi"
+          >
+            <Printer size={15} />
+            <span className="hidden sm:inline">Carta Imprimible (PDF)</span>
+            <span className="sm:hidden">PDF</span>
+          </button>
           
           <PrimaryButton 
             onClick={handleCreate} 

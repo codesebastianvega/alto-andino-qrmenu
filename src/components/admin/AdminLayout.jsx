@@ -23,6 +23,7 @@ import AdminStaff from '../../pages/AdminStaff';
 import AdminSedes from '../../pages/AdminSedes';
 import AdminPinLogin from './AdminPinLogin';
 import AdminWebContent from '../../pages/AdminWebContent';
+import AdminMenuPrint from '../../pages/AdminMenuPrint';
 import AdminBusinessProfile from '../../pages/AdminBusinessProfile';
 import AdminProfile from '../../pages/AdminProfile';
 import ContextBreadcrumb from './ContextBreadcrumb';
@@ -115,6 +116,13 @@ const Icons = {
       <path d="M6 7v14M18 7v14M12 7v14M4 14h16"/>
     </svg>
   ),
+  Print: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 6 2 18 2 18 9"/>
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+      <rect x="6" y="14" width="12" height="8"/>
+    </svg>
+  ),
   ChevronLeft: () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="15 18 9 12 15 6"/>
@@ -180,6 +188,7 @@ const CARTA_ITEMS = [
   { id: 'products',        label: 'Carta Principal',   Icon: Icons.Products, roles: ADMIN_ROLES },
   { id: 'categories',      label: 'Categorías',         Icon: Icons.Categories, roles: ADMIN_ROLES },
   { id: 'modifier_groups', label: 'Extras y Opciones', Icon: Icons.Modifiers, roles: ADMIN_ROLES },
+  { id: 'menu_print',      label: 'Carta Imprimible (PDF)', Icon: Icons.Print, roles: ADMIN_ROLES },
   // { id: 'experiences',     label: 'Experiencias',      Icon: Icons.Experiences, roles: ADMIN_ROLES, feature: 'experiences' },
   { id: 'tables',          label: 'Mesas y QRs',       Icon: Icons.Tables, roles: ADMIN_ROLES, feature: 'table_management' },
 ];
@@ -1090,6 +1099,7 @@ export default function AdminLayout() {
           { currentPage === 'experiences' && <AdminExperiences /> }
           { currentPage === 'recipes'     && <AdminRecipes /> }
           { currentPage === 'modifier_groups' && <AdminModifierGroups /> }
+          { currentPage === 'menu_print' && <AdminMenuPrint /> }
           { currentPage === 'inventory'   && <AdminModifiers /> }
           { currentPage === 'tables'      && <AdminTables /> }
           { currentPage === 'orders'      && <AdminOrders /> }

@@ -137,3 +137,17 @@ export const PLAN_LIMITS_BY_ID = {
   [PLAN_IDS.premium]:     { initial_max_mb: 15, compressed_target_mb: 0.12, max_width: 900, image_max_mb: 15 },
   [PLAN_IDS.enterprise]:  { initial_max_mb: 20, compressed_target_mb: 0.15, max_width: 1000, image_max_mb: 20 },
 };
+
+/**
+ * Límites y costos de Carta Imprimible (PDF / Planchas) por Plan
+ * - quota: Caras gratuitas incluidas al mes (-1 = ilimitadas)
+ * - pricePerFace: Precio en COP por cara adicional
+ */
+export const PRINT_LIMITS_BY_PLAN = {
+  emprendedor: { quota: 0,  pricePerFace: 25000, label: 'Pago por uso ($25.000 / cara)' },
+  esencial:    { quota: 1,  pricePerFace: 18000, label: '1 cara gratis/mes ($18.000 adicional)' },
+  profesional: { quota: 3,  pricePerFace: 12000, label: '3 caras gratis/mes ($12.000 adicional)' },
+  premium:     { quota: -1, pricePerFace: 0,     label: 'Ilimitado incluido' },
+  enterprise:  { quota: -1, pricePerFace: 0,     label: 'Ilimitado incluido' },
+};
+
