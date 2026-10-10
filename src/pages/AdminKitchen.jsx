@@ -41,6 +41,28 @@ function KitchenTimer({ createdAt }) {
   );
 }
 
+const isBarItem = (item) => {
+  if (!item) return false;
+  const prod = item.products;
+  if (!prod) return false;
+  if (prod.station === 'bar') return true;
+  if (prod.station === 'kitchen' || prod.station === 'none') return false;
+  const name = (prod.name || '').toLowerCase();
+  const desc = (prod.description || '').toLowerCase();
+  const barKeywords = ['café', 'cafe', 'tinto', 'latte', 'capuchino', 'espresso', 'bebida', 'smoothie', 'jugo', 'coctel', 'cóctel', 'cocktail', 'gin', 'trago', 'cerveza', 'beer', 'vino', 'licor', 'soda', 'agua', 'hatsu', 'gaseosa', 'aromatica', 'aromática', 'té'];
+  return barKeywords.some(kw => name.includes(kw) || desc.includes(kw));
+};
+
+const isKitchenItem = (item) => {
+  if (!item) return false;
+  const prod = item.products;
+  if (!prod) return false;
+  if (prod.station === 'kitchen') return true;
+  if (prod.station === 'bar' || prod.station === 'none') return false;
+  if (prod.requires_kitchen === false) return false;
+  return !isBarItem(item);
+};
+
 export default function AdminKitchen() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +70,7 @@ export default function AdminKitchen() {
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   const [viewMode, setViewMode] = useState('tower'); // 'tower' | 'batch' | 'all'
+  const [stationFilter, setStationFilter] = useState('kitchen'); // 'kitchen' | 'bar' | 'all'
   const { settings: restaurantSettings } = useRestaurantSettings();
 
   const { activeBrand } = useAuth();
@@ -66,7 +89,7 @@ export default function AdminKitchen() {
           restaurant_tables ( id, table_number ),
           order_items (
             id, product_id, quantity, unit_price, modifiers, notes, created_at,
-            products ( id, name, description )
+            products ( id, name, description, station, requires_kitchen )
           )
         `)
         .in('status', ['new', 'preparing'])
@@ -93,11 +116,27 @@ export default function AdminKitchen() {
     }
   }, [activeBrandId, isAllLocations, activeLocationId]);
 
+  // Órdenes filtradas según la estación activa
+  const filteredOrders = useMemo(() => {
+    if (stationFilter === 'all') return orders;
+    if (stationFilter === 'bar') {
+      return orders.filter(o => o.order_items?.some(it => isBarItem(it)));
+    }
+    // Default 'kitchen'
+    return orders.filter(o => o.order_items?.some(it => isKitchenItem(it)));
+  }, [orders, stationFilter]);
 
   const batchOrders = React.useMemo(() => {
     const batches = {};
-    orders.filter(o => o.status === 'preparing').forEach(order => {
-        order.order_items?.forEach(item => {
+    const targetOrders = orders.filter(o => o.status === 'preparing');
+    targetOrders.forEach(order => {
+        const itemsToBatch = order.order_items?.filter(item => {
+          if (stationFilter === 'kitchen') return isKitchenItem(item);
+          if (stationFilter === 'bar') return isBarItem(item);
+          return true;
+        }) || [];
+
+        itemsToBatch.forEach(item => {
             const mods = item.modifiers ? Object.entries(item.modifiers).sort((a,b) => a[0].localeCompare(b[0])) : [];
             const variantKey = `${item.product_id}-${JSON.stringify(mods)}-${item.notes || ''}`;
             
@@ -120,7 +159,7 @@ export default function AdminKitchen() {
         });
     });
     return Object.values(batches);
-}, [orders]);
+}, [orders, stationFilter]);
 
   const markAsPreparing = async (orderId) => {
     try {
@@ -271,7 +310,17 @@ export default function AdminKitchen() {
     }
   };
 
-  const renderOrderCard = (order) => (
+  const renderOrderCard = (order) => {
+    const itemsToShow = order.order_items?.filter(it => {
+      if (stationFilter === 'kitchen') return isKitchenItem(it);
+      if (stationFilter === 'bar') return isBarItem(it);
+      return true;
+    }) || [];
+
+    const otherItemsCount = (order.order_items || []).length - itemsToShow.length;
+    if (itemsToShow.length === 0) return null;
+
+    return (
     <motion.div
       layout
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -312,6 +361,16 @@ export default function AdminKitchen() {
               <span className="text-white/40 text-[10px] font-black tracking-widest uppercase">
                 #{order.id.slice(0, 4)}
               </span>
+              {stationFilter === 'kitchen' && otherItemsCount > 0 && (
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center gap-1">
+                  <span>🍸</span> +{otherItemsCount} en barra
+                </span>
+              )}
+              {stationFilter === 'bar' && otherItemsCount > 0 && (
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center gap-1">
+                  <span>🍳</span> +{otherItemsCount} en cocina
+                </span>
+              )}
               {isAllLocations && order.locations?.name && (
                 <span className="text-[10px] font-black px-3 py-1 bg-white/10 text-white/50 border border-white/20 rounded-full tracking-widest uppercase">
                   {order.locations.name}
@@ -350,7 +409,7 @@ export default function AdminKitchen() {
 
         {/* Items List */}
         <div className="space-y-4 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">
-          {order.order_items?.map((item, idx) => {
+          {itemsToShow.map((item, idx) => {
             const isNewItem = item.created_at && (new Date() - new Date(item.created_at)) < 5 * 60000;
             
             return (
@@ -371,12 +430,21 @@ export default function AdminKitchen() {
                 <span className="text-[9px] font-bold text-white/40 uppercase tracking-tighter">Cant</span>
               </div>
               <div className="flex-1 py-0.5">
-                <button 
-                  onClick={() => setSelectedProduct(item.products)}
-                  className="text-xs font-black leading-tight uppercase text-white group-hover/item:text-emerald-400 transition-colors text-left"
-                >
-                  {item.products?.name}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setSelectedProduct(item.products)}
+                    className="text-xs font-black leading-tight uppercase text-white group-hover/item:text-emerald-400 transition-colors text-left"
+                  >
+                    {item.products?.name}
+                  </button>
+                  {stationFilter === 'all' && (
+                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${
+                      isBarItem(item) ? 'bg-cyan-500/20 text-cyan-300' : 'bg-orange-500/20 text-orange-300'
+                    }`}>
+                      {isBarItem(item) ? '🍸 Bar' : '🍳 Cocina'}
+                    </span>
+                  )}
+                </div>
                 
                 {/* Modifiers List - HIGH VISIBILITY */}
                 {item.modifiers && Object.keys(item.modifiers).length > 0 && (
@@ -442,7 +510,8 @@ export default function AdminKitchen() {
         )}
       </div>
     </motion.div>
-  );
+    );
+  };
 
   useEffect(() => {
     if (!activeBrandId) return;
@@ -570,6 +639,30 @@ export default function AdminKitchen() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-4 relative z-10">
+            {/* Station Filter Toggle */}
+            <div className="flex bg-white/5 p-1 rounded-2xl sm:rounded-[1.25rem] border border-white/10 backdrop-blur-md">
+                {[
+                  { id: 'kitchen', label: 'Cocina', emoji: '🍳' },
+                  { id: 'bar', label: 'Barra', emoji: '🍸' },
+                  { id: 'all', label: 'Pase (Expo)', emoji: '📋' }
+                ].map(st => (
+                  <button 
+                    key={st.id}
+                    onClick={() => setStationFilter(st.id)}
+                    className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[11px] sm:text-xs font-black uppercase transition-all duration-300 ${
+                      stationFilter === st.id 
+                        ? (st.id === 'bar' 
+                            ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-500/20 scale-[1.02]' 
+                            : 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 scale-[1.02]')
+                        : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                    }`}
+                  >
+                    <span>{st.emoji}</span>
+                    <span>{st.label}</span>
+                  </button>
+                ))}
+            </div>
+
             {/* View Mode Toggles */}
             <div className="flex bg-white/5 p-1 rounded-2xl sm:rounded-[1.25rem] border border-white/10 backdrop-blur-md">
                 {[
@@ -580,9 +673,9 @@ export default function AdminKitchen() {
                   <button 
                     key={mode.id}
                     onClick={() => setViewMode(mode.id)}
-                    className={`flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-[11px] sm:text-xs font-black uppercase transition-all duration-300 ${
+                    className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[11px] sm:text-xs font-black uppercase transition-all duration-300 ${
                       viewMode === mode.id 
-                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 scale-[1.02]' 
+                        ? 'bg-white/20 text-white shadow-md scale-[1.02]' 
                         : 'text-white/40 hover:text-white/70 hover:bg-white/5'
                     }`}
                   >
@@ -595,7 +688,7 @@ export default function AdminKitchen() {
             <div className="flex items-center gap-6 bg-white/5 px-6 py-2.5 rounded-[1.25rem] border border-white/10 backdrop-blur-md">
                 <div className="text-center">
                     <p className="text-[9px] text-white/30 font-black uppercase tracking-widest mb-0.5">Pendientes</p>
-                    <p className="text-xl font-black text-white leading-none">{orders.length}</p>
+                    <p className="text-xl font-black text-white leading-none">{filteredOrders.length}</p>
                 </div>
                 <div className="h-8 w-px bg-white/10" />
                 <button 
@@ -608,13 +701,15 @@ export default function AdminKitchen() {
         </div>
       </header>
 
-      {orders.length === 0 ? (
+      {filteredOrders.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-[50dvh] relative">
           <div className="absolute inset-0 bg-emerald-500/5 blur-[120px] rounded-full" />
           <div className="relative bg-white/5 p-10 rounded-[3rem] border border-white/5 backdrop-blur-sm flex flex-col items-center">
             <Icon icon="heroicons:check-badge-solid" className="text-9xl text-emerald-500/20 mb-6" />
             <h2 className="text-2xl font-black uppercase tracking-[0.25em] text-white/40 mb-2">Todo Al Día</h2>
-            <p className="text-white/20 font-bold uppercase tracking-widest text-xs">No hay pedidos pendientes en este momento</p>
+            <p className="text-white/20 font-bold uppercase tracking-widest text-xs">
+              No hay pedidos pendientes para {stationFilter === 'kitchen' ? 'Cocina' : stationFilter === 'bar' ? 'Barra' : 'esta estación'}
+            </p>
           </div>
         </div>
       ) : (
@@ -625,7 +720,7 @@ export default function AdminKitchen() {
             {viewMode === 'all' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
                     <AnimatePresence mode="popLayout">
-                        {orders.map(order => renderOrderCard(order))}
+                        {filteredOrders.map(order => renderOrderCard(order))}
                     </AnimatePresence>
                 </div>
             )}
@@ -642,12 +737,12 @@ export default function AdminKitchen() {
                                 Por Preparar
                             </h2>
                             <div className="bg-blue-500/10 text-blue-400 font-extrabold px-5 py-2 rounded-2xl border border-blue-500/20 text-lg shadow-inner">
-                                {orders.filter(o => o.status === 'new').length}
+                                {filteredOrders.filter(o => o.status === 'new').length}
                             </div>
                         </div>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <AnimatePresence mode="popLayout">
-                                {orders.filter(o => o.status === 'new').map(order => renderOrderCard(order))}
+                                {filteredOrders.filter(o => o.status === 'new').map(order => renderOrderCard(order))}
                             </AnimatePresence>
                         </div>
                     </div>
@@ -662,12 +757,12 @@ export default function AdminKitchen() {
                                 EN FUEGO
                             </h2>
                             <div className="bg-emerald-500/10 text-emerald-400 font-extrabold px-5 py-2 rounded-2xl border border-emerald-500/20 text-lg shadow-inner">
-                                {orders.filter(o => o.status === 'preparing').length}
+                                {filteredOrders.filter(o => o.status === 'preparing').length}
                             </div>
                         </div>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <AnimatePresence mode="popLayout">
-                                {orders.filter(o => o.status === 'preparing').map(order => renderOrderCard(order))}
+                                {filteredOrders.filter(o => o.status === 'preparing').map(order => renderOrderCard(order))}
                             </AnimatePresence>
                         </div>
                     </div>

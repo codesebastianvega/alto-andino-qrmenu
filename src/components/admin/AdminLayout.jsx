@@ -16,6 +16,7 @@ import AdminTables from '../../pages/AdminTables';
 import AdminOrders from '../../pages/AdminOrders';
 import AdminOperations from '../../pages/AdminOperations';
 import AdminKitchen from '../../pages/AdminKitchen';
+import AdminBar from '../../pages/AdminBar';
 import AdminDashboard from '../../pages/AdminDashboard';
 import AdminAnalytics from '../../pages/AdminAnalytics';
 import AdminWaiter from '../../pages/AdminWaiter';
@@ -88,6 +89,11 @@ const Icons = {
   Kitchen: () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.5 4 6.5 2 2 3 5.5 3 5.5s.5 2 0 3.5c-.5 1.5-2 3-4.5 3.5s-4.5-.5-5.5-1.5c-1-1-1.5-2.5-1.5-3.5 0-1 0-2 .5-3Z"/>
+    </svg>
+  ),
+  Bar: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 22h8M12 11v11M19 3l-7 8-7-8h14z" />
     </svg>
   ),
   Settings: () => (
@@ -179,7 +185,8 @@ const ESTRATEGIA_ITEMS = [
 
 const OPERACION_ITEMS = [
   { id: 'orders',     label: 'Pedidos',         Icon: Icons.Orders, roles: [...ADMIN_ROLES, 'waiter'] },
-  { id: 'kitchen',    label: 'Cocina',          Icon: Icons.Kitchen, roles: [...ADMIN_ROLES, 'kitchen'], feature: 'kitchen_display' },
+  { id: 'kitchen',    label: 'Cocina (KDS)',    Icon: Icons.Kitchen, roles: [...ADMIN_ROLES, 'kitchen'], feature: 'kitchen_display' },
+  { id: 'bar',        label: 'Barra (BDS)',     Icon: Icons.Bar, roles: [...ADMIN_ROLES, 'kitchen', 'waiter', 'bar'], feature: 'kitchen_display' },
   { id: 'waiter',     label: 'Toma de Pedidos', Icon: Icons.Waiter, roles: [...ADMIN_ROLES, 'waiter'] },
   { id: 'operations', label: 'Turno & Caja',    Icon: Icons.Cash, roles: ADMIN_ROLES },
 ];
@@ -349,6 +356,8 @@ export default function AdminLayout() {
 
     if (user.role === 'kitchen') {
       if (currentPage !== 'kitchen') setCurrentPage('kitchen');
+    } else if (user.role === 'bar') {
+      if (currentPage !== 'bar') setCurrentPage('bar');
     } else if (user.role === 'waiter') {
       if (!['waiter', 'orders'].includes(currentPage)) setCurrentPage('waiter');
     } else if (['admin', 'owner', 'superadmin', 'encargado'].includes(user.role)) {
@@ -767,6 +776,42 @@ export default function AdminLayout() {
                 </button>
                 )}
 
+                {/* Barra (BDS) Card */}
+                {user.role !== 'waiter' && (
+                <button 
+                  onClick={() => handleSelectPage('bar', 'Barra (BDS)', 'kitchen_display')}
+                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
+                    currentPage === 'bar' 
+                    ? 'bg-gradient-to-r from-cyan-900/40 to-cyan-950/40 border-cyan-500/20 ring-1 ring-cyan-500/20 shadow-lg shadow-cyan-950/40' 
+                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
+                  } ${!planLoading && !can('kitchen_display') ? 'opacity-70 grayscale-[0.4]' : ''}`}
+                >
+                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'bar' ? 'bg-cyan-400/20 text-cyan-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
+                      <div className="relative">
+                        <Icons.Bar />
+                        {!planLoading && can('kitchen_display') && (newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full animate-ping" />}
+                      </div>
+                    </div>
+                    {!isCollapsed && (
+                      <div className="text-left flex-1 flex justify-between items-center pr-1">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <p className={`text-[13px] font-bold leading-none ${currentPage === 'bar' ? 'text-white' : 'text-white/60'}`}>Barra (BDS)</p>
+                            {!planLoading && !can('kitchen_display') && (
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                              </svg>
+                            )}
+                          </div>
+                          <p className="text-[9px] text-white/30 font-medium mt-1">Coctelería & Bebidas</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </button>
+                )}
+
                 {/* Toma de Pedidos Card */}
                 {user.role !== 'kitchen' && (
                 <button 
@@ -1104,6 +1149,7 @@ export default function AdminLayout() {
           { currentPage === 'tables'      && <AdminTables /> }
           { currentPage === 'orders'      && <AdminOrders /> }
           { currentPage === 'kitchen'     && <AdminKitchen /> }
+          { currentPage === 'bar'         && <AdminBar /> }
           { currentPage === 'settings'    && <AdminSettings /> }
           { currentPage === 'staff'       && <AdminStaff /> }
           { currentPage === 'sedes'       && <AdminSedes /> }
@@ -1430,8 +1476,18 @@ export default function AdminLayout() {
             </button>
           )}
 
-          {/* Kitchen */}
-          {user.role !== 'waiter' && (
+          {/* Kitchen or Bar */}
+          {user.role === 'bar' ? (
+            <button 
+              onClick={() => handleSelectPage('bar', 'Barra (BDS)', 'kitchen_display')}
+              className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'bar' ? 'text-cyan-400' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <div className="relative pointer-events-none">
+                <Icons.Bar />
+              </div>
+              <span className="text-[10px] font-medium pointer-events-none">Barra</span>
+            </button>
+          ) : user.role !== 'waiter' && (
             <button 
               onClick={() => handleSelectPage('kitchen', 'Cocina', 'kitchen_display')}
               className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'kitchen' ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'}`}

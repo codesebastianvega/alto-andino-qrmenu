@@ -238,7 +238,9 @@ export default function AdminProducts() {
     // Attribute Filtering
     let matchAttr = true;
     if (attrFilter === 'upsell') matchAttr = p.is_upsell;
-    else if (attrFilter === 'no_kitchen') matchAttr = !p.requires_kitchen;
+    else if (attrFilter === 'kitchen') matchAttr = p.station === 'kitchen' || (!p.station && p.requires_kitchen !== false);
+    else if (attrFilter === 'bar') matchAttr = p.station === 'bar';
+    else if (attrFilter === 'no_kitchen') matchAttr = p.station === 'none' || p.requires_kitchen === false;
     else if (attrFilter === 'packaging') matchAttr = (p.packaging_fee || 0) > 0;
 
     // Profitability (Margin) Filtering
@@ -532,18 +534,20 @@ export default function AdminProducts() {
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider mr-1">Atributos</span>
             <div className="flex items-center gap-1.5">
               {[
-                { id: 'all', label: 'Todos' },
-                { id: 'upsell', label: '✨' },
-                { id: 'no_kitchen', label: '❄️' },
-                { id: 'packaging', label: '📦' },
+                { id: 'all', label: 'Todos', title: 'Todos los productos' },
+                { id: 'kitchen', label: '🍳', title: 'Cocina (KDS)' },
+                { id: 'bar', label: '🍸', title: 'Barra (BDS)' },
+                { id: 'upsell', label: '✨', title: 'Upsell' },
+                { id: 'no_kitchen', label: '⚡', title: 'Salida Directa' },
+                { id: 'packaging', label: '📦', title: 'Con empaque' },
               ].map(f => (
                 <button
                   key={f.id}
                   onClick={() => setAttrFilter(f.id)}
-                  title={f.label === 'Todos' ? 'Todos' : f.label}
-                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-[14px] transition-all border ${
+                  title={f.title || f.label}
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-[13px] transition-all border ${
                     attrFilter === f.id 
-                    ? 'bg-[#2f4131] text-white border-[#2f4131]' 
+                    ? 'bg-[#2f4131] text-white border-[#2f4131] shadow-xs' 
                     : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50 active:scale-95'
                   }`}
                 >
@@ -770,23 +774,28 @@ export default function AdminProducts() {
                   {/* Atributos */}
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-1.5">
-                      {product.is_upsell && (
-                        <span title="Sugerido para Upsell" className="w-6 h-6 flex items-center justify-center bg-amber-50 text-amber-600 rounded-lg border border-amber-100 shadow-sm cursor-help transition-transform hover:scale-110">
-                          <span className="text-[13px]">✨</span>
+                      {product.station === 'bar' ? (
+                        <span title="Estación: Barra (BDS)" className="w-6 h-6 flex items-center justify-center bg-cyan-50 text-cyan-600 rounded-lg border border-cyan-200 shadow-xs cursor-help transition-transform hover:scale-110">
+                          <span className="text-[12px]">🍸</span>
+                        </span>
+                      ) : (product.station === 'none' || product.requires_kitchen === false) ? (
+                        <span title="Salida Directa (Sin Estación)" className="w-6 h-6 flex items-center justify-center bg-slate-50 text-slate-500 rounded-lg border border-slate-200 shadow-xs cursor-help transition-transform hover:scale-110">
+                          <span className="text-[12px]">⚡</span>
+                        </span>
+                      ) : (
+                        <span title="Estación: Cocina (KDS)" className="w-6 h-6 flex items-center justify-center bg-orange-50 text-orange-600 rounded-lg border border-orange-200 shadow-xs cursor-help transition-transform hover:scale-110">
+                          <span className="text-[12px]">🍳</span>
                         </span>
                       )}
-                      {!product.requires_kitchen && (
-                        <span title="No requiere cocina (Directo)" className="w-6 h-6 flex items-center justify-center bg-blue-50 text-blue-600 rounded-lg border border-blue-100 shadow-sm cursor-help transition-transform hover:scale-110">
-                          <span className="text-[13px]">❄️</span>
+                      {product.is_upsell && (
+                        <span title="Sugerido para Upsell" className="w-6 h-6 flex items-center justify-center bg-amber-50 text-amber-600 rounded-lg border border-amber-100 shadow-xs cursor-help transition-transform hover:scale-110">
+                          <span className="text-[12px]">✨</span>
                         </span>
                       )}
                       {product.packaging_fee > 0 && (
-                        <span title={`Costo de empaque: ${formatCOP(product.packaging_fee)}`} className="w-6 h-6 flex items-center justify-center bg-gray-50 text-gray-600 rounded-lg border border-gray-100 shadow-sm cursor-help transition-transform hover:scale-110">
-                          <span className="text-[13px]">📦</span>
+                        <span title={`Costo de empaque: ${formatCOP(product.packaging_fee)}`} className="w-6 h-6 flex items-center justify-center bg-gray-50 text-gray-600 rounded-lg border border-gray-100 shadow-xs cursor-help transition-transform hover:scale-110">
+                          <span className="text-[12px]">📦</span>
                         </span>
-                      )}
-                      {!product.is_upsell && product.requires_kitchen && (!product.packaging_fee || product.packaging_fee === 0) && (
-                        <span className="text-[11px] text-gray-200 font-medium whitespace-nowrap italic">—</span>
                       )}
                     </div>
                   </td>

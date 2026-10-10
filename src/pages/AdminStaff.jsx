@@ -17,7 +17,8 @@ const toast = {
 const RoleNames = {
   admin: 'Administrador',
   waiter: 'Mesero / POS',
-  kitchen: 'Cocina',
+  kitchen: 'Cocina (KDS)',
+  bar: 'Barra (BDS)',
   cashier: 'Caja',
   promoter: 'Impulsador'
 };
@@ -26,6 +27,7 @@ const RoleIcons = {
   admin: 'solar:shield-user-bold',
   waiter: 'solar:user-bold',
   kitchen: 'solar:chef-hat-bold',
+  bar: 'solar:cup-hot-bold',
   cashier: 'solar:cassette-bold',
   promoter: 'solar:flag-bold'
 };
@@ -51,6 +53,13 @@ const RoleColors = {
     light: 'bg-amber-50',
     border: 'border-amber-100',
     accent: 'text-amber-800'
+  },
+  bar: {
+    bg: 'bg-cyan-600',
+    text: 'text-white',
+    light: 'bg-cyan-50',
+    border: 'border-cyan-100',
+    accent: 'text-cyan-800'
   },
   cashier: {
     bg: 'bg-emerald-600',

@@ -76,7 +76,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
     category_id: '', stock_status: 'in', image_url: '',
     tags: [], is_active: true, is_addon: false,
     variants: [], modifier_groups: [], config_options: {}, recipe_id: null, packaging_fee: '',
-    is_upsell: false, requires_kitchen: true, subcategory: '', brand_concept: '',
+    is_upsell: false, requires_kitchen: true, station: 'kitchen', subcategory: '', brand_concept: '',
   });
   const [targetMargin, setTargetMargin] = useState(35);
   const [manageGroups, setManageGroups] = useState(false);
@@ -192,6 +192,7 @@ export default function ProductForm({ product, categories, recipes = [], allerge
         packaging_fee: product.packaging_fee || '',
         is_upsell: product.is_upsell ?? false,
         requires_kitchen: product.requires_kitchen ?? true,
+        station: product.station || (product.requires_kitchen === false ? 'none' : 'kitchen'),
         subcategory: product.subcategory || '',
         brand_concept: product.brand_concept || '',
       });
@@ -613,19 +614,82 @@ export default function ProductForm({ product, categories, recipes = [], allerge
                   </FormField>
                   <p className="text-[11px] text-gray-400 mt-1 leading-tight">Si está activo, se sugerirá este producto en el carrito (Ej. bebidas, postres).</p>
                 </div>
-                <div className="md:col-span-1">
-                  <FormField label="¿Requiere preparación en cocina?">
-                    <button type="button" onClick={() => setFormData(prev => ({ ...prev, requires_kitchen: !prev.requires_kitchen }))}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${formData.requires_kitchen ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
-                      <div className="flex items-center gap-3">
-                        <div className={`w-9 h-5 rounded-full relative transition-all ${formData.requires_kitchen ? 'bg-blue-500' : 'bg-gray-300'}`}>
-                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${formData.requires_kitchen ? 'left-4' : 'left-0.5'}`} />
+                <div className="md:col-span-3">
+                  <FormField label="Estación de Preparación (Destino de Comanda)">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {/* Opción 1: KDS Cocina */}
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, station: 'kitchen', requires_kitchen: true }))}
+                        className={`p-3.5 rounded-2xl border-2 text-left transition-all flex flex-col justify-between gap-2 ${
+                          (formData.station === 'kitchen' || (!formData.station && formData.requires_kitchen !== false))
+                            ? 'bg-orange-500/10 border-orange-500 text-orange-950 shadow-sm ring-1 ring-orange-500/20'
+                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-100/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-2 font-black text-xs uppercase tracking-wider text-orange-600">
+                            <span className="text-lg">🍳</span> Cocina (KDS)
+                          </span>
+                          {(formData.station === 'kitchen' || (!formData.station && formData.requires_kitchen !== false)) && (
+                            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" />
+                          )}
                         </div>
-                        <span>{formData.requires_kitchen ? 'Sí' : 'No'}</span>
-                      </div>
-                    </button>
+                        <p className="text-[11px] text-gray-500 leading-tight">
+                          Platos, preparaciones calientes, parrilla, bowls y comida.
+                        </p>
+                      </button>
+
+                      {/* Opción 2: BDS Barra */}
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, station: 'bar', requires_kitchen: true }))}
+                        className={`p-3.5 rounded-2xl border-2 text-left transition-all flex flex-col justify-between gap-2 ${
+                          formData.station === 'bar'
+                            ? 'bg-cyan-500/10 border-cyan-500 text-cyan-950 shadow-sm ring-1 ring-cyan-500/20'
+                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-100/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-2 font-black text-xs uppercase tracking-wider text-cyan-600">
+                            <span className="text-lg">🍸</span> Barra (BDS)
+                          </span>
+                          {formData.station === 'bar' && (
+                            <span className="w-2.5 h-2.5 rounded-full bg-cyan-500 animate-pulse" />
+                          )}
+                        </div>
+                        <p className="text-[11px] text-gray-500 leading-tight">
+                          Coctelería, bebidas frías, café de especialidad, jugos y licores.
+                        </p>
+                      </button>
+
+                      {/* Opción 3: Salida Directa */}
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, station: 'none', requires_kitchen: false }))}
+                        className={`p-3.5 rounded-2xl border-2 text-left transition-all flex flex-col justify-between gap-2 ${
+                          (formData.station === 'none' || (!formData.station && formData.requires_kitchen === false))
+                            ? 'bg-slate-500/10 border-slate-600 text-slate-900 shadow-sm ring-1 ring-slate-500/20'
+                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-100/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-2 font-black text-xs uppercase tracking-wider text-slate-700">
+                            <span className="text-lg">⚡</span> Directo (Sin Estación)
+                          </span>
+                          {(formData.station === 'none' || (!formData.station && formData.requires_kitchen === false)) && (
+                            <span className="w-2.5 h-2.5 rounded-full bg-slate-500" />
+                          )}
+                        </div>
+                        <p className="text-[11px] text-gray-500 leading-tight">
+                          Productos ya listos para entregar (gaseosas de lata, snacks, souvenirs).
+                        </p>
+                      </button>
+                    </div>
                   </FormField>
-                  <p className="text-[11px] text-gray-400 mt-1 leading-tight">Manda pedido a cocina. Apágalo para productos ya listos (Ej. gaseosas, chips).</p>
+                  <p className="text-[11px] text-gray-400 mt-1 leading-tight">
+                    Determina en tiempo real a qué pantalla de producción llegará este pedido cuando el cliente o mesero ordene.
+                  </p>
                 </div>
                 <div className="md:col-span-3">
                   <FormField label="Modo 'Arma tu propio' (DIY)">

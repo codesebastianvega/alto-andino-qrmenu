@@ -353,6 +353,7 @@ export const MenuDataProvider = ({ children }) => {
         configOptions: product.config_options || {},
         is_upsell: product.is_upsell || false,
         requires_kitchen: product.requires_kitchen ?? true,
+        station: product.station || (product.requires_kitchen === false ? 'none' : 'kitchen'),
         subcategory: product.subcategory,
         categorySlug: catSlug,
         is_addon: product.is_addon,
