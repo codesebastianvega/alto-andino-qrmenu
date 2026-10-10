@@ -4,8 +4,13 @@ import {
   Layers, Palette, Layout, Settings2, Eye, ShieldCheck, 
   HelpCircle, AlertCircle, ArrowUpRight, Smartphone, QrCode
 } from 'lucide-react';
-import QRCode from 'react-qr-code';
+import * as QRCodePkg from 'react-qr-code';
 import { useAuth } from '../context/AuthContext';
+
+const QRCodeComponent = 
+  (QRCodePkg.QRCode && (typeof QRCodePkg.QRCode === 'function' || QRCodePkg.QRCode.$$typeof)) ? QRCodePkg.QRCode :
+  (QRCodePkg.default && (typeof QRCodePkg.default === 'function' || QRCodePkg.default.$$typeof)) ? QRCodePkg.default :
+  (typeof QRCodePkg === 'function' || QRCodePkg.$$typeof) ? QRCodePkg : null;
 import { useMenuData } from '../context/MenuDataContext';
 import { formatCOP } from '../utils/money';
 import { PRINT_LIMITS_BY_PLAN, PLAN_LABELS } from '../config/plans';
@@ -552,7 +557,7 @@ export default function AdminMenuPrint() {
                   <div className="text-[8px] text-neutral-400 mt-0.5">Precios vigentes en pesos colombianos (COP). Impreso vía Aluna QR Menu.</div>
                 </div>
 
-                {showQr && (
+                {showQr && QRCodeComponent && (
                   <div className="flex items-center gap-2">
                     <div className="text-right">
                       <div className="text-[8.5px] font-black uppercase tracking-wider text-neutral-800">
@@ -561,7 +566,7 @@ export default function AdminMenuPrint() {
                       <div className="text-[7.5px] text-neutral-400">Escanea para ver menú interactivo</div>
                     </div>
                     <div className="p-1 bg-white border border-neutral-200 rounded-lg">
-                      <QRCode 
+                      <QRCodeComponent 
                         value={menuUrl} 
                         size={38}
                         level="M"
