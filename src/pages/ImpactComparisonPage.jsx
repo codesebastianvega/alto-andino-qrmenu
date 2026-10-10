@@ -1458,7 +1458,7 @@ export default function ImpactComparisonPage() {
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-[#D4A853] shrink-0 mt-0.5" />
-                  <span><strong>Aluna Profesional Incluida (Ahorras $149.900/mes):</strong> Pantalla KDS cocina, meseros, domicilios propios y hasta 800 pedidos/mes.</span>
+                  <span><strong>Aluna Profesional Incluida (Ahorras $149.900/mes):</strong> Pantallas KDS cocina y BDS barra, meseros, domicilios propios y hasta 800 pedidos/mes.</span>
                 </li>
               </ul>
             </div>

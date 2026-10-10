@@ -39,7 +39,7 @@ export function usePlan(manualBrandId = null) {
         const [brandRes, orderCountRes, productCountRes] = await Promise.all([
           supabase
             .from('brands')
-            .select('plan_id, has_ai_addon, trial_end_date, is_active, subscription_status, payment_verified, trial_already_used, plans(*)')
+            .select('plan_id, has_ai_addon, has_kds_addon, has_bds_addon, trial_end_date, is_active, subscription_status, payment_verified, trial_already_used, plans(*)')
             .eq('id', brandId)
             .maybeSingle(),
           supabase.rpc('get_monthly_order_count', { p_brand_id: brandId }),
@@ -66,6 +66,8 @@ export function usePlan(manualBrandId = null) {
         setPlan({ 
           ...planData, 
           has_ai_addon: brand.has_ai_addon,
+          has_kds_addon: brand.has_kds_addon ?? false,
+          has_bds_addon: brand.has_bds_addon ?? false,
           trial_end_date: brand.trial_end_date,
           is_active: brand.is_active,
           subscription_status: brand.subscription_status,
@@ -131,14 +133,18 @@ export function usePlan(manualBrandId = null) {
     // 2. Custom Pricing tiene acceso total
     if (plan?.is_custom_pricing) return true;
 
-    // 3. Obtener el slug actual (default a emprendedor si no hay plan)
+    // 3. Add-ons independientes de producción ($50.000 COP / mes)
+    if (featureKey === 'kitchen_display' && (plan?.has_kds_addon || activeBrand?.has_kds_addon)) return true;
+    if (featureKey === 'bar_display' && (plan?.has_bds_addon || activeBrand?.has_bds_addon)) return true;
+
+    // 4. Obtener el slug actual (default a emprendedor si no hay plan)
     const currentSlug = plan?.slug || 'emprendedor';
     const currentLevel = PLAN_HIERARCHY[currentSlug] ?? 0;
 
-    // 4. Verificación en mapa de base de datos
+    // 5. Verificación en mapa de base de datos
     if (features[featureKey]) return true;
 
-    // 5. Verificación por Jerarquía (Fallback en código)
+    // 6. Verificación por Jerarquía (Fallback en código)
     const minRequiredSlug = FEATURE_MIN_LEVEL[featureKey];
     if (minRequiredSlug) {
       const minLevel = PLAN_HIERARCHY[minRequiredSlug];
@@ -146,7 +152,7 @@ export function usePlan(manualBrandId = null) {
     }
 
     return false;
-  }, [isTrialActive, plan, features]);
+  }, [isTrialActive, plan, features, activeBrand]);
 
   /**
    * withinLimit('max_products', currentCount) — checks count-based limits.
@@ -178,6 +184,8 @@ export function usePlan(manualBrandId = null) {
       ? true
       : productsCount < plan.max_products,
     hasAiAddon: plan?.has_ai_addon ?? false,
+    hasKdsAddon: plan?.has_kds_addon ?? activeBrand?.has_kds_addon ?? false,
+    hasBdsAddon: plan?.has_bds_addon ?? activeBrand?.has_bds_addon ?? false,
     isTrialActive,
     trialEndDate: plan?.trial_end_date || null,
     trialEndsAt: plan?.trial_end_date || null,

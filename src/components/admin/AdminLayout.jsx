@@ -186,7 +186,7 @@ const ESTRATEGIA_ITEMS = [
 const OPERACION_ITEMS = [
   { id: 'orders',     label: 'Pedidos',         Icon: Icons.Orders, roles: [...ADMIN_ROLES, 'waiter'] },
   { id: 'kitchen',    label: 'Cocina (KDS)',    Icon: Icons.Kitchen, roles: [...ADMIN_ROLES, 'kitchen'], feature: 'kitchen_display' },
-  { id: 'bar',        label: 'Barra (BDS)',     Icon: Icons.Bar, roles: [...ADMIN_ROLES, 'kitchen', 'waiter', 'bar'], feature: 'kitchen_display' },
+  { id: 'bar',        label: 'Barra (BDS)',     Icon: Icons.Bar, roles: [...ADMIN_ROLES, 'kitchen', 'waiter', 'bar'], feature: 'bar_display' },
   { id: 'waiter',     label: 'Toma de Pedidos', Icon: Icons.Waiter, roles: [...ADMIN_ROLES, 'waiter'] },
   { id: 'operations', label: 'Turno & Caja',    Icon: Icons.Cash, roles: ADMIN_ROLES },
 ];
@@ -779,18 +779,18 @@ export default function AdminLayout() {
                 {/* Barra (BDS) Card */}
                 {user.role !== 'waiter' && (
                 <button 
-                  onClick={() => handleSelectPage('bar', 'Barra (BDS)', 'kitchen_display')}
+                  onClick={() => handleSelectPage('bar', 'Barra (BDS)', 'bar_display')}
                   className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
                     currentPage === 'bar' 
                     ? 'bg-gradient-to-r from-cyan-900/40 to-cyan-950/40 border-cyan-500/20 ring-1 ring-cyan-500/20 shadow-lg shadow-cyan-950/40' 
                     : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                  } ${!planLoading && !can('kitchen_display') ? 'opacity-70 grayscale-[0.4]' : ''}`}
+                  } ${!planLoading && !can('bar_display') ? 'opacity-70 grayscale-[0.4]' : ''}`}
                 >
                   <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'bar' ? 'bg-cyan-400/20 text-cyan-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
                       <div className="relative">
                         <Icons.Bar />
-                        {!planLoading && can('kitchen_display') && (newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full animate-ping" />}
+                        {!planLoading && can('bar_display') && (newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full animate-ping" />}
                       </div>
                     </div>
                     {!isCollapsed && (
@@ -798,7 +798,7 @@ export default function AdminLayout() {
                         <div>
                           <div className="flex items-center gap-1.5">
                             <p className={`text-[13px] font-bold leading-none ${currentPage === 'bar' ? 'text-white' : 'text-white/60'}`}>Barra (BDS)</p>
-                            {!planLoading && !can('kitchen_display') && (
+                            {!planLoading && !can('bar_display') && (
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                               </svg>
@@ -1175,6 +1175,7 @@ export default function AdminLayout() {
               lockedFeatureName === 'Experiencias' ? 'Profesional' :
               'Profesional'
             }
+            brandName={restaurantName}
           />
 
           {/* New Premium Upgrade Modal */}
@@ -1479,7 +1480,7 @@ export default function AdminLayout() {
           {/* Kitchen or Bar */}
           {user.role === 'bar' ? (
             <button 
-              onClick={() => handleSelectPage('bar', 'Barra (BDS)', 'kitchen_display')}
+              onClick={() => handleSelectPage('bar', 'Barra (BDS)', 'bar_display')}
               className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'bar' ? 'text-cyan-400' : 'text-gray-400 hover:text-gray-600'}`}
             >
               <div className="relative pointer-events-none">

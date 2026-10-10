@@ -69,6 +69,8 @@ export default function SuperAdminBrandDetail() {
           slug: brand.slug,
           plan_id: brand.plan_id,
           has_ai_addon: brand.has_ai_addon,
+          has_kds_addon: brand.has_kds_addon,
+          has_bds_addon: brand.has_bds_addon,
           ai_generation_limit: brand.ai_generation_limit,
           addon_ai_analytics: brand.addon_ai_analytics,
           addon_ai_agent: brand.addon_ai_agent,
@@ -441,6 +443,44 @@ export default function SuperAdminBrandDetail() {
                       onChange={(e) => setBrand({...brand, addon_ai_agent: e.target.checked})}
                     />
                     <div className="w-11 h-6 bg-purple-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-purple-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-emerald-200 shadow-sm hover:border-emerald-300 transition-colors">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm">🍳</span>
+                      <h4 className="font-bold text-emerald-950 text-sm">Add-on KDS Cocina</h4>
+                    </div>
+                    <p className="text-xs text-emerald-700 mt-0.5">$50.000/mes (pantalla cocina)</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={brand.has_kds_addon || false}
+                      onChange={(e) => setBrand({...brand, has_kds_addon: e.target.checked})}
+                    />
+                    <div className="w-11 h-6 bg-emerald-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-emerald-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-cyan-200 shadow-sm hover:border-cyan-300 transition-colors">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm">🍸</span>
+                      <h4 className="font-bold text-cyan-950 text-sm">Add-on BDS Barra</h4>
+                    </div>
+                    <p className="text-xs text-cyan-700 mt-0.5">$50.000/mes (pantalla bar)</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={brand.has_bds_addon || false}
+                      onChange={(e) => setBrand({...brand, has_bds_addon: e.target.checked})}
+                    />
+                    <div className="w-11 h-6 bg-cyan-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-cyan-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
                   </label>
                 </div>
 

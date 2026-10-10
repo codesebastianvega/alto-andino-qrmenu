@@ -51,7 +51,7 @@ export const PLAN_LABELS = {
     features: [
       '150 Productos / 50 Recetas',
       'Hasta 800 Pedidos/mes',
-      'Pantalla KDS Cocina',
+      'Pantallas KDS Cocina & BDS Barra',
       'Mesas QR / 10 Usuarios',
       'Hasta 3 Sedes'
     ]
@@ -65,8 +65,8 @@ export const PLAN_LABELS = {
     features: [
       '300 Productos / 200 Recetas',
       'Hasta 2.000 Pedidos/mes',
-      '25 Usuarios',
-      'Hasta 5 Sedes',
+      'KDS Cocina & BDS Barra incluidos',
+      '25 Usuarios / Hasta 5 Sedes',
       'CRM y Fidelización'
     ]
   },
@@ -102,9 +102,10 @@ export const FEATURE_MIN_LEVEL = {
   'staff_panel': 'esencial',
   'analytics_basic': 'esencial',
   
-  // Profesional features
+  // Profesional features (incluye KDS y BDS por defecto)
   'table_management': 'profesional',
   'kitchen_display': 'profesional',
+  'bar_display': 'profesional',
   'inventory': 'profesional',
   'advanced_analytics': 'profesional',
   'experiences': 'profesional',
@@ -113,6 +114,35 @@ export const FEATURE_MIN_LEVEL = {
   'crm': 'premium',
   'loyalty': 'premium',
   'multi_sede': 'premium'
+};
+
+/**
+ * Add-ons independientes disponibles por suscripción mensual
+ * Permiten a negocios en planes Emprendedor o Esencial habilitar pantallas de producción sin saltar de plan completo.
+ */
+export const ADDONS_CONFIG = {
+  kds: {
+    id: 'kds',
+    name: 'Pantalla KDS Cocina',
+    featureKey: 'kitchen_display',
+    price: 50000,
+    priceFormatted: '$50.000',
+    period: 'mes',
+    description: 'Monitor en tiempo real para cocina con tiempos de preparación y tickets térmicos.',
+    includedInPlans: ['profesional', 'premium', 'enterprise'],
+    brandColumn: 'has_kds_addon'
+  },
+  bds: {
+    id: 'bds',
+    name: 'Pantalla BDS Barra',
+    featureKey: 'bar_display',
+    price: 50000,
+    priceFormatted: '$50.000',
+    period: 'mes',
+    description: 'Monitor para bartender con comandas de bebidas, coctelería y rondas acumuladas.',
+    includedInPlans: ['profesional', 'premium', 'enterprise'],
+    brandColumn: 'has_bds_addon'
+  }
 };
 
 /**

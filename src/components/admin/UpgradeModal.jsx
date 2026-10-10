@@ -416,7 +416,7 @@ export default function UpgradeModal({ isOpen, onClose, currentPlanSlug, startTr
                     </div>
                   )}
 
-                  {/* Bottom 2-col: Enterprise + AI ────────────── */}
+                  {/* Bottom 2-col: Enterprise + Add-ons KDS/BDS ────────────── */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
 
                     {/* Enterprise — gold aurora */}
@@ -452,6 +452,58 @@ export default function UpgradeModal({ isOpen, onClose, currentPlanSlug, startTr
                           onClick={() => openWhatsApp('Hola, estoy interesado en el plan Enterprise de Aluna para mi restaurante. ¿Podrías darme más información?')}
                           className="w-full h-9 rounded-xl border border-amber-500/20 text-amber-400/80 hover:text-amber-300 hover:border-amber-400/30 hover:bg-amber-500/[0.05] text-xs font-semibold flex items-center justify-center gap-1.5 transition-all">
                           Contactar ventas <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </motion.div>
+
+                    {/* Add-ons KDS & BDS — green aurora */}
+                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
+                      className="aurora-green rounded-2xl border border-emerald-500/[0.2] flex flex-col relative">
+                      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent rounded-t-2xl" />
+
+                      <div className="relative p-5">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400/80 block mb-1">Módulos Add-on</span>
+                            <div className="flex items-baseline gap-2">
+                              <h4 className="text-white font-bold text-lg tracking-tight">KDS & BDS</h4>
+                              <span className="text-emerald-400 font-mono font-bold text-xs">$50.000 / mes c/u</span>
+                            </div>
+                          </div>
+                          <div className="w-9 h-9 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.1] flex items-center justify-center text-emerald-400">
+                            <Zap className="w-4 h-4" />
+                          </div>
+                        </div>
+
+                        <p className="text-white/40 text-xs leading-relaxed mb-4">
+                          ¿Estás en Plan Emprendedor o Esencial y no quieres cambiar de plan? Añade pantallas de producción independientes a tu suscripción.
+                        </p>
+
+                        <div className="space-y-2 mb-5">
+                          <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-start gap-2.5">
+                            <span className="text-base mt-0.5">🍳</span>
+                            <div>
+                              <p className="text-white text-xs font-bold leading-tight">Pantalla KDS Cocina ($50.000/mes)</p>
+                              <p className="text-white/40 text-[10px] mt-0.5">Control de comandas en tiempo real, semáforos e impresión térmica.</p>
+                            </div>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-start gap-2.5">
+                            <span className="text-base mt-0.5">🍸</span>
+                            <div>
+                              <p className="text-white text-xs font-bold leading-tight">Pantalla BDS Barra ($50.000/mes)</p>
+                              <p className="text-white/40 text-[10px] mt-0.5">Gestión de coctelería, bebidas, cafés y rondas agrupadas.</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <p className="text-[10px] text-white/30 italic mb-4">
+                          * Nota: Ambos módulos vienen 100% incluidos en Plan Profesional y Plan Premium.
+                        </p>
+
+                        <button type="button"
+                          onClick={() => openWhatsApp('¡Hola Aluna! 👋 Quiero activar un Add-on de pantalla (KDS Cocina o BDS Barra) por $50.000/mes para mi restaurante. ¿Cómo coordinamos el pago?')}
+                          className="w-full h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 text-xs font-bold flex items-center justify-center gap-1.5 transition-all">
+                          Solicitar Add-on vía WhatsApp <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </motion.div>
