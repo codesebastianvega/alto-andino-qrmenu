@@ -188,7 +188,7 @@ const CARTA_ITEMS = [
   { id: 'products',        label: 'Carta Principal',   Icon: Icons.Products, roles: ADMIN_ROLES },
   { id: 'categories',      label: 'Categorías',         Icon: Icons.Categories, roles: ADMIN_ROLES },
   { id: 'modifier_groups', label: 'Extras y Opciones', Icon: Icons.Modifiers, roles: ADMIN_ROLES },
-  { id: 'menu_print',      label: 'Carta Imprimible (PDF)', Icon: Icons.Print, roles: ADMIN_ROLES },
+  { id: 'menu_print',      label: 'Imprimir Carta',    Icon: Icons.Print, roles: ADMIN_ROLES },
   // { id: 'experiences',     label: 'Experiencias',      Icon: Icons.Experiences, roles: ADMIN_ROLES, feature: 'experiences' },
   { id: 'tables',          label: 'Mesas y QRs',       Icon: Icons.Tables, roles: ADMIN_ROLES, feature: 'table_management' },
 ];
@@ -477,8 +477,8 @@ export default function AdminLayout() {
                   )}
                 </div>
                 {!collapsed && (
-                  <span className="flex-1 flex items-center justify-between">
-                    <span className="flex items-center gap-2">
+                  <span className="flex-1 flex items-center justify-between min-w-0">
+                    <span className="flex items-center gap-2 truncate whitespace-nowrap">
                       {item.label}
                       {hasAlert && (
                         <span className="flex h-2 w-2 relative">

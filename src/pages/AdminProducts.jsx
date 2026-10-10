@@ -429,7 +429,7 @@ export default function AdminProducts() {
             title="Generador de Carta Imprimible y PDF para Rappi / DiDi"
           >
             <Printer size={15} />
-            <span className="hidden sm:inline">Carta Imprimible (PDF)</span>
+            <span className="hidden sm:inline">Imprimir Carta</span>
             <span className="sm:hidden">PDF</span>
           </button>
           
