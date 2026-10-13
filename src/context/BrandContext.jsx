@@ -42,21 +42,28 @@ export const BrandProvider = ({ children }) => {
         if (session?.user) {
           const { data: profile } = await withTimeout(supabase
             .from('profiles')
-            .select('brand_id, brand:brands(id, slug, name, payment_verified, trial_end_date, is_active)')
+            .select('brand_id, role, brand:brands(id, slug, name, payment_verified, trial_end_date, is_active)')
             .eq('id', session.user.id)
             .maybeSingle(), 10000, 'La carga de la marca del perfil');
             
-          if (profile?.brand_id) {
-            // Sincronización: Si el slug URL no coincide con el perfil, redirigimos
-            if (brandBySlug && brandBySlug.id !== profile.brand_id) {
-              console.warn(`Mismatch: URL=${brand_slug} Profile=${profile.brand?.slug}. Redirigiendo...`);
-              if (profile.brand?.slug) {
-                const newPath = `/${profile.brand.slug}/${location.search}${location.hash}`;
-                navigate(newPath, { replace: true });
-                return; // Evitar carga doble
+          if (profile) {
+            const isSuperAdmin = profile.role === 'superadmin';
+
+            // Si es superadmin y especificó una marca en la URL, siempre respetar esa marca
+            if (isSuperAdmin && brandBySlug) {
+              targetBrandId = brandBySlug.id;
+            } else if (profile.brand_id) {
+              // Sincronización para no-superadmin: Si el slug URL no coincide con el perfil, redirigimos
+              if (brandBySlug && brandBySlug.id !== profile.brand_id) {
+                console.warn(`Mismatch: URL=${brand_slug} Profile=${profile.brand?.slug}. Redirigiendo...`);
+                if (profile.brand?.slug) {
+                  const newPath = `/${profile.brand.slug}/${location.search}${location.hash}`;
+                  navigate(newPath, { replace: true });
+                  return; // Evitar carga doble
+                }
               }
+              targetBrandId = profile.brand_id;
             }
-            targetBrandId = profile.brand_id;
           }
         }
       }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAdminModifierGroups } from '../hooks/useAdminModifierGroups';
 import { useAdminIngredients } from '../hooks/useAdminIngredients';
+import { useAdminRecipes } from '../hooks/useAdminRecipes';
 import { useIngredientCategories } from '../hooks/useIngredientCategories';
 import { PageHeader, PrimaryButton, SecondaryButton, FormField, TextInput } from '../components/admin/ui';
 import { Icon } from '@iconify-icon/react';
@@ -14,6 +15,7 @@ export default function AdminModifierGroups() {
   const { activeLocationId, isAllLocations, activeLocation } = useLocation();
   const { modifierGroups, fetchModifierGroups, createGroup, updateGroup, deleteGroup, duplicateGroup, createOption, updateOption, deleteOption } = useAdminModifierGroups(activeLocationId);
   const { ingredients, fetchIngredients } = useAdminIngredients();
+  const { recipes } = useAdminRecipes();
   const { categories } = useIngredientCategories();
   
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
@@ -26,7 +28,7 @@ export default function AdminModifierGroups() {
   const [isOptionModalOpen, setIsOptionModalOpen] = useState(false);
   const [activeGroupId, setActiveGroupId] = useState(null);
   const [editingOption, setEditingOption] = useState(null);
-  const [optionForm, setOptionForm] = useState({ name: '', price: '', ingredient_id: '', nested_group_id: '', emoji: '', image_url: '' });
+  const [optionForm, setOptionForm] = useState({ name: '', price: '', ingredient_id: '', recipe_id: '', nested_group_id: '', emoji: '', image_url: '' });
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [filterCategory, setFilterCategory] = useState('');
   
@@ -89,13 +91,14 @@ export default function AdminModifierGroups() {
         name: option.name, 
         price: option.price || '', 
         ingredient_id: option.ingredient_id || '',
+        recipe_id: option.recipe_id || '',
         nested_group_id: option.nested_group_id || '',
         emoji: option.emoji || '',
         image_url: option.image_url || ''
       });
     } else {
       setEditingOption(null);
-      setOptionForm({ name: '', price: '', ingredient_id: '', nested_group_id: '', emoji: '', image_url: '' });
+      setOptionForm({ name: '', price: '', ingredient_id: '', recipe_id: '', nested_group_id: '', emoji: '', image_url: '' });
     }
     setIsOptionModalOpen(true);
   };
@@ -107,6 +110,7 @@ export default function AdminModifierGroups() {
       name: optionForm.name,
       price: optionForm.price ? parseFloat(optionForm.price) : 0,
       ingredient_id: optionForm.ingredient_id || null,
+      recipe_id: optionForm.recipe_id || null,
       nested_group_id: optionForm.nested_group_id || null,
       emoji: optionForm.emoji || null,
       image_url: optionForm.image_url || null
@@ -385,7 +389,7 @@ export default function AdminModifierGroups() {
             
             <form onSubmit={handleSaveOption} className="flex-1 overflow-y-auto no-scrollbar flex flex-col">
               <div className="p-6 space-y-5 flex-1">
-                <FormField label="Vincular a inventario (Opcional)">
+                <FormField label="Vincular a inventario o Sub-receta (Opcional)">
                   <div className="mb-2">
                     <select 
                       className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#2f4131]/20 text-gray-600 font-medium"
@@ -393,6 +397,7 @@ export default function AdminModifierGroups() {
                       onChange={e => setFilterCategory(e.target.value)}
                     >
                       <option value="">-- Todas las Categorías --</option>
+                      <option value="subrecipes">⭐ Sub-recetas Disponibles como Adición</option>
                       {categories.map(cat => (
                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                       ))}
@@ -400,28 +405,78 @@ export default function AdminModifierGroups() {
                   </div>
                   <select 
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none"
-                    value={optionForm.ingredient_id}
+                    value={optionForm.recipe_id ? `recipe:${optionForm.recipe_id}` : (optionForm.ingredient_id ? `ing:${optionForm.ingredient_id}` : '')}
                     onChange={e => {
                       const val = e.target.value;
-                      const ing = ingredients.find(i => i.id === val);
-                      setOptionForm({
-                        ...optionForm, 
-                        ingredient_id: val,
-                        name: ing ? ing.name : optionForm.name,
-                        price: ing ? (ing.selling_price || 0) : optionForm.price
-                      });
+                      if (!val) {
+                        setOptionForm({ ...optionForm, ingredient_id: '', recipe_id: '' });
+                        return;
+                      }
+
+                      if (val.startsWith('recipe:')) {
+                        const recId = val.replace('recipe:', '');
+                        const rec = recipes.find(r => r.id === recId);
+                        if (rec) {
+                          const portionGrams = Number(rec.addon_portion_grams) || 150;
+                          const batchYield = Number(rec.batch_yield) || 1000;
+                          const unitCost = batchYield > 0 ? (Number(rec.total_cost || 0) / batchYield) : 0;
+                          const portionCost = Math.round(portionGrams * unitCost);
+                          const suggestedPrice = Number(rec.addon_price) || Math.round(portionCost / (1 - 0.6));
+
+                          setOptionForm({
+                            ...optionForm,
+                            recipe_id: rec.id,
+                            ingredient_id: '',
+                            name: optionForm.name || `Porción Extra de ${rec.name} (${portionGrams}${rec.batch_unit || 'g'})`,
+                            price: optionForm.price || String(suggestedPrice)
+                          });
+                        }
+                      } else if (val.startsWith('ing:')) {
+                        const ingId = val.replace('ing:', '');
+                        const ing = ingredients.find(i => i.id === ingId);
+                        setOptionForm({
+                          ...optionForm, 
+                          ingredient_id: ingId,
+                          recipe_id: '',
+                          name: ing ? ing.name : optionForm.name,
+                          price: ing ? String(ing.selling_price || '') : optionForm.price
+                        });
+                      }
                     }}
                   >
                     <option value="">-- Sin vincular (Solo texto) --</option>
-                    <optgroup label={filterCategory ? "Insumos Filtrados" : "Tus Insumos"}>
-                      {ingredients
-                        .filter(ing => !filterCategory || ing.category_id === filterCategory)
-                        .map(ing => (
-                          <option key={ing.id} value={ing.id}>{ing.name}</option>
-                      ))}
-                    </optgroup>
+
+                    {/* Sub-recetas preparadas */}
+                    {(!filterCategory || filterCategory === 'subrecipes') && (
+                      <optgroup label="🍚 Sub-recetas Preparadas (Adiciones)">
+                        {recipes
+                          .filter(r => r.is_subrecipe && (r.available_as_addon || filterCategory === 'subrecipes'))
+                          .map(rec => (
+                            <option key={`rec-${rec.id}`} value={`recipe:${rec.id}`}>
+                              {rec.name} (Porción {rec.addon_portion_grams || 150}{rec.batch_unit || 'g'} - Sugerido ${Number(rec.addon_price || 0).toLocaleString()})
+                            </option>
+                          ))}
+                      </optgroup>
+                    )}
+
+                    {/* Insumos de Inventario */}
+                    {filterCategory !== 'subrecipes' && (
+                      <optgroup label={filterCategory ? "Insumos Filtrados" : "Insumos de Inventario"}>
+                        {ingredients
+                          .filter(ing => !filterCategory || ing.category_id === filterCategory)
+                          .map(ing => (
+                            <option key={`ing-${ing.id}`} value={`ing:${ing.id}`}>{ing.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
-                  <p className="text-[10px] text-gray-500 mt-1">Si vinculas un insumo, el sistema descontará inventario cuando un cliente pida esta opción.</p>
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    {optionForm.recipe_id ? (
+                      <span className="text-emerald-700 font-bold">✓ Vinculado a Sub-receta: Descontará porciones automáticamente del bache preparado.</span>
+                    ) : (
+                      'Si vinculas un insumo o sub-receta, el sistema descontará inventario automáticamente cuando un cliente pida esta opción.'
+                    )}
+                  </p>
                 </FormField>
 
                 <div className="grid grid-cols-4 gap-3">
@@ -493,17 +548,35 @@ export default function AdminModifierGroups() {
                     />
                   </div>
                   {(() => {
-                    const selectedIng = ingredients.find(i => i.id === optionForm.ingredient_id);
-                    if (selectedIng && selectedIng.unit_cost > 0 && optionForm.price) {
-                      const cost = selectedIng.unit_cost;
+                    let cost = 0;
+                    let unitLabel = 'u';
+
+                    if (optionForm.recipe_id) {
+                      const rec = recipes.find(r => r.id === optionForm.recipe_id);
+                      if (rec) {
+                        const portionGrams = Number(rec.addon_portion_grams) || 150;
+                        const batchYield = Number(rec.batch_yield) || 1000;
+                        const unitCost = batchYield > 0 ? (Number(rec.total_cost || 0) / batchYield) : 0;
+                        cost = Math.round(portionGrams * unitCost);
+                        unitLabel = `${portionGrams}${rec.batch_unit || 'g'}`;
+                      }
+                    } else if (optionForm.ingredient_id) {
+                      const selectedIng = ingredients.find(i => i.id === optionForm.ingredient_id);
+                      if (selectedIng) {
+                        cost = selectedIng.unit_cost || 0;
+                        unitLabel = selectedIng.usage_unit || 'u';
+                      }
+                    }
+
+                    if (cost > 0 && optionForm.price) {
                       const price = parseFloat(optionForm.price) || 0;
                       const margin = price - cost;
                       const marginPercent = price > 0 ? Math.round((margin / price) * 100) : 0;
                       return (
                         <div className="mt-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between text-xs">
                           <div>
-                            <span className="text-gray-500 block mb-0.5">Costo en Receta:</span>
-                            <span className="font-bold text-gray-800">${cost.toLocaleString()}</span> <span className="text-gray-400">/{selectedIng.usage_unit || 'u'}</span>
+                            <span className="text-gray-500 block mb-0.5">Costo porción:</span>
+                            <span className="font-bold text-gray-800">${cost.toLocaleString()}</span> <span className="text-gray-400">/{unitLabel}</span>
                           </div>
                           <div className="text-right">
                             <span className="text-gray-500 block mb-0.5">Margen Generado:</span>
@@ -513,11 +586,11 @@ export default function AdminModifierGroups() {
                           </div>
                         </div>
                       );
-                    } else if (selectedIng && selectedIng.unit_cost > 0) {
+                    } else if (cost > 0) {
                       return (
                         <div className="mt-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-xl border border-amber-100">
                           <Icon icon="heroicons:information-circle" className="text-base" /> 
-                          <span>Costo base del insumo: <b>${selectedIng.unit_cost.toLocaleString()}</b>. Asígnale un precio para ver tu margen.</span>
+                          <span>Costo base de la porción ({unitLabel}): <b>${cost.toLocaleString()}</b>. Asígnale un precio para ver tu margen.</span>
                         </div>
                       );
                     }

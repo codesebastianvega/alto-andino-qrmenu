@@ -142,6 +142,17 @@ export const ADDONS_CONFIG = {
     description: 'Monitor para bartender con comandas de bebidas, coctelería y rondas acumuladas.',
     includedInPlans: ['profesional', 'premium', 'enterprise'],
     brandColumn: 'has_bds_addon'
+  },
+  zero_waste: {
+    id: 'zero_waste',
+    name: 'Agente IA Zero-Waste & Mermas',
+    featureKey: 'zero_waste_agent',
+    price: 25000,
+    priceFormatted: '$25.000',
+    period: 'mes',
+    description: 'Sugerencias inteligentes de rescate de mermas y tallos, calibración de costos y sub-recetas de aprovechamiento.',
+    includedInPlans: ['premium', 'enterprise'],
+    brandColumn: 'has_zero_waste_addon'
   }
 };
 

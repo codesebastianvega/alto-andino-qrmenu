@@ -84,7 +84,7 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
           theme_footer_bg: data.theme_footer_bg || '#1A2421',
           favicon_url: data.favicon_url || '',
           font_family: data.font_family || 'Inter',
-          brand_concepts: data.brand_concepts || []
+          brand_concepts: (data.brand_concepts || []).filter(c => c && c.id !== 'operations_model' && c.id !== 'telegram_dispatch' && !c.fulfillment_modes && !c.bot_token)
         });
       } else {
         // Initialize form with brand defaults if no settings found
@@ -138,6 +138,9 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
 
     setIsSubmittingSettings(true);
     try {
+      const existingConcepts = Array.isArray(settings?.brand_concepts) ? settings.brand_concepts : [];
+      const systemConcepts = existingConcepts.filter(c => c && (c.id === 'operations_model' || c.id === 'telegram_dispatch' || c.fulfillment_modes || c.bot_token));
+
       const payload = {
         brand_id: activeBrand.id,
         location_id: null,
@@ -151,7 +154,7 @@ const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, 
         theme_footer_bg: settingsForm.theme_footer_bg,
         favicon_url: settingsForm.favicon_url,
         font_family: settingsForm.font_family,
-        brand_concepts: settingsForm.brand_concepts,
+        brand_concepts: [...systemConcepts, ...(settingsForm.brand_concepts || [])],
         updated_at: new Date()
       };
 

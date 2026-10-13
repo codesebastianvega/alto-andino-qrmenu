@@ -138,28 +138,53 @@ export default function ProductLists({
       const config = cat.visibility_config || {};
       const definedSubs = config.subcategories || [];
 
-      // Unified Logic to build groups if subcategories are defined
+      const visConfig = cat.visibility_config || {};
+      const bannerProduct = getBannerProductForCategory(cat.slug);
+      
+      // Use explicit show_banner from config, or fallback to existing logic
+      const showBanner = visConfig.show_banner !== false && (cat.banner_image_url || bannerProduct) && !query;
+      const bannerStyle = visConfig.banner_style || 'floating';
+
+      // If banner is active and displaying the product, exclude it from the cards list so it does not duplicate
+      const displayItems = (showBanner && bannerProduct)
+        ? items.filter(it => it.id !== bannerProduct.id)
+        : items;
+
+      // Unified Logic to build groups if subcategories are defined or products have subcategories
       let categoryGroups = null;
-      if (definedSubs.length > 0) {
+      const productSubs = Array.from(new Set(displayItems.map(p => p.subcategory).filter(Boolean)));
+      const effectiveSubs = definedSubs.length > 0 ? definedSubs : productSubs;
+
+      if (effectiveSubs.length > 0) {
         const grouped = {};
         const others = [];
 
-        items.forEach(p => {
+        displayItems.forEach(p => {
           const sub = p.subcategory;
-          if (sub && definedSubs.includes(sub)) {
-            if (!grouped[sub]) grouped[sub] = [];
-            grouped[sub].push(p);
+          if (sub && (effectiveSubs.includes(sub) || productSubs.includes(sub))) {
+            const groupKey = sub;
+            if (!grouped[groupKey]) grouped[groupKey] = [];
+            grouped[groupKey].push(p);
           } else {
             others.push(p);
           }
         });
 
-        const groupsToRender = definedSubs
+        const groupsToRender = effectiveSubs
           .map(title => ({
             title,
             items: grouped[title] || []
           }))
           .filter(g => g.items.length > 0);
+
+        productSubs.forEach(extraSub => {
+          if (!effectiveSubs.includes(extraSub) && grouped[extraSub]?.length > 0) {
+            groupsToRender.push({
+              title: extraSub,
+              items: grouped[extraSub]
+            });
+          }
+        });
         
         if (others.length > 0) {
           groupsToRender.push({
@@ -170,13 +195,6 @@ export default function ProductLists({
 
         categoryGroups = groupsToRender;
       }
-
-      const visConfig = cat.visibility_config || {};
-      const bannerProduct = getBannerProductForCategory(cat.slug);
-      
-      // Use explicit show_banner from config, or fallback to existing logic
-      const showBanner = visConfig.show_banner !== false && (cat.banner_image_url || bannerProduct) && !query;
-      const bannerStyle = visConfig.banner_style || 'floating';
 
       const bannerEl = showBanner ? (
         <CategoryBanner 
@@ -191,7 +209,7 @@ export default function ProductLists({
           id={cat.slug}
           title={cat.name}
           query={query}
-          items={items}
+          items={displayItems}
           groups={categoryGroups}
           variant={config.section_type || 'standard'}
           heroId={config.hero_featured_product_id}
@@ -323,7 +341,8 @@ export default function ProductLists({
     typeof setActiveListIndex === "function";
 
   const swipeHandlers = useSwipeable({
-    onSwipedLeft: () => {
+    onSwipedLeft: (e) => {
+      if (e?.event?.target?.closest?.('[data-no-swipe], [data-slider="true"], .group\\/slider')) return;
       if (hasIndexState) {
         if (typeof setActiveCategoryIndex === "function")
           setActiveCategoryIndex((prev) => prev + 1);
@@ -340,7 +359,8 @@ export default function ProductLists({
           });
       }
     },
-    onSwipedRight: () => {
+    onSwipedRight: (e) => {
+      if (e?.event?.target?.closest?.('[data-no-swipe], [data-slider="true"], .group\\/slider')) return;
       if (hasIndexState) {
         if (typeof setActiveCategoryIndex === "function")
           setActiveCategoryIndex((prev) => Math.max(0, prev - 1));

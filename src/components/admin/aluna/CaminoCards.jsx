@@ -122,12 +122,13 @@ export function AgenticProposalCard({
   riskLevel = 'low', 
   isExecuting = false, 
   isDraft = false,
-  productMode = 'simple',
+  productMode,
   onChangeProductMode,
   suggestedModifiers = [],
   onToggleModifier,
   onFieldChange,
   canApprove = true,
+  approveLabel,
   onApprove, 
   onCancel,
   onSendToChat,
@@ -387,7 +388,13 @@ export function AgenticProposalCard({
             ) : (
               <>
                 <CheckCircle2 size={16} />
-                <span>{productMode === 'recipe' ? 'Continuar con Receta e Insumos' : 'Aprobar y Crear Producto'}</span>
+                <span>
+                  {approveLabel 
+                    ? approveLabel 
+                    : productMode === 'recipe' 
+                      ? 'Continuar con Receta e Insumos' 
+                      : 'Aprobar y Ejecutar'}
+                </span>
               </>
             )}
           </button>

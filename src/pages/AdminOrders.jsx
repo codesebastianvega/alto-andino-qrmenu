@@ -158,7 +158,9 @@ export default function AdminOrders() {
         .from('restaurant_settings')
         .select('*')
         .eq('brand_id', activeBrandId)
-        .single();
+        .order('location_id', { ascending: true, nullsFirst: true })
+        .limit(1)
+        .maybeSingle();
       if (!error && data) setRestaurantSettings(data);
     };
     fetchSettings();

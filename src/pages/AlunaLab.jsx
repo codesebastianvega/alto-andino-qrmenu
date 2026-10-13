@@ -185,7 +185,7 @@ function AlunaLabCanvas({ brand, onBack }) {
       const [categoriesRes, productsRes, recipesRes, ingredientsRes, allergensRes] = await Promise.all([
         supabase.from('categories').select('id,name,banner_description,is_active').eq('brand_id', brand.id).order('sort_order'),
         supabase.from('products').select('id,name,description,price,cost,margin,image_url,category_id,subcategory,recipe_id,is_active,tags').eq('brand_id', brand.id).eq('is_addon', false).order('name'),
-        supabase.from('recipes').select('id,name,description,total_cost,target_price,recipe_ingredients(ingredient_id,quantity,ingredients(id,name,description,usage_unit,unit_cost))').eq('brand_id', brand.id).order('name'),
+        supabase.from('recipes').select('id,name,description,total_cost,target_price,recipe_ingredients!recipe_ingredients_recipe_id_fkey(ingredient_id,quantity,ingredients(id,name,description,usage_unit,unit_cost))').eq('brand_id', brand.id).order('name'),
         supabase.from('ingredients').select('id,name,description,usage_unit,unit_cost,is_active').eq('brand_id', brand.id).order('name'),
         supabase.from('allergens').select('id,name,emoji,type').eq('brand_id', brand.id).order('name'),
       ]);

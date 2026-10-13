@@ -3,8 +3,10 @@ import { useEffect } from 'react';
 /**
  * Hook para inyectar dinámicamente el Web App Manifest y metadatos PWA
  * según la marca activa (BOKU, Alto Andino, etc.).
- * Esto permite que al presionar "Agregar a pantalla de inicio" o "Instalar App",
- * se instale con el nombre, logo y color específico de la marca.
+ *
+ * Resuelve el problema de bordes blancos en Android generando un icono
+ * maskable de sangrado completo (full-bleed) con el color de la marca
+ * como fondo y el logo centrado en la zona segura (safe zone).
  */
 export function useDynamicPWA({ brand, restaurantSettings }) {
   useEffect(() => {
@@ -27,7 +29,7 @@ export function useDynamicPWA({ brand, restaurantSettings }) {
     }
     metaThemeColor.setAttribute('content', themeColor);
 
-    // 3. Actualizar Favicon & Apple Touch Icon para iOS / Android shortcuts
+    // 3. Actualizar Favicon
     let faviconLink = document.querySelector('link[rel="icon"]');
     if (!faviconLink) {
       faviconLink = document.createElement('link');
@@ -42,45 +44,103 @@ export function useDynamicPWA({ brand, restaurantSettings }) {
       appleIconLink.rel = 'apple-touch-icon';
       document.head.appendChild(appleIconLink);
     }
-    appleIconLink.href = brandLogo;
 
-    // 4. Crear Manifest PWA Dinámico en formato Blob
-    const manifestObject = {
-      name: brandName,
-      short_name: brandShortName,
-      description: `Menú digital y pedidos para ${brandName}`,
-      start_url: window.location.pathname + window.location.search,
-      display: "standalone",
-      background_color: "#ffffff",
-      theme_color: themeColor,
-      icons: [
-        {
-          src: brandLogo,
-          sizes: "192x192 512x512",
-          type: "image/png",
-          purpose: "any maskable"
+    let isCancelled = false;
+    let blobManifestUrl = null;
+    let maskableBlobUrl = null;
+
+    // Helper: generar icono maskable full-bleed con fondo sólido del color de la marca
+    const generateMaskableAndManifest = async () => {
+      let maskableUrl = brandLogo;
+
+      try {
+        const canvas = document.createElement('canvas');
+        const size = 512;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        if (ctx) {
+          // Fondo sólido con el color de la marca (elimina bordes blancos en Android e iOS)
+          ctx.fillStyle = themeColor;
+          ctx.fillRect(0, 0, size, size);
+
+          // Centrar el logo dentro de la zona segura del maskable (82% del tamaño)
+          await new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              const scale = 0.82;
+              const w = size * scale;
+              const h = (img.naturalHeight / img.naturalWidth) * w;
+              const x = (size - w) / 2;
+              const y = (size - h) / 2;
+              ctx.drawImage(img, x, y, w, h);
+              resolve();
+            };
+            img.onerror = () => resolve(); // Si falla CORS, continúa con fallback
+            img.src = brandLogo;
+          });
+
+          const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
+          if (blob && !isCancelled) {
+            maskableBlobUrl = URL.createObjectURL(blob);
+            maskableUrl = maskableBlobUrl;
+          }
         }
-      ]
+      } catch (err) {
+        console.warn('PWA: No se pudo generar icono maskable dinámico', err);
+      }
+
+      if (isCancelled) return;
+
+      // Asignar icono con fondo sólido a apple-touch-icon para iOS
+      appleIconLink.href = maskableUrl;
+
+      // 4. Crear Manifest PWA Dinámico en formato Blob con background_color = themeColor
+      const manifestObject = {
+        name: brandName,
+        short_name: brandShortName,
+        description: `Menú digital y pedidos para ${brandName}`,
+        start_url: window.location.pathname + window.location.search,
+        display: "standalone",
+        background_color: themeColor,
+        theme_color: themeColor,
+        icons: [
+          {
+            src: brandLogo,
+            sizes: "192x192 512x512",
+            type: "image/png",
+            purpose: "any"
+          },
+          {
+            src: maskableUrl,
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable"
+          }
+        ]
+      };
+
+      const stringManifest = JSON.stringify(manifestObject);
+      const manifestBlob = new Blob([stringManifest], { type: 'application/json' });
+      blobManifestUrl = URL.createObjectURL(manifestBlob);
+
+      let manifestLink = document.querySelector('link[rel="manifest"]');
+      if (!manifestLink) {
+        manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        document.head.appendChild(manifestLink);
+      }
+      manifestLink.href = blobManifestUrl;
     };
 
-    const stringManifest = JSON.stringify(manifestObject);
-    const blob = new Blob([stringManifest], { type: 'application/json' });
-    const manifestUrl = URL.createObjectURL(blob);
-
-    let manifestLink = document.querySelector('link[rel="manifest"]');
-    if (!manifestLink) {
-      manifestLink = document.createElement('link');
-      manifestLink.rel = 'manifest';
-      document.head.appendChild(manifestLink);
-    }
-
-    const previousUrl = manifestLink.href;
-    manifestLink.href = manifestUrl;
+    generateMaskableAndManifest();
 
     return () => {
-      if (previousUrl && previousUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(previousUrl);
-      }
+      isCancelled = true;
+      if (blobManifestUrl) URL.revokeObjectURL(blobManifestUrl);
+      if (maskableBlobUrl) URL.revokeObjectURL(maskableBlobUrl);
     };
   }, [brand, restaurantSettings]);
 }

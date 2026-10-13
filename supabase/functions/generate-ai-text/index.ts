@@ -28,21 +28,40 @@ serve(async (req: Request) => {
       throw new Error('GEMINI_API_KEY not set in environment variables');
     }
 
-    const model = Deno.env.get('GEMINI_MODEL') || 'gemini-3.1-flash-lite';
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-    
-    const geminiResponse = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: prompt.trim().slice(0, 12000) }]
-        }]
-      })
-    });
+    const requestedModel = Deno.env.get('GEMINI_MODEL') || 'gemini-2.5-flash';
+    const modelsToTry = [requestedModel, 'gemini-1.5-flash'];
+    let geminiResponse: Response | null = null;
+    let geminiError: unknown = null;
+
+    for (const currentModel of modelsToTry) {
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey,
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: prompt.trim().slice(0, 12000) }]
+            }]
+          })
+        });
+        if (res.ok) {
+          geminiResponse = res;
+          break;
+        } else {
+          geminiError = await res.text();
+        }
+      } catch (err) {
+        geminiError = err;
+      }
+    }
+
+    if (!geminiResponse || !geminiResponse.ok) {
+      console.error('Gemini API Error:', geminiError);
+      throw new Error('Error generating content with Gemini: ' + String(geminiError));
+    }
 
     const data = await geminiResponse.json();
 

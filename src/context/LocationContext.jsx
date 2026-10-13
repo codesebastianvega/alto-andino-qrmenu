@@ -98,6 +98,21 @@ export const LocationProvider = ({ children }) => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [activeLocationId]);
 
+  // Ensure that activeLocationId actually belongs to the current brand's locations
+  useEffect(() => {
+    if (!locationsLoading && locations.length > 0 && activeLocationId && activeLocationId !== 'all') {
+      const isValid = locations.some(loc => loc.id === activeLocationId);
+      if (!isValid) {
+        console.warn(`[LocationContext] Sede ${activeLocationId} no pertenece a ${activeBrand?.name}. Reseteando a 'all'.`);
+        setActiveLocationId('all');
+        localStorage.removeItem("aa_current_location_id");
+        if (activeBrand) {
+          localStorage.setItem(`aa_active_loc_${activeBrand.id}`, 'all');
+        }
+      }
+    }
+  }, [locations, locationsLoading, activeLocationId, activeBrand]);
+
   // Derive the active location object
   const activeLocation = useMemo(() => {
     if (!activeLocationId || activeLocationId === 'all') return null;

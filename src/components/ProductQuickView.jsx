@@ -128,9 +128,10 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
       const groupMeta = rawModifierGroups.find(g => g.id === groupKey || g.name === groupKey);
       if (!groupMeta) return;
 
-      // If it's a submodifier, it MUST be triggered to be shown
+      // If it's a submodifier, it MUST be triggered or explicitly assigned to this product
+      const isDirectlyAssigned = (product?.modifier_groups || []).includes(groupMeta.id);
       const isTriggered = Object.values(triggeredMap).flat().includes(groupMeta.id);
-      if (groupMeta.is_submodifier && !isTriggered) return;
+      if (groupMeta.is_submodifier && !isTriggered && !isDirectlyAssigned) return;
 
       addedIds.add(groupKey);
       addedIds.add(groupMeta.id);

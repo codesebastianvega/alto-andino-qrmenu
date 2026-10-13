@@ -7,6 +7,8 @@ import { useLocations } from '../context/LocationContext';
 import { useRestaurantSettings } from '../hooks/useRestaurantSettings';
 import { printThermalDocument } from '../utils/thermalPrint';
 import soundService from '../utils/soundService';
+import { KitchenRecipeViewerModal } from '../components/admin/KitchenRecipeViewerModal';
+import { useAdminRecipes } from '../hooks/useAdminRecipes';
 
 const playNotificationSound = () => {
   soundService.playNewOrder();
@@ -94,6 +96,24 @@ export default function AdminKitchen() {
   const { activeBrand } = useAuth();
   const { activeLocationId, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id;
+
+  const { recipes: allRecipes } = useAdminRecipes();
+  const [selectedRecipeForViewer, setSelectedRecipeForViewer] = useState(null);
+
+  const handleOpenDishRecipe = (item) => {
+    const prodName = item.products?.name?.toLowerCase() || '';
+    const found = allRecipes.find(r => 
+      r.name.toLowerCase().includes(prodName) || 
+      prodName.includes(r.name.toLowerCase().split('(')[0].trim().toLowerCase())
+    );
+    if (found) {
+      setSelectedRecipeForViewer(found);
+    } else if (allRecipes.length > 0) {
+      setSelectedRecipeForViewer(allRecipes[0]);
+    } else {
+      toast('No hay ficha técnica registrada');
+    }
+  };
 
   const toggleTheme = () => {
     setIsDark(prev => {
@@ -387,10 +407,15 @@ export default function AdminKitchen() {
               </span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline justify-between gap-1">
-                  <p className={`text-sm font-bold uppercase leading-tight truncate ${
-                    isDark ? 'text-white' : 'text-slate-900'
-                  }`}>
-                    {item.products?.name}
+                  <p 
+                    onClick={() => handleOpenDishRecipe(item)}
+                    className={`text-sm font-bold uppercase leading-tight truncate cursor-pointer hover:underline flex items-center gap-1 ${
+                      isDark ? 'text-white hover:text-emerald-400' : 'text-slate-900 hover:text-indigo-600'
+                    }`}
+                    title="Toca para ver ficha técnica y gramajes"
+                  >
+                    <span>{item.products?.name}</span>
+                    <Icon icon="heroicons:information-circle" className="text-xs opacity-60" />
                   </p>
                   {stationFilter === 'all' && (
                     <span className={`text-[9px] font-bold px-1 rounded uppercase shrink-0 border ${
@@ -575,10 +600,28 @@ export default function AdminKitchen() {
             ))}
           </div>
 
-          {/* Quick Actions (Theme, Refresh, Fullscreen) */}
+          {/* Quick Actions (Theme, Refresh, Fullscreen, Recipes) */}
           <div className={`flex items-center gap-1 rounded-lg p-0.5 border ${
             isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-slate-200 shadow-2xs'
           }`}>
+            <button
+              onClick={() => {
+                if (allRecipes.length > 0) {
+                  setSelectedRecipeForViewer(allRecipes[0]);
+                } else {
+                  toast('No hay recetas registradas');
+                }
+              }}
+              title="Ver Fichas Técnicas & Subrecetas de Cocina"
+              className={`h-7 px-2.5 flex items-center gap-1 rounded text-xs font-bold transition-colors ${
+                isDark 
+                  ? 'bg-indigo-950/80 text-indigo-300 hover:bg-indigo-900 border border-indigo-800/60' 
+                  : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
+              }`}
+            >
+              <Icon icon="heroicons:book-open" className="text-sm" />
+              <span className="hidden sm:inline">Fichas ({allRecipes.length})</span>
+            </button>
             <button
               onClick={toggleTheme}
               title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
@@ -679,6 +722,16 @@ export default function AdminKitchen() {
             {displayedOrders.map(order => renderOrderTicket(order))}
           </div>
         )
+      )}
+
+      {/* ── Modal de Ficha Técnica Digital de Cocina */}
+      {selectedRecipeForViewer && (
+        <KitchenRecipeViewerModal
+          recipe={selectedRecipeForViewer}
+          allRecipes={allRecipes}
+          isOpen={Boolean(selectedRecipeForViewer)}
+          onClose={() => setSelectedRecipeForViewer(null)}
+        />
       )}
     </div>
   );

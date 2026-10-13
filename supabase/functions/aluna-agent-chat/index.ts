@@ -171,126 +171,150 @@ serve(async (req: Request) => {
       'Si el usuario pide activar o ajustar propina o porcentaje de servicio, usa intent update_service_fee y extrae en operations_draft.',
       'Si el usuario pide cambiar textos web o portada, usa intent update_web_content y extrae en web_draft.',
       'Si el usuario pide cambiar color principal de marca o logo, usa intent update_branding y extrae en web_draft.',
-      'Si el usuario reporta que compró insumos o que llegaron compras (ej. llegaron 10 kg de arroz, 5 kg de carne), usa intent batch_stock_entry y extrae los insumos en inventory_draft.entries.',
+      'Si el usuario reporta una compra, llegada o factura de insumos (ej. "llegó 2 libras de pechuga con hueso valió 16690", "compré 5 kg de arroz a 20000"), NO te quedes haciendo preguntas: usa de inmediato intent batch_stock_entry y extrae los insumos en inventory_draft.entries con quantity_added y unit_cost estimado por unidad (ej. si 2 libras = 1000g o 2 und, unit_cost = total/cantidad). Si hay error ortográfico o typo (ej. "peghivga" por "pechuga"), asocia el nombre al insumo más cercano de CONTEXTO_REAL.',
+      'Si el usuario pide cambiar o ajustar el precio de un plato o producto existente, no des vueltas: usa intent general o create_costed_product, o responde directamente con el cambio propuesto para que el frontend abra la tarjeta de cambio de precio.',
+      'Si el usuario pregunta qué precios faltan, qué insumos no tienen costo o qué falta configurar, lista de inmediato en 2 o 3 viñetas breves los productos o insumos sin precio basándote en CONTEXTO_REAL.',
       'Si el usuario pide qué hay que comprar, lista de mercado o insumos bajos de stock, usa intent generate_shopping_list.',
       'Si el usuario pide crear mesas (ej. crear 5 mesas, o 10 mesas para la terraza, o mesas del 1 al 10), usa intent create_table_batch y extrae en table_draft: count, prefix, start_number, end_number y area_name si mencionó un salón o área.',
-      'Si la capacidad aún no existe, dilo claramente. Responde en español, directo y en máximo 45 palabras.',
+      'Sé un agente ejecutor: prioriza SIEMPRE proponer la tarjeta de acción antes que hacer preguntas repetitivas. Responde en español, directo y en máximo 40 palabras.',
     ].join('\n');
 
-    const model = Deno.env.get('GEMINI_MODEL') || 'gemini-3.1-flash-lite';
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        contents: [{ role: 'user', parts: [{ text: `CONTEXTO_REAL:\n${JSON.stringify(realContext)}\n\nHISTORIAL_RECIENTE:\n${JSON.stringify(safeHistory)}\n\nMENSAJE_ACTUAL:\n${message.trim().slice(0, 12000)}` }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: 'OBJECT',
-            properties: {
-              reply: { type: 'STRING' },
-              intent: {
-                type: 'STRING',
-                enum: [
-                  'audit', 'create_location', 'create_catalog', 'create_costed_product',
-                  'consolidate_catalog', 'update_business_hours', 'create_payment_method',
-                  'update_printing_settings', 'create_modifier_group',
-                  'update_delivery_settings', 'update_support_whatsapp', 'update_service_fee',
-                  'update_web_content', 'update_branding', 'batch_stock_entry',
-                  'generate_shopping_list', 'create_table_batch', 'general'
-                ]
-              },
-              catalog_draft: {
-                type: 'OBJECT',
-                properties: {
-                  category_name: { type: 'STRING' },
-                  product_name: { type: 'STRING' },
-                  description: { type: 'STRING' },
-                  price: { type: 'NUMBER' },
-                  tags: { type: 'ARRAY', items: { type: 'STRING' } },
-                  requires_kitchen: { type: 'BOOLEAN' },
-                  suggested_modifiers: { type: 'ARRAY', items: { type: 'STRING' } },
-                },
-              },
-              recipe_draft: {
-                type: 'OBJECT',
-                properties: {
-                  servings: { type: 'NUMBER' },
-                  quantities_are_estimates: { type: 'BOOLEAN' },
-                  ingredients: {
-                    type: 'ARRAY',
-                    items: {
-                      type: 'OBJECT',
-                      properties: {
-                        name: { type: 'STRING' },
-                        recipe_quantity: { type: 'NUMBER' },
-                        usage_unit: { type: 'STRING' },
-                      },
-                      required: ['name', 'recipe_quantity', 'usage_unit'],
-                    },
-                  },
-                },
-              },
-              operations_draft: {
-                type: 'OBJECT',
-                properties: {
-                  delivery_fee: { type: 'NUMBER' },
-                  delivery_radius_km: { type: 'NUMBER' },
-                  whatsapp_number_orders: { type: 'STRING' },
-                  support_phone: { type: 'STRING' },
-                  service_fee_percentage: { type: 'NUMBER' },
-                  is_service_fee_enabled: { type: 'BOOLEAN' },
-                },
-              },
-              web_draft: {
-                type: 'OBJECT',
-                properties: {
-                  hero_h1: { type: 'STRING' },
-                  hero_subtitle: { type: 'STRING' },
-                  menu_banner_title: { type: 'STRING' },
-                  menu_banner_subtitle: { type: 'STRING' },
-                  primary_color: { type: 'STRING' },
-                },
-              },
-              inventory_draft: {
-                type: 'OBJECT',
-                properties: {
-                  entries: {
-                    type: 'ARRAY',
-                    items: {
-                      type: 'OBJECT',
-                      properties: {
-                        ingredient_name: { type: 'STRING' },
-                        quantity_added: { type: 'NUMBER' },
-                        unit_cost: { type: 'NUMBER' },
-                      },
-                      required: ['ingredient_name', 'quantity_added'],
-                    },
-                  },
-                },
-              },
-              table_draft: {
-                type: 'OBJECT',
-                properties: {
-                  count: { type: 'NUMBER' },
-                  prefix: { type: 'STRING' },
-                  start_number: { type: 'NUMBER' },
-                  end_number: { type: 'NUMBER' },
-                  area_name: { type: 'STRING' },
-                },
-              },
-              missing_fields: { type: 'ARRAY', items: { type: 'STRING' } },
-              suggested_replies: { type: 'ARRAY', items: { type: 'STRING' } },
-            },
-            required: ['reply', 'intent'],
-          },
-        },
-      }),
-    });
+    const requestedModel = Deno.env.get('GEMINI_MODEL') || 'gemini-2.5-flash';
+    const modelsToTry = [requestedModel, 'gemini-1.5-flash'];
+    let response: Response | null = null;
+    let geminiError: unknown = null;
 
+    for (const currentModel of modelsToTry) {
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents: [{ role: 'user', parts: [{ text: `CONTEXTO_REAL:\n${JSON.stringify(realContext)}\n\nHISTORIAL_RECIENTE:\n${JSON.stringify(safeHistory)}\n\nMENSAJE_ACTUAL:\n${message.trim().slice(0, 12000)}` }] }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: 'OBJECT',
+                properties: {
+                  reply: { type: 'STRING' },
+                  intent: {
+                    type: 'STRING',
+                    enum: [
+                      'audit', 'create_location', 'create_catalog', 'create_costed_product',
+                      'consolidate_catalog', 'update_business_hours', 'create_payment_method',
+                      'update_printing_settings', 'create_modifier_group',
+                      'update_delivery_settings', 'update_support_whatsapp', 'update_service_fee',
+                      'update_web_content', 'update_branding', 'batch_stock_entry',
+                      'generate_shopping_list', 'create_table_batch', 'general'
+                    ]
+                  },
+                  catalog_draft: {
+                    type: 'OBJECT',
+                    properties: {
+                      category_name: { type: 'STRING' },
+                      product_name: { type: 'STRING' },
+                      description: { type: 'STRING' },
+                      price: { type: 'NUMBER' },
+                      tags: { type: 'ARRAY', items: { type: 'STRING' } },
+                      requires_kitchen: { type: 'BOOLEAN' },
+                      suggested_modifiers: { type: 'ARRAY', items: { type: 'STRING' } },
+                    },
+                  },
+                  recipe_draft: {
+                    type: 'OBJECT',
+                    properties: {
+                      servings: { type: 'NUMBER' },
+                      quantities_are_estimates: { type: 'BOOLEAN' },
+                      ingredients: {
+                        type: 'ARRAY',
+                        items: {
+                          type: 'OBJECT',
+                          properties: {
+                            name: { type: 'STRING' },
+                            recipe_quantity: { type: 'NUMBER' },
+                            usage_unit: { type: 'STRING' },
+                          },
+                          required: ['name', 'recipe_quantity', 'usage_unit'],
+                        },
+                      },
+                    },
+                  },
+                  operations_draft: {
+                    type: 'OBJECT',
+                    properties: {
+                      delivery_fee: { type: 'NUMBER' },
+                      delivery_radius_km: { type: 'NUMBER' },
+                      whatsapp_number_orders: { type: 'STRING' },
+                      support_phone: { type: 'STRING' },
+                      service_fee_percentage: { type: 'NUMBER' },
+                      is_service_fee_enabled: { type: 'BOOLEAN' },
+                    },
+                  },
+                  web_draft: {
+                    type: 'OBJECT',
+                    properties: {
+                      hero_h1: { type: 'STRING' },
+                      hero_subtitle: { type: 'STRING' },
+                      menu_banner_title: { type: 'STRING' },
+                      menu_banner_subtitle: { type: 'STRING' },
+                      primary_color: { type: 'STRING' },
+                    },
+                  },
+                  inventory_draft: {
+                    type: 'OBJECT',
+                    properties: {
+                      entries: {
+                        type: 'ARRAY',
+                        items: {
+                          type: 'OBJECT',
+                          properties: {
+                            ingredient_name: { type: 'STRING' },
+                            quantity_added: { type: 'NUMBER' },
+                            unit_cost: { type: 'NUMBER' },
+                          },
+                          required: ['ingredient_name', 'quantity_added'],
+                        },
+                      },
+                    },
+                  },
+                  table_draft: {
+                    type: 'OBJECT',
+                    properties: {
+                      count: { type: 'NUMBER' },
+                      prefix: { type: 'STRING' },
+                      start_number: { type: 'NUMBER' },
+                      end_number: { type: 'NUMBER' },
+                      area_name: { type: 'STRING' },
+                    },
+                  },
+                  missing_fields: { type: 'ARRAY', items: { type: 'STRING' } },
+                  suggested_replies: { type: 'ARRAY', items: { type: 'STRING' } },
+                },
+                required: ['reply', 'intent'],
+              },
+            },
+          }),
+        });
+
+        if (res.ok) {
+          response = res;
+          break;
+        } else {
+          const errBody = await res.text();
+          geminiError = `Model ${currentModel} returned ${res.status}: ${errBody}`;
+          console.warn(`Gemini attempt with ${currentModel} failed:`, geminiError);
+        }
+      } catch (e) {
+        geminiError = e;
+        console.warn(`Gemini fetch error with ${currentModel}:`, e);
+      }
+    }
+
+    if (!response || !response.ok) {
+      return jsonResponse({ error: 'Gemini request failed', details: String(geminiError) }, 502);
+    }
     const data = await response.json();
-    if (!response.ok) return jsonResponse({ error: 'Gemini request failed' }, 502);
     const rawText = data?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || '').join('').trim();
     const parsed = JSON.parse(rawText || '{}');
     const allowedIntents = new Set([
@@ -352,7 +376,7 @@ serve(async (req: Request) => {
         user_id: userData.user.id,
         prompt_tokens: promptTokens,
         response_tokens: responseTokens,
-        model: model,
+        model: requestedModel,
         intent: parsed.intent || 'general',
       });
 

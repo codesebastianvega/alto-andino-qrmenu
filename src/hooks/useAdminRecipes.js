@@ -19,7 +19,7 @@ export function useAdminRecipes() {
         .from('recipes')
         .select(`
           *,
-          recipe_ingredients (
+          recipe_ingredients!recipe_ingredients_recipe_id_fkey (
             ingredient_id,
             quantity,
             ingredients (name, unit_cost, usage_unit)

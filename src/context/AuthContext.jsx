@@ -85,8 +85,8 @@ export const AuthProvider = ({ children }) => {
 
       setProfile(data);
 
-      // Fetch all brands this user owns (owner_id = user.id)
-      const { data: brands } = await supabase
+      // Fetch all brands this user owns or manages (superadmins see all brands)
+      let brandsQuery = supabase
         .from('brands')
         .select(`
           id, name, slug, logo_url, business_type, plan_id, onboarding_completed, is_active,
@@ -94,19 +94,17 @@ export const AuthProvider = ({ children }) => {
           plans (name),
           restaurant_settings (primary_color)
         `)
-        .eq('owner_id', userId)
         .order('name');
 
-      const userBrands = brands || [];
-      setOwnedBrands(userBrands);
+      if (data.role !== 'superadmin') {
+        brandsQuery = brandsQuery.eq('owner_id', userId);
+      }
 
-      // Restore last active brand from localStorage
-      const stored = localStorage.getItem('aa_active_brand_id');
-      let savedBrand = userBrands.find(b => b.id === stored);
+      const { data: brands } = await brandsQuery;
+      let userBrands = brands || [];
 
-      // CRITICAL FIX: If user is not the owner (e.g. waiter), they won't have the brand in ownedBrands.
-      // We must fetch it explicitly using data.brand_id from their profile.
-      if (!savedBrand && !userBrands.length && data.brand_id) {
+      // If user has a brand_id assigned in profile that isn't already in userBrands, fetch and include it
+      if (data.brand_id && !userBrands.some(b => b.id === data.brand_id)) {
         try {
           const { data: staffBrand } = await supabase
             .from('brands')
@@ -118,25 +116,35 @@ export const AuthProvider = ({ children }) => {
             `)
             .eq('id', data.brand_id)
             .single();
-          
+
           if (staffBrand) {
-            savedBrand = staffBrand;
+            userBrands = [staffBrand, ...userBrands];
           }
         } catch (brandErr) {
-          console.error('Error fetching staff brand:', brandErr);
+          console.error('Error fetching assigned brand:', brandErr);
         }
       }
 
-      if (savedBrand) {
-        setActiveBrandState(savedBrand);
-        fetchBrandFeatures(savedBrand.id, savedBrand.plan_id);
-        setNeedsOnboarding(false);
-      } else if (userBrands.length > 0) {
-        // Default: the brand matching the profile's brand_id
-        const profileBrand = userBrands.find(b => b.id === data.brand_id) || userBrands[0];
-        setActiveBrandState(profileBrand);
-        localStorage.setItem('aa_active_brand_id', profileBrand.id);
-        fetchBrandFeatures(profileBrand.id, profileBrand.plan_id);
+      setOwnedBrands(userBrands);
+
+      // Check current URL for brand slug (e.g. /boku-bento/#admin)
+      const pathSlug = window.location.pathname.split('/').filter(Boolean)[0];
+      const brandFromUrl = pathSlug ? userBrands.find(b => b.slug === pathSlug) : null;
+
+      // Restore last active brand from localStorage
+      const stored = localStorage.getItem('aa_active_brand_id');
+      const savedBrand = userBrands.find(b => b.id === stored);
+
+      // Default from profile
+      const profileBrand = userBrands.find(b => b.id === data.brand_id);
+
+      // Selection priority: URL slug > stored preference > profile default > first available brand
+      const selectedBrand = brandFromUrl || savedBrand || profileBrand || userBrands[0] || null;
+
+      if (selectedBrand) {
+        setActiveBrandState(selectedBrand);
+        localStorage.setItem('aa_active_brand_id', selectedBrand.id);
+        fetchBrandFeatures(selectedBrand.id, selectedBrand.plan_id);
         setNeedsOnboarding(false);
       } else {
         // Usuario autenticado (ej: via Google) pero sin negocio creado todavía

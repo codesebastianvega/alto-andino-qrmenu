@@ -14,7 +14,7 @@ import {
 } from '../components/admin/ui';
 import { Icon } from '@iconify-icon/react';
 import { useLocation } from '../context/LocationContext';
-import { Link as LinkIcon, Lightbulb, X } from 'lucide-react';
+import { Link as LinkIcon, Lightbulb, X, Sparkles, Leaf } from 'lucide-react';
 
 const TrashIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -42,18 +42,18 @@ export default function AdminModifiers() {
   return (
     <div className="p-8 w-full max-w-[1600px] mx-auto space-y-8 animate-fade-in">
       {/* Tabs Menu */}
-      <div className="flex flex-row overflow-x-auto scrollbar-hide ios-smooth-scroll flex-nowrap bg-gray-50/80 backdrop-blur-lg p-1.5 mb-8 rounded-2xl w-full sm:w-fit mx-auto border border-gray-100 shadow-sm sticky top-4 z-50">
+      <div className="flex flex-row overflow-x-auto scrollbar-hide flex-nowrap bg-slate-100 p-1 mb-6 rounded-xl w-full sm:w-fit mx-auto border border-slate-200/80 shadow-2xs sticky top-4 z-40">
         {TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`whitespace-nowrap shrink-0 px-4 sm:px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
+            className={`whitespace-nowrap shrink-0 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
               activeTab === tab.id
-                ? 'bg-white text-[#2f4131] shadow-md border border-gray-100 ring-1 ring-gray-200/50'
-                : 'text-gray-400 hover:text-gray-600 hover:bg-white/50'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
             }`}
           >
-            <Icon icon={tab.icon} className={activeTab === tab.id ? 'text-[#2f4131]' : 'text-gray-300'} />
+            <Icon icon={tab.icon} className={activeTab === tab.id ? 'text-emerald-700' : 'text-slate-400'} />
             {tab.label}
           </button>
         ))}
@@ -87,6 +87,87 @@ function ListaComprasTab({ activeLocationId }) {
   );
 }
 
+// Base de conocimiento culinario Zero-Waste para rescate de mermas y tallos
+const ZERO_WASTE_KNOWLEDGE = [
+  {
+    keywords: ['brócoli', 'brocoli'],
+    badge: 'Tallos & Tronco',
+    suggestion: 'El tallo representa ~35% del peso. Pélalo y córtalo en julianas o rodajas finas para encurtido japonés (Asazuke), salteados wok o puré de base.',
+    potentialSaving: '35% de merma rescatable'
+  },
+  {
+    keywords: ['cebolla larga', 'cebollín', 'cebollin'],
+    badge: 'Tallo Verde & Raíz',
+    suggestion: 'Usa las partes verdes para aceite aromatizado de cebollín o guarnición fresca. Las raíces limpias aportan umami profundo a caldos y fondos.',
+    potentialSaving: '20% de merma rescatable'
+  },
+  {
+    keywords: ['cebolla morada', 'cebolla cabezona', 'cebolla blanca'],
+    badge: 'Cáscaras & Puntas',
+    suggestion: 'Usa los cortes externos para encurtidos rápidos con vinagre de arroz y remolacha, o resérvalos para fondo de caldos base.',
+    potentialSaving: '15% de merma rescatable'
+  },
+  {
+    keywords: ['zanahoria'],
+    badge: 'Puntas & Piel',
+    suggestion: 'Lávala con cepillo para no pelarla (cero merma). Los recortes van a caldo vegetal aromático o deshidratados en chips de sal marina.',
+    potentialSaving: '18% de merma rescatable'
+  },
+  {
+    keywords: ['cilantro'],
+    badge: 'Tallos Bajos',
+    suggestion: '¡No descartes los tallos! Tienen más aroma que las hojas; tritúralos para marinados asiáticos, pasta de curry o aderezo de la casa.',
+    potentialSaving: '25% de merma rescatable'
+  },
+  {
+    keywords: ['pepino', 'pepino cohombro'],
+    badge: 'Semillas & Piel',
+    suggestion: 'Piel y semillas son ideales para infusionar agua aromática de cortesía o emulsionar aderezo refrescante de sésamo y pepino.',
+    potentialSaving: '20% de merma rescatable'
+  },
+  {
+    keywords: ['mango'],
+    badge: 'Semilla & Pulpa residual',
+    suggestion: 'Hervir la semilla y recortes con panela/azúcar y vinagre para crear salsa Sweet & Sour agridulce artesanal o reducción para postres.',
+    potentialSaving: '30% de merma rescatable'
+  },
+  {
+    keywords: ['aguacate', 'palta'],
+    badge: 'Rendimiento y Maduración',
+    suggestion: 'Porciones muy blandas pueden emulsionarse con limón y aceite de sésamo para una mayo-aguacate sin huevo con 0 desperdicio.',
+    potentialSaving: '15% de merma rescatable'
+  },
+  {
+    keywords: ['papa', 'papas'],
+    badge: 'Cáscaras Limpias',
+    suggestion: 'Cáscaras bien lavadas fritas a 180°C con sal marina y togarashi quedan como crocantes gourmet de cortesía para el bento.',
+    potentialSaving: '12% de merma rescatable'
+  },
+  {
+    keywords: ['pollo', 'pechuga', 'muslo'],
+    badge: 'Huesos & Pieles',
+    suggestion: 'Huesos para fondo Tori Paitan (caldo ramen concentrado). Piel crocante frita (Torikawa) para topping crocante en ensaladas.',
+    potentialSaving: '25% de merma rescatable'
+  }
+];
+
+function getZeroWasteSuggestion(name) {
+  if (!name) return null;
+  const lower = name.toLowerCase();
+  
+  // Productos procesados o congelados no tienen merma de huesos/pieles
+  if (lower.includes('nugget') || lower.includes('empanada') || lower.includes('salchicha')) {
+    return null;
+  }
+
+  for (const item of ZERO_WASTE_KNOWLEDGE) {
+    if (item.keywords.some(k => lower.includes(k))) {
+      return item;
+    }
+  }
+  return null;
+}
+
 // ═══════════════════════════════════════════════════════
 // TAB 1 — INVENTARIO
 // ═══════════════════════════════════════════════════════
@@ -103,7 +184,9 @@ function InsumosTab({ activeLocationId }) {
   const [editing,       setEditing]       = useState(null);
   const [search,        setSearch]        = useState('');
   const [catFilter,     setCatFilter]     = useState('all');
+  const [providerFilter, setProviderFilter]= useState('all');
   const [showZeroOnly,  setShowZeroOnly]  = useState(false);
+  const [showZeroWasteOnly, setShowZeroWasteOnly] = useState(false);
   // inlineEdit: { id, purchase_price, purchase_quantity, purchase_unit, usage_unit }
   const [inlineEdit,    setInlineEdit]    = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -128,7 +211,8 @@ function InsumosTab({ activeLocationId }) {
     name: '', description: '', sku: '',
     purchase_price: 0, purchase_unit: 'Unidad', purchase_quantity: 1,
     usage_unit: 'unidad', stock_current: 0, stock_min: 0,
-    selling_price: 0, is_modifier: false, category_id: '', provider_id: '', is_active: true
+    selling_price: 0, is_modifier: false, category_id: '', provider_id: '', is_active: true,
+    has_merma: false, merma_percent: 0, portion_size: 50
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -175,6 +259,11 @@ function InsumosTab({ activeLocationId }) {
     return date.toLocaleDateString();
   };
 
+  const zeroWasteCount = useMemo(() =>
+    ingredients.filter(i => Boolean(i.has_merma)).length,
+    [ingredients]
+  );
+
   const filtered = useMemo(() =>
     ingredients.filter(i => {
       // Logic for special search terms or standard search
@@ -190,11 +279,13 @@ function InsumosTab({ activeLocationId }) {
                       (i.sku || '').toLowerCase().includes(search.toLowerCase());
       }
       
-      const matchCat    = catFilter === 'all' || i.category_id === catFilter;
-      const matchZero   = !showZeroOnly || !i.unit_cost || i.unit_cost === 0;
-      return matchSearch && matchCat && matchZero;
+      const matchCat      = catFilter === 'all' || i.category_id === catFilter;
+      const matchProv     = providerFilter === 'all' || i.provider_id === providerFilter;
+      const matchZero     = !showZeroOnly || !i.unit_cost || i.unit_cost === 0;
+      const matchZeroWaste= !showZeroWasteOnly || Boolean(i.has_merma);
+      return matchSearch && matchCat && matchProv && matchZero && matchZeroWaste;
     }),
-    [ingredients, search, catFilter, showZeroOnly, totalInventoryValue]
+    [ingredients, search, catFilter, providerFilter, showZeroOnly, showZeroWasteOnly, totalInventoryValue]
   );
 
   const openCreate = () => { 
@@ -205,6 +296,7 @@ function InsumosTab({ activeLocationId }) {
   };
 
   const openEdit   = async (item) => {
+    const defaultZw = getZeroWasteSuggestion(item.name);
     setEditing(item);
     setForm({
       name: item.name, description: item.description || '', sku: item.sku || '',
@@ -213,7 +305,9 @@ function InsumosTab({ activeLocationId }) {
       stock_current: item.stock_current || 0, stock_min: item.stock_min || 0,
       selling_price: item.selling_price || 0, is_modifier: item.is_modifier || false,
       category_id: item.category_id || '', provider_id: item.provider_id || '', is_active: item.is_active,
-      portion_size: item.portion_size || 50
+      portion_size: item.portion_size || 50,
+      has_merma: item.has_merma ?? (defaultZw !== null),
+      merma_percent: item.merma_percent ?? (defaultZw?.defaultPercent || 20)
     });
 
     // Load per-location inventory
@@ -349,169 +443,241 @@ function InsumosTab({ activeLocationId }) {
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-slide-up">
+      {/* Executive Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 mb-6">
         {/* Total Insumos */}
         <div 
-          className="glass-glow p-6 rounded-[2rem] border border-white/20 shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden cursor-pointer"
+          className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs hover:border-slate-300 hover:shadow-xs transition-all cursor-pointer group"
           onClick={() => {
             setSearch('');
             setCatFilter('all');
             setShowZeroOnly(false);
+            setShowZeroWasteOnly(false);
           }}
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-[#2f4131]/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
-          <div className="flex items-center gap-4 relative z-10">
-            <div className="w-12 h-12 bg-[#2f4131]/10 rounded-2xl flex items-center justify-center text-[#2f4131] group-hover:rotate-12 transition-transform">
-              <Icon icon="heroicons:archive-box" className="text-2xl" />
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Insumos Activos</span>
+            <div className="w-8 h-8 bg-slate-100 text-slate-700 rounded-lg flex items-center justify-center text-base group-hover:bg-slate-200/70 transition-colors">
+              <Icon icon="heroicons:archive-box" />
             </div>
-            <div>
-              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Insumos Activos</p>
-              <h4 className="text-3xl font-black text-gray-900">{ingredients.length}</h4>
-              <p className="text-[10px] text-emerald-600 font-bold mt-1 flex items-center gap-1">
-                <Icon icon="heroicons:arrow-trending-up" />
-                Sincronizado
-              </p>
-            </div>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <h4 className="text-2xl font-black text-slate-900 tracking-tight">{ingredients.length}</h4>
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+              <Icon icon="heroicons:arrow-trending-up" className="text-xs" />
+              Sincronizado
+            </span>
           </div>
         </div>
 
         {/* Alertas Stock */}
         <div 
-          className={`glass-glow p-6 rounded-[2rem] border ${lowStockCount > 0 ? 'border-rose-200/50 bg-rose-50/10' : 'border-white/20'} shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden cursor-pointer`} 
+          className={`p-4 rounded-xl border shadow-2xs hover:shadow-xs transition-all cursor-pointer group ${
+            lowStockCount > 0 
+              ? 'bg-rose-50/40 border-rose-200 hover:border-rose-300' 
+              : 'bg-white border-slate-200/90 hover:border-slate-300'
+          }`} 
           onClick={() => {
             if (lowStockCount > 0) {
               setSearch('stock_bajo');
-              setShowZeroOnly(false); // Clear conflicting filter
+              setShowZeroOnly(false);
+              setShowZeroWasteOnly(false);
             }
           }}
         >
-          <div className={`absolute top-0 right-0 w-32 h-32 ${lowStockCount > 0 ? 'bg-rose-500/5' : 'bg-emerald-500/5'} rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110`} />
-          <div className="flex items-center gap-4 relative z-10">
-            <div className={`w-12 h-12 ${lowStockCount > 0 ? 'bg-rose-100/80 text-rose-600' : 'bg-emerald-100/80 text-emerald-600'} rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform shadow-inner`}>
-              <Icon icon={lowStockCount > 0 ? "heroicons:exclamation-triangle" : "heroicons:check-badge"} className="text-2xl" />
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Alertas de Stock</span>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-base transition-colors ${
+              lowStockCount > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-50 text-emerald-700'
+            }`}>
+              <Icon icon={lowStockCount > 0 ? "heroicons:exclamation-triangle" : "heroicons:check-badge"} />
             </div>
-            <div>
-              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Nivel de Stock</p>
-              <h4 className={`text-3xl font-black ${lowStockCount > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{lowStockCount}</h4>
-              <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-tighter">
-                {lowStockCount > 0 ? 'Acción requerida' : 'Niveles óptimos'}
-              </p>
-            </div>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <h4 className={`text-2xl font-black tracking-tight ${lowStockCount > 0 ? 'text-rose-600' : 'text-slate-900'}`}>{lowStockCount}</h4>
+            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
+              lowStockCount > 0 
+                ? 'text-rose-700 bg-rose-50 border-rose-200' 
+                : 'text-emerald-700 bg-emerald-50 border-emerald-100'
+            }`}>
+              {lowStockCount > 0 ? 'Stock crítico' : 'Niveles óptimos'}
+            </span>
           </div>
         </div>
 
         {/* Valor Inventario */}
         <div 
-          className="glass-glow p-6 rounded-[2rem] border border-white/20 shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden cursor-pointer"
+          className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs hover:border-slate-300 hover:shadow-xs transition-all cursor-pointer group"
           onClick={() => {
             setSearch('high_value');
             setShowZeroOnly(false);
+            setShowZeroWasteOnly(false);
           }}
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
-          <div className="flex items-center gap-4 relative z-10">
-            <div className="w-12 h-12 bg-blue-100/80 rounded-2xl flex items-center justify-center text-blue-600 group-hover:rotate-12 transition-transform shadow-inner">
-              <Icon icon="heroicons:currency-dollar" className="text-2xl" />
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Valor Valorado</span>
+            <div className="w-8 h-8 bg-blue-50 text-blue-700 rounded-lg flex items-center justify-center text-base group-hover:bg-blue-100/70 transition-colors">
+              <Icon icon="heroicons:currency-dollar" />
             </div>
-            <div>
-              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Valor Real</p>
-              <h4 className="text-3xl font-black text-gray-900 tabular-nums">
-                ${totalInventoryValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </h4>
-              <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-tighter">En almacén</p>
-            </div>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <h4 className="text-2xl font-black text-slate-900 tracking-tight tabular-nums">
+              ${totalInventoryValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </h4>
+            <span className="text-[11px] font-medium text-slate-400">En almacén</span>
           </div>
         </div>
 
         {/* Sin Costo */}
         <div 
-          className={`glass-glow p-6 rounded-[2rem] border ${zeroCostCount > 0 ? 'border-amber-200/50 bg-amber-50/10' : 'border-white/20'} shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden cursor-pointer`} 
+          className={`p-4 rounded-xl border shadow-2xs hover:shadow-xs transition-all cursor-pointer group ${
+            zeroCostCount > 0 
+              ? 'bg-amber-50/40 border-amber-200 hover:border-amber-300' 
+              : 'bg-white border-slate-200/90 hover:border-slate-300'
+          }`} 
           onClick={() => {
             if (zeroCostCount > 0) {
               setShowZeroOnly(!showZeroOnly);
-              setSearch(''); // Clear search to avoid clashing
+              setShowZeroWasteOnly(false);
+              setSearch('');
             }
           }}
         >
-          <div className={`absolute top-0 right-0 w-32 h-32 ${zeroCostCount > 0 ? 'bg-amber-500/5' : 'bg-gray-500/5'} rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110`} />
-          <div className="flex items-center gap-4 relative z-10">
-            <div className={`w-12 h-12 ${zeroCostCount > 0 ? 'bg-amber-100/80 text-amber-600' : 'bg-gray-100/80 text-gray-400'} rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform shadow-inner`}>
-              <Icon icon="heroicons:no-symbol" className="text-2xl" />
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Sin Costo</span>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-base transition-colors ${
+              zeroCostCount > 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
+            }`}>
+              <Icon icon="heroicons:no-symbol" />
             </div>
-            <div>
-              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Sin Costo</p>
-              <h4 className={`text-3xl font-black ${zeroCostCount > 0 ? 'text-amber-600' : 'text-gray-900'}`}>{zeroCostCount}</h4>
-              <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-tighter">Pendientes</p>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <h4 className={`text-2xl font-black tracking-tight ${zeroCostCount > 0 ? 'text-amber-600' : 'text-slate-900'}`}>{zeroCostCount}</h4>
+            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
+              zeroCostCount > 0 
+                ? 'text-amber-700 bg-amber-50 border-amber-200' 
+                : 'text-slate-500 bg-slate-100 border-slate-200'
+            }`}>
+              {zeroCostCount > 0 ? 'Por fijar' : 'Completo'}
+            </span>
+          </div>
+        </div>
+
+        {/* IA Zero-Waste Card */}
+        <div 
+          className={`p-4 rounded-xl border shadow-2xs hover:shadow-xs transition-all cursor-pointer group ${
+            showZeroWasteOnly
+              ? 'bg-emerald-900 text-white border-emerald-800 ring-2 ring-emerald-500/30'
+              : 'bg-gradient-to-br from-emerald-50/60 to-teal-50/30 border-emerald-200 hover:border-emerald-300'
+          }`} 
+          onClick={() => {
+            setShowZeroWasteOnly(!showZeroWasteOnly);
+            setShowZeroOnly(false);
+            setSearch('');
+          }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${showZeroWasteOnly ? 'text-emerald-200' : 'text-emerald-800'}`}>
+              IA Zero-Waste
+            </span>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-base transition-colors ${
+              showZeroWasteOnly ? 'bg-white/10 text-emerald-300' : 'bg-emerald-100 text-emerald-700'
+            }`}>
+              <Sparkles size={16} />
             </div>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <h4 className={`text-2xl font-black tracking-tight ${showZeroWasteOnly ? 'text-white' : 'text-emerald-950'}`}>
+              {zeroWasteCount}
+            </h4>
+            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
+              showZeroWasteOnly
+                ? 'text-emerald-100 bg-emerald-800 border-emerald-700'
+                : 'text-emerald-800 bg-emerald-100 border-emerald-200'
+            }`}>
+              {showZeroWasteOnly ? 'Filtrando' : 'Aprovechables'}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Onboarding Tip Banner */}
       {showInvTip && (
-        <div className="mb-8 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 rounded-[2rem] border border-emerald-100/60 p-6 flex items-start gap-5 shadow-sm animate-slide-up relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-200/10 rounded-full -mr-20 -mt-20" />
-          <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center shrink-0 shadow-inner">
-            <Lightbulb size={22} className="text-emerald-600" />
+        <div className="mb-6 bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex items-start gap-3 shadow-2xs animate-fade-in relative">
+          <div className="w-8 h-8 bg-emerald-100 text-emerald-800 rounded-lg flex items-center justify-center shrink-0">
+            <Lightbulb size={18} />
           </div>
-          <div className="flex-1 min-w-0 relative z-10">
-            <p className="text-sm font-black text-gray-900 uppercase tracking-tight mb-1">🪨 Gestión de Insumos por Sede</p>
-            <p className="text-[13px] text-gray-500 font-medium leading-relaxed">
-              Los insumos se crean a nivel de marca y se <strong className="text-gray-700">vinculan automáticamente a la sede activa</strong>. 
-              Si necesitas un insumo en otra sede, usa <strong className="text-gray-700">"Vincular del Catálogo"</strong>. 
-              <span className="text-emerald-600 font-bold">Registrar costos aquí permite calcular márgenes reales en tus recetas y productos.</span>
+          <div className="flex-1 min-w-0 pr-2">
+            <p className="text-xs font-bold text-slate-900 mb-0.5">Gestión de Insumos por Sede</p>
+            <p className="text-xs text-slate-600 font-normal leading-relaxed">
+              Los insumos se crean a nivel de marca y se vinculan a la sede activa. Si necesitas un insumo existente en otra sede, usa <strong className="font-semibold text-slate-800">"Vincular del Catálogo"</strong>. Registrar costos aquí permite calcular márgenes reales en recetas.
             </p>
           </div>
-          <button onClick={dismissInvTip} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-white/60 rounded-xl transition-all shrink-0">
-            <X size={16} />
+          <button onClick={dismissInvTip} className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-md transition-colors shrink-0">
+            <X size={14} />
           </button>
         </div>
       )}
 
       {/* Toolbar */}
-      <div className="flex flex-col lg:flex-row items-center justify-between gap-6 mb-8 bg-white p-6 rounded-[1.5rem] shadow-sm border border-gray-100">
-        <div className="flex flex-col sm:flex-row items-center gap-4 flex-1 w-full lg:w-auto">
-          <div className="relative group flex-1 w-full sm:min-w-[300px]">
+      <div className="flex flex-col lg:flex-row items-center justify-between gap-3 mb-6 bg-white p-3 rounded-xl border border-slate-200/90 shadow-2xs">
+        <div className="flex flex-col sm:flex-row items-center gap-2.5 flex-1 w-full lg:w-auto">
+          <div className="relative flex-1 w-full sm:min-w-[280px]">
             <Icon 
               icon="heroicons:magnifying-glass" 
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#2f4131] transition-colors" 
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" 
             />
             <input 
               type="text" 
               placeholder="Buscar por nombre o SKU..." 
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2f4131]/20 focus:bg-white transition-all shadow-sm group-hover:border-gray-200"
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 hover:bg-slate-50/80 focus:bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-all"
             />
           </div>
-          <div className="relative group w-full sm:w-64">
-             <Icon 
+          <div className="relative w-full sm:w-52">
+            <Icon 
               icon="heroicons:funnel" 
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#2f4131] transition-colors" 
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" 
             />
             <select 
               value={catFilter} 
               onChange={e => setCatFilter(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2f4131]/20 focus:bg-white transition-all shadow-sm group-hover:border-gray-200 appearance-none"
+              className="w-full pl-9 pr-8 py-2 bg-slate-50 hover:bg-slate-50/80 focus:bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-all appearance-none cursor-pointer"
             >
               <option value="all">Todas las categorías</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <Icon icon="heroicons:chevron-down" className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <Icon icon="heroicons:chevron-down" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
+          </div>
+          <div className="relative w-full sm:w-52">
+            <Icon 
+              icon="heroicons:truck" 
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" 
+            />
+            <select 
+              value={providerFilter} 
+              onChange={e => setProviderFilter(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 bg-slate-50 hover:bg-slate-50/80 focus:bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-all appearance-none cursor-pointer"
+            >
+              <option value="all">Todos los proveedores</option>
+              {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <Icon icon="heroicons:chevron-down" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full lg:w-auto shrink-0">
           {!isAllLocations && (
             <button
               onClick={() => setIsLinkModalOpen(true)}
-              className="flex items-center justify-center gap-2 px-4 h-11 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-bold transition-all border border-indigo-100 shadow-sm w-full sm:w-auto"
+              className="flex items-center justify-center gap-1.5 px-3.5 h-9 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold transition-all border border-slate-200 shadow-2xs w-full sm:w-auto"
             >
-              <LinkIcon size={18} />
+              <LinkIcon size={14} className="text-slate-500" />
               Vincular del Catálogo
             </button>
           )}
-          <PrimaryButton onClick={openCreate} className="h-11 px-6 w-full sm:w-auto">
-            <Icon icon="heroicons:plus-circle" className="text-xl" />
+          <PrimaryButton onClick={openCreate} className="h-9 px-4 text-xs font-semibold w-full sm:w-auto gap-1.5">
+            <Icon icon="heroicons:plus" className="text-sm" />
             Nuevo Insumo
           </PrimaryButton>
         </div>
@@ -519,20 +685,25 @@ function InsumosTab({ activeLocationId }) {
 
       {/* Desktop Table */}
       <div className="hidden md:block">
-        <TableContainer className="rounded-[1.5rem] border border-gray-100 shadow-sm overflow-hidden bg-white">
+        <TableContainer className="rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden bg-white">
           <table className="w-full min-w-[1000px] border-collapse">
             <thead>
-              <tr className="bg-gray-50/50">
-                <Th className="py-4 pl-8">Insumo / SKU</Th>
-                <Th className="py-4">Categoría / Prov.</Th>
-                <Th className="py-4">Costo Unit.</Th>
-                <Th className="py-4">Stock / Alerta</Th>
-                <Th className="py-4">Valor Stock</Th>
-                <Th className="py-4">Última Act.</Th>
-                <Th right className="py-4 pr-8">Acciones</Th>
+              <tr className="bg-slate-50/80 border-b border-slate-200/80">
+                <Th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Insumo / SKU</Th>
+                <Th className="py-3 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Categoría / Prov.</Th>
+                <Th className="py-3 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Costo Unit.</Th>
+                <Th className="py-3 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Stock / Alerta</Th>
+                <Th className="py-3 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Valor Stock</Th>
+                <Th className="py-3 px-3 text-xs font-bold text-emerald-800 uppercase tracking-wider">
+                  <span className="inline-flex items-center gap-1 bg-emerald-100/80 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
+                    <Sparkles size={11} /> Zero-Waste IA
+                  </span>
+                </Th>
+                <Th className="py-3 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Última Act.</Th>
+                <Th right className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Acciones</Th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-slate-100">
               {filtered.map(item => {
                 const cat      = categories.find(c => c.id === item.category_id);
                 const stockLow = item.stock_current <= item.stock_min;
@@ -542,24 +713,24 @@ function InsumosTab({ activeLocationId }) {
 
                 // ── Delete confirmation row
                 if (isDelConf) return (
-                  <tr key={item.id}>
-                    <td colSpan={6} className="px-8 py-4 bg-red-50/50">
+                  <tr key={item.id} className="bg-rose-50/60 border-y border-rose-100">
+                    <td colSpan={8} className="px-4 py-3">
                       <div className="flex items-center justify-between animate-fade-in">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center text-red-600">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 bg-rose-100 rounded-md flex items-center justify-center text-rose-600 text-sm">
                             <Icon icon="heroicons:trash" />
                           </div>
-                          <p className="text-sm font-bold text-red-700">
-                            ¿Eliminar <span className="underline decoration-red-200 decoration-2">{item.name}</span> del inventario?
+                          <p className="text-xs font-bold text-rose-800">
+                            ¿Eliminar <span className="underline decoration-rose-300">{item.name}</span> del inventario?
                           </p>
                         </div>
                         <div className="flex gap-2">
                           <button onClick={() => { deleteIngredient(item.id); setConfirmDelete(null); }}
-                            className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 shadow-sm transition-all">
+                            className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700 shadow-2xs transition-all">
                             Sí, Eliminar
                           </button>
                           <button onClick={() => setConfirmDelete(null)}
-                            className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:bg-gray-50 transition-all">
+                            className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-50 transition-all">
                             Cancelar
                           </button>
                         </div>
@@ -570,66 +741,66 @@ function InsumosTab({ activeLocationId }) {
 
                 // ── Inline cost editor row
                 if (isInline) return (
-                  <tr key={item.id} className="bg-blue-50/40">
-                    <td className="px-5 py-4" colSpan={6}>
-                      <div className="flex flex-wrap items-end gap-4">
-                        <div className="flex-1 min-w-[160px]">
-                          <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">Insumo</p>
-                          <p className="text-sm font-semibold text-gray-900">{item.name}</p>
-                          <p className="text-[11px] text-gray-400 font-medium capitalize">{item.usage_unit}</p>
+                  <tr key={item.id} className="bg-blue-50/40 border-y border-blue-100">
+                    <td className="px-4 py-3" colSpan={8}>
+                      <div className="flex flex-wrap items-end gap-3 text-xs">
+                        <div className="flex-1 min-w-[140px]">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Insumo</p>
+                          <p className="text-xs font-bold text-slate-900">{item.name}</p>
+                          <p className="text-[10px] text-slate-500 font-medium capitalize">{item.usage_unit}</p>
                         </div>
-                        <div className="flex-1 min-w-[120px]">
-                          <label className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 block mb-1.5">Precio de compra</label>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-gray-400 text-sm">$</span>
+                        <div className="flex-1 min-w-[110px]">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Precio compra</label>
+                          <div className="flex items-center gap-1">
+                            <span className="text-slate-400 text-xs">$</span>
                             <input
                               autoFocus
                               type="number"
                               value={inlineEdit.purchase_price}
                               onChange={e => fi('purchase_price', Number(e.target.value))}
-                              className="w-28 px-3 py-2 bg-white border-2 border-blue-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-200 outline-none"
+                              className="w-24 px-2.5 py-1.5 bg-white border border-blue-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
                             />
                           </div>
                         </div>
-                        <div className="flex-1 min-w-[100px]">
-                          <label className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 block mb-1.5">Cant. interna</label>
+                        <div className="flex-1 min-w-[90px]">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Cant. interna</label>
                           <input
                             type="number"
                             value={inlineEdit.purchase_quantity}
                             onChange={e => fi('purchase_quantity', Number(e.target.value))}
-                            className="w-24 px-3 py-2 bg-white border-2 border-blue-100 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-200 outline-none"
+                            className="w-20 px-2.5 py-1.5 bg-white border border-blue-200 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
                           />
                         </div>
-                        <div className="flex-1 min-w-[100px]">
-                          <label className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 block mb-1.5">Unidad compra</label>
+                        <div className="flex-1 min-w-[90px]">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Unidad compra</label>
                           <input
                             type="text"
                             value={inlineEdit.purchase_unit}
                             onChange={e => fi('purchase_unit', e.target.value)}
-                            className="w-24 px-3 py-2 bg-white border-2 border-blue-100 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-200 outline-none"
+                            className="w-20 px-2.5 py-1.5 bg-white border border-blue-200 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-blue-100 outline-none"
                           />
                         </div>
                         {/* Live cost preview */}
-                        <div className="flex-1 min-w-[120px] text-center">
-                          <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">Costo unitario</p>
-                          <p className={`text-xl font-semibold tabular-nums ${
-                            inlineUnitCost > 0 ? 'text-[#2f4131]' : 'text-gray-300'
+                        <div className="flex-1 min-w-[110px] text-center">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Costo unitario</p>
+                          <p className={`text-base font-extrabold tabular-nums ${
+                            inlineUnitCost > 0 ? 'text-emerald-700' : 'text-slate-400'
                           }`}>
                             ${inlineUnitCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                            <span className="text-[11px] text-gray-400 font-medium ml-1">/{item.usage_unit}</span>
+                            <span className="text-[10px] text-slate-400 font-medium ml-1">/{item.usage_unit}</span>
                           </p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1.5">
                           <button onClick={saveInlineCost}
-                            className="px-4 py-2 bg-[#2f4131] text-white rounded-xl text-[12px] font-semibold hover:opacity-90 transition-all">
+                            className="px-3 py-1.5 bg-emerald-800 text-white rounded-lg text-xs font-semibold hover:bg-emerald-900 transition-all shadow-2xs">
                             Guardar
                           </button>
                           <button onClick={() => setInlineEdit(null)}
-                            className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-[12px] font-semibold hover:bg-gray-50 transition-all">
+                            className="px-2.5 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-50 transition-all">
                             Cancelar
                           </button>
                           <button onClick={() => openEdit(item)}
-                            className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-xl text-[12px] font-semibold transition-all">
+                            className="px-2.5 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-semibold transition-all">
                             Editar todo…
                           </button>
                         </div>
@@ -640,144 +811,189 @@ function InsumosTab({ activeLocationId }) {
 
                 // ── Normal row
                 return (
-                  <tr key={item.id} className={`group transition-all ${
-                    hasZero ? 'bg-amber-50/5 hover:bg-amber-50/20' : 'hover:bg-gray-50/80'
+                  <tr key={item.id} className={`group transition-colors ${
+                    hasZero ? 'bg-amber-50/20 hover:bg-amber-50/40' : 'hover:bg-slate-50/70'
                   } ${!item.is_active ? 'opacity-60 grayscale-[0.5]' : ''}`}>
                     {/* Name column */}
-                    <td className="py-5 pl-8">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm ${
-                          item.is_active ? 'bg-[#2f4131]/10 text-[#2f4131]' : 'bg-gray-100 text-gray-400'
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-7 h-7 rounded-md flex items-center justify-center font-bold text-xs shrink-0 border ${
+                          item.is_active ? 'bg-slate-100 text-slate-700 border-slate-200/80' : 'bg-slate-50 text-slate-400 border-slate-200/50'
                         }`}>
                           {item.name.charAt(0)}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-gray-900 truncate max-w-[200px]">{item.name}</p>
-                           <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{item.usage_unit || 'unidad'}</span>
-                              {item.recipe_usage_count > 0 && (
-                                <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold">
-                                  {item.recipe_usage_count} receta{item.recipe_usage_count === 1 ? '' : 's'} · {item.recipe_required_quantity} {item.usage_unit}
-                                </span>
-                              )}
-                             {item.sku && (
-                               <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-mono font-bold">
-                                 {item.sku}
-                               </span>
-                             )}
+                          <p className="text-xs font-bold text-slate-900 truncate max-w-[220px]">{item.name}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase">{item.usage_unit || 'unidad'}</span>
+                            {item.recipe_usage_count > 0 && (
+                              <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 px-1.5 py-0.2 rounded font-semibold">
+                                {item.recipe_usage_count} receta{item.recipe_usage_count === 1 ? '' : 's'} · {item.recipe_required_quantity} {item.usage_unit}
+                              </span>
+                            )}
+                            {item.sku && (
+                              <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-mono font-semibold border border-slate-200/60">
+                                {item.sku}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
                     </td>
 
                     {/* Category / Provider column */}
-                    <td className="py-5">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-2">
-                           <span className="px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-wider border border-gray-200">
-                             {cat?.name || 'Sin Categ.'}
-                           </span>
+                    <td className="py-3 px-3">
+                      <div className="flex flex-col gap-1">
+                        <div>
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-semibold uppercase border border-slate-200/60 inline-block">
+                            {cat?.name || 'Sin Categ.'}
+                          </span>
                         </div>
                         {item.provider_id && (
-                          <div className="flex items-center gap-1 text-[10px] text-blue-500 font-bold uppercase tracking-wider">
-                             <Icon icon="heroicons:truck" className="text-xs" />
-                             {providers.find(p => p.id === item.provider_id)?.name || 'Proveedor'}
+                          <div className="flex items-center gap-1 text-[10px] text-blue-600 font-semibold truncate max-w-[140px]">
+                            <Icon icon="heroicons:truck" className="text-xs shrink-0" />
+                            <span className="truncate">{providers.find(p => p.id === item.provider_id)?.name || 'Proveedor'}</span>
                           </div>
                         )}
                       </div>
                     </td>
 
                     {/* Cost column */}
-                    <td className="py-5">
+                    <td className="py-3 px-3">
                       {hasZero ? (
                         <button
                           onClick={() => openInlineEdit(item)}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-amber-100/50 hover:bg-amber-100 text-amber-700 rounded-xl text-[11px] font-bold transition-all border border-amber-200/50"
+                          className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-md text-[11px] font-semibold transition-all border border-amber-200/80 shadow-2xs"
                         >
-                          <Icon icon="heroicons:currency-dollar" className="text-sm" />
+                          <Icon icon="heroicons:currency-dollar" className="text-xs" />
                           Fijar precio
                         </button>
                       ) : (
                         <div className="flex flex-col">
-                          <span className="text-sm font-black text-gray-900 tabular-nums">
+                          <span className="text-xs font-extrabold text-slate-900 tabular-nums">
                             ${(item.unit_cost || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                           </span>
-                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Por {item.usage_unit || 'u'}</span>
+                          <span className="text-[10px] text-slate-400 font-medium">Por {item.usage_unit || 'u'}</span>
                         </div>
                       )}
                     </td>
 
                     {/* Stock column */}
-                    <td className="py-5">
-                      <div className="flex flex-col gap-1.5 max-w-[140px]">
+                    <td className="py-3 px-3">
+                      <div className="flex flex-col gap-1 max-w-[130px]">
                         <div className="flex items-center justify-between">
-                          <span className={`text-sm font-black tabular-nums ${stockLow ? 'text-rose-500' : 'text-[#2f4131]'}`}>
-                            {item.stock_current} <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{item.usage_unit}</span>
+                          <span className={`text-xs font-extrabold tabular-nums ${stockLow ? 'text-rose-600' : 'text-slate-900'}`}>
+                            {item.stock_current} <span className="text-[10px] font-semibold text-slate-400">{item.usage_unit}</span>
                           </span>
                           {stockLow && (
-                            <span className="flex items-center gap-1 justify-center h-5 w-5 bg-rose-500 text-white rounded-full animate-pulse shadow-lg shadow-rose-200">
-                              <Icon icon="heroicons:exclamation-circle" className="text-xs" />
+                            <span className="flex items-center justify-center h-4 w-4 bg-rose-500 text-white rounded-full">
+                              <Icon icon="heroicons:exclamation-circle" className="text-[10px]" />
                             </span>
                           )}
                         </div>
-                        <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden shadow-inner border border-gray-100">
+                        <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden border border-slate-200/60">
                           {(() => {
                             const percentage = Math.min(100, (item.stock_current / Math.max(1, item.stock_min * 2)) * 100);
                             const isCritical = item.stock_current <= item.stock_min;
                             const isWarning = item.stock_current <= item.stock_min * 1.5;
                             
-                            let colorClass = 'bg-[#2f4131]';
-                            if (isCritical) colorClass = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]';
+                            let colorClass = 'bg-emerald-600';
+                            if (isCritical) colorClass = 'bg-rose-500';
                             else if (isWarning) colorClass = 'bg-amber-400';
 
                             return (
                               <div
-                                className={`h-full rounded-full transition-all duration-700 ease-out ${colorClass}`}
+                                className={`h-full rounded-full transition-all duration-500 ${colorClass}`}
                                 style={{ width: `${percentage}%` }}
                               />
                             );
                           })()}
                         </div>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Mín: {item.stock_min}</p>
+                        <p className="text-[9px] font-semibold text-slate-400">Mín: {item.stock_min}</p>
                       </div>
                     </td>
 
                     {/* Valor Stock column */}
-                    <td className="py-5">
+                    <td className="py-3 px-3">
                       <div className="flex flex-col">
-                        <span className="text-sm font-black text-gray-900 tabular-nums">
+                        <span className="text-xs font-extrabold text-slate-900 tabular-nums">
                           ${((item.unit_cost || 0) * (item.stock_current || 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </span>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Valor total</p>
+                        <p className="text-[10px] text-slate-400 font-medium">Valor total</p>
                       </div>
+                    </td>
+
+                    {/* Zero-Waste IA column */}
+                    <td className="py-3 px-3">
+                      {(() => {
+                        if (!item.has_merma) {
+                          return (
+                            <span className="text-[11px] text-slate-300 font-medium">
+                              —
+                            </span>
+                          );
+                        }
+                        const zw = getZeroWasteSuggestion(item.name) || {
+                          badge: 'Merma Activa',
+                          suggestion: `Insumo con ${item.merma_percent || 20}% de merma configurada para rescate y sub-recetas.`,
+                          potentialSaving: `${item.merma_percent || 20}% de merma`
+                        };
+                        return (
+                          <div className="group/zw relative inline-block">
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/90 hover:bg-emerald-100 transition-colors cursor-help">
+                              <Leaf size={12} className="text-emerald-600 shrink-0" />
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-bold leading-tight truncate max-w-[120px]">{zw.badge}</span>
+                                <span className="text-[9px] text-emerald-600 font-medium leading-none">{zw.potentialSaving}</span>
+                              </div>
+                            </div>
+                            {/* Hover tooltip with full culinary idea */}
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover/zw:block z-50 w-64 p-3 bg-slate-900 text-white rounded-xl shadow-xl text-left border border-slate-800 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
+                              <div className="flex items-center gap-1.5 mb-1 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+                                <Sparkles size={12} />
+                                Rescate IA Zero-Waste
+                              </div>
+                              <p className="text-xs text-slate-200 font-normal leading-relaxed">
+                                {zw.suggestion}
+                              </p>
+                              <div className="mt-2 pt-1.5 border-t border-slate-800 flex items-center justify-between text-[10px] text-emerald-300 font-semibold">
+                                <span>Rendimiento estimado</span>
+                                <span>+{zw.potentialSaving}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </td>
 
                     {/* Last updated column */}
-                    <td className="py-5">
-                      <div className="flex items-center gap-1.5 text-gray-500 font-medium">
-                         <Icon icon="heroicons:clock" className="text-xs" />
-                         <span className="text-xs">{formatRelativeTime(item.updated_at)}</span>
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-1 text-slate-500 font-medium text-xs">
+                        <Icon icon="heroicons:clock" className="text-xs text-slate-400" />
+                        <span>{formatRelativeTime(item.updated_at)}</span>
                       </div>
                     </td>
 
-                    {/* Actions column */}
-                    <td className="py-5 pr-8 text-right">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Actions column - ALWAYS VISIBLE */}
+                    <td className="py-3 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
                         <button onClick={() => openEdit(item)}
-                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all shadow-sm hover:shadow-md bg-white border border-transparent hover:border-blue-100">
-                          <Icon icon="heroicons:pencil-square" className="text-lg" />
+                          title="Editar insumo"
+                          className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md border border-slate-200/80 bg-white transition-all shadow-2xs">
+                          <Icon icon="heroicons:pencil-square" className="text-sm" />
                         </button>
                         <button onClick={() => { setConfirmDelete(item.id); setInlineEdit(null); }}
-                          className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all shadow-sm hover:shadow-md bg-white border border-transparent hover:border-rose-100">
-                          <Icon icon="heroicons:trash" className="text-lg" />
+                          title="Eliminar insumo"
+                          className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-md border border-slate-200/80 bg-white transition-all shadow-2xs">
+                          <Icon icon="heroicons:trash" className="text-sm" />
                         </button>
                         {!isAllLocations && (
                           <button
                             onClick={() => handleUnlinkIngredient(item.id)}
                             title="Desvincular de esta sede"
-                            className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all shadow-sm hover:shadow-md bg-white border border-transparent hover:border-amber-100"
+                            className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-md border border-slate-200/80 bg-white transition-all shadow-2xs"
                           >
-                            <Icon icon="heroicons:link-slash" className="text-lg" />
+                            <Icon icon="heroicons:link-slash" className="text-sm" />
                           </button>
                         )}
                       </div>
@@ -786,25 +1002,25 @@ function InsumosTab({ activeLocationId }) {
                 );
               })}
               {filtered.length === 0 && (
-                <tr><td colSpan={6} className="px-5 py-14 text-center text-sm text-gray-400 font-medium animate-fade-in">
+                <tr><td colSpan={8} className="px-4 py-12 text-center text-xs text-slate-400 font-medium">
                   {showZeroOnly ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <Icon icon="heroicons:check-badge" className="text-3xl text-emerald-500" />
+                    <div className="flex flex-col items-center gap-1.5">
+                      <Icon icon="heroicons:check-badge" className="text-2xl text-emerald-500" />
                       <span>¡Todos tus insumos tienen un costo definido!</span>
                     </div>
                   ) : search === 'stock_bajo' ? (
-                     <div className="flex flex-col items-center gap-2">
-                      <Icon icon="heroicons:check-circle" className="text-3xl text-emerald-500" />
+                     <div className="flex flex-col items-center gap-1.5">
+                      <Icon icon="heroicons:check-circle" className="text-2xl text-emerald-500" />
                       <span>No hay insumos con stock bajo. ¡Buen trabajo!</span>
                     </div>
                   ) : search === 'high_value' ? (
-                    <div className="flex flex-col items-center gap-2">
-                     <Icon icon="heroicons:information-circle" className="text-3xl text-blue-500" />
+                    <div className="flex flex-col items-center gap-1.5">
+                     <Icon icon="heroicons:information-circle" className="text-2xl text-blue-500" />
                      <span>No hay insumos con valor significativamente alto actualmente.</span>
                    </div>
                   ) : (
-                    <div className="flex flex-col items-center gap-2">
-                      <Icon icon="heroicons:magnifying-glass" className="text-3xl text-gray-300" />
+                    <div className="flex flex-col items-center gap-1.5">
+                      <Icon icon="heroicons:magnifying-glass" className="text-2xl text-slate-300" />
                       <span>No se encontraron insumos que coincidan con la búsqueda.</span>
                     </div>
                   )}
@@ -816,7 +1032,7 @@ function InsumosTab({ activeLocationId }) {
       </div>
 
       {/* Mobile Cards */}
-      <div className="md:hidden flex flex-col gap-4 mt-4">
+      <div className="md:hidden flex flex-col gap-3 mt-4">
         {filtered.map(item => {
           const cat = categories.find(c => c.id === item.category_id);
           const stockLow = item.stock_current <= item.stock_min;
@@ -825,78 +1041,118 @@ function InsumosTab({ activeLocationId }) {
           const isDelConf = confirmDelete === item.id;
 
           if (isDelConf) return (
-            <div key={item.id} className="bg-red-50 p-4 rounded-2xl border border-red-100 flex flex-col gap-3 animate-fade-in">
-              <p className="text-sm font-bold text-red-700">¿Eliminar {item.name}?</p>
-              <div className="flex gap-2 mt-2">
-                <button onClick={() => { deleteIngredient(item.id); setConfirmDelete(null); }} className="flex-1 py-2 bg-red-600 text-white rounded-xl text-xs font-black uppercase shadow-sm">Eliminar</button>
-                <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2 bg-white text-gray-600 border border-gray-200 rounded-xl text-xs font-black uppercase">Cancelar</button>
+            <div key={item.id} className="bg-rose-50/70 p-4 rounded-xl border border-rose-200 flex flex-col gap-2.5 animate-fade-in">
+              <p className="text-xs font-bold text-rose-800">¿Eliminar {item.name} del inventario?</p>
+              <div className="flex gap-2 mt-1">
+                <button onClick={() => { deleteIngredient(item.id); setConfirmDelete(null); }} className="flex-1 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold uppercase shadow-2xs">Eliminar</button>
+                <button onClick={() => setConfirmDelete(null)} className="flex-1 py-1.5 bg-white text-slate-700 border border-slate-200 rounded-lg text-xs font-medium">Cancelar</button>
               </div>
             </div>
           );
 
           if (isInline) return (
-            <div key={item.id} className="bg-blue-50/40 border border-blue-100 rounded-2xl p-4 flex flex-col gap-3 animate-fade-in">
-              <p className="text-sm font-bold text-gray-900">{item.name}</p>
+            <div key={item.id} className="bg-blue-50/50 border border-blue-200 rounded-xl p-3.5 flex flex-col gap-2.5 animate-fade-in text-xs">
+              <p className="font-bold text-slate-900">{item.name}</p>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase">Precio Compra ($)</label>
-                  <input type="number" value={inlineEdit.purchase_price} onChange={e => fi('purchase_price', Number(e.target.value))} className="w-full px-3 py-2 rounded-xl border border-blue-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-300" />
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">Precio Compra ($)</label>
+                  <input type="number" value={inlineEdit.purchase_price} onChange={e => fi('purchase_price', Number(e.target.value))} className="w-full px-2.5 py-1.5 rounded-lg border border-blue-200 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-100 bg-white" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase">Cant. ({inlineEdit.purchase_unit})</label>
-                  <input type="number" value={inlineEdit.purchase_quantity} onChange={e => fi('purchase_quantity', Number(e.target.value))} className="w-full px-3 py-2 rounded-xl border border-blue-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-300" />
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">Cant. ({inlineEdit.purchase_unit})</label>
+                  <input type="number" value={inlineEdit.purchase_quantity} onChange={e => fi('purchase_quantity', Number(e.target.value))} className="w-full px-2.5 py-1.5 rounded-lg border border-blue-200 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-100 bg-white" />
                 </div>
               </div>
-              <div className="flex justify-between items-center mt-2 pt-2 border-t border-blue-100/50">
-                <p className="text-xs font-bold text-[#2f4131]">Costo: ${inlineUnitCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-                <div className="flex gap-2">
-                  <button onClick={() => setInlineEdit(null)} className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-500">Cancelar</button>
-                  <button onClick={saveInlineCost} className="px-4 py-2 bg-[#2f4131] rounded-xl text-xs font-bold text-white shadow-sm">Guardar</button>
+              <div className="flex justify-between items-center mt-1 pt-2 border-t border-blue-100">
+                <p className="font-extrabold text-emerald-800">Costo: ${inlineUnitCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                <div className="flex gap-1.5">
+                  <button onClick={() => setInlineEdit(null)} className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600">Cancelar</button>
+                  <button onClick={saveInlineCost} className="px-3 py-1 bg-emerald-800 rounded-lg text-xs font-semibold text-white shadow-2xs">Guardar</button>
                 </div>
               </div>
             </div>
           );
 
           return (
-            <div key={item.id} className={`bg-white p-4 rounded-[1.5rem] border shadow-sm flex flex-col gap-3 relative transition-all ${hasZero ? 'border-amber-200 bg-amber-50/10' : 'border-gray-100'}`}>
-              <div className="flex gap-3 items-center">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-xl shrink-0 ${item.is_active ? 'bg-[#2f4131]/10 text-[#2f4131]' : 'bg-gray-100 text-gray-400'}`}>
+            <div key={item.id} className={`bg-white p-3.5 rounded-xl border shadow-2xs flex flex-col gap-2.5 transition-all ${hasZero ? 'border-amber-200 bg-amber-50/20' : 'border-slate-200/90'}`}>
+              <div className="flex gap-2.5 items-center">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border ${item.is_active ? 'bg-slate-100 text-slate-700 border-slate-200/80' : 'bg-slate-50 text-slate-400 border-slate-200/50'}`}>
                   {item.name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest truncate">{cat?.name || 'Sin Categoría'}</p>
-                  <h4 className="text-base font-black text-gray-900 leading-tight truncate">{item.name}</h4>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-mono font-bold">{item.sku || 'S/N'}</span>
-                    {hasZero && <span className="text-[9px] text-amber-600 font-bold bg-amber-100 px-1.5 py-0.5 rounded uppercase tracking-wider">Falta Costo</span>}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider truncate">{cat?.name || 'Sin Categoría'}</span>
+                    {item.provider_id && (
+                      <span className="text-[9px] bg-blue-50 text-blue-700 border border-blue-100 font-semibold px-1.5 py-0.2 rounded flex items-center gap-0.5">
+                        <Icon icon="heroicons:truck" className="text-[10px]" />
+                        {providers.find(p => p.id === item.provider_id)?.name || 'Proveedor'}
+                      </span>
+                    )}
+                    {item.sku && <span className="text-[9px] bg-slate-100 text-slate-600 px-1 py-0.2 rounded font-mono font-semibold border border-slate-200/60">{item.sku}</span>}
+                    {hasZero && <span className="text-[9px] text-amber-700 font-bold bg-amber-100 px-1.5 py-0.2 rounded uppercase">Falta Costo</span>}
                   </div>
+                  <h4 className="text-sm font-bold text-slate-900 leading-tight truncate mt-0.5">{item.name}</h4>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100/50">
+              <div className="grid grid-cols-2 gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
                 <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Costo Unitario</p>
-                  <p className="text-sm font-black text-gray-900">${(item.unit_cost || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-[10px] text-gray-500 font-medium">/{item.usage_unit}</span></p>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase mb-0.5">Costo Unitario</p>
+                  <p className="text-xs font-extrabold text-slate-900">${(item.unit_cost || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-[10px] text-slate-400 font-medium">/{item.usage_unit}</span></p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Stock</p>
-                  <p className={`text-sm font-black flex items-center gap-1 ${stockLow ? 'text-rose-500' : 'text-[#2f4131]'}`}>
-                    {item.stock_current} <span className="text-[10px] font-medium">{item.usage_unit}</span>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase mb-0.5">Stock</p>
+                  <p className={`text-xs font-extrabold flex items-center gap-1 ${stockLow ? 'text-rose-600' : 'text-slate-900'}`}>
+                    {item.stock_current} <span className="text-[10px] font-semibold text-slate-400">{item.usage_unit}</span>
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
-                <div className="flex gap-1">
+              {(() => {
+                if (!item.has_merma) return null;
+                const zw = getZeroWasteSuggestion(item.name) || {
+                  badge: 'Merma Activa',
+                  suggestion: `Insumo con ${item.merma_percent || 20}% de merma configurada para rescate y sub-recetas.`,
+                  potentialSaving: `${item.merma_percent || 20}% de merma`
+                };
+                return (
+                  <div className="p-2.5 rounded-lg bg-emerald-50/80 border border-emerald-200/90 text-xs">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+                        <Sparkles size={11} className="text-emerald-600" />
+                        Zero-Waste: {zw.badge}
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.2 rounded">
+                        +{zw.potentialSaving}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-700 font-normal leading-relaxed">
+                      {zw.suggestion}
+                    </p>
+                  </div>
+                );
+              })()}
+
+              <div className="flex items-center justify-between pt-1">
+                <div>
                   {hasZero && (
-                     <button onClick={() => openInlineEdit(item)} className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-bold active:scale-95 flex items-center gap-1">
-                       Fijar Precio
-                     </button>
+                    <button onClick={() => openInlineEdit(item)} className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-[10px] font-bold flex items-center gap-1">
+                      Fijar Precio
+                    </button>
                   )}
                 </div>
-                <div className="flex gap-1">
-                   <button onClick={() => openEdit(item)} className="w-8 h-8 flex items-center justify-center text-blue-600 bg-blue-50 rounded-lg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
-                   <button onClick={() => setConfirmDelete(item.id)} className="w-8 h-8 flex items-center justify-center text-rose-500 bg-rose-50 rounded-lg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => openEdit(item)} title="Editar" className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-blue-600 bg-white border border-slate-200 rounded-md shadow-2xs">
+                    <Icon icon="heroicons:pencil-square" className="text-sm" />
+                  </button>
+                  <button onClick={() => setConfirmDelete(item.id)} title="Eliminar" className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-rose-600 bg-white border border-slate-200 rounded-md shadow-2xs">
+                    <Icon icon="heroicons:trash" className="text-sm" />
+                  </button>
+                  {!isAllLocations && (
+                    <button onClick={() => handleUnlinkIngredient(item.id)} title="Desvincular" className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-amber-600 bg-white border border-slate-200 rounded-md shadow-2xs">
+                      <Icon icon="heroicons:link-slash" className="text-sm" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -906,20 +1162,20 @@ function InsumosTab({ activeLocationId }) {
 
       {/* Modal / Bottom Sheet */}
       {isOpen && (
-        <div className="fixed inset-0 bg-gray-900/80 flex items-end md:items-start justify-center z-[100] p-0 md:p-4 overflow-hidden backdrop-blur-sm">
-          <div className="bg-white rounded-t-[2rem] md:rounded-[2rem] w-full max-w-4xl h-[95vh] md:h-auto md:max-h-[90vh] md:my-8 flex flex-col shadow-2xl animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-slate-900/60 flex items-end md:items-start justify-center z-[100] p-0 md:p-4 overflow-hidden backdrop-blur-xs">
+          <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-4xl h-[95vh] md:h-auto md:max-h-[90vh] md:my-8 flex flex-col shadow-2xl animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200 border border-slate-200">
             <div className="shrink-0">
               <ModalHeader
                 title={editing ? 'Editar insumo' : 'Nuevo insumo'}
                 subtitle={editing ? editing.name : 'Completa los datos del nuevo insumo.'}
                 onClose={() => setIsOpen(false)}
               />
-              <div className="px-5 md:px-7 py-4 bg-[#2f4131]/5 border-b border-gray-100 flex items-center justify-between">
+              <div className="px-5 md:px-7 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#2f4131]">Costo para recetas</p>
-                  <p className="text-xl font-semibold text-[#2f4131] tabular-nums mt-0.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Costo para recetas</p>
+                  <p className="text-lg font-black text-slate-900 tabular-nums mt-0.5">
                     ${unitCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    <span className="text-xs text-gray-500 font-medium ml-1">/{form.usage_unit || 'unidad'}</span>
+                    <span className="text-xs text-slate-400 font-medium ml-1">/{form.usage_unit || 'unidad'}</span>
                   </p>
                 </div>
               </div>
@@ -1004,7 +1260,7 @@ function InsumosTab({ activeLocationId }) {
                   
                   <div className="grid grid-cols-1 gap-4">
                     {locations.map(loc => (
-                      <div key={loc.id} className="flex items-center gap-4 p-4 bg-gray-50/50 rounded-2xl border border-gray-100 group hover:border-[#2f4131]/30 transition-all">
+                      <div key={loc.id} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl border border-slate-200/80 hover:border-slate-300 transition-all">
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-gray-900 truncate">{loc.name}</p>
                           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{loc.city}</p>
@@ -1097,6 +1353,62 @@ function InsumosTab({ activeLocationId }) {
                     </div>
                   )}
                 </div>
+
+                {/* Zero-Waste AI & Merma Switch */}
+                <div className="md:col-span-2 flex flex-col p-4 bg-emerald-50/50 rounded-xl border border-emerald-200/90 shadow-2xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                        <Sparkles size={16} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-emerald-950 flex items-center gap-1.5">
+                          Insumo con Merma Aprovechable (Zero-Waste)
+                          <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-200/70 text-emerald-800 px-1.5 py-0.2 rounded">Add-on IA</span>
+                        </p>
+                        <p className="text-xs text-slate-600 font-normal mt-0.5">
+                          Activa este switch si este insumo genera recortes, tallos, pieles o huesos que el restaurante puede aprovechar en sub-recetas.
+                        </p>
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => f('has_merma', !form.has_merma)}
+                      className={`w-11 h-6 rounded-full relative transition-all cursor-pointer ${form.has_merma ? 'bg-emerald-700' : 'bg-slate-300'}`}>
+                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${form.has_merma ? 'left-6' : 'left-1'}`} />
+                    </button>
+                  </div>
+
+                  {form.has_merma && (
+                    <div className="pt-3 mt-2 border-t border-emerald-200/80 grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                      <div>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-emerald-900 block mb-1">
+                          % Estimado de Merma / Descarte
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <TextInput 
+                            type="number" 
+                            min="1" 
+                            max="90" 
+                            value={form.merma_percent || 20} 
+                            onChange={e => f('merma_percent', Number(e.target.value))} 
+                            placeholder="Ej: 25" 
+                            className="w-28 text-xs font-bold"
+                          />
+                          <span className="text-xs font-bold text-emerald-800">% del peso total</span>
+                        </div>
+                      </div>
+                      <div className="p-3 bg-white/80 rounded-lg border border-emerald-200 text-xs text-slate-700 flex flex-col justify-center">
+                        <p className="font-bold text-emerald-900 mb-0.5 flex items-center gap-1">
+                          <Leaf size={12} className="text-emerald-600" />
+                          Sugerencia Gastronómica Activa
+                        </p>
+                        <p className="text-[11px] text-slate-600 leading-relaxed">
+                          {getZeroWasteSuggestion(form.name)?.suggestion || 
+                           'Aluna IA detectará cómo transformar estos excedentes en fondos, caldos, encurtidos o salsas para elevar tu rentabilidad.'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               
               {/* Sticky Footer */}
@@ -1159,104 +1471,106 @@ function CategoriasTab({ ingredients = [] }) {
     return <div className="py-16 text-center text-sm text-gray-400 font-medium tracking-widest uppercase">Cargando categorías…</div>;
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       {/* Header & Create Card */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
-          <h2 className="text-2xl font-black text-gray-900 mb-2">Categorías</h2>
-          <p className="text-sm text-gray-500 font-medium">
-            Organiza tus insumos para facilitar la gestión de inventario y costos.
+          <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mb-1">Categorías de Insumos</h2>
+          <p className="text-xs text-slate-500 font-normal leading-relaxed">
+            Organiza tus insumos para clasificar compras, reportes y mermas de almacén.
           </p>
           
-          <div className="mt-6 p-6 bg-[#2f4131]/5 rounded-[2rem] border border-[#2f4131]/10">
-            <h3 className="text-xs font-bold text-[#2f4131] uppercase tracking-widest mb-4">Nueva Categoría</h3>
-            <div className="space-y-3">
+          <div className="mt-4 p-4 bg-white rounded-xl border border-slate-200/90 shadow-2xs">
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Nueva Categoría</h3>
+            <div className="space-y-2.5">
               <TextInput
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
                 placeholder="Ej. Proteínas, Lácteos..."
-                className="bg-white border-transparent focus:border-[#2f4131] shadow-sm"
+                className="bg-slate-50 border-slate-200 focus:bg-white text-xs"
               />
-              <PrimaryButton onClick={handleCreate} className="w-full justify-center">
+              <PrimaryButton onClick={handleCreate} className="w-full justify-center text-xs h-9">
                 Crear Categoría
               </PrimaryButton>
             </div>
           </div>
         </div>
 
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4">
           {/* Toolbar */}
-          <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-            <div className="relative flex-1 group">
-              <Icon icon="heroicons:magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#2f4131]" />
+          <div className="flex items-center gap-3 bg-white p-3 rounded-xl shadow-2xs border border-slate-200/90">
+            <div className="relative flex-1">
+              <Icon icon="heroicons:magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Buscar categoría..."
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 border-transparent rounded-xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#2f4131]/10 outline-none transition-all"
+                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-all"
               />
             </div>
-            <div className="hidden sm:block text-[10px] font-black text-gray-400 uppercase tracking-widest">
-              {filtered.length} Total
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2">
+              {filtered.length} Categorías
             </div>
           </div>
 
           {/* Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {filtered.map((cat) => {
               const itemCount = getCategoryCount(cat.id);
               const isEditing = editingId === cat.id;
               const isDeleting = confirmDelete === cat.id;
 
               return (
-                <div key={cat.id} className={`group relative p-5 rounded-[1.5rem] border transition-all ${
-                  isEditing ? 'border-emerald-500 bg-emerald-50/10' : 
-                  isDeleting ? 'border-rose-500 bg-rose-50/10' :
-                  'bg-white border-gray-100 hover:border-gray-300 hover:shadow-lg'
+                <div key={cat.id} className={`p-4 rounded-xl border transition-all ${
+                  isEditing ? 'border-emerald-500 bg-emerald-50/20 shadow-2xs' : 
+                  isDeleting ? 'border-rose-300 bg-rose-50/40 shadow-2xs' :
+                  'bg-white border-slate-200/90 hover:border-slate-300 shadow-2xs hover:shadow-xs'
                 }`}>
                   {isEditing ? (
-                    <div className="space-y-3 animate-fade-in">
+                    <div className="space-y-2.5 animate-fade-in">
                       <TextInput
                         autoFocus
                         value={editingName}
                         onChange={e => setEditingName(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleSaveEdit()}
-                        className="bg-white"
+                        className="bg-white text-xs"
                       />
                       <div className="flex gap-2">
-                        <button onClick={handleSaveEdit} className="flex-1 py-2 bg-[#2f4131] text-white text-xs font-bold rounded-xl shadow-sm">Guardar</button>
-                        <button onClick={() => setEditingId(null)} className="px-4 py-2 bg-white border border-gray-200 text-gray-600 text-xs font-bold rounded-xl">✕</button>
+                        <button onClick={handleSaveEdit} className="flex-1 py-1.5 bg-emerald-800 text-white text-xs font-semibold rounded-lg shadow-2xs">Guardar</button>
+                        <button onClick={() => setEditingId(null)} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-medium rounded-lg">✕</button>
                       </div>
                     </div>
                   ) : isDeleting ? (
-                    <div className="text-center space-y-3 animate-fade-in">
-                      <p className="text-sm font-bold text-rose-700">¿Eliminar "{cat.name}"?</p>
+                    <div className="text-center space-y-2.5 animate-fade-in">
+                      <p className="text-xs font-bold text-rose-800">¿Eliminar "{cat.name}"?</p>
                       <div className="flex gap-2">
-                        <button onClick={() => deleteCategory(cat.id).then(() => setConfirmDelete(null))} className="flex-1 py-2 bg-rose-600 text-white text-xs font-bold rounded-xl shadow-sm">Eliminar</button>
-                        <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2 bg-white border border-gray-200 text-gray-600 text-xs font-bold rounded-xl text-center">Cancelar</button>
+                        <button onClick={() => deleteCategory(cat.id).then(() => setConfirmDelete(null))} className="flex-1 py-1.5 bg-rose-600 text-white text-xs font-bold rounded-lg shadow-2xs">Eliminar</button>
+                        <button onClick={() => setConfirmDelete(null)} className="flex-1 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-medium rounded-lg">Cancelar</button>
                       </div>
                     </div>
                   ) : (
                     <>
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-[#2f4131]/10 group-hover:text-[#2f4131] transition-colors">
-                          <Icon icon="heroicons:tag" className="text-xl" />
+                      <div className="flex items-start justify-between mb-2.5">
+                        <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600">
+                          <Icon icon="heroicons:tag" className="text-base" />
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1">
                           <button onClick={() => { setEditingId(cat.id); setEditingName(cat.name); setConfirmDelete(null); }}
-                            className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
-                            <Icon icon="heroicons:pencil-square" />
+                            title="Editar categoría"
+                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md border border-slate-200/80 bg-white transition-colors shadow-2xs">
+                            <Icon icon="heroicons:pencil-square" className="text-sm" />
                           </button>
                           <button onClick={() => { setConfirmDelete(cat.id); setEditingId(null); }}
-                            className="p-1.5 text-rose-400 hover:bg-rose-50 rounded-lg transition-colors">
-                            <Icon icon="heroicons:trash" />
+                            title="Eliminar categoría"
+                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md border border-slate-200/80 bg-white transition-colors shadow-2xs">
+                            <Icon icon="heroicons:trash" className="text-sm" />
                           </button>
                         </div>
                       </div>
-                      <h4 className="text-base font-bold text-gray-900 mb-1">{cat.name}</h4>
+                      <h4 className="text-sm font-bold text-slate-900 mb-1">{cat.name}</h4>
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 bg-gray-100 text-[10px] font-black text-gray-500 rounded-md uppercase tracking-wider">
+                        <span className="px-2 py-0.5 bg-slate-100 text-[10px] font-semibold text-slate-600 rounded-md uppercase tracking-wider border border-slate-200/60">
                           {itemCount} {itemCount === 1 ? 'Insumo' : 'Insumos'}
                         </span>
                       </div>
@@ -1266,9 +1580,9 @@ function CategoriasTab({ ingredients = [] }) {
               );
             })}
             {filtered.length === 0 && (
-              <div className="col-span-full py-20 text-center bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200">
-                <Icon icon="heroicons:tag" className="text-4xl text-gray-200 mb-2 mx-auto" />
-                <p className="text-sm font-bold text-gray-400">No se encontraron categorías</p>
+              <div className="col-span-full py-16 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                <Icon icon="heroicons:tag" className="text-3xl text-slate-300 mb-2 mx-auto" />
+                <p className="text-xs font-medium text-slate-400">No se encontraron categorías</p>
               </div>
             )}
           </div>
@@ -1348,101 +1662,101 @@ function ProveedoresTab({ ingredients = [] }) {
     return <div className="py-16 text-center text-sm text-gray-400 font-medium tracking-widest uppercase">Cargando proveedores…</div>;
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       {/* Header & Control Panel */}
-      <div className="flex flex-col lg:flex-row justify-between gap-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black text-gray-900 mb-2">Proveedores</h2>
-          <p className="text-sm text-gray-500 font-medium">Gestiona tu red de suministros y contactos directos.</p>
+          <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mb-1">Proveedores de Alimentos</h2>
+          <p className="text-xs text-slate-500 font-normal">Gestiona contactos comerciales, días de visita y montos mínimos de pedido.</p>
         </div>
         
-        <div className="flex items-center gap-4 bg-white p-2 pl-4 rounded-2xl shadow-sm border border-gray-100 min-w-0 lg:w-96">
-          <Icon icon="heroicons:magnifying-glass" className="text-gray-400 shrink-0" />
+        <div className="flex items-center gap-2 bg-white p-1.5 pl-3 rounded-xl shadow-2xs border border-slate-200/90 w-full sm:w-80">
+          <Icon icon="heroicons:magnifying-glass" className="text-slate-400 text-sm shrink-0" />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Nombre del proveedor..."
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium outline-none"
+            placeholder="Buscar proveedor..."
+            className="flex-1 bg-transparent border-none focus:ring-0 text-xs font-medium text-slate-800 placeholder-slate-400 outline-none py-1"
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         {/* Form Sidebar */}
         <div className="xl:col-span-1">
-          <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden sticky top-24">
-            <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Nuevo Contacto</h3>
+          <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden sticky top-24">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/80">
+              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Nuevo Proveedor</h3>
             </div>
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
+            <form onSubmit={handleCreate} className="p-4 space-y-3 text-xs">
               <FormField label="Razón Social">
-                <TextInput required value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nombre del proveedor" />
+                <TextInput required value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nombre del proveedor" className="text-xs" />
               </FormField>
               <FormField label="WhatsApp / Tel">
-                <TextInput value={newContactInfo} onChange={e => setNewContactInfo(e.target.value)} placeholder="Ej. 300..." />
+                <TextInput value={newContactInfo} onChange={e => setNewContactInfo(e.target.value)} placeholder="Ej. 300..." className="text-xs" />
               </FormField>
               <FormField label="Días de Visita">
-                <TextInput value={newDeliveryDays} onChange={e => setNewDeliveryDays(e.target.value)} placeholder="Lunes, Miércoles..." />
+                <TextInput value={newDeliveryDays} onChange={e => setNewDeliveryDays(e.target.value)} placeholder="Lunes, Miércoles..." className="text-xs" />
               </FormField>
               <FormField label="Monto Mínimo ($)">
-                <TextInput type="number" value={newMinOrderAmount} onChange={e => setNewMinOrderAmount(e.target.value)} placeholder="Mínimo pedido" />
+                <TextInput type="number" value={newMinOrderAmount} onChange={e => setNewMinOrderAmount(e.target.value)} placeholder="Mínimo pedido" className="text-xs" />
               </FormField>
               <FormField label="Notas Internas">
-                <TextInput value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Horarios, Cuentas..." />
+                <TextInput value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Horarios, Cuentas..." className="text-xs" />
               </FormField>
-              <PrimaryButton type="submit" className="w-full justify-center">Agregar Proveedor</PrimaryButton>
+              <PrimaryButton type="submit" className="w-full justify-center text-xs h-9">Agregar Proveedor</PrimaryButton>
             </form>
           </div>
         </div>
 
         {/* Suppliers Cards Grid */}
         <div className="xl:col-span-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filtered.map((prov) => {
               const itemCount = getProviderItemCount(prov.id);
               const isEditing = editingId === prov.id;
               const isDeleting = confirmDelete === prov.id;
 
               if (isEditing) return (
-                <div key={prov.id} className="bg-emerald-50/10 border-2 border-emerald-200 rounded-[2rem] p-6 space-y-4 animate-fade-in shadow-xl">
-                   <div className="flex items-center gap-3 mb-2">
-                     <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
-                       <Icon icon="heroicons:pencil-square" className="text-xl" />
+                <div key={prov.id} className="bg-emerald-50/20 border border-emerald-300 rounded-xl p-4 space-y-3 animate-fade-in shadow-2xs text-xs">
+                   <div className="flex items-center gap-2 mb-1">
+                     <div className="w-7 h-7 bg-emerald-100 text-emerald-700 rounded-md flex items-center justify-center">
+                       <Icon icon="heroicons:pencil-square" className="text-sm" />
                      </div>
-                     <h4 className="text-sm font-black text-gray-900 uppercase">Editando Proveedor</h4>
+                     <h4 className="text-xs font-bold text-slate-900 uppercase">Editando Proveedor</h4>
                    </div>
                    
                    <FormField label="Razón Social">
-                     <TextInput value={editingForm.name} onChange={e => setEditingForm({...editingForm, name: e.target.value})} />
+                     <TextInput value={editingForm.name} onChange={e => setEditingForm({...editingForm, name: e.target.value})} className="text-xs" />
                    </FormField>
                    
-                   <div className="grid grid-cols-2 gap-4">
-                     <FormField label="WhatsApp / Contacto">
-                       <TextInput value={editingForm.phone} onChange={e => setEditingForm({...editingForm, phone: e.target.value})} />
+                   <div className="grid grid-cols-2 gap-3">
+                     <FormField label="WhatsApp / Tel">
+                       <TextInput value={editingForm.phone} onChange={e => setEditingForm({...editingForm, phone: e.target.value})} className="text-xs" />
                      </FormField>
                      <FormField label="Días de Entrega">
-                       <TextInput value={editingForm.delivery_days} onChange={e => setEditingForm({...editingForm, delivery_days: e.target.value})} />
+                       <TextInput value={editingForm.delivery_days} onChange={e => setEditingForm({...editingForm, delivery_days: e.target.value})} className="text-xs" />
                      </FormField>
                    </div>
 
-                   <div className="grid grid-cols-1 gap-4">
-                     <FormField label="Monto Mínimo de Pedido ($)">
-                       <TextInput type="number" value={editingForm.min_order_amount} onChange={e => setEditingForm({...editingForm, min_order_amount: e.target.value})} />
+                   <div className="grid grid-cols-2 gap-3">
+                     <FormField label="Monto Mínimo ($)">
+                       <TextInput type="number" value={editingForm.min_order_amount} onChange={e => setEditingForm({...editingForm, min_order_amount: e.target.value})} className="text-xs" />
                      </FormField>
                      <FormField label="Notas Internas">
-                       <TextInput value={editingForm.notes} onChange={e => setEditingForm({...editingForm, notes: e.target.value})} placeholder="Horarios, números de cuenta, etc." />
+                       <TextInput value={editingForm.notes} onChange={e => setEditingForm({...editingForm, notes: e.target.value})} placeholder="Horarios, cuentas..." className="text-xs" />
                      </FormField>
                    </div>
 
-                   <div className="flex justify-end gap-3 pt-4 border-t border-emerald-100">
+                   <div className="flex justify-end gap-2 pt-2 border-t border-emerald-100">
                      <button 
                        onClick={() => setEditingId(null)} 
-                       className="px-6 py-2.5 text-xs font-bold text-gray-400 hover:text-gray-600 transition-colors"
+                       className="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
                      >
                        Cancelar
                      </button>
-                     <PrimaryButton onClick={handleSaveEdit} className="px-8">
+                     <PrimaryButton onClick={handleSaveEdit} className="px-4 text-xs h-8">
                        Guardar Cambios
                      </PrimaryButton>
                    </div>
@@ -1450,76 +1764,78 @@ function ProveedoresTab({ ingredients = [] }) {
               );
 
               if (isDeleting) return (
-                <div key={prov.id} className="bg-rose-50 border-2 border-rose-200 rounded-[2rem] p-6 text-center animate-fade-in">
-                  <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Icon icon="heroicons:trash" className="text-2xl" />
+                <div key={prov.id} className="bg-rose-50/60 border border-rose-200 rounded-xl p-4 text-center animate-fade-in shadow-2xs">
+                  <div className="w-9 h-9 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <Icon icon="heroicons:trash" className="text-lg" />
                   </div>
-                  <h4 className="text-sm font-black text-rose-900 mb-2">¿Eliminar Proveedor?</h4>
-                  <p className="text-xs text-rose-600 mb-6 font-medium">Esta acción desvinculará {itemCount} insumos.</p>
-                  <div className="flex gap-3">
-                    <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2.5 bg-white border border-rose-200 text-rose-700 rounded-xl text-xs font-bold">No, conservar</button>
-                    <button onClick={() => deleteProvider(prov.id).then(() => setConfirmDelete(null))} className="flex-1 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-bold">Sí, eliminar</button>
+                  <h4 className="text-xs font-bold text-rose-900 mb-1">¿Eliminar Proveedor?</h4>
+                  <p className="text-[11px] text-rose-600 mb-3 font-medium">Esta acción desvinculará {itemCount} insumos.</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setConfirmDelete(null)} className="flex-1 py-1.5 bg-white border border-rose-200 text-rose-700 rounded-lg text-xs font-medium">No, conservar</button>
+                    <button onClick={() => deleteProvider(prov.id).then(() => setConfirmDelete(null))} className="flex-1 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold shadow-2xs">Sí, eliminar</button>
                   </div>
                 </div>
               );
 
               return (
-                <div key={prov.id} className="group glass-glow border border-gray-100 rounded-[2rem] p-6 hover:shadow-2xl hover:-translate-y-1 transition-all">
-                  <div className="flex items-start justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 bg-gray-50 rounded-[1.25rem] flex items-center justify-center group-hover:bg-[#2f4131]/10 transition-colors">
-                        <Icon icon="heroicons:building-office" className="text-2xl text-gray-400 group-hover:text-[#2f4131]" />
-                      </div>
-                      <div>
-                        <h4 className="text-lg font-black text-gray-900 group-hover:text-[#2f4131] transition-colors">{prov.name}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{itemCount} Productos</span>
-                          {prov.min_order_amount && (
-                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md uppercase tracking-widest">
-                              Min: ${parseFloat(prov.min_order_amount).toLocaleString()}
-                            </span>
-                          )}
+                <div key={prov.id} className="bg-white border border-slate-200/90 rounded-xl p-4 hover:border-slate-300 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600">
+                          <Icon icon="heroicons:building-office" className="text-lg" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-900">{prov.name}</h4>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] font-semibold text-slate-500 uppercase">{itemCount} Insumos</span>
+                            {prov.min_order_amount && (
+                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100 uppercase">
+                                Min: ${parseFloat(prov.min_order_amount).toLocaleString()}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => startEdit(prov)} title="Editar proveedor" className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md border border-slate-200/80 bg-white transition-colors shadow-2xs"><Icon icon="heroicons:pencil-square" className="text-sm" /></button>
+                        <button onClick={() => setConfirmDelete(prov.id)} title="Eliminar proveedor" className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md border border-slate-200/80 bg-white transition-colors shadow-2xs"><Icon icon="heroicons:trash" className="text-sm" /></button>
+                      </div>
                     </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => startEdit(prov)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"><Icon icon="heroicons:pencil-square" /></button>
-                      <button onClick={() => setConfirmDelete(prov.id)} className="p-2 text-rose-400 hover:bg-rose-50 rounded-xl transition-colors"><Icon icon="heroicons:trash" /></button>
+
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Días Entrega</p>
+                        <p className="text-xs font-semibold text-slate-700 truncate">{prov.delivery_days || 'No definido'}</p>
+                      </div>
+                      <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Contacto Directo</p>
+                        <p className="text-xs font-semibold text-slate-700 truncate">{prov.phone || 'Sin número'}</p>
+                      </div>
                     </div>
+
+                    {prov.notes && (
+                      <div className="mb-3 p-2 bg-amber-50/40 border border-amber-100 rounded-lg">
+                        <p className="text-[11px] italic text-amber-800 leading-snug">"{prov.notes}"</p>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="p-3 bg-gray-50/50 rounded-2xl">
-                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Días Entrega</p>
-                      <p className="text-xs font-bold text-gray-700">{prov.delivery_days || 'No definido'}</p>
-                    </div>
-                    <div className="p-3 bg-gray-50/50 rounded-2xl">
-                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Contacto Directo</p>
-                      <p className="text-xs font-bold text-gray-700">{prov.phone || 'Sin número'}</p>
-                    </div>
-                  </div>
-
-                  {prov.notes && (
-                    <div className="mb-6 p-4 bg-amber-50/30 border border-amber-100/50 rounded-2xl">
-                      <p className="text-[10px] italic text-amber-700 leading-relaxed font-medium">"{prov.notes}"</p>
-                    </div>
-                  )}
-
-                  <div className="flex gap-3">
+                  <div className="flex gap-2 pt-1">
                     {prov.phone && (
                       <a 
                         href={`https://wa.me/${prov.phone.replace(/\D/g, '')}`} 
                         target="_blank" 
                         rel="noreferrer"
-                        className="flex-[2] py-3 bg-emerald-500 text-white rounded-2xl flex items-center justify-center gap-2 text-xs font-black shadow-lg shadow-emerald-200 hover:bg-emerald-600 hover:scale-[1.02] transition-all active:scale-95"
+                        className="flex-1 py-1.5 bg-emerald-600 text-white rounded-lg flex items-center justify-center gap-1 text-xs font-semibold shadow-2xs hover:bg-emerald-700 transition-colors"
                       >
-                        <Icon icon="ic:baseline-whatsapp" className="text-lg" />
+                        <Icon icon="ic:baseline-whatsapp" className="text-sm" />
                         WhatsApp
                       </a>
                     )}
                     <button 
                       onClick={() => setSelectedProvider(prov)}
-                      className="flex-1 py-3 bg-white border border-gray-100 text-gray-600 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold hover:bg-gray-50 transition-all shadow-sm hover:shadow-md active:scale-95"
+                      className="flex-1 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg flex items-center justify-center gap-1 text-xs font-semibold hover:bg-slate-50 transition-colors shadow-2xs"
                     >
                       Detalles
                     </button>
@@ -1529,9 +1845,9 @@ function ProveedoresTab({ ingredients = [] }) {
             })}
           </div>
           {filtered.length === 0 && (
-            <div className="py-32 text-center bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-200">
-               <Icon icon="heroicons:truck" className="text-5xl text-gray-200 mb-4 mx-auto" />
-               <p className="text-base font-bold text-gray-400">No hay proveedores que coincidan con la búsqueda</p>
+            <div className="py-20 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+               <Icon icon="heroicons:truck" className="text-4xl text-slate-300 mb-2 mx-auto" />
+               <p className="text-xs font-medium text-slate-400">No hay proveedores que coincidan con la búsqueda</p>
             </div>
           )}
         </div>
@@ -1545,20 +1861,20 @@ function ProveedoresTab({ ingredients = [] }) {
             subtitle="Detalles del Proveedor e Insumos Vinculados"
             onClose={() => setSelectedProvider(null)}
           />
-          <div className="p-7 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+          <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
             {/* Info Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">WhatsApp</p>
-                <p className="text-sm font-bold text-gray-900">{selectedProvider.phone || 'No registrado'}</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">WhatsApp / Tel</p>
+                <p className="text-xs font-bold text-slate-900">{selectedProvider.phone || 'No registrado'}</p>
               </div>
-              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Días Entrega</p>
-                <p className="text-sm font-bold text-gray-900">{selectedProvider.delivery_days || 'No definido'}</p>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Días Entrega</p>
+                <p className="text-xs font-bold text-slate-900">{selectedProvider.delivery_days || 'No definido'}</p>
               </div>
-              <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Monto Mínimo</p>
-                <p className="text-sm font-bold text-emerald-700">
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-0.5">Monto Mínimo</p>
+                <p className="text-xs font-extrabold text-emerald-800">
                   {selectedProvider.min_order_amount ? `$${parseFloat(selectedProvider.min_order_amount).toLocaleString()}` : 'Sin mínimo'}
                 </p>
               </div>
@@ -1566,11 +1882,11 @@ function ProveedoresTab({ ingredients = [] }) {
 
             {/* Notes */}
             {selectedProvider.notes && (
-              <div className="p-5 bg-amber-50/30 border border-amber-100 rounded-2xl">
-                <p className="text-xs font-black text-amber-700 uppercase tracking-widest mb-2 flex items-center gap-2">
+              <div className="p-3.5 bg-amber-50/40 border border-amber-100 rounded-xl">
+                <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1 flex items-center gap-1.5">
                   <Icon icon="heroicons:pencil-square" /> Notas Internas
                 </p>
-                <p className="text-sm text-amber-900 leading-relaxed font-medium">
+                <p className="text-xs text-amber-900 leading-relaxed font-normal">
                   {selectedProvider.notes}
                 </p>
               </div>
@@ -1578,35 +1894,35 @@ function ProveedoresTab({ ingredients = [] }) {
 
             {/* Linked Ingredients */}
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
-                  <Icon icon="heroicons:archive-box" className="text-lg text-[#2f4131]" />
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Icon icon="heroicons:archive-box" className="text-sm text-slate-500" />
                   Insumos Vinculados
                 </h4>
                 <Badge>{ingredients.filter(i => i.provider_id === selectedProvider.id).length} ítems</Badge>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {ingredients.filter(i => i.provider_id === selectedProvider.id).map(ing => (
-                  <div key={ing.id} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:shadow-md transition-shadow">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center text-gray-400 text-xs font-bold">
+                  <div key={ing.id} className="flex items-center justify-between p-3 bg-white border border-slate-200/80 rounded-lg hover:border-slate-300 transition-colors">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 bg-slate-100 rounded-md flex items-center justify-center text-slate-600 text-xs font-bold border border-slate-200/60">
                         {ing.name.charAt(0)}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-gray-900">{ing.name}</p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Stock: {ing.stock_current} {ing.usage_unit}</p>
+                        <p className="text-xs font-bold text-slate-900">{ing.name}</p>
+                        <p className="text-[10px] text-slate-400 font-medium">Stock: {ing.stock_current} {ing.usage_unit}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                       <p className="text-sm font-black text-gray-900">${(ing.unit_cost || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</p>
-                       <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Costo unitario</p>
+                       <p className="text-xs font-extrabold text-slate-900 tabular-nums">${(ing.unit_cost || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</p>
+                       <p className="text-[10px] text-slate-400 font-medium">Costo unitario</p>
                     </div>
                   </div>
                 ))}
                 {ingredients.filter(i => i.provider_id === selectedProvider.id).length === 0 && (
-                  <div className="py-10 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
-                    <p className="text-xs font-bold text-gray-400 italic">No hay insumos vinculados a este proveedor aún.</p>
+                  <div className="py-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                    <p className="text-xs font-medium text-slate-400 italic">No hay insumos vinculados a este proveedor aún.</p>
                   </div>
                 )}
               </div>

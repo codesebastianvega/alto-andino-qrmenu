@@ -14,7 +14,7 @@ export function useAdminIngredients() {
     try {
       let query = supabase
         .from('ingredients')
-        .select('*, location_inventory!left(*), recipe_ingredients!left(quantity, recipes(id,name))');
+        .select('*, location_inventory!left(*), recipe_ingredients!left(quantity, recipes!recipe_ingredients_recipe_id_fkey(id,name))');
 
       if (activeBrandId) {
         query = query.eq('brand_id', activeBrandId);
@@ -77,6 +77,8 @@ export function useAdminIngredients() {
         selling_price: parseFloat(ingredientData.selling_price) || 0,
         portion_size: parseFloat(ingredientData.portion_size) || 50,
         is_modifier: Boolean(ingredientData.is_modifier),
+        has_merma: Boolean(ingredientData.has_merma),
+        merma_percent: parseFloat(ingredientData.merma_percent) || 0,
         is_active: ingredientData.is_active ?? true,
         stock_current: parseFloat(ingredientData.stock_current) || 0,
         stock_min: parseFloat(ingredientData.stock_min) || 0,
@@ -143,6 +145,8 @@ export function useAdminIngredients() {
         selling_price: parseFloat(ingredientData.selling_price) || 0,
         portion_size: parseFloat(ingredientData.portion_size) || 50,
         is_modifier: Boolean(ingredientData.is_modifier),
+        has_merma: Boolean(ingredientData.has_merma),
+        merma_percent: parseFloat(ingredientData.merma_percent) || 0,
         is_active: ingredientData.is_active ?? true,
         stock_current: parseFloat(ingredientData.stock_current) || 0,
         stock_min: parseFloat(ingredientData.stock_min) || 0,

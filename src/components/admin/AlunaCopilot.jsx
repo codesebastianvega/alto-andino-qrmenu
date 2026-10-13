@@ -832,6 +832,7 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
           beforeAfter: beforeAfter.length ? beforeAfter : [{ label: 'Insumos', before: 'Actual', after: 'Ingreso al inventario' }],
           riskLevel: 'medium',
           action: 'batch_stock_entry',
+          approveLabel: 'Aprobar e Ingresar a Inventario',
           inventoryDraft: invDraft,
         };
       } else if (response.intent === 'generate_shopping_list') {
@@ -1284,21 +1285,81 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
                 <PriceWorkflow product={selectedProduct} isExecuting={isLoading} onApprove={approvePrice} onCancel={() => setWorkflow(null)} />
               ) : ['update_business_hours', 'create_payment_method', 'update_printing_settings', 'create_modifier_group'].includes(workflow) ? (
                 <OperationsWorkflow action={workflow} brandName={brandName} locationName={locationName} isExecuting={isLoading} onApprove={approveOperations} onCancel={() => setWorkflow(null)} />
-              ) : !audit ? (
-                <div className="space-y-5">
+              ) : !audit && messages.length === 0 ? (
+                <div className="space-y-4">
                   <div className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
-                    <p className="text-sm font-bold text-gray-900">Hola, soy Lumi. Estoy trabajando sobre {brandName}.</p>
-                    <p className="mt-2 text-sm leading-relaxed text-gray-600">Puedo auditar tu catálogo, recetas, horarios, medios de pago e impresión para decirte exactamente qué falta antes de operar.</p>
+                    <p className="text-sm font-bold text-gray-900">Hola, soy Lumi. Copiloto de {brandName}.</p>
+                    <p className="mt-1.5 text-xs leading-relaxed text-gray-600">
+                      Puedo registrar compras y facturas de insumos, ajustar precios, auditar tu catálogo o resolver dudas operativas sin rodeos.
+                    </p>
                   </div>
-                  <button type="button" onClick={executeAudit} disabled={isLoading} className="flex w-full items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:border-emerald-300 hover:shadow-md disabled:cursor-wait disabled:opacity-70">
-                    <span className="flex items-center gap-3">
-                      <span className="rounded-xl bg-emerald-50 p-2.5 text-emerald-700">{isLoading ? <Loader2 size={19} className="animate-spin" aria-hidden="true" /> : <Sparkles size={19} aria-hidden="true" />}</span>
-                      <span><span className="block text-sm font-bold text-gray-900">Auditar apertura con Lumi</span><span className="mt-0.5 block text-xs text-gray-500">Diagnóstico real, sin modificar datos</span></span>
-                    </span>
-                    <ChevronRight size={18} className="text-gray-400" aria-hidden="true" />
-                  </button>
+
+                  <div>
+                    <p className="px-1 text-[11px] font-bold uppercase tracking-wider text-gray-400">Acciones rápidas</p>
+                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPrompt('Llegaron insumos: ');
+                          promptRef.current?.focus();
+                        }}
+                        className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 text-left transition hover:border-emerald-400 hover:bg-emerald-50/40"
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100/70 text-emerald-800 text-sm font-bold">📥</span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-gray-900">Registrar compras</p>
+                          <p className="text-[11px] text-gray-500 truncate">Ingreso de stock y facturas</p>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPrompt('Ajustar precio de ');
+                          promptRef.current?.focus();
+                        }}
+                        className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 text-left transition hover:border-emerald-400 hover:bg-emerald-50/40"
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100/70 text-amber-800 text-sm font-bold">🏷️</span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-gray-900">Ajustar precio</p>
+                          <p className="text-[11px] text-gray-500 truncate">Actualizar valor de un plato</p>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSendMessage('¿Cuáles insumos o platos no tienen costo o precio asignado?')}
+                        disabled={isLoading}
+                        className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 text-left transition hover:border-emerald-400 hover:bg-emerald-50/40"
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100/70 text-blue-800 text-sm font-bold">📋</span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-gray-900">Insumos sin costo</p>
+                          <p className="text-[11px] text-gray-500 truncate">Diagnóstico rápido de costos</p>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={executeAudit}
+                        disabled={isLoading}
+                        className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 text-left transition hover:border-emerald-400 hover:bg-emerald-50/40"
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-100/70 text-purple-800 text-sm font-bold">
+                          {isLoading ? <Loader2 size={16} className="animate-spin" /> : '🔍'}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-gray-900">Auditar apertura</p>
+                          <p className="text-[11px] text-gray-500 truncate">Revisión general de catálogo</p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              ) : <AuditResult audit={audit} onResolve={resolveFinding} />}
+              ) : audit ? (
+                <AuditResult audit={audit} onResolve={resolveFinding} />
+              ) : null}
 
               {workflow == null && messages.length > 0 ? (
                 <div className="mt-5 space-y-3" aria-live="polite">
@@ -1343,12 +1404,13 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
                             riskLevel={message.card.riskLevel}
                             isExecuting={isLoading}
                             isDraft={message.card.isDraft}
-                            productMode={message.card.productMode}
+                            productMode={['create_catalog', 'create_costed_product'].includes(message.card.action) ? (message.card.productMode || 'simple') : null}
                             onChangeProductMode={(mode) => handleCardProductModeChange(index, mode)}
                             suggestedModifiers={message.card.suggestedModifiers}
                             onToggleModifier={(modName) => handleCardToggleModifier(index, modName)}
                             onFieldChange={(fieldKey, value) => handleCardFieldChange(index, fieldKey, value)}
                             canApprove={!message.card.isDraft || Boolean(message.card.draft?.product_name && Number(message.card.draft?.price) > 0)}
+                            approveLabel={message.card.approveLabel}
                             onApprove={() => handleApproveProposalCard(message.card)}
                             onCancel={() => handleDismissCard(index)}
                             onSendToChat={() => handleCardSendToChat(message.card)}
@@ -1369,6 +1431,18 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
                       )}
                     </div>
                   ))}
+                  {isLoading ? (
+                    <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/40 px-4 py-3 text-xs font-semibold text-emerald-900 max-w-[85%] animate-pulse" aria-live="polite">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-[#173D24] text-white">
+                        <Sparkles size={14} className="animate-spin" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="font-bold text-gray-900">Lumi está pensando…</p>
+                        <p className="text-[11px] text-gray-500 font-normal">Interpretando insumos y preparando la propuesta</p>
+                      </div>
+                    </div>
+                  ) : null}
+
                   {selectedProduct ? <ProductContextCard product={selectedProduct} recipesEnabled={recipesEnabled} onEditPrice={() => setWorkflow('edit_product_price')} onCreateRecipe={() => setWorkflow('create_costed_product')} /> : null}
                   {suggestedReplies.length > 0 ? <div className="flex flex-wrap gap-2">{suggestedReplies.map((reply) => <button key={reply} type="button" disabled={isLoading} onClick={() => handleSuggestedReply(reply)} className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-left text-xs font-bold text-emerald-800 transition hover:border-emerald-400 hover:bg-emerald-100 disabled:opacity-50">{reply}</button>)}</div> : null}
                   {suggestedIntent === 'create_catalog' && (catalogDraft.category_name || catalogDraft.product_name) ? <button type="button" onClick={() => setWorkflow('create_catalog')} className="w-full rounded-xl bg-[#173D24] py-3 text-sm font-bold text-white">Revisar y aprobar creación</button> : null}

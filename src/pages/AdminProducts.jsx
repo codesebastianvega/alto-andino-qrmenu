@@ -38,21 +38,29 @@ const DragHandle = () => (
   </svg>
 );
 
-const normalizeBrandConcepts = (concepts = []) =>
-  concepts
+const SYSTEM_CONCEPT_IDS = new Set(['operations_model', 'telegram_dispatch']);
+
+const normalizeBrandConcepts = (concepts = []) => {
+  if (!Array.isArray(concepts)) return [];
+  return concepts
+    .filter((concept) => {
+      if (!concept) return false;
+      if (typeof concept === 'string') return concept.trim().length > 0;
+      if (typeof concept === 'object') {
+        if (SYSTEM_CONCEPT_IDS.has(concept.id)) return false;
+        if (concept.fulfillment_modes || concept.bot_token) return false;
+        return Boolean(concept.name || concept.label);
+      }
+      return false;
+    })
     .map((concept) => {
       if (typeof concept === 'string') {
         return { value: concept, label: concept };
       }
-
-      if (concept && typeof concept === 'object') {
-        const label = concept.name || concept.label || concept.id || '';
-        return label ? { value: label, label } : null;
-      }
-
-      return null;
-    })
-    .filter(Boolean);
+      const label = concept.name || concept.label;
+      return { value: label, label };
+    });
+};
 
 export default function AdminProducts() {
   const { activeLocationId, isAllLocations, activeLocation } = useLocation();
@@ -509,14 +517,16 @@ export default function AdminProducts() {
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </SelectInput>
           </div>
-          <div className="w-full md:w-auto min-w-[150px]">
-            <SelectInput value={brandFilter} onChange={e => setBrandFilter(e.target.value)}>
-              <option value="all">Concepto: Todos</option>
-              {brandConceptOptions.map(concept => (
-                <option key={concept.value} value={concept.value}>{concept.label}</option>
-              ))}
-            </SelectInput>
-          </div>
+          {brandConceptOptions.length > 0 && (
+            <div className="w-full md:w-auto min-w-[150px]">
+              <SelectInput value={brandFilter} onChange={e => setBrandFilter(e.target.value)}>
+                <option value="all">Concepto: Todos</option>
+                {brandConceptOptions.map(concept => (
+                  <option key={concept.value} value={concept.value}>{concept.label}</option>
+                ))}
+              </SelectInput>
+            </div>
+          )}
 
           <div className="w-full md:w-auto min-w-[150px]">
             <SelectInput value={locationFilter} onChange={e => {

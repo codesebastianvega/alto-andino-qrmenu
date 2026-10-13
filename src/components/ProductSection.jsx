@@ -15,6 +15,7 @@ function norm(s = "") {
 }
 
 import { useMenuData } from "@/context/MenuDataContext";
+import { Icon } from "@iconify-icon/react";
 
 export default function ProductSection({
   id,
@@ -129,6 +130,8 @@ export default function ProductSection({
     } else if (variant === "horizontal-slider") {
       const scrollRef = useRef(null);
       const [scrollProgress, setScrollProgress] = useState(0);
+      const [canScrollLeft, setCanScrollLeft] = useState(false);
+      const [canScrollRight, setCanScrollRight] = useState(arr.length > 1);
 
       const handleScroll = () => {
         if (!scrollRef.current) return;
@@ -136,53 +139,93 @@ export default function ProductSection({
         const maxScroll = scrollWidth - clientWidth;
         if (maxScroll > 0) {
           setScrollProgress(scrollLeft / maxScroll);
+          setCanScrollLeft(scrollLeft > 10);
+          setCanScrollRight(scrollLeft < maxScroll - 10);
         }
       };
 
-      // Total dots: let's say 1 dot per item, capped at a reasonable number
-      const dotCount = Math.min(arr.length, 8);
+      const scrollByDirection = (direction) => {
+        if (!scrollRef.current) return;
+        const amount = scrollRef.current.clientWidth * 0.75;
+        scrollRef.current.scrollBy({
+          left: direction === "left" ? -amount : amount,
+          behavior: "smooth"
+        });
+      };
+
+      const dotCount = Math.min(arr.length, 6);
 
       return (
-        <div className="relative group/slider">
-          <div 
-            ref={scrollRef}
-            onScroll={handleScroll}
-            onTouchStart={(event) => event.stopPropagation()}
-            onTouchMove={(event) => event.stopPropagation()}
-            onTouchEnd={(event) => event.stopPropagation()}
-            onPointerDown={(event) => event.stopPropagation()}
-            className="flex overflow-x-auto gap-4 pb-6 pt-4 no-scrollbar -mx-5 px-5 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8 lg:mx-0 lg:px-0 scroll-smooth snap-x snap-mandatory scroll-pl-5 sm:scroll-pl-6 md:scroll-pl-8 touch-pan-x"
-          >
-            {arr.map((item, i) => {
-              const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
-              return (
-                <div 
-                  key={safeItem?.id || `${keySeed}-${i}`} 
-                  className="min-w-[200px] max-w-[200px] sm:min-w-[240px] sm:max-w-[240px] snap-start [content-visibility:auto] [contain-intrinsic-size:240px]"
-                >
-                  <ProductCard
-                    item={safeItem}
-                    variant="standard"
-                    onAdd={(payload) => addItem(payload)}
-                    onQuickView={onQuickView}
-                    allergens={allergens}
-                  />
-                </div>
-              );
-            })}
+        <div className="relative group/slider" data-no-swipe="true" data-slider="true">
+          {/* Subtle swipe hint pill */}
+          <div className="flex items-center justify-between mb-1.5 px-0.5">
+            <span className="text-[11px] font-semibold text-neutral-400 flex items-center gap-1">
+              <span>Desliza para ver más</span>
+              <Icon icon="solar:arrow-right-linear" className="text-xs animate-pulse text-neutral-500" />
+            </span>
+          </div>
+
+          <div className="relative">
+            {/* Desktop Navigation Arrows */}
+            {canScrollLeft && (
+              <button
+                type="button"
+                onClick={() => scrollByDirection("left")}
+                aria-label="Anterior"
+                className="hidden sm:flex absolute -left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/95 shadow-md border border-slate-200 items-center justify-center text-slate-700 hover:bg-white hover:scale-110 transition-all"
+              >
+                <Icon icon="solar:alt-arrow-left-bold" className="text-sm" />
+              </button>
+            )}
+            {canScrollRight && (
+              <button
+                type="button"
+                onClick={() => scrollByDirection("right")}
+                aria-label="Siguiente"
+                className="hidden sm:flex absolute -right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white/95 shadow-md border border-slate-200 items-center justify-center text-slate-700 hover:bg-white hover:scale-110 transition-all"
+              >
+                <Icon icon="solar:alt-arrow-right-bold" className="text-sm" />
+              </button>
+            )}
+
+            <div 
+              ref={scrollRef}
+              onScroll={handleScroll}
+              data-no-swipe="true"
+              data-slider="true"
+              className="flex overflow-x-auto gap-3.5 pb-4 pt-1 no-scrollbar -mx-4 px-4 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8 lg:mx-0 lg:px-0 scroll-smooth snap-x snap-mandatory scroll-pl-4 sm:scroll-pl-6 md:scroll-pl-8 overscroll-x-contain"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
+              {arr.map((item, i) => {
+                const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
+                return (
+                  <div 
+                    key={safeItem?.id || `${keySeed}-${i}`} 
+                    className="w-[72vw] min-w-[210px] max-w-[250px] sm:w-[230px] sm:min-w-[230px] snap-start shrink-0 [content-visibility:auto] [contain-intrinsic-size:240px]"
+                  >
+                    <ProductCard
+                      item={safeItem}
+                      variant="standard"
+                      onAdd={(payload) => addItem(payload)}
+                      onQuickView={onQuickView}
+                      allergens={allergens}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
           
           {/* Indicador de scroll (puntos) */}
           {arr.length > 1 && (
             <div className="flex justify-center items-center gap-1.5 mt-2">
               {Array.from({ length: dotCount }).map((_, i) => {
-                // Map current progress to which dot should be active
                 const isActive = Math.round(scrollProgress * (dotCount - 1)) === i;
                 return (
                   <div 
                     key={i}
                     className={`h-1 rounded-full transition-all duration-300 ${
-                      isActive ? "w-4 bg-[#2f4131]" : "w-1.5 bg-[#2f4131]/20"
+                      isActive ? "w-5 bg-[#2f4131]" : "w-1.5 bg-[#2f4131]/20"
                     }`}
                   />
                 );
