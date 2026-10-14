@@ -110,7 +110,7 @@ export default function ProductSection({
       : null;
 
   const renderProducts = (arr, keySeed = 0) => {
-    let gridClasses = "grid gap-4 sm:gap-5";
+    let gridClasses = "grid gap-4 sm:gap-5 items-stretch";
     let cardVariant = "standard";
 
     if (variant === "grid") {
@@ -254,7 +254,7 @@ export default function ProductSection({
         </div>
       );
     } else if (variant === "bento-grid") {
-      gridClasses = "grid grid-cols-2 md:grid-cols-4 gap-4 auto-rows-auto";
+      gridClasses = "grid grid-cols-2 lg:grid-cols-4 gap-4 items-stretch";
     } else {
       gridClasses += " grid-cols-2 lg:grid-cols-3";
     }
@@ -269,7 +269,7 @@ export default function ProductSection({
           return (
             <div 
               key={safeItem?.id || `${keySeed}-${i}`}
-              className={`${isHero && variant === "bento-grid" ? "col-span-2 row-span-2" : ""} [content-visibility:auto] [contain-intrinsic-size:200px]`}
+              className={`${isHero && variant === "bento-grid" ? "col-span-2" : "col-span-1"} h-full flex flex-col [content-visibility:auto] [contain-intrinsic-size:200px]`}
             >
               <ProductCard
                 item={safeItem}
@@ -307,16 +307,17 @@ export default function ProductSection({
       return (
         <Section id={`section-${id}`} title={title} count={displayCount} hideTitle={hideTitle}>
           {headerNode}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-stretch">
             {allAvailableItems.map((item, idx) => (
-              <ProductCard
-                key={item.id || idx}
-                item={item}
-                variant="standard"
-                onAdd={(payload) => addItem(payload)}
-                onQuickView={onQuickView}
-                allergens={allergens}
-              />
+              <div key={item.id || idx} className="h-full flex flex-col">
+                <ProductCard
+                  item={item}
+                  variant="standard"
+                  onAdd={(payload) => addItem(payload)}
+                  onQuickView={onQuickView}
+                  allergens={allergens}
+                />
+              </div>
             ))}
           </div>
           {afterNode}
@@ -364,16 +365,17 @@ export default function ProductSection({
                   </span>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3 sm:gap-4 flex-1">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 flex-1 items-stretch">
                 {otherItems.map((item, idx) => (
-                  <ProductCard
-                    key={item.id || idx}
-                    item={item}
-                    variant="standard"
-                    onAdd={(payload) => addItem(payload)}
-                    onQuickView={onQuickView}
-                    allergens={allergens}
-                  />
+                  <div key={item.id || idx} className="h-full flex flex-col">
+                    <ProductCard
+                      item={item}
+                      variant="standard"
+                      onAdd={(payload) => addItem(payload)}
+                      onQuickView={onQuickView}
+                      allergens={allergens}
+                    />
+                  </div>
                 ))}
               </div>
             </div>

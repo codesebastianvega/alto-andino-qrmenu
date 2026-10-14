@@ -271,14 +271,14 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
 
   return (
     <article
-      className={`group relative flex overflow-hidden transition-all duration-300 ${
+      className={`group relative flex h-full w-full overflow-hidden transition-all duration-300 ${
         isOut ? "opacity-70 grayscale" : "hover:shadow-xl hover:-translate-y-1"
       } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 rounded-2xl bg-white text-neutral-900 border border-black/5 ${
         isCompact ? "p-1.5 flex-row" : "p-1 md:p-2.5 flex-col"
       } ${
         isCompactGrid ? "p-1 flex-col" : ""
       } ${
-        isHero ? "lg:col-span-2 lg:flex-row" : ""
+        isHero ? "lg:flex-row" : ""
       }`}
       onClick={handleQuickView}
       onKeyDown={handleKeyDown}
@@ -288,15 +288,17 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
       {imageSrc ? (
         <div className={`relative overflow-hidden ${
           isCompact ? "h-20 w-20 rounded-xl flex-shrink-0" 
-          : isHero ? "w-full aspect-[4/3] lg:w-1/2 lg:aspect-auto lg:h-auto rounded-xl lg:rounded-l-xl" 
-          : "w-full aspect-[4/3] rounded-xl"
+          : isHero ? "w-full aspect-[4/3] lg:w-1/2 lg:aspect-auto lg:h-full lg:self-stretch rounded-xl shrink-0" 
+          : "w-full aspect-[4/3] rounded-xl shrink-0"
         }`}>
           <AAImage
             src={imageSrc}
             alt={item.name || "Producto"}
             onLoad={() => setImgLoaded(true)}
             onError={() => setImgLoaded(false)}
-            className={`h-full w-full object-cover transition-opacity duration-500 ease-out ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+            className={`h-full w-full object-cover transition-opacity duration-500 ease-out ${
+              isHero ? "lg:absolute lg:inset-0" : ""
+            } ${imgLoaded ? "opacity-100" : "opacity-0"}`}
             width={isCompact ? 80 : isHero ? 600 : 400}
             height={isCompact ? 80 : isHero ? 600 : 400}
           />
@@ -326,8 +328,8 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
       ) : (
         !isCompact && (
           <div className={`relative flex items-center justify-center bg-gradient-to-br from-neutral-50 to-neutral-100 ${
-            isHero ? "w-full aspect-[4/3] lg:w-1/2 lg:aspect-auto lg:h-auto rounded-xl lg:rounded-l-xl" 
-            : "w-full aspect-[4/3] rounded-xl"
+            isHero ? "w-full aspect-[4/3] lg:w-1/2 lg:aspect-auto lg:h-full lg:self-stretch rounded-xl shrink-0" 
+            : "w-full aspect-[4/3] rounded-xl shrink-0"
           }`}>
             <div className="text-center text-neutral-300">
               <svg className="w-10 h-10 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1">
@@ -361,52 +363,54 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
         )
       )}
 
-      <div className={`flex flex-1 flex-col ${isCompact ? "ml-3 py-1" : "px-2 pb-2 pt-3 md:px-3 md:pb-3 md:pt-4"}`}>
-        <div className="flex items-start justify-between gap-2">
-          <h3 className={`font-bold text-neutral-900 line-clamp-2 tracking-tight ${isCompact || isCompactGrid ? "text-[13px] md:text-sm" : "text-[15px] md:text-base leading-[1.15]"}`}>
-            {item.name}
-          </h3>
+      <div className={`flex flex-1 flex-col justify-between ${isCompact ? "ml-3 py-1" : "px-2 pb-2 pt-3 md:px-3 md:pb-3 md:pt-4"}`}>
+        <div className="flex flex-col">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className={`font-bold text-neutral-900 line-clamp-2 tracking-tight ${isCompact || isCompactGrid ? "text-[13px] md:text-sm" : "text-[15px] md:text-base leading-[1.15]"}`}>
+              {item.name}
+            </h3>
+          </div>
+
+          {item.is_bento_del_dia && (
+            <div className="mt-1">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-300 shadow-2xs">
+                🔥 Bento del Día
+              </span>
+            </div>
+          )}
+
+          {item.desc && !isCompact && (
+            <p className={`mt-1.5 leading-[1.35] text-[#717171] ${
+              isHero ? "text-[13px] md:text-sm leading-relaxed" : "text-[12px] sm:text-[13px] line-clamp-2"
+            }`}>
+              {item.desc}
+            </p>
+          )}
+
+          {/* Badges de Dietas y Alérgenos SOLO en card grande (isHero) */}
+          {isHero && (productDiets.length > 0 || productAllergens.length > 0) && (
+            <div className="mt-2.5 flex flex-wrap items-center gap-1">
+              {productDiets.map((diet) => (
+                <span key={diet.id} className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                  <span>{diet.emoji}</span>
+                  <span>{diet.name}</span>
+                </span>
+              ))}
+              {productAllergens.map((alg) => (
+                <span key={alg.id} className="inline-flex items-center gap-1 text-[9px] font-bold text-red-800 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                  <span>{alg.emoji}</span>
+                  <span>{alg.name}</span>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {isOut && (
+            <div className="mt-2.5">
+              <StatusChip intent="neutral">Agotado</StatusChip>
+            </div>
+          )}
         </div>
-
-        {item.is_bento_del_dia && (
-          <div className="mt-1">
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-300 shadow-2xs">
-              🔥 Bento del Día
-            </span>
-          </div>
-        )}
-
-        {item.desc && !isCompact && (
-          <p className={`mt-1.5 leading-[1.35] text-[#717171] ${
-            isHero ? "text-[13px] md:text-sm line-clamp-4 lg:line-clamp-5" : "text-[12px] sm:text-[13px] line-clamp-2"
-          }`}>
-            {item.desc}
-          </p>
-        )}
-
-        {/* Badges de Dietas y Alérgenos SOLO en card grande (isHero) */}
-        {isHero && (productDiets.length > 0 || productAllergens.length > 0) && (
-          <div className="mt-2.5 flex flex-wrap items-center gap-1">
-            {productDiets.map((diet) => (
-              <span key={diet.id} className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                <span>{diet.emoji}</span>
-                <span>{diet.name}</span>
-              </span>
-            ))}
-            {productAllergens.map((alg) => (
-              <span key={alg.id} className="inline-flex items-center gap-1 text-[9px] font-bold text-red-800 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
-                <span>{alg.emoji}</span>
-                <span>{alg.name}</span>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {isOut && (
-          <div className="mt-2.5">
-            <StatusChip intent="neutral">Agotado</StatusChip>
-          </div>
-        )}
 
         {/* CONTENEDOR DE PRECIO Y BOTON */}
         <div className="mt-auto pt-4 flex items-center justify-between gap-2">
