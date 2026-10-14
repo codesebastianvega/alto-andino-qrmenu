@@ -91,9 +91,16 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
           {item.desc && <p className="text-[11px] text-neutral-500 line-clamp-1 mt-0.5">{item.desc}</p>}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[13px] font-extrabold text-neutral-900 pr-1">
-            {typeof item.price === "number" ? formatCOP(item.price) : item.price}
-          </span>
+          <div className="flex flex-col items-end">
+            {item.original_price && item.original_price > item.price && (
+              <span className="text-[10px] text-neutral-400 line-through font-semibold leading-none">
+                {formatCOP(item.original_price)}
+              </span>
+            )}
+            <span className="text-[13px] font-extrabold text-neutral-900 pr-1">
+              {typeof item.price === "number" ? formatCOP(item.price) : item.price}
+            </span>
+          </div>
           <button
             type="button"
             onClick={handleAdd}
@@ -206,6 +213,14 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
           </h3>
         </div>
 
+        {item.is_bento_del_dia && (
+          <div className="mt-1">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-300 shadow-2xs">
+              🔥 Bento del Día
+            </span>
+          </div>
+        )}
+
         {item.desc && !isCompact && (
           <p className="mt-1.5 line-clamp-2 text-[13px] leading-[1.3] text-[#717171]">
             {item.desc}
@@ -220,8 +235,15 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
 
         {/* CONTENEDOR DE PRECIO Y BOTON */}
         <div className="mt-auto pt-4 flex items-center justify-between gap-2">
-          <div className={`font-extrabold tracking-tight text-neutral-900 ${isCompact || isCompactGrid ? "text-[13px] md:text-sm" : "text-[16px] md:text-lg"}`}>
-            {typeof item.price === "number" ? formatCOP(item.price) : item.price}
+          <div className="flex flex-col">
+            {item.original_price && item.original_price > item.price && (
+              <span className="text-[11px] md:text-xs text-neutral-400 line-through font-bold leading-none mb-0.5">
+                {formatCOP(item.original_price)}
+              </span>
+            )}
+            <div className={`font-extrabold tracking-tight text-neutral-900 ${isCompact || isCompactGrid ? "text-[13px] md:text-sm" : "text-[16px] md:text-lg"}`}>
+              {typeof item.price === "number" ? formatCOP(item.price) : item.price}
+            </div>
           </div>
           
           <button

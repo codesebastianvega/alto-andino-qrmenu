@@ -322,6 +322,25 @@ export const MenuDataProvider = ({ children }) => {
 
     const hasLocProductConfig = statusMap.size > 0;
 
+    // 2. Bento del Día configuration & dynamic rotation
+    const bentoConcept = (restaurantSettings?.brand_concepts || []).find(c => c && c.id === 'bento_del_dia_config');
+    const isBentoEnabled = bentoConcept ? bentoConcept.enabled !== false : true;
+    const promoPrice = Number(bentoConcept?.promo_price) || 19500;
+    const standardPrice = Number(bentoConcept?.standard_price) || 22000;
+    const defaultSchedule = {
+      1: 'b0000b11-0000-4000-a000-000000000001', // Lunes: Criollo
+      2: 'b0000b12-0000-4000-a000-000000000002', // Martes: Tex-Mex
+      3: 'b0000b13-0000-4000-a000-000000000003', // Miércoles: Bogotano
+      4: 'b0000b14-0000-4000-a000-000000000004', // Jueves: Mestizo
+      5: 'b0000b15-0000-4000-a000-000000000005', // Viernes: Urodaki
+      6: null, // Sábado: Precio normal sin bento del día
+      0: null  // Domingo: Precio normal sin bento del día
+    };
+    const bentoSchedule = bentoConcept?.schedule || defaultSchedule;
+    const manualBentoOverride = bentoConcept?.manual_override_product_id;
+    const currentDayOfWeek = new Date().getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+    const activeBentoId = manualBentoOverride || (isBentoEnabled ? bentoSchedule[currentDayOfWeek] : null);
+
     (rawProducts || []).forEach(product => {
       // Apply location product status override
       if (activeLocationId && activeLocationId !== 'all' && hasLocProductConfig) {
@@ -342,10 +361,31 @@ export const MenuDataProvider = ({ children }) => {
         }
       }
 
+      // Dynamic Bento del Día rotation for BOKU Bentos category
+      const isBento = catSlug === 'boku-bentos' || product.category_id === 'b0000c01-0000-4000-a000-000000000001';
+      let productSubcategory = product.subcategory;
+      let originalPrice = undefined;
+      let isBentoDelDia = false;
+
+      if (isBento) {
+        if (activeBentoId && product.id === activeBentoId) {
+          finalPrice = promoPrice;
+          originalPrice = standardPrice;
+          productSubcategory = 'El Bento del Día';
+          isBentoDelDia = true;
+        } else {
+          finalPrice = standardPrice;
+          productSubcategory = 'Bentos Tradicionales & Fusión';
+          isBentoDelDia = false;
+        }
+      }
+
       const normalizedProduct = {
         id: product.id,
         name: product.name,
         price: finalPrice,
+        original_price: originalPrice,
+        is_bento_del_dia: isBentoDelDia,
         desc: product.description || '',
         description: product.description || '',
         tags: product.tags || [],
@@ -358,7 +398,7 @@ export const MenuDataProvider = ({ children }) => {
         is_upsell: product.is_upsell || false,
         requires_kitchen: product.requires_kitchen ?? true,
         station: product.station || (product.requires_kitchen === false ? 'none' : 'kitchen'),
-        subcategory: product.subcategory,
+        subcategory: productSubcategory,
         categorySlug: catSlug,
         is_addon: product.is_addon,
         _supabase: product
@@ -370,7 +410,7 @@ export const MenuDataProvider = ({ children }) => {
       }
     });
     return grouped;
-  }, [rawProducts, locationPrices, locationStatus, activeLocationId]);
+  }, [rawProducts, locationPrices, locationStatus, activeLocationId, restaurantSettings]);
 
   // Compute categories reactively (Dayparting + Has Products + Location Filter)
   const categories = useMemo(() => {

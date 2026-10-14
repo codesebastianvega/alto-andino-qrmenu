@@ -338,9 +338,16 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
             <div className="flex-1 flex flex-col h-full overflow-hidden w-full md:w-7/12 lg:w-1/2 bg-white relative">
               <div ref={scrollContainerRef} className="flex-1 p-6 md:p-8 overflow-y-auto">
                 {/* Title & Subtitle */}
-                <h2 className="text-2xl md:text-3xl font-extrabold text-neutral-900 leading-tight tracking-tight" style={stagger(1)}>
-                  {title}
-                </h2>
+                <div className="flex flex-wrap items-center gap-2" style={stagger(1)}>
+                  <h2 className="text-2xl md:text-3xl font-extrabold text-neutral-900 leading-tight tracking-tight">
+                    {title}
+                  </h2>
+                  {product.is_bento_del_dia && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-300 shadow-2xs">
+                      🔥 Bento del Día
+                    </span>
+                  )}
+                </div>
                 {subtitle && (
                   <p className="mt-3 text-sm md:text-base text-neutral-500 leading-relaxed" style={stagger(2)}>
                     {subtitle}
@@ -528,7 +535,14 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-1">Total a pagar</p>
-                    <p className="text-3xl font-extrabold text-[#2f4131] leading-none tracking-tight">{formatCOP(finalPrice)}</p>
+                    <div className="flex items-baseline gap-2">
+                      {product.original_price && product.original_price > product.price && (
+                        <span className="text-base md:text-lg font-bold text-neutral-400 line-through">
+                          {formatCOP(product.original_price + extraPrice)}
+                        </span>
+                      )}
+                      <p className="text-3xl font-extrabold text-[#2f4131] leading-none tracking-tight">{formatCOP(finalPrice)}</p>
+                    </div>
                   </div>
                   {extraPrice > 0 && (
                     <div className="text-right">

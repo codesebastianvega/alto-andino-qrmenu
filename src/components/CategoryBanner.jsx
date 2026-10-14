@@ -13,7 +13,7 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
   const description = category?.banner_description || product?.desc || "Elige tus ingredientes favoritos y crea una combinación única.";
   const accentColor = category?.accent_color || "#bc0e0e";
   
-  const isBowl = product?.tags?.includes('bowl') || category?.slug === 'bowls';
+  const isBowl = product?.tags?.includes('bowl') || category?.slug === 'bowls' || category?.slug?.includes('bento');
   const isSandwich = product?.tags?.includes('sandwich') || category?.slug === 'sandwiches';
   
   const defaultFallback = isBowl 
