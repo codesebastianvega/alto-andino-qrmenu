@@ -21,14 +21,14 @@ export default function AdminModifierGroups() {
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
-  const [groupForm, setGroupForm] = useState({ name: '', description: '', is_required: false, min_select: 0, max_select: 1, is_submodifier: false });
+  const [groupForm, setGroupForm] = useState({ name: '', description: '', is_required: false, min_select: 0, max_select: 1, is_submodifier: false, allow_quantity: false, included_quantity: 0 });
   const [activeTab, setActiveTab] = useState('main');
   const [searchTerm, setSearchTerm] = useState('');
 
   const [isOptionModalOpen, setIsOptionModalOpen] = useState(false);
   const [activeGroupId, setActiveGroupId] = useState(null);
   const [editingOption, setEditingOption] = useState(null);
-  const [optionForm, setOptionForm] = useState({ name: '', price: '', ingredient_id: '', recipe_id: '', nested_group_id: '', emoji: '', image_url: '' });
+  const [optionForm, setOptionForm] = useState({ name: '', price: '', extra_price: '', ingredient_id: '', recipe_id: '', nested_group_id: '', emoji: '', image_url: '' });
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [filterCategory, setFilterCategory] = useState('');
   
@@ -63,11 +63,13 @@ export default function AdminModifierGroups() {
         is_required: group.is_required,
         min_select: group.min_select,
         max_select: group.max_select,
-        is_submodifier: group.is_submodifier || false
+        is_submodifier: group.is_submodifier || false,
+        allow_quantity: group.allow_quantity || false,
+        included_quantity: group.included_quantity || 0
       });
     } else {
       setEditingGroup(null);
-      setGroupForm({ name: '', description: '', is_required: false, min_select: 0, max_select: 1, is_submodifier: activeTab === 'sub' });
+      setGroupForm({ name: '', description: '', is_required: false, min_select: 0, max_select: 1, is_submodifier: activeTab === 'sub', allow_quantity: false, included_quantity: 0 });
     }
     setIsGroupModalOpen(true);
   };
@@ -90,6 +92,7 @@ export default function AdminModifierGroups() {
       setOptionForm({ 
         name: option.name, 
         price: option.price || '', 
+        extra_price: option.extra_price !== null && option.extra_price !== undefined ? String(option.extra_price) : '',
         ingredient_id: option.ingredient_id || '',
         recipe_id: option.recipe_id || '',
         nested_group_id: option.nested_group_id || '',
@@ -98,7 +101,7 @@ export default function AdminModifierGroups() {
       });
     } else {
       setEditingOption(null);
-      setOptionForm({ name: '', price: '', ingredient_id: '', recipe_id: '', nested_group_id: '', emoji: '', image_url: '' });
+      setOptionForm({ name: '', price: '', extra_price: '', ingredient_id: '', recipe_id: '', nested_group_id: '', emoji: '', image_url: '' });
     }
     setIsOptionModalOpen(true);
   };
@@ -109,6 +112,7 @@ export default function AdminModifierGroups() {
       group_id: activeGroupId,
       name: optionForm.name,
       price: optionForm.price ? parseFloat(optionForm.price) : 0,
+      extra_price: optionForm.extra_price !== '' && optionForm.extra_price !== null && optionForm.extra_price !== undefined ? parseFloat(optionForm.extra_price) : null,
       ingredient_id: optionForm.ingredient_id || null,
       recipe_id: optionForm.recipe_id || null,
       nested_group_id: optionForm.nested_group_id || null,
@@ -355,9 +359,42 @@ export default function AdminModifierGroups() {
                       <option value="true">Sí (Obligatorio)</option>
                     </select>
                   </FormField>
-                  <FormField label="Cant. Máxima">
-                    <input type="number" required min="1" max="99" value={groupForm.max_select} onChange={e => setGroupForm({...groupForm, max_select: parseInt(e.target.value)})} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none" />
+                  <FormField label="Cant. Máxima Total">
+                    <input type="number" required min="1" max="99" value={groupForm.max_select} onChange={e => setGroupForm({...groupForm, max_select: parseInt(e.target.value) || 1})} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none" />
                   </FormField>
+                </div>
+
+                {/* Reglas avanzadas de cantidad y porciones incluidas */}
+                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200/80 space-y-4">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input 
+                      type="checkbox"
+                      checked={groupForm.allow_quantity}
+                      onChange={e => setGroupForm({ ...groupForm, allow_quantity: e.target.checked })}
+                      className="w-4 h-4 mt-0.5 rounded text-[#2f4131] focus:ring-[#2f4131] border-gray-300"
+                    />
+                    <div>
+                      <span className="text-sm font-bold text-gray-800">Permitir selector de cantidad por opción (+ / -)</span>
+                      <p className="text-[11px] text-gray-500 mt-0.5">Permite al comensal elegir 2 o más porciones de un mismo ingrediente dentro de la tarjeta (ej. Doble Pollo, Doble Arroz).</p>
+                    </div>
+                  </label>
+
+                  {groupForm.allow_quantity && (
+                    <FormField label="Porciones incluidas en el precio base del plato">
+                      <input 
+                        type="number"
+                        min="0"
+                        max={groupForm.max_select || 99}
+                        value={groupForm.included_quantity}
+                        onChange={e => setGroupForm({ ...groupForm, included_quantity: parseInt(e.target.value) || 0 })}
+                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none"
+                        placeholder="Ej. 1 (1 proteína incluida), 4 (4 vegetales incluidos)"
+                      />
+                      <p className="text-[10px] text-gray-500 mt-1">
+                        Las primeras N porciones seleccionadas (cuyo precio sea $0) están cubiertas por el precio base. Cualquier porción por encima cobrará su precio extra.
+                      </p>
+                    </FormField>
+                  )}
                 </div>
               </div>
 
@@ -596,6 +633,23 @@ export default function AdminModifierGroups() {
                     }
                     return null;
                   })()}
+                </FormField>
+
+                <FormField label="Precio Porción Extra / 2da ($) (Opcional)">
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-full pl-8 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none"
+                      value={optionForm.extra_price}
+                      onChange={e => setOptionForm({...optionForm, extra_price: e.target.value})}
+                      placeholder="Ej. 6000 (Si el cliente pide porción adicional o doble)"
+                    />
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Útil para ingredientes incluidos ($0): si el comensal pide una 2da porción de este ítem (ej. Doble Pollo), cobrará este valor. Si se deja vacío, aplica el mismo precio base.
+                  </p>
                 </FormField>
 
                 <FormField label="¿Desplegar sub-opciones? (Opcional)">

@@ -141,6 +141,8 @@ export const useAdminModifierGroups = (locationId) => {
         is_required: group.is_required,
         min_select: group.min_select,
         max_select: group.max_select,
+        allow_quantity: group.allow_quantity ?? false,
+        included_quantity: group.included_quantity ?? 0,
         is_submodifier: group.is_submodifier,
         brand_id: activeBrandId
       };
@@ -176,6 +178,7 @@ export const useAdminModifierGroups = (locationId) => {
           group_id: newGroup.id,
           name: opt.name,
           price: opt.price,
+          extra_price: opt.extra_price,
           ingredient_id: opt.ingredient_id,
           nested_group_id: opt.nested_group_id,
           emoji: opt.emoji,

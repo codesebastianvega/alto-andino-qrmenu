@@ -451,12 +451,14 @@ export default function ProductLists({
          onClose={() => setQuickOpen(false)}
          onAdd={() => setQuickOpen(false)}
        />
-       <DIYProductModal
-         open={diyOpen}
-         product={diyProduct}
-         onClose={() => setDiyOpen(false)}
-         onAdd={() => setDiyOpen(false)}
-       />
+       {diyOpen && (
+         <DIYProductModal
+           open={diyOpen}
+           product={diyProduct}
+           onClose={() => setDiyOpen(false)}
+           onAdd={() => setDiyOpen(false)}
+         />
+       )}
      </>
    );
  }

@@ -544,12 +544,14 @@ export default function AIChatWaiterPage() {
         onAdd={() => setSelectedProduct(null)}
       />
 
-      <DIYProductModal
-        open={Boolean(selectedDiyProduct)}
-        product={selectedDiyProduct}
-        onClose={() => setSelectedDiyProduct(null)}
-        onAdd={() => setSelectedDiyProduct(null)}
-      />
+      {Boolean(selectedDiyProduct) && (
+        <DIYProductModal
+          open={Boolean(selectedDiyProduct)}
+          product={selectedDiyProduct}
+          onClose={() => setSelectedDiyProduct(null)}
+          onAdd={() => setSelectedDiyProduct(null)}
+        />
+      )}
 
     </motion.div>
   );

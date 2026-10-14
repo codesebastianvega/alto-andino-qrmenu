@@ -82,6 +82,7 @@ export function useAdminIngredients() {
         is_active: ingredientData.is_active ?? true,
         stock_current: parseFloat(ingredientData.stock_current) || 0,
         stock_min: parseFloat(ingredientData.stock_min) || 0,
+        image_url: ingredientData.image_url || null,
         brand_id: activeBrandId,
       };
 
@@ -150,6 +151,7 @@ export function useAdminIngredients() {
         is_active: ingredientData.is_active ?? true,
         stock_current: parseFloat(ingredientData.stock_current) || 0,
         stock_min: parseFloat(ingredientData.stock_min) || 0,
+        image_url: ingredientData.image_url || null,
         brand_id: activeBrandId,
       };
 

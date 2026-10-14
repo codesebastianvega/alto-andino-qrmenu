@@ -73,7 +73,7 @@ export const MenuDataProvider = ({ children }) => {
     setBusinessHours([]);
 
     try {
-      const cacheKey = `menu:v2:${brandId}`;
+      const cacheKey = `menu:v3:${brandId}`;
       let recentCache = null;
       if (!force) {
         try {
@@ -82,7 +82,10 @@ export const MenuDataProvider = ({ children }) => {
           console.warn('MenuData: se omitió el caché local y se consultará Supabase.', cacheReadError);
         }
       }
-      if (recentCache?.value && Date.now() - recentCache.cachedAt < 5 * 60 * 1000) {
+      const hasValidModifierSchema = recentCache?.value?.modifierGroups?.some(g =>
+        g.allow_quantity !== undefined || g.included_quantity !== undefined || g.modifier_options?.some(o => o.extra_price !== undefined)
+      );
+      if (recentCache?.value && hasValidModifierSchema && Date.now() - recentCache.cachedAt < 5 * 60 * 1000) {
         const data = recentCache.value;
         setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);
         setExperiences(data.experiences); setAllergens(data.allergens); setLocations(data.locations);
@@ -116,7 +119,7 @@ export const MenuDataProvider = ({ children }) => {
         hoursRes
       ] = await withTimeout(Promise.all([
         brandFilter(supabase.from('categories').select('*').eq('is_active', true).order('sort_order', { ascending: true })),
-        brandFilter(supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(id, group_id, name, price, sort_order, created_at, nested_group_id, image_url, emoji, ingredient_id)')),
+        brandFilter(supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(id, group_id, name, price, extra_price, sort_order, created_at, nested_group_id, image_url, emoji, ingredient_id, ingredients!left(image_url))')),
         brandFilter(supabase.from('experiences').select('*').eq('is_active', true).order('created_at', { ascending: false })),
         brandFilter(supabase.from('allergens').select('*').order('name')),
         brandFilter(supabase.from('locations').select('*').eq('is_active', true).order('is_main', { ascending: false })),
@@ -222,7 +225,7 @@ export const MenuDataProvider = ({ children }) => {
       console.error('❌ MenuData Fetch Error:', err);
       let recoveredFromCache = false;
       try {
-        const cached = await withTimeout(catalogCache.get(`menu:v2:${brandId}`), 2500, 'La recuperación del catálogo local');
+        const cached = await withTimeout(catalogCache.get(`menu:v3:${brandId}`), 2500, 'La recuperación del catálogo local');
         if (cached?.value) {
           const data = cached.value;
           setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);
@@ -280,8 +283,9 @@ export const MenuDataProvider = ({ children }) => {
         id: opt.id,
         name: opt.name,
         price: opt.price || 0,
+        extra_price: opt.extra_price !== null && opt.extra_price !== undefined ? Number(opt.extra_price) : Number(opt.price || 0),
         emoji: opt.emoji,
-        image_url: opt.image_url,
+        image_url: opt.image_url || opt.ingredients?.image_url || null,
         group: groupName,
         groupId: group.id,
         ingredient_id: opt.ingredient_id

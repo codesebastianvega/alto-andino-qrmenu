@@ -21,43 +21,48 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
     : (isSandwich ? "/img/products/sandwich-serrano.jpg" : "/img/products/bowl-poke-hawaiano.jpg");
 
   const [imgError, setImgError] = React.useState(false);
-  const imageSrc = (!imgError && category?.banner_image_url) 
+  const imageSrc = (!imgError && category?.banner_image_url && category.banner_image_url !== '/poke1.webp') 
     ? category.banner_image_url 
-    : defaultFallback;
+    : (product?.image_url || category?.banner_image_url || defaultFallback);
+
+  const animationMode = config.banner_animation || 'static';
+  const isSpinning = isFloating && (animationMode === 'spin' || config.banner_spin === true);
 
   const basePrice = product?.price || 0;
 
   return (
-    <div className="mb-8 mt-2">
+    <div className="mb-8 mt-6 sm:mt-8 pt-2">
       <div 
         onClick={onOpenBuilder}
-        className={`relative h-40 sm:h-52 md:h-64 overflow-hidden rounded-3xl sm:rounded-[32px] ring-1 ring-black/10 shadow-xl transition-all duration-500 hover:shadow-2xl hover:shadow-black/15 group ${onOpenBuilder ? 'cursor-pointer active:scale-[0.99]' : ''}`}
+        className={`relative h-40 sm:h-52 md:h-64 rounded-3xl sm:rounded-[32px] ring-1 ring-black/10 shadow-xl transition-all duration-500 hover:shadow-2xl hover:shadow-black/15 group ${onOpenBuilder ? 'cursor-pointer active:scale-[0.99]' : ''}`}
         style={isFloating ? { 
           background: `linear-gradient(135deg, ${accentColor}, #8a0a0a, #1a0505)` 
         } : {}}
       >
-        {/* BACKGROUND LAYER */}
-        {!isFloating ? (
-          <>
-            <img 
-              src={imageSrc} 
-              alt={title} 
-              onError={() => setImgError(true)}
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent z-10" />
-          </>
-        ) : (
-          <div className="absolute inset-0 opacity-20 pointer-events-none z-0">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-          </div>
-        )}
+        {/* BACKGROUND LAYER (Clipped inside rounded container) */}
+        <div className="absolute inset-0 rounded-3xl sm:rounded-[32px] overflow-hidden z-0">
+          {!isFloating ? (
+            <>
+              <img 
+                src={imageSrc} 
+                alt={title} 
+                onError={() => setImgError(true)}
+                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/60 to-transparent z-10" />
+            </>
+          ) : (
+            <div className="absolute inset-0 opacity-20 pointer-events-none">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            </div>
+          )}
+        </div>
 
-        {/* FLOATING HERO IMAGE (Clean static hero without GPU spin artifacts) */}
+        {/* FLOATING HERO IMAGE (Pop-out 3D Effect: Calibrated scale & fixed downward shadow) */}
         {isFloating && (
-          <div className={`pointer-events-none absolute z-20 transition-transform duration-700 group-hover:scale-105 ${
+          <div className={`pointer-events-none absolute z-20 transition-transform duration-700 group-hover:scale-105 drop-shadow-[0_12px_24px_rgba(0,0,0,0.20)] ${
             isBowl 
-              ? 'bottom-[-16px] right-[-14px] sm:bottom-[-20px] sm:right-2' 
+              ? '-top-7 -right-4 sm:-top-8 sm:right-1 md:-top-9 md:right-4 lg:-top-10 lg:right-6' 
               : 'bottom-0 right-[-10px] sm:bottom-0 sm:right-4'
           }`}>
             <AAImage
@@ -65,9 +70,11 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
               alt={title}
               onError={() => setImgError(true)}
               className={`object-contain select-none ${
+                isSpinning ? 'animate-[spin_40s_linear_infinite] will-change-transform' : ''
+              } ${
                 isBowl 
-                  ? 'w-40 sm:w-64 md:w-80 h-auto' 
-                  : 'w-32 sm:w-56 md:w-72 h-auto'
+                  ? 'w-[215px] sm:w-72 md:w-80 lg:w-96 h-auto' 
+                  : 'w-36 sm:w-60 md:w-76 h-auto'
               }`}
             />
           </div>
@@ -93,7 +100,7 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
             </div>
 
             <div className="space-y-0.5 sm:space-y-1">
-              <h3 className="text-xl font-black text-white sm:text-3xl md:text-4xl leading-tight tracking-tight drop-shadow-lg">
+              <h3 className="text-xl font-black text-white sm:text-3xl md:text-4xl leading-tight tracking-tight drop-shadow-lg max-w-[195px] sm:max-w-md">
                 {title}
               </h3>
               <p className="text-[10px] sm:text-sm text-white/80 max-w-[180px] sm:max-w-md leading-relaxed font-medium line-clamp-2 sm:line-clamp-none drop-shadow-md">

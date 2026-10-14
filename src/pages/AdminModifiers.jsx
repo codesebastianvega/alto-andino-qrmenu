@@ -208,7 +208,7 @@ function InsumosTab({ activeLocationId }) {
   const [locationInventory, setLocationInventory] = useState({}); // { [locId]: { stock_quantity, min_stock } }
 
   const emptyForm = {
-    name: '', description: '', sku: '',
+    name: '', description: '', sku: '', image_url: '',
     purchase_price: 0, purchase_unit: 'Unidad', purchase_quantity: 1,
     usage_unit: 'unidad', stock_current: 0, stock_min: 0,
     selling_price: 0, is_modifier: false, category_id: '', provider_id: '', is_active: true,
@@ -299,7 +299,7 @@ function InsumosTab({ activeLocationId }) {
     const defaultZw = getZeroWasteSuggestion(item.name);
     setEditing(item);
     setForm({
-      name: item.name, description: item.description || '', sku: item.sku || '',
+      name: item.name, description: item.description || '', sku: item.sku || '', image_url: item.image_url || '',
       purchase_price: item.purchase_price || 0, purchase_unit: item.purchase_unit || 'Unidad',
       purchase_quantity: item.purchase_quantity || 1, usage_unit: item.usage_unit || 'unidad',
       stock_current: item.stock_current || 0, stock_min: item.stock_min || 0,
@@ -1188,6 +1188,9 @@ function InsumosTab({ activeLocationId }) {
                 </FormField>
                 <FormField label="SKU / Código">
                   <TextInput value={form.sku} onChange={e => f('sku', e.target.value.toUpperCase())} placeholder="INS-001" />
+                </FormField>
+                <FormField label="URL de Foto / Imagen (Opcional)">
+                  <TextInput value={form.image_url || ''} onChange={e => f('image_url', e.target.value)} placeholder="https://... (Foto del ingrediente para DIY)" />
                 </FormField>
                 <FormField label="Categoría">
                   <select required value={form.category_id} onChange={e => f('category_id', e.target.value)}

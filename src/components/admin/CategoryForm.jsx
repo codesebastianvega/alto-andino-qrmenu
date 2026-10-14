@@ -508,7 +508,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                             : 'text-gray-400 hover:text-gray-600'
                         }`}
                       >
-                        Flotante (Spinner)
+                        Flotante (PNG / 3D)
                       </button>
                       <button
                         type="button"
@@ -527,11 +527,46 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                     </div>
                   </FormField>
 
+                  {(formData.visibility_config?.banner_style || 'floating') === 'floating' && (
+                    <FormField label="Efecto de Imagen Flotante">
+                      <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
+                        <button
+                          type="button"
+                          onClick={() => setFormData(p => ({ 
+                            ...p, 
+                            visibility_config: { ...p.visibility_config, banner_animation: 'static' } 
+                          }))}
+                          className={`py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                            (formData.visibility_config?.banner_animation || 'static') === 'static'
+                              ? 'bg-white text-[#2f4131] shadow-sm'
+                              : 'text-gray-400 hover:text-gray-600'
+                          }`}
+                        >
+                          ⏸️ Estática
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(p => ({ 
+                            ...p, 
+                            visibility_config: { ...p.visibility_config, banner_animation: 'spin' } 
+                          }))}
+                          className={`py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                            formData.visibility_config?.banner_animation === 'spin'
+                              ? 'bg-white text-[#2f4131] shadow-sm'
+                              : 'text-gray-400 hover:text-gray-600'
+                          }`}
+                        >
+                          🔄 Rotar 360° (Giro Lento)
+                        </button>
+                      </div>
+                    </FormField>
+                  )}
+
                   <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl flex gap-3">
                     <Icon icon="lucide:info" className="text-blue-500 mt-0.5 shrink-0" />
                     <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
                       {(formData.visibility_config?.banner_style || 'floating') === 'floating' 
-                        ? 'Ideal para platos o productos redondos con fondo transparente (PNG). El banner flotará después del título de la sección.'
+                        ? 'Ideal para platos o productos con fondo transparente (PNG/WebP). Puedes elegir si dejarlo fijo o con rotación continua suave de 360°.'
                         : 'Ideal para fotos de ambiente o composiciones. El banner ocupará todo el ancho y contendrá el título de la categoría.'}
                     </p>
                   </div>
