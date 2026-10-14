@@ -220,7 +220,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
               type="button"
               onClick={handleAdd}
               disabled={isOut}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-secondary hover:brightness-105 active:scale-95 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-primary hover:brightness-105 active:scale-95 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
             >
               <span>Pedir</span>
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -260,7 +260,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             type="button"
             onClick={handleAdd}
             disabled={isOut}
-            className="h-7 w-7 flex items-center justify-center rounded-full bg-brand-secondary text-white font-bold shadow-sm transition-all active:scale-95 disabled:opacity-40"
+            className="h-7 w-7 flex items-center justify-center rounded-full bg-brand-primary text-white font-bold shadow-sm transition-all active:scale-95 disabled:opacity-40"
           >
             <span style={{ transform: "translateY(-1px)" }}>+</span>
           </button>
@@ -302,28 +302,6 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             width={isCompact ? 80 : isHero ? 600 : 400}
             height={isCompact ? 80 : isHero ? 600 : 400}
           />
-          {(productAllergens.length > 0 || productDiets.length > 0) && isHero && (
-             <div className="absolute top-2 right-2 flex gap-1 items-center z-10 pointer-events-none">
-               {productDiets.length > 0 && (
-                 <div className="flex gap-1 items-center bg-black/50 backdrop-blur-md rounded-full px-1.5 py-0.5 border border-white/20 text-white shadow-sm">
-                    {productDiets.map((diet) => (
-                       <span key={diet.id} title={diet.name} className="text-[11px] leading-none">
-                          {diet.emoji}
-                       </span>
-                    ))}
-                 </div>
-               )}
-               {productAllergens.length > 0 && (
-                 <div className="flex gap-1 items-center bg-red-950/70 backdrop-blur-md rounded-full px-1.5 py-0.5 border border-red-400/30 text-white shadow-sm">
-                    {productAllergens.map((alg) => (
-                       <span key={alg.id} title={alg.name} className="text-[11px] leading-none">
-                          {alg.emoji}
-                       </span>
-                    ))}
-                 </div>
-               )}
-             </div>
-          )}
         </div>
       ) : (
         !isCompact && (
@@ -337,28 +315,6 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
               </svg>
               <span className="text-[10px] font-medium uppercase tracking-wider">Sin foto</span>
             </div>
-            {(productAllergens.length > 0 || productDiets.length > 0) && isHero && (
-               <div className="absolute top-2 right-2 flex gap-1 items-center z-10 pointer-events-none">
-                 {productDiets.length > 0 && (
-                   <div className="flex gap-1 items-center bg-[#2f4131]/10 rounded-full px-1.5 py-0.5 border border-[#2f4131]/20 shadow-sm">
-                      {productDiets.map((diet) => (
-                         <span key={diet.id} title={diet.name} className="text-[11px] leading-none">
-                            {diet.emoji}
-                         </span>
-                      ))}
-                   </div>
-                 )}
-                 {productAllergens.length > 0 && (
-                   <div className="flex gap-1 items-center bg-red-50 rounded-full px-1.5 py-0.5 border border-red-200 shadow-sm">
-                      {productAllergens.map((alg) => (
-                         <span key={alg.id} title={alg.name} className="text-[11px] leading-none">
-                            {alg.emoji}
-                         </span>
-                      ))}
-                   </div>
-                 )}
-               </div>
-            )}
           </div>
         )
       )}
@@ -380,9 +336,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
           )}
 
           {item.desc && !isCompact && (
-            <p className={`mt-1.5 leading-[1.35] text-[#717171] ${
-              isHero ? "text-[13px] md:text-sm leading-relaxed" : "text-[12px] sm:text-[13px] line-clamp-2"
-            }`}>
+            <p className="mt-1.5 text-[12px] sm:text-[13px] leading-[1.35] text-[#717171] line-clamp-2">
               {item.desc}
             </p>
           )}
@@ -430,7 +384,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             aria-label={`Agregar ${item.name || "producto"}`}
             onClick={handleAdd}
             disabled={isOut}
-            className={`flex items-center justify-center rounded-full bg-brand-secondary text-white font-bold shadow-md shadow-brand-secondary/30 transition-all duration-200 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 hover:scale-110 ${
+            className={`flex items-center justify-center rounded-full bg-brand-primary text-white font-bold shadow-md shadow-brand-primary/25 transition-all duration-200 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 hover:scale-110 ${
               isCompact || isCompactGrid ? "h-8 w-8 text-[18px]" : "h-9 w-9 md:h-10 md:w-10 text-[20px] md:text-[22px] leading-none"
             }`}
           >

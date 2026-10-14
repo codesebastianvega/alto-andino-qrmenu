@@ -415,9 +415,8 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                             const baseClasses = "flex items-center justify-between p-4 rounded-2xl border transition-all duration-200 cursor-pointer w-full text-left";
                             
                             const stateClasses = isSelected
-                              ? "border-[#2f4131] bg-[#2f4131]/5 shadow-sm ring-1 ring-[#2f4131]"
+                              ? "border-brand-primary bg-brand-primary/5 shadow-sm ring-1 ring-brand-primary"
                               : isMissing
-
                               ? "border-amber-300 bg-amber-50 hover:bg-amber-100"
                               : "border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50";
 
@@ -445,13 +444,13 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                             const Icon = () => {
                               if (group.max === 1) {
                                 return (
-                                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${isSelected ? 'border-[#2f4131]' : 'border-neutral-300'}`}>
-                                    {isSelected && <div className="h-2.5 w-2.5 rounded-full bg-[#2f4131]" />}
+                                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${isSelected ? 'border-brand-primary' : 'border-neutral-300'}`}>
+                                    {isSelected && <div className="h-2.5 w-2.5 rounded-full bg-brand-primary" />}
                                   </div>
                                 );
                               } else {
                                 return (
-                                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border-2 transition-colors ${isSelected ? 'border-[#2f4131] bg-[#2f4131]' : 'border-neutral-300'}`}>
+                                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border-2 transition-colors ${isSelected ? 'border-brand-primary bg-brand-primary' : 'border-neutral-300'}`}>
                                     {isSelected && (
                                       <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -471,10 +470,10 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                               >
                                 <div className="flex items-center gap-3">
                                   {item.image_url || item.emoji ? (
-                                    <div className={`relative flex items-center justify-center w-10 h-10 rounded-xl bg-white border shadow-sm shrink-0 transition-all ${isSelected ? 'border-[#2f4131] scale-105 ring-1 ring-[#2f4131]/50' : 'border-neutral-100'}`}>
+                                    <div className={`relative flex items-center justify-center w-10 h-10 rounded-xl bg-white border shadow-sm shrink-0 transition-all ${isSelected ? 'border-brand-primary scale-105 ring-1 ring-brand-primary/50' : 'border-neutral-100'}`}>
                                       <ModifierMedia item={item} />
                                       {isSelected && (
-                                        <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#2f4131] rounded-full border-2 border-white flex items-center justify-center shadow-sm">
+                                        <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-brand-primary rounded-full border-2 border-white flex items-center justify-center shadow-sm">
                                           <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                           </svg>
@@ -485,14 +484,14 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                                     <Icon />
                                   )}
 
-                                  <span className={`text-[13px] font-medium ${isSelected ? 'text-[#2f4131] font-bold' : 'text-neutral-700'}`}>
+                                  <span className={`text-[13px] font-medium ${isSelected ? 'text-brand-primary font-bold' : 'text-neutral-700'}`}>
                                     {item.name}
                                   </span>
                                 </div>
                                 {itemPrice > 0 && (
                                   <span
                                     className={`text-[13px] font-bold ${
-                                      isSelected ? "text-[#2f4131]" : "text-neutral-400"
+                                      isSelected ? "text-brand-primary" : "text-neutral-400"
                                     }`}
                                   >
                                     +{formatCOP(itemPrice)}
@@ -509,7 +508,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                   {/* Instrucciones especiales para cocina */}
                   <div className="mt-6 pt-5 border-t border-neutral-100">
                     <label className="flex items-center gap-2 text-xs font-black text-neutral-800 uppercase tracking-wider mb-2.5">
-                      <Icon icon="solar:notes-bold" className="text-base text-[#2f4131]" />
+                      <Icon icon="solar:notes-bold" className="text-base text-brand-primary" />
                       <span>Instrucciones para cocina</span>
                       <span className="text-[10px] lowercase text-neutral-400 font-semibold">(opcional)</span>
                     </label>
@@ -518,7 +517,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                       value={specialInstructions}
                       onChange={(e) => setSpecialInstructions(e.target.value)}
                       placeholder="Ej: Sin cebolla, término medio, salsa aparte..."
-                      className="w-full text-base sm:text-xs font-medium text-neutral-800 bg-neutral-50/80 hover:bg-neutral-50 focus:bg-white border border-neutral-200 rounded-2xl p-3.5 focus:outline-none focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131] resize-none transition-all placeholder:text-neutral-400"
+                      className="w-full text-base sm:text-xs font-medium text-neutral-800 bg-neutral-50/80 hover:bg-neutral-50 focus:bg-white border border-neutral-200 rounded-2xl p-3.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary resize-none transition-all placeholder:text-neutral-400"
                       maxLength={150}
                     />
                     <div className="flex justify-end mt-1">
@@ -541,7 +540,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                           {formatCOP(product.original_price + extraPrice)}
                         </span>
                       )}
-                      <p className="text-3xl font-extrabold text-[#2f4131] leading-none tracking-tight">{formatCOP(finalPrice)}</p>
+                      <p className="text-3xl font-extrabold text-brand-primary leading-none tracking-tight">{formatCOP(finalPrice)}</p>
                     </div>
                   </div>
                   {extraPrice > 0 && (
@@ -556,7 +555,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                   type="button"
                   onClick={handleAdd}
                   disabled={!canAdd}
-                  className="w-full h-14 rounded-2xl bg-[#2f4131] text-white font-bold text-lg shadow-[0_8px_16px_rgba(47,65,49,0.2)] transition-all hover:bg-[#243326] hover:-translate-y-0.5 hover:shadow-[0_12px_20px_rgba(47,65,49,0.3)] active:scale-[0.98] disabled:opacity-50 disabled:bg-[#2f4131] disabled:text-white/70 disabled:shadow-none disabled:active:scale-100 disabled:translate-y-0 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative overflow-hidden group"
+                  className="w-full h-14 rounded-2xl bg-brand-primary text-white font-bold text-lg shadow-lg hover:brightness-105 active:scale-[0.98] disabled:opacity-50 disabled:bg-brand-primary disabled:text-white/70 disabled:shadow-none disabled:active:scale-100 disabled:translate-y-0 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative overflow-hidden group cursor-pointer"
                 >
                   <span className="relative z-10">
                     {isOutOfStock
