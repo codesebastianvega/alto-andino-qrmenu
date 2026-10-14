@@ -535,7 +535,7 @@ export const MenuDataProvider = ({ children }) => {
       };
       Object.entries(colors).forEach(([k, v]) => root.style.setProperty(k, v));
 
-      const faviconUrl = isBoku ? '/boku-icon-192.png' : (restaurantSettings.favicon_url || '/favicon.png');
+      const faviconUrl = isBoku ? '/boku-favicon.png' : (restaurantSettings.favicon_url || '/favicon.png');
       const iconLinks = document.querySelectorAll("link[rel~='icon']");
       if (iconLinks.length > 0) {
         iconLinks.forEach((link) => {

@@ -37,7 +37,12 @@ export function useDynamicPWA({ brand, restaurantSettings }) {
       faviconLink.rel = 'icon';
       document.head.appendChild(faviconLink);
     }
-    faviconLink.href = isBoku ? '/boku-icon-192.png' : brandLogo;
+    // Actualizar favicon según la marca (BOKU usa su logo favicon oficial)
+    if (isBoku) {
+      faviconLink.href = '/boku-favicon.png';
+    } else if (restaurantSettings?.favicon_url) {
+      faviconLink.href = restaurantSettings.favicon_url;
+    }
 
     let appleIconLink = document.querySelector('link[rel="apple-touch-icon"]');
     if (!appleIconLink) {
