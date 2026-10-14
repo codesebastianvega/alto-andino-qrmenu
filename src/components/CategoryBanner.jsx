@@ -11,7 +11,7 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
   // 2. Fields
   const title = category?.banner_title || product?.name || category?.name;
   const description = category?.banner_description || product?.desc || "Elige tus ingredientes favoritos y crea una combinación única.";
-  const accentColor = category?.accent_color || "#2f4131";
+  const accentColor = category?.accent_color || "#bc0e0e";
   
   const isBowl = product?.tags?.includes('bowl') || category?.slug === 'bowls';
   const isSandwich = product?.tags?.includes('sandwich') || category?.slug === 'sandwiches';
@@ -30,9 +30,10 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
   return (
     <div className="mb-8 mt-2">
       <div 
-        className="relative h-40 sm:h-52 md:h-64 overflow-hidden rounded-3xl sm:rounded-[32px] ring-1 ring-black/5 shadow-xl transition-all duration-500 hover:shadow-2xl hover:shadow-black/10 group"
+        onClick={onOpenBuilder}
+        className={`relative h-40 sm:h-52 md:h-64 overflow-hidden rounded-3xl sm:rounded-[32px] ring-1 ring-black/10 shadow-xl transition-all duration-500 hover:shadow-2xl hover:shadow-black/15 group ${onOpenBuilder ? 'cursor-pointer active:scale-[0.99]' : ''}`}
         style={isFloating ? { 
-          background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc, #1a2b1d)` 
+          background: `linear-gradient(135deg, ${accentColor}, #8a0a0a, #1a0505)` 
         } : {}}
       >
         {/* BACKGROUND LAYER */}
@@ -47,23 +48,29 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
             <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent z-10" />
           </>
         ) : (
-          <div className="absolute inset-0 opacity-10 pointer-events-none z-0">
+          <div className="absolute inset-0 opacity-20 pointer-events-none z-0">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           </div>
         )}
 
-        {/* FLOATING SPINNER (Only for floating style) */}
+        {/* FLOATING HERO IMAGE (Clean static hero without GPU spin artifacts) */}
         {isFloating && (
-          <AAImage
-            src={imageSrc}
-            alt={title}
-            onError={() => setImgError(true)}
-            className={`pointer-events-none absolute z-20 animate-[spin_60s_linear_infinite] object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-700
-              ${isBowl 
-                ? 'bottom-[-10px] right-[-10px] w-36 sm:bottom-[-10px] sm:right-2 sm:w-64 md:w-80' 
-                : 'bottom-0 right-[-10px] w-28 sm:bottom-0 sm:right-4 sm:w-56 md:w-72'}
-            `}
-          />
+          <div className={`pointer-events-none absolute z-20 transition-transform duration-700 group-hover:scale-105 ${
+            isBowl 
+              ? 'bottom-[-16px] right-[-14px] sm:bottom-[-20px] sm:right-2' 
+              : 'bottom-0 right-[-10px] sm:bottom-0 sm:right-4'
+          }`}>
+            <AAImage
+              src={imageSrc}
+              alt={title}
+              onError={() => setImgError(true)}
+              className={`object-contain select-none ${
+                isBowl 
+                  ? 'w-40 sm:w-64 md:w-80 h-auto' 
+                  : 'w-32 sm:w-56 md:w-72 h-auto'
+              }`}
+            />
+          </div>
         )}
 
         {/* SHARED CONTENT OVERLAY */}
@@ -101,7 +108,8 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
                  <button
                     type="button"
                     onClick={onOpenBuilder}
-                    className="bg-white text-[#2f4131] font-black text-[9px] sm:text-xs uppercase tracking-widest rounded-2xl shadow-lg hover:scale-105 active:scale-95 transition-all px-5 py-2.5 sm:px-10 sm:py-3.5"
+                    className="bg-white font-black text-[9px] sm:text-xs uppercase tracking-widest rounded-2xl shadow-lg hover:scale-105 active:scale-95 transition-all px-5 py-2.5 sm:px-10 sm:py-3.5"
+                    style={{ color: accentColor }}
                   >
                     Empezar a Crear
                   </button>

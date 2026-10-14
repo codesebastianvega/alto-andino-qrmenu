@@ -523,17 +523,19 @@ export const MenuDataProvider = ({ children }) => {
     if (!restaurantSettings) return;
     try {
       const root = document.documentElement;
+      const isBoku = (brand?.slug === 'boku-bento') || (restaurantSettings?.business_name || '').toLowerCase().includes('boku');
+      const defaultPrimary = isBoku ? '#bc0e0e' : '#2f4131';
       const colors = {
-        '--color-brand-primary': restaurantSettings.primary_color || '#2f4131',
-        '--color-brand-secondary': restaurantSettings.theme_secondary || '#7db87a',
-        '--color-brand-bg': restaurantSettings.theme_background || '#f9f8f6',
+        '--color-brand-primary': restaurantSettings.primary_color || defaultPrimary,
+        '--color-brand-secondary': restaurantSettings.theme_secondary || (isBoku ? '#8a0a0a' : '#7db87a'),
+        '--color-brand-bg': restaurantSettings.theme_background || (isBoku ? '#fdfcfc' : '#f9f8f6'),
         '--color-brand-card': restaurantSettings.theme_card_bg || '#ffffff',
-        '--color-brand-text': restaurantSettings.theme_text || '#2c3e2d',
-        '--color-brand-footer': restaurantSettings.theme_footer_bg || '#2f4131',
+        '--color-brand-text': restaurantSettings.theme_text || (isBoku ? '#1c1917' : '#2c3e2d'),
+        '--color-brand-footer': restaurantSettings.theme_footer_bg || (isBoku ? '#1a0505' : '#2f4131'),
       };
       Object.entries(colors).forEach(([k, v]) => root.style.setProperty(k, v));
 
-      const faviconUrl = restaurantSettings.favicon_url || '/favicon.png';
+      const faviconUrl = isBoku ? '/boku-icon-192.png' : (restaurantSettings.favicon_url || '/favicon.png');
       const iconLinks = document.querySelectorAll("link[rel~='icon']");
       if (iconLinks.length > 0) {
         iconLinks.forEach((link) => {

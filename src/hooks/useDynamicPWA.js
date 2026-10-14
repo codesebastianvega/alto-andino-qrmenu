@@ -12,10 +12,11 @@ export function useDynamicPWA({ brand, restaurantSettings }) {
   useEffect(() => {
     if (!brand && !restaurantSettings) return;
 
-    const brandName = restaurantSettings?.business_name || brand?.name || "Aluna";
+    const brandName = restaurantSettings?.business_name || brand?.name || "BOKU BENTO";
     const brandShortName = brand?.short_name || brandName;
-    const brandLogo = brand?.logo_url || restaurantSettings?.logo_url || "/favicon.png";
-    const themeColor = brand?.theme_color || restaurantSettings?.primary_color || "#111827";
+    const isBoku = brand?.slug === 'boku-bento' || brandName.toLowerCase().includes('boku');
+    const brandLogo = isBoku ? '/boku-icon-512.png' : (brand?.logo_url || restaurantSettings?.logo_url || "/boku-icon-192.png");
+    const themeColor = isBoku ? '#bc0e0e' : (brand?.theme_color || restaurantSettings?.primary_color || "#bc0e0e");
 
     // 1. Actualizar título del documento
     document.title = `${brandName} | Menú Digital`;
@@ -36,13 +37,26 @@ export function useDynamicPWA({ brand, restaurantSettings }) {
       faviconLink.rel = 'icon';
       document.head.appendChild(faviconLink);
     }
-    faviconLink.href = brandLogo;
+    faviconLink.href = isBoku ? '/boku-icon-192.png' : brandLogo;
 
     let appleIconLink = document.querySelector('link[rel="apple-touch-icon"]');
     if (!appleIconLink) {
       appleIconLink = document.createElement('link');
       appleIconLink.rel = 'apple-touch-icon';
       document.head.appendChild(appleIconLink);
+    }
+    appleIconLink.href = isBoku ? '/boku-icon-512.png' : brandLogo;
+
+    let manifestLink = document.querySelector('link[rel="manifest"]');
+    if (!manifestLink) {
+      manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      document.head.appendChild(manifestLink);
+    }
+
+    if (isBoku) {
+      manifestLink.href = '/manifest.webmanifest';
+      return;
     }
 
     let isCancelled = false;
