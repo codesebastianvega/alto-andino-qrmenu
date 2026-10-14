@@ -300,7 +300,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             width={isCompact ? 80 : isHero ? 600 : 400}
             height={isCompact ? 80 : isHero ? 600 : 400}
           />
-          {(productAllergens.length > 0 || productDiets.length > 0) && !isCompact && (
+          {(productAllergens.length > 0 || productDiets.length > 0) && isHero && (
              <div className="absolute top-2 right-2 flex gap-1 items-center z-10 pointer-events-none">
                {productDiets.length > 0 && (
                  <div className="flex gap-1 items-center bg-black/50 backdrop-blur-md rounded-full px-1.5 py-0.5 border border-white/20 text-white shadow-sm">
@@ -335,7 +335,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
               </svg>
               <span className="text-[10px] font-medium uppercase tracking-wider">Sin foto</span>
             </div>
-            {(productAllergens.length > 0 || productDiets.length > 0) && (
+            {(productAllergens.length > 0 || productDiets.length > 0) && isHero && (
                <div className="absolute top-2 right-2 flex gap-1 items-center z-10 pointer-events-none">
                  {productDiets.length > 0 && (
                    <div className="flex gap-1 items-center bg-[#2f4131]/10 rounded-full px-1.5 py-0.5 border border-[#2f4131]/20 shadow-sm">
@@ -378,15 +378,15 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
 
         {item.desc && !isCompact && (
           <p className={`mt-1.5 leading-[1.35] text-[#717171] ${
-            isHero ? "text-[13px] md:text-sm line-clamp-4 lg:line-clamp-5" : "text-[12px] sm:text-[13px] line-clamp-3"
+            isHero ? "text-[13px] md:text-sm line-clamp-4 lg:line-clamp-5" : "text-[12px] sm:text-[13px] line-clamp-2"
           }`}>
             {item.desc}
           </p>
         )}
 
-        {/* Badges de Dietas y Alérgenos */}
-        {(productDiets.length > 0 || productAllergens.length > 0) && !isCompact && (
-          <div className="mt-2 flex flex-wrap items-center gap-1">
+        {/* Badges de Dietas y Alérgenos SOLO en card grande (isHero) */}
+        {isHero && (productDiets.length > 0 || productAllergens.length > 0) && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-1">
             {productDiets.map((diet) => (
               <span key={diet.id} className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                 <span>{diet.emoji}</span>
@@ -399,18 +399,6 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
                 <span>{alg.name}</span>
               </span>
             ))}
-          </div>
-        )}
-
-        {/* Chips para Bentos Caseros */}
-        {item.category_id === 'b0000c01-0000-4000-a000-000000000001' && !isCompact && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            <span className="text-[9px] font-semibold text-neutral-600 bg-neutral-100 px-1.5 py-0.5 rounded">
-              🍲 Sopa 16 oz
-            </span>
-            <span className="text-[9px] font-semibold text-neutral-600 bg-neutral-100 px-1.5 py-0.5 rounded">
-              🥤 Bebida 5 oz
-            </span>
           </div>
         )}
 
