@@ -369,7 +369,7 @@ export default function ProductSection({
                   <ProductCard
                     key={item.id || idx}
                     item={item}
-                    variant="compact-grid"
+                    variant="standard"
                     onAdd={(payload) => addItem(payload)}
                     onQuickView={onQuickView}
                     allergens={allergens}

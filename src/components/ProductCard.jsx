@@ -143,19 +143,64 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
           </h3>
 
           {item.desc && (
-            <p className="mt-1.5 text-xs sm:text-[13px] leading-relaxed text-neutral-600 line-clamp-3">
+            <p className="mt-2 text-xs sm:text-[13px] leading-relaxed text-neutral-700">
               {item.desc}
             </p>
           )}
 
-          {/* Included Features Pill Bar */}
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
-            <span className="text-[10px] font-semibold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-md">
-              🍲 Sopa 16 oz o Fruta
-            </span>
-            <span className="text-[10px] font-semibold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-md">
-              🥤 Bebida 5 oz
-            </span>
+          {/* Bloque Fórmula Completa de Almuerzo */}
+          <div className="mt-3 pt-3 border-t border-amber-200/60 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900/80">
+                Almuerzo Completo Incluido
+              </span>
+              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                Listo para servir
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              <div className="flex items-center gap-1.5 p-2 rounded-xl bg-amber-50/80 border border-amber-200/60 text-xs font-bold text-amber-950">
+                <span>🍲</span>
+                <span className="truncate">Sopa 16 oz (o Fruta)</span>
+              </div>
+              <div className="flex items-center gap-1.5 p-2 rounded-xl bg-amber-50/80 border border-amber-200/60 text-xs font-bold text-amber-950">
+                <span>🥤</span>
+                <span className="truncate">Bebida 5 oz</span>
+              </div>
+              <div className="flex items-center gap-1.5 p-2 rounded-xl bg-amber-50/80 border border-amber-200/60 text-xs font-bold text-amber-950">
+                <span>🫘</span>
+                <span className="truncate">Principio Casero</span>
+              </div>
+              <div className="flex items-center gap-1.5 p-2 rounded-xl bg-amber-50/80 border border-amber-200/60 text-xs font-bold text-amber-950">
+                <span>🍚</span>
+                <span className="truncate">Seco Tradicional</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Badges de Dietas y Alérgenos */}
+          {(productDiets.length > 0 || productAllergens.length > 0) && (
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              {productDiets.map((diet) => (
+                <span key={diet.id} className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  <span>{diet.emoji}</span>
+                  <span>{diet.name}</span>
+                </span>
+              ))}
+              {productAllergens.map((alg) => (
+                <span key={alg.id} className="inline-flex items-center gap-1 text-[10px] font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded-md border border-red-200">
+                  <span>{alg.emoji}</span>
+                  <span>Contiene {alg.name}</span>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Micro-banner ecológico */}
+          <div className="mt-3 text-[10px] text-neutral-400 flex items-center gap-1.5">
+            <span className="text-emerald-600 font-bold">✓</span>
+            <span>Empaque kraft térmico biodegradable incluido</span>
           </div>
 
           {/* Price & CTA Button */}
@@ -332,9 +377,41 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
         )}
 
         {item.desc && !isCompact && (
-          <p className="mt-1.5 line-clamp-2 text-[13px] leading-[1.3] text-[#717171]">
+          <p className={`mt-1.5 leading-[1.35] text-[#717171] ${
+            isHero ? "text-[13px] md:text-sm line-clamp-4 lg:line-clamp-5" : "text-[12px] sm:text-[13px] line-clamp-3"
+          }`}>
             {item.desc}
           </p>
+        )}
+
+        {/* Badges de Dietas y Alérgenos */}
+        {(productDiets.length > 0 || productAllergens.length > 0) && !isCompact && (
+          <div className="mt-2 flex flex-wrap items-center gap-1">
+            {productDiets.map((diet) => (
+              <span key={diet.id} className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                <span>{diet.emoji}</span>
+                <span>{diet.name}</span>
+              </span>
+            ))}
+            {productAllergens.map((alg) => (
+              <span key={alg.id} className="inline-flex items-center gap-1 text-[9px] font-bold text-red-800 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                <span>{alg.emoji}</span>
+                <span>{alg.name}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Chips para Bentos Caseros */}
+        {item.category_id === 'b0000c01-0000-4000-a000-000000000001' && !isCompact && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            <span className="text-[9px] font-semibold text-neutral-600 bg-neutral-100 px-1.5 py-0.5 rounded">
+              🍲 Sopa 16 oz
+            </span>
+            <span className="text-[9px] font-semibold text-neutral-600 bg-neutral-100 px-1.5 py-0.5 rounded">
+              🥤 Bebida 5 oz
+            </span>
+          </div>
         )}
 
         {isOut && (
