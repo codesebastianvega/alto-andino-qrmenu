@@ -589,6 +589,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                   className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-[#2f4131] outline-none transition-all"
                 >
                   <option value="standard">Standard List</option>
+                  <option value="spotlight-split">Spotlight 1+4 (1 Grande + 4 en Grid)</option>
                   <option value="grid">Grid (2 Col)</option>
                   <option value="grid-compact">Grid Compact</option>
                   <option value="horizontal-slider">Horizontal Slider</option>

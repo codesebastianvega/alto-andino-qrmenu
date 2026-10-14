@@ -77,6 +77,116 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
   const isMinimal = variant === "minimal";
   const isCompactGrid = variant === "compact-grid";
   const isWide = variant === "wide";
+  const isHeroSpotlight = variant === "hero-spotlight";
+
+  if (isHeroSpotlight) {
+    return (
+      <article
+        className={`group relative flex flex-col h-full rounded-2xl bg-white p-3.5 sm:p-4 border border-amber-300/80 hover:border-amber-400 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden ${
+          isOut ? "opacity-70 grayscale" : ""
+        }`}
+        onClick={handleQuickView}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+        role="button"
+      >
+        {/* Bento del Día Top Badge */}
+        {item.is_bento_del_dia && (
+          <div className="mb-2 flex items-center justify-between">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-amber-900 bg-amber-100/90 px-2.5 py-1 rounded-full border border-amber-300/80 shadow-2xs">
+              <span className="inline-block animate-pulse">🔥</span> Bento del Día
+            </span>
+            {item.original_price && item.original_price > item.price && (
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                Ahorras {formatCOP(item.original_price - item.price)}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Big Hero Image */}
+        {imageSrc && (
+          <div className="relative w-full aspect-[16/10] sm:aspect-[4/3] rounded-xl overflow-hidden bg-neutral-100 mb-3 shrink-0">
+            <AAImage
+              src={imageSrc}
+              alt={item.name || "Producto"}
+              onLoad={() => setImgLoaded(true)}
+              onError={() => setImgLoaded(false)}
+              className={`h-full w-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out ${
+                imgLoaded ? "opacity-100" : "opacity-0"
+              }`}
+              width={600}
+              height={450}
+            />
+            {/* Allergens / Diets badge */}
+            {(productAllergens.length > 0 || productDiets.length > 0) && (
+              <div className="absolute top-2.5 right-2.5 flex gap-1 items-center z-10 pointer-events-none">
+                {productDiets.map((diet) => (
+                  <span key={diet.id} title={diet.name} className="bg-black/50 backdrop-blur-md rounded-full px-1.5 py-0.5 border border-white/20 text-white text-[11px] leading-none">
+                    {diet.emoji}
+                  </span>
+                ))}
+                {productAllergens.map((alg) => (
+                  <span key={alg.id} title={alg.name} className="bg-red-950/70 backdrop-blur-md rounded-full px-1.5 py-0.5 border border-red-400/30 text-white text-[11px] leading-none">
+                    {alg.emoji}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="flex flex-col flex-1">
+          <h3 className="font-extrabold text-neutral-900 text-base sm:text-lg leading-snug tracking-tight group-hover:text-amber-800 transition-colors">
+            {item.name}
+          </h3>
+
+          {item.desc && (
+            <p className="mt-1.5 text-xs sm:text-[13px] leading-relaxed text-neutral-600 line-clamp-3">
+              {item.desc}
+            </p>
+          )}
+
+          {/* Included Features Pill Bar */}
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            <span className="text-[10px] font-semibold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-md">
+              🍲 Sopa 16 oz o Fruta
+            </span>
+            <span className="text-[10px] font-semibold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-md">
+              🥤 Bebida 5 oz
+            </span>
+          </div>
+
+          {/* Price & CTA Button */}
+          <div className="mt-auto pt-3.5 flex items-center justify-between gap-3 border-t border-neutral-100">
+            <div className="flex flex-col">
+              {item.original_price && item.original_price > item.price && (
+                <span className="text-xs text-neutral-400 line-through font-bold leading-none mb-0.5">
+                  {formatCOP(item.original_price)}
+                </span>
+              )}
+              <div className="text-lg sm:text-xl font-black text-neutral-900 tracking-tight">
+                {typeof item.price === "number" ? formatCOP(item.price) : item.price}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={isOut}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-secondary hover:brightness-105 active:scale-95 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+            >
+              <span>Pedir</span>
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </article>
+    );
+  }
 
   if (isMinimal) {
     return (

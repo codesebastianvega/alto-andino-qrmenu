@@ -335,6 +335,7 @@ export default function AdminCategories() {
                                     className="!py-1.5 !rounded-lg !text-[12px]"
                                   >
                                     <option value="standard">Estándar</option>
+                                    <option value="spotlight-split">Spotlight 1+4 (Bento del Día)</option>
                                     <option value="grid">Grid (Ample)</option>
                                     <option value="grid-compact">Grid Compacto</option>
                                     <option value="horizontal-slider">Slider Horizontal</option>

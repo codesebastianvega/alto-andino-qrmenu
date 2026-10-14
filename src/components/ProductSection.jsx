@@ -286,6 +286,105 @@ export default function ProductSection({
     );
   };
 
+  // ── Handle Spotlight Split (1 Hero on the left, 4 on the right in 2x2 grid) ──
+  if (variant === "spotlight-split" && count > 0) {
+    const allAvailableItems = grouped ? grouped.flatMap(g => g.items) : filtered;
+    const heroItem = allAvailableItems.find(it => it.is_bento_del_dia)
+      || (heroId ? allAvailableItems.find(it => it.id === heroId) : null)
+      || allAvailableItems[0];
+    const otherItems = allAvailableItems.filter(it => it.id !== heroItem?.id);
+
+    const heroGroup = grouped?.find(g => g.items.some(it => it.id === heroItem?.id));
+    const otherGroup = grouped?.find(g => g.title !== heroGroup?.title);
+    const heroTitle = heroGroup?.title || (heroItem?.is_bento_del_dia ? "El Bento del Día" : "Plato Destacado");
+    const otherTitle = otherGroup?.title || (otherItems.length > 0 ? "Bentos Tradicionales & Fusión" : "");
+
+    const hasPromoHero = allAvailableItems.some(it => it.is_bento_del_dia);
+    const isWeekendBento = allAvailableItems.some(it => it.category_id === 'b0000c01-0000-4000-a000-000000000001') && !hasPromoHero;
+
+    // If it's a weekend bento without a promo Bento del Día, gracefully render all items in a standard grid
+    if (isWeekendBento && !heroId) {
+      return (
+        <Section id={`section-${id}`} title={title} count={displayCount} hideTitle={hideTitle}>
+          {headerNode}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {allAvailableItems.map((item, idx) => (
+              <ProductCard
+                key={item.id || idx}
+                item={item}
+                variant="standard"
+                onAdd={(payload) => addItem(payload)}
+                onQuickView={onQuickView}
+                allergens={allergens}
+              />
+            ))}
+          </div>
+          {afterNode}
+        </Section>
+      );
+    }
+
+    return (
+      <Section id={`section-${id}`} title={title} count={displayCount} hideTitle={hideTitle}>
+        {headerNode}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-stretch">
+          {/* Left Column: Hero Spotlight Bento */}
+          <div className="lg:col-span-5 flex flex-col">
+            {heroTitle && norm(heroTitle) !== norm(title) && (
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold text-[#2f4131] flex items-center gap-1.5">
+                  {heroItem?.is_bento_del_dia && <span>🔥</span>}
+                  <span>{heroTitle}</span>
+                </h3>
+              </div>
+            )}
+            <div className="flex-1 flex flex-col">
+              <ProductCard
+                item={heroItem}
+                variant="hero-spotlight"
+                isHero={true}
+                onAdd={(payload) => addItem(payload)}
+                onQuickView={onQuickView}
+                allergens={allergens}
+              />
+            </div>
+          </div>
+
+          {/* Right Column: 2x2 Grid with remaining items */}
+          {otherItems.length > 0 && (
+            <div className="lg:col-span-7 flex flex-col">
+              {otherTitle && norm(otherTitle) !== norm(title) && (
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-bold text-[#2f4131]">
+                    {otherTitle}
+                  </h3>
+                  <span className="text-[11px] font-semibold text-neutral-400">
+                    {otherItems.length} opciones
+                  </span>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 flex-1">
+                {otherItems.map((item, idx) => (
+                  <ProductCard
+                    key={item.id || idx}
+                    item={item}
+                    variant="compact-grid"
+                    onAdd={(payload) => addItem(payload)}
+                    onQuickView={onQuickView}
+                    allergens={allergens}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {afterNode}
+      </Section>
+    );
+  }
+
   return (
     <Section id={`section-${id}`} title={title} count={displayCount} hideTitle={hideTitle}>
       {headerNode}
