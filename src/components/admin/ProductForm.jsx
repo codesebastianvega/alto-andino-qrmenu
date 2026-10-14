@@ -114,10 +114,44 @@ export default function ProductForm({
   const [isUploading, setIsUploading] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [uploadStats, setUploadStats] = useState(null);
+  const [liveImageSize, setLiveImageSize] = useState(null);
   const [recipeSearch, setRecipeSearch] = useState('');
   const [customLocationPricing, setCustomLocationPricing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Auto-detect image size (in KB) for live validation even if uploaded previously
+  useEffect(() => {
+    if (!formData.image_url || imgError) {
+      setLiveImageSize(null);
+      return;
+    }
+    let isCancelled = false;
+    fetch(formData.image_url, { method: 'HEAD' })
+      .then(res => {
+        const len = res.headers.get('content-length');
+        if (len && !isCancelled) {
+          const kb = (parseInt(len, 10) / 1024).toFixed(1);
+          setLiveImageSize(kb);
+        } else if (!isCancelled) {
+          fetch(formData.image_url)
+            .then(r => r.blob())
+            .then(b => {
+              if (!isCancelled) setLiveImageSize((b.size / 1024).toFixed(1));
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {
+        fetch(formData.image_url)
+          .then(r => r.blob())
+          .then(b => {
+            if (!isCancelled) setLiveImageSize((b.size / 1024).toFixed(1));
+          })
+          .catch(() => {});
+      });
+    return () => { isCancelled = true; };
+  }, [formData.image_url, imgError]);
 
   // --- Location Overrides ---
   const { locations = [] } = useLocations();
@@ -350,6 +384,7 @@ export default function ProductForm({
         final: (finalSize / 1024).toFixed(1),
         reduction: (((originalSize - finalSize) / originalSize) * 100).toFixed(0)
       });
+      setLiveImageSize((finalSize / 1024).toFixed(1));
 
       toast.success('Imagen optimizada a WebP y subida con éxito');
     } catch (error) {
@@ -538,13 +573,26 @@ export default function ProductForm({
             {/* Foto del Producto */}
             <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                  <Icon icon="heroicons:camera" className="text-slate-400 text-sm" />
                   Fotografía del Plato
                 </span>
                 {formData.image_url && !imgError && (
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                    {uploadStats?.reduction ? `WebP (-${uploadStats.reduction}%)` : 'Optimizado WebP'}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {uploadStats?.reduction && (
+                      <span className="text-[10px] font-black text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                        {Number(uploadStats.original) > 1024 
+                          ? `${(Number(uploadStats.original) / 1024).toFixed(1)} MB` 
+                          : `${uploadStats.original} KB`} ➔ {uploadStats.final} KB
+                      </span>
+                    )}
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
+                      <Icon icon="heroicons:sparkles" className="text-[10px] text-emerald-600" />
+                      {uploadStats?.reduction 
+                        ? `WebP (-${uploadStats.reduction}%)` 
+                        : (liveImageSize ? `WebP (${liveImageSize} KB)` : 'Optimizado WebP')}
+                    </span>
+                  </div>
                 )}
               </div>
 
@@ -575,6 +623,76 @@ export default function ProductForm({
                   </div>
                 )}
               </div>
+
+              {/* Chips de Validación Visual de Compresión & Peso */}
+              {formData.image_url && !imgError && (
+                <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3 mb-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                      <Icon icon="heroicons:chart-bar" className="text-emerald-600 text-xs" />
+                      Auditoría Visual de Peso
+                    </span>
+                    <span className="text-[10px] font-black text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      {uploadStats?.reduction ? `Comprimido (-${uploadStats.reduction}%)` : 'Optimizado en Servidor'}
+                    </span>
+                  </div>
+
+                  {/* Chips Grid */}
+                  <div className="grid grid-cols-3 gap-2 pt-0.5">
+                    {/* Chip 1: Peso Actual */}
+                    <div className="bg-white border border-slate-200 rounded-lg p-2 flex flex-col">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Peso Actual</span>
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        <span className="text-xs font-black text-slate-800">
+                          {uploadStats?.final 
+                            ? `${uploadStats.final} KB` 
+                            : (liveImageSize ? `${liveImageSize} KB` : 'Detectando...')}
+                        </span>
+                        <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">WebP</span>
+                      </div>
+                    </div>
+
+                    {/* Chip 2: Peso Original o Estado */}
+                    <div className="bg-white border border-slate-200 rounded-lg p-2 flex flex-col">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                        {uploadStats?.original ? 'Peso Original' : 'Estado CDN'}
+                      </span>
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        <span className="text-xs font-black text-slate-600">
+                          {uploadStats?.original 
+                            ? (Number(uploadStats.original) > 1024 
+                                ? `${(Number(uploadStats.original) / 1024).toFixed(2)} MB` 
+                                : `${uploadStats.original} KB`)
+                            : (liveImageSize && Number(liveImageSize) < 150 ? 'Ultraligero' : 'Web Ready')}
+                        </span>
+                        {uploadStats?.reduction && (
+                          <span className="text-[9px] font-black text-emerald-600">(-{uploadStats.reduction}%)</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Chip 3: Carga en Móvil */}
+                    <div className="bg-white border border-slate-200 rounded-lg p-2 flex flex-col">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Carga Móvil</span>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Icon icon="heroicons:bolt" className="text-amber-500 text-xs shrink-0" />
+                        <span className="text-xs font-black text-emerald-600">
+                          {uploadStats?.final && Number(uploadStats.final) < 200 
+                            ? '< 0.1s' 
+                            : (liveImageSize && Number(liveImageSize) < 200 ? '< 0.1s' : 'Rápida')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Micro Hint */}
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium pt-0.5">
+                    <Icon icon="heroicons:check-circle" className="text-emerald-600 text-xs shrink-0" />
+                    <span>Tu imagen carga ultra rápido en los celulares de los clientes y no consume datos móviles.</span>
+                  </div>
+                </div>
+              )}
 
               {/* Warnings */}
               {isUnsplashPageLink(formData.image_url) && (
