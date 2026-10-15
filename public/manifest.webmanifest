@@ -1,11 +1,11 @@
 {
   "name": "BOKU BENTO",
   "short_name": "BOKU",
-  "description": "BOKU Bento & Poke Bowls - Menú Digital y Pedidos",
+  "description": "BOKU Bento & Poke Bowls - Menú Digital, Pedidos y Administración",
   "start_url": "/boku-bento",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#bc0e0e",
   "theme_color": "#bc0e0e",
   "icons": [
@@ -26,6 +26,29 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Panel de Administración",
+      "short_name": "Admin",
+      "description": "Acceso directo al panel administrativo del restaurante",
+      "url": "/boku-bento#admin",
+      "icons": [{ "src": "/boku-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Cocina en Vivo (KDS)",
+      "short_name": "Cocina",
+      "description": "Pantalla de producción y comandas para cocina",
+      "url": "/boku-bento?admin_page=kitchen#admin",
+      "icons": [{ "src": "/boku-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Toma de Pedidos (POS)",
+      "short_name": "POS",
+      "description": "Terminal rápido para meseros y barra",
+      "url": "/boku-bento?admin_page=waiter#admin",
+      "icons": [{ "src": "/boku-icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

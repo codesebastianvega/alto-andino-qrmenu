@@ -1,14 +1,25 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Home, ReceiptText, ShieldAlert, Sparkles, Utensils } from "lucide-react";
+import { Home, ReceiptText, ShieldAlert, Sparkles, Utensils, ShieldCheck } from "lucide-react";
 import { useMenuData } from "../../context/MenuDataContext";
-import { safeStorage as localStorage } from "../../utils/safeStorage";
+import { useAuth } from "../../context/AuthContext";
+import { safeStorage as localStorage, safeSessionStorage as sessionStorage } from "../../utils/safeStorage";
 import { cleanAssistantName } from "@/utils/formatters";
 
 export default function BottomTabBar({ currentHash, onAllergensOpen, showExperiences = true }) {
   const { restaurantSettings, homeSettings } = useMenuData();
+  const { profile } = useAuth();
   const [activeOrderId, setActiveOrderId] = useState(null);
   const primaryColor = restaurantSettings?.primary_color || "#BFAE78";
   const assistantName = cleanAssistantName(homeSettings?.concierge_h1, "Boki");
+
+  const hasAdminSession = Boolean(
+    (profile && ['admin', 'owner', 'superadmin', 'encargado', 'waiter', 'kitchen', 'bar'].includes(profile?.role)) ||
+    (typeof window !== 'undefined' && (
+      sessionStorage.getItem('aa_admin_session') ||
+      localStorage.getItem('aluna_admin_pin') ||
+      localStorage.getItem('aa_is_admin')
+    ))
+  );
 
   useEffect(() => {
     const readActiveOrder = () => {
@@ -49,10 +60,21 @@ export default function BottomTabBar({ currentHash, onAllergensOpen, showExperie
       items.push({ id: "pedido", label: "Pedido", icon: ReceiptText, hash: `#order/${activeOrderId}` });
     }
 
+    if (hasAdminSession) {
+      items.push({ 
+        id: "admin", 
+        label: "Admin", 
+        icon: ShieldCheck, 
+        hash: "#admin",
+        isAdmin: true 
+      });
+    }
+
     return items;
-  }, [activeOrderId, onAllergensOpen, assistantName]);
+  }, [activeOrderId, onAllergensOpen, assistantName, hasAdminSession]);
 
   const activeTabId = useMemo(() => {
+    if (currentHash?.startsWith("#admin")) return "admin";
     if (currentHash === "#inicio") return "inicio";
     if (currentHash === "#asistente" || currentHash === "#mesero" || currentHash === "#chat") return "asistente";
     if (currentHash?.startsWith("#order/")) return "pedido";
@@ -63,23 +85,33 @@ export default function BottomTabBar({ currentHash, onAllergensOpen, showExperie
 
   const renderContent = (tab, isActive) => {
     const Icon = tab.icon;
+    const tabColor = tab.isAdmin ? "#10B981" : primaryColor;
     return (
       <>
         <span
-          className="flex h-8 w-8 items-center justify-center rounded-2xl transition-all"
+          className="relative flex h-8 w-8 items-center justify-center rounded-2xl transition-all"
           style={{
-            backgroundColor: isActive ? `${primaryColor}1f` : "transparent",
-            color: isActive ? primaryColor : "rgba(26,26,26,0.42)",
+            backgroundColor: isActive ? `${tabColor}1f` : tab.isAdmin ? "#10B98114" : "transparent",
+            color: isActive ? tabColor : tab.isAdmin ? "#10B981" : "rgba(26,26,26,0.42)",
           }}
         >
-          <Icon size={19} strokeWidth={isActive ? 2.6 : 2.2} />
+          <Icon size={19} strokeWidth={isActive || tab.isAdmin ? 2.6 : 2.2} />
+          {tab.isAdmin && !isActive && (
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 animate-pulse ring-2 ring-white" />
+          )}
         </span>
-        <span className={`max-w-full truncate text-[9px] sm:text-[10px] font-black leading-none ${isActive ? "text-[#1A1A1A]" : "text-[#1A1A1A]/45"}`}>
+        <span className={`max-w-full truncate text-[9px] sm:text-[10px] font-black leading-none ${
+          isActive 
+            ? "text-[#1A1A1A]" 
+            : tab.isAdmin 
+              ? "text-emerald-700" 
+              : "text-[#1A1A1A]/45"
+        }`}>
           {tab.label}
         </span>
         <span
           className="mt-0.5 h-1 w-1 rounded-full transition-opacity"
-          style={{ backgroundColor: primaryColor, opacity: isActive ? 1 : 0 }}
+          style={{ backgroundColor: tabColor, opacity: isActive ? 1 : 0 }}
         />
       </>
     );

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Icon } from "@iconify-icon/react";
-import { Info, ShoppingBag } from "lucide-react";
+import { Info, ShoppingBag, Settings, ShieldCheck } from "lucide-react";
 import { getTableId } from "@/utils/table";
 import { useMenuData } from "../context/MenuDataContext";
-import { safeStorage as localStorage } from "../utils/safeStorage";
+import { useAuth } from "../context/AuthContext";
+import { safeStorage as localStorage, safeSessionStorage as sessionStorage } from "../utils/safeStorage";
 import { cleanAssistantName } from "@/utils/formatters";
 import { useLogoContrast } from "../hooks/useLogoContrast";
 
@@ -12,6 +13,16 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
   const [activeOrderId, setActiveOrderId] = useState(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const { restaurantSettings, brand, homeSettings } = useMenuData();
+  const { profile } = useAuth();
+
+  const hasAdminSession = Boolean(
+    (profile && ['admin', 'owner', 'superadmin', 'encargado', 'waiter', 'kitchen', 'bar'].includes(profile?.role)) ||
+    (typeof window !== 'undefined' && (
+      sessionStorage.getItem('aa_admin_session') ||
+      localStorage.getItem('aluna_admin_pin') ||
+      localStorage.getItem('aa_is_admin')
+    ))
+  );
 
   const brandName = (brand?.slug !== 'alto-andino' && brand?.name)
     ? brand.name
@@ -146,6 +157,27 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
               <ShoppingBag size={14} />
               <span className="hidden text-[11px] font-black md:inline">Mi pedido</span>
             </button>
+          )}
+
+          {/* Acceso a Administración */}
+          {hasAdminSession ? (
+            <a
+              href="#admin"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-xs font-black bg-neutral-900 text-white hover:bg-black transition-all shadow-sm active:scale-95"
+              title="Ir al Panel de Administración"
+            >
+              <ShieldCheck size={14} className="text-emerald-400" />
+              <span>Admin</span>
+            </a>
+          ) : (
+            <a
+              href="#admin"
+              className="group flex h-9 w-9 items-center justify-center rounded-full border border-black/5 bg-white/45 transition-colors hover:bg-white"
+              title="Acceso Administración"
+              aria-label="Acceso Administración"
+            >
+              <Settings size={16} className="text-[#1A1A1A]/40 group-hover:text-[#1A1A1A]" />
+            </a>
           )}
 
           <button

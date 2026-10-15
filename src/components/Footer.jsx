@@ -1,5 +1,5 @@
 import React from "react";
-import { Leaf, MapPin, Instagram, MessageCircle, Smartphone, Download, CheckCircle2 } from "lucide-react";
+import { Leaf, MapPin, Instagram, MessageCircle, Smartphone, Download, CheckCircle2, Settings } from "lucide-react";
 import { useMenuData } from "../context/MenuDataContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -98,7 +98,11 @@ export default function Footer({ hasCartBar, onInstallPWA, isPWAInstalled }) {
   return (
     <footer 
       style={{ backgroundColor: footerBg }}
-      className={`text-white pt-10 md:pt-20 px-4 md:px-6 lg:px-12 rounded-t-[2rem] md:rounded-t-[3.5rem] ${hasCartBar ? "pb-[calc(env(safe-area-inset-bottom,0px)+160px)] md:pb-32" : "pb-10"}`}
+      className={`text-white pt-10 md:pt-20 px-4 md:px-6 lg:px-12 rounded-t-[2rem] md:rounded-t-[3.5rem] ${
+        hasCartBar 
+          ? "pb-[calc(env(safe-area-inset-bottom,0px)+170px)] md:pb-32" 
+          : "pb-[calc(env(safe-area-inset-bottom,0px)+100px)] md:pb-16"
+      }`}
     >
       <div className="container mx-auto max-w-7xl">
         
@@ -285,8 +289,14 @@ export default function Footer({ hasCartBar, onInstallPWA, isPWAInstalled }) {
         {/* Bottom Bar */}
         <div className="border-t border-white/10 pt-6 md:pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-white/40">
           <p>© {new Date().getFullYear()} {brandName}. Todos los derechos reservados.</p>
-          <div className="flex items-center gap-6">
-            <a href="#admin" className="opacity-30 hover:opacity-100 transition-opacity">⚙️ Admin</a>
+          <div className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center">
+            <a 
+              href="#admin" 
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all text-xs font-bold border border-white/10 shadow-sm active:scale-95 cursor-pointer"
+            >
+              <Settings size={14} className="text-amber-400" />
+              <span>Panel Administrador</span>
+            </a>
             <span className="text-white/20">·</span>
             <span>Diseñado por Sebas (UXIO)</span>
           </div>
