@@ -205,11 +205,15 @@ export async function sendTelegramOrderNotification({
     }
 
     if (order?.id && typeof window !== 'undefined') {
-      const adminUrl = `${window.location.origin}/${brand?.slug || ''}/#admin/orders`;
-      inlineKeyboard.push([{
-        text: '📋 Ver en Aluna Admin',
-        url: adminUrl
-      }]);
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const origin = isLocal ? 'https://aluna-qrmenu.vercel.app' : window.location.origin;
+      const adminUrl = `${origin}/${brand?.slug || ''}/#admin/orders`;
+      if (adminUrl.startsWith('https://')) {
+        inlineKeyboard.push([{
+          text: '📋 Ver en Aluna Admin',
+          url: adminUrl
+        }]);
+      }
     }
 
     const cleanChatId = String(chatId).trim();
@@ -229,14 +233,13 @@ export async function sendTelegramOrderNotification({
       body: JSON.stringify(payload)
     });
 
-    // Fallback: If HTML formatting triggers 400 Bad Request, retry as plain text immediately
-    if (!res.ok && res.status === 400) {
-      console.warn('⚠️ [Telegram] Error con parse_mode HTML. Reintentando como texto plano...');
+    // Fallback: Si falla por formato HTML o por botones (ej. URL HTTP), reintentar sin botones y texto plano
+    if (!res.ok) {
+      console.warn('⚠️ [Telegram] Error al enviar con formato/botones. Reintentando texto plano limpio...');
       const plainPayload = {
         chat_id: cleanChatId,
         text: message.replace(/<[^>]*>/g, ''),
-        disable_web_page_preview: true,
-        reply_markup: inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined
+        disable_web_page_preview: true
       };
       res = await fetch(`https://api.telegram.org/bot${cleanBotToken}/sendMessage`, {
         method: 'POST',

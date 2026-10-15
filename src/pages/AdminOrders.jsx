@@ -13,6 +13,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Modal } from '../components/admin/ui';
 import { printThermalDocument } from '../utils/thermalPrint';
 import soundService from '../utils/soundService';
+import OrderAdditionModal from '../components/admin/OrderAdditionModal';
 
 const ORDER_STATUSES = [
   { id: 'new', label: 'Nuevos', color: 'text-blue-600', icon: 'heroicons:star' },
@@ -129,11 +130,31 @@ export default function AdminOrders() {
   const [showCancelledHistory, setShowCancelledHistory] = useState(false);
   const [showDeliveredHistory, setShowDeliveredHistory] = useState(false);
   const [mobileActiveStatus, setMobileActiveStatus] = useState('new');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [additionOrder, setAdditionOrder] = useState(null);
 
   const { activeBrand, profile } = useAuth();
   const { brand: brandFromContext } = useBrand();
   const { activeLocationId, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id || brandFromContext?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
+
+  // Filtro reactivo por búsqueda (ID #c955, cliente, mesa, teléfono, notas)
+  const filteredOrders = useMemo(() => {
+    if (!searchQuery.trim()) return orders;
+    const q = searchQuery.trim().toLowerCase().replace(/^#/, '');
+    return orders.filter(o => {
+      const idMatch = (o.id && o.id.toLowerCase().includes(q)) || 
+                      (o.id && o.id.slice(-4).toLowerCase().includes(q)) ||
+                      (o.id && o.id.slice(0, 4).toLowerCase().includes(q));
+      const customerMatch = o.customer_name && o.customer_name.toLowerCase().includes(q);
+      const phoneMatch = o.customer_phone && o.customer_phone.includes(q);
+      const tableMatch = (o.table_number && String(o.table_number).includes(q)) ||
+                         (o.mesa && String(o.mesa).includes(q)) ||
+                         (q.startsWith('mesa') && String(o.table_number || o.mesa) === q.replace('mesa', '').trim());
+      const notesMatch = o.notes && o.notes.toLowerCase().includes(q);
+      return idMatch || customerMatch || phoneMatch || tableMatch || notesMatch;
+    });
+  }, [orders, searchQuery]);
 
   // REINSTATED: Missing logic for staff, payments and settings
   const { staffList } = useStaff();
@@ -628,34 +649,66 @@ export default function AdminOrders() {
             </button>
          </div>
        )}
-       {/* Actions Bar */}
-       <div className="flex justify-end mb-6 gap-3">
-          {/* Time Range Selector */}
-          <div className="flex bg-white border border-gray-100 p-1 rounded-2xl shadow-sm overflow-hidden">
-            {[
-              { id: 'today', label: 'Hoy' },
-              { id: '7d', label: '7 Días' },
-              { id: '30d', label: '30 Días' },
-              { id: 'all', label: 'Total' }
-            ].map((range) => (
+       {/* Actions Bar & Quick Search */}
+       <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mb-6 gap-3">
+          {/* Quick Order Search Input */}
+          <div className="relative flex-1 max-w-md">
+            <Icon 
+              icon="solar:magnifer-linear" 
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-base" 
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar por #ID (ej: c955), mesa, cliente o teléfono..."
+              className="w-full pl-10 pr-9 py-2.5 text-xs font-semibold rounded-2xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131] shadow-sm transition-all"
+            />
+            {searchQuery && (
               <button
-                key={range.id}
-                onClick={() => setDateRange(range.id)}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                  dateRange === range.id 
-                    ? 'bg-[#2f4131] text-white shadow-md shadow-[#2f4131]/20' 
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                }`}
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm"
               >
-                {range.label}
+                <Icon icon="heroicons:x-mark" />
               </button>
-            ))}
+            )}
           </div>
 
-          <button onClick={fetchOrders} className="p-3 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 text-gray-600 transition-colors shadow-sm flex items-center gap-2 font-bold text-sm">
-             <Icon icon="heroicons:arrow-path" className={`text-xl ${loading ? 'animate-spin' : ''}`} />
-             Actualizar
-          </button>
+          <div className="flex items-center gap-2.5 justify-end shrink-0">
+            {searchQuery && (
+              <span className="text-[11px] font-bold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-xl border border-gray-200">
+                {filteredOrders.length} resultado{filteredOrders.length !== 1 ? 's' : ''}
+              </span>
+            )}
+
+            {/* Time Range Selector */}
+            <div className="flex bg-white border border-gray-100 p-1 rounded-2xl shadow-sm overflow-hidden">
+              {[
+                { id: 'today', label: 'Hoy' },
+                { id: '7d', label: '7 Días' },
+                { id: '30d', label: '30 Días' },
+                { id: 'all', label: 'Total' }
+              ].map((range) => (
+                <button
+                  key={range.id}
+                  onClick={() => setDateRange(range.id)}
+                  className={`px-3 md:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                    dateRange === range.id 
+                      ? 'bg-[#2f4131] text-white shadow-md shadow-[#2f4131]/20' 
+                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {range.label}
+                </button>
+              ))}
+            </div>
+
+            <button onClick={fetchOrders} className="p-2.5 md:p-3 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 text-gray-600 transition-colors shadow-sm flex items-center gap-2 font-bold text-xs md:text-sm">
+               <Icon icon="heroicons:arrow-path" className={`text-lg md:text-xl ${loading ? 'animate-spin' : ''}`} />
+               <span className="hidden sm:inline">Actualizar</span>
+            </button>
+          </div>
        </div>
        
        <DailyStats 
@@ -806,10 +859,10 @@ export default function AdminOrders() {
             <div className="flex md:hidden items-center gap-1.5 p-1 bg-white border border-gray-100 rounded-2xl shadow-sm mb-4 overflow-x-auto no-scrollbar">
               {ORDER_STATUSES.map(sc => {
                 const count = sc.id === 'new'
-                  ? orders.filter(o => o.status === 'new' || o.status === 'waiting_payment').length
+                  ? filteredOrders.filter(o => o.status === 'new' || o.status === 'waiting_payment').length
                   : sc.id === 'on_table'
-                    ? orders.filter(o => o.status === 'on_table' || o.status === 'on_the_way').length
-                    : orders.filter(o => o.status === sc.id).length;
+                    ? filteredOrders.filter(o => o.status === 'on_table' || o.status === 'on_the_way').length
+                    : filteredOrders.filter(o => o.status === sc.id).length;
                 const isSelected = mobileActiveStatus === sc.id;
                 return (
                   <button
@@ -844,10 +897,10 @@ export default function AdminOrders() {
                 };
 
                 const colOrders = statusCol.id === 'new'
-                    ? orders.filter(o => o.status === 'new' || o.status === 'waiting_payment').sort((a,b) => sortOrders(a, b, true))
+                    ? filteredOrders.filter(o => o.status === 'new' || o.status === 'waiting_payment').sort((a,b) => sortOrders(a, b, true))
                     : statusCol.id === 'on_table'
-                      ? orders.filter(o => o.status === 'on_table' || o.status === 'on_the_way').sort((a,b) => sortOrders(a, b, true))
-                      : orders.filter(o => o.status === statusCol.id).sort((a,b) => sortOrders(a, b, true));
+                      ? filteredOrders.filter(o => o.status === 'on_table' || o.status === 'on_the_way').sort((a,b) => sortOrders(a, b, true))
+                      : filteredOrders.filter(o => o.status === statusCol.id).sort((a,b) => sortOrders(a, b, true));
 
                 // Color themes per column (SaaS standard with top accent border)
                 const themes = {
@@ -994,6 +1047,25 @@ export default function AdminOrders() {
                           {order.order_items?.length > 2 && (
                             <div className="text-[10px] text-gray-400 font-bold pl-8">+{order.order_items.length - 2} productos más...</div>
                           )}
+                        </div>
+
+                        {/* Pie de Tarjeta: Total y Botón + Adición */}
+                        <div className="pt-2.5 mt-2 border-t border-gray-100 flex items-center justify-between">
+                          <span className="text-xs font-black text-gray-900">
+                            ${Number(order?.total_amount || 0).toLocaleString()}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAdditionOrder(order);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 text-[11px] font-bold border border-amber-200/80 transition-colors cursor-pointer shadow-2xs"
+                            title="Agregar producto o adición a este pedido"
+                          >
+                            <Icon icon="solar:cart-plus-bold" className="text-xs text-amber-700" />
+                            <span>+ Adición</span>
+                          </button>
                         </div>
                       </div>
                     )}
@@ -1148,6 +1220,18 @@ export default function AdminOrders() {
                           </span>
                         </div>
                       ))}
+                    </div>
+
+                    {/* Botón de Adición Rápida en el Modal */}
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setAdditionOrder(selectedOrder)}
+                        className="w-full py-2.5 px-3 rounded-xl border border-dashed border-amber-300 bg-amber-50/70 hover:bg-amber-100 text-amber-900 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                      >
+                        <Icon icon="solar:cart-plus-bold" className="text-base text-amber-700" />
+                        <span>+ Agregar Producto / Adición a esta Comanda</span>
+                      </button>
                     </div>
 
                     {/* Desglose de Totales */}
@@ -1611,6 +1695,20 @@ export default function AdminOrders() {
           </Modal>
         )}
       </AnimatePresence>
+
+      {/* Modal MiniPOS de Adición a Comanda Existente */}
+      {additionOrder && (
+        <OrderAdditionModal
+          order={additionOrder}
+          isOpen={Boolean(additionOrder)}
+          onClose={() => setAdditionOrder(null)}
+          onOrderUpdated={() => {
+            fetchOrders();
+          }}
+          brandId={activeBrandId}
+          restaurantSettings={restaurantSettings}
+        />
+      )}
     </div>
   );
 }
