@@ -17,6 +17,15 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(console.error));
 }
 
+// Unlock screen orientation on tablets/mobile devices if supported
+if (typeof window !== 'undefined' && window.screen?.orientation?.unlock) {
+  try {
+    window.screen.orientation.unlock().catch(() => {});
+  } catch (e) {
+    // Unsupported or requires fullscreen
+  }
+}
+
 // Aluna Landing (lazy)
 const AlunaLanding = React.lazy(() => import("./pages/AlunaLanding.jsx"));
 

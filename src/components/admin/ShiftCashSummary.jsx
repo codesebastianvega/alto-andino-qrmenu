@@ -151,10 +151,32 @@ export default function ShiftCashSummary({
                   Responsable: {activeShift.opened_by}
                 </span>
               </div>
-              <p className="text-xs text-emerald-800 font-medium mt-1">
-                Iniciado a las {new Date(activeShift.opened_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} • Base inicial: {formatCOP(initialCash)}
-                {activeShift.opening_notes && ` • Nota: "${activeShift.opening_notes}"`}
-              </p>
+              {(() => {
+                const openedDate = new Date(activeShift.opened_at);
+                const now = new Date();
+                const isSameDay = (
+                  openedDate.getFullYear() === now.getFullYear() &&
+                  openedDate.getMonth() === now.getMonth() &&
+                  openedDate.getDate() === now.getDate()
+                );
+                const formattedTime = openedDate.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+                const formattedDate = openedDate.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: openedDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+
+                return (
+                  <div>
+                    <p className="text-xs text-emerald-800 font-medium mt-1">
+                      Iniciado {isSameDay ? `hoy a las ${formattedTime}` : `el ${formattedDate} a las ${formattedTime}`} • Base inicial: {formatCOP(initialCash)}
+                      {activeShift.opening_notes && ` • Nota: "${activeShift.opening_notes}"`}
+                    </p>
+                    {!isSameDay && (
+                      <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/15 text-amber-900 border border-amber-300/80 text-[11px] font-bold">
+                        <Icon icon="solar:danger-triangle-bold" className="text-amber-600 text-sm shrink-0" />
+                        <span>Turno abierto de fecha anterior ({formattedDate}). Cierra este turno para realizar arqueo y abrir el de hoy.</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
