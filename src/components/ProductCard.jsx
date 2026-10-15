@@ -94,7 +94,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
         {item.is_bento_del_dia && (
           <div className="mb-2 flex items-center justify-between">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-amber-900 bg-amber-100/90 px-2.5 py-1 rounded-full border border-amber-300/80 shadow-2xs">
-              <span className="inline-block animate-pulse">🔥</span> Bento del Día
+              <span className="inline-block animate-pulse">🔥</span> {item.daily_special_label || "Plato del Día"}
             </span>
             {item.original_price && item.original_price > item.price && (
               <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
@@ -330,7 +330,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
           {item.is_bento_del_dia && (
             <div className="mt-1">
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-300 shadow-2xs">
-                🔥 Bento del Día
+                🔥 {item.daily_special_label || "Plato del Día"}
               </span>
             </div>
           )}

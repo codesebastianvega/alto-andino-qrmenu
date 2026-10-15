@@ -344,7 +344,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                   </h2>
                   {product.is_bento_del_dia && (
                     <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-300 shadow-2xs">
-                      🔥 Bento del Día
+                      🔥 {product.daily_special_label || "Plato del Día"}
                     </span>
                   )}
                 </div>

@@ -58,10 +58,11 @@ export default function AdminSettings() {
   const [loadingHours, setLoadingHours] = useState(false);
   const [isSubmittingHours, setIsSubmittingHours] = useState(false);
 
-  // Bento del Día config state
+  // Daily Special / Bento del Día config state
   const [bentoProducts, setBentoProducts] = useState([]);
   const [bentoConfig, setBentoConfig] = useState({
     enabled: true,
+    label: 'Plato del Día',
     promo_price: 19500,
     standard_price: 22000,
     schedule: {
@@ -159,14 +160,17 @@ export default function AdminSettings() {
           allow_scheduled: modes.scheduled,
         });
 
-        const bentoConcept = (Array.isArray(effectiveConcepts) && effectiveConcepts.find(c => c && c.id === 'bento_del_dia_config'))
-          || (Array.isArray(brandLevelRow?.brand_concepts) && brandLevelRow.brand_concepts.find(c => c && c.id === 'bento_del_dia_config'))
-          || (Array.isArray(data?.brand_concepts) && data.brand_concepts.find(c => c && c.id === 'bento_del_dia_config'))
+        const bentoConcept = (Array.isArray(effectiveConcepts) && effectiveConcepts.find(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config')))
+          || (Array.isArray(brandLevelRow?.brand_concepts) && brandLevelRow.brand_concepts.find(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config')))
+          || (Array.isArray(data?.brand_concepts) && data.brand_concepts.find(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config')))
           || null;
+
+        const defaultLabel = activeBrand?.id === 'a63da806-a62a-49b9-a833-07e0976785ad' ? 'El Bento del Día' : 'Plato del Día';
 
         if (bentoConcept) {
           setBentoConfig({
             enabled: bentoConcept.enabled !== false,
+            label: bentoConcept.label || defaultLabel,
             promo_price: bentoConcept.promo_price ?? 19500,
             standard_price: bentoConcept.standard_price ?? 22000,
             schedule: bentoConcept.schedule || {
@@ -180,6 +184,11 @@ export default function AdminSettings() {
             },
             manual_override_product_id: bentoConcept.manual_override_product_id || null
           });
+        } else {
+          setBentoConfig(prev => ({
+            ...prev,
+            label: defaultLabel
+          }));
         }
       } else {
         setSettings(null);
@@ -207,13 +216,13 @@ export default function AdminSettings() {
         });
       }
 
-      // Fetch Bento products for selector
+      // Fetch all active brand products for Daily Special selector
       if (activeBrand?.id) {
         const { data: bProds } = await supabase
           .from('products')
-          .select('id, name')
+          .select('id, name, price, category:categories(name)')
           .eq('brand_id', activeBrand.id)
-          .eq('category_id', 'b0000c01-0000-4000-a000-000000000001')
+          .eq('is_active', true)
           .order('name');
         if (bProds) setBentoProducts(bProds);
       }
@@ -271,9 +280,10 @@ export default function AdminSettings() {
 
       const bentoConceptToSave = {
         id: 'bento_del_dia_config',
+        label: bentoConfig.label?.trim() || (activeBrand?.id === 'a63da806-a62a-49b9-a833-07e0976785ad' ? 'El Bento del Día' : 'Plato del Día'),
         enabled: Boolean(bentoConfig.enabled),
-        promo_price: Number(bentoConfig.promo_price) || 19500,
-        standard_price: Number(bentoConfig.standard_price) || 22000,
+        promo_price: Number(bentoConfig.promo_price) || 0,
+        standard_price: Number(bentoConfig.standard_price) || 0,
         schedule: bentoConfig.schedule,
         manual_override_product_id: bentoConfig.manual_override_product_id || null
       };
@@ -1012,7 +1022,7 @@ export default function AdminSettings() {
                   </div>
                 </div>
 
-                {/* ── Bento del Día Rotation & Dynamic Pricing (BOKU Bentos) */}
+                {/* ── Plato o Especial del Día Rotation & Dynamic Pricing ── */}
                 {(bentoProducts.length > 0 || activeBrand?.id === 'a63da806-a62a-49b9-a833-07e0976785ad') && (
                   <div className="bg-white rounded-2xl border border-amber-200/80 p-6 sm:p-7 shadow-xs relative overflow-hidden">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -1022,13 +1032,13 @@ export default function AdminSettings() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">Rotación "Bento del Día"</h3>
+                            <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">Rotación "Plato o Especial del Día"</h3>
                             <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
-                              Motor Dinámico
+                              Motor Dinámico Universal
                             </span>
                           </div>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            Asigna automáticamente el Bento con descuento promocional según el día de la semana (Lunes a Viernes). Fines de semana a precio estándar.
+                            Asigna automáticamente un producto promocional destacado según el día de la semana (o sobrescríbelo manualmente hoy). Funciona para cualquier negocio (Bentos, Pizza del Día, Plato Ejecutivo, etc.).
                           </p>
                         </div>
                       </div>
@@ -1065,22 +1075,36 @@ export default function AdminSettings() {
                           <Icon icon="heroicons:sparkles" className="text-amber-600 shrink-0 text-base" />
                           <span>
                             {bentoConfig.enabled
-                              ? 'La rotación automática está ACTIVA. El plato del día pasa automáticamente a la subcategoría "El Bento del Día" con precio promo.'
-                              : 'La rotación está PAUSADA. Todos los Bentos se mostrarán a su precio estándar.'}
+                              ? `La rotación automática está ACTIVA. El plato del día pasa automáticamente a la subcategoría "${bentoConfig.label || 'Plato del Día'}" con precio promo.`
+                              : 'La rotación está PAUSADA. Todos los productos se mostrarán a su precio estándar regular.'}
                           </span>
                         </div>
-                        {bentoConfig.promo_price < bentoConfig.standard_price && (
+                        {bentoConfig.promo_price > 0 && bentoConfig.standard_price > bentoConfig.promo_price && (
                           <span className="shrink-0 bg-amber-500 text-white font-bold text-[10px] px-2 py-0.5 rounded-md shadow-2xs">
                             Ahorro: ${(bentoConfig.standard_price - bentoConfig.promo_price).toLocaleString('es-CO')} COP
                           </span>
                         )}
                       </div>
 
-                      {/* Pricing Inputs */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50/60 p-4 rounded-xl border border-gray-200/70">
+                      {/* Commercial Label & Promo Pricing */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50/60 p-4 rounded-xl border border-gray-200/70">
                         <div>
                           <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                            🔥 Precio Bento del Día (Promo)
+                            🏷️ Nombre / Etiqueta Comercial
+                          </label>
+                          <input
+                            type="text"
+                            value={bentoConfig.label || ''}
+                            onChange={e => setBentoConfig(prev => ({ ...prev, label: e.target.value }))}
+                            className="w-full px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all bg-white"
+                            placeholder="Ej: El Bento del Día, Plato del Día"
+                          />
+                          <p className="text-[10px] text-gray-500 mt-1">Nombre mostrado en la carta, badge y QuickView.</p>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            🔥 Precio Promo Especial
                           </label>
                           <div className="relative">
                             <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 text-xs font-semibold">$</span>
@@ -1092,12 +1116,12 @@ export default function AdminSettings() {
                               placeholder="19500"
                             />
                           </div>
-                          <p className="text-[10px] text-gray-500 mt-1">Precio con descuento aplicado al plato del día (Mon - Fri).</p>
+                          <p className="text-[10px] text-gray-500 mt-1">Precio con descuento aplicado al plato del día.</p>
                         </div>
 
                         <div>
                           <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                            🍱 Precio Estándar (Demás Bentos & Fines de Semana)
+                            🍱 Precio Estándar Referencial
                           </label>
                           <div className="relative">
                             <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 text-xs font-semibold">$</span>
@@ -1109,7 +1133,7 @@ export default function AdminSettings() {
                               placeholder="22000"
                             />
                           </div>
-                          <p className="text-[10px] text-gray-500 mt-1">Precio regular para los otros 4 bentos y todos los bentos en sábados y domingos.</p>
+                          <p className="text-[10px] text-gray-500 mt-1">Precio base referencial para calcular el ahorro o precio de fines de semana.</p>
                         </div>
                       </div>
 
@@ -1118,7 +1142,7 @@ export default function AdminSettings() {
                         <div className="flex items-center justify-between">
                           <label className="text-[11px] font-bold text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
                             <Icon icon="solar:tuning-bold" className="text-amber-600 text-sm" />
-                            <span>Forzar Bento Hoy (Sobrescribir Calendario)</span>
+                            <span>Forzar Especial Hoy (Sobrescribir Calendario)</span>
                           </label>
                           {bentoConfig.manual_override_product_id && (
                             <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
@@ -1134,12 +1158,12 @@ export default function AdminSettings() {
                           <option value="">⚙️ Automático (según el calendario del día de hoy)</option>
                           {bentoProducts.map(p => (
                             <option key={p.id} value={p.id}>
-                              🌟 Forzar hoy: {p.name}
+                              🌟 Forzar hoy: {p.category?.name ? `[${p.category.name}] ` : ''}{p.name} ({Number(p.price || 0).toLocaleString('es-CO')} COP)
                             </option>
                           ))}
                         </select>
                         <p className="text-[10px] text-gray-500">
-                          Si seleccionas un bento aquí, ese plato será inmediatamente el Bento del Día a precio promo hoy sin importar qué día de la semana sea. Déjalo en "Automático" para seguir el cronograma habitual.
+                          Si seleccionas un producto aquí, será inmediatamente el plato destacado a precio promo hoy sin importar qué día de la semana sea. Déjalo en "Automático" para seguir el cronograma habitual.
                         </p>
                       </div>
 
@@ -1207,10 +1231,10 @@ export default function AdminSettings() {
                                     currentVal ? 'border-amber-300 text-gray-900 font-semibold' : 'border-gray-200 text-gray-400'
                                   }`}
                                 >
-                                  <option value="">(Ninguno / Precio estándar $22.000)</option>
+                                  <option value="">(Ninguno / Sin promoción)</option>
                                   {bentoProducts.map(p => (
                                     <option key={p.id} value={p.id}>
-                                      {p.name.replace('Bento ', '')}
+                                      {p.category?.name ? `[${p.category.name}] ` : ''}{p.name}
                                     </option>
                                   ))}
                                 </select>
@@ -1223,7 +1247,7 @@ export default function AdminSettings() {
                       {/* Card Footer & Save */}
                       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-gray-200/70">
                         <p className="text-[11px] text-gray-500">
-                          Presiona <strong>Guardar Rotación Bento</strong> para sincronizar los cambios con la carta en vivo.
+                          Presiona <strong>Guardar Especial del Día</strong> para sincronizar los cambios con la carta en vivo.
                         </p>
                         <button
                           type="button"
@@ -1232,7 +1256,7 @@ export default function AdminSettings() {
                           className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-50 inline-flex items-center gap-2"
                         >
                           <Icon icon="solar:disk-bold-duotone" className="text-base" />
-                          <span>{isSubmittingSettings ? 'Guardando...' : 'Guardar Rotación Bento'}</span>
+                          <span>{isSubmittingSettings ? 'Guardando...' : 'Guardar Especial del Día'}</span>
                         </button>
                       </div>
                     </div>

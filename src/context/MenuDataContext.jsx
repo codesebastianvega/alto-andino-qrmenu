@@ -322,24 +322,25 @@ export const MenuDataProvider = ({ children }) => {
 
     const hasLocProductConfig = statusMap.size > 0;
 
-    // 2. Bento del Día configuration & dynamic rotation
-    const bentoConcept = (restaurantSettings?.brand_concepts || []).find(c => c && c.id === 'bento_del_dia_config');
-    const isBentoEnabled = bentoConcept ? bentoConcept.enabled !== false : true;
-    const promoPrice = Number(bentoConcept?.promo_price) || 19500;
-    const standardPrice = Number(bentoConcept?.standard_price) || 22000;
+    // 2. Plato / Especial del Día universal dynamic rotation
+    const dailySpecialConcept = (restaurantSettings?.brand_concepts || []).find(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config'));
+    const isSpecialEnabled = dailySpecialConcept ? dailySpecialConcept.enabled !== false : false;
+    const specialLabel = dailySpecialConcept?.label || (restaurantSettings?.brand_id === 'a63da806-a62a-49b9-a833-07e0976785ad' ? 'El Bento del Día' : 'Plato del Día');
+    const promoPrice = Number(dailySpecialConcept?.promo_price) || 0;
+    const standardPrice = Number(dailySpecialConcept?.standard_price) || 0;
     const defaultSchedule = {
-      1: 'b0000b11-0000-4000-a000-000000000001', // Lunes: Criollo
-      2: 'b0000b12-0000-4000-a000-000000000002', // Martes: Tex-Mex
-      3: 'b0000b13-0000-4000-a000-000000000003', // Miércoles: Bogotano
-      4: 'b0000b14-0000-4000-a000-000000000004', // Jueves: Mestizo
-      5: 'b0000b15-0000-4000-a000-000000000005', // Viernes: Urodaki
-      6: null, // Sábado: Precio normal sin bento del día
-      0: null  // Domingo: Precio normal sin bento del día
+      1: 'b0000b11-0000-4000-a000-000000000001', // Lunes
+      2: 'b0000b12-0000-4000-a000-000000000002', // Martes
+      3: 'b0000b13-0000-4000-a000-000000000003', // Miércoles
+      4: 'b0000b14-0000-4000-a000-000000000004', // Jueves
+      5: 'b0000b15-0000-4000-a000-000000000005', // Viernes
+      6: null,
+      0: null
     };
-    const bentoSchedule = bentoConcept?.schedule || defaultSchedule;
-    const manualBentoOverride = bentoConcept?.manual_override_product_id;
+    const specialSchedule = dailySpecialConcept?.schedule || defaultSchedule;
+    const manualOverride = dailySpecialConcept?.manual_override_product_id;
     const currentDayOfWeek = new Date().getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-    const activeBentoId = manualBentoOverride || (isBentoEnabled ? bentoSchedule[currentDayOfWeek] : null);
+    const activeSpecialId = manualOverride || (isSpecialEnabled ? specialSchedule[currentDayOfWeek] : null);
 
     (rawProducts || []).forEach(product => {
       // Apply location product status override
@@ -361,23 +362,21 @@ export const MenuDataProvider = ({ children }) => {
         }
       }
 
-      // Dynamic Bento del Día rotation for BOKU Bentos category
+      // Universal Daily Special Rotation
+      const isSpecialToday = Boolean(activeSpecialId && product.id === activeSpecialId);
       const isBento = catSlug === 'boku-bentos' || product.category_id === 'b0000c01-0000-4000-a000-000000000001';
       let productSubcategory = product.subcategory;
       let originalPrice = undefined;
-      let isBentoDelDia = false;
 
-      if (isBento) {
-        if (activeBentoId && product.id === activeBentoId) {
+      if (isSpecialToday) {
+        if (promoPrice > 0) {
+          originalPrice = product.price > promoPrice ? product.price : (standardPrice > promoPrice ? standardPrice : product.price);
           finalPrice = promoPrice;
-          originalPrice = standardPrice;
-          productSubcategory = 'El Bento del Día';
-          isBentoDelDia = true;
-        } else {
-          finalPrice = standardPrice;
-          productSubcategory = 'Bentos Tradicionales & Fusión';
-          isBentoDelDia = false;
         }
+        productSubcategory = specialLabel;
+      } else if (isBento && standardPrice > 0) {
+        finalPrice = standardPrice;
+        productSubcategory = 'Bentos Tradicionales & Fusión';
       }
 
       const normalizedProduct = {
@@ -385,7 +384,9 @@ export const MenuDataProvider = ({ children }) => {
         name: product.name,
         price: finalPrice,
         original_price: originalPrice,
-        is_bento_del_dia: isBentoDelDia,
+        is_bento_del_dia: isSpecialToday,
+        is_daily_special: isSpecialToday,
+        daily_special_label: isSpecialToday ? specialLabel : null,
         desc: product.description || '',
         description: product.description || '',
         tags: product.tags || [],

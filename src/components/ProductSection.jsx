@@ -289,17 +289,17 @@ export default function ProductSection({
   // ── Handle Spotlight Split (1 Hero on the left, 4 on the right in 2x2 grid) ──
   if (variant === "spotlight-split" && count > 0) {
     const allAvailableItems = grouped ? grouped.flatMap(g => g.items) : filtered;
-    const heroItem = allAvailableItems.find(it => it.is_bento_del_dia)
+    const heroItem = allAvailableItems.find(it => it.is_daily_special || it.is_bento_del_dia)
       || (heroId ? allAvailableItems.find(it => it.id === heroId) : null)
       || allAvailableItems[0];
     const otherItems = allAvailableItems.filter(it => it.id !== heroItem?.id);
 
     const heroGroup = grouped?.find(g => g.items.some(it => it.id === heroItem?.id));
     const otherGroup = grouped?.find(g => g.title !== heroGroup?.title);
-    const heroTitle = heroGroup?.title || (heroItem?.is_bento_del_dia ? "El Bento del Día" : "Plato Destacado");
-    const otherTitle = otherGroup?.title || (otherItems.length > 0 ? "Bentos Tradicionales & Fusión" : "");
+    const heroTitle = heroGroup?.title || (heroItem?.daily_special_label || (heroItem?.is_bento_del_dia ? "Plato del Día" : "Plato Destacado"));
+    const otherTitle = otherGroup?.title || (otherItems.length > 0 ? "Carta & Especialidades" : "");
 
-    const hasPromoHero = allAvailableItems.some(it => it.is_bento_del_dia);
+    const hasPromoHero = allAvailableItems.some(it => it.is_bento_del_dia || it.is_daily_special);
     const isWeekendBento = allAvailableItems.some(it => it.category_id === 'b0000c01-0000-4000-a000-000000000001') && !hasPromoHero;
 
     // If it's a weekend bento without a promo Bento del Día, gracefully render all items in a standard grid
