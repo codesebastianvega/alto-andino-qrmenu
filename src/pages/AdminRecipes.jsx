@@ -58,6 +58,8 @@ export default function AdminRecipes() {
 
   const { ingredients: allIngredients, fetchIngredients } = useAdminIngredients();
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStation, setSelectedStation] = useState('all');
+  const [selectedIngredientId, setSelectedIngredientId] = useState('all');
   const { activeBrand } = useAuth();
   const brandId = activeBrand?.id;
   const { generateText, loading: isGeneratingSteps } = useGemini();
@@ -510,16 +512,103 @@ Devuelve ÚNICAMENTE el texto de la descripción, sin comillas ni títulos adici
     };
   }, [recipes]);
 
+  // Unique available stations from recipes and step_by_step
+  const availableStations = useMemo(() => {
+    const set = new Set();
+    recipes.forEach(r => {
+      if (r.storage_location && r.storage_location.trim()) {
+        set.add(r.storage_location.trim());
+      }
+      if (Array.isArray(r.step_by_step)) {
+        r.step_by_step.forEach(s => {
+          if (s.station && s.station.trim()) {
+            set.add(s.station.trim());
+          }
+        });
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [recipes]);
+
   const displayRecipes = useMemo(() => {
     return activeRecipeList.filter(r => {
-      if (recipeCategoryTab === 'subrecipes') return true;
-      const m = r.target_price > 0 ? ((r.target_price - r.total_cost) / r.target_price) * 100 : 0;
-      if (activeFilter === 'critical') return m < 30;
-      if (activeFilter === 'healthy') return m >= 40;
-      if (activeFilter === 'investment') return r.total_cost > (statsMetrics.totalInvestment / (dishes.length || 1));
-      return true; // 'all'
+      // 1. Text Search (name, description, storage location, ingredients, steps)
+      if (searchTerm.trim()) {
+        const q = searchTerm.trim().toLowerCase();
+        const matchName = (r.name || '').toLowerCase().includes(q);
+        const matchDesc = (r.description || '').toLowerCase().includes(q);
+        const matchStorage = (r.storage_location || '').toLowerCase().includes(q);
+        const matchIngredients = (r.recipe_ingredients || []).some(ri =>
+          (ri.ingredients?.name || '').toLowerCase().includes(q)
+        );
+        const matchSteps = (r.step_by_step || []).some(s =>
+          (s.title || '').toLowerCase().includes(q) ||
+          (s.desc || '').toLowerCase().includes(q) ||
+          (s.station || '').toLowerCase().includes(q)
+        );
+        if (!matchName && !matchDesc && !matchStorage && !matchIngredients && !matchSteps) {
+          return false;
+        }
+      }
+
+      // 2. Station Filter
+      if (selectedStation !== 'all') {
+        const qStation = selectedStation.toLowerCase();
+        const matchStorage = (r.storage_location || '').toLowerCase() === qStation;
+        const matchStepStation = (r.step_by_step || []).some(s => (s.station || '').toLowerCase() === qStation);
+        if (!matchStorage && !matchStepStation) return false;
+      }
+
+      // 3. Ingredient Filter
+      if (selectedIngredientId !== 'all') {
+        const hasIng = (r.recipe_ingredients || []).some(ri => ri.ingredient_id === selectedIngredientId);
+        if (!hasIng) return false;
+      }
+
+      // 4. Financial & Margin Filter
+      if (activeFilter !== 'all') {
+        if (!r.is_subrecipe) {
+          const m = r.target_price > 0 ? ((r.target_price - r.total_cost) / r.target_price) * 100 : 0;
+          if (activeFilter === 'critical') return m < 30;
+          if (activeFilter === 'healthy') return m >= 40;
+          if (activeFilter === 'investment') return r.total_cost > (statsMetrics.totalInvestment / (dishes.length || 1));
+        } else {
+          if (activeFilter === 'investment') {
+            const avgSubCost = statsMetrics.totalInvestment / (subrecipes.length || 1);
+            return r.total_cost > avgSubCost;
+          }
+          if (activeFilter === 'addon') {
+            return Boolean(r.available_as_addon);
+          }
+        }
+      }
+
+      return true;
     });
-  }, [activeRecipeList, activeFilter, recipeCategoryTab, statsMetrics.totalInvestment, dishes.length]);
+  }, [
+    activeRecipeList,
+    searchTerm,
+    selectedStation,
+    selectedIngredientId,
+    activeFilter,
+    statsMetrics.totalInvestment,
+    dishes.length,
+    subrecipes.length
+  ]);
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setSelectedStation('all');
+    setSelectedIngredientId('all');
+    setActiveFilter('all');
+  };
+
+  const hasActiveFilters = Boolean(
+    searchTerm.trim() || 
+    selectedStation !== 'all' || 
+    selectedIngredientId !== 'all' || 
+    activeFilter !== 'all'
+  );
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -936,6 +1025,138 @@ Devuelve ÚNICAMENTE el texto de la descripción, sin comillas ni títulos adici
         <KitchenStationLayout />
       ) : (
         <>
+          {/* ── Search & Filter Toolbar */}
+          <div className="bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-2xs space-y-3">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+              {/* Search Input */}
+              <div className="relative flex-1 min-w-[240px]">
+                <Icon 
+                  icon="heroicons:magnifying-glass" 
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm" 
+                />
+                <input 
+                  type="text" 
+                  placeholder={recipeCategoryTab === 'subrecipes' ? "Buscar sub-receta por nombre, insumo, ubicación..." : "Buscar plato por nombre, ingrediente, estación..."} 
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-9 py-2 bg-slate-50 hover:bg-slate-50/80 focus:bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-all"
+                />
+                {searchTerm && (
+                  <button 
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                    title="Borrar búsqueda"
+                  >
+                    <Icon icon="heroicons:x-mark" className="text-xs" />
+                  </button>
+                )}
+              </div>
+
+              {/* Filters Group */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Station Filter */}
+                <div className="relative min-w-[170px] flex-1 sm:flex-initial">
+                  <Icon icon="heroicons:map-pin" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+                  <select
+                    value={selectedStation}
+                    onChange={e => setSelectedStation(e.target.value)}
+                    className="w-full pl-8 pr-8 py-2 bg-slate-50 hover:bg-slate-50/80 focus:bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="all">Todas las estaciones</option>
+                    {availableStations.map(st => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+                  <Icon icon="heroicons:chevron-down" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
+                </div>
+
+                {/* Ingredient Filter */}
+                <div className="relative min-w-[190px] flex-1 sm:flex-initial">
+                  <Icon icon="heroicons:beaker" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+                  <select
+                    value={selectedIngredientId}
+                    onChange={e => setSelectedIngredientId(e.target.value)}
+                    className="w-full pl-8 pr-8 py-2 bg-slate-50 hover:bg-slate-50/80 focus:bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="all">Todos los insumos</option>
+                    {allIngredients.map(ing => (
+                      <option key={ing.id} value={ing.id}>{ing.name}</option>
+                    ))}
+                  </select>
+                  <Icon icon="heroicons:chevron-down" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
+                </div>
+
+                {/* Financial Quick Pills */}
+                {recipeCategoryTab === 'dishes' ? (
+                  <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+                    <button
+                      onClick={() => setActiveFilter('all')}
+                      className={`px-2.5 py-1.5 rounded-md font-semibold transition-all ${activeFilter === 'all' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-900'}`}
+                    >
+                      Todos
+                    </button>
+                    <button
+                      onClick={() => setActiveFilter('healthy')}
+                      className={`px-2.5 py-1.5 rounded-md font-semibold transition-all ${activeFilter === 'healthy' ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'text-slate-500 hover:text-emerald-700'}`}
+                    >
+                      Rentables (&gt;40%)
+                    </button>
+                    <button
+                      onClick={() => setActiveFilter('critical')}
+                      className={`px-2.5 py-1.5 rounded-md font-semibold transition-all ${activeFilter === 'critical' ? 'bg-rose-600 text-white shadow-2xs font-bold' : 'text-slate-500 hover:text-rose-700'}`}
+                    >
+                      Bajo Margen (&lt;30%)
+                    </button>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+                    <button
+                      onClick={() => setActiveFilter('all')}
+                      className={`px-2.5 py-1.5 rounded-md font-semibold transition-all ${activeFilter === 'all' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-900'}`}
+                    >
+                      Todas
+                    </button>
+                    <button
+                      onClick={() => setActiveFilter('addon')}
+                      className={`px-2.5 py-1.5 rounded-md font-semibold transition-all ${activeFilter === 'addon' ? 'bg-indigo-600 text-white shadow-2xs font-bold' : 'text-slate-500 hover:text-indigo-700'}`}
+                    >
+                      Vendible como Addon
+                    </button>
+                  </div>
+                )}
+
+                {/* Clear Filters Button */}
+                {hasActiveFilters && (
+                  <button
+                    onClick={resetFilters}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-xs font-bold transition-all border border-rose-200"
+                    title="Restablecer todos los filtros"
+                  >
+                    <Icon icon="heroicons:x-mark" className="text-xs" />
+                    <span>Limpiar</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Status / Count Bar */}
+            <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-700">
+                  Mostrando {displayRecipes.length} de {activeRecipeList.length} {recipeCategoryTab === 'subrecipes' ? 'sub-recetas' : 'recetas'}
+                </span>
+                {hasActiveFilters && (
+                  <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full text-[11px] font-bold border border-indigo-100">
+                    Filtros aplicados
+                  </span>
+                )}
+              </div>
+              {displayRecipes.length === 0 && (
+                <span className="text-rose-600 font-medium">Ninguna receta coincide con los filtros aplicados</span>
+              )}
+            </div>
+          </div>
+
           {/* ── Recipes View */}
           {viewMode === 'list' ? (
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
