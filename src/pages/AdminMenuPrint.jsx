@@ -171,7 +171,7 @@ export default function AdminMenuPrint() {
         {/* ─── CONTENIDO DE CATEGORÍAS Y PLATOS ─── */}
         <div className="space-y-4">
           {filteredCategories.map(cat => (
-            <div key={cat.id} className="break-inside-avoid mb-4">
+            <div key={cat.id} className="mb-4 break-inside-auto">
               {/* Título de categoría */}
               <div 
                 className="flex items-center justify-between bg-neutral-50 border-l-4 px-3 py-1.5 rounded-r-md mb-2.5 break-after-avoid" 
@@ -187,65 +187,67 @@ export default function AdminMenuPrint() {
 
               {/* Platos según plantilla */}
               {template === 'visual' ? (
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className={columns === 2 ? "columns-2 gap-3 [column-fill:_auto]" : "space-y-2.5"}>
                   {cat.items.map(p => (
                     <div 
                       key={p.id}
-                      className={`flex gap-2.5 rounded-xl border border-neutral-200/90 bg-white break-inside-avoid ${
-                        density === 'compact' ? 'p-1.5' : density === 'spacious' ? 'p-3' : 'p-2'
+                      className={`inline-block w-full rounded-xl border border-neutral-200/90 bg-white break-inside-avoid ${
+                        density === 'compact' ? 'p-1.5 mb-2' : density === 'spacious' ? 'p-3 mb-3' : 'p-2 mb-2.5'
                       }`}
                     >
-                      {p.image_url && (
-                        <img 
-                          src={p.image_url} 
-                          alt={p.name} 
-                          crossOrigin="anonymous"
-                          loading="eager"
-                          className="w-16 h-16 object-cover rounded-lg shrink-0 border border-neutral-100 bg-neutral-50"
-                        />
-                      )}
-                      <div className="flex-1 min-w-0 flex flex-col justify-between">
-                        <div>
-                          <div className="flex justify-between items-baseline gap-1">
-                            <h4 className={`font-extrabold text-neutral-900 leading-tight truncate ${
-                              density === 'compact' ? 'text-[11px]' : density === 'spacious' ? 'text-[12.5px]' : 'text-[11.5px]'
-                            }`}>
-                              {p.name}
-                            </h4>
-                            <span 
-                              style={{ color: primaryColor }}
-                              className={`font-extrabold shrink-0 ${
-                                density === 'compact' ? 'text-[11px]' : 'text-[11.5px]'
-                              }`}
-                            >
-                              {formatCOP(p.price)}
-                            </span>
+                      <div className="flex gap-2.5">
+                        {p.image_url && (
+                          <img 
+                            src={p.image_url} 
+                            alt={p.name} 
+                            crossOrigin="anonymous"
+                            loading="eager"
+                            className="w-16 h-16 object-cover rounded-lg shrink-0 border border-neutral-100 bg-neutral-50"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0 flex flex-col justify-between">
+                          <div>
+                            <div className="flex justify-between items-baseline gap-1">
+                              <h4 className={`font-extrabold text-neutral-900 leading-tight truncate ${
+                                density === 'compact' ? 'text-[11px]' : density === 'spacious' ? 'text-[12.5px]' : 'text-[11.5px]'
+                              }`}>
+                                {p.name}
+                              </h4>
+                              <span 
+                                style={{ color: primaryColor }}
+                                className={`font-extrabold shrink-0 ${
+                                  density === 'compact' ? 'text-[11px]' : 'text-[11.5px]'
+                                }`}
+                              >
+                                {formatCOP(p.price)}
+                              </span>
+                            </div>
+                            {showDescriptions && p.description && (
+                              <p className={`text-neutral-500 leading-tight line-clamp-2 mt-0.5 ${
+                                density === 'compact' ? 'text-[8.5px]' : 'text-[9px]'
+                              }`}>
+                                {p.description}
+                              </p>
+                            )}
                           </div>
-                          {showDescriptions && p.description && (
-                            <p className={`text-neutral-500 leading-tight line-clamp-2 mt-0.5 ${
-                              density === 'compact' ? 'text-[8.5px]' : 'text-[9px]'
-                            }`}>
-                              {p.description}
-                            </p>
+                          {p.tags?.[0] && (
+                            <span className="text-[8px] font-bold uppercase tracking-wider text-neutral-400 mt-0.5">
+                              • {p.tags[0]}
+                            </span>
                           )}
                         </div>
-                        {p.tags?.[0] && (
-                          <span className="text-[8px] font-bold uppercase tracking-wider text-neutral-400 mt-0.5">
-                            • {p.tags[0]}
-                          </span>
-                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 /* Plantilla Bistró (Minimalista) */
-                <div className={columns === 2 ? "grid grid-cols-2 gap-x-6 gap-y-2" : "space-y-1.5"}>
+                <div className={columns === 2 ? "columns-2 gap-6 [column-fill:_auto]" : "space-y-1.5"}>
                   {cat.items.map(p => (
                     <div 
                       key={p.id} 
-                      className={`border-b border-neutral-100 last:border-b-0 break-inside-avoid ${
-                        density === 'compact' ? 'pb-1' : density === 'spacious' ? 'pb-2' : 'pb-1.5'
+                      className={`inline-block w-full border-b border-neutral-100 break-inside-avoid ${
+                        density === 'compact' ? 'pb-1 mb-1' : density === 'spacious' ? 'pb-2 mb-2' : 'pb-1.5 mb-1.5'
                       }`}
                     >
                       <div className="flex justify-between items-baseline">
@@ -378,6 +380,11 @@ export default function AdminMenuPrint() {
           .break-inside-avoid {
             break-inside: avoid !important;
             page-break-inside: avoid !important;
+          }
+
+          .break-inside-auto {
+            break-inside: auto !important;
+            page-break-inside: auto !important;
           }
 
           .break-after-avoid {
@@ -683,7 +690,7 @@ export default function AdminMenuPrint() {
         </div>
 
         {/* PREVISUALIZACIÓN HOJA A4 (COL 8) */}
-        <div className="lg:col-span-8 flex flex-col items-center">
+        <div className="lg:col-span-8 flex flex-col items-center w-full min-w-0">
           
           {/* Barra de control de Zoom y Contador de Páginas */}
           <div className="flex flex-wrap items-center justify-between w-full max-w-[210mm] mb-3 px-2 no-print gap-2">
@@ -717,16 +724,18 @@ export default function AdminMenuPrint() {
           </div>
 
           {/* CONTENEDOR ESCALADO DE LA HOJA A4 (SOLO PARA PANTALLA) */}
-          <div 
-            style={{ 
-              transform: `scale(${zoom})`, 
-              transformOrigin: 'top center',
-              width: '210mm',
-              minHeight: '297mm'
-            }}
-            className="transition-transform duration-200 origin-top pb-16"
-          >
-            {renderMenuContent(false)}
+          <div className="w-full flex justify-center overflow-x-auto pb-16">
+            <div 
+              style={{ 
+                transform: `scale(${zoom})`, 
+                transformOrigin: 'top center',
+                width: '210mm',
+                minHeight: '297mm'
+              }}
+              className="transition-transform duration-200 origin-top shrink-0"
+            >
+              {renderMenuContent(false)}
+            </div>
           </div>
         </div>
 
