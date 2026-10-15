@@ -125,17 +125,22 @@ export default function AdminStaff({ isEmbedded = false }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.pin.length !== 4 || !/^\d+$/.test(formData.pin)) {
-      toast.error('El PIN debe tener exactamente 4 dígitos numéricos.');
+    const cleanPin = (formData.pin || '').trim().toUpperCase();
+    const hasLetter = /[A-Z]/.test(cleanPin);
+    const hasNumber = /\d/.test(cleanPin);
+
+    if (cleanPin.length < 6 || !hasLetter || !hasNumber) {
+      toast.error('La clave debe tener mínimo 6 caracteres y combinar al menos una letra y números (ej: 12345A o BOKU01).');
       return;
     }
     
     setIsSaving(true);
+    const payload = { ...formData, pin: cleanPin };
     let result;
     if (editingStaff) {
-      result = await updateStaff(editingStaff.id, formData);
+      result = await updateStaff(editingStaff.id, payload);
     } else {
-      result = await createStaff(formData);
+      result = await createStaff(payload);
     }
     setIsSaving(false);
 
@@ -266,13 +271,13 @@ export default function AdminStaff({ isEmbedded = false }) {
                   <div className="flex items-center justify-between text-xs text-gray-500 bg-gray-50/50 px-3 py-1.5 rounded-xl border border-gray-100">
                     <div className="flex items-center gap-2">
                       <Key size={13} className="text-gray-400 shrink-0" />
-                      <span className="text-[11px] font-medium text-gray-600">Acceso PIN</span>
+                      <span className="text-[11px] font-medium text-gray-600">Acceso Clave</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                      {[1, 2, 3, 4, 5, 6].map(i => (
+                        <div key={i} className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
                       ))}
-                      <span className="text-[10px] font-mono text-gray-400 ml-1.5">4 dígitos</span>
+                      <span className="text-[10px] font-mono text-gray-400 ml-1.5">Mín. 6 alfanumérico</span>
                     </div>
                   </div>
                 </div>
@@ -384,22 +389,24 @@ export default function AdminStaff({ isEmbedded = false }) {
                 )}
 
                 {/* PIN Security input */}
-                <FormField label="PIN de Seguridad (4 dígitos numéricos) *">
+                <FormField label="Clave / PIN de Acceso (Mínimo 6 caracteres: letras y números) *">
                   <div className="relative">
                     <input 
-                      type="password"
-                      inputMode="numeric"
+                      type="text"
                       value={formData.pin} 
-                      onChange={(e) => setFormData({...formData, pin: e.target.value.replace(/\D/g, '')})} 
-                      placeholder="••••"
-                      maxLength={4}
+                      onChange={(e) => setFormData({...formData, pin: e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()})} 
+                      placeholder="Ej: 12345A o BOKU01"
+                      maxLength={12}
                       required
-                      className="w-full px-4 py-2.5 pl-10 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono tracking-widest text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#2f4131] focus:bg-white outline-none transition-all"
+                      className="w-full px-4 py-2.5 pl-10 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono tracking-widest text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#2f4131] focus:bg-white outline-none transition-all uppercase"
                     />
                     <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
                       <Icon icon="solar:lock-password-bold" className="text-base" />
                     </div>
                   </div>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Protege contra ataques de fuerza bruta. Requiere al menos una letra y números (mínimo 6 caracteres, ej: 12345A o BOKU01).
+                  </p>
                 </FormField>
 
                 {/* Sede Assignment */}

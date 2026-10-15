@@ -184,11 +184,11 @@ const ESTRATEGIA_ITEMS = [
 ];
 
 const OPERACION_ITEMS = [
-  { id: 'orders',     label: 'Pedidos',         Icon: Icons.Orders, roles: [...ADMIN_ROLES, 'waiter'] },
+  { id: 'orders',     label: 'Pedidos',         Icon: Icons.Orders, roles: [...ADMIN_ROLES, 'waiter', 'cashier'] },
   { id: 'kitchen',    label: 'Cocina (KDS)',    Icon: Icons.Kitchen, roles: [...ADMIN_ROLES, 'kitchen'], feature: 'kitchen_display' },
   { id: 'bar',        label: 'Barra (BDS)',     Icon: Icons.Bar, roles: [...ADMIN_ROLES, 'kitchen', 'waiter', 'bar'], feature: 'bar_display' },
-  { id: 'waiter',     label: 'Toma de Pedidos', Icon: Icons.Waiter, roles: [...ADMIN_ROLES, 'waiter'] },
-  { id: 'operations', label: 'Turno & Caja',    Icon: Icons.Cash, roles: ADMIN_ROLES },
+  { id: 'waiter',     label: 'Toma de Pedidos', Icon: Icons.Waiter, roles: [...ADMIN_ROLES, 'waiter', 'cashier'] },
+  { id: 'operations', label: 'Turno & Caja',    Icon: Icons.Cash, roles: [...ADMIN_ROLES, 'cashier'] },
 ];
 
 const CARTA_ITEMS = [
@@ -355,13 +355,17 @@ export default function AdminLayout() {
     if (!user) return;
 
     if (user.role === 'kitchen') {
-      if (currentPage !== 'kitchen') setCurrentPage('kitchen');
+      if (!['kitchen', 'bar', 'recipes', 'inventory'].includes(currentPage)) setCurrentPage('kitchen');
     } else if (user.role === 'bar') {
-      if (currentPage !== 'bar') setCurrentPage('bar');
+      if (!['bar', 'kitchen', 'recipes'].includes(currentPage)) setCurrentPage('bar');
     } else if (user.role === 'waiter') {
-      if (!['waiter', 'orders'].includes(currentPage)) setCurrentPage('waiter');
+      if (!['waiter', 'orders', 'bar'].includes(currentPage)) setCurrentPage('waiter');
+    } else if (user.role === 'cashier') {
+      if (!['operations', 'orders', 'waiter'].includes(currentPage)) setCurrentPage('operations');
+    } else if (user.role === 'promoter') {
+      if (!['orders'].includes(currentPage)) setCurrentPage('orders');
     } else if (['admin', 'owner', 'superadmin', 'encargado'].includes(user.role)) {
-      // Full access roles, no redirect needed unless we want to default to dashboard
+      // Roles con acceso administrativo completo
     }
   }, [user, currentPage]);
 
@@ -837,7 +841,7 @@ export default function AdminLayout() {
                 )}
 
                 {/* Turno & Caja Card */}
-                {ADMIN_ROLES.includes(user.role) && (
+                {(ADMIN_ROLES.includes(user.role) || user.role === 'cashier') && (
                 <button 
                   onClick={() => handleSelectPage('operations', 'Turno & Caja')}
                   className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
@@ -865,9 +869,13 @@ export default function AdminLayout() {
             </div>
 
             {ADMIN_ROLES.includes(user.role) && (
+              <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+            )}
+            {(ADMIN_ROLES.includes(user.role) || user.role === 'kitchen') && (
+              <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
+            )}
+            {ADMIN_ROLES.includes(user.role) && (
               <>
-                <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
-                <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
                 <NavSection title="Administración de Staff & Locales" items={ADMIN_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
                 <NavSection title="Presencia Web" items={WEB_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
               </>
@@ -1248,9 +1256,13 @@ export default function AdminLayout() {
                 <NavSection title="Operación" items={OPERACION_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
                 
                 {ADMIN_ROLES.includes(user.role) && (
+                  <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
+                )}
+                {(ADMIN_ROLES.includes(user.role) || user.role === 'kitchen') && (
+                  <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
+                )}
+                {ADMIN_ROLES.includes(user.role) && (
                   <>
-                    <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
-                    <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
                     <NavSection title="Administración de Staff & Locales" items={ADMIN_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
                     <NavSection title="Presencia Web" items={WEB_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
                   </>
@@ -1439,7 +1451,7 @@ export default function AdminLayout() {
       <div data-aa-admin-bottombar className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[45] lg:hidden pb-[calc(env(safe-area-inset-bottom,0px))]">
         <div className="flex items-center justify-around h-[72px] px-2">
           {/* Turno & Caja */}
-          {ADMIN_ROLES.includes(user.role) && (
+          {(ADMIN_ROLES.includes(user.role) || user.role === 'cashier') && (
             <button 
               onClick={() => handleSelectPage('operations', 'Turno & Caja')}
               className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'operations' ? 'text-brand-primary' : 'text-gray-400 hover:text-gray-600'}`}
