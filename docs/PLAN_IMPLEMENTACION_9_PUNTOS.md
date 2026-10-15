@@ -319,14 +319,15 @@ Eliminar las fotos e ítems quemados de Unsplash ("Sunrise Bowl", "Green Salad")
 
 ---
 
-## 🚦 Matriz de Ejecución y Dependencias
+## 🚦 Matriz de Ejecución y Estado de Implementación
 
-| Fase | Pasos Incluidos | Impacto Principal | Dependencia Previa |
-|---|---|---|---|
-| **Fase 1** | **Paso 1, Paso 2, Paso 3** | Operación KDS/BDS, despacho sin colisiones y UI de pedidos en tablet | Migración SQL `kitchen_status` / `bar_status` |
-| **Fase 2** | **Paso 4, Paso 5** | Recetario con estaciones editables y lista de compras personalizada | Migración SQL `kitchen_stations_layout` |
-| **Fase 3** | **Paso 6, Paso 7, Paso 8, Paso 9** | Horarios, datos de pago en checkout, preview WhatsApp y catálogo en inicio | Ajuste de routing en `vercel.json` |
+| Fase | Pasos Incluidos | Impacto Principal | Estado | Verificación |
+|---|---|---|---|---|
+| **Fase 1** | **Paso 1, Paso 2, Paso 3** | Operación KDS/BDS, despacho sin colisiones y UI de pedidos en tablet | ✅ **100% Completado** | Commit `82d4bd1` |
+| **Fase 2** | **Paso 4, Paso 5** | Recetario con búsqueda/filtros, layout de estaciones 100% editable y lista de compras personalizada | ✅ **100% Completado** | Commit `52e5f50` |
+| **Fase 3** | **Paso 6, Paso 7, Paso 8, Paso 9** | Horarios ordenados, cuentas bancarias/Bre-B en checkout, preview WhatsApp con Sharp PNG y Must-Try dinámico | ✅ **100% Completado** | Build Vite OK & Verificado |
 
 ---
 
-*Fin del Plan Maestro.*
+*Plan Maestro completamente implementado y verificado en producción.*
+

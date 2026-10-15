@@ -54,19 +54,34 @@ export default function Footer({ hasCartBar, onInstallPWA, isPWAInstalled }) {
   const formattedHours = React.useMemo(() => {
     if (!businessHours || businessHours.length === 0) return null;
     
-    // Filter to location-specific hours if present, otherwise fallback to brand-level default (location_id IS NULL)
+    // 1. Filter to location-specific hours if present, otherwise fallback to brand-level default (location_id IS NULL)
     const locId = mainLocation?.id;
-    const specificHours = locId ? businessHours.filter(h => h.location_id === locId) : [];
-    const relevantHours = specificHours.length > 0 
-      ? specificHours 
-      : businessHours.filter(h => !h.location_id);
+    let relevantHours = locId ? businessHours.filter(h => h.location_id === locId) : [];
+    if (relevantHours.length === 0) {
+      relevantHours = businessHours.filter(h => !h.location_id);
+    }
+    // If still empty, use any available hours
+    if (relevantHours.length === 0) {
+      relevantHours = businessHours;
+    }
 
     if (relevantHours.length === 0) return null;
 
-    const DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-    const openDays = relevantHours.filter(h => !h.is_closed);
-    if (openDays.length === 0) return [{ days: "Cerrado", hours: "-" }];
+    // Deduplicate by day_of_week and sort strictly 0 (Dom) to 6 (Sáb)
+    const dayMap = new Map();
+    relevantHours.forEach(h => {
+      if (!dayMap.has(h.day_of_week)) {
+        dayMap.set(h.day_of_week, h);
+      }
+    });
 
+    const sortedHours = Array.from(dayMap.values()).sort((a, b) => a.day_of_week - b.day_of_week);
+    const DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+    const openDays = sortedHours.filter(h => !h.is_closed);
+    
+    if (openDays.length === 0) return [{ days: "Cerrado temporalmente", hours: "-" }];
+
+    // Group days with identical hours
     const groups = [];
     openDays.forEach(h => {
       const openT = h.open_time ? h.open_time.slice(0, 5) : "08:00";
@@ -86,10 +101,18 @@ export default function Footer({ hasCartBar, onInstallPWA, isPWAInstalled }) {
       let daysLabel = "";
       if (g.days.length === 7) {
         daysLabel = "Todos los días";
-      } else if (g.days.length > 1 && g.days[g.days.length - 1] - g.days[0] === g.days.length - 1) {
-        daysLabel = `${DAYS[g.days[0]]} - ${DAYS[g.days[g.days.length - 1]]}`;
       } else {
-        daysLabel = g.dayNames.join(", ");
+        g.days.sort((a, b) => a - b);
+        const isConsecutive = g.days.every((d, idx) => idx === 0 || d === g.days[idx - 1] + 1);
+        if (g.days.length > 2 && isConsecutive) {
+          daysLabel = `${DAYS[g.days[0]]} a ${DAYS[g.days[g.days.length - 1]]}`;
+        } else if (g.days.length === 6 && !g.days.includes(0)) {
+          daysLabel = "Lun a Sáb";
+        } else if (g.days.length === 6 && !g.days.includes(1)) {
+          daysLabel = "Mar a Dom";
+        } else {
+          daysLabel = g.dayNames.join(", ");
+        }
       }
       return { days: daysLabel, hours: `${g.openT} - ${g.closeT}` };
     });

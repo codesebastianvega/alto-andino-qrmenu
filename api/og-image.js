@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import sharp from 'sharp';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://gqjfjtzsdpslwffbqqyw.supabase.co';
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxamZqdHpzZHBzbHdmZmJxcXl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDUzMDcsImV4cCI6MjA5MzUyMTMwN30.1N7h5p7zulwpjOF4kCtWHaI_f19sf1RQO2A2ao_28po';
@@ -35,40 +36,45 @@ export default async function handler(req, res) {
     const chosenMode = mode || brand.config?.og_image_mode || 'auto';
 
     let targetImageUrl = null;
-    if (chosenMode === 'logo') {
-      targetImageUrl = settings?.logo_url || brand.logo_url;
-    } else if (chosenMode === 'banner') {
-      targetImageUrl = homeSettings?.menu_banner_img || homeSettings?.welcome_bg_img;
-    }
-
-    if (!targetImageUrl) {
-      targetImageUrl = brand.config?.og_image_url || settings?.logo_url || brand.logo_url || homeSettings?.menu_banner_img || homeSettings?.welcome_bg_img;
+    if (chosenMode === 'banner') {
+      targetImageUrl = homeSettings?.menu_banner_img || homeSettings?.welcome_bg_img || settings?.logo_url || brand.logo_url;
+    } else {
+      // Prioritize the actual restaurant LOGO for WhatsApp / social preview
+      targetImageUrl = settings?.logo_url || brand.logo_url || brand.config?.og_image_url || homeSettings?.menu_banner_img || homeSettings?.welcome_bg_img;
     }
 
     if (!targetImageUrl) {
       return res.redirect(302, '/favicon.png');
     }
 
-    // Descargar imagen desde Supabase Storage para servir con Content-Type canónico
+    // Descargar imagen desde Supabase Storage
     const imgResponse = await fetch(targetImageUrl);
     if (!imgResponse.ok) {
       return res.redirect(302, targetImageUrl);
     }
 
     const arrayBuffer = await imgResponse.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const inputBuffer = Buffer.from(arrayBuffer);
 
-    // Detectar si es PNG o JPEG real a nivel de cabecera de bytes
-    let contentType = 'image/png';
-    if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xd8) {
-      contentType = 'image/jpeg';
-    } else if (buffer.length >= 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
-      contentType = 'image/png';
+    // Convertir de forma confiable a PNG 600x600 con fondo transparente/blanco para WhatsApp
+    try {
+      const pngBuffer = await sharp(inputBuffer)
+        .resize(600, 600, {
+          fit: 'contain',
+          background: { r: 255, g: 255, b: 255, alpha: 1 }
+        })
+        .png({ quality: 90, compressionLevel: 8 })
+        .toBuffer();
+
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800');
+      return res.status(200).send(pngBuffer);
+    } catch (sharpError) {
+      console.error('Sharp conversion fallback:', sharpError);
+      // Fallback directo a servir el buffer original
+      res.setHeader('Content-Type', 'image/png');
+      return res.status(200).send(inputBuffer);
     }
-
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800');
-    return res.status(200).send(buffer);
   } catch (err) {
     console.error('OG Image proxy error:', err);
     return res.redirect(302, '/favicon.png');

@@ -128,7 +128,7 @@ export const MenuDataProvider = ({ children }) => {
         brandFilter(supabase.from('restaurant_settings').select('*')),
         supabase.from('brands').select('*, plans(*, plan_features(*))').eq('id', brandId).single(),
         brandFilter(supabase.from('products').select('*, categories:category_id (slug)').eq('is_active', true).order('sort_order', { ascending: true })),
-        brandFilter(supabase.from('business_hours').select('*'))
+        brandFilter(supabase.from('business_hours').select('*').order('day_of_week', { ascending: true }))
       ]), 15000, 'La carga inicial del menú');
 
       const criticalError = [brandRes, catsRes, prodsRes].find((result) => result.error)?.error;

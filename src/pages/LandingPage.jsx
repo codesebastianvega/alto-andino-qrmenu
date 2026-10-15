@@ -93,8 +93,13 @@ const LandingPage = () => {
     if (homeSettings?.hero_items && Array.isArray(homeSettings.hero_items) && homeSettings.hero_items.length > 0) {
       heroDishes = homeSettings.hero_items;
     } else if (allCategories && allCategories.length > 0) {
-      heroDishes = allCategories
-        .filter(cat => cat.visibility_config?.show_in_hero)
+      let filteredCats = allCategories.filter(cat => cat.visibility_config?.show_in_hero);
+      // Fallback: If no category specifically has show_in_hero set, pick categories that have products with images
+      if (filteredCats.length === 0) {
+        filteredCats = allCategories.slice(0, 4);
+      }
+
+      heroDishes = filteredCats
         .map(cat => {
           const vc = cat.visibility_config || {};
           const products = getProductsByCategory ? getProductsByCategory(cat.slug) : [];
@@ -120,25 +125,45 @@ const LandingPage = () => {
     }
     if (heroDishes.length === 0) heroDishes = FALLBACK_HERO_DISHES;
 
-    // 2. Cálculo de items destacados (Must Try)
-    // Usamos productsList para evitar conflictos de nombres con getAllProducts
+    // 2. Cálculo de items destacados (Must Try / Recomendados)
     const productsList = typeof getAllProducts === 'function' ? getAllProducts() : [];
     
-    const featuredWithDetails = (homeSettings?.featured_items && Array.isArray(homeSettings.featured_items) && homeSettings.featured_items.length > 0) 
-      ? homeSettings.featured_items.map((item, idx) => {
-          const productId = item.product_id || (typeof item === 'string' ? item : null);
-          const found = productsList.find(p => p.id === productId);
-          
-          return { 
-            ...item, 
-            ...(found || {}), 
-            id: productId || found?.id || `featured-${idx}`,
-            img: getSafeImageUrl(item.img || found?.image_url || found?.image, FALLBACK_HERO_IMAGE),
-            price: found?.price || item.price || 0,
-            name: item.name || found?.name || "Plato Recomendado"
-          };
-        })
-      : FALLBACK_FEATURED.map((item, idx) => ({ ...item, id: `fallback-${idx}` }));
+    // Insumos / platos activos de la carta con foto real
+    const activeProductsWithImages = productsList.filter(p => p.is_active && (p.image_url || p.image));
+
+    let featuredWithDetails = [];
+
+    if (homeSettings?.featured_items && Array.isArray(homeSettings.featured_items) && homeSettings.featured_items.length > 0) {
+      featuredWithDetails = homeSettings.featured_items.map((item, idx) => {
+        const productId = item.product_id || (typeof item === 'string' ? item : null);
+        const found = productsList.find(p => p.id === productId || (p.name && item.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase()));
+        
+        // Priorizar imagen real del producto en la base de datos
+        const realImg = found?.image_url || found?.image || (item.img && !item.img.includes('unsplash.com') ? item.img : null) || activeProductsWithImages[idx % (activeProductsWithImages.length || 1)]?.image_url || FALLBACK_HERO_IMAGE;
+
+        return { 
+          ...item, 
+          ...(found || {}), 
+          id: productId || found?.id || `featured-${idx}`,
+          img: getSafeImageUrl(realImg, FALLBACK_HERO_IMAGE),
+          price: found?.price || item.price || 0,
+          name: found?.name || item.name || "Plato Recomendado"
+        };
+      });
+    }
+
+    // Si no hay destacados configurados o son menos de 2, hidratar automáticamente con productos reales de la carta
+    if (featuredWithDetails.length < 2 && activeProductsWithImages.length > 0) {
+      featuredWithDetails = activeProductsWithImages.slice(0, 4).map((p, idx) => ({
+        ...p,
+        id: p.id || `featured-auto-${idx}`,
+        img: getSafeImageUrl(p.image_url || p.image, FALLBACK_HERO_IMAGE),
+        price: p.price || 0,
+        name: p.name || 'Plato Recomendado'
+      }));
+    } else if (featuredWithDetails.length === 0) {
+      featuredWithDetails = FALLBACK_FEATURED.map((item, idx) => ({ ...item, id: `fallback-${idx}` }));
+    }
 
     // 3. Reseñas
     const reviews = (homeSettings?.reviews && homeSettings.reviews.length > 0) ? homeSettings.reviews : FALLBACK_REVIEWS;

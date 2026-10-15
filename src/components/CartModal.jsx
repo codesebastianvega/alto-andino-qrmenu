@@ -1357,14 +1357,70 @@ export default function CartModal({ open, onClose }) {
 
                     {/* Sub-panel: TRANSFERENCIA / NEQUI / BRE-B */}
                     {customerPaymentType === 'transfer' && (
-                      <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl space-y-1.5 animate-in fade-in duration-200">
-                        <p className="text-[11px] font-bold text-blue-900 flex items-center gap-1.5">
-                          <Icon icon="heroicons:device-phone-mobile" className="text-base text-blue-600" />
-                          Transferencia Nequi, Daviplata o llave Bre-B
-                        </p>
-                        <p className="text-[11px] text-blue-800/90 leading-relaxed font-medium">
-                          Transfiere desde tu app bancaria a nuestra cuenta o llave Bre-B. Al confirmar tu pedido te compartiremos los datos y número para reportar el comprobante de pago.
-                        </p>
+                      <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl space-y-2.5 animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] font-bold text-blue-900 flex items-center gap-1.5">
+                            <Icon icon="heroicons:device-phone-mobile" className="text-base text-blue-600" />
+                            Transferencia Nequi, Daviplata o Llave Bre-B
+                          </p>
+                        </div>
+
+                        {/* List configured transfer accounts if any */}
+                        {activeMethods.filter(m => (m.type === 'transfer' || m.type === 'digital_wallet') && m.details?.account_number).length > 0 ? (
+                          <div className="space-y-2">
+                            {activeMethods.filter(m => (m.type === 'transfer' || m.type === 'digital_wallet') && m.details?.account_number).map(m => (
+                              <div key={m.id} className="p-2.5 bg-white rounded-lg border border-blue-200/80 shadow-2xs space-y-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-bold text-slate-800">
+                                    {m.details.bank_name || m.name} ({m.details.account_type || 'Cuenta'})
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(m.details.account_number);
+                                      toast.success('Número de cuenta copiado');
+                                    }}
+                                    className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 transition-colors flex items-center gap-1"
+                                    title="Copiar número"
+                                  >
+                                    <Icon icon="heroicons:clipboard" className="text-xs" />
+                                    <span>Copiar</span>
+                                  </button>
+                                </div>
+                                <div className="flex items-baseline justify-between text-xs font-mono font-bold text-slate-900">
+                                  <span>{m.details.account_number}</span>
+                                  {m.details.holder_name && (
+                                    <span className="text-[10px] font-sans font-medium text-slate-500">
+                                      Titular: {m.details.holder_name}
+                                    </span>
+                                  )}
+                                </div>
+                                {m.details.bre_b_key && (
+                                  <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
+                                    <span className="font-semibold text-emerald-700">⚡ Llave Bre-B:</span>
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-mono font-bold text-emerald-900">{m.details.bre_b_key}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(m.details.bre_b_key);
+                                          toast.success('Llave Bre-B copiada');
+                                        }}
+                                        className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded"
+                                      >
+                                        Copiar
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-blue-800/90 leading-relaxed font-medium">
+                            Transfiere desde tu app bancaria a nuestra cuenta o llave Bre-B. Al confirmar tu pedido te compartiremos los datos y número para reportar el comprobante de pago.
+                          </p>
+                        )}
                       </div>
                     )}
 
@@ -1907,16 +1963,56 @@ export default function CartModal({ open, onClose }) {
 
                       // Si es transferencia (Nequi / Bre-B / Daviplata / Banco), pedimos el comprobante por WhatsApp
                       if (customerPaymentType === 'transfer') {
+                        const transferMethodsWithDetails = activeMethods.filter(m => (m.type === 'transfer' || m.type === 'digital_wallet') && m.details?.account_number);
+
                         return (
-                          <div className="mt-4 sm:mt-6 w-full max-w-sm mx-auto">
-                            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 sm:p-5 text-center">
-                              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2.5 sm:mb-3">
+                          <div className="mt-4 sm:mt-6 w-full max-w-sm mx-auto space-y-3">
+                            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 sm:p-5 text-center space-y-3">
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
                                 <Icon icon="solar:wallet-bold" className="text-xl sm:text-2xl text-orange-500" />
                               </div>
-                              <p className="text-xs sm:text-sm font-bold text-gray-800 mb-1">Confirmación de Pago</p>
-                              <p className="text-xs text-gray-500 mb-3 sm:mb-4 leading-relaxed">
-                                Para iniciar la preparación, envía tu comprobante de transferencia por WhatsApp.
-                              </p>
+                              <div>
+                                <p className="text-xs sm:text-sm font-bold text-gray-800 mb-0.5">Confirmación de Pago</p>
+                                <p className="text-xs text-gray-500 leading-relaxed">
+                                  Para iniciar la preparación, realiza la transferencia a la siguiente cuenta y envía tu comprobante por WhatsApp:
+                                </p>
+                              </div>
+
+                              {/* Destination accounts */}
+                              {transferMethodsWithDetails.length > 0 && (
+                                <div className="space-y-2 text-left bg-white p-3 rounded-xl border border-orange-200/80 text-xs">
+                                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                    Cuentas para transferir:
+                                  </p>
+                                  {transferMethodsWithDetails.map(m => (
+                                    <div key={m.id} className="p-2 bg-slate-50 rounded-lg border border-slate-200/60 space-y-1">
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-bold text-slate-800">{m.details.bank_name || m.name}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(m.details.account_number);
+                                            toast.success('Número copiado');
+                                          }}
+                                          className="text-[10px] font-bold text-orange-700 bg-orange-100 hover:bg-orange-200 px-2 py-0.5 rounded transition-colors"
+                                        >
+                                          Copiar
+                                        </button>
+                                      </div>
+                                      <p className="font-mono font-bold text-slate-900 text-xs">{m.details.account_number}</p>
+                                      {m.details.holder_name && (
+                                        <p className="text-[10px] text-slate-500">Titular: {m.details.holder_name}</p>
+                                      )}
+                                      {m.details.bre_b_key && (
+                                        <p className="text-[11px] font-semibold text-emerald-700 pt-0.5">
+                                          ⚡ Llave Bre-B: <span className="font-mono font-bold text-emerald-900">{m.details.bre_b_key}</span>
+                                        </p>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
                               <a
                                 href={proofUrl}
                                 target="_blank"

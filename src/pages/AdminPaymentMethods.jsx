@@ -55,7 +55,16 @@ export default function AdminPaymentMethods() {
     name: '',
     type: 'cash',
     icon: 'solar:money-bag-bold',
-    is_active: true
+    is_active: true,
+    details: {
+      bank_name: '',
+      account_number: '',
+      account_type: 'Ahorros',
+      holder_name: '',
+      holder_id: '',
+      bre_b_key: '',
+      instructions: ''
+    }
   });
 
   const openModal = (method = null) => {
@@ -65,15 +74,33 @@ export default function AdminPaymentMethods() {
         name: method.name || '',
         type: method.type || 'cash',
         icon: method.icon || 'solar:money-bag-bold',
-        is_active: method.is_active ?? true
+        is_active: method.is_active ?? true,
+        details: {
+          bank_name: method.details?.bank_name || '',
+          account_number: method.details?.account_number || '',
+          account_type: method.details?.account_type || 'Ahorros',
+          holder_name: method.details?.holder_name || '',
+          holder_id: method.details?.holder_id || '',
+          bre_b_key: method.details?.bre_b_key || '',
+          instructions: method.details?.instructions || ''
+        }
       });
     } else {
       setEditingMethod(null);
       setFormData({
         name: '',
-        type: 'cash',
-        icon: 'solar:money-bag-bold',
-        is_active: true
+        type: 'transfer',
+        icon: 'solar:transfer-horizontal-bold',
+        is_active: true,
+        details: {
+          bank_name: 'Nequi',
+          account_number: '',
+          account_type: 'Billetera Digital',
+          holder_name: '',
+          holder_id: '',
+          bre_b_key: '',
+          instructions: ''
+        }
       });
     }
     setIsModalOpen(true);
@@ -438,6 +465,167 @@ export default function AdminPaymentMethods() {
                   />
                 </FormField>
 
+                {/* Configuración Bancaria / Nequi / Bre-B */}
+                {(formData.type === 'transfer' || formData.type === 'digital_wallet') && (
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/90 space-y-3.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        Plantillas Rápidas
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { label: 'Nequi', icon: 'solar:wallet-bold', type: 'digital_wallet', placeholder: '310 123 4567' },
+                          { label: 'Daviplata', icon: 'solar:wallet-bold', type: 'digital_wallet', placeholder: '310 123 4567' },
+                          { label: 'Bancolombia', icon: 'solar:card-2-bold', type: 'transfer', placeholder: 'Cuenta Ahorros 123-456789-01' },
+                          { label: 'Llave Bre-B', icon: 'solar:flash-bold', type: 'transfer', placeholder: 'Llave Celular / NIT / Alias' },
+                          { label: 'Davivienda', icon: 'solar:card-2-bold', type: 'transfer', placeholder: 'Cuenta Ahorros' }
+                        ].map(preset => (
+                          <button
+                            key={preset.label}
+                            type="button"
+                            onClick={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                name: prev.name && prev.name !== 'Transferencia' && prev.name !== 'Billetera Digital' ? prev.name : `Transferencia ${preset.label}`,
+                                type: preset.type,
+                                details: {
+                                  ...prev.details,
+                                  bank_name: preset.label,
+                                  account_type: preset.type === 'digital_wallet' ? 'Billetera Digital' : 'Cuenta de Ahorros'
+                                }
+                              }));
+                            }}
+                            className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-md text-xs font-semibold text-slate-700 transition-colors shadow-2xs"
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Banco / Plataforma *
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ej. Nequi, Bancolombia, Bre-B..."
+                          value={formData.details?.bank_name || ''}
+                          onChange={e => setFormData(prev => ({
+                            ...prev,
+                            details: { ...prev.details, bank_name: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Tipo de Cuenta
+                        </label>
+                        <select
+                          value={formData.details?.account_type || 'Ahorros'}
+                          onChange={e => setFormData(prev => ({
+                            ...prev,
+                            details: { ...prev.details, account_type: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        >
+                          <option value="Billetera Digital">Billetera Digital (Nequi / Daviplata)</option>
+                          <option value="Ahorros">Cuenta de Ahorros</option>
+                          <option value="Corriente">Cuenta Corriente</option>
+                          <option value="Llave Bre-B">Llave Bre-B Interoperable</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Número de Cuenta o Teléfono *
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ej. 3101234567 o 123-456789-01"
+                          value={formData.details?.account_number || ''}
+                          onChange={e => setFormData(prev => ({
+                            ...prev,
+                            details: { ...prev.details, account_number: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Llave Bre-B (Opcional)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ej. 3101234567 o aluna@breb"
+                          value={formData.details?.bre_b_key || ''}
+                          onChange={e => setFormData(prev => ({
+                            ...prev,
+                            details: { ...prev.details, bre_b_key: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Nombre del Titular
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ej. Nombre del restaurante o dueño"
+                          value={formData.details?.holder_name || ''}
+                          onChange={e => setFormData(prev => ({
+                            ...prev,
+                            details: { ...prev.details, holder_name: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          NIT / Documento Titular
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ej. 901.234.567-8"
+                          value={formData.details?.holder_id || ''}
+                          onChange={e => setFormData(prev => ({
+                            ...prev,
+                            details: { ...prev.details, holder_id: e.target.value }
+                          }))}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Instrucciones para el Cliente (Visible en Checkout)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej. Enviar comprobante al WhatsApp indicando el código de pedido."
+                        value={formData.details?.instructions || ''}
+                        onChange={e => setFormData(prev => ({
+                          ...prev,
+                          details: { ...prev.details, instructions: e.target.value }
+                        }))}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Status Toggle */}
                 <div 
                   onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
@@ -549,6 +737,42 @@ function PaymentMethodCard({ method, onEdit, onDelete, onToggle }) {
             </button>
           </div>
         </div>
+
+        {/* Account Details Box */}
+        {method.details && (method.details.account_number || method.details.bre_b_key) && (
+          <div className="mt-3 p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1.5 text-xs">
+            {method.details.bank_name && (
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-500">Banco / Entidad:</span>
+                <span className="font-bold text-slate-800">{method.details.bank_name}</span>
+              </div>
+            )}
+            {method.details.account_number && (
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-500">{method.details.account_type || 'Cuenta'}:</span>
+                <span className="font-mono font-bold text-slate-900 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                  {method.details.account_number}
+                </span>
+              </div>
+            )}
+            {method.details.bre_b_key && (
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-emerald-700 flex items-center gap-1">
+                  <span>⚡ Llave Bre-B:</span>
+                </span>
+                <span className="font-mono font-bold text-emerald-900 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                  {method.details.bre_b_key}
+                </span>
+              </div>
+            )}
+            {method.details.holder_name && (
+              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5 border-t border-slate-200/50">
+                <span>Titular: {method.details.holder_name}</span>
+                {method.details.holder_id && <span>NIT/CC: {method.details.holder_id}</span>}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="px-5 py-3 bg-gray-50/70 border-t border-gray-100 flex items-center justify-between gap-2">
