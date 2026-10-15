@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
-  Printer, Download, Sparkles, CheckCircle2, MessageCircle, 
-  Layers, Palette, Layout, Settings2, Eye, ShieldCheck, 
-  HelpCircle, AlertCircle, ArrowUpRight, Smartphone, QrCode
+  Printer, Sparkles, CheckCircle2, MessageCircle, 
+  Layers, Layout, Settings2, Eye,
+  Columns, FileText
 } from 'lucide-react';
 import * as QRCodePkg from 'react-qr-code';
 import { useAuth } from '../context/AuthContext';
@@ -32,13 +33,14 @@ export default function AdminMenuPrint() {
   const printTier = PRINT_LIMITS_BY_PLAN[planSlug] || PRINT_LIMITS_BY_PLAN.emprendedor;
   const isUnlimited = printTier.quota === -1;
 
-  // Estado de simulación de caras usadas (en producción se lee de DB; por ahora dejamos 1 cara disponible en planes con cuota)
   const [facesUsedThisMonth] = useState(0);
   const remainingFreeFaces = isUnlimited ? 999 : Math.max(0, printTier.quota - facesUsedThisMonth);
   const canPrintFree = isUnlimited || remainingFreeFaces > 0;
 
   // 2. Opciones de configuración de la carta
-  const [template, setTemplate] = useState('visual'); // 'visual' | 'bistro'
+  const [template, setTemplate] = useState('bistro'); // 'visual' | 'bistro'
+  const [columns, setColumns] = useState(2); // 1 | 2 columnas
+  const [density, setDensity] = useState('compact'); // 'compact' | 'normal' | 'spacious'
   const [selectedCategoryIds, setSelectedCategoryIds] = useState(() => 
     categories.map(c => c.id)
   );
@@ -46,8 +48,6 @@ export default function AdminMenuPrint() {
   const [showQr, setShowQr] = useState(true);
   const [showExtrasNote, setShowExtrasNote] = useState(true);
   const [zoom, setZoom] = useState(0.85); // Escala para vista previa en pantalla
-
-  const printAreaRef = useRef(null);
 
   // Datos de marca
   const brandName = restaurantSettings?.business_name || activeBrand?.name || 'Mi Restaurante';
@@ -74,6 +74,17 @@ export default function AdminMenuPrint() {
     return filteredCategories.flatMap(c => c.items);
   }, [filteredCategories]);
 
+  // Estimación de páginas A4 necesarias
+  const estimatedPages = useMemo(() => {
+    const totalItems = allFilteredProducts.length;
+    if (totalItems === 0) return 0;
+    let itemsPerFace = columns === 2 ? 24 : 14;
+    if (!showDescriptions) itemsPerFace = columns === 2 ? 36 : 22;
+    if (density === 'compact') itemsPerFace = Math.round(itemsPerFace * 1.25);
+    if (density === 'spacious') itemsPerFace = Math.round(itemsPerFace * 0.8);
+    return Math.max(1, Math.ceil(totalItems / itemsPerFace));
+  }, [allFilteredProducts.length, columns, showDescriptions, density]);
+
   // Manejar selección de categorías
   const toggleCategory = (id) => {
     setSelectedCategoryIds(prev => 
@@ -85,7 +96,11 @@ export default function AdminMenuPrint() {
     setSelectedCategoryIds(categories.map(c => c.id));
   };
 
-  // Acción para imprimir / guardar en PDF nativo
+  const deselectAllCategories = () => {
+    setSelectedCategoryIds([]);
+  };
+
+  // Disparar diálogo de impresión nativo (el portal directo se encarga de mostrar solo el menú)
   const handlePrint = () => {
     window.print();
   };
@@ -99,36 +114,275 @@ export default function AdminMenuPrint() {
     window.open(waUrl, '_blank', 'noopener,noreferrer');
   };
 
+  // ─── RENDERIZADOR DE LA HOJA (Usado tanto en la previsualización como en el portal de impresión) ───
+  const renderMenuContent = (isForPrint = false) => {
+    return (
+      <div 
+        style={{
+          width: isForPrint ? '100%' : '210mm',
+          minHeight: isForPrint ? '0' : '297mm',
+          backgroundColor: '#ffffff',
+          color: '#1a1a1a',
+          fontFamily: "'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif"
+        }}
+        className={isForPrint ? "bg-white text-neutral-900 block" : "p-8 sm:p-10 shadow-2xl rounded-sm border border-neutral-200 bg-white block"}
+      >
+        {/* ─── ENCABEZADO DE LA CARTA ─── */}
+        <header 
+          style={{ borderBottomColor: primaryColor }}
+          className="flex justify-between items-center pb-3 border-b-2 mb-4 break-inside-avoid"
+        >
+          <div className="flex items-center gap-3.5">
+            {brandLogo ? (
+              <img 
+                src={brandLogo} 
+                alt={brandName} 
+                crossOrigin="anonymous"
+                className="w-14 h-14 object-contain rounded-xl border border-neutral-200 p-1 bg-white"
+              />
+            ) : (
+              <div 
+                style={{ backgroundColor: primaryColor }}
+                className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-black text-xl"
+              >
+                {brandName.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <h1 
+                style={{ color: primaryColor }}
+                className="text-2xl font-black tracking-tight leading-none"
+              >
+                {brandName}
+              </h1>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 mt-1">
+                Menú de Selección Oficial
+              </p>
+            </div>
+          </div>
+
+          <div className="text-right text-[10px] text-neutral-600 leading-tight">
+            <div className="font-bold text-neutral-900">{brandAddress}</div>
+            {brandPhone && <div>Tel / Pedidos: <strong>{brandPhone}</strong></div>}
+            <div>Moneda: <strong>Pesos Colombianos (COP)</strong></div>
+          </div>
+        </header>
+
+        {/* ─── CONTENIDO DE CATEGORÍAS Y PLATOS ─── */}
+        <div className="space-y-4">
+          {filteredCategories.map(cat => (
+            <div key={cat.id} className="break-inside-avoid mb-4">
+              {/* Título de categoría */}
+              <div 
+                className="flex items-center justify-between bg-neutral-50 border-l-4 px-3 py-1.5 rounded-r-md mb-2.5 break-after-avoid" 
+                style={{ borderLeftColor: primaryColor }}
+              >
+                <h2 className="text-xs font-black uppercase tracking-wider text-neutral-900">
+                  {cat.name}
+                </h2>
+                <span className="text-[9px] font-semibold text-neutral-400">
+                  {cat.items.length} opciones
+                </span>
+              </div>
+
+              {/* Platos según plantilla */}
+              {template === 'visual' ? (
+                <div className="grid grid-cols-2 gap-2.5">
+                  {cat.items.map(p => (
+                    <div 
+                      key={p.id}
+                      className={`flex gap-2.5 rounded-xl border border-neutral-200/90 bg-white break-inside-avoid ${
+                        density === 'compact' ? 'p-1.5' : density === 'spacious' ? 'p-3' : 'p-2'
+                      }`}
+                    >
+                      {p.image_url && (
+                        <img 
+                          src={p.image_url} 
+                          alt={p.name} 
+                          crossOrigin="anonymous"
+                          loading="eager"
+                          className="w-16 h-16 object-cover rounded-lg shrink-0 border border-neutral-100 bg-neutral-50"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0 flex flex-col justify-between">
+                        <div>
+                          <div className="flex justify-between items-baseline gap-1">
+                            <h4 className={`font-extrabold text-neutral-900 leading-tight truncate ${
+                              density === 'compact' ? 'text-[11px]' : density === 'spacious' ? 'text-[12.5px]' : 'text-[11.5px]'
+                            }`}>
+                              {p.name}
+                            </h4>
+                            <span 
+                              style={{ color: primaryColor }}
+                              className={`font-extrabold shrink-0 ${
+                                density === 'compact' ? 'text-[11px]' : 'text-[11.5px]'
+                              }`}
+                            >
+                              {formatCOP(p.price)}
+                            </span>
+                          </div>
+                          {showDescriptions && p.description && (
+                            <p className={`text-neutral-500 leading-tight line-clamp-2 mt-0.5 ${
+                              density === 'compact' ? 'text-[8.5px]' : 'text-[9px]'
+                            }`}>
+                              {p.description}
+                            </p>
+                          )}
+                        </div>
+                        {p.tags?.[0] && (
+                          <span className="text-[8px] font-bold uppercase tracking-wider text-neutral-400 mt-0.5">
+                            • {p.tags[0]}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                /* Plantilla Bistró (Minimalista) */
+                <div className={columns === 2 ? "grid grid-cols-2 gap-x-6 gap-y-2" : "space-y-1.5"}>
+                  {cat.items.map(p => (
+                    <div 
+                      key={p.id} 
+                      className={`border-b border-neutral-100 last:border-b-0 break-inside-avoid ${
+                        density === 'compact' ? 'pb-1' : density === 'spacious' ? 'pb-2' : 'pb-1.5'
+                      }`}
+                    >
+                      <div className="flex justify-between items-baseline">
+                        <h4 className={`font-bold text-neutral-900 ${
+                          density === 'compact' ? 'text-[11px]' : density === 'spacious' ? 'text-[13px]' : 'text-xs'
+                        }`}>
+                          {p.name}
+                        </h4>
+                        <div className="flex-1 border-b border-dotted border-neutral-300 mx-2" />
+                        <span 
+                          style={{ color: primaryColor }} 
+                          className={`font-black shrink-0 ${
+                            density === 'compact' ? 'text-[11px]' : density === 'spacious' ? 'text-[13px]' : 'text-xs'
+                          }`}
+                        >
+                          {formatCOP(p.price)}
+                        </span>
+                      </div>
+                      {showDescriptions && p.description && (
+                        <p className={`text-neutral-500 leading-tight mt-0.5 ${
+                          density === 'compact' ? 'text-[8.5px]' : density === 'spacious' ? 'text-[10px]' : 'text-[9.5px]'
+                        }`}>
+                          {p.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {filteredCategories.length === 0 && (
+            <div className="text-center py-12 text-neutral-400 text-xs">
+              Selecciona al menos una categoría con productos para previsualizar.
+            </div>
+          )}
+        </div>
+
+        {/* ─── NOTA DE EMPAQUE / CALIDAD ─── */}
+        {showExtrasNote && (
+          <div className="mt-5 p-3 rounded-xl border border-dashed border-neutral-300 bg-neutral-50/70 text-center break-inside-avoid">
+            <p className="text-[9.5px] text-neutral-600 font-medium">
+              ✓ Todos nuestros platos son elaborados al momento con ingredientes frescos seleccionados. Empaque hermético de alta calidad apto para delivery seguro.
+            </p>
+          </div>
+        )}
+
+        {/* ─── FOOTER CON QR Y VERIFICACIÓN ─── */}
+        <footer className="pt-3 border-t border-neutral-200 flex justify-between items-center mt-6 break-inside-avoid">
+          <div className="text-[9px] text-neutral-500">
+            <div><strong>{brandName}</strong> • Catálogo oficial sincronizado en tiempo real.</div>
+            <div className="text-[8px] text-neutral-400 mt-0.5">Precios vigentes en pesos colombianos (COP). Impreso vía Aluna QR Menu.</div>
+          </div>
+
+          {showQr && QRCodeComponent && (
+            <div className="flex items-center gap-2">
+              <div className="text-right">
+                <div className="text-[8.5px] font-black uppercase tracking-wider text-neutral-800">
+                  Pide desde tu celular
+                </div>
+                <div className="text-[7.5px] text-neutral-400">Escanea para ver menú interactivo</div>
+              </div>
+              <div className="p-1 bg-white border border-neutral-200 rounded-lg">
+                <QRCodeComponent 
+                  value={menuUrl} 
+                  size={38}
+                  level="M"
+                />
+              </div>
+            </div>
+          )}
+        </footer>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-neutral-100/70 p-4 sm:p-6 lg:p-8">
-      {/* ─── ESTILOS DE IMPRESIÓN A4 NATIVOS ─── */}
+      {/* ─── ESTILOS MAESTROS DE IMPRESIÓN (Arquitectura de Portal Aislado) ─── */}
       <style>{`
+        /* En pantalla, el portal de impresión está completamente oculto */
+        @media screen {
+          #aluna-print-portal {
+            display: none !important;
+          }
+        }
+
+        /* Al imprimir (Ctrl + P o clic en botón) */
         @media print {
-          body * {
-            visibility: hidden;
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm;
           }
-          #printable-sheet, #printable-sheet * {
-            visibility: visible;
+
+          /* 1. Ocultar absolutamente toda la aplicación de pantalla */
+          #root, #modal-root, .no-print {
+            display: none !important;
           }
-          #printable-sheet {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 100vw;
-            height: 100vh;
-            margin: 0;
-            padding: 8mm 12mm;
-            background: white !important;
+
+          /* 2. Resetear body y html para permitir paginación infinita */
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            min-height: 100% !important;
+            background: #ffffff !important;
+            color: #1a1a1a !important;
+            overflow: visible !important;
+            font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          /* 3. Mostrar única y exclusivamente el portal de impresión */
+          #aluna-print-portal {
+            display: block !important;
+            position: static !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
             box-shadow: none !important;
             border: none !important;
             transform: none !important;
           }
-          @page {
-            size: A4 portrait;
-            margin: 0;
+
+          .break-inside-avoid {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
-          .no-print {
-            display: none !important;
+
+          .break-after-avoid {
+            break-after: avoid !important;
+            page-break-after: avoid !important;
           }
         }
       `}</style>
@@ -149,7 +403,7 @@ export default function AdminMenuPrint() {
               Generador de Carta Imprimible (PDF)
             </h1>
             <p className="text-xs sm:text-sm text-neutral-500 font-medium">
-              Exporta tu carta en alta resolución para imprenta, afiches de mesa, volantes y plataformas de delivery (Rappi / DiDi).
+              Exporta tu carta en alta resolución para imprenta, afiches de mesa, volantes y menú físico. Paginación automática continua sin cortes.
             </p>
           </div>
 
@@ -200,7 +454,7 @@ export default function AdminMenuPrint() {
               <Layout size={14} /> Estilo de Plantilla
             </h3>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 mb-4">
               <button
                 type="button"
                 onClick={() => setTemplate('visual')}
@@ -227,9 +481,67 @@ export default function AdminMenuPrint() {
               >
                 <div className="font-extrabold text-xs mb-1">Bistró Clásico</div>
                 <div className={`text-[10px] leading-relaxed ${template === 'bistro' ? 'text-neutral-300' : 'text-neutral-500'}`}>
-                  Tipográfico elegante sin fotos. Ideal para mesa, cafés y gastrobares.
+                  Tipográfico elegante sin fotos. Máximo rendimiento de espacio en papel.
                 </div>
               </button>
+            </div>
+
+            {/* Selector de Columnas */}
+            <div className="pt-3 border-t border-neutral-100">
+              <div className="text-[11px] font-bold text-neutral-700 mb-2 flex items-center gap-1.5">
+                <Columns size={13} /> Distribución en la Hoja:
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setColumns(1)}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold border transition-colors ${
+                    columns === 1 
+                      ? 'bg-neutral-900 text-white border-neutral-900' 
+                      : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100'
+                  }`}
+                >
+                  1 Columna (Amplio)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setColumns(2)}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold border transition-colors ${
+                    columns === 2 
+                      ? 'bg-neutral-900 text-white border-neutral-900' 
+                      : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100'
+                  }`}
+                >
+                  2 Columnas (Bistró París ⭐)
+                </button>
+              </div>
+            </div>
+
+            {/* Selector de Densidad / Tamaño */}
+            <div className="pt-3 border-t border-neutral-100 mt-3">
+              <div className="text-[11px] font-bold text-neutral-700 mb-2 flex items-center gap-1.5">
+                <FileText size={13} /> Densidad de Texto:
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { key: 'compact', label: 'Compacto' },
+                  { key: 'normal', label: 'Normal' },
+                  { key: 'spacious', label: 'Espacioso' }
+                ].map(item => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setDensity(item.key)}
+                    className={`py-1.5 text-[11px] font-bold rounded-lg border text-center transition-colors ${
+                      density === item.key 
+                        ? 'bg-neutral-900 text-white border-neutral-900' 
+                        : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -237,18 +549,28 @@ export default function AdminMenuPrint() {
           <div className="bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-xs">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
-                <Layers size={14} /> Categorías a Incluir
+                <Layers size={14} /> Categorías ({filteredCategories.length}/{categories.length})
               </h3>
-              <button
-                type="button"
-                onClick={selectAllCategories}
-                className="text-[11px] font-bold text-neutral-900 hover:underline"
-              >
-                Seleccionar todas
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={selectAllCategories}
+                  className="text-[11px] font-bold text-neutral-900 hover:underline"
+                >
+                  Todas
+                </button>
+                <span className="text-neutral-300">•</span>
+                <button
+                  type="button"
+                  onClick={deselectAllCategories}
+                  className="text-[11px] font-bold text-neutral-500 hover:underline"
+                >
+                  Ninguna
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+            <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
               {categories.map(cat => {
                 const isSelected = selectedCategoryIds.includes(cat.id);
                 const count = (productsByCategory[cat.slug] || []).length;
@@ -331,7 +653,7 @@ export default function AdminMenuPrint() {
                   <span>Imprimir / Guardar en PDF</span>
                 </button>
                 <p className="text-[11px] text-neutral-500 text-center mt-2">
-                  Se abrirá el cuadro de diálogo oficial para guardar en PDF o imprimir en alta resolución.
+                  Se abrirá el cuadro de diálogo para guardar el PDF completo con todas las páginas sin cortes.
                 </p>
               </div>
             ) : (
@@ -363,30 +685,38 @@ export default function AdminMenuPrint() {
         {/* PREVISUALIZACIÓN HOJA A4 (COL 8) */}
         <div className="lg:col-span-8 flex flex-col items-center">
           
-          {/* Barra de control de Zoom */}
-          <div className="flex items-center gap-2 mb-3 bg-white px-3 py-1.5 rounded-full border border-neutral-200 shadow-xs text-xs font-bold text-neutral-600 no-print">
-            <span>Zoom:</span>
-            <button 
-              onClick={() => setZoom(0.7)} 
-              className={`px-2 py-0.5 rounded ${zoom === 0.7 ? 'bg-neutral-900 text-white' : 'hover:bg-neutral-100'}`}
-            >
-              70%
-            </button>
-            <button 
-              onClick={() => setZoom(0.85)} 
-              className={`px-2 py-0.5 rounded ${zoom === 0.85 ? 'bg-neutral-900 text-white' : 'hover:bg-neutral-100'}`}
-            >
-              85%
-            </button>
-            <button 
-              onClick={() => setZoom(1)} 
-              className={`px-2 py-0.5 rounded ${zoom === 1 ? 'bg-neutral-900 text-white' : 'hover:bg-neutral-100'}`}
-            >
-              100%
-            </button>
+          {/* Barra de control de Zoom y Contador de Páginas */}
+          <div className="flex flex-wrap items-center justify-between w-full max-w-[210mm] mb-3 px-2 no-print gap-2">
+            <div className="flex items-center gap-2 bg-neutral-900 text-white px-3 py-1 rounded-full text-xs font-bold shadow-xs">
+              <span>📄 {allFilteredProducts.length} platos</span>
+              <span className="text-neutral-400">•</span>
+              <span className="text-amber-300 font-extrabold">~{estimatedPages} {estimatedPages === 1 ? 'página' : 'páginas'} A4</span>
+            </div>
+
+            <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-neutral-200 shadow-xs text-xs font-bold text-neutral-600">
+              <span>Zoom:</span>
+              <button 
+                onClick={() => setZoom(0.7)} 
+                className={`px-2 py-0.5 rounded ${zoom === 0.7 ? 'bg-neutral-900 text-white' : 'hover:bg-neutral-100'}`}
+              >
+                70%
+              </button>
+              <button 
+                onClick={() => setZoom(0.85)} 
+                className={`px-2 py-0.5 rounded ${zoom === 0.85 ? 'bg-neutral-900 text-white' : 'hover:bg-neutral-100'}`}
+              >
+                85%
+              </button>
+              <button 
+                onClick={() => setZoom(1)} 
+                className={`px-2 py-0.5 rounded ${zoom === 1 ? 'bg-neutral-900 text-white' : 'hover:bg-neutral-100'}`}
+              >
+                100%
+              </button>
+            </div>
           </div>
 
-          {/* CONTENEDOR ESCALADO DE LA HOJA A4 */}
+          {/* CONTENEDOR ESCALADO DE LA HOJA A4 (SOLO PARA PANTALLA) */}
           <div 
             style={{ 
               transform: `scale(${zoom})`, 
@@ -394,192 +724,21 @@ export default function AdminMenuPrint() {
               width: '210mm',
               minHeight: '297mm'
             }}
-            className="transition-transform duration-200 origin-top"
+            className="transition-transform duration-200 origin-top pb-16"
           >
-            {/* HOJA A4 IMPRIMIBLE */}
-            <div 
-              id="printable-sheet"
-              ref={printAreaRef}
-              style={{
-                width: '210mm',
-                minHeight: '297mm',
-                backgroundColor: '#ffffff',
-                color: '#1a1a1a',
-                fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif"
-              }}
-              className="p-8 sm:p-10 shadow-2xl rounded-sm border border-neutral-200 flex flex-col justify-between"
-            >
-              <div>
-                {/* ─── ENCABEZADO DE LA CARTA ─── */}
-                <header 
-                  style={{ borderBottomColor: primaryColor }}
-                  className="flex justify-between items-center pb-3 border-b-2 mb-4"
-                >
-                  <div className="flex items-center gap-3.5">
-                    {brandLogo ? (
-                      <img 
-                        src={brandLogo} 
-                        alt={brandName} 
-                        className="w-14 h-14 object-contain rounded-xl border border-neutral-200 p-1 bg-white"
-                      />
-                    ) : (
-                      <div 
-                        style={{ backgroundColor: primaryColor }}
-                        className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-black text-xl"
-                      >
-                        {brandName.slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
-                    <div>
-                      <h1 
-                        style={{ color: primaryColor }}
-                        className="text-2xl font-black tracking-tight leading-none"
-                      >
-                        {brandName}
-                      </h1>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 mt-1">
-                        Menú de Selección Oficial
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="text-right text-[10px] text-neutral-600 leading-tight">
-                    <div className="font-bold text-neutral-900">{brandAddress}</div>
-                    {brandPhone && <div>Tel / Pedidos: <strong>{brandPhone}</strong></div>}
-                    <div>Moneda: <strong>Pesos Colombianos (COP)</strong></div>
-                  </div>
-                </header>
-
-                {/* ─── CONTENIDO DE CATEGORÍAS Y PLATOS ─── */}
-                <div className="space-y-4">
-                  {filteredCategories.map(cat => (
-                    <div key={cat.id}>
-                      {/* Título de categoría */}
-                      <div className="flex items-center justify-between bg-neutral-50 border-l-4 px-3 py-1.5 rounded-r-md mb-2.5" style={{ borderLeftColor: primaryColor }}>
-                        <h2 className="text-xs font-black uppercase tracking-wider text-neutral-900">
-                          {cat.name}
-                        </h2>
-                        <span className="text-[9px] font-semibold text-neutral-400">
-                          {cat.items.length} opciones
-                        </span>
-                      </div>
-
-                      {/* Platos según plantilla */}
-                      {template === 'visual' ? (
-                        <div className="grid grid-cols-2 gap-2.5">
-                          {cat.items.map(p => (
-                            <div 
-                              key={p.id}
-                              className="flex gap-2.5 p-2 rounded-xl border border-neutral-200/90 bg-white"
-                            >
-                              {p.image_url && (
-                                <img 
-                                  src={p.image_url} 
-                                  alt={p.name} 
-                                  className="w-16 h-16 object-cover rounded-lg shrink-0 border border-neutral-100 bg-neutral-50"
-                                />
-                              )}
-                              <div className="flex-1 min-w-0 flex flex-col justify-between">
-                                <div>
-                                  <div className="flex justify-between items-baseline gap-1">
-                                    <h4 className="text-[11.5px] font-extrabold text-neutral-900 leading-tight truncate">
-                                      {p.name}
-                                    </h4>
-                                    <span 
-                                      style={{ color: primaryColor }}
-                                      className="text-[11.5px] font-extrabold shrink-0"
-                                    >
-                                      {formatCOP(p.price)}
-                                    </span>
-                                  </div>
-                                  {showDescriptions && p.description && (
-                                    <p className="text-[9px] text-neutral-500 leading-tight line-clamp-2 mt-1">
-                                      {p.description}
-                                    </p>
-                                  )}
-                                </div>
-                                {p.tags?.[0] && (
-                                  <span className="text-[8px] font-bold uppercase tracking-wider text-neutral-400 mt-1">
-                                    • {p.tags[0]}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        /* Plantilla Bistró (Minimalista) */
-                        <div className="space-y-2">
-                          {cat.items.map(p => (
-                            <div key={p.id} className="pb-1.5 border-b border-neutral-100 last:border-b-0">
-                              <div className="flex justify-between items-baseline">
-                                <h4 className="text-xs font-bold text-neutral-900">
-                                  {p.name}
-                                </h4>
-                                <div className="flex-1 border-b border-dotted border-neutral-300 mx-2" />
-                                <span style={{ color: primaryColor }} className="text-xs font-black">
-                                  {formatCOP(p.price)}
-                                </span>
-                              </div>
-                              {showDescriptions && p.description && (
-                                <p className="text-[9.5px] text-neutral-500 leading-tight mt-0.5">
-                                  {p.description}
-                                </p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-
-                  {filteredCategories.length === 0 && (
-                    <div className="text-center py-12 text-neutral-400 text-xs">
-                      Selecciona al menos una categoría con productos para previsualizar.
-                    </div>
-                  )}
-                </div>
-
-                {/* ─── NOTA DE EMPAQUE / CALIDAD ─── */}
-                {showExtrasNote && (
-                  <div className="mt-4 p-3 rounded-xl border border-dashed border-neutral-300 bg-neutral-50/70 text-center">
-                    <p className="text-[9.5px] text-neutral-600 font-medium">
-                      ✓ Todos nuestros platos son elaborados al momento con ingredientes frescos seleccionados. Empaque hermético de alta calidad apto para delivery seguro.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* ─── FOOTER CON QR Y VERIFICACIÓN ─── */}
-              <footer className="pt-3 border-t border-neutral-200 flex justify-between items-center mt-6">
-                <div className="text-[9px] text-neutral-500">
-                  <div><strong>{brandName}</strong> • Catálogo oficial sincronizado en tiempo real.</div>
-                  <div className="text-[8px] text-neutral-400 mt-0.5">Precios vigentes en pesos colombianos (COP). Impreso vía Aluna QR Menu.</div>
-                </div>
-
-                {showQr && QRCodeComponent && (
-                  <div className="flex items-center gap-2">
-                    <div className="text-right">
-                      <div className="text-[8.5px] font-black uppercase tracking-wider text-neutral-800">
-                        Pide desde tu celular
-                      </div>
-                      <div className="text-[7.5px] text-neutral-400">Escanea para ver menú interactivo</div>
-                    </div>
-                    <div className="p-1 bg-white border border-neutral-200 rounded-lg">
-                      <QRCodeComponent 
-                        value={menuUrl} 
-                        size={38}
-                        level="M"
-                      />
-                    </div>
-                  </div>
-                )}
-              </footer>
-            </div>
+            {renderMenuContent(false)}
           </div>
         </div>
 
       </div>
+
+      {/* ─── PORTAL DE IMPRESIÓN DIRECTO (Montado en document.body para aislar 100% de la app al imprimir) ─── */}
+      {createPortal(
+        <div id="aluna-print-portal">
+          {renderMenuContent(true)}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
