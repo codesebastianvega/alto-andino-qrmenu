@@ -41,37 +41,45 @@ const isKitchenItem = (item) => {
   return !isBarItem(item);
 };
 
-function TicketTimer({ createdAt, isDark }) {
+function TicketTimer({ createdAt, isDark, targetMins = 15 }) {
   const [mins, setMins] = useState(0);
 
   useEffect(() => {
     const updateTimer = () => {
-      setMins(Math.floor((new Date() - new Date(createdAt)) / 60000));
+      setMins(Math.max(0, Math.floor((new Date() - new Date(createdAt)) / 60000)));
     };
     updateTimer();
-    const interval = setInterval(updateTimer, 30000);
+    const interval = setInterval(updateTimer, 10000);
     return () => clearInterval(interval);
   }, [createdAt]);
+
+  const isOverdue = mins > targetMins;
+  const isWarning = mins >= Math.floor(targetMins * 0.7);
 
   let badgeColor = isDark 
     ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' 
     : 'text-emerald-700 bg-emerald-50 border-emerald-200';
     
-  if (mins >= 10) {
+  if (isWarning && !isOverdue) {
     badgeColor = isDark 
       ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' 
-      : 'text-amber-800 bg-amber-50 border-amber-200';
+      : 'text-amber-800 bg-amber-50 border-amber-200 font-bold';
   }
-  if (mins >= 20) {
+  if (isOverdue) {
     badgeColor = isDark 
-      ? 'text-rose-400 bg-rose-500/10 border-rose-500/30 animate-pulse' 
-      : 'text-rose-700 bg-rose-50 border-rose-300 animate-pulse font-bold';
+      ? 'text-rose-400 bg-rose-500/20 border-rose-500/40 animate-pulse font-black' 
+      : 'text-rose-700 bg-rose-50 border-rose-300 animate-pulse font-black';
   }
 
   return (
     <div className={`text-xs font-mono font-bold px-2 py-0.5 rounded border flex items-center gap-1 ${badgeColor}`}>
-      <Icon icon="heroicons:clock" className="text-xs" />
-      {mins}m
+      <Icon icon={isOverdue ? "heroicons:exclamation-triangle" : "heroicons:clock"} className="text-xs" />
+      <span>{mins}m</span>
+      {isOverdue && (
+        <span className="text-[10px] ml-0.5 opacity-90">
+          (+{mins - targetMins}m)
+        </span>
+      )}
     </div>
   );
 }
@@ -177,11 +185,13 @@ export default function AdminKitchen() {
 
   // Filtrado de pedidos según estación seleccionada
   const stationOrders = useMemo(() => {
-    if (stationFilter === 'all') return orders;
+    // Si la cocina ya despachó sus platos, no debe seguir estorbando en la pantalla de cocina
+    const activeKitchenOrders = orders.filter(o => o.kitchen_status !== 'ready');
+    if (stationFilter === 'all') return activeKitchenOrders;
     if (stationFilter === 'bar') {
-      return orders.filter(o => o.order_items?.some(it => isBarItem(it)));
+      return activeKitchenOrders.filter(o => o.order_items?.some(it => isBarItem(it)));
     }
-    return orders.filter(o => o.order_items?.some(it => isKitchenItem(it)));
+    return activeKitchenOrders.filter(o => o.order_items?.some(it => isKitchenItem(it)));
   }, [orders, stationFilter]);
 
   // Filtrado según estado (por preparar / preparando / todos)
@@ -232,12 +242,12 @@ export default function AdminKitchen() {
       setUpdatingStatus(orderId);
       const { error } = await supabase
         .from('orders')
-        .update({ status: 'preparing' })
+        .update({ kitchen_status: 'preparing', status: 'preparing' })
         .eq('id', orderId);
       
       if (error) throw error;
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'preparing' } : o));
-      toast('Pedido en preparación');
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, kitchen_status: 'preparing', status: 'preparing' } : o));
+      toast('🍳 Pedido en preparación en cocina');
     } catch (err) {
       console.error('Error updating order:', err);
       toast('Error al marcar como preparando');
@@ -249,14 +259,33 @@ export default function AdminKitchen() {
   const markAsReady = async (orderId) => {
     try {
       setUpdatingStatus(orderId);
+      const currentOrder = orders.find(o => o.id === orderId);
+      const hasBarItems = currentOrder?.order_items?.some(it => isBarItem(it));
+      // Bar is complete if the order doesn't require bar items, or bar_status is already 'ready' or 'none'
+      const isBarDone = !hasBarItems || !currentOrder?.bar_status || currentOrder.bar_status === 'ready' || currentOrder.bar_status === 'none';
+
+      const updatePayload = {
+        kitchen_status: 'ready',
+        kitchen_ready_at: new Date().toISOString()
+      };
+      
+      // If bar is also done (or not needed), mark the overall order as ready!
+      if (isBarDone) {
+        updatePayload.status = 'ready';
+      }
+
       const { error } = await supabase
         .from('orders')
-        .update({ status: 'ready' })
+        .update(updatePayload)
         .eq('id', orderId);
       
       if (error) throw error;
       setOrders(prev => prev.filter(o => o.id !== orderId));
-      toast('¡Pedido despachado!');
+      if (isBarDone) {
+        toast('🎉 ¡Pedido completamente despachado!');
+      } else {
+        toast('🍳 ¡Cocina lista! Esperando que barra finalice las bebidas 🍸', { icon: '🍸' });
+      }
       playReadySound();
     } catch (err) {
       console.error('Error updating order:', err);
@@ -284,15 +313,22 @@ export default function AdminKitchen() {
         if (!isTargetLocation) return;
 
         if (payload.eventType === 'INSERT') {
-          if (['new', 'preparing'].includes(payload.new.status)) {
+          if (['new', 'preparing'].includes(payload.new.status) && payload.new.kitchen_status !== 'ready') {
             playNotificationSound();
             toast('¡Nueva comanda en cocina!', { icon: '🍳' });
             setTimeout(() => fetchKitchenOrders(true), 1000);
           }
         } else if (payload.eventType === 'UPDATE') {
-          if (!['new', 'preparing'].includes(payload.new.status)) {
+          // Notification when Bar finishes drinks for this order!
+          if (payload.new.bar_status === 'ready' && payload.old?.bar_status !== 'ready') {
+            playReadySound();
+            toast('🍸 ¡Bebidas listas para la comanda!', { icon: '🍸' });
+          }
+
+          if (!['new', 'preparing'].includes(payload.new.status) || payload.new.kitchen_status === 'ready') {
             setOrders(prev => prev.filter(o => o.id !== payload.new.id));
           } else {
+            setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o));
             setTimeout(() => fetchKitchenOrders(true), 500);
           }
         } else if (payload.eventType === 'DELETE') {
@@ -375,6 +411,24 @@ export default function AdminKitchen() {
                     : 'text-cyan-800 bg-cyan-50 border-cyan-200'
                 }`}>
                   🍸 +{otherItemsCount} bar
+                </span>
+              )}
+              {stationFilter === 'kitchen' && order.bar_status === 'ready' && (
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                  isDark
+                    ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40 animate-pulse'
+                    : 'bg-teal-50 text-teal-800 border border-teal-200'
+                }`}>
+                  🍸 BEBIDAS YA LISTAS
+                </span>
+              )}
+              {stationFilter === 'kitchen' && order.bar_status === 'preparing' && (
+                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                  isDark
+                    ? 'bg-blue-500/10 text-blue-300 border border-blue-500/30'
+                    : 'bg-blue-50 text-blue-700 border border-blue-200'
+                }`}>
+                  🍸 Barra preparando
                 </span>
               )}
               {stationFilter === 'bar' && otherItemsCount > 0 && (

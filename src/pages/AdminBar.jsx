@@ -40,37 +40,45 @@ const isKitchenItem = (item) => {
   return !isBarItem(item);
 };
 
-function BarTicketTimer({ createdAt, isDark }) {
+function BarTicketTimer({ createdAt, isDark, targetMins = 10 }) {
   const [mins, setMins] = useState(0);
 
   useEffect(() => {
     const updateTimer = () => {
-      setMins(Math.floor((new Date() - new Date(createdAt)) / 60000));
+      setMins(Math.max(0, Math.floor((new Date() - new Date(createdAt)) / 60000)));
     };
     updateTimer();
-    const interval = setInterval(updateTimer, 30000);
+    const interval = setInterval(updateTimer, 10000);
     return () => clearInterval(interval);
   }, [createdAt]);
+
+  const isOverdue = mins > targetMins;
+  const isWarning = mins >= Math.floor(targetMins * 0.7);
 
   let badgeColor = isDark 
     ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' 
     : 'text-cyan-800 bg-cyan-50 border-cyan-200 font-bold';
 
-  if (mins >= 7) {
+  if (isWarning && !isOverdue) {
     badgeColor = isDark 
       ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' 
       : 'text-amber-800 bg-amber-50 border-amber-200 font-bold';
   }
-  if (mins >= 15) {
+  if (isOverdue) {
     badgeColor = isDark 
-      ? 'text-rose-400 bg-rose-500/10 border-rose-500/30 animate-pulse' 
-      : 'text-rose-700 bg-rose-50 border-rose-300 animate-pulse font-bold';
+      ? 'text-rose-400 bg-rose-500/20 border-rose-500/40 animate-pulse font-black' 
+      : 'text-rose-700 bg-rose-50 border-rose-300 animate-pulse font-black';
   }
 
   return (
     <div className={`text-xs font-mono px-2 py-0.5 rounded border flex items-center gap-1 ${badgeColor}`}>
-      <Icon icon="heroicons:clock" className="text-xs" />
-      {mins}m
+      <Icon icon={isOverdue ? "heroicons:exclamation-triangle" : "heroicons:clock"} className="text-xs" />
+      <span>{mins}m</span>
+      {isOverdue && (
+        <span className="text-[10px] ml-0.5 opacity-90">
+          (+{mins - targetMins}m)
+        </span>
+      )}
     </div>
   );
 }
@@ -158,11 +166,13 @@ export default function AdminBar() {
 
   // Filtrado de pedidos según estación
   const stationOrders = useMemo(() => {
-    if (stationFilter === 'all') return orders;
+    // Si la barra ya despachó sus bebidas, no debe seguir estorbando en la pantalla de barra
+    const activeBarOrders = orders.filter(o => o.bar_status !== 'ready');
+    if (stationFilter === 'all') return activeBarOrders;
     if (stationFilter === 'kitchen') {
-      return orders.filter(o => o.order_items?.some(it => isKitchenItem(it)));
+      return activeBarOrders.filter(o => o.order_items?.some(it => isKitchenItem(it)));
     }
-    return orders.filter(o => o.order_items?.some(it => isBarItem(it)));
+    return activeBarOrders.filter(o => o.order_items?.some(it => isBarItem(it)));
   }, [orders, stationFilter]);
 
   const displayedOrders = useMemo(() => {
@@ -212,12 +222,12 @@ export default function AdminBar() {
       setUpdatingStatus(orderId);
       const { error } = await supabase
         .from('orders')
-        .update({ status: 'preparing' })
+        .update({ bar_status: 'preparing', status: 'preparing' })
         .eq('id', orderId);
 
       if (error) throw error;
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'preparing' } : o));
-      toast('Bebidas en preparación');
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, bar_status: 'preparing', status: 'preparing' } : o));
+      toast('🍸 Bebidas en preparación en barra');
     } catch (err) {
       console.error('Error updating order:', err);
       toast('Error al marcar como preparando');
@@ -229,14 +239,32 @@ export default function AdminBar() {
   const markAsReady = async (orderId) => {
     try {
       setUpdatingStatus(orderId);
+      const currentOrder = orders.find(o => o.id === orderId);
+      const hasKitchenItems = currentOrder?.order_items?.some(it => isKitchenItem(it));
+      // Kitchen is complete if the order doesn't require kitchen, or kitchen_status is already 'ready' or 'none'
+      const isKitchenDone = !hasKitchenItems || !currentOrder?.kitchen_status || currentOrder.kitchen_status === 'ready' || currentOrder.kitchen_status === 'none';
+
+      const updatePayload = {
+        bar_status: 'ready',
+        bar_ready_at: new Date().toISOString()
+      };
+
+      if (isKitchenDone) {
+        updatePayload.status = 'ready';
+      }
+
       const { error } = await supabase
         .from('orders')
-        .update({ status: 'ready' })
+        .update(updatePayload)
         .eq('id', orderId);
 
       if (error) throw error;
       setOrders(prev => prev.filter(o => o.id !== orderId));
-      toast('¡Bebidas listas para servir!');
+      if (isKitchenDone) {
+        toast('🎉 ¡Bebidas y pedido completamente listos!');
+      } else {
+        toast('🍸 ¡Bebidas listas! Cocina sigue preparando los platos 🍳', { icon: '🍳' });
+      }
       playBarReadySound();
     } catch (err) {
       console.error('Error updating order:', err);
@@ -264,15 +292,22 @@ export default function AdminBar() {
         if (!isTargetLocation) return;
 
         if (payload.eventType === 'INSERT') {
-          if (['new', 'preparing'].includes(payload.new.status)) {
+          if (['new', 'preparing'].includes(payload.new.status) && payload.new.bar_status !== 'ready') {
             playBarNotificationSound();
             toast('¡Nueva comanda en barra!', { icon: '🍸' });
             setTimeout(() => fetchBarOrders(true), 1000);
           }
         } else if (payload.eventType === 'UPDATE') {
-          if (!['new', 'preparing'].includes(payload.new.status)) {
+          // Notification when Kitchen finishes food for this order!
+          if (payload.new.kitchen_status === 'ready' && payload.old?.kitchen_status !== 'ready') {
+            playBarReadySound();
+            toast('🍳 ¡Cocina ya tiene listos los platos!', { icon: '🍳' });
+          }
+
+          if (!['new', 'preparing'].includes(payload.new.status) || payload.new.bar_status === 'ready') {
             setOrders(prev => prev.filter(o => o.id !== payload.new.id));
           } else {
+            setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o));
             setTimeout(() => fetchBarOrders(true), 500);
           }
         } else if (payload.eventType === 'DELETE') {
@@ -355,6 +390,26 @@ export default function AdminBar() {
                     : 'text-orange-800 bg-orange-50 border-orange-200'
                 }`}>
                   🍳 +{otherItemsCount} cocina
+                </span>
+              )}
+
+              {stationFilter === 'bar' && order.kitchen_status === 'ready' && (
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                  isDark 
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse' 
+                    : 'bg-amber-50 text-amber-800 border border-amber-200'
+                }`}>
+                  🍳 COCINA YA LISTA
+                </span>
+              )}
+
+              {stationFilter === 'bar' && order.kitchen_status === 'preparing' && (
+                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                  isDark 
+                    ? 'bg-orange-500/10 text-orange-300 border border-orange-500/30' 
+                    : 'bg-orange-50 text-orange-700 border border-orange-200'
+                }`}>
+                  🍳 Cocina preparando
                 </span>
               )}
 

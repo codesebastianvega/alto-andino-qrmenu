@@ -267,36 +267,52 @@ export default function AdminWaiter() {
     <div className="p-4 md:p-8 pb-28 max-w-[1500px] mx-auto space-y-6 selection:bg-[#2f4131]/20 min-h-screen">
       
       {/* HEADER POS COMPACTO */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white/70 backdrop-blur-2xl p-6 rounded-[2rem] border border-white/50 shadow-xl shadow-gray-200/30">
-        <div className="space-y-1.5">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/80 backdrop-blur-xl p-4 md:p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div className="space-y-1">
           <div className="flex items-center gap-2">
              <Activity className="text-[#2f4131] w-4 h-4" />
              <h3 className="text-[9px] font-black text-[#2f4131] uppercase tracking-[0.4em]">Operations Center</h3>
           </div>
-          <h2 className="text-2xl lg:text-3xl font-black text-gray-900 tracking-tight leading-none flex items-center gap-3">
+          <h2 className="text-xl lg:text-2xl font-black text-gray-900 tracking-tight leading-none flex items-center gap-2.5">
             Gestión de Piso
-            <span className="text-gray-300 font-light text-xl">|</span>
-            <span className="text-gray-400 text-lg lg:text-xl font-bold">{activeBrand?.name}</span>
+            <span className="text-gray-300 font-light text-lg">|</span>
+            <span className="text-gray-500 text-base lg:text-lg font-bold">{activeBrand?.name}</span>
           </h2>
         </div>
         
-        <div className="flex items-center gap-3">
-            <div className="flex gap-3">
-              <div className="bg-emerald-50 px-4 py-3 rounded-2xl border border-emerald-100/50 flex flex-col items-center min-w-[80px]">
-                 <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest leading-none mb-1">Libres</span>
-                 <span className="text-xl font-black text-emerald-800 leading-none" style={{ fontFamily: 'Outfit' }}>{freeTablesCount}</span>
-              </div>
-              <div className="bg-amber-50 px-4 py-3 rounded-2xl border border-amber-100/50 flex flex-col items-center min-w-[80px]">
-                 <span className="text-[8px] font-black text-amber-600 uppercase tracking-widest leading-none mb-1">Ocupadas</span>
-                 <span className="text-xl font-black text-amber-800 leading-none" style={{ fontFamily: 'Outfit' }}>{occupiedTablesCount}</span>
-              </div>
-           </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleManualOrder('takeaway')}
+              className="bg-[#2f4131] hover:bg-[#233125] text-white px-3.5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-sm transition-all active:scale-95"
+            >
+              <ShoppingBag size={15} />
+              <span>Para Llevar</span>
+            </button>
+            <button
+              onClick={() => handleManualOrder('delivery')}
+              className="bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 px-3.5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-sm transition-all active:scale-95"
+            >
+              <Bike size={15} className="text-indigo-600" />
+              <span>Domicilio</span>
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <div className="bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-100 flex flex-col items-center min-w-[64px]">
+              <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest leading-none mb-0.5">Libres</span>
+              <span className="text-lg font-black text-emerald-800 leading-none" style={{ fontFamily: 'Outfit' }}>{freeTablesCount}</span>
+            </div>
+            <div className="bg-amber-50 px-3 py-2 rounded-xl border border-amber-100 flex flex-col items-center min-w-[64px]">
+              <span className="text-[8px] font-black text-amber-600 uppercase tracking-widest leading-none mb-0.5">Ocupadas</span>
+              <span className="text-lg font-black text-amber-800 leading-none" style={{ fontFamily: 'Outfit' }}>{occupiedTablesCount}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-col lg:grid lg:grid-cols-[1fr,340px] gap-6">
-        {/* LADO IZQUIERDO: GRID DE MESAS COMPACTO */}
-        <div className="space-y-4 order-2 lg:order-1">
+      <div className="flex flex-col lg:grid lg:grid-cols-[1fr,320px] gap-6">
+        {/* LADO IZQUIERDO: GRID DE MESAS COMPACTO (Siempre prioritario en tablet) */}
+        <div className="space-y-4 order-1 lg:order-1">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-2">
             <div className="flex items-center gap-2">
               <LayoutGrid size={18} className="text-[#2f4131]" />
@@ -364,18 +380,18 @@ export default function AdminWaiter() {
                   <motion.button
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                    whileHover={{ y: -3, transition: { duration: 0.2 } }}
                     key={table.id}
                     onClick={() => handleSelectTable(table)}
-                    className={`group relative bg-white border rounded-[2rem] p-5 text-left transition-all hover:border-[#2f4131] shadow-lg shadow-gray-200/20 hover:shadow-[#2f4131]/5 active:scale-[0.98] overflow-hidden ${
-                      table.physical_status === 'sucia' ? 'border-orange-200 bg-orange-50/10' :
-                      (table.physical_status === 'ocupada' || table.physical_status === 'needs_billing' || order) ? 'border-amber-100 bg-amber-50/10' : 'border-gray-50'
+                    className={`group relative bg-white border rounded-xl p-4 text-left transition-all hover:border-[#2f4131] shadow-xs hover:shadow-md active:scale-[0.98] overflow-hidden ${
+                      table.physical_status === 'sucia' ? 'border-orange-200 bg-orange-50/15' :
+                      (table.physical_status === 'ocupada' || table.physical_status === 'needs_billing' || order) ? 'border-amber-200/80 bg-amber-50/15' : 'border-slate-200/80'
                     }`}
                   >
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex justify-between items-start mb-3">
                        <Badge variant={statusParam.variant}>{statusParam.label}</Badge>
                        {order && (
-                         <div className="flex items-center gap-1.5 bg-white/90 px-2 py-1 rounded-lg border border-gray-100 shadow-sm">
+                         <div className="flex items-center gap-1.5 bg-white/90 px-2 py-0.5 rounded-lg border border-gray-100 shadow-2xs">
                            <Timer size={12} className="text-amber-500" />
                            <span className="text-[9px] font-black text-gray-800" style={{ fontFamily: 'Outfit' }}>{getTimeOccupied(order.created_at)}</span>
                          </div>
@@ -383,13 +399,13 @@ export default function AdminWaiter() {
                     </div>
 
                     <div className="space-y-0.5">
-                      <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Mesa</span>
-                      <h3 className="text-4xl font-black text-gray-900 group-hover:text-[#2f4131] transition-colors tracking-tighter" style={{ fontFamily: 'Outfit' }}>
+                      <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Mesa</span>
+                      <h3 className="text-3xl font-black text-gray-900 group-hover:text-[#2f4131] transition-colors tracking-tight" style={{ fontFamily: 'Outfit' }}>
                         {table.table_number < 10 ? `0${table.table_number}` : table.table_number}
                       </h3>
                     </div>
 
-                    <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
+                    <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
                       {table.physical_status === 'sucia' ? (
                         <div className="flex items-center gap-1.5">
                            <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
@@ -413,10 +429,10 @@ export default function AdminWaiter() {
                              {table.locations.name}
                            </span>
                         )}
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${
-                           order ? 'bg-amber-100 text-amber-600' : 'bg-gray-50 text-gray-300 group-hover:bg-[#2f4131] group-hover:text-white group-hover:rotate-45'
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                           order ? 'bg-amber-100 text-amber-600' : 'bg-gray-50 text-gray-400 group-hover:bg-[#2f4131] group-hover:text-white group-hover:rotate-45'
                         }`}>
-                          {order ? <Coffee size={18} /> : <Plus size={18} />}
+                          {order ? <Coffee size={16} /> : <Plus size={16} />}
                         </div>
                       </div>
                     </div>
@@ -428,51 +444,50 @@ export default function AdminWaiter() {
         </div>
 
         {/* LADO DERECHO: ACCIONES COMPACTAS */}
-        <div className="space-y-4 order-1 lg:order-2">
+        <div className="space-y-4 order-2 lg:order-2">
            <div className="flex items-center gap-2 px-1">
               <Sparkles size={16} className="text-[#2f4131]" />
               <h4 className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Acciones Rápidas</h4>
            </div>
 
-           <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
+           <div className="grid grid-cols-2 lg:grid-cols-1 gap-3.5">
               {/* Banner: Pedido para Llevar */}
               <motion.button 
-                 whileHover={{ scale: 1.02 }}
+                 whileHover={{ scale: 1.01 }}
                  whileTap={{ scale: 0.98 }}
                  onClick={() => handleManualOrder('takeaway')}
-                 className="w-full bg-[#2f4131] rounded-[2rem] p-4 md:p-5 text-white flex items-center gap-4 group transition-all shadow-xl shadow-[#2f4131]/20 overflow-hidden relative"
+                 className="w-full bg-[#2f4131] rounded-xl p-4 text-white flex items-center gap-3.5 group transition-all shadow-md shadow-[#2f4131]/15 overflow-hidden relative"
               >
-                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full translate-x-8 -translate-y-8 group-hover:scale-150 transition-transform duration-700 blur-xl" />
-                 <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center border border-white/10 shrink-0">
-                    <ShoppingBag size={20} className="text-white" />
+                 <div className="w-11 h-11 bg-white/10 rounded-xl flex items-center justify-center border border-white/10 shrink-0">
+                    <ShoppingBag size={18} className="text-white" />
                  </div>
                  <div className="text-left relative z-10">
-                    <h4 className="text-lg font-black leading-tight" style={{ fontFamily: 'Outfit' }}>Para Llevar</h4>
-                    <p className="text-[10px] text-white/60 font-medium uppercase tracking-widest">Pedido en counter</p>
+                    <h4 className="text-base font-black leading-tight" style={{ fontFamily: 'Outfit' }}>Para Llevar</h4>
+                    <p className="text-[9px] text-white/60 font-medium uppercase tracking-widest">Pedido en counter</p>
                  </div>
-                 <ArrowRight size={18} className="ml-auto text-white/40 group-hover:text-white transition-colors" />
+                 <ArrowRight size={16} className="ml-auto text-white/40 group-hover:text-white transition-colors" />
               </motion.button>
 
               {/* Banner: Domicilio */}
               <motion.button 
-                 whileHover={{ scale: 1.02 }}
+                 whileHover={{ scale: 1.01 }}
                  whileTap={{ scale: 0.98 }}
                  onClick={() => handleManualOrder('delivery')}
-                 className="w-full bg-white rounded-[2rem] p-4 md:p-5 border border-gray-100 flex items-center gap-4 group transition-all shadow-lg shadow-gray-200/40 overflow-hidden relative"
+                 className="w-full bg-white rounded-xl p-4 border border-slate-200/90 flex items-center gap-3.5 group transition-all shadow-xs hover:shadow-md overflow-hidden relative"
               >
-                 <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center border border-indigo-100 shrink-0">
-                    <Bike size={20} className="text-indigo-600" />
+                 <div className="w-11 h-11 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shrink-0">
+                    <Bike size={18} className="text-indigo-600" />
                  </div>
                  <div className="text-left">
-                    <h4 className="text-lg font-black text-gray-900 leading-tight" style={{ fontFamily: 'Outfit' }}>Domicilio</h4>
-                    <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest">Nueva entrega externa</p>
+                    <h4 className="text-base font-black text-gray-900 leading-tight" style={{ fontFamily: 'Outfit' }}>Domicilio</h4>
+                    <p className="text-[9px] text-gray-400 font-medium uppercase tracking-widest">Nueva entrega externa</p>
                  </div>
-                 <ArrowRight size={18} className="ml-auto text-gray-200 group-hover:text-indigo-600 transition-colors" />
+                 <ArrowRight size={16} className="ml-auto text-gray-300 group-hover:text-indigo-600 transition-colors" />
               </motion.button>
            </div>
 
            {/* Metrics Card Compacto */}
-           <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-xl shadow-gray-200/30 space-y-6">
+           <div className="bg-white rounded-xl p-5 border border-slate-200/90 shadow-xs space-y-5">
               <div className="flex items-center justify-between">
                  <div className="flex items-center gap-2">
                     <TrendingUp size={16} className="text-indigo-600" />

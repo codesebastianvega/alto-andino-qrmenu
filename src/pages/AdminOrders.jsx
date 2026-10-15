@@ -830,7 +830,7 @@ export default function AdminOrders() {
               })}
             </div>
 
-            <div className="flex flex-col md:grid md:grid-cols-4 gap-4 md:gap-8 h-auto md:h-[calc(100vh-280px)] min-h-[500px] md:min-h-[600px] items-start pb-6">
+            <div className="flex flex-row overflow-x-auto gap-4 h-auto md:h-[calc(100vh-280px)] min-h-[500px] md:min-h-[600px] items-stretch pb-6 snap-x custom-scrollbar">
               {ORDER_STATUSES.map((statusCol, index) => {
                 const fTypeWeights = { 'dine_in': 1, 'takeaway': 2, 'delivery': 3 };
                 
@@ -849,32 +849,32 @@ export default function AdminOrders() {
                       ? orders.filter(o => o.status === 'on_table' || o.status === 'on_the_way').sort((a,b) => sortOrders(a, b, true))
                       : orders.filter(o => o.status === statusCol.id).sort((a,b) => sortOrders(a, b, true));
 
-                // Color themes per column
+                // Color themes per column (SaaS standard with top accent border)
                 const themes = {
-                  new: 'from-blue-50/50 to-indigo-50/30 border-blue-200 shadow-blue-500/5',
-                  preparing: 'from-amber-50/50 to-orange-50/30 border-amber-200 shadow-amber-500/5',
-                  ready: 'from-emerald-50/50 to-teal-50/30 border-emerald-200 shadow-emerald-500/5',
-                  on_table: 'from-purple-50/50 to-fuchsia-50/30 border-purple-200 shadow-purple-500/5'
+                  new: 'border-t-blue-500 bg-slate-50/70',
+                  preparing: 'border-t-amber-500 bg-slate-50/70',
+                  ready: 'border-t-emerald-500 bg-slate-50/70',
+                  on_table: 'border-t-purple-500 bg-slate-50/70'
                 };
 
                 return (
                   <Droppable key={`status-column-${statusCol.id}-${index}`} droppableId={statusCol.id} isCombineEnabled>
                   {(provided, snapshot) => (
                     <div 
-                      className={`${mobileActiveStatus === statusCol.id ? 'flex' : 'hidden md:flex'} w-full md:w-auto md:min-w-0 shrink-0 flex-col rounded-[2.5rem] p-4 md:p-6 border-2 transition-all duration-300 bg-gradient-to-b ${
+                      className={`${mobileActiveStatus === statusCol.id ? 'flex' : 'hidden md:flex'} w-full sm:w-[320px] md:w-[320px] lg:w-[330px] xl:flex-1 shrink-0 snap-start flex-col rounded-2xl p-3.5 md:p-4 border border-slate-200/90 shadow-sm transition-all duration-300 border-t-4 ${
                         snapshot.isDraggingOver 
-                          ? 'bg-white/80 border-emerald-300 shadow-2xl' 
-                          : `${themes[statusCol.id]} shadow-xl`
+                          ? 'bg-emerald-50/60 border-emerald-300 shadow-lg' 
+                          : `${themes[statusCol.id]}`
                       } h-full`}
                     >
-                      <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-200/50">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2.5 rounded-2xl bg-white shadow-sm ${statusCol.color.replace('text-', 'text-Opacity-80')}`}>
-                             <Icon icon={statusCol.icon} className="text-xl" />
+                      <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-200/60">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`p-2 rounded-xl bg-white shadow-2xs border border-gray-100 ${statusCol.color.replace('text-', 'text-opacity-80')}`}>
+                             <Icon icon={statusCol.icon} className="text-lg" />
                           </div>
-                          <h3 className="font-black text-gray-800 text-lg tracking-tight">{statusCol.label}</h3>
+                          <h3 className="font-extrabold text-gray-800 text-base tracking-tight">{statusCol.label}</h3>
                         </div>
-                        <span className={`text-sm font-black px-4 py-1.5 rounded-2xl shadow-sm border border-white bg-white/80 ${statusCol.color}`}>
+                        <span className={`text-xs font-black px-3 py-1 rounded-xl shadow-2xs border border-gray-100 bg-white ${statusCol.color}`}>
                           {colOrders.length}
                         </span>
                       </div>
@@ -882,7 +882,7 @@ export default function AdminOrders() {
                       <div 
                         ref={provided.innerRef}
                         {...provided.droppableProps}
-                        className="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-5"
+                        className="flex-1 overflow-y-auto pr-1.5 custom-scrollbar flex flex-col gap-3.5"
                       >
                         {colOrders.map((order, index) => {
                           const fl = getFulfillmentLabel(order.fulfillment_type);
@@ -901,14 +901,14 @@ export default function AdminOrders() {
                                       setIsCancelling(false); 
                                     }
                                   }}
-                                  className={`bg-white p-6 rounded-[2rem] shadow-sm border-2 transition-all cursor-pointer group relative overflow-hidden flex flex-col gap-4 ${
-                                    snapshot.isDragging ? 'shadow-2xl ring-4 ring-emerald-500/20 scale-105 rotate-1 z-50' : 'active:scale-[0.98]'
+                                  className={`bg-white p-4 rounded-xl shadow-xs border transition-all cursor-pointer group relative overflow-hidden flex flex-col gap-3.5 ${
+                                    snapshot.isDragging ? 'shadow-2xl ring-4 ring-emerald-500/20 scale-102 rotate-1 z-50' : 'active:scale-[0.98]'
                                   } ${
                                     order?.fulfillment_type === 'dine_in' 
-                                    ? 'border-emerald-100/80 hover:border-emerald-300' 
-                                    : 'border-gray-100 hover:border-emerald-200'
+                                    ? 'border-emerald-200/70 hover:border-emerald-400' 
+                                    : 'border-slate-200/80 hover:border-emerald-300'
                                   } ${
-                                    snapshot.isCombiningWith ? 'bg-emerald-100 border-emerald-500 border-2' : ''
+                                    snapshot.isCombiningWith ? 'bg-emerald-50 border-emerald-500 border-2' : ''
                                   }`}
                                 >
                         <div className="flex justify-between items-start">
@@ -940,32 +940,42 @@ export default function AdminOrders() {
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className={`text-[10px] font-black px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm border border-black/5 ${fl.color}`}>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className={`text-[10px] font-black px-2 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs border border-black/5 ${fl.color}`}>
                             <Icon icon={fl.icon} />
                             {fl.text}
                           </span>
-                          <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2.5 py-1.5 rounded-xl border border-gray-100">
+                          <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
                             {order?.order_items?.length || 0} ítems
                           </span>
+                          {order.bar_status === 'ready' && (
+                            <span className="text-[9px] font-black text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              🍸 Bebidas listas
+                            </span>
+                          )}
+                          {order.kitchen_status === 'ready' && (
+                            <span className="text-[9px] font-black text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              🍳 Cocina lista
+                            </span>
+                          )}
                         </div>
                         
-                        {/* Indicador de Pago / Balancé - Rediseñado a Rojo Suave */}
+                        {/* Indicador de Pago / Saldo */}
                         {order?.payment_status !== 'paid' && order?.status !== 'cancelled' && (
-                          <div className={`flex flex-col gap-2 px-4 py-3 rounded-[1.25rem] border transition-colors ${
+                          <div className={`flex flex-col gap-1.5 px-3 py-2 rounded-lg border transition-colors ${
                             (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && order?.status === 'new') ||
                             (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && order?.status === 'ready')
-                              ? 'bg-rose-50 border-rose-100 text-rose-700 animate-pulse'
-                              : 'bg-rose-50/30 border-rose-100/50 text-rose-600/80'
+                              ? 'bg-rose-50 border-rose-200 text-rose-700 animate-pulse'
+                              : 'bg-rose-50/40 border-rose-100 text-rose-600'
                           }`}>
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Icon icon="heroicons:banknotes" className="text-base" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">
+                              <div className="flex items-center gap-1.5">
+                                <Icon icon="heroicons:banknotes" className="text-sm" />
+                                <span className="text-[10px] font-black uppercase tracking-wider">
                                   {order?.paid_amount > 0 ? 'Falta Saldo' : 'Pago Pendiente'}
                                 </span>
                               </div>
-                              <span className="text-[11px] font-black">
+                              <span className="text-xs font-black">
                                 {order?.paid_amount > 0 
                                   ? `$${(order.total_amount - order.paid_amount).toLocaleString()}` 
                                   : `$${Number(order?.total_amount || 0).toLocaleString()}`}
