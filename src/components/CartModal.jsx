@@ -442,27 +442,98 @@ export default function CartModal({ open, onClose }) {
     }
   }, [activeMethods, paymentMethod]);
 
-  // --- UPSELLING LOGIC ---
+  // --- UPSELLING LOGIC (CAMINO C: HÍBRIDO, EQUITATIVO Y BALANCEADO) ---
   const upsellProducts = useMemo(() => {
-    if (!open) return [];
+    if (!open || !items || items.length === 0) return [];
     
-    // Todos los productos marcados como sugeridos
-    const allUpsells = getAllProducts().filter(p => p.is_upsell === true);
-    if (allUpsells.length === 0) return [];
-    
-    // IDs de productos en el carrito (para no sugerir lo que ya tienen)
-    const cartIds = items.map(it => it.productId || it.id);
-    
-    // Filtrar los que no están en el carrito
-    const availableUpsells = allUpsells.filter(p => !cartIds.includes(p.id));
-    
-    // Elegimos hasta 3 al azar o estáticos (por simplicidad, los primeros 3)
-    // Para hacerlos aleatorios, podríamos usar sort(() => 0.5 - Math.random()) pero puede causar re-renders. 
-    // Los dejaremos estáticos por ahora o ordenados aleatoriamente SOLO UNA VEZ al abrir.
-    return availableUpsells.slice(0, 3);
+    const allProds = typeof getAllProducts === 'function' ? getAllProducts() : [];
+    if (!allProds || allProds.length === 0) return [];
+
+    const cartIds = new Set(items.map(it => it.productId || it.id));
+    const cartProducts = allProds.filter(p => cartIds.has(p.id));
+
+    const candidateIds = [];
+    const addedCandidateIds = new Set();
+
+    const addCandidate = (id) => {
+      if (id && !cartIds.has(id) && !addedCandidateIds.has(id)) {
+        const prod = allProds.find(p => p.id === id);
+        if (prod && prod.is_active !== false) {
+          candidateIds.push(id);
+          addedCandidateIds.add(id);
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // 1. Prioridad Máxima: Round-Robin equitativo entre todos los platos del carrito
+    // En lugar de tomar 3 del primer plato y 0 del segundo, tomamos 1 de cada plato por ronda
+    const dishPairingLists = cartProducts.map(prod => {
+      const specificIds = prod.config_options?.upsell_product_ids || prod.config_options?.upsell_ids;
+      return Array.isArray(specificIds) ? specificIds.filter(id => !cartIds.has(id)) : [];
+    }).filter(list => list.length > 0);
+
+    const maxRounds = 3;
+    for (let round = 0; round < maxRounds && candidateIds.length < 5; round++) {
+      dishPairingLists.forEach(list => {
+        if (candidateIds.length < 5 && list[round]) {
+          addCandidate(list[round]);
+        }
+      });
+    }
+
+    // 2. Balance de Categorías: Si aún no alcanzamos 4-5 opciones, complementar inteligentemente
+    if (candidateIds.length < 4) {
+      const candidateProds = candidateIds.map(id => allProds.find(p => p.id === id)).filter(Boolean);
+      const hasDrinksInCart = cartProducts.some(p => p.categorySlug === 'bebidas' || p.category_id === 'c0000002-0000-4000-a000-000000000002');
+      const hasColdDrinkSuggested = candidateProds.some(p => p.subcategory?.includes('Autor') || p.subcategory?.includes('Tés') || p.subcategory?.includes('Gaseosas'));
+      const hasHotDrinkSuggested = candidateProds.some(p => p.subcategory?.includes('Cafetería'));
+      const hasSnackSuggested = candidateProds.some(p => p.categorySlug === 'boku-snacks');
+
+      // Siempre ofrecer al menos una bebida fría refrescante de autor si no está en el carrito
+      if (!hasDrinksInCart && !hasColdDrinkSuggested) {
+        addCandidate('b0000b01-0000-4000-a000-000000000005'); // Soda Té Pop Frutos Rojos
+        addCandidate('b0000b01-0000-4000-a000-000000000001'); // Bruma Cold Brew
+        addCandidate('b0000006-0000-4000-a000-000000000006'); // Mr Tea
+      }
+
+      // Si no hay snack/entrada sugerida y hay comida, ofrecer snack crocante o postre dulce
+      if (!hasSnackSuggested) {
+        addCandidate('b0000f40-0000-4000-a000-000000000001'); // Mousse de Chocolate & Aguacate
+        addCandidate('b0000f30-0000-4000-a000-000000000001'); // Empanaditas BOKU x3
+        addCandidate('b0000f40-0000-4000-a000-000000000002'); // Trufas Fit x3
+        addCandidate('b0000f30-0000-4000-a000-000000000004'); // Hummus con Pita
+      }
+
+      // Si hay desayuno o mañana, y no hay café sugerido, sugerir café americano
+      const hasBreakfast = cartProducts.some(p => p.categorySlug === 'boku-desayunos-brunch');
+      if (hasBreakfast && !hasHotDrinkSuggested) {
+        addCandidate('b0000b01-0000-4000-a000-000000000009'); // Café Americano Filtrado
+      }
+    }
+
+    // 3. Respaldo general: Productos marcados con is_upsell = true
+    if (candidateIds.length < 4) {
+      allProds
+        .filter(p => p.is_upsell === true && p.is_active !== false)
+        .forEach(p => addCandidate(p.id));
+    }
+
+    // Retornamos hasta 4 o 5 opciones balanceadas para el slider horizontal
+    return candidateIds
+      .slice(0, 5)
+      .map(id => allProds.find(p => p.id === id))
+      .filter(Boolean);
   }, [items, open, getAllProducts]);
 
   const handleAddUpsell = (product) => {
+    // Si el producto requiere seleccionar modificadores (ej. tipo de leche), abrimos el modal de personalización
+    if (Array.isArray(product.modifier_groups) && product.modifier_groups.length > 0) {
+      window.dispatchEvent(new CustomEvent("aa:quickview", { detail: { productId: product.id, ...product } }));
+      return;
+    }
+
     addItem({
       id: product.id,
       productId: product.id,
@@ -1662,24 +1733,45 @@ export default function CartModal({ open, onClose }) {
                   </div>
                   
                   <div className="flex overflow-x-auto gap-3 pb-2 snap-x snap-mandatory hide-scrollbar">
-                    {upsellProducts.map(prod => (
-                      <div key={prod.id} className="bg-white rounded-2xl p-3 shadow-sm border border-amber-100/60 flex flex-col items-center flex-shrink-0 w-36 snap-start">
-                        <AAImage 
-                          src={getProductImage(prod)} 
-                          className="w-full h-20 rounded-xl object-cover bg-neutral-100 shrink-0 mb-2 border border-neutral-200/40" 
-                        />
-                        <div className="text-center w-full mb-2">
-                          <p className="text-[13px] font-bold text-neutral-900 truncate" title={prod.name}>{prod.name}</p>
-                          <p className="text-[11px] font-bold text-[#2f4131]">{formatCOP(prod.price)}</p>
+                    {upsellProducts.map(prod => {
+                      const imgSrc = getProductImage(prod);
+                      const fallbackEmoji = prod.subcategory?.includes('Smoothie') ? '🫐' : 
+                                            prod.subcategory?.includes('Cafetería') ? '☕' : 
+                                            prod.subcategory?.includes('Autor') ? '🧊' : 
+                                            prod.categorySlug === 'boku-snacks' ? '🥟' : 
+                                            (prod.categorySlug === 'boku-postres' || prod.subcategory?.includes('Postres') || prod.subcategory?.includes('Trufas')) ? '🍫' :
+                                            prod.categorySlug === 'bebidas' ? '🥤' : '✨';
+                      return (
+                        <div key={prod.id} className="bg-white rounded-2xl p-2.5 shadow-sm border border-amber-100/60 flex flex-col items-center flex-shrink-0 w-36 snap-start">
+                          <div className="w-full h-20 rounded-xl overflow-hidden mb-2 bg-neutral-100 border border-neutral-200/40 flex items-center justify-center shrink-0 relative">
+                            {imgSrc ? (
+                              <AAImage 
+                                src={imgSrc} 
+                                alt={prod.name}
+                                className="w-full h-full object-cover" 
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-amber-50 to-orange-50/70 flex flex-col items-center justify-center text-amber-700/70 p-1">
+                                <span className="text-2xl mb-0.5">{fallbackEmoji}</span>
+                                <span className="text-[9px] font-bold text-amber-800/60 uppercase tracking-wider text-center line-clamp-1">
+                                  {prod.subcategory || 'BOKU'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-center w-full mb-2">
+                            <p className="text-[12px] font-bold text-neutral-900 line-clamp-1 leading-snug" title={prod.name}>{prod.name}</p>
+                            <p className="text-[11px] font-extrabold text-[#2f4131] mt-0.5">{formatCOP(prod.price)}</p>
+                          </div>
+                          <button 
+                            onClick={() => handleAddUpsell(prod)}
+                            className="w-full h-7 rounded-xl bg-amber-100 text-[#cba258] flex items-center justify-center text-[11px] font-bold shrink-0 hover:bg-[#cba258] hover:text-white transition-all active:scale-95 gap-1"
+                          >
+                            <Icon icon="heroicons:plus" className="text-xs" /> Agregar
+                          </button>
                         </div>
-                        <button 
-                          onClick={() => handleAddUpsell(prod)}
-                          className="w-full h-8 rounded-xl bg-amber-100 text-[#cba258] flex items-center justify-center text-xs font-bold shrink-0 hover:bg-[#cba258] hover:text-white transition-colors active:scale-95 gap-1"
-                        >
-                          <Icon icon="heroicons:plus" className="text-sm" /> Agregar
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1701,24 +1793,42 @@ export default function CartModal({ open, onClose }) {
                   </div>
                   
                   <div className="grid grid-cols-1 gap-3">
-                    {upsellProducts.map(prod => (
-                      <div key={prod.id} className="bg-white rounded-2xl p-3 shadow-sm border border-amber-100/60 flex items-center gap-3 transition-colors hover:border-amber-200">
-                        <AAImage 
-                          src={getProductImage(prod)} 
-                          className="w-14 h-14 rounded-xl object-cover bg-neutral-100 shrink-0 border border-neutral-200/40" 
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-neutral-900 truncate" title={prod.name}>{prod.name}</p>
-                          <p className="text-xs font-semibold text-[#2f4131]">{formatCOP(prod.price)}</p>
+                    {upsellProducts.map(prod => {
+                      const imgSrc = getProductImage(prod);
+                      const fallbackEmoji = prod.subcategory?.includes('Smoothie') ? '🫐' : 
+                                            prod.subcategory?.includes('Cafetería') ? '☕' : 
+                                            prod.subcategory?.includes('Autor') ? '🧊' : 
+                                            prod.categorySlug === 'boku-snacks' ? '🥟' : 
+                                            (prod.categorySlug === 'boku-postres' || prod.subcategory?.includes('Postres') || prod.subcategory?.includes('Trufas')) ? '🍫' :
+                                            prod.categorySlug === 'bebidas' ? '🥤' : '✨';
+                      return (
+                        <div key={prod.id} className="bg-white rounded-2xl p-3 shadow-sm border border-amber-100/60 flex items-center gap-3 transition-colors hover:border-amber-200">
+                          <div className="w-14 h-14 rounded-xl overflow-hidden bg-neutral-100 border border-neutral-200/40 shrink-0 flex items-center justify-center">
+                            {imgSrc ? (
+                              <AAImage 
+                                src={imgSrc} 
+                                alt={prod.name}
+                                className="w-full h-full object-cover" 
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-amber-50 to-orange-50/70 flex items-center justify-center text-xl">
+                                {fallbackEmoji}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-neutral-900 truncate" title={prod.name}>{prod.name}</p>
+                            <p className="text-xs font-semibold text-[#2f4131]">{formatCOP(prod.price)}</p>
+                          </div>
+                          <button 
+                            onClick={() => handleAddUpsell(prod)}
+                            className="w-8 h-8 rounded-full bg-amber-100 text-[#cba258] flex items-center justify-center shrink-0 hover:bg-[#cba258] hover:text-white transition-colors active:scale-95"
+                          >
+                            <Icon icon="heroicons:plus" className="text-lg" />
+                          </button>
                         </div>
-                        <button 
-                          onClick={() => handleAddUpsell(prod)}
-                          className="w-8 h-8 rounded-full bg-amber-100 text-[#cba258] flex items-center justify-center shrink-0 hover:bg-[#cba258] hover:text-white transition-colors active:scale-95"
-                        >
-                          <Icon icon="heroicons:plus" className="text-lg" />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
