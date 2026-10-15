@@ -78,6 +78,7 @@ export default function Footer({ hasCartBar, onInstallPWA, isPWAInstalled }) {
     const sortedHours = Array.from(dayMap.values()).sort((a, b) => a.day_of_week - b.day_of_week);
     const DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
     const openDays = sortedHours.filter(h => !h.is_closed);
+    const closedDays = sortedHours.filter(h => h.is_closed);
     
     if (openDays.length === 0) return [{ days: "Cerrado temporalmente", hours: "-" }];
 
@@ -97,7 +98,7 @@ export default function Footer({ hasCartBar, onInstallPWA, isPWAInstalled }) {
       }
     });
 
-    return groups.map(g => {
+    const formattedGroups = groups.map(g => {
       let daysLabel = "";
       if (g.days.length === 7) {
         daysLabel = "Todos los días";
@@ -116,6 +117,27 @@ export default function Footer({ hasCartBar, onInstallPWA, isPWAInstalled }) {
       }
       return { days: daysLabel, hours: `${g.openT} - ${g.closeT}` };
     });
+
+    // Indicar claramente los días que no abren (ej: Sáb y Dom: Cerrado)
+    if (closedDays.length > 0 && closedDays.length < 7) {
+      const closedDayNums = closedDays.map(h => h.day_of_week).sort((a, b) => a - b);
+      let closedLabel = "";
+      if (closedDayNums.length === 2 && closedDayNums.includes(0) && closedDayNums.includes(6)) {
+        closedLabel = "Sáb y Dom";
+      } else if (closedDayNums.length === 1) {
+        closedLabel = DAYS[closedDayNums[0]];
+      } else {
+        const isConsecutive = closedDayNums.every((d, idx) => idx === 0 || d === closedDayNums[idx - 1] + 1);
+        if (closedDayNums.length > 2 && isConsecutive) {
+          closedLabel = `${DAYS[closedDayNums[0]]} a ${DAYS[closedDayNums[closedDayNums.length - 1]]}`;
+        } else {
+          closedLabel = closedDayNums.map(d => DAYS[d]).join(", ");
+        }
+      }
+      formattedGroups.push({ days: closedLabel, hours: "Cerrado" });
+    }
+
+    return formattedGroups;
   }, [businessHours, mainLocation?.id]);
 
   return (

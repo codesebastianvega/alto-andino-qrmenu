@@ -134,35 +134,52 @@ const LandingPage = () => {
     let featuredWithDetails = [];
 
     if (homeSettings?.featured_items && Array.isArray(homeSettings.featured_items) && homeSettings.featured_items.length > 0) {
-      featuredWithDetails = homeSettings.featured_items.map((item, idx) => {
-        const productId = item.product_id || (typeof item === 'string' ? item : null);
-        const found = productsList.find(p => p.id === productId || (p.name && item.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase()));
-        
-        // Priorizar imagen real del producto en la base de datos
-        const realImg = found?.image_url || found?.image || (item.img && !item.img.includes('unsplash.com') ? item.img : null) || activeProductsWithImages[idx % (activeProductsWithImages.length || 1)]?.image_url || FALLBACK_HERO_IMAGE;
+      featuredWithDetails = homeSettings.featured_items
+        .map((item, idx) => {
+          const productId = item.product_id || (typeof item === 'string' ? item : null);
+          const found = productsList.find(p => (productId && p.id === productId) || (p.name && item.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase()));
+          
+          // Descartar si el producto fue borrado o no está activo en la carta
+          if (!found || !found.is_active) return null;
 
-        return { 
-          ...item, 
-          ...(found || {}), 
-          id: productId || found?.id || `featured-${idx}`,
-          img: getSafeImageUrl(realImg, FALLBACK_HERO_IMAGE),
-          price: found?.price || item.price || 0,
-          name: found?.name || item.name || "Plato Recomendado"
-        };
-      });
+          const realImg = found.image_url || found.image || (item.img && !item.img.includes('unsplash.com') ? item.img : null) || FALLBACK_HERO_IMAGE;
+
+          return { 
+            ...item, 
+            ...found, 
+            id: found.id,
+            img: getSafeImageUrl(realImg, FALLBACK_HERO_IMAGE),
+            price: found.price ?? item.price ?? 0,
+            name: found.name || item.name || "Plato Destacado"
+          };
+        })
+        .filter(Boolean);
     }
 
-    // Si no hay destacados configurados o son menos de 2, hidratar automáticamente con productos reales de la carta
-    if (featuredWithDetails.length < 2 && activeProductsWithImages.length > 0) {
+    // Si no hay destacados configurados o quedaron menos de 4 por platos obsoletos, rellenar con productos activos de la carta
+    if (featuredWithDetails.length < 4 && activeProductsWithImages.length > 0) {
+      const existingIds = new Set(featuredWithDetails.map(d => d.id));
+      const pool = activeProductsWithImages.filter(p => !existingIds.has(p.id));
+      const fillCount = 4 - featuredWithDetails.length;
+      const additional = pool.slice(0, fillCount).map(p => ({
+        ...p,
+        id: p.id,
+        img: getSafeImageUrl(p.image_url || p.image, FALLBACK_HERO_IMAGE),
+        price: p.price ?? 0,
+        name: p.name || 'Plato Destacado'
+      }));
+      featuredWithDetails = [...featuredWithDetails, ...additional];
+    } else if (featuredWithDetails.length === 0) {
       featuredWithDetails = activeProductsWithImages.slice(0, 4).map((p, idx) => ({
         ...p,
         id: p.id || `featured-auto-${idx}`,
         img: getSafeImageUrl(p.image_url || p.image, FALLBACK_HERO_IMAGE),
-        price: p.price || 0,
-        name: p.name || 'Plato Recomendado'
+        price: p.price ?? 0,
+        name: p.name || 'Plato Destacado'
       }));
-    } else if (featuredWithDetails.length === 0) {
-      featuredWithDetails = FALLBACK_FEATURED.map((item, idx) => ({ ...item, id: `fallback-${idx}` }));
+      if (featuredWithDetails.length === 0) {
+        featuredWithDetails = FALLBACK_FEATURED.map((item, idx) => ({ ...item, id: `fallback-${idx}` }));
+      }
     }
 
     // 3. Reseñas

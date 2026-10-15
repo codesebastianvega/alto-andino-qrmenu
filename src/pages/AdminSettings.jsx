@@ -23,6 +23,7 @@ export default function AdminSettings() {
   const { isFeatureLocked, activePlan, activeBrand } = useAuth();
   const { activeLocationId, isAllLocations } = useLocations();
   const menuData = useMenuData();
+  const locations = menuData?.locations || [];
   const refetchMenuData = menuData?.refetchMenuData;
   const [activeTab, setActiveTab] = useState('general');
   const [settings, setSettings] = useState(null);
@@ -238,20 +239,34 @@ export default function AdminSettings() {
     if (!activeBrand?.id) return;
     setLoadingHours(true);
     try {
+      const singleLocId = (!isAllLocations && activeLocationId) 
+        ? activeLocationId 
+        : (locations?.length === 1 ? locations[0].id : null);
+
       let query = supabase
         .from('business_hours')
         .select('*')
         .eq('brand_id', activeBrand.id);
 
-      if (!isAllLocations && activeLocationId) {
-        query = query.eq('location_id', activeLocationId);
+      if (singleLocId) {
+        query = query.eq('location_id', singleLocId);
       } else {
         query = query.is('location_id', null);
       }
 
-      const { data, error } = await query.order('day_of_week', { ascending: true });
+      let { data, error } = await query.order('day_of_week', { ascending: true });
       if (error) throw error;
       
+      // Fallback: si no hay registros para la sede seleccionada, cargar los globales o viceversa
+      if (!data || data.length === 0) {
+        const fallbackRes = await supabase
+          .from('business_hours')
+          .select('*')
+          .eq('brand_id', activeBrand.id)
+          .order('day_of_week', { ascending: true });
+        data = fallbackRes.data || [];
+      }
+
       let loadedHours = data || [];
       if (loadedHours.length === 0) {
         loadedHours = Array.from({ length: 7 }, (_, i) => ({
@@ -477,13 +492,17 @@ export default function AdminSettings() {
   const handleSaveHours = async () => {
     setIsSubmittingHours(true);
     try {
+      const targetLocId = (!isAllLocations && activeLocationId) 
+        ? activeLocationId 
+        : (locations?.length === 1 ? locations[0].id : null);
+
       const toUpdate = [];
       const toInsert = [];
 
       hours.forEach(h => {
         const payload = {
           brand_id: activeBrand.id,
-          ...(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : { location_id: null }),
+          location_id: targetLocId,
           day_of_week: h.day_of_week,
           open_time: h.open_time,
           close_time: h.close_time,
@@ -504,6 +523,22 @@ export default function AdminSettings() {
       if (toUpdate.length > 0) {
         const { error } = await supabase.from('business_hours').upsert(toUpdate, { onConflict: 'id' });
         if (error) throw error;
+      }
+
+      // Si la marca tiene una sola sede o se guarda global, mantener sincronizado location_id IS NULL
+      if (targetLocId && locations?.length === 1) {
+        for (const h of hours) {
+          await supabase.from('business_hours')
+            .update({ 
+              open_time: h.open_time, 
+              close_time: h.close_time, 
+              is_closed: h.is_closed, 
+              updated_at: new Date().toISOString() 
+            })
+            .eq('brand_id', activeBrand.id)
+            .is('location_id', null)
+            .eq('day_of_week', h.day_of_week);
+        }
       }
 
       toast.success('Horarios actualizados');
