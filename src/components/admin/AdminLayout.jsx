@@ -33,6 +33,7 @@ import LockOverlay from './LockOverlay';
 import UpgradeModal from './UpgradeModal';
 import UniversalCheckout from '../../pages/checkout/UniversalCheckout';
 import { useMenuData } from '../../context/MenuDataContext';
+import { useBrand } from '../../context/BrandContext';
 import { usePlan } from '../../hooks/usePlan';
 import Toast from '../Toast';
 import AccountSuspendedOverlay from './AccountSuspendedOverlay';
@@ -228,10 +229,12 @@ export default function AdminLayout() {
   };
 
   const { user: authUser, profile, loading: authLoading, activeBrand, activePlan } = useAuth();
+  const { brand: brandFromContext } = useBrand();
+  const effectiveBrand = activeBrand || brandFromContext;
   const { can, loading: planLoading, isTrialActive, trialEndsAt, startTrial, trialAlreadyUsed } = usePlan();
   const { activeLocationId, activeLocation, isAllLocations } = useLocations();
-  const activeBrandId = activeBrand?.id || profile?.brand_id;
   const [user, setUser] = useState(null);
+  const activeBrandId = effectiveBrand?.id || profile?.brand_id || user?.brand_id || localStorage.getItem('aa_active_brand_id');
   const [currentPage, setCurrentPage] = useState(getInitialPage); 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [newOrdersCount, setNewOrdersCount] = useState(0);
@@ -287,8 +290,8 @@ export default function AdminLayout() {
     };
   }, [can, planLoading]);
 
-  const logoUrl = activeBrand?.logo_url || restaurantSettings?.logo_url || "/favicon.png";
-  const restaurantName = activeBrand?.name || restaurantSettings?.business_name || "Mi Negocio";
+  const logoUrl = effectiveBrand?.logo_url || restaurantSettings?.logo_url || "/favicon.png";
+  const restaurantName = effectiveBrand?.name || restaurantSettings?.business_name || "Mi Negocio";
 
   // ─── Phase 1.5: Auth Robustness ──────────────────────────────────────────
   useEffect(() => {
@@ -345,10 +348,10 @@ export default function AdminLayout() {
     }
 
     if (changed) {
-      const targetPath = activeBrand?.slug ? `/${activeBrand.slug}/` : window.location.pathname;
+      const targetPath = effectiveBrand?.slug ? `/${effectiveBrand.slug}/` : window.location.pathname;
       window.history.replaceState(null, '', `${targetPath}?${params.toString()}${window.location.hash}`);
     }
-  }, [currentPage, activeBrand, activeLocationId, isAllLocations]);
+  }, [currentPage, effectiveBrand, activeLocationId, isAllLocations]);
 
   // Control estricto de acceso a páginas según rol
   useEffect(() => {

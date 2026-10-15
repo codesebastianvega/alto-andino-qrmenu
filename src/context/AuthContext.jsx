@@ -45,6 +45,62 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const fetchBrandById = useCallback(async (brandId) => {
+    if (!brandId) return null;
+    try {
+      const { data: brandData, error } = await supabase
+        .from('brands')
+        .select(`
+          id, name, slug, logo_url, business_type, plan_id, onboarding_completed, is_active,
+          trial_end_date, has_ai_addon, has_kds_addon, has_bds_addon, payment_verified, ai_generation_limit, ai_generations_used, addon_ai_analytics, addon_ai_agent,
+          plans (name),
+          restaurant_settings (primary_color)
+        `)
+        .eq('id', brandId)
+        .maybeSingle();
+
+      if (brandData && !error) {
+        setActiveBrandState(brandData);
+        localStorage.setItem('aa_active_brand_id', brandData.id);
+        if (brandData.plan_id) {
+          fetchBrandFeatures(brandData.id, brandData.plan_id);
+        }
+        return brandData;
+      }
+    } catch (err) {
+      console.error('Error fetching brand by ID in AuthContext:', err);
+    }
+    return null;
+  }, [fetchBrandFeatures]);
+
+  const fetchBrandBySlug = useCallback(async (slug) => {
+    if (!slug) return null;
+    try {
+      const { data: brandData, error } = await supabase
+        .from('brands')
+        .select(`
+          id, name, slug, logo_url, business_type, plan_id, onboarding_completed, is_active,
+          trial_end_date, has_ai_addon, has_kds_addon, has_bds_addon, payment_verified, ai_generation_limit, ai_generations_used, addon_ai_analytics, addon_ai_agent,
+          plans (name),
+          restaurant_settings (primary_color)
+        `)
+        .eq('slug', slug)
+        .maybeSingle();
+
+      if (brandData && !error) {
+        setActiveBrandState(brandData);
+        localStorage.setItem('aa_active_brand_id', brandData.id);
+        if (brandData.plan_id) {
+          fetchBrandFeatures(brandData.id, brandData.plan_id);
+        }
+        return brandData;
+      }
+    } catch (err) {
+      console.error('Error fetching brand by slug in AuthContext:', err);
+    }
+    return null;
+  }, [fetchBrandFeatures]);
+
   const fetchProfile = useCallback(async (userId) => {
     try {
       let { data, error } = await supabase
@@ -177,6 +233,26 @@ export const AuthProvider = ({ children }) => {
         if (initialUser) {
           await withTimeout(fetchProfile(initialUser.id), 15000, 'La carga del perfil');
         } else {
+          // Fallback resolution for unauthenticated / staff PIN / tablet sessions
+          const pathParts = window.location.pathname.split('/').filter(Boolean);
+          const pathSlug = pathParts[0];
+          const isSystemSlug = ['login', 'register', 'admin', 'portal', 'impacto', 'completar-registro'].includes(pathSlug);
+
+          let staffBrandId = null;
+          try {
+            const savedStaff = JSON.parse(sessionStorage.getItem('aa_admin_session') || '{}');
+            if (savedStaff?.brand_id) staffBrandId = savedStaff.brand_id;
+          } catch (e) {}
+
+          const savedBrandId = localStorage.getItem('aa_active_brand_id');
+
+          if (pathSlug && !isSystemSlug) {
+            await fetchBrandBySlug(pathSlug);
+          } else if (staffBrandId) {
+            await fetchBrandById(staffBrandId);
+          } else if (savedBrandId) {
+            await fetchBrandById(savedBrandId);
+          }
           setLoading(false);
         }
       } catch (err) {
@@ -186,7 +262,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkSession();
-  }, [fetchProfile]);
+  }, [fetchProfile, fetchBrandBySlug, fetchBrandById]);
 
   useEffect(() => {
     const pendingProfileTimers = new Set();
@@ -298,6 +374,8 @@ export const AuthProvider = ({ children }) => {
       hasFeature,
       isFeatureLocked,
       switchBrand,
+      setActiveBrand: setActiveBrandState,
+      fetchBrandById,
       refreshProfile: fetchProfile,
       signIn,
       signUp,

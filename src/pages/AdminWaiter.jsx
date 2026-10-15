@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useBrand } from '../context/BrandContext';
 import { useLocations } from '../context/LocationContext';
 import { useStaff } from '../hooks/useStaff';
 import { toast as toastFn } from '../components/Toast';
@@ -22,8 +23,11 @@ const toast = {
 
 export default function AdminWaiter() {
   const { profile, activeBrand } = useAuth();
+  const { brand: brandFromContext } = useBrand();
   const { activeLocationId, isAllLocations, switchLocation } = useLocations();
   const { staffList } = useStaff();
+  const brandId = activeBrand?.id || brandFromContext?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
+
   const [tables, setTables] = useState([]);
   const [areas, setAreas] = useState([]);
   const [selectedAreaId, setSelectedAreaId] = useState('all');
@@ -34,7 +38,7 @@ export default function AdminWaiter() {
   const activeStaff = useMemo(() => staffList.filter(s => s.role === 'waiter' || s.role === 'admin'), [staffList]);
 
   useEffect(() => {
-    if (!profile?.brand_id) return;
+    if (!brandId) return;
     
     // Safety: Don't subscribe if we are in specific location mode but have no ID yet
     if (!isAllLocations && !activeLocationId) return;
@@ -43,8 +47,8 @@ export default function AdminWaiter() {
     fetchAreas();
     fetchActiveOrders();
 
-    const orderFilter = `brand_id=eq.${profile.brand_id}`;
-    const channelSuffix = `${profile.brand_id}-${activeLocationId || 'all'}`;
+    const orderFilter = `brand_id=eq.${brandId}`;
+    const channelSuffix = `${brandId}-${activeLocationId || 'all'}`;
 
     const tablesChannel = supabase
       .channel(`tables-${channelSuffix}`)
@@ -90,17 +94,20 @@ export default function AdminWaiter() {
       supabase.removeChannel(ordersChannel);
       supabase.removeChannel(areasChannel);
     };
-  }, [profile?.brand_id, activeLocationId, isAllLocations]);
+  }, [brandId, activeLocationId, isAllLocations]);
 
   const fetchTables = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('restaurant_tables')
         .select('*, locations(name)')
-        .eq('brand_id', profile.brand_id)
-        .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
-        .order('table_number');
+        .eq('brand_id', brandId);
       
+      if (!isAllLocations && activeLocationId) {
+        query = query.or(`location_id.eq.${activeLocationId},location_id.is.null`);
+      }
+
+      const { data, error } = await query.order('table_number');
       if (error) throw error;
       setTables(data || []);
     } catch (err) {
@@ -113,13 +120,16 @@ export default function AdminWaiter() {
 
   const fetchAreas = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('table_areas')
         .select('*, locations(name)')
-        .eq('brand_id', profile.brand_id)
-        .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
-        .order('sort_order', { ascending: true });
-      
+        .eq('brand_id', brandId);
+
+      if (!isAllLocations && activeLocationId) {
+        query = query.or(`location_id.eq.${activeLocationId},location_id.is.null`);
+      }
+
+      const { data, error } = await query.order('sort_order', { ascending: true });
       if (error) throw error;
       setAreas(data || []);
     } catch (err) {
@@ -129,13 +139,17 @@ export default function AdminWaiter() {
 
   const fetchActiveOrders = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('orders')
         .select('id, status, table_id, created_at, customer_name, fulfillment_type')
-        .eq('brand_id', profile.brand_id)
-        .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {})
+        .eq('brand_id', brandId)
         .in('status', ['new', 'preparing', 'ready', 'waiting_payment']);
-      
+
+      if (!isAllLocations && activeLocationId) {
+        query = query.or(`location_id.eq.${activeLocationId},location_id.is.null`);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       setActiveOrders(data || []);
     } catch (err) {

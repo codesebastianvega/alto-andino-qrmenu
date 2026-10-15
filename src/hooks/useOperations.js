@@ -24,9 +24,9 @@ function getStartOfDayColombia() {
 }
 
 export function useOperations() {
-  const { activeBrand } = useAuth();
+  const { activeBrand, profile } = useAuth();
   const { activeLocationId, isAllLocations } = useLocation();
-  const brandId = activeBrand?.id;
+  const brandId = activeBrand?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
 
   const [orders, setOrders] = useState([]);
   const [tables, setTables] = useState([]);
@@ -73,8 +73,8 @@ export function useOperations() {
       .eq('brand_id', brandId)
       .gte('created_at', startOfDay);
 
-    if (!isAllLocations) {
-      query = query.eq('location_id', activeLocationId);
+    if (!isAllLocations && activeLocationId) {
+      query = query.or(`location_id.eq.${activeLocationId},location_id.is.null`);
     }
 
     const { data, error } = await query.order('created_at', { ascending: false });

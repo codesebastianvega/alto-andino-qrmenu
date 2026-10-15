@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { QRCode } from "react-qr-code";
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useBrand } from '../context/BrandContext';
 import { useLocations } from '../context/LocationContext';
 import { toast as toastFn } from '../components/Toast';
 import {
@@ -21,7 +22,9 @@ const toast = {
 
 export default function AdminTables({ isEmbedded = false }) {
   const { profile, activeBrand } = useAuth();
+  const { brand: brandFromContext } = useBrand();
   const { activeLocationId, isAllLocations, locations } = useLocations();
+  const brandId = activeBrand?.id || brandFromContext?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
   const [tables, setTables] = useState([]);
   const [loadingTables, setLoadingTables] = useState(false);
   
@@ -39,11 +42,11 @@ export default function AdminTables({ isEmbedded = false }) {
   const [isSubmittingArea, setIsSubmittingArea] = useState(false);
 
   useEffect(() => {
-    if (profile?.brand_id) {
+    if (brandId) {
       fetchTables();
       fetchAreas();
     }
-  }, [profile?.brand_id, activeLocationId, isAllLocations]);
+  }, [brandId, activeLocationId, isAllLocations]);
 
   const fetchAreas = async () => {
     setLoadingAreas(true);
@@ -51,11 +54,11 @@ export default function AdminTables({ isEmbedded = false }) {
       let query = supabase
         .from('table_areas')
         .select('*, locations(name)')
-        .eq('brand_id', profile.brand_id)
+        .eq('brand_id', brandId)
         .order('sort_order', { ascending: true });
 
       if (!isAllLocations && activeLocationId) {
-        query = query.eq('location_id', activeLocationId);
+        query = query.or(`location_id.eq.${activeLocationId},location_id.is.null`);
       }
 
       const { data, error } = await query;
@@ -74,11 +77,11 @@ export default function AdminTables({ isEmbedded = false }) {
       let query = supabase
         .from('restaurant_tables')
         .select('*, table_areas(name), locations(name)')
-        .eq('brand_id', profile.brand_id)
+        .eq('brand_id', brandId)
         .order('table_number');
       
       if (!isAllLocations && activeLocationId) {
-        query = query.eq('location_id', activeLocationId);
+        query = query.or(`location_id.eq.${activeLocationId},location_id.is.null`);
       }
 
       const { data, error } = await query;
@@ -103,7 +106,7 @@ export default function AdminTables({ isEmbedded = false }) {
     try {
       const { error } = await supabase.from('table_areas').insert([{
         name: newAreaName.trim(),
-        brand_id: profile.brand_id,
+        brand_id: brandId,
         location_id: activeLocationId,
         sort_order: areas.length
       }]);
@@ -193,7 +196,7 @@ export default function AdminTables({ isEmbedded = false }) {
           .insert([{ 
             table_number: tableForm.table_number,
             area_id: tableForm.area_id || null,
-            brand_id: profile.brand_id,
+            brand_id: brandId,
             location_id: effectiveLocationId
           }]);
         if (error) throw error;

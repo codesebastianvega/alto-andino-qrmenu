@@ -3,6 +3,7 @@ import { supabase } from '../config/supabase';
 import { Icon } from '@iconify-icon/react';
 import { toast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
+import { useBrand } from '../context/BrandContext';
 import { useLocations } from '../context/LocationContext';
 import { useStaff } from '../hooks/useStaff';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
@@ -129,9 +130,10 @@ export default function AdminOrders() {
   const [showDeliveredHistory, setShowDeliveredHistory] = useState(false);
   const [mobileActiveStatus, setMobileActiveStatus] = useState('new');
 
-  const { activeBrand } = useAuth();
+  const { activeBrand, profile } = useAuth();
+  const { brand: brandFromContext } = useBrand();
   const { activeLocationId, isAllLocations } = useLocations();
-  const activeBrandId = activeBrand?.id;
+  const activeBrandId = activeBrand?.id || brandFromContext?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
 
   // REINSTATED: Missing logic for staff, payments and settings
   const { staffList } = useStaff();
@@ -235,7 +237,7 @@ export default function AdminOrders() {
       }
 
       if (!isAllLocations && activeLocationId) {
-        query = query.eq('location_id', activeLocationId);
+        query = query.or(`location_id.eq.${activeLocationId},location_id.is.null`);
       }
 
       const { data, error } = await query
@@ -252,8 +254,8 @@ export default function AdminOrders() {
   }, [activeBrandId, isAllLocations, activeLocationId, getFilterDate, dateRange]);
 
   useEffect(() => {
-    // Safety: don't subscribe if missing identifiers
-    if (!activeBrandId || (!isAllLocations && !activeLocationId)) {
+    // Safety: don't subscribe if missing brand identifier
+    if (!activeBrandId) {
       setLoading(false);
       return;
     }
@@ -262,7 +264,7 @@ export default function AdminOrders() {
     fetchOrders();
 
     const channelName = `admin-orders-${activeBrandId}-${isAllLocations ? 'all' : activeLocationId}`;
-    const orderFilter = isAllLocations ? `brand_id=eq.${activeBrandId}` : `location_id=eq.${activeLocationId}`;
+    const orderFilter = `brand_id=eq.${activeBrandId}`;
 
     const channel = supabase
       .channel(channelName)
@@ -272,8 +274,8 @@ export default function AdminOrders() {
         table: 'orders',
         filter: orderFilter
       }, (payload) => {
-        // Double check location client-side (extra safety)
-        if (!isAllLocations && activeLocationId && payload.new.location_id !== activeLocationId) return;
+        // Double check location client-side (match location or allow global orders)
+        if (!isAllLocations && activeLocationId && payload.new.location_id && payload.new.location_id !== activeLocationId) return;
 
         setOrders(prev => [payload.new, ...prev]);
         playNotificationSound();
@@ -287,7 +289,7 @@ export default function AdminOrders() {
         filter: orderFilter
       }, (payload) => {
         // Filter by location client-side if needed
-        if (!isAllLocations && activeLocationId && payload.new.location_id !== activeLocationId) {
+        if (!isAllLocations && activeLocationId && payload.new.location_id && payload.new.location_id !== activeLocationId) {
           setOrders(prev => prev.filter(o => o.id !== payload.new.id));
           return;
         }

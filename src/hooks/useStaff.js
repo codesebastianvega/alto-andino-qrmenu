@@ -7,9 +7,9 @@ export function useStaff() {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { activeBrand } = useAuth();
+  const { activeBrand, profile } = useAuth();
   const { activeLocationId, isAllLocations } = useLocations();
-  const activeBrandId = activeBrand?.id;
+  const activeBrandId = activeBrand?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
 
   useEffect(() => {
     if (activeBrandId) {

@@ -15,8 +15,9 @@ import OpenShiftModal from '../components/admin/OpenShiftModal';
 import CloseShiftModal from '../components/admin/CloseShiftModal';
 
 export default function AdminOperations() {
-  const { activeBrand } = useAuth();
+  const { activeBrand, profile } = useAuth();
   const { activeLocationId, isAllLocations, activeLocation } = useLocation();
+  const brandId = activeBrand?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
 
   const {
     orders,
@@ -40,12 +41,12 @@ export default function AdminOperations() {
   // Cargar lista de staff activo para asignar cajeros/responsables
   useEffect(() => {
     async function loadStaff() {
-      if (!activeBrand?.id) return;
+      if (!brandId) return;
       try {
         let query = supabase
           .from('staff')
           .select('id, name, role, location_id')
-          .eq('brand_id', activeBrand.id)
+          .eq('brand_id', brandId)
           .eq('is_active', true);
 
         if (!isAllLocations && activeLocationId) {

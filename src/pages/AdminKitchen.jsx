@@ -3,6 +3,7 @@ import { supabase } from '../config/supabase';
 import { Icon } from '@iconify-icon/react';
 import { toast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
+import { useBrand } from '../context/BrandContext';
 import { useLocations } from '../context/LocationContext';
 import { useRestaurantSettings } from '../hooks/useRestaurantSettings';
 import { printThermalDocument } from '../utils/thermalPrint';
@@ -93,9 +94,10 @@ export default function AdminKitchen() {
   });
 
   const { settings: restaurantSettings } = useRestaurantSettings();
-  const { activeBrand } = useAuth();
+  const { activeBrand, profile } = useAuth();
+  const { brand: brandFromContext } = useBrand();
   const { activeLocationId, isAllLocations } = useLocations();
-  const activeBrandId = activeBrand?.id;
+  const activeBrandId = activeBrand?.id || brandFromContext?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
 
   const { recipes: allRecipes } = useAdminRecipes();
   const [selectedRecipeForViewer, setSelectedRecipeForViewer] = useState(null);
@@ -135,7 +137,7 @@ export default function AdminKitchen() {
     if (!activeBrandId) return;
     try {
       if (!isSilent) setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('orders')
         .select(`
           *,
@@ -147,9 +149,13 @@ export default function AdminKitchen() {
           )
         `)
         .in('status', ['new', 'preparing'])
-        .eq('brand_id', activeBrandId)
-        .match(!isAllLocations && activeLocationId ? { location_id: activeLocationId } : {});
+        .eq('brand_id', activeBrandId);
 
+      if (!isAllLocations && activeLocationId) {
+        query = query.or(`location_id.eq.${activeLocationId},location_id.is.null`);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       
       const sortedData = (data || []).sort((a, b) => {

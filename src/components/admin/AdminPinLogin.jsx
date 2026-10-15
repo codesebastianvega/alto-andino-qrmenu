@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStaff } from '../../hooks/useStaff';
 import { useLocations } from '../../context/LocationContext';
-import { safeSessionStorage as sessionStorage } from '../../utils/safeStorage';
+import { useAuth } from '../../context/AuthContext';
+import { safeSessionStorage as sessionStorage, safeStorage as localStorage } from '../../utils/safeStorage';
 import { Eye, EyeOff, Lock, ShieldAlert, ArrowLeft, Delete } from 'lucide-react';
 
 const RoleColors = {
@@ -28,6 +29,7 @@ const LOCKOUT_SECONDS = 30;
 export default function AdminPinLogin({ onLogin }) {
   const { staffList, loading, error, clockIn } = useStaff();
   const { activeLocationId, isAllLocations } = useLocations();
+  const { fetchBrandById } = useAuth();
   const [selectedUser, setSelectedUser] = useState(null);
   const [pin, setPin] = useState('');
   const [showPin, setShowPin] = useState(false);
@@ -43,12 +45,16 @@ export default function AdminPinLogin({ onLogin }) {
     if (savedSession) {
       try {
         const user = JSON.parse(savedSession);
+        if (user?.brand_id) {
+          localStorage.setItem('aa_active_brand_id', user.brand_id);
+          if (typeof fetchBrandById === 'function') fetchBrandById(user.brand_id);
+        }
         onLogin(user);
       } catch (e) {
         sessionStorage.removeItem('aa_admin_session');
       }
     }
-  }, [onLogin]);
+  }, [onLogin, fetchBrandById]);
 
   // Manejo de cuenta regresiva de bloqueo por intentos fallidos
   useEffect(() => {
@@ -109,6 +115,10 @@ export default function AdminPinLogin({ onLogin }) {
 
       clockIn(selectedUser.id, targetLocationId);
       sessionStorage.setItem('aa_admin_session', JSON.stringify(selectedUser));
+      if (selectedUser.brand_id) {
+        localStorage.setItem('aa_active_brand_id', selectedUser.brand_id);
+        if (typeof fetchBrandById === 'function') fetchBrandById(selectedUser.brand_id);
+      }
       onLogin(selectedUser);
     } else {
       const nextAttempts = failedAttempts + 1;
