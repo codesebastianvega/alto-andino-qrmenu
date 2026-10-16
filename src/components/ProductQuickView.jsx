@@ -207,12 +207,14 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   const basePrice = typeof product.price === 'number' ? product.price : Number(String(product.price || 0).replace(/[^\d.-]/g, "")) || 0;
   const finalPrice = basePrice + extraPrice;
   const isOutOfStock = product.stock_status === "out";
+  const isScheduleRestricted = product.is_schedule_available === false;
+  const scheduleNotice = product.schedule_label || "Fuera de horario de servicio";
   const missingRequired = groups
     .filter((g) => (selections[g.name] || []).length < g.min)
     .map((g) => g.name);
 
-  // canAdd strictly checks if it's possible to add (base valid + no missing required)
-  const canAdd = !!id && Number.isFinite(basePrice) && basePrice > 0 && !isOutOfStock && missingRequired.length === 0;
+  // canAdd strictly checks if it's possible to add (base valid + no missing required + in stock + within schedule)
+  const canAdd = !!id && Number.isFinite(basePrice) && basePrice > 0 && !isOutOfStock && !isScheduleRestricted && missingRequired.length === 0;
 
   const handleSelection = (groupName, itemId) => {
     const group = groups.find(g => g.name === groupName);
@@ -366,6 +368,19 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                         <span>{alg.name}</span>
                       </span>
                     ))}
+                  </div>
+                )}
+
+                {/* Schedule restriction notice */}
+                {isScheduleRestricted && (
+                  <div className="mt-4 p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 flex items-start gap-3 text-amber-900 shadow-2xs" style={stagger(2)}>
+                    <span className="text-xl shrink-0 mt-0.5">🕒</span>
+                    <div className="text-xs leading-relaxed">
+                      <p className="font-extrabold text-[13px] text-amber-950">Fuera de horario de servicio</p>
+                      <p className="text-amber-800 font-medium mt-0.5">
+                        {scheduleNotice}. Puedes consultar los detalles e ingredientes de este plato, pero no está habilitado para pedidos en este momento.
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -560,6 +575,8 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                   <span className="relative z-10">
                     {isOutOfStock
                       ? "Agotado"
+                      : isScheduleRestricted
+                      ? `🕒 ${scheduleNotice}`
                       : missingRequired.length > 0
                       ? `Faltan ${missingRequired.length} ${missingRequired.length === 1 ? 'opción' : 'opciones'}`
                       : "Agregar al pedido"}

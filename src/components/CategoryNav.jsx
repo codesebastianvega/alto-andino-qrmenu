@@ -57,11 +57,22 @@ export default function CategoryNav({ categories = [], activeId, onSelect }) {
             />
             <span
               className={clsx(
-                "block text-[15px] whitespace-nowrap tracking-tight",
+                "block text-[15px] whitespace-nowrap tracking-tight flex items-center gap-1.5",
                 active ? "font-semibold text-white" : "font-medium text-neutral-600"
               )}
             >
-              {cat.label}
+              <span>{cat.label}</span>
+              {cat.is_schedule_active === false && (
+                <span
+                  className={clsx(
+                    "inline-flex items-center text-[10px] px-1.5 py-0.2 rounded-full font-bold",
+                    active ? "bg-white/25 text-white" : "bg-amber-100 text-amber-800"
+                  )}
+                  title={cat.schedule_label || "Fuera de horario"}
+                >
+                  🕒
+                </span>
+              )}
             </span>
           </button>
         );

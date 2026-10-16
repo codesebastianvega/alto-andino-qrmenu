@@ -29,12 +29,16 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
   const isSpinning = isFloating && (animationMode === 'spin' || config.banner_spin === true);
 
   const basePrice = product?.price || 0;
+  const isScheduleRestricted = category?.is_schedule_active === false;
+  const scheduleNotice = category?.schedule_label || "Fuera de horario de servicio";
 
   return (
     <div className="mb-8 mt-6 sm:mt-8 pt-2">
       <div 
         onClick={onOpenBuilder}
-        className={`relative h-40 sm:h-52 md:h-64 rounded-3xl sm:rounded-[32px] ring-1 ring-black/10 shadow-xl transition-all duration-500 hover:shadow-2xl hover:shadow-black/15 group ${onOpenBuilder ? 'cursor-pointer active:scale-[0.99]' : ''}`}
+        className={`relative h-40 sm:h-52 md:h-64 rounded-3xl sm:rounded-[32px] ring-1 ring-black/10 shadow-xl transition-all duration-500 hover:shadow-2xl hover:shadow-black/15 group ${
+          isScheduleRestricted ? 'opacity-85 saturate-[0.85]' : ''
+        } ${onOpenBuilder ? 'cursor-pointer active:scale-[0.99]' : ''}`}
         style={isFloating ? { 
           background: `linear-gradient(135deg, ${accentColor}, #8a0a0a, #1a0505)` 
         } : {}}
@@ -90,13 +94,19 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
                    {category?.icon} {category?.name || 'Recomendado'}
                 </span>
               </div>
-              {basePrice > 0 && (
+              {isScheduleRestricted ? (
+                <div className="px-3 py-1 bg-amber-500/85 backdrop-blur-sm rounded-full border border-amber-300/40 w-fit shadow-xs">
+                  <span className="text-[9px] font-black text-white uppercase tracking-widest flex items-center gap-1.5">
+                    🕒 {scheduleNotice}
+                  </span>
+                </div>
+              ) : basePrice > 0 ? (
                 <div className="px-3 py-1 bg-black/20 backdrop-blur-sm rounded-full border border-white/5 w-fit">
                   <span className="text-[9px] font-black text-white/90 uppercase tracking-widest">
                     Desde {formatCOP(basePrice)}
                   </span>
                 </div>
-              )}
+              ) : null}
             </div>
 
             <div className="space-y-0.5 sm:space-y-1">
@@ -109,7 +119,7 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
             </div>
           </div>
           
-          {(onOpenBuilder || config.banner_badge) && (
+          {(onOpenBuilder || config.banner_badge || isScheduleRestricted) && (
             <div className="mt-4 sm:mt-6 flex flex-wrap items-center gap-3">
                {onOpenBuilder && (
                  <button
@@ -118,17 +128,22 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
                     className="bg-white font-black text-[9px] sm:text-xs uppercase tracking-widest rounded-2xl shadow-lg hover:scale-105 active:scale-95 transition-all px-5 py-2.5 sm:px-10 sm:py-3.5"
                     style={{ color: accentColor }}
                   >
-                    Empezar a Crear
+                    {isScheduleRestricted ? 'Ver Opciones 🕒' : 'Empezar a Crear'}
                   </button>
                )}
                 
                 {/* Integrated Specialty Chip - Visible on all devices */}
-                {config.banner_badge && (
+                {isScheduleRestricted ? (
+                  <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-950/75 backdrop-blur-md rounded-full text-amber-200 font-black text-[9px] uppercase tracking-widest border border-amber-400/30">
+                     <span>🕒</span>
+                     <span>{scheduleNotice}</span>
+                  </div>
+                ) : config.banner_badge ? (
                   <div className="flex items-center gap-1.5 px-3 py-2 bg-black/20 backdrop-blur-md rounded-full text-white font-black text-[9px] uppercase tracking-widest border border-white/10">
                      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.5)]" />
                      {config.banner_badge}
                   </div>
-                )}
+                ) : null}
             </div>
           )}
         </div>

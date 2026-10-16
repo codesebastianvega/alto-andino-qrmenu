@@ -378,6 +378,24 @@ export default function CartModal({ open, onClose }) {
     return effectiveCashAmount >= finalTotal;
   }, [customerPaymentType, cashTenderedType, effectiveCashAmount, finalTotal]);
 
+  const productsMap = useMemo(() => {
+    const map = new Map();
+    (allDBProducts || []).forEach(p => {
+      if (p.id) map.set(String(p.id), p);
+    });
+    return map;
+  }, [allDBProducts]);
+
+  const restrictedCartItems = useMemo(() => {
+    if (isPOSMode) return [];
+    return items.filter(it => {
+      const prod = productsMap.get(String(it.productId || it.id));
+      return prod?.is_schedule_available === false;
+    });
+  }, [items, productsMap, isPOSMode]);
+
+  const hasRestrictedItems = restrictedCartItems.length > 0;
+
   const paymentMethodSummary = useMemo(() => {
     if (isPOSMode) {
       return isPaid ? (paymentMethod || 'Pagado en caja') : 'Pendiente en caja';
@@ -570,6 +588,14 @@ export default function CartModal({ open, onClose }) {
     // 0.1 Validate Order Limit (Skip for POS mode)
     if (!isWithinOrderLimit && !isPOSMode) {
       toast.error("El restaurante ha alcanzado su límite de pedidos por este mes. Por favor, intenta de nuevo más tarde.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    // 0.2 Validate Category Schedule (Skip for POS mode)
+    if (!isPOSMode && hasRestrictedItems) {
+      const names = restrictedCartItems.map(it => it.name).join(', ');
+      toast.error(`Los siguientes productos están fuera de su horario de atención: ${names}. Por favor retíralos para continuar.`);
       setIsSubmitting(false);
       return;
     }
@@ -1030,7 +1056,19 @@ export default function CartModal({ open, onClose }) {
           </div>
           
           <div className="flex flex-col gap-2.5">
-            {(!isWithinOrderLimit && !isPOSMode) ? (
+            {hasRestrictedItems ? (
+              <div className="bg-amber-500/10 border border-amber-300 rounded-2xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2">
+                <Icon icon="heroicons:clock" className="text-amber-600 text-2xl flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-amber-900 leading-snug">
+                    Hay productos fuera de horario en tu pedido: {restrictedCartItems.map(i => i.name).join(', ')}.
+                  </p>
+                  <p className="text-[11px] text-amber-700 mt-1">
+                    Por favor retíralos del carrito para poder continuar.
+                  </p>
+                </div>
+              </div>
+            ) : (!isWithinOrderLimit && !isPOSMode) ? (
               <div className="bg-neutral-900 rounded-2xl p-5 flex items-start gap-3.5 animate-in fade-in slide-in-from-bottom-2 shadow-xl shadow-neutral-900/10">
                 <div className="text-neutral-400 mt-0.5 flex-shrink-0">
                   <Icon icon="heroicons:information-circle" className="text-2xl" />
@@ -1496,7 +1534,14 @@ export default function CartModal({ open, onClose }) {
                   >
                     <Icon icon="heroicons:arrow-left" className="text-xl" />
                   </button>
-                  {!isWithinOrderLimit && !isPOSMode ? (
+                  {hasRestrictedItems ? (
+                    <div className="flex-1 bg-amber-500/10 border border-amber-300 rounded-2xl p-3 flex items-center gap-2.5">
+                      <Icon icon="heroicons:clock" className="text-amber-600 text-lg flex-shrink-0" />
+                      <span className="text-[11px] font-bold text-amber-900 leading-tight">
+                        Hay productos fuera de horario en tu orden. Retíralos para poder confirmar.
+                      </span>
+                    </div>
+                  ) : !isWithinOrderLimit && !isPOSMode ? (
                     <div className="flex-1 bg-neutral-900 rounded-2xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 shadow-lg shadow-neutral-900/5">
                       <Icon icon="heroicons:information-circle" className="text-neutral-400 text-xl flex-shrink-0" />
                       <span className="text-[11px] font-semibold text-neutral-100 leading-tight">
@@ -1642,17 +1687,19 @@ export default function CartModal({ open, onClose }) {
                   const lineTotal = unit * qty;
                   // Resolve image: try item first, then look up from DB products
                   const dbProduct = allDBProducts.find(p => p.id === (it.productId || it.id));
+                  const targetProduct = productsMap.get(String(it.productId || it.id)) || dbProduct;
+                  const isItemRestricted = !isPOSMode && targetProduct?.is_schedule_available === false;
                   const itemForImage = { ...it, image_url: it.image_url || it.image || dbProduct?.image_url };
                   const imageSrc = getProductImage(itemForImage);
                   return (
-                    <div key={idx} className="group relative border-b border-neutral-100/80 bg-white p-4 sm:px-6 sm:py-4 transition-colors hover:bg-white/90">
+                    <div key={idx} className={`group relative border-b border-neutral-100/80 p-4 sm:px-6 sm:py-4 transition-colors ${isItemRestricted ? 'bg-amber-50/50 hover:bg-amber-50/70' : 'bg-white hover:bg-white/90'}`}>
                       <div className="flex items-start gap-4 sm:gap-5">
                         {imageSrc ? (
                           <AAImage
                             src={imageSrc}
                             alt=""
                             aria-hidden="true"
-                            className="h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 rounded-2xl object-cover shadow-sm bg-neutral-100 border border-neutral-200/50"
+                            className={`h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 rounded-2xl object-cover shadow-sm bg-neutral-100 border border-neutral-200/50 ${isItemRestricted ? 'opacity-75 saturate-50' : ''}`}
                           />
                         ) : (
                           <div className="h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 rounded-2xl bg-neutral-100 border border-neutral-200/50 flex items-center justify-center">
@@ -1666,6 +1713,12 @@ export default function CartModal({ open, onClose }) {
                               <h3 className="text-base sm:text-lg font-bold text-neutral-900 leading-tight">{it.name}</h3>
                               {it.variant && (
                                 <p className="text-sm text-neutral-500 mt-0.5">{it.variant}</p>
+                              )}
+                              {isItemRestricted && (
+                                <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 bg-amber-100/90 border border-amber-300 px-2.5 py-0.5 rounded-md">
+                                  <Icon icon="heroicons:clock" className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                  <span>Fuera de horario {targetProduct?.schedule_label ? `(${targetProduct.schedule_label})` : ''}</span>
+                                </div>
                               )}
                             </div>
                             <div className="flex flex-col items-end">

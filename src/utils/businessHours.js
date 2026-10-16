@@ -62,3 +62,126 @@ export function buildDefaultBusinessHours(brandId, locationId = null) {
     is_closed: false,
   }));
 }
+
+export function formatTime12h(timeStr) {
+  if (!timeStr) return '';
+  const [hStr, mStr] = String(timeStr).split(':');
+  let h = parseInt(hStr, 10);
+  if (isNaN(h)) return timeStr;
+  const m = mStr ? mStr.slice(0, 2) : '00';
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  h = h ? h : 12;
+  return `${h}:${m} ${ampm}`;
+}
+
+export function getCategoryScheduleInfo(cat, referenceDate = new Date()) {
+  if (!cat) {
+    return {
+      isAvailableNow: true,
+      isRestricted: false,
+      reason: 'available',
+      label: '',
+      hoursText: '',
+      daysText: 'Todos los días',
+      from12: '',
+      to12: ''
+    };
+  }
+
+  const hasTimeRestriction = Boolean(cat.available_from || cat.available_to);
+  const config = cat.visibility_config || {};
+  const allowedDays = Array.isArray(config.days) && config.days.length > 0 
+    ? config.days 
+    : [0, 1, 2, 3, 4, 5, 6];
+  const hasDayRestriction = allowedDays.length < 7;
+
+  if (!hasTimeRestriction && !hasDayRestriction) {
+    return {
+      isAvailableNow: true,
+      isRestricted: false,
+      reason: 'available',
+      label: '',
+      hoursText: '',
+      daysText: 'Todos los días',
+      from12: '',
+      to12: ''
+    };
+  }
+
+  const now = referenceDate instanceof Date ? referenceDate : new Date(referenceDate);
+  const currentDay = now.getDay();
+  const isDayAllowed = allowedDays.includes(currentDay);
+
+  const parseMinutes = (t) => {
+    if (!t) return null;
+    const [h, m] = t.split(':').map(Number);
+    return (h * 60) + (m || 0);
+  };
+
+  const fromMin = parseMinutes(cat.available_from);
+  const toMin = parseMinutes(cat.available_to);
+  const currentMin = (now.getHours() * 60) + now.getMinutes();
+
+  let isTimeAllowed = true;
+  if (fromMin !== null && toMin !== null) {
+    isTimeAllowed = fromMin < toMin
+      ? (currentMin >= fromMin && currentMin <= toMin)
+      : (currentMin >= fromMin || currentMin <= toMin);
+  } else if (fromMin !== null) {
+    isTimeAllowed = currentMin >= fromMin;
+  } else if (toMin !== null) {
+    isTimeAllowed = currentMin <= toMin;
+  }
+
+  const isAvailableNow = isDayAllowed && isTimeAllowed;
+  const reason = !isDayAllowed ? 'day_blocked' : (!isTimeAllowed ? 'time_blocked' : 'available');
+
+  const from12 = formatTime12h(cat.available_from);
+  const to12 = formatTime12h(cat.available_to);
+
+  let hoursText = '';
+  if (from12 && to12) {
+    hoursText = `${from12} a ${to12}`;
+  } else if (from12) {
+    hoursText = `desde las ${from12}`;
+  } else if (to12) {
+    hoursText = `hasta las ${to12}`;
+  }
+
+  const dayNamesShort = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  let daysText = 'Todos los días';
+  if (allowedDays.length === 5 && [1, 2, 3, 4, 5].every(d => allowedDays.includes(d))) {
+    daysText = 'Lunes a Viernes';
+  } else if (allowedDays.length === 2 && [0, 6].every(d => allowedDays.includes(d))) {
+    daysText = 'Fines de semana';
+  } else if (allowedDays.length < 7) {
+    daysText = allowedDays.map(d => dayNamesShort[d]).join(', ');
+  }
+
+  let label = '';
+  if (!isDayAllowed && hoursText) {
+    label = `Solo ${daysText.toLowerCase()} (${hoursText})`;
+  } else if (!isDayAllowed) {
+    label = `Solo ${daysText.toLowerCase()}`;
+  } else if (!isTimeAllowed && hoursText) {
+    label = `Disponible de ${hoursText}`;
+  } else if (hoursText) {
+    label = `Horario: ${hoursText}`;
+  }
+
+  return {
+    isAvailableNow,
+    isRestricted: true,
+    reason,
+    label,
+    hoursText,
+    daysText,
+    from12,
+    to12,
+    available_from: cat.available_from,
+    available_to: cat.available_to,
+    allowedDays
+  };
+}
+

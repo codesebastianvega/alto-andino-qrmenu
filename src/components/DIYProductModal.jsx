@@ -52,6 +52,8 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
   const title = product?.title || product?.name || "Arma tu Propio Bowl";
   const subtitle = product?.subtitle || product?.description || product?.desc || "";
   const image = product ? getProductImage(product) : null;
+  const isScheduleRestricted = product?.is_schedule_available === false;
+  const scheduleNotice = product?.schedule_label || "Fuera de horario de servicio";
   const assignedGroups = product?.modifierGroups || product?.modifier_groups || [];
   const rawModifierGroups = menuData?.rawModifierGroups || [];
 
@@ -518,6 +520,16 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                     style={{ width: `${currentProgressPercent}%` }}
                   />
                 </div>
+
+                {isScheduleRestricted && (
+                  <div className="mt-3 p-3 rounded-2xl bg-amber-50/90 border border-amber-200/80 flex items-start gap-2.5 text-amber-900 text-xs shadow-2xs">
+                    <span className="text-base shrink-0 mt-0.5">🕒</span>
+                    <div className="leading-tight">
+                      <strong className="font-extrabold text-amber-950">Fuera de horario de servicio: </strong>
+                      <span className="font-medium text-amber-900/90">{scheduleNotice}. Puedes personalizar tu combinación, pero no está habilitado para pedidos en este momento.</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* STEPPER PILLS HEADER */}
@@ -825,9 +837,9 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                     <button
                       type="button"
                       onClick={handleNext}
-                      disabled={!isCurrentStepValid()}
+                      disabled={!isCurrentStepValid() || (currentStep === steps.length - 1 && isScheduleRestricted)}
                       className={`flex-1 sm:max-w-xs flex items-center justify-center gap-2 h-11 md:h-12 px-5 rounded-xl text-white font-extrabold text-sm md:text-base transition-all shadow-md active:scale-97 ${
-                        isCurrentStepValid() 
+                        isCurrentStepValid() && !(currentStep === steps.length - 1 && isScheduleRestricted)
                           ? currentStep === steps.length - 1
                             ? 'bg-[#cba258] hover:bg-[#b88c42] shadow-[#cba258]/30 hover:shadow-lg' 
                             : 'bg-[#2f4131] hover:bg-[#202c21] shadow-[#2f4131]/30 hover:shadow-lg'
@@ -835,10 +847,14 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                       }`}
                     >
                       {currentStep === steps.length - 1 ? (
-                        <>
-                          <span>Agregar al Pedido</span>
-                          <Icon icon="heroicons:shopping-bag-20-solid" className="text-lg" />
-                        </>
+                        isScheduleRestricted ? (
+                          <span className="truncate">🕒 {scheduleNotice}</span>
+                        ) : (
+                          <>
+                            <span>Agregar al Pedido</span>
+                            <Icon icon="heroicons:shopping-bag-20-solid" className="text-lg" />
+                          </>
+                        )
                       ) : (
                         <>
                           <span className="truncate">

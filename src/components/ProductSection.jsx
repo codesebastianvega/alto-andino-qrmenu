@@ -36,6 +36,9 @@ export default function ProductSection({
   renderEmpty,
   allergens: propAllergens,
   hideTitle = false,
+  isScheduleActive = true,
+  scheduleLabel = '',
+  scheduleInfo = null,
 }) {
   const { addItem } = useCart();
   const { allergens: contextAllergens = [] } = useMenuData() || {};
@@ -108,6 +111,27 @@ export default function ProductSection({
     typeof renderAfter === "function"
       ? renderAfter({ hasResults: count > 0 })
       : null;
+
+  const attachSchedule = (item) => {
+    if (!item) return item;
+    return {
+      ...item,
+      is_schedule_available: isScheduleActive && item.is_schedule_available !== false,
+      schedule_label: item.schedule_label || scheduleLabel
+    };
+  };
+
+  const scheduleNoticeNode = !isScheduleActive ? (
+    <div className="mb-4 flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs shadow-2xs">
+      <span className="text-base shrink-0">🕒</span>
+      <div className="leading-tight">
+        <span className="font-extrabold text-amber-950">Fuera de horario de servicio: </span>
+        <span className="font-medium text-amber-900/90">
+          {scheduleLabel || "Disponible en su horario habitual"}. Platos visibles solo para consulta.
+        </span>
+      </div>
+    </div>
+  ) : null;
 
   const renderProducts = (arr, keySeed = 0) => {
     let gridClasses = "grid gap-4 sm:gap-5 items-stretch";
@@ -197,7 +221,8 @@ export default function ProductSection({
               style={{ WebkitOverflowScrolling: "touch" }}
             >
               {arr.map((item, i) => {
-                const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
+                const rawItem = typeof mapItem === "function" ? mapItem(item) : item;
+                const safeItem = attachSchedule(rawItem);
                 return (
                   <div 
                     key={safeItem?.id || `${keySeed}-${i}`} 
@@ -238,7 +263,8 @@ export default function ProductSection({
       return (
         <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
           {arr.map((item, i) => {
-            const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
+            const rawItem = typeof mapItem === "function" ? mapItem(item) : item;
+            const safeItem = attachSchedule(rawItem);
             return (
               <div key={safeItem?.id || `${keySeed}-${i}`} className="break-inside-avoid mb-4 [content-visibility:auto] [contain-intrinsic-size:300px]">
                 <ProductCard
@@ -262,7 +288,8 @@ export default function ProductSection({
     return (
       <div className={gridClasses}>
         {arr.map((item, i) => {
-          const safeItem = typeof mapItem === "function" ? mapItem(item) : item;
+          const rawItem = typeof mapItem === "function" ? mapItem(item) : item;
+          const safeItem = attachSchedule(rawItem);
           // Determine if this is the hero: either by ID or first item if it's Bento and we need a default
           const isHero = variant === "bento-grid" && (heroId ? safeItem.id === heroId : i === 0);
           
@@ -288,7 +315,7 @@ export default function ProductSection({
 
   // ── Handle Spotlight Split (1 Hero on the left, 4 on the right in 2x2 grid) ──
   if (variant === "spotlight-split" && count > 0) {
-    const allAvailableItems = grouped ? grouped.flatMap(g => g.items) : filtered;
+    const allAvailableItems = (grouped ? grouped.flatMap(g => g.items) : filtered).map(attachSchedule);
     const heroItem = allAvailableItems.find(it => it.is_daily_special || it.is_bento_del_dia)
       || (heroId ? allAvailableItems.find(it => it.id === heroId) : null)
       || allAvailableItems[0];
@@ -307,6 +334,7 @@ export default function ProductSection({
       return (
         <Section id={`section-${id}`} title={title} count={displayCount} hideTitle={hideTitle}>
           {headerNode}
+          {scheduleNoticeNode}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-stretch">
             {allAvailableItems.map((item, idx) => (
               <div key={item.id || idx} className="h-full flex flex-col">
@@ -328,6 +356,7 @@ export default function ProductSection({
     return (
       <Section id={`section-${id}`} title={title} count={displayCount} hideTitle={hideTitle}>
         {headerNode}
+        {scheduleNoticeNode}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-stretch">
           {/* Left Column: Hero Spotlight Bento */}
@@ -390,6 +419,7 @@ export default function ProductSection({
   return (
     <Section id={`section-${id}`} title={title} count={displayCount} hideTitle={hideTitle}>
       {headerNode}
+      {scheduleNoticeNode}
 
       {count
         ? grouped

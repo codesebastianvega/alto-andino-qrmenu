@@ -58,7 +58,10 @@ export default function ProductLists({
       id: dbCat.slug,
       label: dbCat.name,
       targetId: dbCat.target_id || `section-${dbCat.slug}`,
-      tintClass: dbCat.tint_class || "bg-white"
+      tintClass: dbCat.tint_class || "bg-white",
+      is_schedule_active: dbCat.is_schedule_active,
+      schedule_label: dbCat.schedule_label,
+      schedule_info: dbCat.schedule_info,
     }));
   }, [dbCategories]);
 
@@ -216,6 +219,9 @@ export default function ProductLists({
           onCount={(n) => setCount(cat.slug, n)}
           onQuickView={onQuickView}
           renderHeader={showBanner ? () => bannerEl : undefined}
+          isScheduleActive={cat.is_schedule_active !== false}
+          scheduleLabel={cat.schedule_label}
+          scheduleInfo={cat.schedule_info}
         />
       );
 
@@ -499,11 +505,13 @@ function ProductRow({ item, onQuickView, style, index }) {
   const productDiets = (item.tags || []).map(tagName => {
     return allergens.find(a => a.name === tagName && a.type === 'diet');
   }).filter(Boolean);
+  const isScheduleRestricted = item.is_schedule_available === false;
+  const scheduleNotice = item.schedule_label || "Fuera de horario";
   const unavailable = outFromStock || isUnavailable(item);
   const product = {
     ...item,
     productId: item.id,
-    id: unavailable ? undefined : item.id,
+    id: (unavailable || isScheduleRestricted) ? undefined : item.id,
     title: item.name,
     name: item.name,
     subtitle: item.desc || item.description,
@@ -511,6 +519,8 @@ function ProductRow({ item, onQuickView, style, index }) {
     price: item.price,
     image: item.image || item.image_url,
     image_url: item.image_url || item.image,
+    is_schedule_available: !isScheduleRestricted,
+    schedule_label: scheduleNotice,
   };
   const [imgLoaded, setImgLoaded] = useState(false);
   const imgSrc = getProductImage(product);
@@ -520,7 +530,11 @@ function ProductRow({ item, onQuickView, style, index }) {
   return (
     <article
       className={`group grid ${imgSrc ? "grid-cols-[96px_1fr] md:grid-cols-[112px_1fr]" : "grid-cols-1"} gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 md:gap-4 md:p-4 ${
-        unavailable ? "opacity-70 grayscale" : ""
+        unavailable 
+          ? "opacity-70 grayscale" 
+          : isScheduleRestricted 
+          ? "opacity-80 saturate-[0.88] bg-neutral-50/60" 
+          : ""
       }`}
       style={style}
       data-index={index}
@@ -592,6 +606,10 @@ function ProductRow({ item, onQuickView, style, index }) {
         <div className="mt-2 flex flex-wrap gap-2">
           {isSoon ? (
             <StatusChip intent="info">Proximamente</StatusChip>
+          ) : isScheduleRestricted ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+              🕒 {scheduleNotice}
+            </span>
           ) : (
             <>
               {isLow && <StatusChip intent="warn">Pocas unidades</StatusChip>}
@@ -605,26 +623,40 @@ function ProductRow({ item, onQuickView, style, index }) {
               {typeof item.price === "number" ? formatCOP(item.price) : item.price}
             </div>
           </div>
-          <button
-            type="button"
-            aria-label={`Agregar ${item.name || "producto"}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (unavailable) {
-                toast("Producto no disponible");
-                return;
-              }
-              if (isSoon) {
-                toast("Disponible proximamente");
-                return;
-              }
-              addItem({ productId: item.id, name: item.name, price: item.price, packaging_fee: item.packaging_fee });
-            }}
-            disabled={unavailable || isSoon}
-            className="grid h-10 w-10 place-items-center rounded-full bg-[#2f4131] text-white shadow-sm ring-1 ring-black/5 hover:bg-[#263729] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 md:h-11 md:w-11 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            +
-          </button>
+          {isScheduleRestricted ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onQuickView?.(product);
+              }}
+              className="px-3 py-1.5 flex items-center gap-1 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-xs font-bold border border-neutral-200 shadow-2xs cursor-pointer active:scale-95"
+              title={scheduleNotice}
+            >
+              <span>🕒 Info</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              aria-label={`Agregar ${item.name || "producto"}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (unavailable) {
+                  toast("Producto no disponible");
+                  return;
+                }
+                if (isSoon) {
+                  toast("Disponible proximamente");
+                  return;
+                }
+                addItem({ productId: item.id, name: item.name, price: item.price, packaging_fee: item.packaging_fee });
+              }}
+              disabled={unavailable || isSoon}
+              className="grid h-10 w-10 place-items-center rounded-full bg-[#2f4131] text-white shadow-sm ring-1 ring-black/5 hover:bg-[#263729] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 md:h-11 md:w-11 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              +
+            </button>
+          )}
         </div>
       </div>
     </article>

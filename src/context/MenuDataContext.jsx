@@ -5,6 +5,7 @@ import { useLocation as useAppLocation } from './LocationContext';
 import { catalogCache } from '../utils/offlineDb';
 import { withTimeout } from '../utils/withTimeout';
 import { useDynamicPWA } from '../hooks/useDynamicPWA';
+import { getCategoryScheduleInfo } from '../utils/businessHours';
 
 const MenuDataContext = createContext({});
 
@@ -352,6 +353,8 @@ export const MenuDataProvider = ({ children }) => {
       }
 
       const catSlug = product.categories?.slug || 'otros';
+      const cat = (allCategories || []).find(c => c.slug === catSlug || c.id === product.category_id);
+      const catSchedule = getCategoryScheduleInfo(cat);
       
       // Apply location price override
       let finalPrice = product.price;
@@ -401,6 +404,11 @@ export const MenuDataProvider = ({ children }) => {
         station: product.station || (product.requires_kitchen === false ? 'none' : 'kitchen'),
         subcategory: productSubcategory,
         categorySlug: catSlug,
+        categoryId: product.category_id,
+        categoryName: cat?.name || product.categories?.name,
+        is_schedule_available: catSchedule.isAvailableNow,
+        schedule_label: catSchedule.label,
+        schedule_info: catSchedule,
         is_addon: product.is_addon,
         _supabase: product
       };
@@ -411,7 +419,7 @@ export const MenuDataProvider = ({ children }) => {
       }
     });
     return grouped;
-  }, [rawProducts, locationPrices, locationStatus, activeLocationId, restaurantSettings]);
+  }, [rawProducts, locationPrices, locationStatus, activeLocationId, restaurantSettings, allCategories]);
 
   // Compute categories reactively (Dayparting + Has Products + Location Filter)
   const categories = useMemo(() => {
@@ -420,9 +428,10 @@ export const MenuDataProvider = ({ children }) => {
       ? (locationCategories || []).filter(lc => lc.location_id === activeLocationId)
       : [];
     const hasLocCatConfig = locCatsForActive.length > 0;
+    const now = new Date();
 
     return (allCategories || []).filter(cat => {
-      // 1. Basic active status
+      // 1. Basic active status (desactivada manualmente por admin)
       if (cat.is_active === false) return false;
 
       // 2. ESTRATEGIA HÍBRIDA de sede:
@@ -437,32 +446,18 @@ export const MenuDataProvider = ({ children }) => {
       const productsInCat = productsByCategory[cat.slug] || [];
       if (productsInCat.length === 0) return false;
 
-      // 3. Dayparting logic
-      const now = new Date();
-      const currentDay = now.getDay();
-      const config = cat.visibility_config || {};
-      const allowedDays = config.days || [0, 1, 2, 3, 4, 5, 6];
-      if (!allowedDays.includes(currentDay)) return false;
-      if (!cat.available_from && !cat.available_to) return true;
-      
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      const parseTime = (t) => { 
-        if (!t) return null; 
-        const [h, m] = t.split(':').map(Number); 
-        return h * 60 + m; 
-      };
-      const from = parseTime(cat.available_from);
-      const to = parseTime(cat.available_to);
-      
-      if (from !== null && to !== null) {
-        return from < to 
-          ? (currentMinutes >= from && currentMinutes <= to) 
-          : (currentMinutes >= from || currentMinutes <= to);
-      }
-      if (from !== null) return currentMinutes >= from;
-      if (to !== null) return currentMinutes <= to;
-      
+      // UX: NO se filtra la categoría cuando está fuera de horario/día.
+      // Se mantiene presente pero atenuada para que el comensal sepa que existe.
       return true;
+    }).map(cat => {
+      const scheduleInfo = getCategoryScheduleInfo(cat, now);
+      return {
+        ...cat,
+        schedule_info: scheduleInfo,
+        is_schedule_active: scheduleInfo.isAvailableNow,
+        schedule_label: scheduleInfo.label,
+        is_schedule_restricted: scheduleInfo.isRestricted
+      };
     });
   }, [allCategories, productsByCategory, activeLocationId, locationCategories]);
 

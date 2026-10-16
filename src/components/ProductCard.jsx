@@ -26,12 +26,15 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
   }).filter(Boolean), [item.tags, allergens]);
   
   // Use stock_status from database (Supabase)
-  const isOut = item.stock_status === 'out';
+  const isOutOfStock = item.stock_status === 'out';
+  const isScheduleRestricted = item.is_schedule_available === false;
+  const scheduleNotice = item.schedule_label || "Fuera de horario";
+  const isOut = isOutOfStock;
   
   const product = React.useMemo(() => ({
     ...item,
     productId,
-    id: isOut ? undefined : productId,
+    id: (isOutOfStock || isScheduleRestricted) ? undefined : productId,
     title: item.name,
     name: item.name,
     subtitle: item.desc || item.description,
@@ -39,7 +42,9 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
     price: item.price,
     image: item.image || item.image_url,
     image_url: item.image_url || item.image,
-  }), [item, productId, isOut]);
+    is_schedule_available: !isScheduleRestricted,
+    schedule_label: scheduleNotice,
+  }), [item, productId, isOutOfStock, isScheduleRestricted, scheduleNotice]);
 
   const imageSrc = getProductImage(product);
   const [imgLoaded, setImgLoaded] = React.useState(false);
@@ -58,8 +63,13 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
 
   const handleAdd = (e) => {
     e.stopPropagation();
-    if (isOut) {
+    if (isOutOfStock) {
       toast("Producto agotado");
+      return;
+    }
+    if (isScheduleRestricted) {
+      toast(scheduleNotice || "Plato fuera de horario de servicio");
+      handleQuickView();
       return;
     }
 
@@ -83,7 +93,11 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
     return (
       <article
         className={`group relative flex flex-col h-full rounded-2xl bg-white p-3.5 sm:p-4 border border-amber-300/80 hover:border-amber-400 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden ${
-          isOut ? "opacity-70 grayscale" : ""
+          isOutOfStock 
+            ? "opacity-70 grayscale" 
+            : isScheduleRestricted 
+            ? "opacity-80 saturate-[0.88] bg-neutral-50/60" 
+            : ""
         }`}
         onClick={handleQuickView}
         onKeyDown={handleKeyDown}
@@ -216,17 +230,32 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleAdd}
-              disabled={isOut}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-primary hover:brightness-105 active:scale-95 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
-            >
-              <span>Pedir</span>
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-            </button>
+            {isScheduleRestricted ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleQuickView();
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-bold text-xs border border-neutral-200 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                title={scheduleNotice}
+              >
+                <span>🕒</span>
+                <span className="text-[11px]">{scheduleNotice}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleAdd}
+                disabled={isOutOfStock}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-primary hover:brightness-105 active:scale-95 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+              >
+                <span>Pedir</span>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       </article>
@@ -237,12 +266,23 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
     return (
       <article
         className={`group relative flex items-center justify-between p-3 transition-all duration-300 ${
-          isOut ? "opacity-70 grayscale" : "hover:bg-neutral-50"
+          isOutOfStock 
+            ? "opacity-70 grayscale" 
+            : isScheduleRestricted 
+            ? "opacity-80 bg-neutral-50/60" 
+            : "hover:bg-neutral-50"
         } rounded-xl bg-white border-b border-neutral-100 last:border-0`}
         onClick={handleQuickView}
       >
         <div className="flex flex-col flex-1 pr-4">
-          <h3 className="text-sm font-bold text-neutral-900 leading-tight">{item.name}</h3>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <h3 className="text-sm font-bold text-neutral-900 leading-tight">{item.name}</h3>
+            {isScheduleRestricted && (
+              <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                🕒 {scheduleNotice}
+              </span>
+            )}
+          </div>
           {item.desc && <p className="text-[11px] text-neutral-500 line-clamp-1 mt-0.5">{item.desc}</p>}
         </div>
         <div className="flex items-center gap-3">
@@ -256,14 +296,28 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
               {typeof item.price === "number" ? formatCOP(item.price) : item.price}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={handleAdd}
-            disabled={isOut}
-            className="h-7 w-7 flex items-center justify-center rounded-full bg-brand-primary text-white font-bold shadow-sm transition-all active:scale-95 disabled:opacity-40"
-          >
-            <span style={{ transform: "translateY(-1px)" }}>+</span>
-          </button>
+          {isScheduleRestricted ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleQuickView();
+              }}
+              className="px-2 py-1 flex items-center gap-1 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-[11px] font-bold border border-neutral-200 shadow-2xs"
+              title={scheduleNotice}
+            >
+              <span>🕒</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={isOutOfStock}
+              className="h-7 w-7 flex items-center justify-center rounded-full bg-brand-primary text-white font-bold shadow-sm transition-all active:scale-95 disabled:opacity-40"
+            >
+              <span style={{ transform: "translateY(-1px)" }}>+</span>
+            </button>
+          )}
         </div>
       </article>
     );
@@ -272,7 +326,11 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
   return (
     <article
       className={`group relative flex h-full w-full overflow-hidden transition-all duration-300 ${
-        isOut ? "opacity-70 grayscale" : "hover:shadow-xl hover:-translate-y-1"
+        isOutOfStock 
+          ? "opacity-70 grayscale" 
+          : isScheduleRestricted 
+          ? "opacity-80 saturate-[0.88] bg-neutral-50/50 hover:shadow-md" 
+          : "hover:shadow-xl hover:-translate-y-1"
       } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 rounded-2xl bg-white text-neutral-900 border border-black/5 ${
         isCompact ? "p-1.5 flex-row" : "p-1 md:p-2.5 flex-col"
       } ${
@@ -359,11 +417,18 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             </div>
           )}
 
-          {isOut && (
+          {isOutOfStock ? (
             <div className="mt-2.5">
               <StatusChip intent="neutral">Agotado</StatusChip>
             </div>
-          )}
+          ) : isScheduleRestricted ? (
+            <div className="mt-2">
+              <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 shadow-2xs">
+                <span>🕒</span>
+                <span className="truncate">{scheduleNotice}</span>
+              </span>
+            </div>
+          ) : null}
         </div>
 
         {/* CONTENEDOR DE PRECIO Y BOTON */}
@@ -379,17 +444,33 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             </div>
           </div>
           
-          <button
-            type="button"
-            aria-label={`Agregar ${item.name || "producto"}`}
-            onClick={handleAdd}
-            disabled={isOut}
-            className={`flex items-center justify-center rounded-full bg-brand-primary text-white font-bold shadow-md shadow-brand-primary/25 transition-all duration-200 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 hover:scale-110 ${
-              isCompact || isCompactGrid ? "h-8 w-8 text-[18px]" : "h-9 w-9 md:h-10 md:w-10 text-[20px] md:text-[22px] leading-none"
-            }`}
-          >
-            <span style={{ transform: "translateY(-1px)" }}>+</span>
-          </button>
+          {isScheduleRestricted ? (
+            <button
+              type="button"
+              aria-label={`Ver información de ${item.name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleQuickView();
+              }}
+              className="flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-600 font-bold transition-all p-1.5 sm:px-2.5 sm:py-1 text-xs gap-1 border border-neutral-200 shadow-2xs cursor-pointer active:scale-95"
+              title={scheduleNotice}
+            >
+              <span className="text-xs">🕒</span>
+              <span className="text-[10px] font-bold hidden sm:inline">Info</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              aria-label={`Agregar ${item.name || "producto"}`}
+              onClick={handleAdd}
+              disabled={isOutOfStock}
+              className={`flex items-center justify-center rounded-full bg-brand-primary text-white font-bold shadow-md shadow-brand-primary/25 transition-all duration-200 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 hover:scale-110 ${
+                isCompact || isCompactGrid ? "h-8 w-8 text-[18px]" : "h-9 w-9 md:h-10 md:w-10 text-[20px] md:text-[22px] leading-none"
+              }`}
+            >
+              <span style={{ transform: "translateY(-1px)" }}>+</span>
+            </button>
+          )}
         </div>
       </div>
     </article>
