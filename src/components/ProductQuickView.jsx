@@ -157,6 +157,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
           min,
           max,
           isRequired,
+          allow_quantity: Boolean(groupMeta?.allow_quantity),
           items,
         });
 
@@ -216,9 +217,51 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   // canAdd strictly checks if it's possible to add (base valid + no missing required + in stock + within schedule)
   const canAdd = !!id && Number.isFinite(basePrice) && basePrice > 0 && !isOutOfStock && !isScheduleRestricted && missingRequired.length === 0;
 
+  const handleIncrement = (groupName, itemId, e) => {
+    if (e) e.stopPropagation();
+    const group = groups.find((g) => g.name === groupName);
+    if (!group) return;
+
+    setSelections((prev) => {
+      const current = prev[groupName] || [];
+      if (current.length >= group.max) {
+        toast(`Límite de ${group.max} ${group.max === 1 ? 'porción' : 'porciones'} alcanzado`);
+        return prev;
+      }
+      return { ...prev, [groupName]: [...current, itemId] };
+    });
+  };
+
+  const handleDecrement = (groupName, itemId, e) => {
+    if (e) e.stopPropagation();
+    setSelections((prev) => {
+      const current = prev[groupName] || [];
+      const index = current.lastIndexOf(itemId);
+      if (index === -1) return prev;
+      const next = [...current];
+      next.splice(index, 1);
+      return { ...prev, [groupName]: next };
+    });
+  };
+
   const handleSelection = (groupName, itemId) => {
     const group = groups.find(g => g.name === groupName);
     if (!group) return;
+
+    if (group.allow_quantity) {
+      const current = selections[groupName] || [];
+      const itemQty = current.filter(id => id === itemId).length;
+      if (itemQty === 0) {
+        handleIncrement(groupName, itemId);
+      } else {
+        if (current.length < group.max) {
+          handleIncrement(groupName, itemId);
+        } else {
+          toast(`Límite de ${group.max} porciones alcanzado`);
+        }
+      }
+      return;
+    }
 
     setSelections((prev) => {
       const current = prev[groupName] || [];
@@ -254,12 +297,25 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
     groups.forEach((g) => {
       const sel = selections[g.name];
       if (sel && sel.length > 0) {
-        // Map IDs to Names
-        const names = sel.map(id => {
-          const opt = g.items.find(o => o.id === id);
-          return opt ? opt.name : id;
-        });
-        selectedModifiers[g.name] = g.max === 1 ? names[0] : names;
+        if (g.allow_quantity) {
+          const counts = {};
+          sel.forEach(id => {
+            counts[id] = (counts[id] || 0) + 1;
+          });
+          const formatted = Object.entries(counts).map(([id, qty]) => {
+            const opt = g.items.find(o => o.id === id);
+            const name = opt ? opt.name : id;
+            return qty > 1 ? `${name} (x${qty})` : name;
+          });
+          selectedModifiers[g.name] = formatted;
+        } else {
+          // Map IDs to Names
+          const names = sel.map(id => {
+            const opt = g.items.find(o => o.id === id);
+            return opt ? opt.name : id;
+          });
+          selectedModifiers[g.name] = g.max === 1 ? names[0] : names;
+        }
       }
     });
 
@@ -400,14 +456,27 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                               {label}
                             </p>
                             <p className="text-[11px] text-neutral-400 mt-0.5">
-                              {group.min > 0 && group.min === group.max 
-                                ? `Elige ${group.min} opción`
-                                : group.min > 0 
-                                  ? `Mín. ${group.min} - Máx. ${group.max}`
-                                  : group.max === 999 
-                                    ? "Elige extras (opcional)"
-                                    : `Límite: ${group.max} extras`
-                              }
+                              {group.allow_quantity ? (
+                                <>
+                                  {group.min > 0 
+                                    ? `Elige mín. ${group.min} - máx. ${group.max} porciones` 
+                                    : `Límite: hasta ${group.max} porciones`
+                                  }
+                                  {groupSel && groupSel.length > 0 && (
+                                    <span className="ml-1.5 font-bold text-brand-primary">
+                                      ({groupSel.length}/{group.max} elegidas)
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                group.min > 0 && group.min === group.max 
+                                  ? `Elige ${group.min} opción`
+                                  : group.min > 0 
+                                    ? `Mín. ${group.min} - Máx. ${group.max}`
+                                    : group.max === 999 
+                                      ? "Elige extras (opcional)"
+                                      : `Límite: ${group.max} extras`
+                              )}
                             </p>
                           </div>
                           {group.min > 0 ? (
@@ -425,9 +494,10 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                           {group.items.map((item) => {
                             const itemPrice = item.selling_price || item.price || 0;
                             const groupSel = selections[group.name] || [];
-                            const isSelected = groupSel.includes(item.id);
+                            const itemQty = groupSel.filter((id) => id === item.id).length;
+                            const isSelected = itemQty > 0;
 
-                            const baseClasses = "flex items-center justify-between p-4 rounded-2xl border transition-all duration-200 cursor-pointer w-full text-left";
+                            const baseClasses = "flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 cursor-pointer w-full text-left select-none";
                             
                             const stateClasses = isSelected
                               ? "border-brand-primary bg-brand-primary/5 shadow-sm ring-1 ring-brand-primary"
@@ -435,95 +505,135 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                               ? "border-amber-300 bg-amber-50 hover:bg-amber-100"
                               : "border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50";
 
-                            const ModifierMedia = ({ item }) => {
-                              const [imageError, setImageError] = useState(false);
-
-                              if (item.image_url && !imageError) {
-                                return (
-                                  <img 
-                                    src={item.image_url} 
-                                    alt={item.name} 
-                                    className="w-full h-full object-cover rounded-xl"
-                                    onError={() => setImageError(true)}
-                                  />
-                                );
-                              }
-
-                              if (item.emoji) {
-                                return <span className="text-2xl leading-none filter drop-shadow-sm">{item.emoji}</span>;
-                              }
-
-                              return null;
-                            };
-
-                            const Icon = () => {
-                              if (group.max === 1) {
-                                return (
-                                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${isSelected ? 'border-brand-primary' : 'border-neutral-300'}`}>
-                                    {isSelected && <div className="h-2.5 w-2.5 rounded-full bg-brand-primary" />}
-                                  </div>
-                                );
-                              } else {
-                                return (
-                                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border-2 transition-colors ${isSelected ? 'border-brand-primary bg-brand-primary' : 'border-neutral-300'}`}>
-                                    {isSelected && (
-                                      <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                      </svg>
-                                    )}
-                                  </div>
-                                );
-                              }
-                            };
-
                             return (
-                              <button
+                              <div
                                 key={item.id}
-                                type="button"
+                                role="button"
+                                tabIndex={0}
                                 onClick={() => handleSelection(group.name, item.id)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    handleSelection(group.name, item.id);
+                                  }
+                                }}
                                 className={`${baseClasses} ${stateClasses}`}
                               >
                                 <div className="flex items-center gap-3">
-                                  {item.image_url || item.emoji ? (
-                                    <div className={`relative flex items-center justify-center w-10 h-10 rounded-xl bg-white border shadow-sm shrink-0 transition-all ${isSelected ? 'border-brand-primary scale-105 ring-1 ring-brand-primary/50' : 'border-neutral-100'}`}>
-                                      <ModifierMedia item={item} />
+                                  {item.image_url ? (
+                                    <div className={`relative flex items-center justify-center w-10 h-10 rounded-xl bg-white border shadow-sm shrink-0 transition-all overflow-hidden ${isSelected ? 'border-brand-primary scale-105 ring-1 ring-brand-primary/50' : 'border-neutral-100'}`}>
+                                      <img 
+                                        src={item.image_url} 
+                                        alt={item.name} 
+                                        className="w-full h-full object-cover rounded-xl"
+                                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                      />
                                       {isSelected && (
-                                        <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-brand-primary rounded-full border-2 border-white flex items-center justify-center shadow-sm">
-                                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                          </svg>
+                                        <div className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-brand-primary rounded-full border-2 border-white flex items-center justify-center text-[10px] font-black text-white shadow-sm">
+                                          {group.allow_quantity ? `x${itemQty}` : '✓'}
                                         </div>
                                       )}
                                     </div>
+                                  ) : item.emoji ? (
+                                    <div className={`relative flex items-center justify-center w-10 h-10 rounded-xl bg-white border shadow-sm shrink-0 transition-all ${isSelected ? 'border-brand-primary scale-105 ring-1 ring-brand-primary/50' : 'border-neutral-100'}`}>
+                                      <span className="text-2xl leading-none filter drop-shadow-sm">{item.emoji}</span>
+                                      {isSelected && (
+                                        <div className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-brand-primary rounded-full border-2 border-white flex items-center justify-center text-[10px] font-black text-white shadow-sm">
+                                          {group.allow_quantity ? `x${itemQty}` : '✓'}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : group.allow_quantity && isSelected ? (
+                                    <div className="min-w-[24px] h-6 px-1.5 rounded-full bg-brand-primary text-white flex items-center justify-center font-black text-[11px] shadow-sm shrink-0">
+                                      x{itemQty}
+                                    </div>
+                                  ) : group.max === 1 ? (
+                                    <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${isSelected ? 'border-brand-primary' : 'border-neutral-300'}`}>
+                                      {isSelected && <div className="h-2.5 w-2.5 rounded-full bg-brand-primary" />}
+                                    </div>
                                   ) : (
-                                    <Icon />
+                                    <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border-2 transition-colors ${isSelected ? 'border-brand-primary bg-brand-primary' : 'border-neutral-300'}`}>
+                                      {isSelected && (
+                                        <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                      )}
+                                    </div>
                                   )}
 
                                   <span className={`text-[13px] font-medium ${isSelected ? 'text-brand-primary font-bold' : 'text-neutral-700'}`}>
                                     {item.name}
                                   </span>
                                 </div>
-                                {itemPrice > 0 && (
-                                  <div className="flex flex-col items-end shrink-0 leading-tight ml-2">
-                                    {Number(item.extra_price) > itemPrice && (
-                                      <span className="text-[11px] font-medium text-neutral-400 line-through">
-                                        {formatCOP(item.extra_price)}
-                                      </span>
+
+                                {/* Right Side: Controls and Price */}
+                                {group.allow_quantity && itemQty > 0 ? (
+                                  <div className="flex items-center gap-2.5 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
+                                    {itemPrice > 0 && (
+                                      <div className="flex flex-col items-end leading-tight mr-1">
+                                        {itemQty > 1 && (
+                                          <span className="text-[10px] text-neutral-400 font-medium">
+                                            {itemQty} × {formatCOP(itemPrice)}
+                                          </span>
+                                        )}
+                                        <span className="text-[13px] font-bold text-brand-primary">
+                                          +{formatCOP(itemPrice * itemQty)}
+                                        </span>
+                                      </div>
                                     )}
-                                    <span
-                                      className={`text-[13px] font-bold ${
-                                        isSelected
-                                          ? "text-brand-primary"
-                                          : Number(item.extra_price) > itemPrice
-                                          ? "text-emerald-600"
-                                          : "text-neutral-500"
-                                      }`}
-                                    >
-                                      +{formatCOP(itemPrice)}
-                                    </span>
+                                    <div className="flex items-center bg-neutral-100 p-0.5 rounded-xl border border-neutral-200 shadow-2xs">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => handleDecrement(group.name, item.id, e)}
+                                        aria-label="Disminuir cantidad"
+                                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-white text-neutral-700 hover:bg-neutral-50 active:scale-95 shadow-2xs font-bold text-sm transition-all"
+                                      >
+                                        -
+                                      </button>
+                                      <span className="w-6 text-center text-xs font-black text-neutral-900">
+                                        {itemQty}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => handleIncrement(group.name, item.id, e)}
+                                        disabled={groupSel.length >= group.max}
+                                        aria-label="Aumentar cantidad"
+                                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-brand-primary text-white hover:bg-brand-primary/90 active:scale-95 disabled:opacity-40 disabled:hover:bg-brand-primary shadow-2xs font-bold text-sm transition-all"
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                                    {itemPrice > 0 && (
+                                      <div className="flex flex-col items-end shrink-0 leading-tight">
+                                        {Number(item.extra_price) > itemPrice && (
+                                          <span className="text-[11px] font-medium text-neutral-400 line-through">
+                                            {formatCOP(item.extra_price)}
+                                          </span>
+                                        )}
+                                        <span
+                                          className={`text-[13px] font-bold ${
+                                            isSelected
+                                              ? "text-brand-primary"
+                                              : Number(item.extra_price) > itemPrice
+                                              ? "text-emerald-600"
+                                              : "text-neutral-500"
+                                          }`}
+                                        >
+                                          +{formatCOP(itemPrice)}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {group.allow_quantity && (
+                                      <div className="w-7 h-7 flex items-center justify-center rounded-lg bg-neutral-100 text-neutral-400 text-sm font-black border border-neutral-200/60 shadow-2xs">
+                                        +
+                                      </div>
+                                    )}
                                   </div>
                                 )}
-                              </button>
+                              </div>
                             );
                           })}
                         </div>
