@@ -157,7 +157,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
           min,
           max,
           isRequired,
-          allow_quantity: Boolean(groupMeta?.allow_quantity),
+          allow_quantity: Boolean(groupMeta?.allow_quantity || (!isRequired && max > 1)),
           items,
         });
 
