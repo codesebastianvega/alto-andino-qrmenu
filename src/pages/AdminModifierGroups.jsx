@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAdminModifierGroups } from '../hooks/useAdminModifierGroups';
 import { useAdminIngredients } from '../hooks/useAdminIngredients';
 import { useAdminRecipes } from '../hooks/useAdminRecipes';
+import { useAdminProducts } from '../hooks/useAdminProducts';
 import { useIngredientCategories } from '../hooks/useIngredientCategories';
 import { PageHeader, PrimaryButton, SecondaryButton, FormField, TextInput } from '../components/admin/ui';
 import { Icon } from '@iconify-icon/react';
@@ -16,6 +17,7 @@ export default function AdminModifierGroups() {
   const { modifierGroups, fetchModifierGroups, createGroup, updateGroup, deleteGroup, duplicateGroup, createOption, updateOption, deleteOption } = useAdminModifierGroups(activeLocationId);
   const { ingredients, fetchIngredients } = useAdminIngredients();
   const { recipes } = useAdminRecipes();
+  const { products: menuProducts } = useAdminProducts();
   const { categories } = useIngredientCategories();
   
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
@@ -426,17 +428,18 @@ export default function AdminModifierGroups() {
             
             <form onSubmit={handleSaveOption} className="flex-1 overflow-y-auto no-scrollbar flex flex-col">
               <div className="p-6 space-y-5 flex-1">
-                <FormField label="Vincular a inventario o Sub-receta (Opcional)">
+                <FormField label="Jalar del Menú, Sub-receta o Inventario (Opcional)">
                   <div className="mb-2">
                     <select 
                       className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#2f4131]/20 text-gray-600 font-medium"
                       value={filterCategory}
                       onChange={e => setFilterCategory(e.target.value)}
                     >
-                      <option value="">-- Todas las Categorías --</option>
+                      <option value="">-- Ver Todo (Productos del Menú, Sub-recetas e Insumos) --</option>
+                      <option value="menu_products">🍔 Productos de la Carta / Menú (Para Combos)</option>
                       <option value="subrecipes">⭐ Sub-recetas Disponibles como Adición</option>
                       {categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        <option key={cat.id} value={cat.id}>📦 Insumos: {cat.name}</option>
                       ))}
                     </select>
                   </div>
@@ -450,7 +453,25 @@ export default function AdminModifierGroups() {
                         return;
                       }
 
-                      if (val.startsWith('recipe:')) {
+                      if (val.startsWith('prod:')) {
+                        const prodId = val.replace('prod:', '');
+                        const prod = (menuProducts || []).find(p => p.id === prodId);
+                        if (prod) {
+                          const normalPrice = Number(prod.price) || 0;
+                          const suggestedComboPrice = normalPrice > 4000
+                            ? Math.round((normalPrice * 0.8) / 500) * 500
+                            : Math.max(0, normalPrice - 1000);
+                          setOptionForm({
+                            ...optionForm,
+                            recipe_id: prod.recipe_id || '',
+                            ingredient_id: '',
+                            name: prod.name,
+                            price: String(suggestedComboPrice),
+                            extra_price: String(normalPrice),
+                            image_url: prod.image_url || optionForm.image_url || ''
+                          });
+                        }
+                      } else if (val.startsWith('recipe:')) {
                         const recId = val.replace('recipe:', '');
                         const rec = recipes.find(r => r.id === recId);
                         if (rec) {
@@ -481,7 +502,20 @@ export default function AdminModifierGroups() {
                       }
                     }}
                   >
-                    <option value="">-- Sin vincular (Solo texto) --</option>
+                    <option value="">-- Seleccionar producto del menú, sub-receta o insumo --</option>
+
+                    {/* Productos ya creados en el Menú (Para Combos estilo Rappi) */}
+                    {(!filterCategory || filterCategory === 'menu_products') && (
+                      <optgroup label="🍔 Productos del Menú (Jalar para Combo con Descuento)">
+                        {(menuProducts || [])
+                          .filter(p => p.is_active !== false)
+                          .map(prod => (
+                            <option key={`prod-${prod.id}`} value={`prod:${prod.id}`}>
+                              {prod.name} (Precio Carta: ${Number(prod.price || 0).toLocaleString('es-CO')})
+                            </option>
+                          ))}
+                      </optgroup>
+                    )}
 
                     {/* Sub-recetas preparadas */}
                     {(!filterCategory || filterCategory === 'subrecipes') && (
@@ -497,7 +531,7 @@ export default function AdminModifierGroups() {
                     )}
 
                     {/* Insumos de Inventario */}
-                    {filterCategory !== 'subrecipes' && (
+                    {filterCategory !== 'subrecipes' && filterCategory !== 'menu_products' && (
                       <optgroup label={filterCategory ? "Insumos Filtrados" : "Insumos de Inventario"}>
                         {ingredients
                           .filter(ing => !filterCategory || ing.category_id === filterCategory)
@@ -509,9 +543,9 @@ export default function AdminModifierGroups() {
                   </select>
                   <p className="text-[10px] text-gray-500 mt-1">
                     {optionForm.recipe_id ? (
-                      <span className="text-emerald-700 font-bold">✓ Vinculado a Sub-receta: Descontará porciones automáticamente del bache preparado.</span>
+                      <span className="text-emerald-700 font-bold">✓ Vinculado a Receta/Producto: Rellena nombre, foto, precio normal tachado y precio de combo automáticamente.</span>
                     ) : (
-                      'Si vinculas un insumo o sub-receta, el sistema descontará inventario automáticamente cuando un cliente pida esta opción.'
+                      'Elige un producto ya creado en tu menú para armar combos en 1 clic (trae su foto, nombre, precio normal tachado y sugiere precio con descuento).'
                     )}
                   </p>
                 </FormField>
