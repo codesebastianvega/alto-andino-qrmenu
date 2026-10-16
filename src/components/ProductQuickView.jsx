@@ -504,13 +504,24 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                                   </span>
                                 </div>
                                 {itemPrice > 0 && (
-                                  <span
-                                    className={`text-[13px] font-bold ${
-                                      isSelected ? "text-brand-primary" : "text-neutral-400"
-                                    }`}
-                                  >
-                                    +{formatCOP(itemPrice)}
-                                  </span>
+                                  <div className="flex flex-col items-end shrink-0 leading-tight ml-2">
+                                    {Number(item.extra_price) > itemPrice && (
+                                      <span className="text-[11px] font-medium text-neutral-400 line-through">
+                                        {formatCOP(item.extra_price)}
+                                      </span>
+                                    )}
+                                    <span
+                                      className={`text-[13px] font-bold ${
+                                        isSelected
+                                          ? "text-brand-primary"
+                                          : Number(item.extra_price) > itemPrice
+                                          ? "text-emerald-600"
+                                          : "text-neutral-500"
+                                      }`}
+                                    >
+                                      +{formatCOP(itemPrice)}
+                                    </span>
+                                  </div>
                                 )}
                               </button>
                             );
