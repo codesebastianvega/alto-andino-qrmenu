@@ -138,7 +138,7 @@ export default function AdminOrders() {
   const { activeLocationId, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id || brandFromContext?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
 
-  // Filtro reactivo por búsqueda (ID #c955, cliente, mesa, teléfono, notas)
+  // Filtro reactivo por búsqueda (ID #c955, cliente, mesa, teléfono, dirección, platos, notas)
   const filteredOrders = useMemo(() => {
     if (!searchQuery.trim()) return orders;
     const q = searchQuery.trim().toLowerCase().replace(/^#/, '');
@@ -148,11 +148,13 @@ export default function AdminOrders() {
                       (o.id && o.id.slice(0, 4).toLowerCase().includes(q));
       const customerMatch = o.customer_name && o.customer_name.toLowerCase().includes(q);
       const phoneMatch = o.customer_phone && o.customer_phone.includes(q);
-      const tableMatch = (o.table_number && String(o.table_number).includes(q)) ||
-                         (o.mesa && String(o.mesa).includes(q)) ||
-                         (q.startsWith('mesa') && String(o.table_number || o.mesa) === q.replace('mesa', '').trim());
+      const tableNum = String(o.restaurant_tables?.table_number || o.table_number || o.mesa || '');
+      const tableMatch = (tableNum && tableNum.toLowerCase().includes(q)) ||
+                         (q.startsWith('mesa') && tableNum.toLowerCase() === q.replace('mesa', '').trim());
+      const addressMatch = o.delivery_address && o.delivery_address.toLowerCase().includes(q);
+      const itemsMatch = o.order_items?.some(it => it.products?.name && it.products.name.toLowerCase().includes(q));
       const notesMatch = o.notes && o.notes.toLowerCase().includes(q);
-      return idMatch || customerMatch || phoneMatch || tableMatch || notesMatch;
+      return idMatch || customerMatch || phoneMatch || tableMatch || addressMatch || itemsMatch || notesMatch;
     });
   }, [orders, searchQuery]);
 

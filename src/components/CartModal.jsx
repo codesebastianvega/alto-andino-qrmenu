@@ -701,6 +701,8 @@ export default function CartModal({ open, onClose }) {
             total_amount: Number(existingOrder.total_amount) + Number(finalTotal),
             service_fee: Number(existingOrder.service_fee || 0) + Number(serviceFeeAmount),
             status: 'new',
+            kitchen_status: 'pending',
+            bar_status: 'pending',
             payment_status: isPOSMode && isPaid ? 'paid' : existingOrder.payment_status,
             payment_method: isPOSMode ? (isPaid ? paymentMethod : existingOrder.payment_method) : paymentMethodSummary
           };
@@ -822,20 +824,32 @@ export default function CartModal({ open, onClose }) {
 
       if (itemsError) throw itemsError;
       
-      // Bypass logic: Si TODO el pedido NO requiere cocina, podemos actualizar el status a ready.
-      // (Bypass logic can also be handled as a database trigger or edge function, but we do it here for now)
-      let needsKitchen = false;
+      // Determinar qué estaciones participan en este pedido (Cocina vs Barra)
+      let hasBarItemsInOrder = false;
+      let hasKitchenItemsInOrder = false;
       for (const it of items) {
         const dbProd = allDBProducts.find(p => p.id === (it.productId || it.id));
-        const reqK = dbProd ? (dbProd.requires_kitchen ?? true) : true;
-        if (reqK) {
-          needsKitchen = true;
-          break;
+        const st = (dbProd?.station || '').toLowerCase();
+        const isBar = st === 'bar' || (st !== 'kitchen' && st !== 'none' && /bebida|soda|cafe|café|jugo|cerveza|agua|hatsu|gaseosa|té|refajo|cold brew|chai|milo/i.test(dbProd?.name || it.name || ''));
+        if (isBar) {
+          hasBarItemsInOrder = true;
+        } else if (st !== 'none' && (dbProd?.requires_kitchen ?? true)) {
+          hasKitchenItemsInOrder = true;
         }
       }
-      
-      if (!needsKitchen && fulfillmentType === 'dine_in') {
-         await supabase.from('orders').update({ status: 'ready' }).eq('id', orderData.id);
+
+      const stationInitUpdates = {};
+      if (!hasBarItemsInOrder && orderData.bar_status === 'pending') {
+        stationInitUpdates.bar_status = 'none';
+      }
+      if (!hasKitchenItemsInOrder && orderData.kitchen_status === 'pending') {
+        stationInitUpdates.kitchen_status = 'none';
+      }
+      if (!hasKitchenItemsInOrder && !hasBarItemsInOrder && fulfillmentType === 'dine_in') {
+        stationInitUpdates.status = 'ready';
+      }
+      if (Object.keys(stationInitUpdates).length > 0) {
+        await supabase.from('orders').update(stationInitUpdates).eq('id', orderData.id);
       }
 
       // 4. Handle Success
@@ -857,7 +871,11 @@ export default function CartModal({ open, onClose }) {
         mesa: mesa || null,
         orderNote: note || '',
         deliveryAddress: formattedAddress || '',
-        deliveryNotes: formattedNotes || ''
+        deliveryNotes: formattedNotes || '',
+        deliveryDistanceKm: deliveryLocationInfo?.distanceKm ?? null,
+        deliveryFee: fulfillmentType === 'delivery' ? (deliveryFee || 0) : 0,
+        packagingFeeTotal: (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery') ? (packagingFeeTotal || 0) : 0,
+        serviceFeeAmount: serviceFeeAmount || 0
       }).catch((tErr) => console.warn('Telegram notify error:', tErr));
 
       // --- WHATSAPP LINK GENERATION (Aluna Localization) ---

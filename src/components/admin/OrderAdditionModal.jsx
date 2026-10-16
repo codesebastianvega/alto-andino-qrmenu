@@ -41,11 +41,14 @@ export default function OrderAdditionModal({
             .order('sort_order', { ascending: true }),
           supabase
             .from('products')
-            .select('id, name, price, image_url, category_id, is_active, is_drink')
+            .select('id, name, description, price, image_url, category_id, is_active, station, requires_kitchen')
             .eq('brand_id', brandId)
             .eq('is_active', true)
             .order('name', { ascending: true })
         ]);
+
+        if (catsRes.error) console.error('Error cargando categorías:', catsRes.error);
+        if (prodsRes.error) console.error('Error cargando productos:', prodsRes.error);
 
         if (isMounted) {
           setCategories(catsRes.data || []);
@@ -139,11 +142,13 @@ export default function OrderAdditionModal({
 
   // Detectar si un ítem es bebida
   const isDrinkProduct = (prod) => {
-    if (prod.is_drink !== undefined) return Boolean(prod.is_drink);
+    const station = (prod.station || '').toLowerCase();
+    if (station === 'bar') return true;
+    if (station === 'kitchen' || station === 'none') return false;
     const cat = categories.find((c) => c.id === prod.category_id);
     const catName = (cat?.name || '').toLowerCase();
     const catSlug = (cat?.slug || '').toLowerCase();
-    const prodName = prod.name.toLowerCase();
+    const prodName = (prod.name || '').toLowerCase();
     return (
       catName.includes('bebida') ||
       catName.includes('trago') ||
@@ -192,18 +197,25 @@ export default function OrderAdditionModal({
 
       // 2. Determinar si hay bebidas y/o comidas para coordinar KDS / BDS
       const hasDrinks = additionCart.some((it) => isDrinkProduct(it.product));
-      const hasFood = additionCart.some((it) => !isDrinkProduct(it.product));
+      const hasFood = additionCart.some((it) => !isDrinkProduct(it.product) && it.product.requires_kitchen !== false && (it.product.station || '').toLowerCase() !== 'none');
 
       const updates = {
         total_amount: newOrderTotal,
         updated_at: new Date().toISOString()
       };
 
+      if (order.payment_status === 'paid') {
+        updates.payment_status = 'pending';
+      }
+
       if (hasDrinks) {
         updates.bar_status = 'pending';
       }
       if (hasFood) {
         updates.kitchen_status = 'pending';
+      }
+      if ((hasDrinks || hasFood) && ['ready', 'on_table', 'on_the_way'].includes(order.status)) {
+        updates.status = 'preparing';
       }
 
       const { error: orderUpdateError } = await supabase
@@ -215,18 +227,39 @@ export default function OrderAdditionModal({
 
       // 3. Notificación a Telegram (si está configurado)
       try {
-        const telegramConcept = Array.isArray(restaurantSettings?.brand_concepts)
+        let telegramConcept = Array.isArray(restaurantSettings?.brand_concepts)
           ? restaurantSettings.brand_concepts.find((c) => c && c.id === 'telegram_dispatch')
           : null;
 
-        const botToken = telegramConcept?.bot_token || restaurantSettings?.telegram_bot_token;
-        const chatId = telegramConcept?.chat_id || restaurantSettings?.telegram_chat_id;
+        let botToken = telegramConcept?.bot_token || restaurantSettings?.telegram_bot_token;
+        let chatId = telegramConcept?.chat_id || restaurantSettings?.telegram_chat_id;
+
+        if ((!botToken || !chatId) && brandId) {
+          const { data: allRS } = await supabase
+            .from('restaurant_settings')
+            .select('brand_concepts')
+            .eq('brand_id', brandId);
+          if (Array.isArray(allRS)) {
+            for (const row of allRS) {
+              const c = Array.isArray(row?.brand_concepts)
+                ? row.brand_concepts.find((x) => x && x.id === 'telegram_dispatch')
+                : null;
+              if (c && c.bot_token && c.chat_id) {
+                telegramConcept = c;
+                botToken = c.bot_token;
+                chatId = c.chat_id;
+                break;
+              }
+            }
+          }
+        }
 
         if (botToken && chatId && telegramConcept?.enabled !== false) {
+          const tableLabel = order.restaurant_tables?.table_number || order.table_number || order.mesa;
           let msg = `➕ <b>NUEVA ADICIÓN A PEDIDO #${orderCode}</b>\n`;
           msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-          if (order.table_number || order.mesa) {
-            msg += `🪑 <b>Mesa:</b> MESA ${order.table_number || order.mesa}\n`;
+          if (tableLabel) {
+            msg += `🪑 <b>Mesa:</b> MESA ${tableLabel}\n`;
           }
           if (order.customer_name) {
             msg += `👤 <b>Cliente:</b> ${order.customer_name}\n`;
@@ -242,11 +275,11 @@ export default function OrderAdditionModal({
           msg += `\n💰 <b>Subtotal Adición:</b> $${additionTotal.toLocaleString()}\n`;
           msg += `💵 <b>NUEVO TOTAL ORDEN:</b> <b>$${newOrderTotal.toLocaleString()}</b>\n`;
 
-          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          await fetch(`https://api.telegram.org/bot${botToken.trim()}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              chat_id: chatId,
+              chat_id: String(chatId).trim(),
               text: msg,
               parse_mode: 'HTML'
             })

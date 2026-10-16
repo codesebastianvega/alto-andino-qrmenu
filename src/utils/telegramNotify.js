@@ -42,10 +42,18 @@ export async function sendTelegramOrderNotification({
   mesa = null,
   orderNote = '',
   deliveryAddress = '',
-  deliveryNotes = ''
+  deliveryNotes = '',
+  deliveryDistanceKm = null,
+  deliveryFee = 0,
+  packagingFeeTotal = 0,
+  serviceFeeAmount = 0
 }) {
   try {
     let currentSettings = settings;
+    const resolvedDistanceKm = deliveryDistanceKm ?? order?.delivery_distance_km ?? null;
+    const resolvedDeliveryFee = Number(deliveryFee || order?.delivery_fee || 0);
+    const resolvedPackagingFee = Number(packagingFeeTotal || 0);
+    const resolvedServiceFee = Number(serviceFeeAmount || order?.service_fee || 0);
 
     let telegramConcept = Array.isArray(currentSettings?.brand_concepts)
       ? currentSettings.brand_concepts.find(c => c && c.id === 'telegram_dispatch')
@@ -55,7 +63,7 @@ export async function sendTelegramOrderNotification({
     let chatId = telegramConcept?.chat_id || location?.telegram_chat_id || currentSettings?.telegram_chat_id || import.meta.env.VITE_TELEGRAM_CHAT_ID;
 
     // Fallback: If not found or incomplete in passed settings, query ALL restaurant_settings for this brand from Supabase
-    const targetBrandId = brand?.id || currentSettings?.brand_id;
+    const targetBrandId = brand?.id || currentSettings?.brand_id || order?.brand_id;
     if ((!botToken || !chatId) && targetBrandId) {
       try {
         const { data: allRS } = await supabase
@@ -111,7 +119,7 @@ export async function sendTelegramOrderNotification({
     const cleanPhone = customerPhone.replace(/\D/g, '');
 
     // Parse address if embedded or passed
-    let address = deliveryAddress || '';
+    let address = deliveryAddress || order?.delivery_address || '';
     if (!address && order?.customer_name && order.customer_name.includes('[Dir:')) {
       const match = order.customer_name.match(/\[Dir:\s*([^\]]+)\]/);
       if (match) address = match[1];
@@ -142,8 +150,8 @@ export async function sendTelegramOrderNotification({
     }
     if (address) {
       message += `📍 <b>Dirección:</b> <b>${escapeHtml(address)}</b>\n`;
-      if (deliveryDistanceKm !== null && deliveryDistanceKm !== undefined) {
-        message += `📏 <b>Distancia estimada:</b> <code>${escapeHtml(deliveryDistanceKm)} km</code>\n`;
+      if (resolvedDistanceKm !== null && resolvedDistanceKm !== undefined) {
+        message += `📏 <b>Distancia estimada:</b> <code>${escapeHtml(resolvedDistanceKm)} km</code>\n`;
       }
     }
     const finalNote = orderNote || order?.notes;
@@ -169,14 +177,14 @@ export async function sendTelegramOrderNotification({
     });
 
     message += `\n━━━━━━━━━━━━━━━━━━━━\n`;
-    if (deliveryFee > 0) {
-      message += `🛵 <b>Domicilio:</b> ${escapeHtml(formatCOP(deliveryFee))}\n`;
+    if (resolvedDeliveryFee > 0) {
+      message += `🛵 <b>Domicilio:</b> ${escapeHtml(formatCOP(resolvedDeliveryFee))}\n`;
     }
-    if (packagingFeeTotal > 0) {
-      message += `📦 <b>Empaque:</b> ${escapeHtml(formatCOP(packagingFeeTotal))}\n`;
+    if (resolvedPackagingFee > 0) {
+      message += `📦 <b>Empaque:</b> ${escapeHtml(formatCOP(resolvedPackagingFee))}\n`;
     }
-    if (serviceFeeAmount > 0) {
-      message += `✨ <b>Propina voluntaria:</b> ${escapeHtml(formatCOP(serviceFeeAmount))}\n`;
+    if (resolvedServiceFee > 0) {
+      message += `✨ <b>Propina voluntaria:</b> ${escapeHtml(formatCOP(resolvedServiceFee))}\n`;
     }
     message += `💰 <b>TOTAL:</b> <b>${escapeHtml(formatCOP(finalTotal))}</b>\n`;
     message += `💳 <b>MÉTODO DE PAGO:</b> <b>${escapeHtml(paymentMethodSummary || 'Por acordar')}</b>\n`;
