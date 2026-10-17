@@ -30,7 +30,7 @@ export default function AdminModifierGroups() {
   const [isOptionModalOpen, setIsOptionModalOpen] = useState(false);
   const [activeGroupId, setActiveGroupId] = useState(null);
   const [editingOption, setEditingOption] = useState(null);
-  const [optionForm, setOptionForm] = useState({ name: '', price: '', extra_price: '', ingredient_id: '', recipe_id: '', nested_group_id: '', emoji: '', image_url: '' });
+  const [optionForm, setOptionForm] = useState({ name: '', price: '', extra_price: '', ingredient_id: '', recipe_id: '', nested_group_id: '', emoji: '', image_url: '', is_active: true });
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [filterCategory, setFilterCategory] = useState('');
   
@@ -99,11 +99,12 @@ export default function AdminModifierGroups() {
         recipe_id: option.recipe_id || '',
         nested_group_id: option.nested_group_id || '',
         emoji: option.emoji || '',
-        image_url: option.image_url || ''
+        image_url: option.image_url || '',
+        is_active: option.is_active !== false
       });
     } else {
       setEditingOption(null);
-      setOptionForm({ name: '', price: '', extra_price: '', ingredient_id: '', recipe_id: '', nested_group_id: '', emoji: '', image_url: '' });
+      setOptionForm({ name: '', price: '', extra_price: '', ingredient_id: '', recipe_id: '', nested_group_id: '', emoji: '', image_url: '', is_active: true });
     }
     setIsOptionModalOpen(true);
   };
@@ -119,7 +120,8 @@ export default function AdminModifierGroups() {
       recipe_id: optionForm.recipe_id || null,
       nested_group_id: optionForm.nested_group_id || null,
       emoji: optionForm.emoji || null,
-      image_url: optionForm.image_url || null
+      image_url: optionForm.image_url || null,
+      is_active: optionForm.is_active !== false
     };
     if (editingOption) {
       await updateOption(editingOption.id, payload);
@@ -248,8 +250,11 @@ export default function AdminModifierGroups() {
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Vista previa opciones</p>
                     {group.options.slice(0, 3).map(opt => (
                       <div key={opt.id} className="flex items-center gap-2 text-[11px] text-gray-600 px-2 py-1 bg-white/40 rounded-lg border border-gray-50">
-                        <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                        <span className="font-medium truncate">{opt.name}</span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${opt.is_active === false ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                        <span className={`font-medium truncate ${opt.is_active === false ? 'line-through text-gray-400' : ''}`}>{opt.name}</span>
+                        {opt.is_active === false && (
+                          <span className="text-[9px] font-extrabold uppercase px-1 rounded bg-rose-50 text-rose-600">Agotado</span>
+                        )}
                         <span className="ml-auto font-black text-[#2f4131]/40">${opt.price || 0}</span>
                       </div>
                     ))}
@@ -274,34 +279,68 @@ export default function AdminModifierGroups() {
                 
                 {expandedGroups[group.id] && (
                   <div className="space-y-2 mt-3 animate-fade-in">
-                    {group.options?.map(opt => (
-                      <div key={opt.id} className="flex items-center justify-between bg-white px-3 py-2 rounded-xl text-sm border border-gray-100">
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-gray-800">{opt.name}</span>
-                          <div className="flex gap-2">
-                            {opt.ingredient_id && (
-                              <span className="text-[10px] text-emerald-600 flex items-center gap-1 mt-0.5">
-                                <Icon icon="heroicons:link" /> Usa Insumo
+                    {group.options?.map(opt => {
+                      const isOptActive = opt.is_active !== false;
+                      return (
+                        <div 
+                          key={opt.id} 
+                          className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm border transition-all ${
+                            !isOptActive 
+                              ? 'bg-rose-50/40 border-rose-200/60' 
+                              : 'bg-white border-gray-100 hover:border-gray-200'
+                          }`}
+                        >
+                          <div className="flex flex-col min-w-0 pr-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`font-semibold text-xs sm:text-sm truncate ${!isOptActive ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                                {opt.name}
                               </span>
-                            )}
-                            {opt.nested_group_id && modifierGroups.find(g => g.id === opt.nested_group_id) && (
-                              <span className="text-[10px] text-blue-600 flex items-center gap-1 mt-0.5">
-                                <Icon icon="heroicons:arrow-right-circle" /> Despliega: {modifierGroups.find(g => g.id === opt.nested_group_id).name}
+                              {!isOptActive && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 text-rose-700 tracking-wider uppercase">
+                                  Agotado
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex gap-2 flex-wrap mt-0.5">
+                              {opt.ingredient_id && (
+                                <span className="text-[10px] text-emerald-600 flex items-center gap-1">
+                                  <Icon icon="heroicons:link" /> Usa Insumo
+                                </span>
+                              )}
+                              {opt.nested_group_id && modifierGroups.find(g => g.id === opt.nested_group_id) && (
+                                <span className="text-[10px] text-blue-600 flex items-center gap-1">
+                                  <Icon icon="heroicons:arrow-right-circle" /> Despliega: {modifierGroups.find(g => g.id === opt.nested_group_id).name}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-black text-gray-500 text-xs">+{opt.price ? `$${Number(opt.price).toLocaleString()}` : '$0'}</span>
+                            <button
+                              type="button"
+                              onClick={() => updateOption(opt.id, { is_active: !isOptActive })}
+                              className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                                !isOptActive 
+                                  ? 'bg-rose-100 text-rose-700 hover:bg-rose-200' 
+                                  : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                              }`}
+                              title={isOptActive ? "Click para apagar (Agotar)" : "Click para activar (Disponible)"}
+                            >
+                              <Icon icon={isOptActive ? "heroicons:check-circle" : "heroicons:x-circle"} className="text-base" />
+                              <span className="hidden sm:inline text-[11px] font-bold">
+                                {isOptActive ? 'Activo' : 'Agotado'}
                               </span>
-                            )}
+                            </button>
+                            <button onClick={() => handleOpenOption(group.id, opt)} className="text-gray-400 hover:text-blue-600 p-1" title="Editar">
+                              <Icon icon="heroicons:pencil-square" className="text-base" />
+                            </button>
+                            <button onClick={() => deleteOption(opt.id)} className="text-gray-400 hover:text-red-600 p-1" title="Eliminar">
+                              <Icon icon="heroicons:x-mark" className="text-base" />
+                            </button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="font-black text-gray-500 text-xs">+{opt.price ? `$${opt.price}` : '$0'}</span>
-                          <button onClick={() => handleOpenOption(group.id, opt)} className="text-gray-400 hover:text-blue-600">
-                            <Icon icon="heroicons:pencil-square" />
-                          </button>
-                          <button onClick={() => deleteOption(opt.id)} className="text-gray-400 hover:text-red-600">
-                            <Icon icon="heroicons:x-mark" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     <button 
                       onClick={() => handleOpenOption(group.id)}
                       className="mt-4 w-full py-2.5 rounded-xl border border-dashed border-gray-300 text-sm font-semibold text-gray-500 hover:text-gray-800 hover:border-gray-400 hover:bg-gray-100 transition-all"
@@ -705,6 +744,22 @@ export default function AdminModifierGroups() {
                   </div>
                   <p className="text-[10px] text-gray-500 mt-1">Ej: Si esta opción es "Carne", aquí podrías vincular el grupo "Términos de Carne".</p>
                 </FormField>
+
+                <div className="flex items-center justify-between p-3.5 bg-gray-50 border border-gray-200 rounded-xl mt-2">
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">Disponibilidad en la Carta</p>
+                    <p className="text-xs text-gray-500">¿Esta opción está disponible para que los clientes la elijan?</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={optionForm.is_active !== false}
+                      onChange={e => setOptionForm({...optionForm, is_active: e.target.checked})}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                  </label>
+                </div>
               </div>
 
               <div className="shrink-0 p-4 md:p-6 bg-white border-t border-gray-100 flex flex-col sm:flex-row gap-3 mt-auto">
