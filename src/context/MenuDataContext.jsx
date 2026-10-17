@@ -120,7 +120,7 @@ export const MenuDataProvider = ({ children }) => {
         hoursRes
       ] = await withTimeout(Promise.all([
         brandFilter(supabase.from('categories').select('*').eq('is_active', true).order('sort_order', { ascending: true })),
-        brandFilter(supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(id, group_id, name, price, extra_price, sort_order, created_at, nested_group_id, image_url, emoji, ingredient_id, ingredients!left(image_url))')),
+        brandFilter(supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(id, group_id, name, price, extra_price, sort_order, created_at, nested_group_id, image_url, emoji, ingredient_id, is_active, ingredients!left(image_url))')),
         brandFilter(supabase.from('experiences').select('*').eq('is_active', true).order('created_at', { ascending: false })),
         brandFilter(supabase.from('allergens').select('*').order('name')),
         brandFilter(supabase.from('locations').select('*').eq('is_active', true).order('is_main', { ascending: false })),
@@ -279,18 +279,21 @@ export const MenuDataProvider = ({ children }) => {
 
     filteredGroups.forEach(group => {
       const groupName = group.name;
-      const options = (group.modifier_options || []).map(opt => ({
-        ...opt,
-        id: opt.id,
-        name: opt.name,
-        price: opt.price || 0,
-        extra_price: opt.extra_price !== null && opt.extra_price !== undefined ? Number(opt.extra_price) : Number(opt.price || 0),
-        emoji: opt.emoji,
-        image_url: opt.image_url || opt.ingredients?.image_url || null,
-        group: groupName,
-        groupId: group.id,
-        ingredient_id: opt.ingredient_id
-      })).sort((a, b) => a.sort_order - b.sort_order);
+      const options = (group.modifier_options || [])
+        .filter(opt => opt.is_active !== false)
+        .map(opt => ({
+          ...opt,
+          id: opt.id,
+          name: opt.name,
+          price: opt.price || 0,
+          extra_price: opt.extra_price !== null && opt.extra_price !== undefined ? Number(opt.extra_price) : Number(opt.price || 0),
+          emoji: opt.emoji,
+          image_url: opt.image_url || opt.ingredients?.image_url || null,
+          group: groupName,
+          groupId: group.id,
+          ingredient_id: opt.ingredient_id,
+          is_active: opt.is_active !== false
+        })).sort((a, b) => a.sort_order - b.sort_order);
       modGroups[groupName] = options;
       modGroups[group.id] = options;
     });
