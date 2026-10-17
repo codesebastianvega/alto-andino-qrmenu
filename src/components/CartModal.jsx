@@ -319,6 +319,7 @@ export default function CartModal({ open, onClose }) {
   const [lastOrderId, setLastOrderId] = useState("");
   const [isPaid, setIsPaid] = useState(false);
   const [whatsappLink, setWhatsappLink] = useState("");
+  const [confirmedOrderSnapshot, setConfirmedOrderSnapshot] = useState(null);
 
   const isLeadRequired = !isPOSMode && (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' || fulfillmentType === 'scheduled');
   const isAddressRequired = !isPOSMode && fulfillmentType === 'delivery';
@@ -857,6 +858,21 @@ export default function CartModal({ open, onClose }) {
       localStorage.setItem("aa_last_order", JSON.stringify(snapshot));
       localStorage.setItem("aa_active_order", orderData.id);
       setLastOrderId(orderData.id);
+      setConfirmedOrderSnapshot({
+        items: items.map(it => ({
+          ...it,
+          unitPrice: getItemUnit(it)
+        })),
+        finalTotal,
+        fulfillmentType,
+        paymentMethodSummary,
+        formattedAddress,
+        formattedNotes,
+        deliveryFee,
+        serviceFeeAmount,
+        packagingFeeTotal,
+        cashChange
+      });
 
       // --- TELEGRAM AUTOMATED DISPATCH (Silent, Non-blocking) ---
       sendTelegramOrderNotification({
@@ -946,6 +962,7 @@ export default function CartModal({ open, onClose }) {
     setCustomCashAmount("");
     setShowFulfillmentSelector(false);
     setWhatsappLink("");
+    setConfirmedOrderSnapshot(null);
     sessionStorage.removeItem("aa_current_customer");
   };
 
@@ -2005,6 +2022,56 @@ export default function CartModal({ open, onClose }) {
                       <div className="mt-2 sm:mt-4 inline-flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
                         <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Mesa</span>
                         <span className="text-base sm:text-lg font-black text-brand-primary">{getTable()}</span>
+                      </div>
+                    )}
+
+                    {/* Resumen Detallado de lo que pidió el cliente */}
+                    {confirmedOrderSnapshot && confirmedOrderSnapshot.items?.length > 0 && (
+                      <div className="w-full max-w-sm mx-auto bg-neutral-50/90 border border-neutral-200/90 rounded-2xl p-4 text-left shadow-sm space-y-3 mt-3 animate-in fade-in duration-300">
+                        <div className="flex items-center justify-between border-b border-neutral-200/70 pb-2">
+                          <div className="flex items-center gap-1.5">
+                            <Icon icon="solar:bag-smile-bold" className="text-emerald-700 text-base" />
+                            <span className="text-[11px] font-black uppercase tracking-wider text-neutral-600">Lo que pediste</span>
+                          </div>
+                          <span className="text-xs font-black text-neutral-900">{formatCOP(confirmedOrderSnapshot.finalTotal)}</span>
+                        </div>
+                        <div className="divide-y divide-neutral-200/50 max-h-48 overflow-y-auto pr-1 space-y-2">
+                          {confirmedOrderSnapshot.items.map((it, idx) => (
+                            <div key={idx} className="pt-2 first:pt-0 flex justify-between items-start gap-2 text-xs">
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold text-neutral-900 leading-tight">
+                                  <span className="text-emerald-700 font-black mr-1">{it.qty || 1}x</span>
+                                  {it.name}
+                                </p>
+                                {it.options && Object.keys(it.options).length > 0 && (
+                                  <p className="text-[10px] text-neutral-500 mt-0.5 leading-snug">
+                                    {Object.entries(it.options)
+                                      .map(([k, v]) => `${translateGroup(k)}: ${Array.isArray(v) ? v.join(', ') : v}`)
+                                      .join(' • ')}
+                                  </p>
+                                )}
+                                {it.note && (
+                                  <p className="text-[10px] italic text-amber-700 mt-0.5">Nota: {it.note}</p>
+                                )}
+                              </div>
+                              <span className="font-bold text-neutral-700 shrink-0 text-xs">
+                                {formatCOP((it.unitPrice || 0) * (it.qty || 1))}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        {confirmedOrderSnapshot.formattedAddress && (
+                          <div className="pt-2 border-t border-neutral-200/70 text-[11px] text-neutral-600 flex items-start gap-1.5">
+                            <Icon icon="solar:map-point-bold" className="text-emerald-600 shrink-0 text-sm mt-0.5" />
+                            <span className="truncate">{confirmedOrderSnapshot.formattedAddress}</span>
+                          </div>
+                        )}
+                        {confirmedOrderSnapshot.paymentMethodSummary && (
+                          <div className="text-[10px] font-semibold text-neutral-400 flex items-center justify-between">
+                            <span>Método: {confirmedOrderSnapshot.paymentMethodSummary}</span>
+                            <span className="capitalize">{confirmedOrderSnapshot.fulfillmentType === 'delivery' ? '🛵 Domicilio' : confirmedOrderSnapshot.fulfillmentType === 'dine_in' ? '🍽️ En Mesa' : '🛍️ Para Llevar'}</span>
+                          </div>
+                        )}
                       </div>
                     )}
                     {isPOSMode && (
