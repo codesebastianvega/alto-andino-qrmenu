@@ -70,27 +70,38 @@ export default function Toast() {
     }
   };
 
+  const hasDialog = typeof document !== 'undefined' && Boolean(document.querySelector('[role="dialog"]'));
+
   return (
     <div
       aria-live="polite"
       role="status"
       className={[
-        "pointer-events-none fixed left-1/2 z-[200] w-max -translate-x-1/2",
-        "transition-all duration-300 ease-out",
-        show ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+        "fixed left-1/2 z-[200] max-w-[90vw] -translate-x-1/2 transition-all duration-300 ease-out",
+        hasDialog ? (show ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0") : (show ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"),
       ].join(" ")}
-      style={{
-        bottom: `calc(${offset}px + env(safe-area-inset-bottom, 0px) + 20px)`,
-      }}
+      style={
+        hasDialog
+          ? { top: `calc(env(safe-area-inset-top, 0px) + 24px)` }
+          : { bottom: `calc(${offset}px + env(safe-area-inset-bottom, 0px) + 20px)` }
+      }
     >
-      <div className={`pointer-events-auto flex h-11 w-max items-center gap-3 rounded-2xl px-5 text-white shadow-2xl ring-1 ${getTypeStyles()}`}>
-        {msg?.icon && <span className="text-base">{msg.icon}</span>}
-        <span className="whitespace-nowrap text-xs font-bold tracking-tight">{msg?.text}</span>
+      <div 
+        onClick={() => {
+          if (!action) {
+            setShow(false);
+          }
+        }}
+        className={`flex min-h-[44px] w-max max-w-full items-center gap-3 rounded-2xl px-5 py-2.5 text-white shadow-2xl ring-1 cursor-pointer select-none active:scale-95 transition-transform ${getTypeStyles()}`}
+      >
+        {msg?.icon && <span className="text-base flex-shrink-0">{msg.icon}</span>}
+        <span className="text-xs font-bold tracking-tight text-center leading-snug">{msg?.text}</span>
         {action && (
           <button
             type="button"
-            className="rounded-lg bg-white/20 px-2 py-1 text-[10px] font-black uppercase tracking-widest hover:bg-white/30 transition-colors focus-visible:outline-none"
-            onClick={() => {
+            className="rounded-lg bg-white/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest hover:bg-white/30 transition-colors focus-visible:outline-none flex-shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
               action.onAction?.();
               setShow(false);
               setAction(null);
