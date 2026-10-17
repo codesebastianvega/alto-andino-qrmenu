@@ -322,9 +322,16 @@ export function KitchenRecipeViewerModal({ recipe, allRecipes = [], isOpen, onCl
                   const ing = ri.ingredients || {};
                   const isPrepSubrecipe = ing.name?.toLowerCase().includes('subreceta');
 
-                  // Buscar si existe la subreceta en la lista global de recetas
+                  // Buscar si existe la subreceta en la lista global de recetas (por ID o por nombre flexible)
                   const matchingSubrecipe = isPrepSubrecipe 
-                    ? allRecipes.find(r => r.is_subrecipe && ing.name.toLowerCase().includes(r.name.toLowerCase().split('(')[0].trim().toLowerCase()))
+                    ? (
+                        (ing.subrecipe_id && allRecipes.find(r => r.id === ing.subrecipe_id)) ||
+                        allRecipes.find(r => r.is_subrecipe && (
+                          ing.name?.toLowerCase().includes(r.name.toLowerCase().split('(')[0].trim().toLowerCase()) ||
+                          r.name?.toLowerCase().includes(ing.name.toLowerCase().replace(/\(subreceta\)/i, '').trim().toLowerCase()) ||
+                          (ing.name?.toLowerCase().includes('goulash') && r.name?.toLowerCase().includes('goulash'))
+                        ))
+                      )
                     : null;
 
                   return (
@@ -363,7 +370,7 @@ export function KitchenRecipeViewerModal({ recipe, allRecipes = [], isOpen, onCl
                         {matchingSubrecipe && (
                           <button
                             onClick={() => setSelectedSubrecipe(matchingSubrecipe)}
-                            className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 transition-all"
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-white hover:bg-amber-600 shadow-sm border border-amber-600 transition-all cursor-pointer"
                             title="Ver receta de elaboración"
                           >
                             <Icon icon="heroicons:eye" className="text-xs" />
