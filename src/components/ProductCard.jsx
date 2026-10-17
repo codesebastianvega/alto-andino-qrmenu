@@ -27,6 +27,9 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
   
   // Use stock_status from database (Supabase)
   const isOutOfStock = item.stock_status === 'out';
+  const availablePortions = item.available_portions !== null && item.available_portions !== undefined ? Number(item.available_portions) : null;
+  const isLastPortion = !isOutOfStock && availablePortions === 1;
+  const isLowPortions = !isOutOfStock && availablePortions !== null && availablePortions > 1 && availablePortions <= 3;
   const isScheduleRestricted = item.is_schedule_available === false;
   const scheduleNotice = item.schedule_label || "Fuera de horario";
   const isOut = isOutOfStock;
@@ -217,6 +220,26 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             <span>Empaque kraft térmico biodegradable incluido</span>
           </div>
 
+          {isOutOfStock ? (
+            <div className="mt-3">
+              <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-rose-800 bg-rose-50 px-3 py-1 rounded-lg border border-rose-200 shadow-2xs">
+                🚫 Agotado por hoy
+              </span>
+            </div>
+          ) : isLastPortion ? (
+            <div className="mt-3">
+              <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-amber-900 bg-amber-100 px-3 py-1 rounded-lg border border-amber-300 animate-pulse shadow-2xs">
+                🔥 ¡Última porción disponible!
+              </span>
+            </div>
+          ) : isLowPortions ? (
+            <div className="mt-3">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1 rounded-lg border border-amber-200">
+                ⚡ Solo quedan {availablePortions} porciones
+              </span>
+            </div>
+          ) : null}
+
           {/* Price & CTA Button */}
           <div className="mt-auto pt-3.5 flex items-center justify-between gap-3 border-t border-neutral-100">
             <div className="flex flex-col">
@@ -277,11 +300,23 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
         <div className="flex flex-col flex-1 pr-4">
           <div className="flex items-center gap-1.5 flex-wrap">
             <h3 className="text-sm font-bold text-neutral-900 leading-tight">{item.name}</h3>
-            {isScheduleRestricted && (
+            {isOutOfStock ? (
+              <span className="text-[10px] font-black uppercase text-rose-800 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                🚫 Agotado
+              </span>
+            ) : isLastPortion ? (
+              <span className="text-[10px] font-black uppercase text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300 animate-pulse">
+                🔥 ¡Última porción!
+              </span>
+            ) : isLowPortions ? (
+              <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                ⚡ Quedan {availablePortions}
+              </span>
+            ) : isScheduleRestricted ? (
               <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
                 🕒 {scheduleNotice}
               </span>
-            )}
+            ) : null}
           </div>
           {item.desc && <p className="text-[11px] text-neutral-500 line-clamp-1 mt-0.5">{item.desc}</p>}
         </div>
@@ -419,7 +454,21 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
 
           {isOutOfStock ? (
             <div className="mt-2.5">
-              <StatusChip intent="neutral">Agotado</StatusChip>
+              <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-rose-800 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                🚫 Agotado por hoy
+              </span>
+            </div>
+          ) : isLastPortion ? (
+            <div className="mt-2">
+              <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300 animate-pulse shadow-2xs">
+                🔥 ¡Última porción disponible!
+              </span>
+            </div>
+          ) : isLowPortions ? (
+            <div className="mt-2">
+              <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                ⚡ Solo quedan {availablePortions} porciones
+              </span>
             </div>
           ) : isScheduleRestricted ? (
             <div className="mt-2">

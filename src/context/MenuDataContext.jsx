@@ -120,7 +120,7 @@ export const MenuDataProvider = ({ children }) => {
         hoursRes
       ] = await withTimeout(Promise.all([
         brandFilter(supabase.from('categories').select('*').eq('is_active', true).order('sort_order', { ascending: true })),
-        brandFilter(supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(id, group_id, name, price, extra_price, sort_order, created_at, nested_group_id, image_url, emoji, ingredient_id, is_active, ingredients!left(image_url))')),
+        brandFilter(supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(id, group_id, name, price, extra_price, sort_order, created_at, nested_group_id, image_url, emoji, ingredient_id, is_active, stock_status, available_portions, ingredients!left(image_url))')),
         brandFilter(supabase.from('experiences').select('*').eq('is_active', true).order('created_at', { ascending: false })),
         brandFilter(supabase.from('allergens').select('*').order('name')),
         brandFilter(supabase.from('locations').select('*').eq('is_active', true).order('is_main', { ascending: false })),
@@ -292,7 +292,10 @@ export const MenuDataProvider = ({ children }) => {
           group: groupName,
           groupId: group.id,
           ingredient_id: opt.ingredient_id,
-          is_active: opt.is_active !== false
+          is_active: opt.is_active !== false,
+          stock_status: opt.stock_status || (opt.is_active === false ? 'out' : 'in'),
+          available_portions: opt.available_portions !== null && opt.available_portions !== undefined ? Number(opt.available_portions) : null,
+          is_out: opt.stock_status === 'out' || opt.is_active === false
         })).sort((a, b) => a.sort_order - b.sort_order);
       modGroups[groupName] = options;
       modGroups[group.id] = options;
@@ -307,10 +310,16 @@ export const MenuDataProvider = ({ children }) => {
     // 1. Create Maps for O(1) lookups of location overrides
     // This avoids using .find() or .filter() inside the product loop
     const statusMap = new Map();
+    const stockStatusMap = new Map();
+    const portionsMap = new Map();
     if (activeLocationId && activeLocationId !== 'all') {
       (locationStatus || []).forEach(ls => {
         if (ls.location_id === activeLocationId) {
           statusMap.set(ls.product_id, ls.is_active);
+          if (ls.stock_status) stockStatusMap.set(ls.product_id, ls.stock_status);
+          if (ls.available_portions !== undefined && ls.available_portions !== null) {
+            portionsMap.set(ls.product_id, ls.available_portions);
+          }
         }
       });
     }
@@ -385,6 +394,13 @@ export const MenuDataProvider = ({ children }) => {
         productSubcategory = 'Bentos Tradicionales & Fusión';
       }
 
+      let finalStockStatus = product.stock_status || 'in';
+      let finalAvailablePortions = product.available_portions !== null && product.available_portions !== undefined ? Number(product.available_portions) : null;
+      if (activeLocationId && activeLocationId !== 'all') {
+        if (stockStatusMap.has(product.id)) finalStockStatus = stockStatusMap.get(product.id);
+        if (portionsMap.has(product.id)) finalAvailablePortions = portionsMap.get(product.id);
+      }
+
       const normalizedProduct = {
         id: product.id,
         name: product.name,
@@ -396,7 +412,9 @@ export const MenuDataProvider = ({ children }) => {
         desc: product.description || '',
         description: product.description || '',
         tags: product.tags || [],
-        stock_status: product.stock_status || 'in',
+        stock_status: finalStockStatus,
+        available_portions: finalAvailablePortions,
+        out_reason: product.out_reason,
         image: product.image_url,
         image_url: product.image_url,
         variants: product.variants || [],

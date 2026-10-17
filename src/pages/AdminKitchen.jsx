@@ -9,6 +9,7 @@ import { useRestaurantSettings } from '../hooks/useRestaurantSettings';
 import { printThermalDocument } from '../utils/thermalPrint';
 import soundService from '../utils/soundService';
 import { KitchenRecipeViewerModal } from '../components/admin/KitchenRecipeViewerModal';
+import { MiseEnPlace86Drawer } from '../components/admin/MiseEnPlace86Drawer';
 import { useAdminRecipes } from '../hooks/useAdminRecipes';
 
 const playNotificationSound = () => {
@@ -111,6 +112,7 @@ export default function AdminKitchen() {
 
   const { recipes: allRecipes } = useAdminRecipes();
   const [selectedRecipeForViewer, setSelectedRecipeForViewer] = useState(null);
+  const [is86DrawerOpen, setIs86DrawerOpen] = useState(false);
 
   const handleOpenDishRecipe = (item) => {
     const prodName = item.products?.name?.toLowerCase() || '';
@@ -667,6 +669,18 @@ export default function AdminKitchen() {
             isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-slate-200 shadow-2xs'
           }`}>
             <button
+              onClick={() => setIs86DrawerOpen(true)}
+              title="Mise en Place & Control Auto-86 de Insumos"
+              className={`h-7 px-2.5 flex items-center gap-1 rounded text-xs font-bold transition-all ${
+                isDark 
+                  ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40' 
+                  : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300 shadow-2xs'
+              }`}
+            >
+              <span>⚡</span>
+              <span>Mise en Place & 86</span>
+            </button>
+            <button
               onClick={() => {
                 if (allRecipes.length > 0) {
                   setSelectedRecipeForViewer(allRecipes[0]);
@@ -795,6 +809,15 @@ export default function AdminKitchen() {
           onClose={() => setSelectedRecipeForViewer(null)}
         />
       )}
+
+      {/* ── Drawer Táctil de Mise en Place & Auto-86 */}
+      <MiseEnPlace86Drawer
+        isOpen={is86DrawerOpen}
+        onClose={() => setIs86DrawerOpen(false)}
+        isDark={isDark}
+        activeBrandId={activeBrandId}
+        activeLocationId={activeLocationId}
+      />
     </div>
   );
 }
