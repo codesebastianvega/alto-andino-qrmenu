@@ -44,9 +44,14 @@ export function useAdminRecipes() {
 
       let filteredData = data || [];
       if (locationId && locationId !== 'all') {
-        filteredData = filteredData.filter(recipe => 
-          recipe.location_recipes?.some(lr => lr.location_id === locationId)
-        );
+        filteredData = filteredData.filter(recipe => {
+          const locLink = recipe.location_recipes?.find(lr => lr.location_id === locationId);
+          if (locLink) {
+            return locLink.is_active !== false;
+          }
+          // Inherit brand recipes by default when not explicitly linked
+          return true;
+        });
       }
 
       setRecipes(filteredData);

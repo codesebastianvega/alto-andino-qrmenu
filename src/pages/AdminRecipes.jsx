@@ -39,7 +39,7 @@ export default function AdminRecipes() {
   const [isModalOpen,  setIsModalOpen]  = useState(false);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState(null);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+  const [viewMode, setViewMode] = useState('list'); // 'grid' | 'list' (por defecto lista)
   const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'critical' | 'healthy' | 'investment'
   const [recipeCategoryTab, setRecipeCategoryTab] = useState('dishes'); // 'dishes' | 'subrecipes' | 'layout'
   const [viewingKitchenRecipe, setViewingKitchenRecipe] = useState(null);
@@ -1177,10 +1177,21 @@ Devuelve ÚNICAMENTE el texto de la descripción, sin comillas ni títulos adici
                     {displayRecipes.map(recipe => {
                       const m = recipe.target_price > 0 ? ((recipe.target_price - recipe.total_cost) / recipe.target_price) * 100 : 0;
                       return (
-                        <tr key={recipe.id} className="hover:bg-slate-50/70 transition-colors">
+                        <tr 
+                          key={recipe.id} 
+                          onClick={(e) => {
+                            if (!e.target.closest('button')) {
+                              handleOpenModal(recipe);
+                            }
+                          }}
+                          className="hover:bg-indigo-50/50 transition-colors cursor-pointer group"
+                        >
                           <td className="px-5 py-3.5">
                             <div>
-                              <p className="font-semibold text-slate-900">{recipe.name}</p>
+                              <p className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors flex items-center gap-1.5">
+                                {recipe.name}
+                                <Icon icon="heroicons:pencil-square" className="text-xs opacity-0 group-hover:opacity-100 text-indigo-500 transition-opacity" />
+                              </p>
                               {recipe.description && (
                                 <p className="text-xs text-slate-500 mt-0.5 truncate max-w-sm">{recipe.description}</p>
                               )}
@@ -1303,7 +1314,11 @@ Devuelve ÚNICAMENTE el texto de la descripción, sin comillas ni títulos adici
                         </div>
 
                         {/* Title & Metadata */}
-                        <h3 className="text-base font-bold text-slate-900 group-hover:text-amber-800 transition-colors line-clamp-1 min-h-[1.5rem]" title={recipe.name}>
+                        <h3 
+                          onClick={() => handleOpenModal(recipe)}
+                          className="text-base font-bold text-slate-900 hover:text-indigo-600 cursor-pointer transition-colors line-clamp-1 min-h-[1.5rem]" 
+                          title={`Click para editar: ${recipe.name}`}
+                        >
                           {recipe.name}
                         </h3>
                         
@@ -1484,8 +1499,8 @@ Devuelve ÚNICAMENTE el texto de la descripción, sin comillas ni títulos adici
       {/* ── RECIPE EDITOR MODAL (Clean Professional Design mounted via Portal) */}
       {isModalOpen && (
         <Portal>
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-2 sm:p-4 lg:p-6 overflow-y-auto animate-fade-in">
-            <div className="bg-white rounded-2xl w-full max-w-7xl max-h-[94vh] overflow-hidden shadow-2xl flex flex-col my-auto border border-slate-200">
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-0 overflow-hidden animate-fade-in">
+            <div className="bg-white w-full h-full max-w-none max-h-none overflow-hidden shadow-2xl flex flex-col border-none rounded-none">
 
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0 bg-slate-50/70">

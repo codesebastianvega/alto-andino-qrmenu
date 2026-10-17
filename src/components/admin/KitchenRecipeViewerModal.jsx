@@ -143,9 +143,9 @@ export function KitchenRecipeViewerModal({ recipe, allRecipes = [], isOpen, onCl
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[120] bg-slate-900/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto animate-fade-in">
-        {/* Modal Container: Pantalla completa en celular, modal ordenado en desktop */}
-        <div className="bg-white w-full sm:max-w-2xl lg:max-w-4xl h-[95vh] sm:h-auto sm:max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
+      <div className="fixed inset-0 z-[120] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-0 overflow-hidden animate-fade-in">
+        {/* Modal Container: Pantalla completa en tablet, celular y desktop */}
+        <div className="bg-white w-full h-full max-w-none max-h-none rounded-none shadow-2xl flex flex-col overflow-hidden border-none">
         
         {/* ── Top Bar Header */}
         <div className="bg-slate-900 text-white p-5 sm:p-6 shrink-0 relative">
