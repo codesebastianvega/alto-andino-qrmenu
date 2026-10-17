@@ -129,7 +129,8 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
       if (!groupMeta) return;
 
       // If it's a submodifier, it MUST be triggered or explicitly assigned to this product
-      const isDirectlyAssigned = (product?.modifier_groups || []).includes(groupMeta.id);
+      const productGroupIds = product?.modifierGroups || product?.modifier_groups || [];
+      const isDirectlyAssigned = productGroupIds.includes(groupMeta.id) || productGroupIds.includes(groupMeta.name);
       const isTriggered = Object.values(triggeredMap).flat().includes(groupMeta.id);
       if (groupMeta.is_submodifier && !isTriggered && !isDirectlyAssigned) return;
 
@@ -699,7 +700,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                       : isScheduleRestricted
                       ? `🕒 ${scheduleNotice}`
                       : missingRequired.length > 0
-                      ? `Faltan ${missingRequired.length} ${missingRequired.length === 1 ? 'opción' : 'opciones'}`
+                      ? `${missingRequired.length === 1 ? 'Falta 1 opción' : `Faltan ${missingRequired.length} opciones`}`
                       : "Agregar al pedido"}
                   </span>
                   {canAdd && (

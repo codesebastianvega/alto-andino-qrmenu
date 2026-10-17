@@ -337,10 +337,11 @@ export default function Footer({ hasCartBar, onInstallPWA, isPWAInstalled }) {
           <div className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center">
             <a 
               href="#admin" 
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all text-xs font-bold border border-white/10 shadow-sm active:scale-95 cursor-pointer"
+              className="inline-flex items-center gap-1 text-[11px] text-white/25 hover:text-white/60 transition-colors cursor-pointer py-0.5"
+              title="Acceso interno administrativo"
             >
-              <Settings size={14} className="text-amber-400" />
-              <span>Panel Administrador</span>
+              <Settings size={11} className="opacity-40" />
+              <span>Acceso Administrativo</span>
             </a>
             <span className="text-white/20">·</span>
             <span>Diseñado por Sebas (UXIO)</span>

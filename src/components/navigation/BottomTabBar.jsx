@@ -60,18 +60,8 @@ export default function BottomTabBar({ currentHash, onAllergensOpen, showExperie
       items.push({ id: "pedido", label: "Pedido", icon: ReceiptText, hash: `#order/${activeOrderId}` });
     }
 
-    if (hasAdminSession) {
-      items.push({ 
-        id: "admin", 
-        label: "Admin", 
-        icon: ShieldCheck, 
-        hash: "#admin",
-        isAdmin: true 
-      });
-    }
-
     return items;
-  }, [activeOrderId, onAllergensOpen, assistantName, hasAdminSession]);
+  }, [activeOrderId, onAllergensOpen, assistantName]);
 
   const activeTabId = useMemo(() => {
     if (currentHash?.startsWith("#admin")) return "admin";

@@ -28,6 +28,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useMenuData } from '../context/MenuDataContext';
 import { formatCOP } from '../utils/money';
 import { useCart } from '../context/CartContext';
+import { Icon } from '@iconify-icon/react';
 import AIAvatar from '../components/ui/AIAvatar';
 import { getSafeImageUrl } from '../utils/images';
 import { cleanAssistantName } from '../utils/formatters';
@@ -350,7 +351,13 @@ const LandingPage = () => {
               <motion.div custom={4} variants={titleVariants} initial="hidden" animate="visible" className="flex items-center gap-3 md:gap-4 mb-4 md:mb-10 overflow-x-auto hide-scrollbar pb-3 -mx-4 px-4 md:-mx-0 md:px-0">
                 {config.heroDishes.map((cat, idx) => (
                   <div key={idx} onClick={() => handleCategoryClick(cat.category)} className={`shrink-0 flex items-center gap-2 md:gap-3 px-3 md:px-4 py-1.5 md:py-2 rounded-full cursor-pointer transition-all duration-300 border ${activeCategory === cat.category ? 'bg-white border-transparent shadow-[0_8px_20px_rgba(0,0,0,0.08)] scale-105' : 'bg-transparent border-black/10 hover:border-black/30 opacity-70'}`}>
-                    <span className="text-lg md:text-xl bg-brand-bg w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center">{cat.icon}</span>
+                    <span className="text-lg md:text-xl bg-brand-bg w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center overflow-hidden">
+                      {cat.icon && cat.icon.includes(':') ? (
+                        <Icon icon={cat.icon} className="text-xl" />
+                      ) : (
+                        cat.icon
+                      )}
+                    </span>
                     <div className="flex flex-col">
                       <span className="text-sm font-bold">{cat.category}</span>
                       <span className="text-[10px] text-black/50 font-semibold">{formatCOP(cat.price)}</span>

@@ -217,17 +217,24 @@ export default function AdminCategories() {
                             ) : (
                               <>
                                 <td className="px-5 py-3.5">
-                                  <div className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-100 overflow-hidden flex items-center justify-center text-xl">
+                                  <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 overflow-hidden flex items-center justify-center text-2xl shadow-2xs">
                                     {cat.image_url ? (
                                       <img src={cat.image_url} alt="" className="w-full h-full object-cover" />
-                                    ) : cat.icon || '📁'}
+                                    ) : cat.icon ? (
+                                      cat.icon.includes(':') ? (
+                                        <Icon icon={cat.icon} className="text-2xl" />
+                                      ) : (
+                                        <span>{cat.icon}</span>
+                                      )
+                                    ) : (
+                                      <Icon icon="solar:folder-with-files-bold-duotone" className="text-gray-300 text-xl" />
+                                    )}
                                   </div>
                                 </td>
                                 <td className="px-5 py-3.5">
                                   <div className="flex items-center gap-3">
                                     <div className="flex flex-col">
                                       <div className="flex items-center gap-1.5">
-                                        <Icon icon="heroicons:folder" className="text-gray-400 text-sm" />
                                         <span className="text-sm font-extrabold text-gray-900 leading-tight">{cat.name}</span>
                                       </div>
                                       <span className="text-[10px] font-mono text-gray-400 uppercase tracking-tighter mt-1 bg-gray-50 w-fit px-1.5 rounded">{cat.slug}</span>
@@ -460,10 +467,18 @@ export default function AdminCategories() {
                               
                               {/* Card Content */}
                               <div className="flex-1 p-3 flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center shrink-0">
+                                <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 overflow-hidden flex items-center justify-center shrink-0 text-2xl shadow-2xs">
                                   {cat.image_url ? (
                                     <img src={cat.image_url} alt="" className="w-full h-full object-cover" />
-                                  ) : <span className="text-xl">{cat.icon || '📁'}</span>}
+                                  ) : cat.icon ? (
+                                    cat.icon.includes(':') ? (
+                                      <Icon icon={cat.icon} className="text-2xl" />
+                                    ) : (
+                                      <span>{cat.icon}</span>
+                                    )
+                                  ) : (
+                                    <Icon icon="solar:folder-with-files-bold-duotone" className="text-gray-300 text-xl" />
+                                  )}
                                 </div>
                                 
                                 <div className="flex-1 min-w-0">
