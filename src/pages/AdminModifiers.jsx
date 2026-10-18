@@ -189,6 +189,7 @@ function InsumosTab({ activeLocationId }) {
   const [showZeroOnly,  setShowZeroOnly]  = useState(false);
   const [showZeroWasteOnly, setShowZeroWasteOnly] = useState(false);
   const [typeFilter,    setTypeFilter]    = useState('all'); // 'all' | 'raw' | 'subrecipe'
+  const [sortBy,        setSortBy]        = useState('name_asc');
   const [batchModalItem, setBatchModalItem] = useState(null);
   // inlineEdit: { id, purchase_price, purchase_quantity, purchase_unit, usage_unit }
   const [inlineEdit,    setInlineEdit]    = useState(null);
@@ -253,7 +254,7 @@ function InsumosTab({ activeLocationId }) {
     if (!dateString) return 'Nunca';
     const date = new Date(dateString);
     const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
+    const diffInSeconds = Math.max(0, Math.floor((now - date) / 1000));
     
     if (diffInSeconds < 60) return 'Hace un momento';
     if (diffInSeconds < 3600) return `Hace ${Math.floor(diffInSeconds / 60)}m`;
@@ -277,8 +278,8 @@ function InsumosTab({ activeLocationId }) {
     [ingredients]
   );
 
-  const filtered = useMemo(() =>
-    ingredients.filter(i => {
+  const filtered = useMemo(() => {
+    const list = ingredients.filter(i => {
       // Logic for special search terms or standard search
       let matchSearch = true;
       if (search === 'stock_bajo') {
@@ -303,9 +304,40 @@ function InsumosTab({ activeLocationId }) {
                             !isSubrecipeItem;
 
       return matchSearch && matchCat && matchProv && matchZero && matchZeroWaste && matchType;
-    }),
-    [ingredients, search, catFilter, providerFilter, showZeroOnly, showZeroWasteOnly, typeFilter, totalInventoryValue]
-  );
+    });
+
+    return [...list].sort((a, b) => {
+      if (sortBy === 'name_asc') {
+        return (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' });
+      }
+      if (sortBy === 'name_desc') {
+        return (b.name || '').localeCompare(a.name || '', 'es', { sensitivity: 'base' });
+      }
+      if (sortBy === 'category') {
+        const catA = categories.find(c => c.id === a.category_id)?.name || 'Sin Categ';
+        const catB = categories.find(c => c.id === b.category_id)?.name || 'Sin Categ';
+        const cmp = catA.localeCompare(catB, 'es', { sensitivity: 'base' });
+        return cmp !== 0 ? cmp : (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' });
+      }
+      if (sortBy === 'stock_asc') {
+        return (a.stock_current || 0) - (b.stock_current || 0);
+      }
+      if (sortBy === 'stock_desc') {
+        return (b.stock_current || 0) - (a.stock_current || 0);
+      }
+      if (sortBy === 'value_desc') {
+        const valA = (a.unit_cost || 0) * (a.stock_current || 0);
+        const valB = (b.unit_cost || 0) * (b.stock_current || 0);
+        return valB - valA;
+      }
+      if (sortBy === 'recent') {
+        const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+        const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+        return dateB - dateA;
+      }
+      return (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' });
+    });
+  }, [ingredients, search, catFilter, providerFilter, showZeroOnly, showZeroWasteOnly, typeFilter, totalInventoryValue, sortBy, categories]);
 
   const openCreate = () => { 
     setEditing(null); 
@@ -721,6 +753,26 @@ function InsumosTab({ activeLocationId }) {
             </select>
             <Icon icon="heroicons:chevron-down" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
           </div>
+          <div className="relative w-full sm:w-52">
+            <Icon 
+              icon="heroicons:bars-arrow-down" 
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" 
+            />
+            <select 
+              value={sortBy} 
+              onChange={e => setSortBy(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 bg-slate-50 hover:bg-slate-50/80 focus:bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-all appearance-none cursor-pointer"
+            >
+              <option value="name_asc">Nombre (A → Z)</option>
+              <option value="name_desc">Nombre (Z → A)</option>
+              <option value="category">Por Categoría</option>
+              <option value="stock_asc">Menor Stock (Críticos)</option>
+              <option value="stock_desc">Mayor Stock</option>
+              <option value="recent">Recién Actualizados</option>
+              <option value="value_desc">Mayor Valor Total</option>
+            </select>
+            <Icon icon="heroicons:chevron-down" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
+          </div>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-2 w-full lg:w-auto shrink-0">
           {!isAllLocations && (
@@ -1056,32 +1108,49 @@ function InsumosTab({ activeLocationId }) {
 
                     {/* Actions column - ALWAYS VISIBLE */}
                     <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1.5">
                         {isSubrecipe && (
                           <button
                             onClick={() => setBatchModalItem(item)}
                             title="Preparar bache de esta subreceta"
-                            className="flex items-center gap-1 px-2.5 h-7 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-md border border-amber-300 shadow-2xs transition-all mr-1"
+                            className="flex items-center gap-1 px-2.5 h-7 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-md border border-amber-300 shadow-2xs transition-all mr-0.5"
                           >
                             <span>🍳</span>
                             <span>Preparar</span>
                           </button>
                         )}
-                        <button onClick={() => openEdit(item)}
-                          title="Editar insumo"
-                          className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md border border-slate-200/80 bg-white transition-all shadow-2xs">
-                          <Icon icon="heroicons:pencil-square" className="text-sm" />
+                        <button
+                          onClick={() => toggleIngredientStatus(item.id, item.is_active)}
+                          title={item.is_active ? "Insumo activo (clic para desactivar)" : "Insumo inactivo (clic para activar)"}
+                          className={`h-7 px-2 flex items-center gap-1 text-[11px] font-bold rounded-lg border transition-all ${
+                            item.is_active
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200 hover:text-slate-800'
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${item.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                          <span>{item.is_active ? 'Activo' : 'Inactivo'}</span>
                         </button>
-                        <button onClick={() => { setConfirmDelete(item.id); setInlineEdit(null); }}
+                        <button
+                          onClick={() => openEdit(item)}
+                          title="Editar insumo"
+                          className="h-7 px-2.5 flex items-center gap-1 text-xs font-bold text-slate-700 bg-white hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 rounded-lg border border-slate-200/90 shadow-2xs transition-all"
+                        >
+                          <Icon icon="heroicons:pencil-square" className="text-sm text-slate-400" />
+                          <span>Editar</span>
+                        </button>
+                        <button 
+                          onClick={() => { setConfirmDelete(item.id); setInlineEdit(null); }}
                           title="Eliminar insumo"
-                          className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-md border border-slate-200/80 bg-white transition-all shadow-2xs">
+                          className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-slate-200/80 bg-white transition-all shadow-2xs"
+                        >
                           <Icon icon="heroicons:trash" className="text-sm" />
                         </button>
                         {!isAllLocations && (
                           <button
                             onClick={() => handleUnlinkIngredient(item.id)}
                             title="Desvincular de esta sede"
-                            className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-md border border-slate-200/80 bg-white transition-all shadow-2xs"
+                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg border border-slate-200/80 bg-white transition-all shadow-2xs"
                           >
                             <Icon icon="heroicons:link-slash" className="text-sm" />
                           </button>
@@ -1246,7 +1315,7 @@ function InsumosTab({ activeLocationId }) {
                     </button>
                   )}
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   {isSubrecipe && (
                     <button
                       onClick={() => setBatchModalItem(item)}
@@ -1255,10 +1324,23 @@ function InsumosTab({ activeLocationId }) {
                       <span>🍳 Preparar</span>
                     </button>
                   )}
-                  <button onClick={() => openEdit(item)} title="Editar" className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-blue-600 bg-white border border-slate-200 rounded-md shadow-2xs">
-                    <Icon icon="heroicons:pencil-square" className="text-sm" />
+                  <button
+                    onClick={() => toggleIngredientStatus(item.id, item.is_active)}
+                    title={item.is_active ? "Insumo activo (clic para desactivar)" : "Insumo inactivo (clic para activar)"}
+                    className={`h-7 px-2 flex items-center gap-1 text-[11px] font-bold rounded-lg border transition-all ${
+                      item.is_active
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-slate-100 text-slate-500 border-slate-300'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${item.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                    <span>{item.is_active ? 'Activo' : 'Inactivo'}</span>
                   </button>
-                  <button onClick={() => setConfirmDelete(item.id)} title="Eliminar" className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-rose-600 bg-white border border-slate-200 rounded-md shadow-2xs">
+                  <button onClick={() => openEdit(item)} title="Editar" className="h-7 px-2.5 flex items-center gap-1 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg shadow-2xs">
+                    <Icon icon="heroicons:pencil-square" className="text-sm text-slate-400" />
+                    <span>Editar</span>
+                  </button>
+                  <button onClick={() => setConfirmDelete(item.id)} title="Eliminar" className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-rose-600 bg-white border border-slate-200 rounded-lg shadow-2xs">
                     <Icon icon="heroicons:trash" className="text-sm" />
                   </button>
                   {!isAllLocations && (
@@ -1290,6 +1372,28 @@ function InsumosTab({ activeLocationId }) {
                     ${unitCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     <span className="text-xs text-slate-400 font-medium ml-1">/{form.usage_unit || 'unidad'}</span>
                   </p>
+                </div>
+                {/* Switch Activo / Inactivo */}
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <span className={`text-xs font-bold block ${form.is_active ? 'text-emerald-700' : 'text-slate-500'}`}>
+                      {form.is_active ? 'Insumo Activo' : 'Insumo Inactivo'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium block">
+                      {form.is_active ? 'Visible en bodega y recetas' : 'Aparece tenue / desactivado'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => f('is_active', !form.is_active)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none cursor-pointer ${
+                      form.is_active ? 'bg-emerald-600' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-xs ${
+                      form.is_active ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
                 </div>
               </div>
             </div>

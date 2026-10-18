@@ -153,6 +153,7 @@ export function useAdminIngredients() {
         stock_min: parseFloat(ingredientData.stock_min) || 0,
         image_url: ingredientData.image_url || null,
         brand_id: activeBrandId,
+        updated_at: new Date().toISOString(),
       };
 
       const { data, error } = await supabase
@@ -199,14 +200,14 @@ export function useAdminIngredients() {
     try {
       const { data, error } = await supabase
         .from('ingredients')
-        .update({ is_active: !currentStatus })
+        .update({ is_active: !currentStatus, updated_at: new Date().toISOString() })
         .eq('id', id)
         .eq('brand_id', activeBrandId)
         .select()
         .single();
 
       if (error) throw error;
-      setIngredients(prev => prev.map(inv => inv.id === id ? data : inv));
+      setIngredients(prev => prev.map(inv => inv.id === id ? { ...inv, ...data } : inv));
       toast(`Insumo ${!currentStatus ? 'activado' : 'desactivado'}`);
       return data;
     } catch (err) {
