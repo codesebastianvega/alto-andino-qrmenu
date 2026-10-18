@@ -8,6 +8,7 @@ import { useLinkCatalog } from '../hooks/useLinkCatalog';
 import { LinkCatalogModal } from '../components/admin/LinkCatalogModal';
 import { ShoppingListBoard } from '../components/admin/ShoppingListBoard';
 import { BatchProductionModal } from '../components/admin/BatchProductionModal';
+import Portal from '../components/Portal';
 import {
   PageHeader, PrimaryButton, SecondaryButton, Badge,
   TableContainer, Th, SearchInput, SelectInput,
@@ -1357,8 +1358,9 @@ function InsumosTab({ activeLocationId }) {
 
       {/* Modal / Bottom Sheet */}
       {isOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 flex items-end md:items-start justify-center z-[100] p-0 md:p-4 overflow-hidden backdrop-blur-xs">
-          <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-4xl h-[95vh] md:h-auto md:max-h-[90vh] md:my-8 flex flex-col shadow-2xl animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200 border border-slate-200">
+        <Portal>
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[9999] p-3 md:p-6 overflow-y-auto">
+            <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200 border border-slate-200 overflow-hidden my-auto">
             <div className="shrink-0">
               <ModalHeader
                 title={editing ? 'Editar insumo' : 'Nuevo insumo'}
@@ -1407,44 +1409,45 @@ function InsumosTab({ activeLocationId }) {
                   <TextInput value={form.sku} onChange={e => f('sku', e.target.value.toUpperCase())} placeholder="INS-001" />
                 </FormField>
                 <FormField label="URL de Foto / Imagen (Opcional)">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-12 h-12 min-w-[48px] max-w-[48px] h-[48px] rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
+                      {form.image_url ? (
+                        <>
+                          <img
+                            src={form.image_url}
+                            alt="Vista previa"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = 'https://placehold.co/100x100/f1f5f9/94a3b8?text=Error';
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => f('image_url', '')}
+                            title="Quitar foto"
+                            className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center text-[10px] shadow-sm transition-all z-10 cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-slate-300">
+                          <Icon icon="heroicons:photo" className="text-xl" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
                       <TextInput 
                         value={form.image_url || ''} 
                         onChange={e => f('image_url', e.target.value)} 
                         placeholder="https://... (Foto del producto / empaque)" 
                       />
-                      <p className="text-[10px] text-slate-400 mt-1">
-                        Pega el enlace de una foto para identificar este insumo en bodega y recetas.
-                      </p>
                     </div>
-                    {form.image_url ? (
-                      <div className="relative group shrink-0">
-                        <img
-                          src={form.image_url}
-                          alt="Vista previa"
-                          className="w-13 h-13 rounded-xl object-cover border border-slate-200 bg-white shadow-2xs"
-                          onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            e.currentTarget.src = 'https://placehold.co/100x100/f1f5f9/94a3b8?text=Error';
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => f('image_url', '')}
-                          title="Quitar foto"
-                          className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center text-[10px] shadow-sm transition-all"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="w-13 h-13 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center text-slate-300 shrink-0" title="Sin foto aún">
-                        <Icon icon="heroicons:photo" className="text-lg" />
-                        <span className="text-[8px] font-semibold">Sin foto</span>
-                      </div>
-                    )}
                   </div>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Pega el enlace de una foto para identificar este insumo en bodega y recetas.
+                  </p>
                 </FormField>
                 <FormField label="Categoría">
                   <select required value={form.category_id} onChange={e => f('category_id', e.target.value)}
@@ -1676,7 +1679,8 @@ function InsumosTab({ activeLocationId }) {
             </form>
           </div>
         </div>
-      )}
+      </Portal>
+    )}
 
       {/* Catalog Link Modal */}
       <LinkCatalogModal 
