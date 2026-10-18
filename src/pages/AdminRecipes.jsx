@@ -16,6 +16,7 @@ import { Link as LinkIcon, Lightbulb, X } from 'lucide-react';
 import { KitchenRecipeViewerModal } from '../components/admin/KitchenRecipeViewerModal';
 import { KitchenStationLayout } from '../components/admin/KitchenStationLayout';
 import KitchenUtilitiesModal from '../components/admin/KitchenUtilitiesModal';
+import { BatchProductionModal } from '../components/admin/BatchProductionModal';
 import Portal from '../components/Portal';
 
 const TrashIcon = () => (
@@ -43,6 +44,7 @@ export default function AdminRecipes() {
   const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'critical' | 'healthy' | 'investment'
   const [recipeCategoryTab, setRecipeCategoryTab] = useState('dishes'); // 'dishes' | 'subrecipes' | 'layout'
   const [viewingKitchenRecipe, setViewingKitchenRecipe] = useState(null);
+  const [batchModalRecipe, setBatchModalRecipe] = useState(null);
   const [isUtilitiesModalOpen, setIsUtilitiesModalOpen] = useState(false);
   const [availableEquipment, setAvailableEquipment] = useState([]);
   const [utilityRates, setUtilityRates] = useState({ kwh_price: 950, gas_m3_price: 2800, water_liter_price: 5.5 });
@@ -1239,6 +1241,16 @@ Devuelve ÚNICAMENTE el texto de la descripción, sin comillas ni títulos adici
                           </td>
                           <td className="px-5 py-3.5 text-right">
                             <div className="flex items-center justify-end gap-1.5">
+                              {recipe.is_subrecipe && (
+                                <button 
+                                  onClick={() => setBatchModalRecipe(recipe)} 
+                                  className="h-8 px-2.5 flex items-center gap-1 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-md border border-amber-300 shadow-2xs transition-all"
+                                  title="Preparar bache y descontar insumos de bodega"
+                                >
+                                  <span>🍳</span>
+                                  <span className="hidden lg:inline">Preparar Bache</span>
+                                </button>
+                              )}
                               <button 
                                 onClick={() => setViewingKitchenRecipe(recipe)} 
                                 className="h-8 px-2.5 flex items-center gap-1 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-md border border-indigo-200 transition-all"
@@ -1404,6 +1416,16 @@ Devuelve ÚNICAMENTE el texto de la descripción, sin comillas ni títulos adici
 
                         {/* Action buttons */}
                         <div className="flex items-center gap-2">
+                          {recipe.is_subrecipe && (
+                            <button 
+                              onClick={() => setBatchModalRecipe(recipe)}
+                              className="h-9 px-3 rounded-xl text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 shadow-2xs flex items-center justify-center gap-1 transition-all shrink-0"
+                              title="Preparar bache y descontar insumos de bodega"
+                            >
+                              <span>🍳</span>
+                              <span>Bache</span>
+                            </button>
+                          )}
                           <button 
                             onClick={() => setViewingKitchenRecipe(recipe)}
                             className={`flex-1 h-9 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs ${
@@ -2535,6 +2557,18 @@ Devuelve ÚNICAMENTE el texto de la descripción, sin comillas ni títulos adici
         brandId={brandId}
         locationId={activeLocationId}
         locationName={activeLocation?.name || 'Sede Principal'}
+      />
+
+      {/* ── Modal de Producción de Bache de Subrecetas */}
+      <BatchProductionModal
+        isOpen={Boolean(batchModalRecipe)}
+        onClose={() => setBatchModalRecipe(null)}
+        targetItem={batchModalRecipe}
+        activeLocationId={activeLocationId}
+        onProduced={() => {
+          fetchRecipes(activeLocationId);
+          fetchIngredients(activeLocationId);
+        }}
       />
     </div>
   );

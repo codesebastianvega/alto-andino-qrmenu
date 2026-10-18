@@ -7,6 +7,7 @@ import { useLocationInventory } from '../hooks/useLocationInventory';
 import { useLinkCatalog } from '../hooks/useLinkCatalog';
 import { LinkCatalogModal } from '../components/admin/LinkCatalogModal';
 import { ShoppingListBoard } from '../components/admin/ShoppingListBoard';
+import { BatchProductionModal } from '../components/admin/BatchProductionModal';
 import {
   PageHeader, PrimaryButton, SecondaryButton, Badge,
   TableContainer, Th, SearchInput, SelectInput,
@@ -187,6 +188,8 @@ function InsumosTab({ activeLocationId }) {
   const [providerFilter, setProviderFilter]= useState('all');
   const [showZeroOnly,  setShowZeroOnly]  = useState(false);
   const [showZeroWasteOnly, setShowZeroWasteOnly] = useState(false);
+  const [typeFilter,    setTypeFilter]    = useState('all'); // 'all' | 'raw' | 'subrecipe'
+  const [batchModalItem, setBatchModalItem] = useState(null);
   // inlineEdit: { id, purchase_price, purchase_quantity, purchase_unit, usage_unit }
   const [inlineEdit,    setInlineEdit]    = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -264,6 +267,16 @@ function InsumosTab({ activeLocationId }) {
     [ingredients]
   );
 
+  const rawCount = useMemo(() =>
+    ingredients.filter(i => !i.is_subrecipe && !(i.name || '').toLowerCase().includes('(subreceta)')).length,
+    [ingredients]
+  );
+
+  const subrecipeCount = useMemo(() =>
+    ingredients.filter(i => Boolean(i.is_subrecipe) || (i.name || '').toLowerCase().includes('(subreceta)')).length,
+    [ingredients]
+  );
+
   const filtered = useMemo(() =>
     ingredients.filter(i => {
       // Logic for special search terms or standard search
@@ -283,9 +296,15 @@ function InsumosTab({ activeLocationId }) {
       const matchProv     = providerFilter === 'all' || i.provider_id === providerFilter;
       const matchZero     = !showZeroOnly || !i.unit_cost || i.unit_cost === 0;
       const matchZeroWaste= !showZeroWasteOnly || Boolean(i.has_merma);
-      return matchSearch && matchCat && matchProv && matchZero && matchZeroWaste;
+
+      const isSubrecipeItem = Boolean(i.is_subrecipe) || (i.name || '').toLowerCase().includes('(subreceta)');
+      const matchType     = typeFilter === 'all' ? true :
+                            typeFilter === 'subrecipe' ? isSubrecipeItem :
+                            !isSubrecipeItem;
+
+      return matchSearch && matchCat && matchProv && matchZero && matchZeroWaste && matchType;
     }),
-    [ingredients, search, catFilter, providerFilter, showZeroOnly, showZeroWasteOnly, totalInventoryValue]
+    [ingredients, search, catFilter, providerFilter, showZeroOnly, showZeroWasteOnly, typeFilter, totalInventoryValue]
   );
 
   const openCreate = () => { 
@@ -619,6 +638,43 @@ function InsumosTab({ activeLocationId }) {
         </div>
       )}
 
+      {/* Segmented Filter: Insumos de Compra vs Subrecetas */}
+      <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 rounded-xl w-fit mb-4 border border-slate-200/80">
+        <button
+          type="button"
+          onClick={() => setTypeFilter('all')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            typeFilter === 'all'
+              ? 'bg-white text-slate-900 shadow-2xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Todos ({ingredients.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setTypeFilter('raw')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            typeFilter === 'raw'
+              ? 'bg-white text-blue-700 shadow-2xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <span>📦</span> Insumos de Compra ({rawCount})
+        </button>
+        <button
+          type="button"
+          onClick={() => setTypeFilter('subrecipe')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            typeFilter === 'subrecipe'
+              ? 'bg-white text-amber-700 shadow-2xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <span>🍳</span> Subrecetas / Mise en Place ({subrecipeCount})
+        </button>
+      </div>
+
       {/* Toolbar */}
       <div className="flex flex-col lg:flex-row items-center justify-between gap-3 mb-6 bg-white p-3 rounded-xl border border-slate-200/90 shadow-2xs">
         <div className="flex flex-col sm:flex-row items-center gap-2.5 flex-1 w-full lg:w-auto">
@@ -710,6 +766,7 @@ function InsumosTab({ activeLocationId }) {
                 const hasZero  = !item.unit_cost || item.unit_cost === 0;
                 const isInline = inlineEdit?.id === item.id;
                 const isDelConf= confirmDelete === item.id;
+                const isSubrecipe = Boolean(item.is_subrecipe) || (item.name || '').toLowerCase().includes('(subreceta)');
 
                 // ── Delete confirmation row
                 if (isDelConf) return (
@@ -826,6 +883,11 @@ function InsumosTab({ activeLocationId }) {
                           <p className="text-xs font-bold text-slate-900 truncate max-w-[220px]">{item.name}</p>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <span className="text-[10px] text-slate-400 font-semibold uppercase">{item.usage_unit || 'unidad'}</span>
+                            {isSubrecipe && (
+                              <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300/80 px-1.5 py-0.2 rounded font-bold">
+                                🍳 Subreceta
+                              </span>
+                            )}
                             {item.recipe_usage_count > 0 && (
                               <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 px-1.5 py-0.2 rounded font-semibold">
                                 {item.recipe_usage_count} receta{item.recipe_usage_count === 1 ? '' : 's'} · {item.recipe_required_quantity} {item.usage_unit}
@@ -977,6 +1039,16 @@ function InsumosTab({ activeLocationId }) {
                     {/* Actions column - ALWAYS VISIBLE */}
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {isSubrecipe && (
+                          <button
+                            onClick={() => setBatchModalItem(item)}
+                            title="Preparar bache de esta subreceta"
+                            className="flex items-center gap-1 px-2.5 h-7 text-xs font-bold text-amber-900 bg-amber-100/90 hover:bg-amber-200 rounded-md border border-amber-300 shadow-2xs transition-all mr-1"
+                          >
+                            <span>🍳</span>
+                            <span className="hidden xl:inline">Preparar Bache</span>
+                          </button>
+                        )}
                         <button onClick={() => openEdit(item)}
                           title="Editar insumo"
                           className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md border border-slate-200/80 bg-white transition-all shadow-2xs">
@@ -1039,6 +1111,7 @@ function InsumosTab({ activeLocationId }) {
           const hasZero = !item.unit_cost || item.unit_cost === 0;
           const isInline = inlineEdit?.id === item.id;
           const isDelConf = confirmDelete === item.id;
+          const isSubrecipe = Boolean(item.is_subrecipe) || (item.name || '').toLowerCase().includes('(subreceta)');
 
           if (isDelConf) return (
             <div key={item.id} className="bg-rose-50/70 p-4 rounded-xl border border-rose-200 flex flex-col gap-2.5 animate-fade-in">
@@ -1082,6 +1155,11 @@ function InsumosTab({ activeLocationId }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider truncate">{cat?.name || 'Sin Categoría'}</span>
+                    {isSubrecipe && (
+                      <span className="text-[9px] bg-amber-100 text-amber-900 border border-amber-300 font-bold px-1.5 py-0.2 rounded">
+                        🍳 Subreceta
+                      </span>
+                    )}
                     {item.provider_id && (
                       <span className="text-[9px] bg-blue-50 text-blue-700 border border-blue-100 font-semibold px-1.5 py-0.2 rounded flex items-center gap-0.5">
                         <Icon icon="heroicons:truck" className="text-[10px]" />
@@ -1142,6 +1220,14 @@ function InsumosTab({ activeLocationId }) {
                   )}
                 </div>
                 <div className="flex items-center gap-1">
+                  {isSubrecipe && (
+                    <button
+                      onClick={() => setBatchModalItem(item)}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-md border border-amber-300 shadow-2xs mr-1"
+                    >
+                      <span>🍳 Preparar</span>
+                    </button>
+                  )}
                   <button onClick={() => openEdit(item)} title="Editar" className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-blue-600 bg-white border border-slate-200 rounded-md shadow-2xs">
                     <Icon icon="heroicons:pencil-square" className="text-sm" />
                   </button>
@@ -1434,6 +1520,15 @@ function InsumosTab({ activeLocationId }) {
         type="inventory"
         locationId={activeLocationId}
         locationName={activeLocation?.name || 'Sede'}
+      />
+
+      {/* Batch Production Modal for Subrecipes */}
+      <BatchProductionModal
+        isOpen={Boolean(batchModalItem)}
+        onClose={() => setBatchModalItem(null)}
+        targetItem={batchModalItem}
+        activeLocationId={activeLocationId}
+        onProduced={() => fetchIngredients(activeLocationId)}
       />
     </>
   );
