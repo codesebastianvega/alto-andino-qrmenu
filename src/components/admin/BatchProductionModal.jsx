@@ -87,7 +87,7 @@ export function BatchProductionModal({ isOpen, onClose, targetItem, activeLocati
             recipe_ingredients (
               id, quantity, ingredient_id,
               ingredients (
-                id, name, stock_current, stock_min, usage_unit, unit_cost, sku
+                id, name, stock_current, stock_min, usage_unit, unit_cost, sku, image_url
               )
             )
           `)
@@ -143,6 +143,7 @@ export function BatchProductionModal({ isOpen, onClose, targetItem, activeLocati
         id: ri.ingredient_id,
         name: ri.ingredients?.name || 'Insumo',
         sku: ri.ingredients?.sku,
+        image_url: ri.ingredients?.image_url,
         baseQty,
         requiredQty,
         currentStock,
@@ -409,10 +410,26 @@ export function BatchProductionModal({ isOpen, onClose, targetItem, activeLocati
                         {calculatedIngredients.map((item) => (
                           <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
                             <td className="py-2.5 px-3">
-                              <p className="font-bold text-slate-900 leading-tight">{item.name}</p>
-                              {item.sku && (
-                                <span className="text-[10px] text-slate-400 font-mono">SKU: {item.sku}</span>
-                              )}
+                              <div className="flex items-center gap-2.5">
+                                {item.image_url ? (
+                                  <img
+                                    src={item.image_url}
+                                    alt={item.name}
+                                    className="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0 bg-white shadow-2xs"
+                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                  />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200/80 flex items-center justify-center text-slate-500 font-bold text-xs shrink-0">
+                                    {item.name.charAt(0)}
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <p className="font-bold text-slate-900 leading-tight truncate">{item.name}</p>
+                                  {item.sku && (
+                                    <span className="text-[10px] text-slate-400 font-mono">SKU: {item.sku}</span>
+                                  )}
+                                </div>
+                              </div>
                             </td>
                             <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
                               {item.requiredQty} <span className="text-[10px] text-slate-400 font-normal">{item.unit}</span>

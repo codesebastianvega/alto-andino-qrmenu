@@ -220,7 +220,8 @@ export default function AdminRecipes() {
                 quantity: ri.quantity,
                 name: ri.ingredients?.name, 
                 unit_cost: ri.ingredients?.unit_cost,
-                usage_unit: ri.ingredients?.usage_unit
+                usage_unit: ri.ingredients?.usage_unit,
+                image_url: ri.ingredients?.image_url
               });
             }
           });
@@ -415,7 +416,7 @@ Devuelve ÚNICAMENTE el texto de la descripción, sin comillas ni títulos adici
     }
     setFormData(prev => ({
       ...prev,
-      ingredients: [...prev.ingredients, { ingredient_id: ing.id, quantity: 1, name: ing.name, unit_cost: ing.unit_cost, usage_unit: ing.usage_unit }]
+      ingredients: [...prev.ingredients, { ingredient_id: ing.id, quantity: 1, name: ing.name, unit_cost: ing.unit_cost, usage_unit: ing.usage_unit, image_url: ing.image_url }]
     }));
   };
 
@@ -1657,20 +1658,30 @@ Devuelve ÚNICAMENTE el texto de la descripción, sin comillas ni títulos adici
                               : 'bg-white border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30'
                           }`}
                         >
-                          <div className="min-w-0 pr-2">
-                            <div className="flex items-center gap-1.5">
-                              <p className={`text-xs font-bold truncate ${isAlreadyUsed ? 'text-emerald-950 font-black' : 'text-slate-800'}`}>
-                                {ing.name}
+                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                            {ing.image_url ? (
+                              <img
+                                src={ing.image_url}
+                                alt={ing.name}
+                                className="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0 bg-white shadow-2xs"
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              />
+                            ) : null}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className={`text-xs font-bold truncate ${isAlreadyUsed ? 'text-emerald-950 font-black' : 'text-slate-800'}`}>
+                                  {ing.name}
+                                </p>
+                                {isAlreadyUsed && (
+                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-600 text-white shrink-0 uppercase tracking-wider">
+                                    ✓ En receta
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-500 font-medium tabular-nums mt-0.5">
+                                ${ing.unit_cost?.toLocaleString('es-CO', { maximumFractionDigits: 1 })} / {ing.usage_unit}
                               </p>
-                              {isAlreadyUsed && (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-600 text-white shrink-0 uppercase tracking-wider">
-                                  ✓ En receta
-                                </span>
-                              )}
                             </div>
-                            <p className="text-[11px] text-slate-500 font-medium tabular-nums mt-0.5">
-                              ${ing.unit_cost?.toLocaleString('es-CO', { maximumFractionDigits: 1 })} / {ing.usage_unit}
-                            </p>
                           </div>
                           <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all shrink-0 ${
                             isAlreadyUsed
@@ -2092,11 +2103,25 @@ Devuelve ÚNICAMENTE el texto de la descripción, sin comillas ni títulos adici
                         {formData.ingredients.map(ing => (
                           <div key={ing.ingredient_id} className="p-3.5 bg-white border border-slate-300 rounded-xl shadow-xs hover:border-slate-400 transition-all flex flex-col justify-between">
                             <div className="flex items-start justify-between gap-2 mb-2.5">
-                              <div className="min-w-0">
-                                <p className="text-xs font-bold text-slate-900 truncate">{ing.name}</p>
-                                <p className="text-[11px] text-slate-500 font-medium tabular-nums mt-0.5">
-                                  Costo unitario: ${ing.unit_cost?.toFixed(2)} / {ing.usage_unit}
-                                </p>
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                {ing.image_url ? (
+                                  <img
+                                    src={ing.image_url}
+                                    alt={ing.name}
+                                    className="w-9 h-9 rounded-lg object-cover border border-slate-200 shrink-0 bg-white shadow-2xs"
+                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                  />
+                                ) : (
+                                  <div className="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200/80 flex items-center justify-center text-slate-500 font-bold text-xs shrink-0">
+                                    {ing.name?.charAt(0) || '•'}
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-xs font-bold text-slate-900 truncate">{ing.name}</p>
+                                  <p className="text-[11px] text-slate-500 font-medium tabular-nums mt-0.5">
+                                    Costo unitario: ${ing.unit_cost?.toFixed(2)} / {ing.usage_unit}
+                                  </p>
+                                </div>
                               </div>
                               <button 
                                 type="button" 

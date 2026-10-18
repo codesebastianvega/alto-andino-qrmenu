@@ -883,11 +883,20 @@ function InsumosTab({ activeLocationId }) {
                     {/* Name column */}
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2.5">
-                        <div className={`w-7 h-7 rounded-md flex items-center justify-center font-bold text-xs shrink-0 border ${
-                          item.is_active ? 'bg-slate-100 text-slate-700 border-slate-200/80' : 'bg-slate-50 text-slate-400 border-slate-200/50'
-                        }`}>
-                          {item.name.charAt(0)}
-                        </div>
+                        {item.image_url ? (
+                          <img
+                            src={item.image_url}
+                            alt={item.name}
+                            className="w-7 h-7 rounded-md object-cover border border-slate-200 shrink-0 bg-white shadow-2xs"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div className={`w-7 h-7 rounded-md flex items-center justify-center font-bold text-xs shrink-0 border ${
+                            item.is_active ? 'bg-slate-100 text-slate-700 border-slate-200/80' : 'bg-slate-50 text-slate-400 border-slate-200/50'
+                          }`}>
+                            {item.name.charAt(0)}
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-slate-900 truncate max-w-[220px]">{item.name}</p>
                           <div className="flex items-center gap-1.5 mt-0.5">
@@ -1158,9 +1167,18 @@ function InsumosTab({ activeLocationId }) {
           return (
             <div key={item.id} className={`bg-white p-3.5 rounded-xl border shadow-2xs flex flex-col gap-2.5 transition-all ${hasZero ? 'border-amber-200 bg-amber-50/20' : 'border-slate-200/90'}`}>
               <div className="flex gap-2.5 items-center">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border ${item.is_active ? 'bg-slate-100 text-slate-700 border-slate-200/80' : 'bg-slate-50 text-slate-400 border-slate-200/50'}`}>
-                  {item.name.charAt(0)}
-                </div>
+                {item.image_url ? (
+                  <img
+                    src={item.image_url}
+                    alt={item.name}
+                    className="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0 bg-white shadow-2xs"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                ) : (
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border ${item.is_active ? 'bg-slate-100 text-slate-700 border-slate-200/80' : 'bg-slate-50 text-slate-400 border-slate-200/50'}`}>
+                    {item.name.charAt(0)}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider truncate">{cat?.name || 'Sin Categoría'}</span>
@@ -1285,7 +1303,44 @@ function InsumosTab({ activeLocationId }) {
                   <TextInput value={form.sku} onChange={e => f('sku', e.target.value.toUpperCase())} placeholder="INS-001" />
                 </FormField>
                 <FormField label="URL de Foto / Imagen (Opcional)">
-                  <TextInput value={form.image_url || ''} onChange={e => f('image_url', e.target.value)} placeholder="https://... (Foto del ingrediente para DIY)" />
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1">
+                      <TextInput 
+                        value={form.image_url || ''} 
+                        onChange={e => f('image_url', e.target.value)} 
+                        placeholder="https://... (Foto del producto / empaque)" 
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Pega el enlace de una foto para identificar este insumo en bodega y recetas.
+                      </p>
+                    </div>
+                    {form.image_url ? (
+                      <div className="relative group shrink-0">
+                        <img
+                          src={form.image_url}
+                          alt="Vista previa"
+                          className="w-13 h-13 rounded-xl object-cover border border-slate-200 bg-white shadow-2xs"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = 'https://placehold.co/100x100/f1f5f9/94a3b8?text=Error';
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => f('image_url', '')}
+                          title="Quitar foto"
+                          className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center text-[10px] shadow-sm transition-all"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-13 h-13 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center text-slate-300 shrink-0" title="Sin foto aún">
+                        <Icon icon="heroicons:photo" className="text-lg" />
+                        <span className="text-[8px] font-semibold">Sin foto</span>
+                      </div>
+                    )}
+                  </div>
                 </FormField>
                 <FormField label="Categoría">
                   <select required value={form.category_id} onChange={e => f('category_id', e.target.value)}

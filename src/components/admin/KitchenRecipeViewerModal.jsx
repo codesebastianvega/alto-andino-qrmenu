@@ -355,6 +355,14 @@ export function KitchenRecipeViewerModal({ recipe, allRecipes = [], isOpen, onCl
                         <div className="w-7 h-7 rounded-md bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0">
                           {index + 1}
                         </div>
+                        {ing.image_url && (
+                          <img
+                            src={ing.image_url}
+                            alt={ing.name}
+                            className="w-9 h-9 rounded-lg object-cover border border-slate-200 shrink-0 bg-white shadow-2xs"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        )}
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-sm font-semibold text-slate-900 truncate">
