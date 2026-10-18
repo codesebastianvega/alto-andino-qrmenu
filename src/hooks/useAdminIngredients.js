@@ -83,6 +83,8 @@ export function useAdminIngredients() {
         stock_current: parseFloat(ingredientData.stock_current) || 0,
         stock_min: parseFloat(ingredientData.stock_min) || 0,
         image_url: ingredientData.image_url || null,
+        reception_date: ingredientData.reception_date || null,
+        expiration_date: ingredientData.expiration_date || null,
         brand_id: activeBrandId,
       };
 
@@ -152,6 +154,8 @@ export function useAdminIngredients() {
         stock_current: parseFloat(ingredientData.stock_current) || 0,
         stock_min: parseFloat(ingredientData.stock_min) || 0,
         image_url: ingredientData.image_url || null,
+        reception_date: ingredientData.reception_date || null,
+        expiration_date: ingredientData.expiration_date || null,
         brand_id: activeBrandId,
         updated_at: new Date().toISOString(),
       };
@@ -168,6 +172,7 @@ export function useAdminIngredients() {
         console.error('Supabase update ingredient error:', error);
         throw error;
       }
+      setIngredients(prev => prev.map(inv => inv.id === id ? { ...inv, ...data } : inv));
       toast('Insumo actualizado');
       fetchIngredients();
       return data;

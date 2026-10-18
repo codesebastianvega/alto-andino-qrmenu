@@ -214,6 +214,7 @@ function InsumosTab({ activeLocationId }) {
 
   const emptyForm = {
     name: '', description: '', sku: '', image_url: '',
+    reception_date: '', expiration_date: '',
     purchase_price: 0, purchase_unit: 'Unidad', purchase_quantity: 1,
     usage_unit: 'unidad', stock_current: 0, stock_min: 0,
     selling_price: 0, is_modifier: false, category_id: '', provider_id: '', is_active: true,
@@ -264,6 +265,30 @@ function InsumosTab({ activeLocationId }) {
     return date.toLocaleDateString();
   };
 
+  const getExpirationStatus = (expDateString) => {
+    if (!expDateString) return null;
+    const exp = new Date(expDateString + 'T00:00:00');
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const target = new Date(exp.getFullYear(), exp.getMonth(), exp.getDate());
+    const diffTime = target.getTime() - today.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return { days: diffDays, label: `Vencido hace ${Math.abs(diffDays)}d`, color: 'bg-red-500/20 text-red-700 border-red-500/40', status: 'expired' };
+    }
+    if (diffDays === 0) {
+      return { days: 0, label: '🚨 Vence Hoy', color: 'bg-rose-500 text-white border-rose-600 animate-pulse font-bold shadow-2xs', status: 'today' };
+    }
+    if (diffDays <= 2) {
+      return { days: diffDays, label: `⏰ Vence en ${diffDays}d`, color: 'bg-amber-500/20 text-amber-800 border-amber-500/40 font-semibold', status: 'critical' };
+    }
+    if (diffDays <= 7) {
+      return { days: diffDays, label: `⚠️ Vence en ${diffDays}d`, color: 'bg-amber-100 text-amber-800 border-amber-300', status: 'warning' };
+    }
+    return { days: diffDays, label: `Vence en ${diffDays}d`, color: 'bg-emerald-50 text-emerald-700 border-emerald-200', status: 'fresh' };
+  };
+
   const zeroWasteCount = useMemo(() =>
     ingredients.filter(i => Boolean(i.has_merma)).length,
     [ingredients]
@@ -279,12 +304,25 @@ function InsumosTab({ activeLocationId }) {
     [ingredients]
   );
 
+  const expiringSoonCount = useMemo(() =>
+    ingredients.filter(i => {
+      const exp = getExpirationStatus(i.expiration_date);
+      return exp && exp.days <= 7;
+    }).length,
+    [ingredients]
+  );
+
   const filtered = useMemo(() => {
     const list = ingredients.filter(i => {
       // Logic for special search terms or standard search
       let matchSearch = true;
+      const expStatus = getExpirationStatus(i.expiration_date);
+      const isExpiringItem = expStatus && expStatus.days <= 7;
+
       if (search === 'stock_bajo') {
         matchSearch = i.stock_current <= i.stock_min;
+      } else if (search === 'por_vencer') {
+        matchSearch = Boolean(isExpiringItem);
       } else if (search === 'high_value') {
         // High value items: more than the average value or just a top threshold
         const avgValue = totalInventoryValue / (ingredients.length || 1);
@@ -302,6 +340,7 @@ function InsumosTab({ activeLocationId }) {
       const isSubrecipeItem = Boolean(i.is_subrecipe) || (i.name || '').toLowerCase().includes('(subreceta)');
       const matchType     = typeFilter === 'all' ? true :
                             typeFilter === 'subrecipe' ? isSubrecipeItem :
+                            typeFilter === 'expiring' ? isExpiringItem :
                             !isSubrecipeItem;
 
       return matchSearch && matchCat && matchProv && matchZero && matchZeroWaste && matchType;
@@ -325,6 +364,12 @@ function InsumosTab({ activeLocationId }) {
       }
       if (sortBy === 'stock_desc') {
         return (b.stock_current || 0) - (a.stock_current || 0);
+      }
+      if (sortBy === 'exp_asc') {
+        if (!a.expiration_date && !b.expiration_date) return 0;
+        if (!a.expiration_date) return 1;
+        if (!b.expiration_date) return -1;
+        return new Date(a.expiration_date).getTime() - new Date(b.expiration_date).getTime();
       }
       if (sortBy === 'value_desc') {
         const valA = (a.unit_cost || 0) * (a.stock_current || 0);
@@ -352,6 +397,7 @@ function InsumosTab({ activeLocationId }) {
     setEditing(item);
     setForm({
       name: item.name, description: item.description || '', sku: item.sku || '', image_url: item.image_url || '',
+      reception_date: item.reception_date || '', expiration_date: item.expiration_date || '',
       purchase_price: item.purchase_price || 0, purchase_unit: item.purchase_unit || 'Unidad',
       purchase_quantity: item.purchase_quantity || 1, usage_unit: item.usage_unit || 'unidad',
       stock_current: item.stock_current || 0, stock_min: item.stock_min || 0,
@@ -671,7 +717,7 @@ function InsumosTab({ activeLocationId }) {
         </div>
       )}
 
-      {/* Segmented Filter: Insumos de Compra vs Subrecetas */}
+      {/* Segmented Filter: Insumos de Compra vs Subrecetas vs Vencimientos */}
       <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 rounded-xl w-fit mb-4 border border-slate-200/80">
         <button
           type="button"
@@ -706,6 +752,19 @@ function InsumosTab({ activeLocationId }) {
         >
           <span>🍳</span> Subrecetas / Mise en Place ({subrecipeCount})
         </button>
+        {expiringSoonCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setTypeFilter(typeFilter === 'expiring' ? 'all' : 'expiring')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              typeFilter === 'expiring'
+                ? 'bg-amber-600 text-white shadow-2xs'
+                : 'text-amber-800 hover:text-amber-950 bg-amber-100/80 hover:bg-amber-200/80'
+            }`}
+          >
+            <span>⏰</span> Próximos a Vencer ({expiringSoonCount})
+          </button>
+        )}
       </div>
 
       {/* Toolbar */}
@@ -769,6 +828,7 @@ function InsumosTab({ activeLocationId }) {
               <option value="category">Por Categoría</option>
               <option value="stock_asc">Menor Stock (Críticos)</option>
               <option value="stock_desc">Mayor Stock</option>
+              <option value="exp_asc">Caducidad (Próximos a vencer)</option>
               <option value="recent">Recién Actualizados</option>
               <option value="value_desc">Mayor Valor Total</option>
             </select>
@@ -812,6 +872,7 @@ function InsumosTab({ activeLocationId }) {
                 <Th className="py-3 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Costo Unit.</Th>
                 <Th className="py-3 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Stock / Alerta</Th>
                 <Th className="py-3 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Valor Stock</Th>
+                <Th className="py-3 px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Caducidad / Días</Th>
                 <Th className="py-3 px-3 text-xs font-bold text-emerald-800 uppercase tracking-wider">
                   <span className="inline-flex items-center gap-1 bg-emerald-100/80 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
                     <Sparkles size={11} /> Zero-Waste IA
@@ -833,7 +894,7 @@ function InsumosTab({ activeLocationId }) {
                 // ── Delete confirmation row
                 if (isDelConf) return (
                   <tr key={item.id} className="bg-rose-50/60 border-y border-rose-100">
-                    <td colSpan={8} className="px-4 py-3">
+                    <td colSpan={9} className="px-4 py-3">
                       <div className="flex items-center justify-between animate-fade-in">
                         <div className="flex items-center gap-2.5">
                           <div className="w-7 h-7 bg-rose-100 rounded-md flex items-center justify-center text-rose-600 text-sm">
@@ -861,7 +922,7 @@ function InsumosTab({ activeLocationId }) {
                 // ── Inline cost editor row
                 if (isInline) return (
                   <tr key={item.id} className="bg-blue-50/40 border-y border-blue-100">
-                    <td className="px-4 py-3" colSpan={8}>
+                    <td className="px-4 py-3" colSpan={9}>
                       <div className="flex flex-wrap items-end gap-3 text-xs">
                         <div className="flex-1 min-w-[140px]">
                           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Insumo</p>
@@ -1056,6 +1117,29 @@ function InsumosTab({ activeLocationId }) {
                       </div>
                     </td>
 
+                    {/* Expiration date column */}
+                    <td className="py-3 px-3">
+                      {(() => {
+                        const exp = getExpirationStatus(item.expiration_date);
+                        if (!exp) {
+                          return (
+                            <span className="text-[11px] text-slate-300 font-medium">—</span>
+                          );
+                        }
+                        return (
+                          <div className="flex flex-col gap-0.5">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${exp.color} w-fit`}>
+                              <Icon icon="heroicons:clock" className="text-[11px]" />
+                              {exp.label}
+                            </span>
+                            <span className="text-[9px] text-slate-400 font-medium">
+                              {item.expiration_date}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </td>
+
                     {/* Zero-Waste IA column */}
                     <td className="py-3 px-3">
                       {(() => {
@@ -1162,7 +1246,7 @@ function InsumosTab({ activeLocationId }) {
                 );
               })}
               {filtered.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-12 text-center text-xs text-slate-400 font-medium">
+                <tr><td colSpan={9} className="px-4 py-12 text-center text-xs text-slate-400 font-medium">
                   {showZeroOnly ? (
                     <div className="flex flex-col items-center gap-1.5">
                       <Icon icon="heroicons:check-badge" className="text-2xl text-emerald-500" />
@@ -1265,6 +1349,16 @@ function InsumosTab({ activeLocationId }) {
                     )}
                     {item.sku && <span className="text-[9px] bg-slate-100 text-slate-600 px-1 py-0.2 rounded font-mono font-semibold border border-slate-200/60">{item.sku}</span>}
                     {hasZero && <span className="text-[9px] text-amber-700 font-bold bg-amber-100 px-1.5 py-0.2 rounded uppercase">Falta Costo</span>}
+                    {(() => {
+                      const exp = getExpirationStatus(item.expiration_date);
+                      if (!exp) return null;
+                      return (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border inline-flex items-center gap-1 ${exp.color}`}>
+                          <Icon icon="heroicons:clock" className="text-[10px]" />
+                          {exp.label}
+                        </span>
+                      );
+                    })()}
                   </div>
                   <h4 className="text-sm font-bold text-slate-900 leading-tight truncate mt-0.5">{item.name}</h4>
                 </div>
@@ -1510,6 +1604,45 @@ function InsumosTab({ activeLocationId }) {
                 <FormField label="Stock mínimo (General)">
                   <TextInput type="number" value={form.stock_min} onChange={e => f('stock_min', Number(e.target.value))} />
                 </FormField>
+
+                {/* Control de Frescura & Vencimiento (Opcional) */}
+                <div className="md:col-span-2 p-4 bg-amber-50/50 rounded-xl border border-amber-200/80 shadow-2xs">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-base">📅</span>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Control de Frescura & Vencimiento (Opcional)</h4>
+                      <p className="text-[11px] text-slate-500 font-normal">Registra la fecha de recepción y caducidad para alertas de rescate, rotación FIFO y promociones.</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField label="Fecha de Recepción / Entrada">
+                      <TextInput 
+                        type="date" 
+                        value={form.reception_date || ''} 
+                        onChange={e => f('reception_date', e.target.value)} 
+                      />
+                    </FormField>
+                    <FormField label="Fecha de Vencimiento / Caducidad">
+                      <div className="flex flex-col gap-1.5">
+                        <TextInput 
+                          type="date" 
+                          value={form.expiration_date || ''} 
+                          onChange={e => f('expiration_date', e.target.value)} 
+                        />
+                        {form.expiration_date && (() => {
+                          const status = getExpirationStatus(form.expiration_date);
+                          if (!status) return null;
+                          return (
+                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded border inline-flex items-center gap-1 w-fit ${status.color}`}>
+                              <Icon icon="heroicons:clock" className="text-xs" />
+                              {status.label}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    </FormField>
+                  </div>
+                </div>
 
                 {/* Per-location inventory section */}
                 <div className="md:col-span-2 space-y-4">
