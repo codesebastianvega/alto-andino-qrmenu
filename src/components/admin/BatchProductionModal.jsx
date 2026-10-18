@@ -8,62 +8,78 @@ import Portal from '../Portal';
 export function BatchProductionModal({ isOpen, onClose, targetItem, activeLocationId, onProduced }) {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [allSubrecipes, setAllSubrecipes] = useState([]);
+  const [selectedRecipeId, setSelectedRecipeId] = useState(null);
   const [recipeData, setRecipeData] = useState(null);
   const [subrecipeIngredient, setSubrecipeIngredient] = useState(null);
   const [producedQty, setProducedQty] = useState('');
 
-  // 1. Cargar la receta completa y sus ingredientes con stock en vivo
+  // 1. Cargar lista de todas las subrecetas de la marca cuando se abre el modal
   useEffect(() => {
-    if (!isOpen || !targetItem) {
+    if (!isOpen) {
       setRecipeData(null);
       setSubrecipeIngredient(null);
+      setSelectedRecipeId(null);
       setProducedQty('');
       return;
     }
 
-    const loadRecipeDetails = async () => {
+    const fetchSubrecipesList = async () => {
       setLoading(true);
       try {
-        let recipeId = null;
+        const { data, error } = await supabase
+          .from('recipes')
+          .select('id, name, is_subrecipe, batch_yield, batch_unit, storage_location, brand_id')
+          .eq('is_subrecipe', true)
+          .order('name');
 
-        // Si el targetItem viene de Insumos (es un ingrediente de subreceta)
-        if (targetItem.subrecipe_id) {
-          recipeId = targetItem.subrecipe_id;
-          setSubrecipeIngredient(targetItem);
-        } else if (targetItem.is_subrecipe && targetItem.batch_yield !== undefined) {
-          // Viene de Recetas (es la receta directamente)
-          recipeId = targetItem.id;
-        } else {
-          // Intentar buscar si este ingrediente tiene receta vinculada
-          const { data: recMatch } = await supabase
-            .from('recipes')
-            .select('id')
-            .eq('id', targetItem.id)
-            .eq('is_subrecipe', true)
-            .maybeSingle();
+        if (error) throw error;
+        setAllSubrecipes(data || []);
 
-          if (recMatch) {
-            recipeId = recMatch.id;
-          } else {
+        // Determinar cuál subreceta preseleccionar
+        let initialRecipeId = null;
+        if (targetItem) {
+          if (targetItem.subrecipe_id) {
+            initialRecipeId = targetItem.subrecipe_id;
+          } else if (targetItem.is_subrecipe && targetItem.id && data?.some(d => d.id === targetItem.id)) {
+            initialRecipeId = targetItem.id;
+          } else if (targetItem.id) {
+            // Buscar si es un ingrediente que tiene subrecipe_id
             const { data: ingMatch } = await supabase
               .from('ingredients')
-              .select('*')
+              .select('subrecipe_id')
               .eq('id', targetItem.id)
               .maybeSingle();
             if (ingMatch?.subrecipe_id) {
-              recipeId = ingMatch.subrecipe_id;
-              setSubrecipeIngredient(ingMatch);
+              initialRecipeId = ingMatch.subrecipe_id;
             }
           }
         }
 
-        if (!recipeId) {
-          toast('No se encontró una subreceta vinculada para este insumo.');
-          onClose();
-          return;
+        // Si no se especificó o no se encontró, tomar la primera de la lista
+        if (!initialRecipeId && data && data.length > 0) {
+          initialRecipeId = data[0].id;
         }
 
-        // Cargar receta completa con insumos
+        setSelectedRecipeId(initialRecipeId);
+      } catch (err) {
+        console.error('Error cargando lista de subrecetas:', err);
+        toast('Error al cargar subrecetas: ' + (err.message || 'Error'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSubrecipesList();
+  }, [isOpen, targetItem]);
+
+  // 2. Cargar los detalles e insumos de la subreceta seleccionada
+  useEffect(() => {
+    if (!selectedRecipeId) return;
+
+    const loadRecipeDetails = async () => {
+      setLoading(true);
+      try {
         const { data: recipe, error: recErr } = await supabase
           .from('recipes')
           .select(`
@@ -75,39 +91,38 @@ export function BatchProductionModal({ isOpen, onClose, targetItem, activeLocati
               )
             )
           `)
-          .eq('id', recipeId)
+          .eq('id', selectedRecipeId)
           .single();
 
         if (recErr || !recipe) {
-          throw recErr || new Error('Receta no encontrada');
+          throw recErr || new Error('Subreceta no encontrada');
         }
 
         setRecipeData(recipe);
         const standard = Number(recipe.batch_yield) || 1000;
         setProducedQty(standard);
 
-        // Si aún no teníamos el subrecipeIngredient, buscarlo
-        if (!subrecipeIngredient) {
-          const { data: ingData } = await supabase
-            .from('ingredients')
-            .select('*')
-            .or(`subrecipe_id.eq.${recipe.id},id.eq.${recipe.id}`)
-            .limit(1)
-            .maybeSingle();
-          if (ingData) setSubrecipeIngredient(ingData);
-        }
+        // Buscar insumo vinculado a esta subreceta
+        const { data: ingData } = await supabase
+          .from('ingredients')
+          .select('*')
+          .or(`subrecipe_id.eq.${recipe.id},id.eq.${recipe.id}`)
+          .limit(1)
+          .maybeSingle();
+
+        setSubrecipeIngredient(ingData || null);
       } catch (err) {
-        console.error('Error cargando subreceta para producción:', err);
-        toast('Error cargando detalles de la subreceta: ' + (err.message || 'Error'));
+        console.error('Error cargando detalles de la subreceta:', err);
+        toast('Error cargando ficha de subreceta: ' + (err.message || 'Error'));
       } finally {
         setLoading(false);
       }
     };
 
     loadRecipeDetails();
-  }, [isOpen, targetItem]);
+  }, [selectedRecipeId]);
 
-  // 2. Cálculos de regla de tres y semáforo de existencias
+  // 3. Cálculos de regla de tres y semáforo de existencias
   const standardYield = Number(recipeData?.batch_yield) || 1000;
   const currentProduced = Number(producedQty) || 0;
   const scaleFactor = standardYield > 0 && currentProduced > 0 ? currentProduced / standardYield : 0;
@@ -154,7 +169,7 @@ export function BatchProductionModal({ isOpen, onClose, targetItem, activeLocati
     setProducedQty(val);
   };
 
-  // 3. Confirmar Producción vía RPC Postgres
+  // 4. Confirmar Producción vía RPC Postgres
   const handleConfirmProduction = async () => {
     if (!recipeData) return;
     const qty = Number(producedQty);
@@ -229,6 +244,30 @@ export function BatchProductionModal({ isOpen, onClose, targetItem, activeLocati
 
           {/* Body Content */}
           <div className="p-6 overflow-y-auto space-y-5 flex-1">
+            
+            {/* Selector de Subreceta desplegable */}
+            {allSubrecipes.length > 0 && (
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block mb-1">
+                  Seleccionar Subreceta a Preparar
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedRecipeId || ''}
+                    onChange={(e) => setSelectedRecipeId(e.target.value)}
+                    className="w-full pl-3 pr-8 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none cursor-pointer"
+                  >
+                    {allSubrecipes.map(sr => (
+                      <option key={sr.id} value={sr.id}>
+                        {sr.name} ({sr.batch_yield || 1000} {sr.batch_unit || 'g'}) {sr.storage_location ? `• ${sr.storage_location}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <Icon icon="heroicons:chevron-down" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
+                </div>
+              </div>
+            )}
+
             {loading ? (
               <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-2">
                 <Icon icon="heroicons:arrow-path" className="animate-spin text-3xl text-amber-600" />
@@ -416,7 +455,11 @@ export function BatchProductionModal({ isOpen, onClose, targetItem, activeLocati
                   </p>
                 </div>
               </>
-            ) : null}
+            ) : (
+              <div className="py-8 text-center text-xs text-slate-500">
+                Selecciona una subreceta arriba para ver sus ingredientes y calcular el bache.
+              </div>
+            )}
           </div>
 
           {/* Footer Actions */}

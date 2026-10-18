@@ -732,6 +732,15 @@ function InsumosTab({ activeLocationId }) {
               Vincular del Catálogo
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setBatchModalItem({ is_subrecipe: true })}
+            className="flex items-center justify-center gap-1.5 px-3.5 h-9 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white rounded-lg text-xs font-bold transition-all shadow-md w-full sm:w-auto shrink-0"
+            title="Preparar bache de subreceta / mise en place y descontar bodega"
+          >
+            <span>🍳</span>
+            <span>Preparar Bache</span>
+          </button>
           <PrimaryButton onClick={openCreate} className="h-9 px-4 text-xs font-semibold w-full sm:w-auto gap-1.5">
             <Icon icon="heroicons:plus" className="text-sm" />
             Nuevo Insumo
@@ -1043,10 +1052,10 @@ function InsumosTab({ activeLocationId }) {
                           <button
                             onClick={() => setBatchModalItem(item)}
                             title="Preparar bache de esta subreceta"
-                            className="flex items-center gap-1 px-2.5 h-7 text-xs font-bold text-amber-900 bg-amber-100/90 hover:bg-amber-200 rounded-md border border-amber-300 shadow-2xs transition-all mr-1"
+                            className="flex items-center gap-1 px-2.5 h-7 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-md border border-amber-300 shadow-2xs transition-all mr-1"
                           >
                             <span>🍳</span>
-                            <span className="hidden xl:inline">Preparar Bache</span>
+                            <span>Preparar</span>
                           </button>
                         )}
                         <button onClick={() => openEdit(item)}

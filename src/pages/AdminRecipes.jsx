@@ -938,6 +938,15 @@ Devuelve ÚNICAMENTE el texto de la descripción, sin comillas ni títulos adici
             </button>
           </div>
           <button 
+            type="button"
+            onClick={() => setBatchModalRecipe({ is_subrecipe: true })}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white rounded-lg text-xs font-bold transition-all shadow-md shrink-0"
+            title="Preparar bache de subreceta y descontar inventario"
+          >
+            <span className="text-sm">🍳</span>
+            <span>Preparar Bache</span>
+          </button>
+          <button 
             onClick={() => handleOpenModal()}
             className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition-all shadow-2xs"
           >
@@ -1248,7 +1257,7 @@ Devuelve ÚNICAMENTE el texto de la descripción, sin comillas ni títulos adici
                                   title="Preparar bache y descontar insumos de bodega"
                                 >
                                   <span>🍳</span>
-                                  <span className="hidden lg:inline">Preparar Bache</span>
+                                  <span>Preparar Bache</span>
                                 </button>
                               )}
                               <button 
@@ -1423,7 +1432,7 @@ Devuelve ÚNICAMENTE el texto de la descripción, sin comillas ni títulos adici
                               title="Preparar bache y descontar insumos de bodega"
                             >
                               <span>🍳</span>
-                              <span>Bache</span>
+                              <span>Preparar Bache</span>
                             </button>
                           )}
                           <button 
@@ -2544,6 +2553,10 @@ Devuelve ÚNICAMENTE el texto de la descripción, sin comillas ni títulos adici
           allRecipes={recipes}
           isOpen={Boolean(viewingKitchenRecipe)}
           onClose={() => setViewingKitchenRecipe(null)}
+          onPrepareBatch={(rec) => {
+            setViewingKitchenRecipe(null);
+            setBatchModalRecipe(rec);
+          }}
         />
       )}
 

@@ -3,7 +3,7 @@ import { Icon } from '@iconify-icon/react';
 import Portal from '../Portal';
 import { supabase } from '../../config/supabase';
 
-export function KitchenRecipeViewerModal({ recipe, allRecipes = [], isOpen, onClose }) {
+export function KitchenRecipeViewerModal({ recipe, allRecipes = [], isOpen, onClose, onPrepareBatch }) {
   const [multiplier, setMultiplier] = useState(1);
   const [activeTab, setActiveTab] = useState('grams'); // 'grams' | 'steps' | 'modifiers' | 'economics'
   const [selectedSubrecipe, setSelectedSubrecipe] = useState(null);
@@ -221,20 +221,32 @@ export function KitchenRecipeViewerModal({ recipe, allRecipes = [], isOpen, onCl
 
           {/* Información del Bache (Si es subreceta) */}
           {isSubrecipe && (
-            <div className="mt-3 pt-3 border-t border-slate-800 flex flex-wrap items-center gap-4 text-xs text-slate-300">
-              <div className="flex items-center gap-1.5">
-                <Icon icon="heroicons:scale" className="text-amber-400 text-sm" />
-                <span>Rendimiento: <strong className="text-white font-mono">{currentRecipe.batch_yield || 0} {currentRecipe.batch_unit || 'g'}</strong></span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Icon icon="heroicons:calendar" className="text-emerald-400 text-sm" />
-                <span>Vida útil: <strong className="text-white font-mono">{currentRecipe.shelf_life_days || 1} días</strong></span>
-              </div>
-              {currentRecipe.storage_location && (
-                <div className="flex items-center gap-1.5 text-indigo-300">
-                  <Icon icon="heroicons:map-pin" className="text-indigo-400 text-sm" />
-                  <span>{currentRecipe.storage_location}</span>
+            <div className="mt-3 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-300">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <Icon icon="heroicons:scale" className="text-amber-400 text-sm" />
+                  <span>Rendimiento: <strong className="text-white font-mono">{currentRecipe.batch_yield || 0} {currentRecipe.batch_unit || 'g'}</strong></span>
                 </div>
+                <div className="flex items-center gap-1.5">
+                  <Icon icon="heroicons:calendar" className="text-emerald-400 text-sm" />
+                  <span>Vida útil: <strong className="text-white font-mono">{currentRecipe.shelf_life_days || 1} días</strong></span>
+                </div>
+                {currentRecipe.storage_location && (
+                  <div className="flex items-center gap-1.5 text-indigo-300">
+                    <Icon icon="heroicons:map-pin" className="text-indigo-400 text-sm" />
+                    <span>{currentRecipe.storage_location}</span>
+                  </div>
+                )}
+              </div>
+              {onPrepareBatch && (
+                <button
+                  type="button"
+                  onClick={() => onPrepareBatch(currentRecipe)}
+                  className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition-all shrink-0"
+                >
+                  <span>🍳</span>
+                  <span>Preparar este Bache</span>
+                </button>
               )}
             </div>
           )}
