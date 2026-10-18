@@ -45,6 +45,7 @@ export default function ProductForm({
   product,
   categories = [],
   recipes = [],
+  ingredients = [],
   allergens = [],
   modifierGroups: propModifierGroups,
   onSave,
@@ -101,6 +102,7 @@ export default function ProductForm({
     modifier_groups: [],
     config_options: {},
     recipe_id: null,
+    ingredient_id: null,
     packaging_fee: '',
     is_upsell: false,
     requires_kitchen: true,
@@ -116,6 +118,8 @@ export default function ProductForm({
   const [uploadStats, setUploadStats] = useState(null);
   const [liveImageSize, setLiveImageSize] = useState(null);
   const [recipeSearch, setRecipeSearch] = useState('');
+  const [ingredientSearch, setIngredientSearch] = useState('');
+  const [cogsMode, setCogsMode] = useState('recipe'); // 'recipe' | 'ingredient'
   const [customLocationPricing, setCustomLocationPricing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef(null);
@@ -226,6 +230,7 @@ export default function ProductForm({
         modifier_groups: product.modifier_groups || [],
         config_options: product.config_options || {},
         recipe_id: product.recipe_id || null,
+        ingredient_id: product.ingredient_id || null,
         packaging_fee: product.packaging_fee ?? '',
         is_upsell: product.is_upsell ?? false,
         requires_kitchen: product.requires_kitchen ?? true,
@@ -234,6 +239,12 @@ export default function ProductForm({
         brand_concept: product.brand_concept || '',
         visibility_mode: product.visibility_mode || 'all',
       });
+
+      if (product.ingredient_id) {
+        setCogsMode('ingredient');
+      } else if (product.recipe_id) {
+        setCogsMode('recipe');
+      }
     }
   }, [product]);
 
@@ -466,6 +477,26 @@ export default function ProductForm({
   const linkedRecipe = useMemo(() => {
     return (recipes || []).find(r => r.id === formData.recipe_id);
   }, [recipes, formData.recipe_id]);
+
+  // Direct Ingredient lookup
+  const linkedIngredient = useMemo(() => {
+    return (ingredients || []).find(i => i.id === formData.ingredient_id);
+  }, [ingredients, formData.ingredient_id]);
+
+  // Filtered ingredients for direct purchase / botellería selection
+  const directIngredients = useMemo(() => {
+    return (ingredients || []).filter(i => !i.is_subrecipe && !(i.name || '').toLowerCase().includes('(subreceta)'));
+  }, [ingredients]);
+
+  const searchedIngredients = useMemo(() => {
+    if (!ingredientSearch.trim()) return directIngredients;
+    const term = ingredientSearch.toLowerCase();
+    return directIngredients.filter(i => 
+      (i.name || '').toLowerCase().includes(term) ||
+      (i.sku || '').toLowerCase().includes(term) ||
+      (i.category || '').toLowerCase().includes(term)
+    );
+  }, [directIngredients, ingredientSearch]);
 
   // Financial metrics
   const priceNum = parseFloat(formData.price) || 0;
@@ -911,21 +942,21 @@ export default function ProductForm({
           ───────────────────────────────────────────────────────────── */}
           <div className="space-y-6">
 
-            {/* Tarjeta de Receta Vinculada (Exclusiva de Platos Finales) */}
+            {/* Tarjeta de Receta / Insumo Directo Vinculado */}
             <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 block">
-                    Ficha Técnica & COGS
+                    Ficha Técnica, Insumo & COGS
                   </span>
                   <p className="text-[10px] text-slate-600 mt-0.5">
-                    Vincula con recetas de platos finales para sincronizar costo de ingredientes.
+                    Vincula con recetas de platos o insumos directos (bebidas/botellas) para sincronizar costos y descontar inventario.
                   </p>
                 </div>
-                {formData.recipe_id && (
+                {(formData.recipe_id || formData.ingredient_id) && (
                   <button
                     type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, recipe_id: null, cost: 0 }))}
+                    onClick={() => setFormData(prev => ({ ...prev, recipe_id: null, ingredient_id: null, cost: 0 }))}
                     className="text-[11px] font-bold text-red-600 hover:text-red-700 bg-red-50 px-2.5 py-1 rounded-lg border border-red-200 transition-colors"
                   >
                     Desvincular
@@ -933,7 +964,7 @@ export default function ProductForm({
                 )}
               </div>
 
-              {/* Status de la Receta Actual */}
+              {/* Status de la Vinculación Actual */}
               {linkedRecipe ? (
                 <div className={`p-3.5 rounded-xl border mb-4 flex items-center justify-between ${
                   linkedRecipe.is_subrecipe
@@ -962,72 +993,180 @@ export default function ProductForm({
                     </span>
                   </div>
                 </div>
+              ) : linkedIngredient ? (
+                <div className="p-3.5 rounded-xl border mb-4 flex items-center justify-between bg-emerald-50/80 border-emerald-200 text-emerald-950">
+                  <div className="min-w-0 pr-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold truncate">{linkedIngredient.name}</span>
+                      <span className="bg-emerald-200 text-emerald-900 text-[9px] font-black uppercase px-1.5 py-0.5 rounded">
+                        Insumo Directo
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-700 mt-0.5">
+                      ✓ Descuenta 1 {linkedIngredient.usage_unit || 'unidad'} por venta | Stock bodega: <strong>{linkedIngredient.stock_current ?? 0} {linkedIngredient.usage_unit}</strong>
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Costo Insumo</span>
+                    <span className="text-sm font-black text-emerald-800">
+                      ${Number(linkedIngredient.unit_cost || 0).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
               ) : (
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl mb-4 text-center">
-                  <p className="text-xs font-semibold text-slate-500">Sin ficha técnica vinculada</p>
-                  <p className="text-[10px] text-slate-600 mt-0.5">Puedes ingresar el costo unitario de forma manual abajo.</p>
+                  <p className="text-xs font-semibold text-slate-500">Sin vinculación a receta ni insumo</p>
+                  <p className="text-[10px] text-slate-600 mt-0.5">Puedes elegir una receta, un insumo de bodega o ingresar el costo manual abajo.</p>
                 </div>
               )}
 
-              {/* Selector / Buscador de Platos Finales */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <Icon icon="heroicons:magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
-                    <input
-                      type="text"
-                      placeholder="Buscar entre recetas de platos finales..."
-                      value={recipeSearch}
-                      onChange={(e) => setRecipeSearch(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:bg-white focus:border-blue-500 outline-none"
-                    />
-                  </div>
-                </div>
+              {/* Segmented Mode Selector: Recetas vs Insumos Directos */}
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl mb-3 border border-slate-200/80">
+                <button
+                  type="button"
+                  onClick={() => setCogsMode('recipe')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    cogsMode === 'recipe'
+                      ? 'bg-white text-slate-900 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <span>🍳</span>
+                  <span>Receta de Plato</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCogsMode('ingredient')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    cogsMode === 'ingredient'
+                      ? 'bg-white text-emerald-800 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <span>🥤</span>
+                  <span>Insumo Directo (Bebidas / Retail)</span>
+                </button>
+              </div>
 
-                {finalDishRecipes.length === 0 ? (
-                  <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl text-center">
-                    <p className="text-xs font-bold text-amber-800">No hay recetas de platos finales</p>
-                    <p className="text-[10px] text-amber-600 mt-0.5">
-                      Las subrecetas (salsas, marinados, arroces base) están protegidas y no aparecen aquí para evitar distorsiones de costo.
-                    </p>
+              {/* Contenido según el modo */}
+              {cogsMode === 'recipe' ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Icon icon="heroicons:magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+                      <input
+                        type="text"
+                        placeholder="Buscar entre recetas de platos finales..."
+                        value={recipeSearch}
+                        onChange={(e) => setRecipeSearch(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:bg-white focus:border-blue-500 outline-none"
+                      />
+                    </div>
                   </div>
-                ) : (
-                  <div className="max-h-36 overflow-y-auto custom-scrollbar border border-slate-200 rounded-xl divide-y divide-slate-100">
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, recipe_id: null, cost: 0 }))}
-                      className={`w-full px-3 py-2 text-left text-xs font-semibold flex items-center justify-between transition-colors ${
-                        !formData.recipe_id ? 'bg-slate-100 text-slate-900' : 'hover:bg-slate-50 text-slate-500'
-                      }`}
-                    >
-                      <span>Sin vinculación (Costo manual)</span>
-                      {!formData.recipe_id && <Icon icon="heroicons:check" className="text-emerald-600" />}
-                    </button>
-                    {searchedFinalRecipes.map(r => (
+
+                  {finalDishRecipes.length === 0 ? (
+                    <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl text-center">
+                      <p className="text-xs font-bold text-amber-800">No hay recetas de platos finales</p>
+                      <p className="text-[10px] text-amber-600 mt-0.5">
+                        Las subrecetas (salsas, marinados, arroces base) están protegidas y no aparecen aquí para evitar distorsiones de costo.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="max-h-36 overflow-y-auto custom-scrollbar border border-slate-200 rounded-xl divide-y divide-slate-100">
                       <button
-                        key={r.id}
                         type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, recipe_id: r.id, cost: r.total_cost || 0 }))}
+                        onClick={() => setFormData(prev => ({ ...prev, recipe_id: null, ingredient_id: null, cost: 0 }))}
                         className={`w-full px-3 py-2 text-left text-xs font-semibold flex items-center justify-between transition-colors ${
-                          formData.recipe_id === r.id ? 'bg-blue-50 text-blue-900 font-bold' : 'hover:bg-slate-50 text-slate-700'
+                          !formData.recipe_id && !formData.ingredient_id ? 'bg-slate-100 text-slate-900' : 'hover:bg-slate-50 text-slate-500'
                         }`}
                       >
-                        <span className="truncate pr-2">{r.name}</span>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-slate-400 font-medium">${Number(r.total_cost || 0).toLocaleString()}</span>
-                          {formData.recipe_id === r.id && <Icon icon="heroicons:check" className="text-blue-600" />}
-                        </div>
+                        <span>Sin vinculación (Costo manual)</span>
+                        {!formData.recipe_id && !formData.ingredient_id && <Icon icon="heroicons:check" className="text-emerald-600" />}
                       </button>
-                    ))}
+                      {searchedFinalRecipes.map(r => (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, recipe_id: r.id, ingredient_id: null, cost: r.total_cost || 0 }))}
+                          className={`w-full px-3 py-2 text-left text-xs font-semibold flex items-center justify-between transition-colors ${
+                            formData.recipe_id === r.id ? 'bg-blue-50 text-blue-900 font-bold' : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <span className="truncate pr-2">{r.name}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-slate-400 font-medium">${Number(r.total_cost || 0).toLocaleString()}</span>
+                            {formData.recipe_id === r.id && <Icon icon="heroicons:check" className="text-blue-600" />}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Icon icon="heroicons:magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+                      <input
+                        type="text"
+                        placeholder="Buscar gaseosas, cervezas, tés, insumos de venta directa..."
+                        value={ingredientSearch}
+                        onChange={(e) => setIngredientSearch(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:bg-white focus:border-emerald-500 outline-none"
+                      />
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {searchedIngredients.length === 0 ? (
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                      <p className="text-xs font-bold text-slate-700">No se encontraron insumos</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        Crea el insumo primero en la pestaña de Inventario para poder vincularlo aquí.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="max-h-40 overflow-y-auto custom-scrollbar border border-slate-200 rounded-xl divide-y divide-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, recipe_id: null, ingredient_id: null, cost: 0 }))}
+                        className={`w-full px-3 py-2 text-left text-xs font-semibold flex items-center justify-between transition-colors ${
+                          !formData.recipe_id && !formData.ingredient_id ? 'bg-slate-100 text-slate-900' : 'hover:bg-slate-50 text-slate-500'
+                        }`}
+                      >
+                        <span>Sin vinculación (Costo manual)</span>
+                        {!formData.recipe_id && !formData.ingredient_id && <Icon icon="heroicons:check" className="text-emerald-600" />}
+                      </button>
+                      {searchedIngredients.map(ing => (
+                        <button
+                          key={ing.id}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, ingredient_id: ing.id, recipe_id: null, cost: Number(ing.unit_cost || 0) }))}
+                          className={`w-full px-3 py-2 text-left text-xs font-semibold flex items-center justify-between transition-colors ${
+                            formData.ingredient_id === ing.id ? 'bg-emerald-50 text-emerald-950 font-bold' : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <div className="min-w-0 pr-2">
+                            <span className="truncate block">{ing.name}</span>
+                            <span className="text-[10px] text-slate-400 font-normal">
+                              Stock: {ing.stock_current ?? 0} {ing.usage_unit || 'u'} {ing.sku ? `· SKU: ${ing.sku}` : ''}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-slate-500 font-medium">${Number(ing.unit_cost || 0).toLocaleString()}</span>
+                            {formData.ingredient_id === ing.id && <Icon icon="heroicons:check" className="text-emerald-600" />}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Desglose de Costos (COGS) */}
               <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                    Costo Receta / Insumos
+                    Costo Insumo / Receta
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">$</span>
@@ -1036,17 +1175,20 @@ export default function ProductForm({
                       name="cost"
                       value={formData.cost}
                       onChange={handleChange}
-                      readOnly={!!formData.recipe_id}
+                      readOnly={Boolean(formData.recipe_id || formData.ingredient_id)}
                       placeholder="0"
                       className={`w-full pl-7 pr-3 py-2 border rounded-xl text-xs font-bold outline-none ${
-                        formData.recipe_id
+                        formData.recipe_id || formData.ingredient_id
                           ? 'bg-blue-50/50 border-blue-200 text-blue-950 cursor-not-allowed'
                           : 'bg-slate-50 border-slate-200 text-slate-900 focus:bg-white focus:border-emerald-500'
                       }`}
                     />
                   </div>
                   {formData.recipe_id && (
-                    <span className="text-[9px] font-bold text-blue-600 mt-0.5 block">Sincronizado con receta</span>
+                    <span className="text-[9px] font-bold text-blue-600 mt-0.5 block">Sincronizado con receta de plato</span>
+                  )}
+                  {formData.ingredient_id && (
+                    <span className="text-[9px] font-bold text-emerald-600 mt-0.5 block">Sincronizado con insumo directo de bodega</span>
                   )}
                 </div>
 
@@ -1073,7 +1215,7 @@ export default function ProductForm({
                   <span className={`text-[9px] mt-0.5 block ${formData.recipe_id ? 'text-blue-600 font-bold' : 'text-slate-600'}`}>
                     {formData.recipe_id 
                       ? '✓ Incluido directamente en el escandallo de la receta' 
-                      : 'Caja, bolsa o cubiertos (manual)'}
+                      : 'Opcional: vaso, pitillo o bolsa'}
                   </span>
                 </div>
               </div>

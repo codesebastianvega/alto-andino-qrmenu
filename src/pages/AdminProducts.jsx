@@ -5,6 +5,7 @@ import { useCategories } from '../hooks/useCategories';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../hooks/usePlan';
 import { useAdminRecipes } from '../hooks/useAdminRecipes';
+import { useAdminIngredients } from '../hooks/useAdminIngredients';
 import { useAdminModifierGroups } from '../hooks/useAdminModifierGroups';
 import { useAllergens } from '../hooks/useAllergens';
 import { formatCOP } from '../utils/money';
@@ -96,8 +97,13 @@ export default function AdminProducts() {
   const { activePlan } = useAuth();
   const { withinLimit, isWithinProductLimit, planName } = usePlan();
   const { recipes, fetchRecipes } = useAdminRecipes();
+  const { ingredients, fetchIngredients } = useAdminIngredients();
   const { modifierGroups, fetchModifierGroups } = useAdminModifierGroups(activeLocationId);
   const { allergens, loading: loadingAllergens } = useAllergens();
+
+  useEffect(() => {
+    fetchIngredients('all');
+  }, [fetchIngredients]);
   const { saveProductOverrides } = useLocationOverrides();
   const [search, setSearch] = useState('');
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -961,6 +967,7 @@ export default function AdminProducts() {
           product={editingProduct}
           categories={categories}
           recipes={recipes}
+          ingredients={ingredients}
           modifierGroups={modifierGroups}
           allergens={allergens}
           onSave={handleSave}
