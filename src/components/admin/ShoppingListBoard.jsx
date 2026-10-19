@@ -182,7 +182,7 @@ export function ShoppingListBoard({ ingredients, providers }) {
                     <Badge variant="blue">Ad-Hoc</Badge>
                   ) : (
                     <>
-                      <span>Stock: <strong className={item.stock_current <= item.stock_min ? "text-red-500" : ""}>{item.stock_current}</strong></span>
+                      <span>Stock: <strong className={item.stock_current <= 0 ? "text-red-500" : item.stock_current <= item.stock_min ? "text-amber-600" : ""}>{item.stock_current}</strong></span>
                       <span>Mín: {item.stock_min}</span>
                     </>
                   )}

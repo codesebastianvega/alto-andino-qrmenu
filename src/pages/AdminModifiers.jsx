@@ -247,8 +247,13 @@ function InsumosTab({ activeLocationId }) {
     [ingredients]
   );
 
+  const outOfStockCount = useMemo(() => 
+    ingredients.filter(i => (Number(i.stock_current) || 0) <= 0).length,
+    [ingredients]
+  );
+
   const lowStockCount = useMemo(() => 
-    ingredients.filter(i => i.stock_current <= i.stock_min).length,
+    ingredients.filter(i => (Number(i.stock_current) || 0) > 0 && (Number(i.stock_current) || 0) <= (Number(i.stock_min) || 0)).length,
     [ingredients]
   );
 
@@ -287,6 +292,101 @@ function InsumosTab({ activeLocationId }) {
       return { days: diffDays, label: `⚠️ Vence en ${diffDays}d`, color: 'bg-amber-100 text-amber-800 border-amber-300', status: 'warning' };
     }
     return { days: diffDays, label: `Vence en ${diffDays}d`, color: 'bg-emerald-50 text-emerald-700 border-emerald-200', status: 'fresh' };
+  };
+
+  const getStockHealth = (current, min) => {
+    const curr = Number(current) || 0;
+    const m = Number(min) || 0;
+
+    // 1. Quiebre total (0 stock o menor) -> ROJO
+    if (curr <= 0) {
+      return {
+        status: 'out',
+        percentage: 0,
+        barPercentage: 0,
+        colorClass: 'bg-rose-500',
+        textColor: 'text-rose-600',
+        badgeBg: 'bg-rose-50 text-rose-700 border-rose-200',
+        iconBg: 'bg-rose-500 text-white',
+        icon: 'heroicons:exclamation-circle',
+        label: 'Agotado (0%)',
+        shortLabel: '0%',
+        textLevel: 'Agotado'
+      };
+    }
+
+    // Sin mínimo configurado (m <= 0)
+    if (m <= 0) {
+      return {
+        status: 'ok',
+        percentage: 100,
+        barPercentage: 100,
+        colorClass: 'bg-emerald-600',
+        textColor: 'text-slate-900',
+        badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        iconBg: 'bg-emerald-500 text-white',
+        icon: null,
+        label: 'Disponible',
+        shortLabel: '100%',
+        textLevel: 'Disponible'
+      };
+    }
+
+    // % relativo al stock mínimo (ej: 50% del mínimo, 100% del mínimo, 200% del mínimo)
+    const percentOfMin = Math.round((curr / m) * 100);
+
+    // Para la barra de progreso: tomamos como 100% un colchón de 2x el stock mínimo (200% = barra llena)
+    const ideal = m * 2;
+    const barPercentage = Math.min(100, Math.max(8, Math.round((curr / ideal) * 100)));
+
+    // 2. Stock Crítico: Existe stock pero está por debajo del mínimo (1% a 99% del mínimo) -> NARANJA
+    if (curr < m) {
+      return {
+        status: 'critical',
+        percentage: percentOfMin,
+        barPercentage,
+        colorClass: 'bg-orange-500',
+        textColor: 'text-orange-600',
+        badgeBg: 'bg-orange-50 text-orange-700 border-orange-200',
+        iconBg: 'bg-orange-500 text-white',
+        icon: 'heroicons:exclamation-triangle',
+        label: `${percentOfMin}% · Bajo mínimo`,
+        shortLabel: `${percentOfMin}%`,
+        textLevel: 'Bajo mínimo'
+      };
+    }
+
+    // 3. Stock en nivel justo / advertencia: Entre el 100% y el 150% del mínimo -> AMARILLO / ÁMBAR
+    if (curr <= m * 1.5) {
+      return {
+        status: 'warning',
+        percentage: percentOfMin,
+        barPercentage,
+        colorClass: 'bg-amber-400',
+        textColor: 'text-amber-700',
+        badgeBg: 'bg-amber-50 text-amber-800 border-amber-200',
+        iconBg: 'bg-amber-400 text-amber-950',
+        icon: 'heroicons:clock',
+        label: `${percentOfMin}% · Nivel justo`,
+        shortLabel: `${percentOfMin}%`,
+        textLevel: 'Nivel justo'
+      };
+    }
+
+    // 4. Stock óptimo: > 150% del mínimo -> VERDE
+    return {
+      status: 'good',
+      percentage: percentOfMin,
+      barPercentage,
+      colorClass: 'bg-emerald-600',
+      textColor: 'text-slate-900',
+      badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      iconBg: 'bg-emerald-500 text-white',
+      icon: null,
+      label: `${percentOfMin}% · Óptimo`,
+      shortLabel: `${percentOfMin}%`,
+      textLevel: 'Óptimo'
+    };
   };
 
   const zeroWasteCount = useMemo(() =>
@@ -571,12 +671,14 @@ function InsumosTab({ activeLocationId }) {
         {/* Alertas Stock */}
         <div 
           className={`p-4 rounded-xl border shadow-2xs hover:shadow-xs transition-all cursor-pointer group ${
-            lowStockCount > 0 
+            outOfStockCount > 0 
               ? 'bg-rose-50/40 border-rose-200 hover:border-rose-300' 
-              : 'bg-white border-slate-200/90 hover:border-slate-300'
+              : lowStockCount > 0
+                ? 'bg-amber-50/40 border-amber-200 hover:border-amber-300'
+                : 'bg-white border-slate-200/90 hover:border-slate-300'
           }`} 
           onClick={() => {
-            if (lowStockCount > 0) {
+            if (outOfStockCount > 0 || lowStockCount > 0) {
               setSearch('stock_bajo');
               setShowZeroOnly(false);
               setShowZeroWasteOnly(false);
@@ -586,19 +688,29 @@ function InsumosTab({ activeLocationId }) {
           <div className="flex items-center justify-between mb-3">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Alertas de Stock</span>
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-base transition-colors ${
-              lowStockCount > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-50 text-emerald-700'
+              outOfStockCount > 0 
+                ? 'bg-rose-100 text-rose-700' 
+                : lowStockCount > 0 
+                  ? 'bg-amber-100 text-amber-800' 
+                  : 'bg-emerald-50 text-emerald-700'
             }`}>
-              <Icon icon={lowStockCount > 0 ? "heroicons:exclamation-triangle" : "heroicons:check-badge"} />
+              <Icon icon={outOfStockCount > 0 ? "heroicons:exclamation-triangle" : lowStockCount > 0 ? "heroicons:clock" : "heroicons:check-badge"} />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <h4 className={`text-2xl font-black tracking-tight ${lowStockCount > 0 ? 'text-rose-600' : 'text-slate-900'}`}>{lowStockCount}</h4>
-            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
-              lowStockCount > 0 
-                ? 'text-rose-700 bg-rose-50 border-rose-200' 
-                : 'text-emerald-700 bg-emerald-50 border-emerald-100'
+            <h4 className={`text-2xl font-black tracking-tight ${
+              outOfStockCount > 0 ? 'text-rose-600' : lowStockCount > 0 ? 'text-amber-700' : 'text-slate-900'
             }`}>
-              {lowStockCount > 0 ? 'Stock crítico' : 'Niveles óptimos'}
+              {outOfStockCount + lowStockCount}
+            </h4>
+            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
+              outOfStockCount > 0 
+                ? 'text-rose-700 bg-rose-50 border-rose-200' 
+                : lowStockCount > 0 
+                  ? 'text-amber-800 bg-amber-50 border-amber-200' 
+                  : 'text-emerald-700 bg-emerald-50 border-emerald-100'
+            }`}>
+              {outOfStockCount > 0 ? `${outOfStockCount} agotado${outOfStockCount === 1 ? '' : 's'}` : lowStockCount > 0 ? `${lowStockCount} por reponer` : 'Niveles óptimos'}
             </span>
           </div>
         </div>
@@ -886,6 +998,7 @@ function InsumosTab({ activeLocationId }) {
               {filtered.map(item => {
                 const cat      = categories.find(c => c.id === item.category_id);
                 const stockLow = item.stock_current <= item.stock_min;
+                const health   = getStockHealth(item.stock_current, item.stock_min);
                 const hasZero  = !item.unit_cost || item.unit_cost === 0;
                 const isInline = inlineEdit?.id === item.id;
                 const isDelConf= confirmDelete === item.id;
@@ -1076,34 +1189,29 @@ function InsumosTab({ activeLocationId }) {
                     <td className="py-3 px-3">
                       <div className="flex flex-col gap-1 max-w-[130px]">
                         <div className="flex items-center justify-between">
-                          <span className={`text-xs font-extrabold tabular-nums ${stockLow ? 'text-rose-600' : 'text-slate-900'}`}>
+                          <span className={`text-xs font-extrabold tabular-nums ${health.textColor}`}>
                             {item.stock_current} <span className="text-[10px] font-semibold text-slate-400">{item.usage_unit}</span>
                           </span>
-                          {stockLow && (
-                            <span className="flex items-center justify-center h-4 w-4 bg-rose-500 text-white rounded-full">
-                              <Icon icon="heroicons:exclamation-circle" className="text-[10px]" />
+                          {health.icon && (
+                            <span className={`flex items-center justify-center h-4 w-4 rounded-full ${health.iconBg}`} title={health.label}>
+                              <Icon icon={health.icon} className="text-[10px]" />
                             </span>
                           )}
                         </div>
                         <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden border border-slate-200/60">
-                          {(() => {
-                            const percentage = Math.min(100, (item.stock_current / Math.max(1, item.stock_min * 2)) * 100);
-                            const isCritical = item.stock_current <= item.stock_min;
-                            const isWarning = item.stock_current <= item.stock_min * 1.5;
-                            
-                            let colorClass = 'bg-emerald-600';
-                            if (isCritical) colorClass = 'bg-rose-500';
-                            else if (isWarning) colorClass = 'bg-amber-400';
-
-                            return (
-                              <div
-                                className={`h-full rounded-full transition-all duration-500 ${colorClass}`}
-                                style={{ width: `${percentage}%` }}
-                              />
-                            );
-                          })()}
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${health.colorClass}`}
+                            style={{ width: `${health.barPercentage}%` }}
+                          />
                         </div>
-                        <p className="text-[9px] font-semibold text-slate-400">Mín: {item.stock_min}</p>
+                        <div className="flex items-center justify-between text-[9px] font-semibold text-slate-400">
+                          <span>Mín: {item.stock_min}</span>
+                          {item.stock_min > 0 && (
+                            <span className={`font-bold tabular-nums ${health.textColor}`} title={`${health.percentage}% del stock mínimo`}>
+                              {health.shortLabel}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
 
@@ -1280,6 +1388,7 @@ function InsumosTab({ activeLocationId }) {
         {filtered.map(item => {
           const cat = categories.find(c => c.id === item.category_id);
           const stockLow = item.stock_current <= item.stock_min;
+          const health   = getStockHealth(item.stock_current, item.stock_min);
           const hasZero = !item.unit_cost || item.unit_cost === 0;
           const isInline = inlineEdit?.id === item.id;
           const isDelConf = confirmDelete === item.id;
@@ -1371,9 +1480,21 @@ function InsumosTab({ activeLocationId }) {
                 </div>
                 <div>
                   <p className="text-[10px] font-semibold text-slate-400 uppercase mb-0.5">Stock</p>
-                  <p className={`text-xs font-extrabold flex items-center gap-1 ${stockLow ? 'text-rose-600' : 'text-slate-900'}`}>
-                    {item.stock_current} <span className="text-[10px] font-semibold text-slate-400">{item.usage_unit}</span>
-                  </p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className={`text-xs font-extrabold flex items-center gap-1 ${health.textColor}`}>
+                      {item.stock_current} <span className="text-[10px] font-semibold text-slate-400">{item.usage_unit}</span>
+                      {health.icon && (
+                        <span className={`flex items-center justify-center h-3.5 w-3.5 rounded-full ${health.iconBg} ml-0.5`} title={health.label}>
+                          <Icon icon={health.icon} className="text-[9px]" />
+                        </span>
+                      )}
+                    </p>
+                    {item.stock_min > 0 && (
+                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border tabular-nums ${health.badgeBg}`}>
+                        {health.shortLabel}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
