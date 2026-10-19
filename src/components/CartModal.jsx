@@ -607,6 +607,9 @@ export default function CartModal({ open, onClose }) {
 
     setIsSubmitting(true);
     try {
+      // Refresh current catalog products list for station check and recovery
+      const catalogProducts = getAllProducts() || allDBProducts || [];
+
       // Validate lead info for POS (Defaults are handled in state initialization)
       // Removed manual validation that required name/phone for POS takeaway/delivery
 
@@ -639,7 +642,7 @@ export default function CartModal({ open, onClose }) {
       let hasBarItemsInOrder = false;
       let hasKitchenItemsInOrder = false;
       for (const it of items) {
-        const dbProd = allDBProducts.find(p => p.id === (it.productId || it.id));
+        const dbProd = catalogProducts.find(p => p.id === (it.productId || it.id));
         const st = (dbProd?.station || '').toLowerCase();
         const isBar = st === 'bar' || (st !== 'kitchen' && st !== 'none' && /bebida|soda|cafe|café|jugo|cerveza|agua|hatsu|gaseosa|té|refajo|cold brew|chai|milo/i.test(dbProd?.name || it.name || ''));
         if (isBar) {
@@ -803,8 +806,6 @@ export default function CartModal({ open, onClose }) {
 
       // 3. Insert Order Items (Including requires_kitchen logic)
       // Extraemos si el item requiere cocina (por defecto true)
-      const allDBProducts = getAllProducts();
-      
       const orderItemsToInsert = items.map(it => {
         // Encontrar el producto original para ver si requiere cocina
         const pid = it.productId || it.id;
@@ -816,7 +817,7 @@ export default function CartModal({ open, onClose }) {
         if (!uuidRegex.test(pid)) {
           console.warn(`Invalid UUID detected for item: ${it.name}. Attempting recovery...`);
           // Try to find the correct UUID by name from database items
-          const dbMatch = allDBProducts.find(p => 
+          const dbMatch = catalogProducts.find(p => 
             p.name.toLowerCase() === it.name.toLowerCase() || 
             (it.name.includes("Cumbre") && p.name.includes("Cumbre"))
           );
@@ -829,7 +830,7 @@ export default function CartModal({ open, onClose }) {
           }
         }
 
-        const dbProd = allDBProducts.find(p => p.id === validatedPid);
+        const dbProd = catalogProducts.find(p => p.id === validatedPid);
         const requiresKitchen = dbProd ? (dbProd.requires_kitchen ?? true) : true;
         
         return {
