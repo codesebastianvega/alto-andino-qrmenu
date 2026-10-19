@@ -216,6 +216,14 @@ export const useAdminProducts = () => {
 
       if (error) throw error;
       
+      // Sincronizar location_product_status para que sedes y tabletas reflejen el cambio
+      if (cleanData.stock_status) {
+        await supabase
+          .from('location_product_status')
+          .update({ stock_status: cleanData.stock_status, updated_at: new Date().toISOString() })
+          .eq('product_id', id);
+      }
+
       toast.success('Producto actualizado con éxito');
       await fetchProducts();
       return data;
@@ -279,6 +287,13 @@ export const useAdminProducts = () => {
         .eq('id', id)
         .eq('brand_id', activeBrandId);
       if (error) throw error;
+
+      // Sincronizar location_product_status para que sedes y tabletas reflejen el cambio de inmediato
+      await supabase
+        .from('location_product_status')
+        .update({ stock_status: next, updated_at: new Date().toISOString() })
+        .eq('product_id', id);
+
       await fetchProducts();
       return true;
     } catch (err) {

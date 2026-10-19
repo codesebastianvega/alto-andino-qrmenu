@@ -95,13 +95,13 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
   if (isHeroSpotlight) {
     return (
       <article
-        className={`group relative flex flex-col h-full rounded-2xl bg-white p-3.5 sm:p-4 border border-amber-300/80 hover:border-amber-400 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden ${
+        className={`group relative flex flex-col h-full rounded-2xl bg-white p-3.5 sm:p-4 border ${
           isOutOfStock 
-            ? "opacity-70 grayscale" 
+            ? "opacity-75 grayscale bg-neutral-100/70 border-neutral-300" 
             : isScheduleRestricted 
-            ? "opacity-80 saturate-[0.88] bg-neutral-50/60" 
-            : ""
-        }`}
+            ? "border-amber-300/80 opacity-80 saturate-[0.88] bg-neutral-50/60" 
+            : "border-amber-300/80 hover:border-amber-400 shadow-sm hover:shadow-md"
+        } transition-all duration-300 cursor-pointer overflow-hidden`}
         onClick={handleQuickView}
         onKeyDown={handleKeyDown}
         tabIndex={0}
@@ -130,11 +130,21 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
               onLoad={() => setImgLoaded(true)}
               onError={() => setImgLoaded(false)}
               className={`h-full w-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out ${
+                isOutOfStock ? "grayscale contrast-90 brightness-95" : ""
+              } ${
                 imgLoaded ? "opacity-100" : "opacity-0"
               }`}
               width={600}
               height={450}
             />
+            {isOutOfStock && (
+              <div className="absolute inset-0 bg-neutral-900/35 backdrop-grayscale flex items-center justify-center z-10 pointer-events-none">
+                <span className="bg-neutral-900/85 backdrop-blur-md text-white font-extrabold text-[11px] px-3 py-1 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1.5">
+                  <span>🚫</span>
+                  <span>Agotado por hoy</span>
+                </span>
+              </div>
+            )}
             {/* Allergens / Diets badge */}
             {(productAllergens.length > 0 || productDiets.length > 0) && (
               <div className="absolute top-2.5 right-2.5 flex gap-1 items-center z-10 pointer-events-none">
@@ -290,7 +300,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
       <article
         className={`group relative flex items-center justify-between p-3 transition-all duration-300 ${
           isOutOfStock 
-            ? "opacity-70 grayscale" 
+            ? "opacity-75 grayscale bg-neutral-100/75 border border-neutral-200" 
             : isScheduleRestricted 
             ? "opacity-80 bg-neutral-50/60" 
             : "hover:bg-neutral-50"
@@ -362,7 +372,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
     <article
       className={`group relative flex h-full w-full overflow-hidden transition-all duration-300 ${
         isOutOfStock 
-          ? "opacity-70 grayscale" 
+          ? "opacity-75 grayscale bg-neutral-100/75 border-neutral-300" 
           : isScheduleRestricted 
           ? "opacity-80 saturate-[0.88] bg-neutral-50/50 hover:shadow-md" 
           : "hover:shadow-xl hover:-translate-y-1"
@@ -391,10 +401,18 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             onError={() => setImgLoaded(false)}
             className={`h-full w-full object-cover transition-opacity duration-500 ease-out ${
               isHero ? "lg:absolute lg:inset-0" : ""
-            } ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+            } ${isOutOfStock ? "grayscale contrast-90 brightness-95" : ""} ${imgLoaded ? "opacity-100" : "opacity-0"}`}
             width={isCompact ? 80 : isHero ? 600 : 400}
             height={isCompact ? 80 : isHero ? 600 : 400}
           />
+          {isOutOfStock && (
+            <div className="absolute inset-0 bg-neutral-900/35 backdrop-grayscale flex items-center justify-center z-10 pointer-events-none">
+              <span className="bg-neutral-900/85 backdrop-blur-md text-white font-extrabold text-[10px] sm:text-[11px] px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1">
+                <span>🚫</span>
+                <span>Agotado</span>
+              </span>
+            </div>
+          )}
         </div>
       ) : (
         !isCompact && (

@@ -531,7 +531,7 @@ function ProductRow({ item, onQuickView, style, index }) {
     <article
       className={`group grid ${imgSrc ? "grid-cols-[96px_1fr] md:grid-cols-[112px_1fr]" : "grid-cols-1"} gap-3 rounded-2xl bg-white p-3 text-neutral-900 shadow-sm ring-1 ring-black/5 md:gap-4 md:p-4 ${
         unavailable 
-          ? "opacity-70 grayscale" 
+          ? "opacity-75 grayscale bg-neutral-100/75 border border-neutral-300" 
           : isScheduleRestricted 
           ? "opacity-80 saturate-[0.88] bg-neutral-50/60" 
           : ""
@@ -550,10 +550,10 @@ function ProductRow({ item, onQuickView, style, index }) {
             }
           }}
           aria-label={`Ver ${product.title || product.name || "producto"}`}
-          className="block cursor-zoom-in rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2"
+          className="block cursor-zoom-in rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f4131] focus-visible:ring-offset-2 relative overflow-hidden"
         >
           <div
-            className={`h-24 w-24 overflow-hidden rounded-xl md:h-28 md:w-28 ${
+            className={`h-24 w-24 overflow-hidden rounded-xl md:h-28 md:w-28 relative ${
               imgLoaded ? "" : "bg-neutral-200 animate-pulse"
             }`}
           >
@@ -562,10 +562,17 @@ function ProductRow({ item, onQuickView, style, index }) {
               alt={item.name || "Producto"}
               onLoad={() => setImgLoaded(true)}
               onError={() => setImgLoaded(false)}
-              className="h-full w-full object-cover"
+              className={`h-full w-full object-cover ${unavailable ? "grayscale contrast-90 brightness-95" : ""}`}
               width={112}
               height={112}
             />
+            {unavailable && (
+              <div className="absolute inset-0 bg-neutral-900/35 backdrop-grayscale flex items-center justify-center z-10 pointer-events-none">
+                <span className="bg-neutral-900/85 backdrop-blur-md text-white font-extrabold text-[9px] px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                  Agotado
+                </span>
+              </div>
+            )}
           </div>
         </button>
       )}
