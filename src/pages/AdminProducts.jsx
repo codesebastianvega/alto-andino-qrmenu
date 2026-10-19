@@ -647,14 +647,11 @@ export default function AdminProducts() {
               <Th>#</Th>
               <Th>Producto</Th>
               <Th>Categoría</Th>
-              <Th>Subcategoría</Th>
-              <Th>Precio</Th>
-              <Th>Costo</Th>
-              <Th>Margen</Th>
+              <Th>Precio / Margen</Th>
               <Th>Stock</Th>
               <Th>Estado</Th>
-              <Th>Atributos</Th>
               <Th>Receta</Th>
+              <Th>Atributos</Th>
               {locationFilter !== 'all' && <Th>Menú Público</Th>}
               <Th>Actualizado</Th>
               <Th right>Acciones</Th>
@@ -670,7 +667,7 @@ export default function AdminProducts() {
               // Inline delete confirmation row
               if (isDelConf) return (
                 <tr key={product.id}>
-                  <td colSpan={locationFilter !== 'all' ? 14 : 13} className="px-5 py-3 bg-red-50">
+                  <td colSpan={locationFilter !== 'all' ? 11 : 10} className="px-5 py-3 bg-red-50">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-red-700">
                         ¿Eliminar <strong>"{product.name}"</strong>? Esta acción no se puede deshacer.
@@ -707,25 +704,21 @@ export default function AdminProducts() {
                     </div>
                   </td>
 
-                  {/* Category */}
+                  {/* Category & Subcategory */}
                   <td className="px-5 py-3.5 whitespace-nowrap">
-                    <span className="text-[12px] font-medium text-gray-600 px-2 py-1 bg-gray-50 rounded-lg border border-gray-100">
-                      {catName || 'Sin cat.'}
-                    </span>
-                  </td>
-
-                  {/* Subcategory */}
-                  <td className="px-5 py-3.5 whitespace-nowrap">
-                    {product.subcategory ? (
-                      <span className="text-[11px] font-semibold text-blue-600 px-2 py-0.5 bg-blue-50/50 rounded-full border border-blue-100/50">
-                        {product.subcategory}
+                    <div className="flex flex-col items-start gap-1">
+                      <span className="text-[12px] font-semibold text-gray-700 px-2 py-0.5 bg-gray-50 rounded-md border border-gray-100">
+                        {catName || 'Sin cat.'}
                       </span>
-                    ) : (
-                      <span className="text-[11px] text-gray-300 italic">—</span>
-                    )}
+                      {product.subcategory && (
+                        <span className="text-[10px] font-semibold text-blue-600 px-2 py-0.5 bg-blue-50/70 rounded-md border border-blue-100/70">
+                          {product.subcategory}
+                        </span>
+                      )}
+                    </div>
                   </td>
 
-                  {/* Precio */}
+                  {/* Precio, Costo & Margen (3 en 1) */}
                   <td className="px-5 py-3.5 whitespace-nowrap">
                     {(() => {
                       // If a specific location is filtered, look for an override
@@ -736,45 +729,38 @@ export default function AdminProducts() {
                       const displayPrice = locPrice !== null && locPrice !== undefined ? locPrice : product.price;
                       const isOverridden = locPrice !== null && locPrice !== undefined;
 
+                      const hasMargin = product.cost > 0 && product.price > 0;
+                      const margin = hasMargin ? ((product.price - product.cost) / product.price) * 100 : 0;
+                      const marginColor = margin >= 45 
+                        ? 'text-green-700 bg-green-50 border-green-200' 
+                        : margin >= 25 
+                          ? 'text-orange-700 bg-orange-50 border-orange-200' 
+                          : 'text-red-700 bg-red-50 border-red-200';
+
                       return (
-                        <div className="flex flex-col">
-                          <p className="text-sm font-bold text-gray-900 tabular-nums">
-                            {formatCOP(displayPrice)}
-                          </p>
-                          {isOverridden && (
-                            <span className="text-[9px] font-bold text-blue-500 uppercase tracking-tight">Precio de sede</span>
-                          )}
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-bold text-gray-900 tabular-nums">
+                              {formatCOP(displayPrice)}
+                            </span>
+                            {hasMargin && (
+                              <span className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-extrabold tabular-nums border ${marginColor}`}>
+                                {margin.toFixed(0)}%
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 text-[11px] text-gray-400 font-medium">
+                            <span>Costo:</span>
+                            <span className="text-gray-600 font-semibold tabular-nums">
+                              {product.cost > 0 ? formatCOP(product.cost) : '—'}
+                            </span>
+                            {isOverridden && (
+                              <span className="text-[9px] font-bold text-blue-500 uppercase ml-1">Sede</span>
+                            )}
+                          </div>
                         </div>
                       );
                     })()}
-                  </td>
-
-                  {/* Costo */}
-                  <td className="px-5 py-3.5 whitespace-nowrap">
-                    {product.cost > 0 ? (
-                      <p className="text-[12px] text-gray-500 font-medium tabular-nums">
-                        {formatCOP(product.cost)}
-                      </p>
-                    ) : (
-                      <span className="text-[11px] text-gray-300 italic">No req.</span>
-                    )}
-                  </td>
-
-                  {/* Margen */}
-                  <td className="px-5 py-3.5 whitespace-nowrap">
-                    {product.cost > 0 && product.price > 0 ? (
-                      (() => {
-                        const margin = ((product.price - product.cost) / product.price) * 100;
-                        const color = margin >= 45 ? 'text-green-600 bg-green-50' : margin >= 25 ? 'text-orange-500 bg-orange-50' : 'text-red-500 bg-red-50';
-                        return (
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${color} tabular-nums border border-current/10 uppercase`}>
-                            {margin.toFixed(0)}%
-                          </span>
-                        );
-                      })()
-                    ) : (
-                      <span className="text-[11px] text-gray-200 font-medium whitespace-nowrap italic">—</span>
-                    )}
                   </td>
 
                   {/* Stock */}
@@ -794,6 +780,18 @@ export default function AdminProducts() {
                         {product.is_active ? 'Activo' : 'Oculto'}
                       </Badge>
                     </button>
+                  </td>
+
+                  {/* Receta */}
+                  <td className="px-5 py-3.5 whitespace-nowrap">
+                    {recipe ? (
+                      <div className="flex flex-col">
+                        <span className="text-[12px] font-semibold text-teal-600">{recipe.name}</span>
+                        <span className="text-[10px] text-gray-400">Vinculado</span>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-gray-300 italic">Sin receta</span>
+                    )}
                   </td>
 
                   {/* Atributos */}
@@ -823,18 +821,6 @@ export default function AdminProducts() {
                         </span>
                       )}
                     </div>
-                  </td>
-
-                  {/* Receta */}
-                  <td className="px-5 py-3.5 whitespace-nowrap">
-                    {recipe ? (
-                      <div className="flex flex-col">
-                        <span className="text-[12px] font-semibold text-teal-600">{recipe.name}</span>
-                        <span className="text-[10px] text-gray-400">Vinculado</span>
-                      </div>
-                    ) : (
-                      <span className="text-[11px] text-gray-300 italic italic">Sin receta</span>
-                    )}
                   </td>
 
                   {/* Menú Público — Visibility Helper */}
@@ -885,7 +871,7 @@ export default function AdminProducts() {
             
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={locationFilter !== 'all' ? 14 : 13} className="px-5 py-16 text-center text-gray-400 text-sm font-medium">
+                <td colSpan={locationFilter !== 'all' ? 11 : 10} className="px-5 py-16 text-center text-gray-400 text-sm font-medium">
                   {search || catFilter !== 'all' || attrFilter !== 'all' || marginFilter !== 'all'
                     ? 'Sin resultados para los filtros actuales.'
                     : 'Aún no hay productos. Crea el primero.'}
