@@ -58,7 +58,11 @@ export default function PWAInstallBanner({
               <Sparkles size={12} className="text-amber-500 shrink-0" />
             </div>
             <p className="text-[11px] sm:text-xs text-neutral-500 font-medium leading-tight truncate">
-              {isIOS ? 'Agrega la app oficial a tu iPhone' : 'Instala la app para pedir más rápido'}
+              {isIOS 
+                ? 'Agrega la app oficial a tu iPhone' 
+                : (typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent || ''))
+                  ? 'Instala la app oficial en tu Android'
+                  : 'Instala la app para pedir más rápido'}
             </p>
           </div>
 
@@ -66,7 +70,7 @@ export default function PWAInstallBanner({
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={onInstall}
-              className="bg-neutral-900 text-white font-bold text-xs px-3 sm:px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-md shadow-neutral-900/10 hover:bg-black active:scale-95 transition-all"
+              className="bg-neutral-900 text-white font-bold text-xs px-3 sm:px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-md shadow-neutral-900/10 hover:bg-black active:scale-95 transition-all cursor-pointer"
             >
               <Download size={14} />
               <span>{isIOS ? 'Agregar' : 'Instalar'}</span>

@@ -29,11 +29,25 @@ function checkIsStandalone() {
 
 function checkIsIOS() {
   if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  // IMPORTANTE: Un dispositivo Android JAMÁS debe detectarse como iOS
+  if (/Android/i.test(ua)) return false;
   return (
-    (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (/iPad|iPhone|iPod/.test(ua) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) &&
     !window.MSStream
   );
+}
+
+function checkIsAndroid() {
+  if (typeof navigator === 'undefined') return false;
+  return /Android/i.test(navigator.userAgent || '');
+}
+
+function checkIsInAppBrowser() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return /FBAN|FBAV|Instagram|WhatsApp|Line|Twitter|Snapchat|MicroMessenger|wv/i.test(ua);
 }
 
 const DISMISS_COOLDOWN_DAYS = 7;
@@ -47,6 +61,8 @@ export function usePWAInstall({ brandId, delayMs = 6000 } = {}) {
   const [deferredPrompt, setDeferredPrompt] = useState(globalDeferredPrompt);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
+  const [isInAppBrowser, setIsInAppBrowser] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   const [showIOSGuide, setShowIOSGuide] = useState(false);
 
@@ -57,6 +73,8 @@ export function usePWAInstall({ brandId, delayMs = 6000 } = {}) {
     const standalone = checkIsStandalone();
     setIsInstalled(standalone);
     setIsIOS(checkIsIOS());
+    setIsAndroid(checkIsAndroid());
+    setIsInAppBrowser(checkIsInAppBrowser());
 
     const updatePrompt = (prompt) => {
       setDeferredPrompt(prompt);
@@ -134,9 +152,11 @@ export function usePWAInstall({ brandId, delayMs = 6000 } = {}) {
   }, [deferredPrompt, isIOS, isInstalled]);
 
   return {
-    canInstall: !isInstalled && (!!deferredPrompt || isIOS),
+    canInstall: !isInstalled && (!!deferredPrompt || isIOS || isAndroid),
     isInstalled,
     isIOS,
+    isAndroid,
+    isInAppBrowser,
     showBanner,
     showIOSGuide,
     setShowIOSGuide,
