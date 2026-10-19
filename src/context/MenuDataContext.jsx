@@ -411,6 +411,7 @@ export const MenuDataProvider = ({ children }) => {
       const normalizedProduct = {
         id: product.id,
         name: product.name,
+        is_active: product.is_active ?? true,
         price: finalPrice,
         original_price: originalPrice,
         is_bento_del_dia: isSpecialToday,

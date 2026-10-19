@@ -73,6 +73,7 @@ const LandingPage = () => {
     categories: allCategories,
     loading: menuLoading,
     currentLocation,
+    productsByCategory,
     getProductsByCategory,
     getAllProducts 
   } = menuData;
@@ -130,7 +131,7 @@ const LandingPage = () => {
     const productsList = typeof getAllProducts === 'function' ? getAllProducts() : [];
     
     // Insumos / platos activos de la carta con foto real
-    const activeProductsWithImages = productsList.filter(p => p.is_active && (p.image_url || p.image));
+    const activeProductsWithImages = productsList.filter(p => (p.is_active !== false) && (p.image_url || p.image));
 
     let featuredWithDetails = [];
 
@@ -140,24 +141,24 @@ const LandingPage = () => {
           const productId = item.product_id || (typeof item === 'string' ? item : null);
           const found = productsList.find(p => (productId && p.id === productId) || (p.name && item.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase()));
           
-          // Descartar si el producto fue borrado o no está activo en la carta
-          if (!found || !found.is_active) return null;
+          // Descartar solo si el producto existe y fue explícitamente desactivado
+          if (found && found.is_active === false) return null;
 
-          const realImg = found.image_url || found.image || (item.img && !item.img.includes('unsplash.com') ? item.img : null) || FALLBACK_HERO_IMAGE;
+          const realImg = found?.image_url || found?.image || (item.img && !item.img.includes('unsplash.com') ? item.img : null) || item.image || item.img || FALLBACK_HERO_IMAGE;
 
           return { 
             ...item, 
             ...found, 
-            id: found.id,
+            id: found?.id || item.product_id || `featured-${idx}`,
             img: getSafeImageUrl(realImg, FALLBACK_HERO_IMAGE),
-            price: found.price ?? item.price ?? 0,
-            name: found.name || item.name || "Plato Destacado"
+            price: found?.price ?? item.price ?? 0,
+            name: found?.name || item.name || "Plato Destacado"
           };
         })
         .filter(Boolean);
     }
 
-    // Si no hay destacados configurados o quedaron menos de 4 por platos obsoletos, rellenar con productos activos de la carta
+    // Si no hay destacados configurados o quedaron menos de 4 por platos obsoletos, rellenar con productos activos reales de la carta
     if (featuredWithDetails.length < 4 && activeProductsWithImages.length > 0) {
       const existingIds = new Set(featuredWithDetails.map(d => d.id));
       const pool = activeProductsWithImages.filter(p => !existingIds.has(p.id));
@@ -204,7 +205,7 @@ const LandingPage = () => {
       featuredTitle: homeSettings?.featured_items_title || 'Must Try',
       featuredTag: homeSettings?.featured_items_tag || 'Selección del Chef'
     };
-  }, [homeSettings, allCategories, restaurantSettings, brandCity, getProductsByCategory, getAllProducts]);
+  }, [homeSettings, allCategories, restaurantSettings, brandCity, getProductsByCategory, getAllProducts, productsByCategory, menuLoading]);
 
   // Manejo de carga inicial y selección aleatoria del plato Hero
   useEffect(() => {
