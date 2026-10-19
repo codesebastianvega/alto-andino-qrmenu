@@ -106,20 +106,76 @@ export function CustomShoppingListModal({
     toast(`"${newItem.name}" agregado a la lista.`);
   };
 
-  // Selección rápida
-  const handleSelectLowStock = () => {
-    const lowIds = new Set(selectedItemIds);
+  // Contadores para selección rápida
+  const outOfStockCount = useMemo(() => {
+    return ingredients.filter(i => {
+      const isSub = Boolean(i.is_subrecipe) || (i.name || '').toLowerCase().includes('(subreceta)');
+      return !isSub && Number(i.stock_current || 0) <= 0 && Number(i.stock_min || 0) > 0;
+    }).length;
+  }, [ingredients]);
+
+  const lowStockCount = useMemo(() => {
+    return ingredients.filter(i => {
+      const isSub = Boolean(i.is_subrecipe) || (i.name || '').toLowerCase().includes('(subreceta)');
+      const curr = Number(i.stock_current || 0);
+      const min = Number(i.stock_min || 0);
+      return !isSub && curr < min && min > 0;
+    }).length;
+  }, [ingredients]);
+
+  // Selección rápida: SOLO AGOTADOS (EN ROJO)
+  const handleSelectOutOfStock = () => {
+    const outIds = new Set();
     const newQty = { ...quantities };
+
+    // Mantener ítems ad-hoc si ya estaban seleccionados
+    selectedItemIds.forEach(id => {
+      if (String(id).startsWith('adhoc-')) outIds.add(id);
+    });
+
     ingredients.forEach(i => {
-      if (Number(i.stock_current) <= Number(i.stock_min)) {
-        lowIds.add(i.id);
-        const needed = (Number(i.stock_min) - Number(i.stock_current)) || 1;
-        newQty[i.id] = needed > 0 ? needed : 1;
+      const isSub = Boolean(i.is_subrecipe) || (i.name || '').toLowerCase().includes('(subreceta)');
+      if (isSub) return;
+      const curr = Number(i.stock_current || 0);
+      const min = Number(i.stock_min || 0);
+      if (curr <= 0 && min > 0) {
+        outIds.add(i.id);
+        if (!newQty[i.id] || Number(newQty[i.id]) <= 0) {
+          newQty[i.id] = min > 0 ? min : 1;
+        }
       }
     });
+
+    setSelectedItemIds(outIds);
+    setQuantities(newQty);
+    toast(`${outIds.size} insumos agotados (en rojo) seleccionados.`);
+  };
+
+  // Selección rápida: STOCK BAJO (< Mínimo)
+  const handleSelectLowStock = () => {
+    const lowIds = new Set();
+    const newQty = { ...quantities };
+
+    // Mantener ítems ad-hoc si ya estaban seleccionados
+    selectedItemIds.forEach(id => {
+      if (String(id).startsWith('adhoc-')) lowIds.add(id);
+    });
+
+    ingredients.forEach(i => {
+      const isSub = Boolean(i.is_subrecipe) || (i.name || '').toLowerCase().includes('(subreceta)');
+      if (isSub) return;
+      const curr = Number(i.stock_current || 0);
+      const min = Number(i.stock_min || 0);
+      if (curr < min && min > 0) {
+        lowIds.add(i.id);
+        const needed = Math.max(1, min - curr);
+        newQty[i.id] = needed;
+      }
+    });
+
     setSelectedItemIds(lowIds);
     setQuantities(newQty);
-    toast('Insumos con stock bajo seleccionados.');
+    toast(`${lowIds.size} insumos con stock bajo seleccionados.`);
   };
 
   const handleSelectAll = () => {
@@ -257,13 +313,24 @@ export function CustomShoppingListModal({
                 <span className="text-xs font-bold text-slate-700">
                   Insumos Seleccionados: <strong className="text-emerald-700 font-black">{selectedItemIds.size}</strong>
                 </span>
-                <div className="flex items-center gap-1.5 text-xs">
+                <div className="flex items-center gap-1.5 text-xs flex-wrap">
+                  <button
+                    type="button"
+                    onClick={handleSelectOutOfStock}
+                    className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-800 font-bold rounded-md border border-red-200 transition-colors shadow-2xs flex items-center gap-1"
+                    title="Seleccionar únicamente insumos completamente agotados (en rojo)"
+                  >
+                    <span>🔴 Solo Agotados</span>
+                    <span className="bg-red-200 text-red-900 px-1 py-0.2 rounded text-[10px] font-black">{outOfStockCount}</span>
+                  </button>
                   <button
                     type="button"
                     onClick={handleSelectLowStock}
-                    className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold rounded-md border border-amber-200 transition-colors"
+                    className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold rounded-md border border-amber-200 transition-colors flex items-center gap-1"
+                    title="Seleccionar insumos por debajo del stock mínimo"
                   >
-                    ⚠️ Stock Bajo
+                    <span>⚠️ Stock Bajo</span>
+                    <span className="bg-amber-200 text-amber-900 px-1 py-0.2 rounded text-[10px] font-black">{lowStockCount}</span>
                   </button>
                   <button
                     type="button"
@@ -298,7 +365,12 @@ export function CustomShoppingListModal({
               <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
                 {filteredItems.map(item => {
                   const isSelected = selectedItemIds.has(item.id);
-                  const isLow = Number(item.stock_current) <= Number(item.stock_min);
+                  const isSub = Boolean(item.is_subrecipe) || (item.name || '').toLowerCase().includes('(subreceta)');
+                  const curr = Number(item.stock_current) || 0;
+                  const min = Number(item.stock_min) || 0;
+                  const isRed = !item.isAdHoc && !isSub && curr <= 0 && min > 0;
+                  const isOrange = !item.isAdHoc && !isSub && curr > 0 && curr < min && min > 0;
+                  const isAmber = !item.isAdHoc && !isSub && min > 0 && curr >= min && curr <= min * 1.5;
 
                   return (
                     <div
@@ -318,16 +390,31 @@ export function CustomShoppingListModal({
                             className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 shrink-0"
                           />
                           <div className="min-w-0">
-                            <p className="text-xs font-bold text-slate-900 truncate flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-slate-900 truncate flex items-center gap-1.5 flex-wrap">
                               <span>{item.name}</span>
                               {item.isAdHoc && (
                                 <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded font-bold">
                                   Libre
                                 </span>
                               )}
-                              {isLow && !item.isAdHoc && (
-                                <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded font-bold">
-                                  Bajo ({item.stock_current} / {item.stock_min})
+                              {isSub && (
+                                <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.2 rounded font-bold">
+                                  Subreceta
+                                </span>
+                              )}
+                              {isRed && (
+                                <span className="text-[10px] bg-red-100 text-red-800 border border-red-200 px-1.5 py-0.2 rounded font-black">
+                                  🔴 Agotado (0 / {min})
+                                </span>
+                              )}
+                              {isOrange && (
+                                <span className="text-[10px] bg-orange-100 text-orange-800 border border-orange-200 px-1.5 py-0.2 rounded font-bold">
+                                  🟠 Bajo ({curr} / {min})
+                                </span>
+                              )}
+                              {isAmber && (
+                                <span className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.2 rounded font-medium">
+                                  🟡 Nivel Justo ({curr} / {min})
                                 </span>
                               )}
                             </p>

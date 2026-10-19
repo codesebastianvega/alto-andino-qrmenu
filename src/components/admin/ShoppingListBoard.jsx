@@ -15,15 +15,19 @@ export function ShoppingListBoard({ ingredients, providers }) {
   
   const [leftSearch, setLeftSearch] = useState('');
 
-  // Initial load logic: pre-select low stock items
+  // Initial load logic: pre-select ONLY items strictly in RED (out-of-stock raw ingredients)
   useEffect(() => {
     const defaultSelected = new Set();
     const defaultQuantities = {};
     ingredients.forEach(i => {
-      if (i.stock_current <= i.stock_min) {
+      const isSub = Boolean(i.is_subrecipe) || (i.name || '').toLowerCase().includes('(subreceta)');
+      if (isSub) return;
+      const curr = Number(i.stock_current) || 0;
+      const min = Number(i.stock_min) || 0;
+      // Pre-select ONLY items in RED: stock_current <= 0 and stock_min > 0
+      if (curr <= 0 && min > 0) {
         defaultSelected.add(i.id);
-        defaultQuantities[i.id] = (i.stock_min - i.stock_current) || 1;
-        if (defaultQuantities[i.id] < 1) defaultQuantities[i.id] = 1;
+        defaultQuantities[i.id] = min > 0 ? min : 1;
       }
     });
     setSelectedIds(defaultSelected);
@@ -176,16 +180,37 @@ export function ShoppingListBoard({ ingredients, providers }) {
               className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm cursor-grab active:cursor-grabbing hover:border-blue-300 hover:shadow-md transition-all flex items-center justify-between group"
             >
               <div>
-                <p className="text-sm font-bold text-gray-800">{item.name}</p>
-                <div className="flex gap-2 text-[10px] text-gray-500 mt-1 font-medium">
+                <p className="text-sm font-bold text-gray-800 flex items-center gap-1.5 flex-wrap">
+                  <span>{item.name}</span>
+                  {(Boolean(item.is_subrecipe) || (item.name || '').toLowerCase().includes('(subreceta)')) && (
+                    <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.2 rounded font-bold">
+                      Subreceta
+                    </span>
+                  )}
+                </p>
+                <div className="flex gap-2 text-[10px] text-gray-500 mt-1 font-medium items-center">
                   {item.isAdHoc ? (
                     <Badge variant="blue">Ad-Hoc</Badge>
-                  ) : (
-                    <>
-                      <span>Stock: <strong className={item.stock_current <= 0 ? "text-red-500" : item.stock_current <= item.stock_min ? "text-amber-600" : ""}>{item.stock_current}</strong></span>
-                      <span>Mín: {item.stock_min}</span>
-                    </>
-                  )}
+                  ) : (() => {
+                    const curr = Number(item.stock_current) || 0;
+                    const min = Number(item.stock_min) || 0;
+                    const isRed = curr <= 0 && min > 0;
+                    const isOrange = curr > 0 && curr < min && min > 0;
+                    const isAmber = min > 0 && curr >= min && curr <= min * 1.5;
+                    const colorClass = isRed 
+                      ? "text-red-600 font-black bg-red-50 px-1 rounded" 
+                      : isOrange 
+                        ? "text-orange-600 font-bold bg-orange-50 px-1 rounded" 
+                        : isAmber 
+                          ? "text-amber-600 font-medium bg-amber-50 px-1 rounded" 
+                          : "text-emerald-600 font-medium";
+                    return (
+                      <>
+                        <span>Stock: <strong className={colorClass}>{curr}</strong></span>
+                        <span>Mín: {min}</span>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
               <button 
