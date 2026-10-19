@@ -106,6 +106,7 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
       if (config === 'required') { min = 1; max = 1; isRequired = true; }
       else if (config === 'optional') { min = 0; max = 999; isRequired = false; }
       else if (typeof config === 'object') { min = config.min || 0; max = config.max || 999; isRequired = min > 0; }
+      else if (!isRequired) { min = 0; }
       
       const rawOpts = groupMeta.modifier_options || groupMeta.options || [];
       const itemsFromContext = getModifiers(groupKey);

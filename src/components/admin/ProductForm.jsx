@@ -185,7 +185,7 @@ export default function ProductForm({
         return {
           location_id: loc.id,
           price: p && p.price !== null && p.price !== undefined ? p.price : '',
-          is_active: s ? s.is_active : false,
+          is_active: s ? s.is_active : (product?.is_active ?? true),
           stock_status: s ? s.stock_status : 'in',
           is_linked: !!s
         };
@@ -1366,12 +1366,12 @@ export default function ProductForm({
               <div className="space-y-2.5">
                 {locations.map(loc => {
                   const override = locationOverrides.find(o => o.location_id === loc.id) || {
-                    is_active: false,
+                    is_active: product?.is_active ?? true,
                     stock_status: 'in',
                     price: '',
                     is_linked: false
                   };
-                  const isActive = override.is_active || false;
+                  const isActive = override.is_active ?? (product?.is_active ?? true);
                   const hasCustomPrice = customLocationPricing && override.price !== '' && override.price !== null;
 
                   return (
