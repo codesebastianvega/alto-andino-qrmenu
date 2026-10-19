@@ -5,7 +5,7 @@ import { useMenuData } from '../context/MenuDataContext';
 import { useAuth } from '../context/AuthContext';
 import { 
   ArrowLeft, CheckCircle2, ChefHat, ShoppingBag, Clock, XIcon, 
-  Loader2, AlertCircle, Banknote, Home, Truck, Utensils, CreditCard
+  Loader2, AlertCircle, Banknote, Home, Truck, Utensils, CreditCard, Bell
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import soundService from '../utils/soundService';
@@ -21,6 +21,35 @@ export default function OrderStatus({ orderId }) {
 
   const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
 
+  // Estado de permisos de notificaciones del navegador
+  const [notificationPermission, setNotificationPermission] = useState(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      return Notification.permission;
+    }
+    return 'unsupported';
+  });
+  const [showNotifPrompt, setShowNotifPrompt] = useState(true);
+
+  const requestNotificationAccess = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      alert('Tu navegador no soporta notificaciones web push.');
+      return;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      if (permission === 'granted') {
+        new Notification(`🔔 Avisos activados - ${brandName}`, {
+          body: `Te avisaremos en tu celular en cuanto tu pedido cambie de estado.`,
+          icon: '/boku-icon-192.png',
+          badge: '/favicon.png'
+        });
+      }
+    } catch (err) {
+      console.warn('Error solicitando permiso de notificación:', err);
+    }
+  };
+
   useEffect(() => {
     fetchOrder();
 
@@ -35,10 +64,78 @@ export default function OrderStatus({ orderId }) {
         const newStatus = payload.new?.status;
         setOrder(payload.new);
 
-        if (newStatus === 'ready') {
+        // 1. Sonido de aviso
+        if (newStatus === 'ready' || newStatus === 'on_table') {
           soundService.playOrderReady();
         } else if (newStatus === 'preparing') {
           soundService.playOrderReceived();
+        }
+
+        // 2. Notificación nativa del Sistema Operativo (Android / Windows / macOS / iOS PWA)
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          let title = '';
+          let body = '';
+          const orderNum = orderId ? `#${orderId.slice(0, 4).toUpperCase()}` : '';
+
+          if (newStatus === 'preparing') {
+            title = `🍳 ¡Pedido en cocina! - ${brandName}`;
+            body = `Tu pedido ${orderNum} ya está en preparación con ingredientes frescos.`;
+          } else if (newStatus === 'on_table') {
+            const isDeliv = (payload.new?.fulfillment_type || payload.new?.order_type || '').toLowerCase() === 'delivery';
+            title = isDeliv ? `🛵 ¡Tu pedido va en camino! - ${brandName}` : `🍽️ ¡Tu pedido va a tu mesa! - ${brandName}`;
+            body = isDeliv 
+              ? `El repartidor va hacia tu dirección con tu comanda ${orderNum}.` 
+              : `El mesero se dirige con tus platos a la mesa.`;
+          } else if (newStatus === 'ready') {
+            title = `🎉 ¡Tu pedido está listo! - ${brandName}`;
+            body = `Tu pedido ${orderNum} ya está preparado y empacado para ti.`;
+          } else if (newStatus === 'delivered') {
+            title = `✅ ¡Pedido Entregado! - ${brandName}`;
+            body = `¡Buen provecho! Gracias por ordenar en ${brandName}.`;
+          }
+
+          if (title) {
+            try {
+              const notif = new Notification(title, {
+                body,
+                icon: '/boku-icon-192.png',
+                badge: '/favicon.png',
+                tag: `aluna-order-${orderId}`,
+                renotify: true
+              });
+              notif.onclick = () => {
+                window.focus();
+              };
+            } catch (e) {
+              console.warn('Native notification failed:', e);
+            }
+          }
+        }
+
+        // 3. Vibración háptica en móviles compatibles
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate([250, 100, 250]);
+        }
+
+        // 4. Parpadeo en el título de la pestaña si el comensal está en Facebook u otra app (Page Visibility)
+        if (typeof document !== 'undefined' && document.hidden) {
+          let toggle = false;
+          const originalTitle = document.title;
+          const titleInterval = setInterval(() => {
+            toggle = !toggle;
+            document.title = toggle 
+              ? `(1) 🛵 ¡ACTUALIZACIÓN DE PEDIDO! - ${brandName}` 
+              : `Pedido #${orderId.slice(0, 4).toUpperCase()} - ${brandName}`;
+          }, 1000);
+
+          const handleVisibility = () => {
+            if (!document.hidden) {
+              clearInterval(titleInterval);
+              document.title = originalTitle;
+              window.removeEventListener('visibilitychange', handleVisibility);
+            }
+          };
+          window.addEventListener('visibilitychange', handleVisibility);
         }
       })
       .subscribe();
@@ -46,7 +143,7 @@ export default function OrderStatus({ orderId }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [orderId]);
+  }, [orderId, brandName]);
 
   const fetchOrder = async () => {
     try {
@@ -197,6 +294,49 @@ export default function OrderStatus({ orderId }) {
 
       <main className="container mx-auto max-w-2xl px-4 sm:px-6 pt-6 sm:pt-8">
         
+        {/* Banner de Permiso de Notificaciones al Celular (para avisar si está en Facebook/otra app) */}
+        {notificationPermission !== 'granted' && notificationPermission !== 'unsupported' && showNotifPrompt && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 rounded-2xl flex items-center justify-between gap-3 shadow-2xs animate-fade-in">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Bell size={18} className="animate-bounce" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-900 leading-tight">
+                  ¿Quieres avisos en tu pantalla cuando esté listo o en camino?
+                </p>
+                <p className="text-[11px] text-slate-600 font-medium truncate mt-0.5">
+                  Te avisaremos aunque abras Facebook o bloquees el celular.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={requestNotificationAccess}
+                className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white rounded-xl text-xs font-black transition-all shadow-xs cursor-pointer"
+              >
+                Activar
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowNotifPrompt(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg text-xs"
+                title="Ignorar"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
+        {notificationPermission === 'granted' && (
+          <div className="mb-4 py-1.5 px-3 bg-emerald-50/70 border border-emerald-200/60 rounded-xl text-[11px] font-bold text-emerald-800 flex items-center gap-1.5 animate-fade-in">
+            <CheckCircle2 size={13} className="text-emerald-600" />
+            <span>Avisos activados en tu pantalla: te notificaremos cuando cambie el estado de tu pedido.</span>
+          </div>
+        )}
+
         {/* =========================================
             1. TRACKER DINÁMICO EXPRESIVO
         ========================================= */}

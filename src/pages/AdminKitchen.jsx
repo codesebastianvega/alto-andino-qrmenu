@@ -13,7 +13,7 @@ import { MiseEnPlace86Drawer } from '../components/admin/MiseEnPlace86Drawer';
 import { useAdminRecipes } from '../hooks/useAdminRecipes';
 
 const playNotificationSound = () => {
-  soundService.playNewOrder();
+  soundService.startNewOrderLoop(3500);
 };
 
 const playReadySound = () => {
@@ -113,6 +113,15 @@ export default function AdminKitchen() {
   const { recipes: allRecipes } = useAdminRecipes();
   const [selectedRecipeForViewer, setSelectedRecipeForViewer] = useState(null);
   const [is86DrawerOpen, setIs86DrawerOpen] = useState(false);
+  const [isSoundLoopActive, setIsSoundLoopActive] = useState(false);
+
+  useEffect(() => {
+    const handleLoopChange = (e) => {
+      setIsSoundLoopActive(Boolean(e.detail?.active));
+    };
+    window.addEventListener('aluna:sound-loop-changed', handleLoopChange);
+    return () => window.removeEventListener('aluna:sound-loop-changed', handleLoopChange);
+  }, []);
 
   const handleOpenDishRecipe = (item) => {
     const prodName = item.products?.name?.toLowerCase() || '';
@@ -631,6 +640,19 @@ export default function AdminKitchen() {
 
         {/* Right: View Modes & Quick Tools */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Botón Silenciar Alarma si está sonando */}
+          {isSoundLoopActive && (
+            <button
+              type="button"
+              onClick={() => soundService.stopNewOrderLoop()}
+              className="px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-slate-900 rounded-lg text-xs font-black shadow-md animate-pulse border border-yellow-500 flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Silenciar sonido de la alarma continua"
+            >
+              <Icon icon="heroicons:speaker-wave" className="text-base animate-bounce" />
+              <span>Silenciar Alarma</span>
+            </button>
+          )}
+
           {/* Filtros de Estado */}
           <div className={`flex rounded-lg p-0.5 border ${
             isDark ? 'bg-gray-900 border-gray-800' : 'bg-slate-200/70 border-slate-300/60'

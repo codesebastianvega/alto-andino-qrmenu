@@ -204,21 +204,29 @@ export const playCashRegisterSound = () => {
   ], { volume: 0.7, type: 'triangle' });
 };
 
+export const isLoopActive = () => Boolean(activeLoopInterval);
+
 /**
  * Bucle de aviso persistente para nuevo pedido en cocina
  */
-export const startNewOrderLoop = (intervalMs = 4000) => {
+export const startNewOrderLoop = (intervalMs = 3500) => {
   stopNewOrderLoop();
   playNewOrderSound();
   activeLoopInterval = setInterval(() => {
     playNewOrderSound();
   }, intervalMs);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('aluna:sound-loop-changed', { detail: { active: true } }));
+  }
 };
 
 export const stopNewOrderLoop = () => {
   if (activeLoopInterval) {
     clearInterval(activeLoopInterval);
     activeLoopInterval = null;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('aluna:sound-loop-changed', { detail: { active: false } }));
+    }
   }
 };
 
@@ -253,6 +261,7 @@ const soundService = {
   playCashRegister: playCashRegisterSound,
   startNewOrderLoop,
   stopNewOrderLoop,
+  isLoopActive,
   isSoundEnabled,
   setSoundEnabled,
   toggleSound

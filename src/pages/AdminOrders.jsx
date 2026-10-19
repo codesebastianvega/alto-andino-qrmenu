@@ -14,6 +14,7 @@ import { Modal } from '../components/admin/ui';
 import { printThermalDocument } from '../utils/thermalPrint';
 import soundService from '../utils/soundService';
 import OrderAdditionModal from '../components/admin/OrderAdditionModal';
+import { NewOrderAlertModal } from '../components/admin/NewOrderAlertModal';
 
 const ORDER_STATUSES = [
   { id: 'new', label: 'Nuevos', color: 'text-blue-600', icon: 'heroicons:star' },
@@ -23,7 +24,7 @@ const ORDER_STATUSES = [
 ];
 
 const playNotificationSound = () => {
-    soundService.playNewOrder();
+    soundService.startNewOrderLoop(3500);
 };
 
 const DailyStats = ({ orders, range, onCancelledClick, onDeliveredClick }) => {
@@ -132,6 +133,19 @@ export default function AdminOrders() {
   const [mobileActiveStatus, setMobileActiveStatus] = useState('new');
   const [searchQuery, setSearchQuery] = useState('');
   const [additionOrder, setAdditionOrder] = useState(null);
+  const [incomingOrdersQueue, setIncomingOrdersQueue] = useState([]);
+  const [incomingOrderIndex, setIncomingOrderIndex] = useState(0);
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+  const [isSoundLoopActive, setIsSoundLoopActive] = useState(false);
+
+  // Escuchar eventos de la alarma continua para actualizar UI reactiva
+  useEffect(() => {
+    const handleLoopChange = (e) => {
+      setIsSoundLoopActive(Boolean(e.detail?.active));
+    };
+    window.addEventListener('aluna:sound-loop-changed', handleLoopChange);
+    return () => window.removeEventListener('aluna:sound-loop-changed', handleLoopChange);
+  }, []);
 
   const { activeBrand, profile } = useAuth();
   const { brand: brandFromContext } = useBrand();
@@ -301,7 +315,44 @@ export default function AdminOrders() {
         if (!isAllLocations && activeLocationId && payload.new.location_id && payload.new.location_id !== activeLocationId) return;
 
         setOrders(prev => [payload.new, ...prev]);
-        playNotificationSound();
+
+        // Si es un pedido nuevo, activar alarma continua e invocar pop-up de atención inmediata
+        if (payload.new.status === 'new') {
+          soundService.startNewOrderLoop(3500);
+          setIsSoundLoopActive(true);
+
+          setTimeout(async () => {
+            try {
+              const { data: fullOrder } = await supabase
+                .from('orders')
+                .select(`
+                  *,
+                  locations ( name ),
+                  restaurant_tables ( id, table_number ),
+                  order_items (
+                    id, quantity, unit_price, modifiers, notes, is_paid,
+                    products ( id, name, category_id )
+                  ),
+                  order_payments (*)
+                `)
+                .eq('id', payload.new.id)
+                .single();
+
+              if (fullOrder) {
+                setIncomingOrdersQueue(prev => {
+                  const exists = prev.some(o => o.id === fullOrder.id);
+                  return exists ? prev : [...prev, fullOrder];
+                });
+                setIsAlertModalOpen(true);
+              }
+            } catch (err) {
+              console.error('Error cargando detalles del nuevo pedido:', err);
+            }
+          }, 450);
+        } else {
+          soundService.playNewOrder();
+        }
+
         toast('Nuevo pedido recibido!', { icon: '🔔' });
         fetchOrders(); // Full fetch to get associations
       })
@@ -391,6 +442,71 @@ export default function AdminOrders() {
     } finally {
       setUpdatingStatus(null);
     }
+  };
+
+  // Manejadores para el Modal de Alerta de Nuevo Pedido Entrante
+  const handleAcceptIncomingOrder = async (orderId) => {
+    soundService.stopNewOrderLoop();
+    setIsSoundLoopActive(false);
+
+    await updateOrderStatus(orderId, 'preparing');
+
+    // Imprimir ticket de comanda automáticamente si la configuración lo tiene habilitado
+    if (restaurantSettings?.auto_print_orders) {
+      try {
+        const orderToPrint = orders.find(o => o.id === orderId) || incomingOrdersQueue.find(o => o.id === orderId);
+        if (orderToPrint) {
+          printThermalDocument({
+            type: 'comanda',
+            order: orderToPrint,
+            brand: activeBrand,
+            settings: restaurantSettings
+          });
+        }
+      } catch (printErr) {
+        console.warn('Auto print failed:', printErr);
+      }
+    }
+
+    setIncomingOrdersQueue(prev => {
+      const remaining = prev.filter(o => o.id !== orderId);
+      if (remaining.length === 0) {
+        setIsAlertModalOpen(false);
+        setIncomingOrderIndex(0);
+      } else if (incomingOrderIndex >= remaining.length) {
+        setIncomingOrderIndex(remaining.length - 1);
+      }
+      return remaining;
+    });
+
+    toast('¡Pedido aceptado y enviado a cocina! 🍳', { icon: '✅' });
+  };
+
+  const handleReviewIncomingOrder = (order) => {
+    soundService.stopNewOrderLoop();
+    setIsSoundLoopActive(false);
+    setIsAlertModalOpen(false);
+    setSelectedOrder(order);
+  };
+
+  const handleCancelIncomingOrder = async (orderId, reason) => {
+    soundService.stopNewOrderLoop();
+    setIsSoundLoopActive(false);
+    await updateOrderStatus(orderId, 'cancelled', {
+      cancelled_by: 'restaurant',
+      cancellation_reason: reason
+    });
+    setIncomingOrdersQueue(prev => {
+      const remaining = prev.filter(o => o.id !== orderId);
+      if (remaining.length === 0) {
+        setIsAlertModalOpen(false);
+        setIncomingOrderIndex(0);
+      } else if (incomingOrderIndex >= remaining.length) {
+        setIncomingOrderIndex(remaining.length - 1);
+      }
+      return remaining;
+    });
+    toast('Pedido cancelado', { icon: '❌' });
   };
 
   const applyDiscount = async (orderId, percentage) => {
@@ -562,27 +678,51 @@ export default function AdminOrders() {
   };
 
   const shareToWhatsApp = (order, type) => {
-    const phone = order.customer_phone?.replace(/\D/g, '');
-    if (!phone) {
+    const rawPhone = order.customer_phone?.replace(/\D/g, '');
+    if (!rawPhone) {
         toast.error('No hay teléfono registrado');
         return;
     }
+    const phone = rawPhone.startsWith('57') ? rawPhone : `57${rawPhone}`;
+    const orderNum = `#${order.id.slice(0,4).toUpperCase()}`;
+    const brand = activeBrand?.name || 'Boku Bento';
+    const trackingUrl = typeof window !== 'undefined' ? `${window.location.origin}/#order-status?orderId=${order.id}` : '';
 
     let message = '';
     if (type === 'summary') {
-      message = `*Resumen de tu pedido #${order.id.slice(0,4)}*\n\n`;
-      order.order_items.forEach(item => {
-          message += `${item.quantity}x ${item.products.name} - $${(item.quantity * item.unit_price).toLocaleString()}\n`;
+      message = `*Resumen de tu pedido ${orderNum} en ${brand}*\n\n`;
+      (order.order_items || []).forEach(item => {
+          message += `${item.quantity}x ${item.products?.name || item.name} - $${(item.quantity * item.unit_price).toLocaleString()}\n`;
       });
       if (order.service_fee > 0) {
         message += `\n*Servicio: $${order.service_fee.toLocaleString()}*`;
       }
-      message += `\n*Total: $${order.total_amount.toLocaleString()}*`;
+      message += `\n*Total: $${Number(order.total_amount || 0).toLocaleString()}*`;
+      if (trackingUrl) {
+        message += `\n\nSeguimiento en vivo:\n${trackingUrl}`;
+      }
+    } else if (type === 'status') {
+      let statusText = '';
+      if (order.status === 'preparing') {
+        statusText = `🍳 *¡Tu pedido ya está en preparación en cocina!* Estamos alistando tus platos con los ingredientes más frescos.`;
+      } else if (order.status === 'on_table') {
+        statusText = order.fulfillment_type === 'delivery'
+          ? `🛵 *¡Tu pedido ya va en camino hacia tu dirección!* El repartidor va hacia ti.`
+          : `🍽️ *¡Tu pedido va camino a tu mesa!*`;
+      } else if (order.status === 'ready') {
+        statusText = `🎉 *¡Tu pedido ya está listo!* ${order.fulfillment_type === 'takeaway' ? 'Ya puedes pasar a recogerlo al mostrador.' : 'En instantes te lo entregamos.'}`;
+      } else if (order.status === 'delivered') {
+        statusText = `✅ *¡Tu pedido ha sido entregado con éxito!* ¡Esperamos que lo disfrutes mucho!`;
+      } else {
+        statusText = `Confirmamos que recibimos tu pedido con éxito.`;
+      }
+
+      message = `¡Hola ${order.customer_name || ''}! 👋 Te saludamos de *${brand}*.\n\n${statusText}\n\nPuedes consultar el seguimiento en tiempo real aquí:\n${trackingUrl}`;
     } else {
-      message = `¡Hola ${order.customer_name}! 👋\n\nTu pedido #${order.id.slice(0,4)} está listo. 🍽️\n\n${order.fulfillment_type === 'takeaway' ? 'Puedes pasar por él.' : 'Te lo llevaremos en un momento.'}`;
+      message = `¡Hola ${order.customer_name || ''}! 👋\n\nTu pedido ${orderNum} de ${brand} está listo. 🍽️\n\n${order.fulfillment_type === 'takeaway' ? 'Ya puedes pasar por él.' : 'Te lo llevaremos en un momento.'}\n\nSeguimiento en vivo:\n${trackingUrl}`;
     }
 
-    const url = `https://wa.me/57${phone}?text=${encodeURIComponent(message)}`;
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
   
@@ -677,7 +817,36 @@ export default function AdminOrders() {
             )}
           </div>
 
-          <div className="flex items-center gap-2.5 justify-end shrink-0">
+          <div className="flex items-center gap-2.5 justify-end shrink-0 flex-wrap">
+            {/* Botón Silenciar Alarma Continua si está sonando */}
+            {isSoundLoopActive && (
+              <button
+                type="button"
+                onClick={() => {
+                  soundService.stopNewOrderLoop();
+                  setIsSoundLoopActive(false);
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-yellow-400 hover:bg-yellow-500 text-slate-900 rounded-2xl text-xs font-black shadow-md animate-pulse border border-yellow-500 transition-all shrink-0 cursor-pointer"
+                title="Silenciar sonido de la alarma continua"
+              >
+                <Icon icon="heroicons:speaker-wave" className="text-base animate-bounce" />
+                <span className="hidden sm:inline">Silenciar Alarma</span>
+              </button>
+            )}
+
+            {/* Botón Acceso Rápido a Pedidos Nuevos Pendientes */}
+            {incomingOrdersQueue.length > 0 && !isAlertModalOpen && (
+              <button
+                type="button"
+                onClick={() => setIsAlertModalOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-2xl text-xs font-black shadow-md animate-bounce border border-red-700 transition-all shrink-0 cursor-pointer"
+                title="Abrir ventana para revisar y aceptar pedidos entrantes"
+              >
+                <Icon icon="heroicons:bell-alert" className="text-base" />
+                <span>{incomingOrdersQueue.length} Nuevo{incomingOrdersQueue.length > 1 ? 's' : ''} por atender</span>
+              </button>
+            )}
+
             {searchQuery && (
               <span className="text-[11px] font-bold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-xl border border-gray-200">
                 {filteredOrders.length} resultado{filteredOrders.length !== 1 ? 's' : ''}
@@ -1312,34 +1481,47 @@ export default function AdminOrders() {
                     </div>
 
                     {selectedOrder.customer_phone && (
-                      <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-50">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 border border-slate-200">
-                            <Icon icon="heroicons:phone" className="text-lg" />
+                      <div className="pt-2 border-t border-slate-50 space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 border border-slate-200">
+                              <Icon icon="heroicons:phone" className="text-lg" />
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">Celular</p>
+                              <p className="font-bold text-gray-900 text-sm leading-none">{selectedOrder.customer_phone}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">Celular</p>
-                            <p className="font-bold text-gray-900 text-sm leading-none">{selectedOrder.customer_phone}</p>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <a 
+                              href={`https://wa.me/${(selectedOrder.customer_phone.replace(/\D/g, '').startsWith('57') ? selectedOrder.customer_phone.replace(/\D/g, '') : `57${selectedOrder.customer_phone.replace(/\D/g, '')}`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors border border-emerald-200"
+                              title="Chat por WhatsApp"
+                            >
+                              <Icon icon="logos:whatsapp-icon" className="text-base" />
+                            </a>
+                            <a 
+                              href={`tel:${selectedOrder.customer_phone.replace(/\D/g, '')}`}
+                              className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200"
+                              title="Llamar directamente"
+                            >
+                              <Icon icon="heroicons:phone" className="text-base" />
+                            </a>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <a 
-                            href={`https://wa.me/${(selectedOrder.customer_phone.replace(/\D/g, '').startsWith('57') ? selectedOrder.customer_phone.replace(/\D/g, '') : `57${selectedOrder.customer_phone.replace(/\D/g, '')}`)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors border border-emerald-200"
-                            title="Chat por WhatsApp"
-                          >
-                            <Icon icon="logos:whatsapp-icon" className="text-base" />
-                          </a>
-                          <a 
-                            href={`tel:${selectedOrder.customer_phone.replace(/\D/g, '')}`}
-                            className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200"
-                            title="Llamar directamente"
-                          >
-                            <Icon icon="heroicons:phone" className="text-base" />
-                          </a>
-                        </div>
+
+                        {/* Botón Rápido de Notificación al Cliente por WhatsApp */}
+                        <button
+                          type="button"
+                          onClick={() => shareToWhatsApp(selectedOrder, 'status')}
+                          className="w-full py-2 px-3 rounded-xl bg-[#25D366]/15 hover:bg-[#25D366]/25 text-emerald-800 border border-emerald-300/80 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                          title="Notificar actualización de estado al cliente por WhatsApp"
+                        >
+                          <Icon icon="logos:whatsapp-icon" className="text-sm" />
+                          <span>📲 Avisar Estado Actual por WhatsApp</span>
+                        </button>
                       </div>
                     )}
                   </div>
@@ -1708,6 +1890,23 @@ export default function AdminOrders() {
             fetchOrders();
           }}
           brandId={activeBrandId}
+          restaurantSettings={restaurantSettings}
+        />
+      )}
+
+      {/* Modal de Alerta de Nuevo Pedido Entrante (Loop de Sonido + Atención Inmediata) */}
+      {isAlertModalOpen && incomingOrdersQueue.length > 0 && (
+        <NewOrderAlertModal
+          isOpen={isAlertModalOpen}
+          order={incomingOrdersQueue[incomingOrderIndex] || incomingOrdersQueue[0]}
+          onClose={() => setIsAlertModalOpen(false)}
+          onAcceptAndSendToKitchen={handleAcceptIncomingOrder}
+          onReviewDetail={handleReviewIncomingOrder}
+          onCancelOrder={handleCancelIncomingOrder}
+          queueCount={incomingOrdersQueue.length}
+          currentIndex={incomingOrderIndex}
+          onNextOrder={() => setIncomingOrderIndex(prev => Math.min(incomingOrdersQueue.length - 1, prev + 1))}
+          onPrevOrder={() => setIncomingOrderIndex(prev => Math.max(0, prev - 1))}
           restaurantSettings={restaurantSettings}
         />
       )}
