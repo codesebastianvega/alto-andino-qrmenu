@@ -652,11 +652,11 @@ export default function AdminProducts() {
               <Th>Costo</Th>
               <Th>Margen</Th>
               <Th>Stock</Th>
+              <Th>Estado</Th>
               <Th>Atributos</Th>
               <Th>Receta</Th>
               {locationFilter !== 'all' && <Th>Menú Público</Th>}
               <Th>Actualizado</Th>
-              <Th>Estado</Th>
               <Th right>Acciones</Th>
             </tr>
           </thead>
@@ -787,6 +787,15 @@ export default function AdminProducts() {
                     </button>
                   </td>
 
+                  {/* Estado */}
+                  <td className="px-5 py-3.5 whitespace-nowrap">
+                    <button onClick={() => toggleActive(product.id, product.is_active)}>
+                      <Badge variant={product.is_active ? 'green' : 'red'}>
+                        {product.is_active ? 'Activo' : 'Oculto'}
+                      </Badge>
+                    </button>
+                  </td>
+
                   {/* Atributos */}
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-1.5">
@@ -850,15 +859,6 @@ export default function AdminProducts() {
                     <span className="text-[11px] text-gray-500 font-medium">
                       {product.updated_at ? new Date(product.updated_at).toLocaleDateString() : '—'}
                     </span>
-                  </td>
-
-                  {/* Estado */}
-                  <td className="px-5 py-3.5 whitespace-nowrap">
-                    <button onClick={() => toggleActive(product.id, product.is_active)}>
-                      <Badge variant={product.is_active ? 'green' : 'red'}>
-                        {product.is_active ? 'Activo' : 'Oculto'}
-                      </Badge>
-                    </button>
                   </td>
 
                   <td className="px-5 py-3.5 min-w-[120px]">
