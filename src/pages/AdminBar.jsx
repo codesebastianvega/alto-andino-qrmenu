@@ -8,6 +8,7 @@ import { useLocations } from '../context/LocationContext';
 import { useRestaurantSettings } from '../hooks/useRestaurantSettings';
 import { printThermalDocument } from '../utils/thermalPrint';
 import soundService from '../utils/soundService';
+import { NewOrderAlertModal } from '../components/admin/NewOrderAlertModal';
 
 const playBarNotificationSound = () => {
   soundService.playNewOrder();
@@ -107,6 +108,43 @@ export default function AdminBar() {
   const { brand: brandFromContext } = useBrand();
   const { activeLocationId, isAllLocations } = useLocations();
   const activeBrandId = activeBrand?.id || brandFromContext?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
+
+  const [isSoundLoopActive, setIsSoundLoopActive] = useState(false);
+  const [incomingOrdersQueue, setIncomingOrdersQueue] = useState([]);
+  const [incomingOrderIndex, setIncomingOrderIndex] = useState(0);
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleLoopChange = (e) => {
+      setIsSoundLoopActive(Boolean(e.detail?.active));
+    };
+    window.addEventListener('aluna:sound-loop-changed', handleLoopChange);
+    return () => window.removeEventListener('aluna:sound-loop-changed', handleLoopChange);
+  }, []);
+
+  const handleAcceptIncomingOrder = async (orderId) => {
+    soundService.stopNewOrderLoop();
+    setIsSoundLoopActive(false);
+
+    await markAsPreparing(orderId);
+
+    setIncomingOrdersQueue(prev => {
+      const remaining = prev.filter(o => o.id !== orderId);
+      if (remaining.length === 0) {
+        setIsAlertModalOpen(false);
+        setIncomingOrderIndex(0);
+      } else if (incomingOrderIndex >= remaining.length) {
+        setIncomingOrderIndex(remaining.length - 1);
+      }
+      return remaining;
+    });
+  };
+
+  const handleReviewIncomingOrder = (order) => {
+    soundService.stopNewOrderLoop();
+    setIsSoundLoopActive(false);
+    setIsAlertModalOpen(false);
+  };
 
   const toggleTheme = () => {
     setIsDark(prev => {
@@ -290,13 +328,50 @@ export default function AdminBar() {
         table: 'orders',
         filter: `brand_id=eq.${activeBrandId}`
       }, (payload) => {
-        const isTargetLocation = isAllLocations || (payload.new && payload.new.location_id === activeLocationId);
+        const isTargetLocation = isAllLocations || !activeLocationId || !payload.new?.location_id || (payload.new && payload.new.location_id === activeLocationId);
         if (!isTargetLocation) return;
 
         if (payload.eventType === 'INSERT') {
+          // Si el pedido no requiere barra (ej. no tiene bebidas), ignorar en BDS
+          if (payload.new.bar_status === 'none') return;
+
           if (['new', 'preparing'].includes(payload.new.status) && payload.new.bar_status !== 'ready') {
-            playBarNotificationSound();
+            soundService.startNewOrderLoop(3500);
+            setIsSoundLoopActive(true);
             toast('¡Nueva comanda en barra!', { icon: '🍸' });
+
+            setTimeout(async () => {
+              try {
+                const { data: fullOrder } = await supabase
+                  .from('orders')
+                  .select(`
+                    *,
+                    locations ( name ),
+                    restaurant_tables ( id, table_number ),
+                    order_items (
+                      id, quantity, unit_price, modifiers, notes, is_paid,
+                      products ( id, name, category_id, station, requires_kitchen )
+                    ),
+                    order_payments (*)
+                  `)
+                  .eq('id', payload.new.id)
+                  .single();
+
+                if (fullOrder) {
+                  const hasBar = (fullOrder.order_items || []).some(it => isBarItem(it));
+                  if (hasBar || fullOrder.bar_status !== 'none') {
+                    setIncomingOrdersQueue(prev => {
+                      const exists = prev.some(o => o.id === fullOrder.id);
+                      return exists ? prev : [...prev, fullOrder];
+                    });
+                    setIsAlertModalOpen(true);
+                  }
+                }
+              } catch (err) {
+                console.error('Error cargando detalles comanda barra:', err);
+              }
+            }, 450);
+
             setTimeout(() => fetchBarOrders(true), 1000);
           }
         } else if (payload.eventType === 'UPDATE') {
@@ -306,7 +381,7 @@ export default function AdminBar() {
             toast('🍳 ¡Cocina ya tiene listos los platos!', { icon: '🍳' });
           }
 
-          if (!['new', 'preparing'].includes(payload.new.status) || payload.new.bar_status === 'ready') {
+          if (!['new', 'preparing'].includes(payload.new.status) || payload.new.bar_status === 'ready' || payload.new.bar_status === 'none') {
             setOrders(prev => prev.filter(o => o.id !== payload.new.id));
           } else {
             setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o));
@@ -606,6 +681,19 @@ export default function AdminBar() {
 
         {/* Right: View Modes & Quick Tools */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Botón Silenciar Alarma si está sonando */}
+          {isSoundLoopActive && (
+            <button
+              type="button"
+              onClick={() => soundService.stopNewOrderLoop()}
+              className="px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-slate-900 rounded-lg text-xs font-black shadow-md animate-pulse border border-yellow-500 flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Silenciar sonido de la alarma continua"
+            >
+              <Icon icon="heroicons:speaker-wave" className="text-base animate-bounce" />
+              <span>Silenciar Alarma</span>
+            </button>
+          )}
+
           {/* Filtros de Estado */}
           <div className={`flex rounded-lg p-0.5 border ${
             isDark ? 'bg-gray-900 border-gray-800' : 'bg-slate-200/70 border-slate-300/60'
@@ -743,6 +831,26 @@ export default function AdminBar() {
             {displayedOrders.map(order => renderOrderTicket(order))}
           </div>
         )
+      )}
+
+      {/* ── Modal de Alerta de Nuevo Pedido Entrante en Barra */}
+      {isAlertModalOpen && incomingOrdersQueue.length > 0 && (
+        <NewOrderAlertModal
+          isOpen={isAlertModalOpen}
+          order={incomingOrdersQueue[incomingOrderIndex] || incomingOrdersQueue[0]}
+          onClose={() => {
+            soundService.stopNewOrderLoop();
+            setIsSoundLoopActive(false);
+            setIsAlertModalOpen(false);
+          }}
+          onAcceptAndSendToKitchen={handleAcceptIncomingOrder}
+          onReviewDetail={handleReviewIncomingOrder}
+          queueCount={incomingOrdersQueue.length}
+          currentIndex={incomingOrderIndex}
+          onNextOrder={() => setIncomingOrderIndex(prev => Math.min(incomingOrdersQueue.length - 1, prev + 1))}
+          onPrevOrder={() => setIncomingOrderIndex(prev => Math.max(0, prev - 1))}
+          restaurantSettings={restaurantSettings}
+        />
       )}
     </div>
   );

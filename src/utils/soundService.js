@@ -31,47 +31,51 @@ const getAudioContext = () => {
     }
   }
   if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume();
+    audioCtx.resume().catch(() => {});
   }
   return audioCtx;
 };
 
 /**
- * Desbloquea el AudioContext en la primera interacción del usuario (click, touch, keydown)
+ * Desbloquea el AudioContext en cualquier interacción del usuario o reactivación
  */
 export const unlockAudio = () => {
-  if (audioUnlocked) return;
   try {
     const ctx = getAudioContext();
     if (ctx) {
-      // Crear un buffer silencioso instantáneo para activar el audio en iOS/Safari/Chrome
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(() => {
+          audioUnlocked = true;
+        }).catch(() => {});
+      } else {
+        audioUnlocked = true;
+      }
+
+      // Crear un buffer instantáneo para forzar salida de audio en iOS/Safari/Chrome
       const buffer = ctx.createBuffer(1, 1, 22050);
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       source.connect(ctx.destination);
       source.start(0);
-
-      if (ctx.state === 'running') {
-        audioUnlocked = true;
-      } else {
-        ctx.resume().then(() => {
-          audioUnlocked = true;
-        });
-      }
     }
   } catch (e) {
     console.error('Audio unlock failed:', e);
   }
 };
 
-// Listener global para desbloquear audio automáticamente
+// Listener global continuo para desbloquear audio en interacciones y al despertar pantalla
 if (typeof window !== 'undefined') {
   const unlockEvents = ['pointerdown', 'click', 'keydown', 'touchstart'];
-  const handleFirstInteraction = () => {
+  const handleInteraction = () => {
     unlockAudio();
-    unlockEvents.forEach(evt => window.removeEventListener(evt, handleFirstInteraction));
   };
-  unlockEvents.forEach(evt => window.addEventListener(evt, handleFirstInteraction, { once: true }));
+  unlockEvents.forEach(evt => window.addEventListener(evt, handleInteraction, { passive: true }));
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      unlockAudio();
+    }
+  });
 }
 
 /**

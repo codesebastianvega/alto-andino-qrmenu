@@ -11,6 +11,7 @@ import soundService from '../utils/soundService';
 import { KitchenRecipeViewerModal } from '../components/admin/KitchenRecipeViewerModal';
 import { MiseEnPlace86Drawer } from '../components/admin/MiseEnPlace86Drawer';
 import { useAdminRecipes } from '../hooks/useAdminRecipes';
+import { NewOrderAlertModal } from '../components/admin/NewOrderAlertModal';
 
 const playNotificationSound = () => {
   soundService.startNewOrderLoop(3500);
@@ -114,6 +115,9 @@ export default function AdminKitchen() {
   const [selectedRecipeForViewer, setSelectedRecipeForViewer] = useState(null);
   const [is86DrawerOpen, setIs86DrawerOpen] = useState(false);
   const [isSoundLoopActive, setIsSoundLoopActive] = useState(false);
+  const [incomingOrdersQueue, setIncomingOrdersQueue] = useState([]);
+  const [incomingOrderIndex, setIncomingOrderIndex] = useState(0);
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
 
   useEffect(() => {
     const handleLoopChange = (e) => {
@@ -122,6 +126,30 @@ export default function AdminKitchen() {
     window.addEventListener('aluna:sound-loop-changed', handleLoopChange);
     return () => window.removeEventListener('aluna:sound-loop-changed', handleLoopChange);
   }, []);
+
+  const handleAcceptIncomingOrder = async (orderId) => {
+    soundService.stopNewOrderLoop();
+    setIsSoundLoopActive(false);
+
+    await markAsPreparing(orderId);
+
+    setIncomingOrdersQueue(prev => {
+      const remaining = prev.filter(o => o.id !== orderId);
+      if (remaining.length === 0) {
+        setIsAlertModalOpen(false);
+        setIncomingOrderIndex(0);
+      } else if (incomingOrderIndex >= remaining.length) {
+        setIncomingOrderIndex(remaining.length - 1);
+      }
+      return remaining;
+    });
+  };
+
+  const handleReviewIncomingOrder = (order) => {
+    soundService.stopNewOrderLoop();
+    setIsSoundLoopActive(false);
+    setIsAlertModalOpen(false);
+  };
 
   const handleOpenDishRecipe = (item) => {
     const prodName = item.products?.name?.toLowerCase() || '';
@@ -322,13 +350,50 @@ export default function AdminKitchen() {
         table: 'orders',
         filter: `brand_id=eq.${activeBrandId}`
       }, (payload) => {
-        const isTargetLocation = isAllLocations || (payload.new && payload.new.location_id === activeLocationId);
+        const isTargetLocation = isAllLocations || !activeLocationId || !payload.new?.location_id || (payload.new && payload.new.location_id === activeLocationId);
         if (!isTargetLocation) return;
 
         if (payload.eventType === 'INSERT') {
+          // Si el pedido no requiere cocina (ej. pedido exclusivo de barra), ignorar en KDS
+          if (payload.new.kitchen_status === 'none') return;
+
           if (['new', 'preparing'].includes(payload.new.status) && payload.new.kitchen_status !== 'ready') {
-            playNotificationSound();
+            soundService.startNewOrderLoop(3500);
+            setIsSoundLoopActive(true);
             toast('¡Nueva comanda en cocina!', { icon: '🍳' });
+
+            setTimeout(async () => {
+              try {
+                const { data: fullOrder } = await supabase
+                  .from('orders')
+                  .select(`
+                    *,
+                    locations ( name ),
+                    restaurant_tables ( id, table_number ),
+                    order_items (
+                      id, quantity, unit_price, modifiers, notes, is_paid,
+                      products ( id, name, category_id, station, requires_kitchen )
+                    ),
+                    order_payments (*)
+                  `)
+                  .eq('id', payload.new.id)
+                  .single();
+
+                if (fullOrder) {
+                  const hasKitchen = (fullOrder.order_items || []).some(it => isKitchenItem(it));
+                  if (hasKitchen || fullOrder.kitchen_status !== 'none') {
+                    setIncomingOrdersQueue(prev => {
+                      const exists = prev.some(o => o.id === fullOrder.id);
+                      return exists ? prev : [...prev, fullOrder];
+                    });
+                    setIsAlertModalOpen(true);
+                  }
+                }
+              } catch (err) {
+                console.error('Error cargando detalles comanda cocina:', err);
+              }
+            }, 450);
+
             setTimeout(() => fetchKitchenOrders(true), 1000);
           }
         } else if (payload.eventType === 'UPDATE') {
@@ -338,7 +403,7 @@ export default function AdminKitchen() {
             toast('🍸 ¡Bebidas listas para la comanda!', { icon: '🍸' });
           }
 
-          if (!['new', 'preparing'].includes(payload.new.status) || payload.new.kitchen_status === 'ready') {
+          if (!['new', 'preparing'].includes(payload.new.status) || payload.new.kitchen_status === 'ready' || payload.new.kitchen_status === 'none') {
             setOrders(prev => prev.filter(o => o.id !== payload.new.id));
           } else {
             setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o));
@@ -840,6 +905,26 @@ export default function AdminKitchen() {
         activeBrandId={activeBrandId}
         activeLocationId={activeLocationId}
       />
+
+      {/* ── Modal de Alerta de Nuevo Pedido Entrante en Cocina */}
+      {isAlertModalOpen && incomingOrdersQueue.length > 0 && (
+        <NewOrderAlertModal
+          isOpen={isAlertModalOpen}
+          order={incomingOrdersQueue[incomingOrderIndex] || incomingOrdersQueue[0]}
+          onClose={() => {
+            soundService.stopNewOrderLoop();
+            setIsSoundLoopActive(false);
+            setIsAlertModalOpen(false);
+          }}
+          onAcceptAndSendToKitchen={handleAcceptIncomingOrder}
+          onReviewDetail={handleReviewIncomingOrder}
+          queueCount={incomingOrdersQueue.length}
+          currentIndex={incomingOrderIndex}
+          onNextOrder={() => setIncomingOrderIndex(prev => Math.min(incomingOrdersQueue.length - 1, prev + 1))}
+          onPrevOrder={() => setIncomingOrderIndex(prev => Math.max(0, prev - 1))}
+          restaurantSettings={restaurantSettings}
+        />
+      )}
     </div>
   );
 }

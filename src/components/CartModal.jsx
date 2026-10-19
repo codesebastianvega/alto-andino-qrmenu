@@ -608,7 +608,7 @@ export default function CartModal({ open, onClose }) {
 
       const mesa = getTable();
       let tableId = null;
-      let orderLocationId = getLocationId(activeBrandId);
+      let orderLocationId = getLocationId(activeBrandId) || currentLocation?.id || locations?.find(l => l.is_main)?.id || locations?.[0]?.id || null;
 
       // Prioritize direct table ID from sessionStorage (set by AdminWaiter)
       const sessionTableId = sessionStorage.getItem("aa_current_table_id");
@@ -631,14 +631,31 @@ export default function CartModal({ open, onClose }) {
         }
       }
 
-      console.log("🔍 [Order Flow] tableId:", tableId, "activeBrandId:", activeBrandId, "locationId:", orderLocationId, "fulfillmentType:", fulfillmentType);
+      // Precalcular qué estaciones participan en este pedido (Cocina vs Barra)
+      let hasBarItemsInOrder = false;
+      let hasKitchenItemsInOrder = false;
+      for (const it of items) {
+        const dbProd = allDBProducts.find(p => p.id === (it.productId || it.id));
+        const st = (dbProd?.station || '').toLowerCase();
+        const isBar = st === 'bar' || (st !== 'kitchen' && st !== 'none' && /bebida|soda|cafe|café|jugo|cerveza|agua|hatsu|gaseosa|té|refajo|cold brew|chai|milo/i.test(dbProd?.name || it.name || ''));
+        if (isBar) {
+          hasBarItemsInOrder = true;
+        } else if (st !== 'none' && (dbProd?.requires_kitchen ?? true)) {
+          hasKitchenItemsInOrder = true;
+        }
+      }
+
+      const initialKitchenStatus = hasKitchenItemsInOrder ? 'pending' : 'none';
+      const initialBarStatus = hasBarItemsInOrder ? 'pending' : 'none';
+
+      console.log("🔍 [Order Flow] tableId:", tableId, "activeBrandId:", activeBrandId, "locationId:", orderLocationId, "fulfillmentType:", fulfillmentType, "stations:", { hasKitchenItemsInOrder, hasBarItemsInOrder });
 
       // 2. Insert or Update Order
       const finalTotal = fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount;
 
       // Status logic: Dine-in and Takeaway go straight to kitchen ('new').
       // Delivery orders with payment method selected are immediately sent to kitchen ('new') with pending payment status.
-      let orderStatus = 'new';
+      let orderStatus = (!hasKitchenItemsInOrder && !hasBarItemsInOrder && fulfillmentType === 'dine_in') ? 'ready' : 'new';
 
       let orderData = null;
 
@@ -702,8 +719,8 @@ export default function CartModal({ open, onClose }) {
             total_amount: Number(existingOrder.total_amount) + Number(finalTotal),
             service_fee: Number(existingOrder.service_fee || 0) + Number(serviceFeeAmount),
             status: 'new',
-            kitchen_status: 'pending',
-            bar_status: 'pending',
+            kitchen_status: hasKitchenItemsInOrder ? 'pending' : existingOrder.kitchen_status,
+            bar_status: hasBarItemsInOrder ? 'pending' : existingOrder.bar_status,
             payment_status: isPOSMode && isPaid ? 'paid' : existingOrder.payment_status,
             payment_method: isPOSMode ? (isPaid ? paymentMethod : existingOrder.payment_method) : paymentMethodSummary
           };
@@ -725,6 +742,8 @@ export default function CartModal({ open, onClose }) {
         const { data: newOrder, error: orderError } = await supabase.from('orders')
           .insert([{
             status: orderStatus,
+            kitchen_status: initialKitchenStatus,
+            bar_status: initialBarStatus,
             origin: fulfillmentType === 'dine_in' ? 'table' : 'takeaway',
             fulfillment_type: fulfillmentType,
             table_id: tableId,
@@ -824,34 +843,6 @@ export default function CartModal({ open, onClose }) {
         .insert(orderItemsToInsert);
 
       if (itemsError) throw itemsError;
-      
-      // Determinar qué estaciones participan en este pedido (Cocina vs Barra)
-      let hasBarItemsInOrder = false;
-      let hasKitchenItemsInOrder = false;
-      for (const it of items) {
-        const dbProd = allDBProducts.find(p => p.id === (it.productId || it.id));
-        const st = (dbProd?.station || '').toLowerCase();
-        const isBar = st === 'bar' || (st !== 'kitchen' && st !== 'none' && /bebida|soda|cafe|café|jugo|cerveza|agua|hatsu|gaseosa|té|refajo|cold brew|chai|milo/i.test(dbProd?.name || it.name || ''));
-        if (isBar) {
-          hasBarItemsInOrder = true;
-        } else if (st !== 'none' && (dbProd?.requires_kitchen ?? true)) {
-          hasKitchenItemsInOrder = true;
-        }
-      }
-
-      const stationInitUpdates = {};
-      if (!hasBarItemsInOrder && orderData.bar_status === 'pending') {
-        stationInitUpdates.bar_status = 'none';
-      }
-      if (!hasKitchenItemsInOrder && orderData.kitchen_status === 'pending') {
-        stationInitUpdates.kitchen_status = 'none';
-      }
-      if (!hasKitchenItemsInOrder && !hasBarItemsInOrder && fulfillmentType === 'dine_in') {
-        stationInitUpdates.status = 'ready';
-      }
-      if (Object.keys(stationInitUpdates).length > 0) {
-        await supabase.from('orders').update(stationInitUpdates).eq('id', orderData.id);
-      }
 
       // 4. Handle Success
       const snapshot = { items, note, total, orderId: orderData.id };
@@ -1045,10 +1036,12 @@ export default function CartModal({ open, onClose }) {
               <span className="text-sm font-semibold text-neutral-700">{formatCOP(packagingFeeTotal)}</span>
             </div>
           )}
-          {fulfillmentType === 'delivery' && deliveryFee > 0 && (
+          {fulfillmentType === 'delivery' && (
             <div className="flex justify-between items-center mb-1 animate-in fade-in slide-in-from-right-2">
               <span className="text-sm text-neutral-500 font-medium">Costo de Domicilio</span>
-              <span className="text-sm font-semibold text-emerald-700">{formatCOP(deliveryFee)}</span>
+              <span className={`text-sm font-semibold ${deliveryFee > 0 ? 'text-emerald-700' : 'text-emerald-600 font-black'}`}>
+                {deliveryFee > 0 ? formatCOP(deliveryFee) : '¡GRATIS! 🎉 (Apertura)'}
+              </span>
             </div>
           )}
           {isTipEnabled && (
