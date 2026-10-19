@@ -19,6 +19,7 @@ import AdminKitchen from '../../pages/AdminKitchen';
 import AdminBar from '../../pages/AdminBar';
 import AdminDashboard from '../../pages/AdminDashboard';
 import AdminAnalytics from '../../pages/AdminAnalytics';
+import AdminPromotions from '../../pages/AdminPromotions';
 import AdminWaiter from '../../pages/AdminWaiter';
 import AdminStaff from '../../pages/AdminStaff';
 import AdminSedes from '../../pages/AdminSedes';
@@ -176,12 +177,19 @@ const Icons = {
       <path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="18" cy="6" r="3" fill="currentColor" opacity="0.3"/>
     </svg>
   ),
+  Promotions: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.5 12 12 21.5 2.5 12l9.5-9.5h9.5v9.5z"/>
+      <circle cx="16.5" cy="7.5" r="1.5" fill="currentColor"/>
+    </svg>
+  ),
 };
 
 const ADMIN_ROLES = ['admin', 'owner', 'superadmin', 'encargado'];
 
 const ESTRATEGIA_ITEMS = [
-  { id: 'analytics', label: 'Inteligencia', Icon: Icons.Strategy, roles: ADMIN_ROLES, feature: 'advanced_analytics' }
+  { id: 'analytics', label: 'Inteligencia', Icon: Icons.Strategy, roles: ADMIN_ROLES, feature: 'advanced_analytics' },
+  { id: 'promotions', label: 'Campañas & Descuentos', Icon: Icons.Promotions, roles: ADMIN_ROLES }
 ];
 
 const OPERACION_ITEMS = [
@@ -1166,6 +1174,7 @@ export default function AdminLayout() {
           { currentPage === 'sedes'       && <AdminSedes /> }
           { currentPage === 'dashboard'   && <AdminDashboard /> }
           { currentPage === 'analytics'   && <AdminAnalytics /> }
+          { currentPage === 'promotions'  && <AdminPromotions /> }
           { currentPage === 'waiter'      && <AdminWaiter /> }
           { currentPage === 'operations'  && <AdminOperations /> }
           { currentPage === 'business_profile' && <AdminBusinessProfile /> }

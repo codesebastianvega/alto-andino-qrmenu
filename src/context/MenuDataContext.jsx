@@ -27,6 +27,7 @@ export const MenuDataProvider = ({ children }) => {
   const [restaurantSettings, setRestaurantSettings] = useState(null);
   const [brand, setBrand] = useState(null);
   const [planFeatures, setPlanFeatures] = useState([]);
+  const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Get brand information from BrandContext (which resolves slug/session)
@@ -72,6 +73,7 @@ export const MenuDataProvider = ({ children }) => {
     setPlanFeatures([]);
     setLocations([]);
     setBusinessHours([]);
+    setPromotions([]);
 
     try {
       const cacheKey = `menu:v3:${brandId}`;
@@ -94,6 +96,7 @@ export const MenuDataProvider = ({ children }) => {
         setBrand(data.brand); setPlanFeatures(data.brand?.plans?.plan_features || []); setBusinessHours(data.businessHours);
         setLocationPrices(data.locationPrices); setLocationStatus(data.locationStatus);
         setLocationCategories(data.locationCategories); setLocationModLinks(data.locationModLinks);
+        setPromotions(data.promotions || []);
         return true;
       }
 
@@ -117,7 +120,8 @@ export const MenuDataProvider = ({ children }) => {
         rSettRes,
         brandRes,
         prodsRes,
-        hoursRes
+        hoursRes,
+        promosRes
       ] = await withTimeout(Promise.all([
         brandFilter(supabase.from('categories').select('*').eq('is_active', true).order('sort_order', { ascending: true })),
         brandFilter(supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(id, group_id, name, price, extra_price, sort_order, created_at, nested_group_id, image_url, emoji, ingredient_id, is_active, stock_status, available_portions, ingredients!left(image_url))')),
@@ -129,7 +133,8 @@ export const MenuDataProvider = ({ children }) => {
         brandFilter(supabase.from('restaurant_settings').select('*')),
         supabase.from('brands').select('*, plans(*, plan_features(*))').eq('id', brandId).single(),
         brandFilter(supabase.from('products').select('*, categories:category_id (slug)').eq('is_active', true).order('sort_order', { ascending: true })),
-        brandFilter(supabase.from('business_hours').select('*').order('day_of_week', { ascending: true }))
+        brandFilter(supabase.from('business_hours').select('*').order('day_of_week', { ascending: true })),
+        brandFilter(supabase.from('promotions').select('*').eq('is_active', true).order('created_at', { ascending: false }))
       ]), 15000, 'La carga inicial del menú');
 
       const criticalError = [brandRes, catsRes, prodsRes].find((result) => result.error)?.error;
@@ -179,6 +184,7 @@ export const MenuDataProvider = ({ children }) => {
       setRestaurantSettings(bestRS);
       setRawProducts(prodsRes.data || []);
       setBusinessHours(hoursRes.data || []);
+      setPromotions(promosRes?.data || []);
 
       // 2. Fetch location-specific overrides (only if locations exist)
       let cachedLocationPrices = [];
@@ -212,6 +218,7 @@ export const MenuDataProvider = ({ children }) => {
         businessHours: hoursRes.data || [], locationPrices: cachedLocationPrices,
         locationStatus: cachedLocationStatus, locationCategories: cachedLocationCategories,
         locationModLinks: cachedLocationModLinks,
+        promotions: promosRes?.data || []
       };
       try {
         await withTimeout(catalogCache.put(cacheKey, cachePayload), 2500, 'La escritura del catálogo local');
@@ -624,6 +631,27 @@ export const MenuDataProvider = ({ children }) => {
     return businessHours.filter(h => h.location_id === activeLocationId);
   }, [businessHours, activeLocationId]);
 
+  const activePromotions = useMemo(() => {
+    if (!promotions || promotions.length === 0) return [];
+    const now = new Date();
+    return promotions.filter(p => {
+      if (!p.is_active) return false;
+      if (p.location_id && currentLocation?.id && p.location_id !== currentLocation.id) return false;
+      if (p.start_date && new Date(p.start_date) > now) return false;
+      if (p.end_date && new Date(p.end_date) < now) return false;
+      if (typeof p.usage_limit === 'number' && p.usage_limit > 0 && (p.usage_count || 0) >= p.usage_limit) return false;
+      return true;
+    });
+  }, [promotions, currentLocation]);
+
+  const freeDeliveryPromo = useMemo(() => {
+    return activePromotions.find(p => p.type === 'free_delivery') || null;
+  }, [activePromotions]);
+
+  const activePromoBanner = useMemo(() => {
+    return activePromotions.find(p => p.show_banner && p.banner_message) || null;
+  }, [activePromotions]);
+
   const value = useMemo(() => ({
     categories,
     allCategories,
@@ -647,13 +675,19 @@ export const MenuDataProvider = ({ children }) => {
     activeBrandId,
     currentLocation,
     currentLocationId: activeLocationId,
+    promotions,
+    activePromotions,
+    freeDeliveryPromo,
+    activePromoBanner,
     refetchMenuData: () => fetchMenuData(activeBrandId, { force: true }),
+    refetchPromotions: () => fetchMenuData(activeBrandId, { force: true }),
     hasFeature: (key) => planFeatures?.find(f => f.feature_key === key)?.is_included ?? false,
   }), [
     categories, allCategories, productsByCategory, getProductsByCategory, getAllProducts, 
     getModifiers, modifiers, rawModifierGroups, experiences, banners, allergens,
     homeSettings, restaurantSettings, brand, businessHours, currentBusinessHours,
     planFeatures, locations, loading, activeBrandId, currentLocation, activeLocationId,
+    promotions, activePromotions, freeDeliveryPromo, activePromoBanner,
     fetchMenuData,
   ]);
 

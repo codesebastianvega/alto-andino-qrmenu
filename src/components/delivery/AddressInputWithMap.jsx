@@ -11,6 +11,7 @@ export default function AddressInputWithMap({
   onLocationSelect,
   currentLocation,
   orderSubtotal = 0,
+  freeDeliveryPromo = null,
   placeholder = "Ej: Calle 4 # 5-20, Barrio San Pablo"
 }) {
   const inputRef = useRef(null);
@@ -41,6 +42,12 @@ export default function AddressInputWithMap({
       orderSubtotal
     });
 
+    if (freeDeliveryPromo && (!freeDeliveryPromo.min_order_amount || orderSubtotal >= Number(freeDeliveryPromo.min_order_amount))) {
+      details.fee = 0;
+      details.isPromoFree = true;
+      details.message = `¡Campaña activa: ${freeDeliveryPromo.name}! Domicilio $0 COP`;
+    }
+
     setFeeDetails(details);
     onLocationSelect?.({
       address: value,
@@ -49,7 +56,7 @@ export default function AddressInputWithMap({
       fee: details.fee,
       feeDetails: details
     });
-  }, [calculatedDistance, currentLocation, orderSubtotal, value]);
+  }, [calculatedDistance, currentLocation, orderSubtotal, value, freeDeliveryPromo]);
 
   // Attach Google Places Autocomplete when Google script is ready
   useEffect(() => {
@@ -209,7 +216,7 @@ export default function AddressInputWithMap({
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-xs font-black">
                 {feeDetails.isCovered 
-                  ? (feeDetails.isFree ? 'GRATIS' : formatCOP(feeDetails.fee)) 
+                  ? (feeDetails.isFree || feeDetails.isPromoFree || feeDetails.fee === 0 ? '¡GRATIS! 🎉' : formatCOP(feeDetails.fee)) 
                   : 'No disponible'}
               </span>
               {hasSedeCoords && userCoords && (

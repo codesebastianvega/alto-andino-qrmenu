@@ -19,6 +19,7 @@ import { FEATURE_TABS, PUBLIC_URL } from "./config/featureFlags";
 import AdminLayout from "./components/admin/AdminLayout";
 
 // Layout / UI
+import PromotionBanner from "./components/promotions/PromotionBanner";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ProductLists from "./components/ProductLists";
@@ -534,12 +535,15 @@ export default function App() {
               </AnimatePresence>
 
               {!isDemo && !isAuthView && !currentHash.startsWith('#asistente') && !currentHash.startsWith('#mesero') && !currentHash.startsWith('#chat') && brand_slug && brand_slug !== 'anonimo' && (
-                <Header
-                  onCartOpen={() => setOpen(true)}
-                  onGuideOpen={() => setOpenGuide(true)}
-                  cartCount={cart?.items?.length || 0}
-                  currentHash={currentHash}
-                />
+                <>
+                  <PromotionBanner />
+                  <Header
+                    onCartOpen={() => setOpen(true)}
+                    onGuideOpen={() => setOpenGuide(true)}
+                    cartCount={cart?.items?.length || 0}
+                    currentHash={currentHash}
+                  />
+                </>
               )}
 
 

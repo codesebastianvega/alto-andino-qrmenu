@@ -147,7 +147,7 @@ export default function CartModal({ open, onClose }) {
   } = cart;
 
   const { brandSlug } = useParams();
-  const { getAllProducts, hasFeature, activeBrandId, currentLocation: contextLocation, locations, businessHours, restaurantSettings: menuRestaurantSettings } = useMenuData();
+  const { getAllProducts, hasFeature, activeBrandId, currentLocation: contextLocation, locations, businessHours, restaurantSettings: menuRestaurantSettings, freeDeliveryPromo, activePromotions } = useMenuData();
   const { paymentMethods, loading: loadingPayments } = usePaymentMethods(activeBrandId);
   const { isWithinOrderLimit } = usePlan(activeBrandId);
   
@@ -329,11 +329,15 @@ export default function CartModal({ open, onClose }) {
   const serviceFeeAmount = (isTipEnabled && includeTip) ? Math.round(total * (tipPercentage / 100)) : 0;
   const deliveryFee = useMemo(() => {
     if (fulfillmentType !== 'delivery') return 0;
+    // Si hay una campaña de Domicilio Gratis activa y cumple el monto mínimo
+    if (freeDeliveryPromo && (!freeDeliveryPromo.min_order_amount || total >= Number(freeDeliveryPromo.min_order_amount))) {
+      return 0;
+    }
     if (deliveryLocationInfo && typeof deliveryLocationInfo.fee === 'number') {
       return deliveryLocationInfo.fee;
     }
     return Number(currentLocation?.delivery_fee) || 0;
-  }, [fulfillmentType, deliveryLocationInfo, currentLocation]);
+  }, [fulfillmentType, deliveryLocationInfo, currentLocation, freeDeliveryPromo, total]);
 
   const finalTotal = useMemo(() => {
     const delivery = fulfillmentType === 'delivery' ? deliveryFee : 0;
@@ -1038,9 +1042,16 @@ export default function CartModal({ open, onClose }) {
           )}
           {fulfillmentType === 'delivery' && (
             <div className="flex justify-between items-center mb-1 animate-in fade-in slide-in-from-right-2">
-              <span className="text-sm text-neutral-500 font-medium">Costo de Domicilio</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm text-neutral-500 font-medium">Costo de Domicilio</span>
+                {deliveryFee === 0 && (
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
+                    {freeDeliveryPromo?.name ? 'Promo' : 'Apertura'}
+                  </span>
+                )}
+              </div>
               <span className={`text-sm font-semibold ${deliveryFee > 0 ? 'text-emerald-700' : 'text-emerald-600 font-black'}`}>
-                {deliveryFee > 0 ? formatCOP(deliveryFee) : '¡GRATIS! 🎉 (Apertura)'}
+                {deliveryFee > 0 ? formatCOP(deliveryFee) : '¡GRATIS! 🎉'}
               </span>
             </div>
           )}
@@ -1241,6 +1252,7 @@ export default function CartModal({ open, onClose }) {
                              }}
                              currentLocation={currentLocation}
                              orderSubtotal={total}
+                             freeDeliveryPromo={freeDeliveryPromo}
                            />
                            <div className="flex items-center gap-2 bg-white px-3 h-11 rounded-xl border border-amber-200 focus-within:ring-2 focus-within:ring-amber-200/50 transition-all">
                               <Icon icon="heroicons:chat-bubble-bottom-center-text" className="text-amber-500 text-lg flex-shrink-0" />
