@@ -178,6 +178,7 @@ export default function AdminBar() {
           )
         `)
         .in('status', ['new', 'preparing'])
+        .neq('bar_status', 'none')
         .eq('brand_id', activeBrandId);
 
       if (!isAllLocations && activeLocationId) {
@@ -206,12 +207,12 @@ export default function AdminBar() {
 
   // Filtrado de pedidos según estación
   const stationOrders = useMemo(() => {
-    // Si la barra ya despachó sus bebidas, no debe seguir estorbando en la pantalla de barra
-    const activeBarOrders = orders.filter(o => o.bar_status !== 'ready');
-    if (stationFilter === 'all') return activeBarOrders;
+    // Si la barra ya despachó sus bebidas o la orden no requiere barra, no debe aparecer en BDS
+    const activeBarOrders = orders.filter(o => o.bar_status !== 'ready' && o.bar_status !== 'none');
     if (stationFilter === 'kitchen') {
       return activeBarOrders.filter(o => o.order_items?.some(it => isKitchenItem(it)));
     }
+    // En BDS sólo se muestran órdenes que tengan bebidas o tragos
     return activeBarOrders.filter(o => o.order_items?.some(it => isBarItem(it)));
   }, [orders, stationFilter]);
 
@@ -316,7 +317,6 @@ export default function AdminBar() {
 
   useEffect(() => {
     if (!activeBrandId) return;
-    if (!isAllLocations && !activeLocationId) return;
 
     fetchBarOrders();
 
@@ -328,7 +328,7 @@ export default function AdminBar() {
         table: 'orders',
         filter: `brand_id=eq.${activeBrandId}`
       }, (payload) => {
-        const isTargetLocation = isAllLocations || !activeLocationId || !payload.new?.location_id || (payload.new && payload.new.location_id === activeLocationId);
+        const isTargetLocation = isAllLocations || activeLocationId === 'all' || !activeLocationId || !payload.new?.location_id || (payload.new && payload.new.location_id === activeLocationId);
         if (!isTargetLocation) return;
 
         if (payload.eventType === 'INSERT') {
@@ -359,7 +359,7 @@ export default function AdminBar() {
 
                 if (fullOrder) {
                   const hasBar = (fullOrder.order_items || []).some(it => isBarItem(it));
-                  if (hasBar || fullOrder.bar_status !== 'none') {
+                  if (hasBar || fullOrder.bar_status === 'pending' || (fullOrder.bar_status !== 'none' && fullOrder.bar_status !== 'ready')) {
                     setIncomingOrdersQueue(prev => {
                       const exists = prev.some(o => o.id === fullOrder.id);
                       return exists ? prev : [...prev, fullOrder];
@@ -693,6 +693,25 @@ export default function AdminBar() {
               <span>Silenciar Alarma</span>
             </button>
           )}
+
+          {/* Botón Probar / Activar Sonido en Tablet */}
+          <button
+            type="button"
+            onClick={() => {
+              soundService.unlockAudio();
+              soundService.playNewOrder();
+              toast('Sonido de prueba emitido 🍸', { icon: '🔔' });
+            }}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
+              isDark 
+                ? 'bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700' 
+                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 shadow-2xs'
+            }`}
+            title="Toca para probar o activar el sonido de pedidos en esta tablet"
+          >
+            <Icon icon="heroicons:speaker-wave" className="text-cyan-500 text-sm" />
+            <span className="hidden sm:inline">Probar Sonido</span>
+          </button>
 
           {/* Filtros de Estado */}
           <div className={`flex rounded-lg p-0.5 border ${

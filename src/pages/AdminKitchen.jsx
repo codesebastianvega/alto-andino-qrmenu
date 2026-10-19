@@ -198,6 +198,7 @@ export default function AdminKitchen() {
           )
         `)
         .in('status', ['new', 'preparing'])
+        .neq('kitchen_status', 'none')
         .eq('brand_id', activeBrandId);
 
       if (!isAllLocations && activeLocationId) {
@@ -226,12 +227,12 @@ export default function AdminKitchen() {
 
   // Filtrado de pedidos según estación seleccionada
   const stationOrders = useMemo(() => {
-    // Si la cocina ya despachó sus platos, no debe seguir estorbando en la pantalla de cocina
-    const activeKitchenOrders = orders.filter(o => o.kitchen_status !== 'ready');
-    if (stationFilter === 'all') return activeKitchenOrders;
+    // Si la cocina ya despachó sus platos o no requiere cocina, no debe aparecer en KDS
+    const activeKitchenOrders = orders.filter(o => o.kitchen_status !== 'ready' && o.kitchen_status !== 'none');
     if (stationFilter === 'bar') {
       return activeKitchenOrders.filter(o => o.order_items?.some(it => isBarItem(it)));
     }
+    // En KDS sólo se muestran órdenes que tengan platos o insumos a preparar en cocina
     return activeKitchenOrders.filter(o => o.order_items?.some(it => isKitchenItem(it)));
   }, [orders, stationFilter]);
 
@@ -381,7 +382,7 @@ export default function AdminKitchen() {
 
                 if (fullOrder) {
                   const hasKitchen = (fullOrder.order_items || []).some(it => isKitchenItem(it));
-                  if (hasKitchen || fullOrder.kitchen_status !== 'none') {
+                  if (hasKitchen && fullOrder.kitchen_status !== 'none') {
                     setIncomingOrdersQueue(prev => {
                       const exists = prev.some(o => o.id === fullOrder.id);
                       return exists ? prev : [...prev, fullOrder];
@@ -717,6 +718,25 @@ export default function AdminKitchen() {
               <span>Silenciar Alarma</span>
             </button>
           )}
+
+          {/* Botón Probar / Activar Sonido en Tablet */}
+          <button
+            type="button"
+            onClick={() => {
+              soundService.unlockAudio();
+              soundService.playNewOrder();
+              toast('Sonido de prueba emitido 🔊', { icon: '🔔' });
+            }}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
+              isDark 
+                ? 'bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700' 
+                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 shadow-2xs'
+            }`}
+            title="Toca para probar o activar el sonido de pedidos en esta tablet"
+          >
+            <Icon icon="heroicons:speaker-wave" className="text-emerald-500 text-sm" />
+            <span className="hidden sm:inline">Probar Sonido</span>
+          </button>
 
           {/* Filtros de Estado */}
           <div className={`flex rounded-lg p-0.5 border ${

@@ -23,7 +23,56 @@ try {
  * Obtener o inicializar el AudioContext
  */
 
-const getAudioContext = () => {
+// Generador dinámico de tono WAV estándar para fallback HTML5 <audio> (útil en tablets Android / iOS cuando AudioContext está bloqueado)
+const createBeepDataUri = (freq = 880, duration = 0.35) => {
+  try {
+    const sampleRate = 8000;
+    const numSamples = Math.floor(sampleRate * duration);
+    const buffer = new Uint8Array(44 + numSamples);
+    const writeString = (offset, str) => {
+      for (let i = 0; i < str.length; i++) buffer[offset + i] = str.charCodeAt(i);
+    };
+    writeString(0, 'RIFF');
+    const view = new DataView(buffer.buffer);
+    view.setUint32(4, 36 + numSamples, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate, true);
+    view.setUint16(32, 1, true);
+    view.setUint16(34, 8, true);
+    writeString(36, 'data');
+    view.setUint32(40, numSamples, true);
+    for (let i = 0; i < numSamples; i++) {
+      const t = i / sampleRate;
+      const sample = Math.sin(2 * Math.PI * freq * t);
+      buffer[44 + i] = Math.floor((sample + 1) * 127.5);
+    }
+    let binary = '';
+    for (let i = 0; i < buffer.byteLength; i++) {
+      binary += String.fromCharCode(buffer[i]);
+    }
+    return 'data:audio/wav;base64,' + btoa(binary);
+  } catch {
+    return null;
+  }
+};
+
+const BEEP_FALLBACK_URI = createBeepDataUri(880, 0.35);
+
+const playHtml5Fallback = () => {
+  if (!BEEP_FALLBACK_URI) return;
+  try {
+    const snd = new Audio(BEEP_FALLBACK_URI);
+    snd.volume = 0.8;
+    snd.play().catch(() => {});
+  } catch {}
+};
+
+export const getAudioContext = () => {
   if (!audioCtx) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (AudioContextClass) {
@@ -58,10 +107,13 @@ export const unlockAudio = () => {
       source.connect(ctx.destination);
       source.start(0);
     }
+    playHtml5Fallback();
   } catch (e) {
     console.error('Audio unlock failed:', e);
   }
 };
+
+export const isAudioUnlocked = () => audioUnlocked && (!audioCtx || audioCtx.state === 'running');
 
 // Listener global continuo para desbloquear audio en interacciones y al despertar pantalla
 if (typeof window !== 'undefined') {
@@ -91,6 +143,10 @@ const playHarmonicChime = (notes, options = {}) => {
   let currentRepeat = 0;
 
   const triggerChord = () => {
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+      playHtml5Fallback();
+    }
     const now = ctx.currentTime;
 
     notes.forEach(({ freq, delay = 0, duration = 0.6, gain = 0.5, octave2 = true }) => {
@@ -258,6 +314,8 @@ export const toggleSound = () => {
 
 const soundService = {
   unlockAudio,
+  isAudioUnlocked,
+  playHtml5Fallback,
   playNewOrder: playNewOrderSound,
   playOrderReady: playOrderReadySound,
   playOrderReceived: playOrderReceivedSound,
