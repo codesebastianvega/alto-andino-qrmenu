@@ -55,9 +55,10 @@ const FALLBACK_FEATURED = [
 ];
 
 const FALLBACK_REVIEWS = [
-  { name: "Dra. Elena R.", role: "Médico", rating: 5, text: "El ambiente perfecto para desconectar. Mi poke favorito siempre llega fresco y delicioso.", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=150" },
-  { name: "Carlos M.", role: "Emprendedor", rating: 5, text: "Excelente WiFi y el café filtrado es de otro nivel. Vengo a trabajar dos veces por semana.", img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150" },
-  { name: "Ana & Max", role: "Clientes frecuentes", rating: 5, text: "Ingredientes frescos, buenas porciones y una experiencia que siempre queremos repetir.", img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150" }
+  { name: "Camila Rodríguez B.", role: "La Esmeralda, Zipaquirá", rating: 5, text: "Pedí el Tokyo Crunchy para almorzar en la oficina y llegó impecable. La textura del arroz y el toque crocante están a otro nivel.", img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150" },
+  { name: "Andrés Felipe Torres", role: "Sector Algarra III", rating: 5, text: "El Porky BOKU es una locura, la carne súper suavecita con ese crocante perfecto y la porción es bien generosa.", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150" },
+  { name: "Valentina Gómez", role: "Centro Histórico", rating: 5, text: "Fan total del Salmón Fresh. Se nota de inmediato la frescura de los ingredientes y el aguacate en su punto exacto.", img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150" },
+  { name: "Nicolás Pardo", role: "Barrio San Pablo", rating: 5, text: "El Pollito Crazy tiene un sabor oriental delicioso y nada grasoso. Domicilio súper puntual aquí en San Pablo.", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150" }
 ];
 
 const LandingPage = () => {
@@ -642,7 +643,10 @@ const LandingPage = () => {
 
           <div className="marquee-container relative flex overflow-hidden py-4 -translate-y-4">
             <div className="animate-infinite-scroll flex gap-6 px-4">
-              {[...config.reviews, ...config.reviews, ...config.reviews, ...config.reviews].map((rev, idx) => (
+              {(config.reviews.length <= 4
+                ? [...config.reviews, ...config.reviews, ...config.reviews, ...config.reviews]
+                : [...config.reviews, ...config.reviews]
+              ).map((rev, idx) => (
                 <div 
                   key={idx} 
                   className="w-[320px] md:w-[450px] shrink-0 bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 flex flex-col gap-6 relative group overflow-hidden shadow-xl shadow-gray-200/50"

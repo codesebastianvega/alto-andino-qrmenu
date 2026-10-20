@@ -107,7 +107,6 @@ export const unlockAudio = () => {
       source.connect(ctx.destination);
       source.start(0);
     }
-    playHtml5Fallback();
   } catch (e) {
     console.error('Audio unlock failed:', e);
   }
