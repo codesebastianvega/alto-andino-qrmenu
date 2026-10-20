@@ -14,7 +14,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*([wW]hats[aA]pp|[fF]acebookexternalhit|[fF]acebot|[tT]witterbot|[tT]elegram[bB]ot|[lL]inked[iI]n[bB]ot|[sS]lackbot|[dD]iscordbot).*"
+          "value": "^(WhatsApp\\/[0-9]|facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot).*"
         }
       ],
       "destination": "/api/og?slug=$1"
