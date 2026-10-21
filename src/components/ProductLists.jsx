@@ -199,18 +199,20 @@ export default function ProductLists({
         categoryGroups = groupsToRender;
       }
 
+            const isDiyProduct = Boolean(
+        bannerProduct && (
+          bannerProduct.configOptions?.is_diy || 
+          bannerProduct.config_options?.is_diy || 
+          bannerProduct.configOptions?.creator_type ||
+          bannerProduct.config_options?.creator_type
+        )
+      );
+
       const bannerEl = showBanner ? (
         <CategoryBanner 
           category={cat}
           product={bannerProduct} 
-          onOpenBuilder={() => {
-            if (bannerProduct) {
-              onQuickView(bannerProduct);
-            } else {
-              const el = document.getElementById(cat.slug);
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }
-          }} 
+          onOpenBuilder={isDiyProduct ? () => onQuickView(bannerProduct) : undefined} 
         />
       ) : null;
 

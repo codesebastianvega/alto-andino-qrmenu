@@ -10,10 +10,10 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
 
   // 2. Fields
   const title = category?.banner_title || product?.name || category?.name;
-  const description = category?.banner_description || product?.desc || "Elige tus ingredientes favoritos y crea una combinación única.";
+  const description = category?.banner_description || product?.desc || "";
   const accentColor = category?.accent_color || "#bc0e0e";
   
-  const isBowl = product?.tags?.includes('bowl') || category?.slug === 'bowls' || category?.slug?.includes('bento');
+  const isBowl = product?.tags?.includes('bowl') || category?.slug === 'bowls';
   const isSandwich = product?.tags?.includes('sandwich') || category?.slug === 'sandwiches';
   
   const defaultFallback = isBowl 
@@ -131,7 +131,7 @@ export default function CategoryBanner({ category, product, onOpenBuilder }) {
                     className="bg-white font-black text-[9px] sm:text-xs uppercase tracking-widest rounded-2xl shadow-lg hover:scale-105 active:scale-95 transition-all px-5 py-2.5 sm:px-10 sm:py-3.5"
                     style={{ color: accentColor }}
                   >
-                    {isScheduleRestricted ? 'Ver Opciones 🕒' : 'Empezar a Crear'}
+                    {isScheduleRestricted ? 'Ver Opciones 🕒' : (category?.slug === 'bowls' ? 'Armar Bowl' : 'Personalizar')}
                   </button>
                )}
                 
