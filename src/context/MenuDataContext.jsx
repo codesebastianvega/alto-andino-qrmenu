@@ -76,7 +76,7 @@ export const MenuDataProvider = ({ children }) => {
     setPromotions([]);
 
     try {
-      const cacheKey = `menu:v4:${brandId}`;
+      const cacheKey = `menu:v5:${brandId}`;
       let recentCache = null;
       if (!force) {
         try {
@@ -130,7 +130,7 @@ export const MenuDataProvider = ({ children }) => {
         promosRes
       ] = await withTimeout(Promise.all([
         brandFilter(supabase.from('categories').select('*').eq('is_active', true).order('sort_order', { ascending: true })),
-        brandFilter(supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(id, group_id, name, price, extra_price, sort_order, created_at, nested_group_id, image_url, emoji, ingredient_id, is_active, stock_status, available_portions, ingredients!left(image_url))')),
+        brandFilter(supabase.from('modifier_groups').select('*, modifier_options!modifier_options_group_id_fkey(id, group_id, name, price, extra_price, sort_order, created_at, nested_group_id, image_url, emoji, ingredient_id, is_active, stock_status, available_portions, ingredients!modifier_options_ingredient_id_fkey(image_url))')),
         brandFilter(supabase.from('experiences').select('*').eq('is_active', true).order('created_at', { ascending: false })),
         brandFilter(supabase.from('allergens').select('*').order('name')),
         brandFilter(supabase.from('locations').select('*').eq('is_active', true).order('is_main', { ascending: false })),
@@ -143,7 +143,8 @@ export const MenuDataProvider = ({ children }) => {
         brandFilter(supabase.from('promotions').select('*').eq('is_active', true).order('created_at', { ascending: false }))
       ]), 15000, 'La carga inicial del menú');
 
-      const criticalError = [brandRes, catsRes, prodsRes].find((result) => result.error)?.error;
+      if (modsRes?.error) console.error('MenuData modsRes error:', modsRes.error);
+      const criticalError = [brandRes, catsRes, prodsRes, modsRes].find((result) => result.error)?.error;
       if (criticalError) throw criticalError;
 
       // Set brand and plan features from the joined query
@@ -239,7 +240,7 @@ export const MenuDataProvider = ({ children }) => {
       console.error('❌ MenuData Fetch Error:', err);
       let recoveredFromCache = false;
       try {
-        const cached = await withTimeout(catalogCache.get(`menu:v4:${brandId}`), 2500, 'La recuperación del catálogo local');
+        const cached = await withTimeout(catalogCache.get(`menu:v5:${brandId}`), 2500, 'La recuperación del catálogo local');
         if (cached?.value) {
           const data = cached.value;
           setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);

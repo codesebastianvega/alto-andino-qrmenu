@@ -34,6 +34,7 @@ import { getSafeImageUrl } from '../utils/images';
 import { cleanAssistantName } from '../utils/formatters';
 
 const ProductQuickView = lazy(() => import('../components/ProductQuickView'));
+const DIYProductModal = lazy(() => import('../components/DIYProductModal'));
 
 // =========================================================================
 // 🎛️ FALLBACK DATA (se usa si Supabase no tiene datos todavía)
@@ -81,6 +82,17 @@ const LandingPage = () => {
   
   const { addItem } = useCart();
   const [quickViewProduct, setQuickViewProduct] = useState(null);
+  const [diyProduct, setDiyProduct] = useState(null);
+
+  const handleProductClick = (item) => {
+    if (!item) return;
+    const isDiy = item.configOptions?.is_diy || item.config_options?.is_diy;
+    if (isDiy) {
+      setDiyProduct(item);
+    } else {
+      setQuickViewProduct(item);
+    }
+  };
   const { brand: resolvedBrand } = menuData;
   
   const brandName = restaurantSettings?.business_name || resolvedBrand?.name || "Aluna";
@@ -228,7 +240,7 @@ const LandingPage = () => {
         const products = getAllProducts();
         const product = products.find(p => p.id === productId);
         if (product) {
-          setQuickViewProduct(product);
+          handleProductClick(product);
           // Clean up URL
           const newUrl = window.location.pathname + window.location.hash;
           window.history.replaceState({}, '', newUrl);
@@ -393,7 +405,7 @@ const LandingPage = () => {
             </div>
             <motion.div animate={{ x: mousePosition.x * -1, y: mousePosition.y * -1 }} transition={{ type: "spring", stiffness: 100, damping: 30 }} className="relative w-[222px] h-[222px] sm:w-[400px] sm:h-[400px] md:w-[700px] md:h-[700px] md:translate-x-24 lg:translate-x-32">
               <AnimatePresence mode="wait">
-                <motion.div key={currentHeroDish?.name} initial={{ scale: 0.8, opacity: 0, rotate: -20 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} exit={{ scale: 0.8, opacity: 0, rotate: 20 }} transition={{ duration: 0.8, type: "spring", bounce: 0.3 }} className="w-full h-full absolute inset-0">
+                <motion.div key={currentHeroDish?.name} initial={{ scale: 0.8, opacity: 0, rotate: -20 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} exit={{ scale: 0.8, opacity: 0, rotate: 20 }} transition={{ duration: 0.8, type: "spring", bounce: 0.3 }} onClick={() => handleProductClick(currentHeroDish?.product)} className="w-full h-full absolute inset-0 cursor-pointer group">
                   <img src={currentHeroDish?.img} alt={currentHeroDish?.name} className="w-full h-full object-cover rounded-full shadow-[0_20px_40px_rgba(0,0,0,0.4)] md:shadow-[0_40px_80px_rgba(0,0,0,0.5)] border-[8px] md:border-[12px] border-white/10" />
                   <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-[210px] md:w-auto md:translate-x-0 md:bottom-28 md:left-4 lg:bottom-32 lg:-left-12 glass-panel bg-brand-card/90 px-3 py-2.5 md:px-6 md:py-4 rounded-xl md:rounded-2xl flex flex-col gap-1 shadow-2xl backdrop-blur-xl border border-white/80 z-20">
                     <div className="flex items-center gap-3 mb-1">
@@ -568,7 +580,7 @@ const LandingPage = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: idx * 0.1 }}
-                onClick={() => setQuickViewProduct(item)}
+                onClick={() => handleProductClick(item)}
                 className="group relative flex flex-col bg-white rounded-[2rem] overflow-hidden border border-gray-100/10 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.06)] transition-all duration-700 cursor-pointer"
               >
                 {/* Image Container with Square Aspect Ratio for Compactness */}
@@ -603,7 +615,7 @@ const LandingPage = () => {
                     </div>
                     
                     <div 
-                      onClick={() => setQuickViewProduct(item)}
+                      onClick={() => handleProductClick(item)}
                       className="shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-[#E6B05C] text-white hover:bg-[#1A2421] hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#E6B05C]/10 cursor-pointer"
                     >
                       <Plus size={18} />
@@ -691,6 +703,16 @@ const LandingPage = () => {
               product={quickViewProduct} 
               open={!!quickViewProduct}
               onClose={() => setQuickViewProduct(null)} 
+            />
+          </Suspense>
+        )}
+        {diyProduct && (
+          <Suspense fallback={null}>
+            <DIYProductModal 
+              product={diyProduct} 
+              open={!!diyProduct}
+              onClose={() => setDiyProduct(null)} 
+              onAdd={() => setDiyProduct(null)} 
             />
           </Suspense>
         )}

@@ -67,7 +67,7 @@ export default function ProductLists({
 
   const onQuickView = useCallback((p) => {
     if (!p) return;
-    if (p.configOptions?.is_diy) {
+    if (p.configOptions?.is_diy || p.config_options?.is_diy) {
       setDiyProduct(p);
       setDiyOpen(true);
     } else {
@@ -83,7 +83,7 @@ export default function ProductLists({
   // Helper to find a customizable product for a banner
   const getBannerProductForCategory = (catId) => {
     const products = getProductsByCategory(catId);
-    return products.find(p => p.configOptions?.creator_type);
+    return products.find(p => p.configOptions?.creator_type || p.config_options?.creator_type || p.configOptions?.is_diy || p.config_options?.is_diy);
   };
 
   // Permite abrir QuickView desde otros componentes
@@ -107,7 +107,7 @@ export default function ProductLists({
         image_url: incoming.image_url || dbProduct?.image_url
       };
 
-      if (p.configOptions?.is_diy) {
+      if (p.configOptions?.is_diy || p.config_options?.is_diy) {
         setDiyProduct(p);
         setDiyOpen(true);
       } else {
