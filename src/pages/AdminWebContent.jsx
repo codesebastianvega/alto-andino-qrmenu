@@ -70,7 +70,8 @@ export default function AdminWebContent() {
     menu_banner_subtitle: '',
     menu_banner_tag: '',
     menu_banner_img: '',
-    welcome_bg_img: ''
+    welcome_bg_img: '',
+    show_menu_banner: true
   });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
@@ -121,6 +122,7 @@ export default function AdminWebContent() {
           footer_greeting_morning: morning,
           footer_greeting_afternoon: afternoon,
           footer_greeting_night: night,
+          show_menu_banner: data.show_menu_banner !== false,
           featured_items: data.featured_items || [],
           reviews: data.reviews || []
         }));
@@ -283,6 +285,7 @@ export default function AdminWebContent() {
         menu_banner_tag: data.menu_banner_tag || null,
         menu_banner_img: data.menu_banner_img || null,
         welcome_bg_img: data.welcome_bg_img || null,
+        show_menu_banner: data.show_menu_banner !== false,
         updated_at: new Date().toISOString()
       };
       
@@ -1152,7 +1155,7 @@ export default function AdminWebContent() {
           <div className="space-y-6 animate-fadeUp">
             {/* HERO SETTINGS */}
             <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100 bg-white flex items-center justify-between">
+              <div className="px-6 py-5 border-b border-gray-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3.5">
                   <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-100/60">
                     <Icon icon="solar:book-bookmark-bold-duotone" className="text-xl" />
@@ -1162,7 +1165,35 @@ export default function AdminWebContent() {
                     <p className="text-xs text-gray-500 mt-0.5">Encabezado y banner superior que da la bienvenida a tus comensales</p>
                   </div>
                 </div>
+
+                {/* Switch para Activar / Desactivar el Banner de la Carta */}
+                <div className="flex items-center gap-3 bg-gray-50 border border-gray-200/80 px-4 py-2 rounded-2xl shrink-0">
+                  <div className="text-right">
+                    <p className="text-xs font-bold text-gray-800">
+                      {data.show_menu_banner !== false ? 'Banner Activo' : 'Banner Oculto'}
+                    </p>
+                    <p className="text-[10px] text-gray-400">
+                      {data.show_menu_banner !== false ? 'Visible en menú QR' : 'Oculto en menú QR'}
+                    </p>
+                  </div>
+                  <Switch 
+                    checked={data.show_menu_banner !== false}
+                    onChange={(checked) => setData(prev => ({ ...prev, show_menu_banner: checked }))}
+                  />
+                </div>
               </div>
+
+              {data.show_menu_banner === false && (
+                <div className="mx-6 mt-6 p-4 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex items-start gap-3">
+                  <Icon icon="solar:info-circle-bold" className="text-amber-600 text-xl shrink-0 mt-0.5" />
+                  <div>
+                    <h5 className="text-xs font-bold text-amber-900">Banner superior desactivado</h5>
+                    <p className="text-[11px] text-amber-800/80 mt-0.5 leading-relaxed">
+                      El banner superior de bienvenida en la cabecera de la carta digital no se mostrará a los comensales. Los clientes verán la barra de categorías y platos directamente.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="p-6 sm:p-7">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

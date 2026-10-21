@@ -627,6 +627,7 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
           </motion.div>
         </div>
 
+        {homeSettings?.show_menu_banner !== false && (
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
@@ -663,6 +664,7 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
             </div>
           </div>
         </motion.div>
+        )}
       </div>
 
       <AnimatePresence>
