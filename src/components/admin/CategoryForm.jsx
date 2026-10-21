@@ -99,9 +99,9 @@ export default function CategoryForm({ category, onSave, onCancel }) {
         banner_description: category.banner_description || '', accent_color: category.accent_color || '#2f4131',
         tint_class: category.tint_class || 'bg-white', target_id: category.target_id || '',
         available_from: category.available_from || '', available_to: category.available_to || '',
-        visibility_config: category.visibility_config || { 
-          days: [0,1,2,3,4,5,6], 
-          subcategories: [], 
+        visibility_config: {
+          days: [0,1,2,3,4,5,6],
+          subcategories: [],
           section_type: 'standard',
           show_in_hero: false,
           hero_featured_product_id: '',
@@ -109,7 +109,8 @@ export default function CategoryForm({ category, onSave, onCancel }) {
           hero_prep_time: '15 mins',
           show_banner: true,
           banner_style: 'floating',
-          banner_badge: ''
+          banner_badge: '',
+          ...(category.visibility_config || {})
         }
       });
       
@@ -356,223 +357,234 @@ export default function CategoryForm({ category, onSave, onCancel }) {
           </BentoCard>
 
           {/* CARD 2: APARIENCIA */}
-          <BentoCard title="Apariencia del Banner">
-            <FormField label="Imagen de Portada">
-              <div className="space-y-4">
-                {formData.banner_image_url && (
-                  <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-gray-100 border border-gray-200 shadow-inner group">
-                    <img src={formData.banner_image_url} alt="Banner Preview" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <BentoCard title="Banner & Presentación">
+            {/* Switch Principal: Activar / Desactivar Banner */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${formData.visibility_config?.show_banner !== false ? 'bg-[#2f4131] text-white' : 'bg-gray-200 text-gray-400'}`}>
+                  <Icon icon={formData.visibility_config?.show_banner !== false ? "lucide:image" : "lucide:image-off"} className="text-lg" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-black text-gray-800 uppercase tracking-tight">Activar Banner</p>
+                    <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-black uppercase rounded-lg border border-amber-200">Pro</span>
+                  </div>
+                  <p className="text-[10px] text-gray-500 font-medium">
+                    {formData.visibility_config?.show_banner !== false ? 'Banner visible en el menú público' : 'Banner desactivado (solo lista directa de platos)'}
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setFormData(p => ({ 
+                  ...p, 
+                  visibility_config: { ...p.visibility_config, show_banner: p.visibility_config?.show_banner === false } 
+                }))}
+                className={`w-11 h-6 rounded-full transition-colors relative ${formData.visibility_config?.show_banner !== false ? 'bg-[#2f4131]' : 'bg-gray-300'}`}
+              >
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${formData.visibility_config?.show_banner !== false ? 'left-6' : 'left-1'}`} />
+              </button>
+            </div>
+
+            {formData.visibility_config?.show_banner === false ? (
+              <div className="p-4 bg-amber-50/60 border border-amber-200/80 rounded-2xl flex items-start gap-3 animate-in fade-in">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+                  <Icon icon="lucide:image-off" className="text-lg" />
+                </div>
+                <div>
+                  <h5 className="text-xs font-bold text-amber-900">Banner desactivado para esta categoría</h5>
+                  <p className="text-[11px] text-amber-800/80 leading-relaxed mt-0.5">
+                    Los clientes verán los platos directamente sin imagen ni encabezado de banner. Puedes volver a activarlo en cualquier momento activando el switch superior.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                <FormField label="Tipo de Banner">
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
                     <button
                       type="button"
-                      onClick={() => setFormData(p => ({ ...p, banner_image_url: '' }))}
-                      className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm text-red-500 rounded-xl shadow-lg hover:bg-red-500 hover:text-white transition-all scale-90 group-hover:scale-100"
+                      onClick={() => setFormData(p => ({ 
+                        ...p, 
+                        visibility_config: { ...p.visibility_config, banner_style: 'floating' } 
+                      }))}
+                      className={`py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                        (formData.visibility_config?.banner_style || 'floating') === 'floating'
+                          ? 'bg-white text-[#2f4131] shadow-sm'
+                          : 'text-gray-400 hover:text-gray-600'
+                      }`}
                     >
-                      <Icon icon="lucide:trash-2" className="text-lg" />
+                      Flotante (PNG / 3D)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(p => ({ 
+                        ...p, 
+                        visibility_config: { ...p.visibility_config, banner_style: 'background' } 
+                      }))}
+                      className={`py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                        formData.visibility_config?.banner_style === 'background'
+                          ? 'bg-white text-[#2f4131] shadow-sm'
+                          : 'text-gray-400 hover:text-gray-600'
+                      }`}
+                    >
+                      Fondo (Header)
                     </button>
                   </div>
-                )}
+                </FormField>
 
-                {!formData.banner_image_url && <ImageGuidance maxMB={getMaxImageSizeMB(activeBrand?.plan_id)} />}
-
-
-
-                <label className={`group relative flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
-                  isUploading ? 'bg-gray-50 border-gray-100 cursor-wait' : 'border-gray-200 bg-gray-50/50 hover:border-[#2f4131]/30 hover:bg-white hover:shadow-xl hover:shadow-gray-200/50'
-                }`}>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    ref={fileInputRef}
-                    disabled={isUploading}
-                    className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                  />
-                  <div className="flex flex-col items-center text-center">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 transition-all ${
-                      isUploading ? 'bg-gray-100 text-gray-400' : 'bg-white text-[#2f4131] shadow-md group-hover:scale-110 group-hover:rotate-3'
-                    }`}>
-                      <Icon icon={isUploading ? "lucide:loader-2" : "lucide:upload-cloud"} className={`text-2xl ${isUploading ? 'animate-spin' : ''}`} />
-                    </div>
-                    <p className="text-sm font-bold text-gray-700">
-                      {isUploading ? 'Procesando...' : 'Cambiar Imagen'}
-                    </p>
-                    <p className="text-[10px] text-gray-400 mt-1 font-medium">PNG, JPG o WebP hasta {getMaxImageSizeMB(activeBrand?.plan_id).toFixed(0)}MB</p>
-                  </div>
-                </label>
-
-                <div className="pt-2">
-                  <div className="flex justify-between items-center mb-2">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">URL Manual / CDN</p>
-                    {uploadStats && formData.banner_image_url ? (
-                      <div className="flex items-center gap-1.5 animate-in fade-in zoom-in duration-300">
-                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
-                          WebP
-                        </span>
-                        <span className="bg-gray-50 text-gray-600 border border-gray-200 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider shadow-sm">
-                          {uploadStats.final} KB
-                        </span>
+                <FormField label="Imagen de Portada">
+                  <div className="space-y-4">
+                    {formData.banner_image_url && (
+                      <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-gray-100 border border-gray-200 shadow-inner group">
+                        <img src={formData.banner_image_url} alt="Banner Preview" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <button
+                          type="button"
+                          onClick={() => setFormData(p => ({ ...p, banner_image_url: '' }))}
+                          className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm text-red-500 rounded-xl shadow-lg hover:bg-red-500 hover:text-white transition-all scale-90 group-hover:scale-100"
+                        >
+                          <Icon icon="lucide:trash-2" className="text-lg" />
+                        </button>
                       </div>
-                    ) : formData.banner_image_url && formData.banner_image_url.includes('.webp') ? (
-                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
-                        WebP
-                      </span>
-                    ) : formData.banner_image_url && formData.banner_image_url.includes('images.unsplash.com') ? (
-                      <span className="bg-gray-50 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
-                        UNSPLASH
-                      </span>
-                    ) : formData.banner_image_url ? (
-                      <span className="bg-gray-50 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
-                        {formData.banner_image_url.match(/\.([a-zA-Z0-9]{3,4})(?:[\?#]|$)/)?.[1]?.toUpperCase() || 'IMG'}
-                      </span>
-                    ) : null}
-                  </div>
-                  <TextInput 
-                    name="banner_image_url" 
-                    value={formData.banner_image_url} 
-                    onChange={handleChange} 
-                    placeholder="https://images.unsplash.com/…" 
-                    className="bg-white"
-                  />
-                </div>
-              </div>
-            </FormField>
+                    )}
 
-            <div className="space-y-4 pt-4 border-t border-gray-100 mt-2">
-              <div className="flex flex-col gap-4">
-                <FormField label="Título en Banner">
-                  <TextInput name="banner_title" value={formData.banner_title} onChange={handleChange} placeholder="Ej. Lo más pedido" />
-                </FormField>
-                <FormField label="Etiqueta Especial (Badge)">
-                  <TextInput 
-                    placeholder="Ej. Especialidad" 
-                    value={formData.visibility_config?.banner_badge || ''} 
-                    onChange={(e) => setFormData(p => ({ 
-                      ...p, 
-                      visibility_config: { ...p.visibility_config, banner_badge: e.target.value } 
-                    }))} 
-                  />
-                </FormField>
-              </div>
-              <FormField label="Resumen / Descripción">
-                <textarea 
-                  name="banner_description" 
-                  value={formData.banner_description} 
-                  onChange={handleChange} 
-                  rows={2}
-                  placeholder="Pequeño texto descriptivo..."
-                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none resize-none transition-all" 
-                />
-              </FormField>
-            </div>
-            
-            <div className="pt-6 border-t border-gray-100 mt-6 space-y-6">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${formData.visibility_config?.show_banner !== false ? 'bg-[#2f4131] text-white' : 'bg-gray-200 text-gray-400'}`}>
-                    <Icon icon={formData.visibility_config?.show_banner !== false ? "lucide:image" : "lucide:image-off"} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-black text-gray-800 uppercase tracking-tight">Activar Banner</p>
-                      <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-black uppercase rounded-lg border border-amber-200">Pro</span>
+                    {!formData.banner_image_url && <ImageGuidance maxMB={getMaxImageSizeMB(activeBrand?.plan_id)} />}
+
+                    <label className={`group relative flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
+                      isUploading ? 'bg-gray-50 border-gray-100 cursor-wait' : 'border-gray-200 bg-gray-50/50 hover:border-[#2f4131]/30 hover:bg-white hover:shadow-xl hover:shadow-gray-200/50'
+                    }`}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        ref={fileInputRef}
+                        disabled={isUploading}
+                        className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                      />
+                      <div className="flex flex-col items-center text-center">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 transition-all ${
+                          isUploading ? 'bg-gray-100 text-gray-400' : 'bg-white text-[#2f4131] shadow-md group-hover:scale-110 group-hover:rotate-3'
+                        }`}>
+                          <Icon icon={isUploading ? "lucide:loader-2" : "lucide:upload-cloud"} className={`text-2xl ${isUploading ? 'animate-spin' : ''}`} />
+                        </div>
+                        <p className="text-sm font-bold text-gray-700">
+                          {isUploading ? 'Procesando...' : 'Cambiar Imagen'}
+                        </p>
+                        <p className="text-[10px] text-gray-400 mt-1 font-medium">PNG, JPG o WebP hasta {getMaxImageSizeMB(activeBrand?.plan_id).toFixed(0)}MB</p>
+                      </div>
+                    </label>
+
+                    <div className="pt-2">
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">URL Manual / CDN</p>
+                        {uploadStats && formData.banner_image_url ? (
+                          <div className="flex items-center gap-1.5 animate-in fade-in zoom-in duration-300">
+                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
+                              WebP
+                            </span>
+                            <span className="bg-gray-50 text-gray-600 border border-gray-200 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider shadow-sm">
+                              {uploadStats.final} KB
+                            </span>
+                          </div>
+                        ) : formData.banner_image_url && formData.banner_image_url.includes('.webp') ? (
+                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
+                            WebP
+                          </span>
+                        ) : formData.banner_image_url && formData.banner_image_url.includes('images.unsplash.com') ? (
+                          <span className="bg-gray-50 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
+                            UNSPLASH
+                          </span>
+                        ) : formData.banner_image_url ? (
+                          <span className="bg-gray-50 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm">
+                            {formData.banner_image_url.match(/\.([a-zA-Z0-9]{3,4})(?:[\?#]|$)/)?.[1]?.toUpperCase() || 'IMG'}
+                          </span>
+                        ) : null}
+                      </div>
+                      <TextInput 
+                        name="banner_image_url" 
+                        value={formData.banner_image_url} 
+                        onChange={handleChange} 
+                        placeholder="https://images.unsplash.com/…" 
+                        className="bg-white"
+                      />
                     </div>
-                    <p className="text-[10px] text-gray-500 font-medium">Mostrar destacados de categoría</p>
                   </div>
-                </div>
-                <button 
-                  type="button" 
-                  onClick={() => setFormData(p => ({ 
-                    ...p, 
-                    visibility_config: { ...p.visibility_config, show_banner: p.visibility_config?.show_banner === false } 
-                  }))}
-                  className={`w-11 h-6 rounded-full transition-colors relative ${formData.visibility_config?.show_banner !== false ? 'bg-[#2f4131]' : 'bg-gray-300'}`}
-                >
-                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${formData.visibility_config?.show_banner !== false ? 'left-6' : 'left-1'}`} />
-                </button>
-              </div>
+                </FormField>
 
-              {formData.visibility_config?.show_banner !== false && (
-                <div className="animate-in fade-in slide-in-from-top-2 space-y-4">
-                  <FormField label="Tipo de Banner">
+                <div className="space-y-4 pt-4 border-t border-gray-100 mt-2">
+                  <div className="flex flex-col gap-4">
+                    <FormField label="Título en Banner">
+                      <TextInput name="banner_title" value={formData.banner_title} onChange={handleChange} placeholder="Ej. Lo más pedido" />
+                    </FormField>
+                    <FormField label="Etiqueta Especial (Badge)">
+                      <TextInput 
+                        placeholder="Ej. Especialidad" 
+                        value={formData.visibility_config?.banner_badge || ''} 
+                        onChange={(e) => setFormData(p => ({ 
+                          ...p, 
+                          visibility_config: { ...p.visibility_config, banner_badge: e.target.value } 
+                        }))} 
+                      />
+                    </FormField>
+                  </div>
+                  <FormField label="Resumen / Descripción">
+                    <textarea 
+                      name="banner_description" 
+                      value={formData.banner_description} 
+                      onChange={handleChange} 
+                      rows={2}
+                      placeholder="Pequeño texto descriptivo..."
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-[#2f4131] outline-none resize-none transition-all" 
+                    />
+                  </FormField>
+                </div>
+
+                {(formData.visibility_config?.banner_style || 'floating') === 'floating' && (
+                  <FormField label="Efecto de Imagen Flotante">
                     <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
                       <button
                         type="button"
                         onClick={() => setFormData(p => ({ 
                           ...p, 
-                          visibility_config: { ...p.visibility_config, banner_style: 'floating' } 
+                          visibility_config: { ...p.visibility_config, banner_animation: 'static' } 
                         }))}
                         className={`py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
-                          (formData.visibility_config?.banner_style || 'floating') === 'floating'
+                          (formData.visibility_config?.banner_animation || 'static') === 'static'
                             ? 'bg-white text-[#2f4131] shadow-sm'
                             : 'text-gray-400 hover:text-gray-600'
                         }`}
                       >
-                        Flotante (PNG / 3D)
+                        ⏸️ Estática
                       </button>
                       <button
                         type="button"
                         onClick={() => setFormData(p => ({ 
                           ...p, 
-                          visibility_config: { ...p.visibility_config, banner_style: 'background' } 
+                          visibility_config: { ...p.visibility_config, banner_animation: 'spin' } 
                         }))}
                         className={`py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
-                          formData.visibility_config?.banner_style === 'background'
+                          formData.visibility_config?.banner_animation === 'spin'
                             ? 'bg-white text-[#2f4131] shadow-sm'
                             : 'text-gray-400 hover:text-gray-600'
                         }`}
                       >
-                        Fondo (Header)
+                        🔄 Rotar 360° (Giro Lento)
                       </button>
                     </div>
                   </FormField>
+                )}
 
-                  {(formData.visibility_config?.banner_style || 'floating') === 'floating' && (
-                    <FormField label="Efecto de Imagen Flotante">
-                      <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
-                        <button
-                          type="button"
-                          onClick={() => setFormData(p => ({ 
-                            ...p, 
-                            visibility_config: { ...p.visibility_config, banner_animation: 'static' } 
-                          }))}
-                          className={`py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
-                            (formData.visibility_config?.banner_animation || 'static') === 'static'
-                              ? 'bg-white text-[#2f4131] shadow-sm'
-                              : 'text-gray-400 hover:text-gray-600'
-                          }`}
-                        >
-                          ⏸️ Estática
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setFormData(p => ({ 
-                            ...p, 
-                            visibility_config: { ...p.visibility_config, banner_animation: 'spin' } 
-                          }))}
-                          className={`py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
-                            formData.visibility_config?.banner_animation === 'spin'
-                              ? 'bg-white text-[#2f4131] shadow-sm'
-                              : 'text-gray-400 hover:text-gray-600'
-                          }`}
-                        >
-                          🔄 Rotar 360° (Giro Lento)
-                        </button>
-                      </div>
-                    </FormField>
-                  )}
-
-                  <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl flex gap-3">
-                    <Icon icon="lucide:info" className="text-blue-500 mt-0.5 shrink-0" />
-                    <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
-                      {(formData.visibility_config?.banner_style || 'floating') === 'floating' 
-                        ? 'Ideal para platos o productos con fondo transparente (PNG/WebP). Puedes elegir si dejarlo fijo o con rotación continua suave de 360°.'
-                        : 'Ideal para fotos de ambiente o composiciones. El banner ocupará todo el ancho y contendrá el título de la categoría.'}
-                    </p>
-                  </div>
+                <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl flex gap-3">
+                  <Icon icon="lucide:info" className="text-blue-500 mt-0.5 shrink-0" />
+                  <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
+                    {(formData.visibility_config?.banner_style || 'floating') === 'floating' 
+                      ? 'Ideal para platos o productos con fondo transparente (PNG/WebP). Puedes elegir si dejarlo fijo o con rotación continua suave de 360°.'
+                      : 'Ideal para fotos de ambiente o composiciones. El banner ocupará todo el ancho y contendrá el título de la categoría.'}
+                  </p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </BentoCard>
 
           {/* CARD 3: CONFIGURACIÓN AVANZADA */}

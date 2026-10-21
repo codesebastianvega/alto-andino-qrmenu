@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useBrand } from '../context/BrandContext';
 import { toast as toastFn } from '../components/Toast';
 
 // Toast wrapper
@@ -14,7 +15,8 @@ export const useCategories = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { activeBrand } = useAuth();
-  const activeBrandId = activeBrand?.id;
+  const brandContext = useBrand ? useBrand() : null;
+  const activeBrandId = activeBrand?.id || brandContext?.brand?.id;
   const isMountedRef = useRef(false);
 
   const fetchCategories = useCallback(async (locationId = 'all', options = {}) => {
@@ -142,9 +144,22 @@ export const useCategories = () => {
   // Create new category
   const createCategory = async (categoryData) => {
     try {
+      const targetBrandId = activeBrandId || categoryData.brand_id;
+      if (!targetBrandId) throw new Error("No hay una marca activa seleccionada.");
+
+      const { 
+        id: _id, 
+        created_at: _cat, 
+        items: _items, 
+        total_products: _tp, 
+        active_products: _ap, 
+        linked_products: _lp, 
+        ...cleanData 
+      } = categoryData;
+
       const { data, error } = await supabase
         .from('categories')
-        .insert([{ ...categoryData, brand_id: activeBrandId }])
+        .insert([{ ...cleanData, brand_id: targetBrandId }])
         .select()
         .single();
 
@@ -163,13 +178,26 @@ export const useCategories = () => {
   // Update existing category
   const updateCategory = async (id, updates) => {
     try {
-      const { data, error } = await supabase
+      const { 
+        id: _id, 
+        created_at: _cat, 
+        items: _items, 
+        total_products: _tp, 
+        active_products: _ap, 
+        linked_products: _lp, 
+        ...cleanUpdates 
+      } = updates;
+
+      let query = supabase
         .from('categories')
-        .update(updates)
-        .eq('id', id)
-        .eq('brand_id', activeBrandId)
-        .select()
-        .single();
+        .update(cleanUpdates)
+        .eq('id', id);
+
+      if (activeBrandId) {
+        query = query.eq('brand_id', activeBrandId);
+      }
+
+      const { data, error } = await query.select().single();
 
       if (error) throw error;
 

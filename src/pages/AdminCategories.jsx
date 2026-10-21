@@ -199,7 +199,7 @@ export default function AdminCategories() {
                               </svg>
                             </td>
                             {confirmDeleteId === cat.id ? (
-                              <td colSpan={!isAllLocations ? 8 : 7} className="px-5 py-3 bg-red-50">
+                              <td colSpan={!isAllLocations ? 9 : 8} className="px-5 py-3 bg-red-50">
                                 <div className="flex items-center justify-between">
                                   <p className="text-sm font-medium text-red-700">¿Eliminar la categoría <strong>"{cat.name}"</strong>?</p>
                                   <div className="flex gap-2">
@@ -370,9 +370,25 @@ export default function AdminCategories() {
                                         show_in_hero: !cat.visibility_config?.show_in_hero 
                                       } 
                                     })}
+                                    title={cat.visibility_config?.show_in_hero ? "Destacada en Hero" : "No destacada en Hero"}
                                     className={`p-1.5 rounded-lg transition-all ${cat.visibility_config?.show_in_hero ? 'bg-amber-50 text-amber-500' : 'text-gray-300 hover:text-gray-400'}`}
                                   >
                                     <Icon icon={cat.visibility_config?.show_in_hero ? "heroicons:star-20-solid" : "heroicons:star"} className="text-xl" />
+                                  </button>
+                                </td>
+                                <td className="px-5 py-3.5 text-center">
+                                  <button 
+                                    type="button"
+                                    title={cat.visibility_config?.show_banner !== false ? 'Banner activo en menú público (clic para ocultar)' : 'Banner oculto (clic para activar)'}
+                                    onClick={() => updateCategory(cat.id, { 
+                                      visibility_config: { 
+                                        ...(cat.visibility_config || {}), 
+                                        show_banner: cat.visibility_config?.show_banner === false 
+                                      } 
+                                    })}
+                                    className={`p-1.5 rounded-lg transition-all ${cat.visibility_config?.show_banner !== false ? 'bg-blue-50 text-blue-600' : 'text-gray-300 hover:text-gray-400'}`}
+                                  >
+                                    <Icon icon={cat.visibility_config?.show_banner !== false ? "lucide:image" : "lucide:image-off"} className="text-xl" />
                                   </button>
                                 </td>
                                 <td className="px-5 py-3.5">
@@ -401,7 +417,7 @@ export default function AdminCategories() {
                     ))}
                     {provided.placeholder}
                     {filtered.length === 0 && (
-                      <tr><td colSpan={10} className="px-5 py-14 text-center">
+                      <tr><td colSpan={11} className="px-5 py-14 text-center">
                         <div className="flex flex-col items-center justify-center gap-3">
                           <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300">
                             <Icon icon="heroicons:folder-open" className="text-2xl" />
@@ -493,6 +509,9 @@ export default function AdminCategories() {
                                     {cat.visibility_config?.show_in_hero && (
                                       <span className="text-[10px] text-amber-500 flex items-center gap-0.5 font-bold"><Icon icon="heroicons:star-20-solid" /> Hero</span>
                                     )}
+                                    <span className={`text-[10px] flex items-center gap-0.5 font-bold ${cat.visibility_config?.show_banner !== false ? 'text-blue-600' : 'text-gray-400'}`}>
+                                      <Icon icon={cat.visibility_config?.show_banner !== false ? "lucide:image" : "lucide:image-off"} /> {cat.visibility_config?.show_banner !== false ? 'Banner' : 'Sin banner'}
+                                    </span>
                                   </div>
                                 </div>
 
