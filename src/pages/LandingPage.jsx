@@ -208,12 +208,11 @@ const LandingPage = () => {
     };
   }, [homeSettings, allCategories, restaurantSettings, brandCity, getProductsByCategory, getAllProducts, productsByCategory, menuLoading]);
 
-  // Manejo de carga inicial y selección aleatoria del plato Hero
+  // Manejo de carga inicial del plato Hero (prioriza la categoría principal / Bento del Día)
   useEffect(() => {
     if (config.heroDishes.length > 0 && !activeCategory) {
-      const randomIndex = Math.floor(Math.random() * config.heroDishes.length);
-      setHeroDishIndex(randomIndex);
-      setActiveCategory(config.heroDishes[randomIndex].category);
+      setHeroDishIndex(0);
+      setActiveCategory(config.heroDishes[0].category);
     }
   }, [config.heroDishes, activeCategory]);
 

@@ -76,7 +76,7 @@ export const MenuDataProvider = ({ children }) => {
     setPromotions([]);
 
     try {
-      const cacheKey = `menu:v3:${brandId}`;
+      const cacheKey = `menu:v4:${brandId}`;
       let recentCache = null;
       if (!force) {
         try {
@@ -88,7 +88,7 @@ export const MenuDataProvider = ({ children }) => {
       const hasValidModifierSchema = recentCache?.value?.modifierGroups?.some(g =>
         g.allow_quantity !== undefined || g.included_quantity !== undefined || g.modifier_options?.some(o => o.extra_price !== undefined)
       );
-      if (recentCache?.value && hasValidModifierSchema && Date.now() - recentCache.cachedAt < 5 * 60 * 1000) {
+      if (recentCache?.value && hasValidModifierSchema) {
         const data = recentCache.value;
         setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);
         setExperiences(data.experiences); setAllergens(data.allergens); setLocations(data.locations);
@@ -97,7 +97,13 @@ export const MenuDataProvider = ({ children }) => {
         setLocationPrices(data.locationPrices); setLocationStatus(data.locationStatus);
         setLocationCategories(data.locationCategories); setLocationModLinks(data.locationModLinks);
         setPromotions(data.promotions || []);
-        return true;
+        setLoading(false);
+
+        // Si la cache tiene menos de 20 segundos, omitir la consulta a red
+        if (Date.now() - recentCache.cachedAt < 20 * 1000) {
+          return true;
+        }
+        // De lo contrario, continuamos en segundo plano para revalidar con Supabase (Stale-While-Revalidate)
       }
 
       if (!brandId) {
@@ -233,7 +239,7 @@ export const MenuDataProvider = ({ children }) => {
       console.error('❌ MenuData Fetch Error:', err);
       let recoveredFromCache = false;
       try {
-        const cached = await withTimeout(catalogCache.get(`menu:v3:${brandId}`), 2500, 'La recuperación del catálogo local');
+        const cached = await withTimeout(catalogCache.get(`menu:v4:${brandId}`), 2500, 'La recuperación del catálogo local');
         if (cached?.value) {
           const data = cached.value;
           setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);
