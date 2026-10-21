@@ -203,7 +203,14 @@ export default function ProductLists({
         <CategoryBanner 
           category={cat}
           product={bannerProduct} 
-          onOpenBuilder={bannerProduct ? () => onQuickView(bannerProduct) : undefined} 
+          onOpenBuilder={() => {
+            if (bannerProduct) {
+              onQuickView(bannerProduct);
+            } else {
+              const el = document.getElementById(cat.slug);
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }
+          }} 
         />
       ) : null;
 
