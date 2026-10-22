@@ -366,27 +366,15 @@ export default function AdminSettings() {
 
       if (error) throw error;
       
-      // 1. Also update brand-level restaurant_settings operations_model if editing a specific location
-      if (!isAllLocations && activeLocationId && activeBrand?.id) {
-        const { data: bRow } = await supabase
+      // 1. Keep brand_concepts in sync across ALL rows for this brand (brand-level and location rows)
+      if (activeBrand?.id) {
+        await supabase
           .from('restaurant_settings')
-          .select('id, brand_concepts')
-          .eq('brand_id', activeBrand.id)
-          .is('location_id', null)
-          .maybeSingle();
-
-        if (bRow?.id) {
-          const bConcepts = Array.isArray(bRow.brand_concepts)
-            ? bRow.brand_concepts.filter(c => c && c.id !== 'operations_model' && c.id !== 'telegram_dispatch' && c.id !== 'bento_del_dia_config')
-            : [];
-          await supabase
-            .from('restaurant_settings')
-            .update({
-              brand_concepts: [operationsModel, telegramDispatch, bentoConceptToSave, ...bConcepts],
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', bRow.id);
-        }
+          .update({
+            brand_concepts: payload.brand_concepts,
+            updated_at: new Date().toISOString()
+          })
+          .eq('brand_id', activeBrand.id);
       }
 
       // 2. Synchronize brands.business_type

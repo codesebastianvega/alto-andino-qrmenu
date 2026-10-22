@@ -173,8 +173,19 @@ export const MenuDataProvider = ({ children }) => {
         || null;
 
       if (bestRS) {
-        if (brandLevelRS && (!bestRS.brand_concepts || bestRS.brand_concepts.length === 0)) {
-          bestRS.brand_concepts = brandLevelRS.brand_concepts;
+        if (brandLevelRS && brandLevelRS.brand_concepts?.length > 0) {
+          if (!bestRS.brand_concepts || bestRS.brand_concepts.length === 0) {
+            bestRS.brand_concepts = brandLevelRS.brand_concepts;
+          } else {
+            // Keep brand-level concepts (like bento_del_dia_config) always in sync with brand-level row
+            const brandSpecial = brandLevelRS.brand_concepts.find(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config'));
+            if (brandSpecial) {
+              bestRS.brand_concepts = [
+                ...bestRS.brand_concepts.filter(c => c && c.id !== 'bento_del_dia_config' && c.id !== 'daily_special_config'),
+                brandSpecial
+              ];
+            }
+          }
         }
         if (!bestRS.logo_url) {
           const rowWithLogo = allRS.find(s => s.logo_url);
