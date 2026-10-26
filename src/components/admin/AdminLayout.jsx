@@ -13,6 +13,7 @@ import AdminRecipes from '../../pages/AdminRecipes';
 import AdminSettings from '../../pages/AdminSettings';
 import AdminModifierGroups from '../../pages/AdminModifierGroups';
 import AdminTables from '../../pages/AdminTables';
+import AdminDeliveryDrivers from '../../pages/AdminDeliveryDrivers';
 import AdminOrders from '../../pages/AdminOrders';
 import AdminOperations from '../../pages/AdminOperations';
 import AdminKitchen from '../../pages/AdminKitchen';
@@ -118,6 +119,13 @@ const Icons = {
       <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
     </svg>
   ),
+  Delivery: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="5.5" cy="17.5" r="3.5"/>
+      <circle cx="18.5" cy="17.5" r="3.5"/>
+      <path d="M15 6h4l3 6v5.5M5 17.5h10M9 6v11.5M12 6H5a2 2 0 0 0-2 2v9.5"/>
+    </svg>
+  ),
   Tables: () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <rect x="4" y="3" width="16" height="4" rx="1"/>
@@ -207,6 +215,7 @@ const CARTA_ITEMS = [
   { id: 'menu_print',      label: 'Imprimir Carta',    Icon: Icons.Print, roles: ADMIN_ROLES },
   // { id: 'experiences',     label: 'Experiencias',      Icon: Icons.Experiences, roles: ADMIN_ROLES, feature: 'experiences' },
   { id: 'tables',          label: 'Mesas y QRs',       Icon: Icons.Tables, roles: ADMIN_ROLES, feature: 'table_management' },
+  { id: 'delivery_drivers', label: 'Domiciliarios',    Icon: Icons.Delivery, roles: ADMIN_ROLES },
 ];
 
 const PROD_ITEMS = [
@@ -1166,6 +1175,7 @@ export default function AdminLayout() {
           { currentPage === 'menu_print' && <AdminMenuPrint /> }
           { currentPage === 'inventory'   && <AdminModifiers /> }
           { currentPage === 'tables'      && <AdminTables /> }
+          { currentPage === 'delivery_drivers' && <AdminDeliveryDrivers /> }
           { currentPage === 'orders'      && <AdminOrders /> }
           { currentPage === 'kitchen'     && <AdminKitchen /> }
           { currentPage === 'bar'         && <AdminBar /> }
