@@ -1,7 +1,7 @@
 // src/main.jsx
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import App from "./App.jsx";
 import "./styles.css";
 import "./index.css";
@@ -44,6 +44,12 @@ const RegisterPage = React.lazy(() => import("./pages/auth/RegisterPage.jsx"));
 const CompleteProfilePage = React.lazy(() => import("./pages/auth/CompleteProfilePage.jsx"));
 const UniversalCheckout = React.lazy(() => import("./pages/checkout/UniversalCheckout.jsx"));
 const ImpactComparisonPage = React.lazy(() => import("./pages/ImpactComparisonPage.jsx"));
+const DeliveryDriverView = React.lazy(() => import("./pages/DeliveryDriverView.jsx"));
+
+function DriverRoute() {
+  const { orderId } = useParams();
+  return <DeliveryDriverView orderId={orderId} />;
+}
 
 ReactDOM.createRoot(document.getElementById("root")).render(
     <ErrorBoundary>
@@ -79,6 +85,24 @@ ReactDOM.createRoot(document.getElementById("root")).render(
                       </CartProvider>
                     </MenuDataProvider>
                   </BrandProvider>
+                }
+              />
+
+              {/* Driver / Domiciliario Dedicated Routes */}
+              <Route
+                path="/domi/:orderId"
+                element={
+                  <React.Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
+                    <DriverRoute />
+                  </React.Suspense>
+                }
+              />
+              <Route
+                path="/reparto/:orderId"
+                element={
+                  <React.Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
+                    <DriverRoute />
+                  </React.Suspense>
                 }
               />
 

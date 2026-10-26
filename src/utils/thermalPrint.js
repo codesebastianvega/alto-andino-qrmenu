@@ -68,6 +68,8 @@ export function printThermalDocument({ order, type = 'receipt', width = '80', bu
     ${row('Mesa', order.restaurant_tables?.table_number)}
     ${row('Cliente', order.customer_name)}
     ${row('Teléfono', order.customer_phone)}
+    ${order.delivery_address ? row('Dirección', order.delivery_address) : ''}
+    ${order.delivery_notes ? row('Nota entrega', order.delivery_notes) : ''}
     ${row('Programado', order.scheduled_time ? new Date(order.scheduled_time).toLocaleString('es-CO') : '')}
   </section>`;
 

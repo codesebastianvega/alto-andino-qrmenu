@@ -76,7 +76,16 @@ async function createBrand({ userId, name, businessType, planId }) {
 
   const { data: brand, error: brandError } = await supabase
     .from('brands')
-    .insert({ name, slug, owner_id: userId, is_active: true, plan_id: planId, business_type: businessType })
+    .insert({
+      name,
+      slug,
+      owner_id: userId,
+      is_active: true,
+      plan_id: planId,
+      business_type: businessType,
+      trial_end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      subscription_status: 'trialing'
+    })
     .select()
     .single();
 

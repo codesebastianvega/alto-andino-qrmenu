@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify-icon/react';
 import soundService from '../../utils/soundService';
+import { parsePaymentMethod, getGoogleMapsUrl } from '../../utils/formatters';
 
 export function NewOrderAlertModal({
   isOpen,
@@ -222,15 +223,23 @@ export function NewOrderAlertModal({
               </p>
             </div>
 
-            {/* Total Destacado */}
-            <div className="text-right sm:text-right">
+            {/* Total Destacado y Medio de Pago */}
+            <div className="text-right sm:text-right flex flex-col items-end">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Total a Cobrar</span>
               <span className="text-2xl sm:text-3xl font-black text-[#2f4131] tracking-tight">
                 ${totalAmount.toLocaleString()}
               </span>
-              <span className="block text-[11px] font-bold text-slate-600">
-                {order.payment_method ? `Medio: ${order.payment_method}` : 'Pendiente por definir'}
-              </span>
+              
+              {/* Badge de Medio de Pago */}
+              {(() => {
+                const pm = parsePaymentMethod(order.payment_method, order.payment_status);
+                return (
+                  <div className={`mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-black shadow-2xs ${pm.bg} ${pm.text} ${pm.border}`}>
+                    <Icon icon={pm.icon} className="text-sm shrink-0" />
+                    <span>{pm.label}</span>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
@@ -256,11 +265,30 @@ export function NewOrderAlertModal({
             </div>
 
             {isDelivery && (
-              <div className="flex items-center gap-2 text-slate-800">
-                <Icon icon="heroicons:map-pin" className="text-rose-500 text-sm shrink-0" />
-                <span className="font-semibold text-slate-700 truncate" title={order.delivery_address || order.address}>
-                  {order.delivery_address || order.address || 'Sin dirección registrada'}
-                </span>
+              <div className="flex items-center justify-between gap-2 text-slate-800 bg-rose-50/70 p-2 rounded-xl border border-rose-100 sm:col-span-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Icon icon="heroicons:map-pin" className="text-rose-500 text-base shrink-0" />
+                  <span className="font-bold text-slate-800 truncate" title={order.delivery_address || order.address}>
+                    {order.delivery_address || order.address || 'Sin dirección registrada'}
+                  </span>
+                  {order.delivery_notes && (
+                    <span className="hidden sm:inline text-slate-500 text-[11px] italic truncate">
+                      ({order.delivery_notes})
+                    </span>
+                  )}
+                </div>
+                {(order.delivery_address || order.address) && (
+                  <a
+                    href={getGoogleMapsUrl(order.delivery_address || order.address)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white hover:bg-rose-100 text-rose-700 font-bold border border-rose-200 text-xs shrink-0 transition-all shadow-2xs cursor-pointer"
+                    title="Abrir en Google Maps"
+                  >
+                    <Icon icon="solar:map-point-bold" className="text-sm text-rose-600" />
+                    <span>Maps</span>
+                  </a>
+                )}
               </div>
             )}
           </div>

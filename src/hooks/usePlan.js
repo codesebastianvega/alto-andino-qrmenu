@@ -212,7 +212,7 @@ export function usePlan(manualBrandId = null) {
           return { error };
         }
 
-        const newTrialEnd = data?.trial_end_date || new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString();
+        const newTrialEnd = data?.trial_end_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
         // Refresh plan data
         setPlan(prev => prev ? {

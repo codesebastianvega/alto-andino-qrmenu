@@ -31,6 +31,7 @@ const FloatingCartBar = lazy(() => import("./components/FloatingCartBar"));
 const CartModal = lazy(() => import("./components/CartModal"));
 const QrPoster = lazy(() => import("./components/QrPoster"));
 const OrderStatus = lazy(() => import("./pages/OrderStatus"));
+const DeliveryDriverView = lazy(() => import("./pages/DeliveryDriverView"));
 
 // Hash Routing Pages
 const LandingPage = lazy(() => import("./pages/LandingPage"));
@@ -153,6 +154,11 @@ export default function App() {
   const isOnboardingView = currentHash === '#admin/onboarding';
   const isPortalView = currentHash.startsWith('#portal') || currentHash.startsWith('#access_token');
   const orderTrackingId = currentHash.startsWith('#order/') ? currentHash.replace('#order/', '') : null;
+  const driverOrderId = (
+    currentHash.startsWith('#domi/') ? currentHash.replace('#domi/', '') :
+    currentHash.startsWith('#reparto/') ? currentHash.replace('#reparto/', '') :
+    currentHash.startsWith('#delivery/') ? currentHash.replace('#delivery/', '') : null
+  );
   
   // ✅ Simplified Hash Routing logic
   const isLandingView = !currentHash || currentHash === "" || currentHash === "#" || currentHash === "#inicio";
@@ -192,6 +198,7 @@ export default function App() {
     !isExplicitInicio &&
     !isSpecialPlatformView &&
     !orderTrackingId &&
+    !driverOrderId &&
     (isOrderingMode || isMenuView || (!isLandingView && !isNewAdminPanel));
 
   useEffect(() => {
@@ -280,7 +287,7 @@ export default function App() {
   });
 
   useEffect(() => {
-    const isPublicMenu = !isNewAdminPanel && !isOnboardingView && !orderTrackingId && !isQr;
+    const isPublicMenu = !isNewAdminPanel && !isOnboardingView && !orderTrackingId && !driverOrderId && !isQr;
     
     // Solo mostrar bienvenida si hay una marca activa Y estamos en su ruta específica (brand_slug presente)
     if (isPublicMenu && activeBrand && !loadingBrand && brand_slug) {
@@ -320,7 +327,7 @@ export default function App() {
     } else {
       setShowWelcome(false);
     }
-  }, [brand_slug, isNewAdminPanel, isOnboardingView, orderTrackingId, activeBrand, loadingBrand, isQr]);
+  }, [brand_slug, isNewAdminPanel, isOnboardingView, orderTrackingId, driverOrderId, activeBrand, loadingBrand, isQr]);
 
   // ✅ Trigger Customer Search Modal for Waiters
   useEffect(() => {
@@ -504,6 +511,12 @@ export default function App() {
             </Suspense>
           )}
 
+          {driverOrderId && (
+            <Suspense fallback={<LoadingScreen mode="skeleton" />}>
+              <DeliveryDriverView orderId={driverOrderId} />
+            </Suspense>
+          )}
+
           {/* Public Views */}
           {isQr && (
             <Suspense fallback={<div />}>
@@ -511,7 +524,7 @@ export default function App() {
             </Suspense>
           )}
 
-          {!isOnboardingView && !currentHash.startsWith('#checkout') && !isNewAdminPanel && !orderTrackingId && !isQr && (
+          {!isOnboardingView && !currentHash.startsWith('#checkout') && !isNewAdminPanel && !orderTrackingId && !driverOrderId && !isQr && (
             <>
               <AnimatePresence>
                 {showWelcome && (

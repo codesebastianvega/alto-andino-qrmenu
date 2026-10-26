@@ -15,6 +15,7 @@ import { printThermalDocument } from '../utils/thermalPrint';
 import soundService from '../utils/soundService';
 import OrderAdditionModal from '../components/admin/OrderAdditionModal';
 import { NewOrderAlertModal } from '../components/admin/NewOrderAlertModal';
+import { parsePaymentMethod, getGoogleMapsUrl, getWazeUrl } from '../utils/formatters';
 
 const ORDER_STATUSES = [
   { id: 'new', label: 'Nuevos', color: 'text-blue-600', icon: 'heroicons:star' },
@@ -1184,6 +1185,65 @@ export default function AdminOrders() {
                           )}
                         </div>
                         
+                        {/* Chip Método de Pago */}
+                        {(() => {
+                          const pm = parsePaymentMethod(order.payment_method, order.payment_status);
+                          return (
+                            <div className={`mt-2 flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-black ${pm.bg} ${pm.text} ${pm.border}`}>
+                              <div className="flex items-center gap-1.5 min-w-0 truncate">
+                                <Icon icon={pm.icon} className="text-sm shrink-0" />
+                                <span className="truncate" title={pm.fullText || pm.label}>{pm.label}</span>
+                              </div>
+                              {order.payment_status === 'paid' ? (
+                                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-600 text-white shrink-0">
+                                  Pagado
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-900 border border-amber-300/60 shrink-0">
+                                  Cobrar
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
+
+                        {/* Dirección de Entrega y Botón Maps */}
+                        {order.delivery_address && (
+                          <div 
+                            className="mt-1.5 flex items-center justify-between gap-1.5 px-2.5 py-1 bg-rose-50/70 border border-rose-100 rounded-lg text-[11px]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0 truncate">
+                              <Icon icon="heroicons:map-pin" className="text-rose-500 text-xs shrink-0" />
+                              <span className="truncate font-semibold text-gray-800" title={order.delivery_address}>
+                                {order.delivery_address}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              {order.customer_phone && (
+                                <a
+                                  href={`tel:${order.customer_phone.replace(/\D/g, '')}`}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white hover:bg-emerald-100 text-emerald-700 font-bold border border-emerald-200 text-[10px] transition-colors shadow-2xs cursor-pointer"
+                                  title="Llamar al cliente"
+                                >
+                                  <Icon icon="heroicons:phone" className="text-xs text-emerald-600" />
+                                  <span>Llamar</span>
+                                </a>
+                              )}
+                              <a
+                                href={getGoogleMapsUrl(order.delivery_address)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white hover:bg-rose-100 text-rose-700 font-bold border border-rose-200 text-[10px] transition-colors shadow-2xs cursor-pointer"
+                                title="Abrir dirección en Google Maps"
+                              >
+                                <Icon icon="solar:map-point-bold" className="text-xs text-rose-600" />
+                                <span>Maps</span>
+                              </a>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Indicador de Pago / Saldo */}
                         {order?.payment_status !== 'paid' && order?.status !== 'cancelled' && (
                           <div className={`flex flex-col gap-1.5 px-3 py-2 rounded-lg border transition-colors ${
@@ -1526,6 +1586,115 @@ export default function AdminOrders() {
                     )}
                   </div>
 
+                  {/* Tarjeta: Dirección de Entrega & Mapas (Domicilio) */}
+                  {(selectedOrder.delivery_address || selectedOrder.fulfillment_type === 'delivery') && (
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3.5">
+  
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                          <Icon icon="heroicons:map-pin" className="text-rose-500 text-sm" />
+                          Dirección de Entrega
+                        </p>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-purple-100 text-purple-700 border border-purple-200 uppercase">
+                          Domicilio
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <p className="text-sm font-bold text-gray-900 leading-snug break-words">
+                          {selectedOrder.delivery_address || 'Sin dirección registrada'}
+                        </p>
+                        {selectedOrder.delivery_notes && (
+                          <div className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200/80 mt-1">
+                            📝 <strong>Nota de Entrega:</strong> {selectedOrder.delivery_notes}
+                          </div>
+                        )}
+                      </div>
+
+                      {selectedOrder.delivery_address && (
+                        <>
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <a
+                            href={getGoogleMapsUrl(selectedOrder.delivery_address)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                            title="Abrir ubicación en Google Maps"
+                          >
+                            <Icon icon="logos:google-maps" className="text-base" />
+                            <span>Google Maps</span>
+                          </a>
+                          <a
+                            href={getWazeUrl(selectedOrder.delivery_address)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                            title="Navegar en Waze"
+                          >
+                            <Icon icon="solar:routing-2-bold" className="text-base text-cyan-600" />
+                            <span>Waze</span>
+                          </a>
+                        </div>
+
+                        {/* Contacto Directo: Llamada y Aviso de Llegada */}
+                        {selectedOrder.customer_phone && (
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <a
+                              href={`tel:${selectedOrder.customer_phone.replace(/\D/g, '')}`}
+                              className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                              title="Llamada telefónica inmediata al cliente"
+                            >
+                              <Icon icon="heroicons:phone" className="text-base text-emerald-600" />
+                              <span>Llamar Cliente</span>
+                            </a>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const cleanP = selectedOrder.customer_phone.replace(/\D/g, '');
+                                const phone = cleanP.startsWith('57') ? cleanP : `57${cleanP}`;
+                                const shortNum = `#${selectedOrder.id.slice(0, 4).toUpperCase()}`;
+                                const brand = activeBrand?.name || 'Boku Bento';
+                                const msg = `🛵 ¡Hola ${selectedOrder.customer_name || ''}! Ya nos encontramos afuera de tu dirección (*${selectedOrder.delivery_address || ''}*) con tu pedido ${shortNum} caliente y listo de ${brand}.\n\n¿Podrías salir a recibirlo, por favor? ¡Muchas gracias! 🙌`;
+                                window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+                              }}
+                              className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                              title="Avisar que ya llegó el domiciliario por WhatsApp"
+                            >
+                              <Icon icon="solar:bell-bing-bold" className="text-base text-amber-600" />
+                              <span>🔔 ¡Ya Llegué!</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Asignar y Enviar al Domiciliario */}
+                        <div className="pt-2 border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const driverUrl = `${window.location.origin}/domi/${selectedOrder.id}`;
+                              const shortNum = `#${selectedOrder.id.slice(0, 4).toUpperCase()}`;
+                              const brand = activeBrand?.name || 'Boku Bento';
+                              const msg = `🛵 *DOMICILIO ASIGNADO - ${brand}*\n📦 *Pedido ${shortNum}*\n👤 *Cliente:* ${selectedOrder.customer_name || 'Sin nombre'}\n📞 *Teléfono:* ${selectedOrder.customer_phone || ''}\n📍 *Dirección:* ${selectedOrder.delivery_address || ''}\n${selectedOrder.delivery_notes ? `📝 *Nota:* ${selectedOrder.delivery_notes}\n` : ''}💰 *Cobro:* ${selectedOrder.payment_status === 'paid' ? 'YA PAGADO (No cobrar dinero)' : `$${Number(selectedOrder.total_amount || 0).toLocaleString()} (${selectedOrder.payment_method || 'Cobro contra entrega'})`}\n\n📲 *Abre la app de entrega aquí (Mapa y llamada rápida):*\n${driverUrl}`;
+                              
+                              if (navigator.clipboard) {
+                                navigator.clipboard.writeText(driverUrl);
+                              }
+                              toast.success('¡Enlace de entrega copiado! Abriendo WhatsApp...');
+                              window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                            }}
+                            className="w-full py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                            title="Enviar comanda completa y enlace de entrega al domiciliario por WhatsApp"
+                          >
+                            <Icon icon="solar:scooter-bold-duotone" className="text-base text-emerald-400" />
+                            <span>📲 Enviar a Domiciliario (App de Entrega)</span>
+                          </button>
+                        </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
                   {/* Tarjeta: Mesero Asignado */}
                   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2.5">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
@@ -1546,14 +1715,50 @@ export default function AdminOrders() {
 
                   {/* Tarjeta: Resumen Financiero y Pagos */}
                   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3.5">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
-                      <span>Estado Financiero</span>
-                      {selectedOrder.payment_method && (
-                        <span className="text-slate-500 font-bold lowercase text-[10px] truncate max-w-[170px]" title={selectedOrder.payment_method}>
-                          {selectedOrder.payment_method}
-                        </span>
-                      )}
-                    </p>
+
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado Financiero</p>
+                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                        selectedOrder.payment_status === 'paid' 
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                          : 'bg-rose-100 text-rose-800 border border-rose-200'
+                      }`}>
+                        {selectedOrder.payment_status === 'paid' ? 'PAGADO' : 'PENDIENTE DE PAGO'}
+                      </span>
+                    </div>
+
+                    {/* Chip Destacado de Medio de Pago y Detalle de Cambio */}
+                    {(() => {
+                      const pm = parsePaymentMethod(selectedOrder.payment_method, selectedOrder.payment_status);
+                      return (
+                        <div className={`p-3 rounded-xl border ${pm.bg} ${pm.border} space-y-1.5`}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Método de Pago</span>
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${pm.bg} ${pm.text} border ${pm.border} flex items-center gap-1`}>
+                              <Icon icon={pm.icon} />
+                              {pm.shortLabel}
+                            </span>
+                          </div>
+                          <p className="text-xs font-bold text-gray-900 break-words">
+                            {selectedOrder.payment_method || 'Por acordar con el cliente'}
+                          </p>
+                          {pm.detail && pm.type === 'cash' && (
+                            <div className="mt-2 pt-2 border-t border-emerald-200/60 flex items-center justify-between text-xs font-black text-emerald-900">
+                              {pm.tendered && <span>💵 Recibe: {pm.tendered}</span>}
+                              {pm.change && <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-md shadow-2xs">Dar vuelto: {pm.change}</span>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+
+
+
+
+
+
+
                     
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-semibold text-slate-500">Monto Total</span>
