@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
-import { useLocations } from '../hooks/useLocations';
+import { useLocations } from '../context/LocationContext';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useLocationPayments } from '../hooks/useLocationPayments';
 import { toast as toastFn } from '../components/Toast';
@@ -90,7 +90,7 @@ export default function AdminSedes({ isEmbedded = false }) {
     maps_url: '',
     is_main: false,
     is_active: true,
-    operational_modes: ['dine_in', 'takeaway'],
+    operational_modes: ['dine_in', 'takeaway', 'delivery'],
     delivery_radius_km: 5,
     delivery_fee: 0,
     independent_payments: false,
@@ -130,13 +130,13 @@ export default function AdminSedes({ isEmbedded = false }) {
       setEditingLocation(null);
       setForm({
         name: '',
-        address: '',
-        phone: mainLocation?.phone || '',
-        whatsapp: mainLocation?.whatsapp || '',
-        maps_url: '',
+        address: activeBrand?.address || mainLocation?.address || '',
+        phone: activeBrand?.phone || mainLocation?.phone || '',
+        whatsapp: activeBrand?.whatsapp || mainLocation?.whatsapp || '',
+        maps_url: activeBrand?.google_maps_url || mainLocation?.maps_url || '',
         is_main: locations.length === 0,
         is_active: true,
-        operational_modes: ['dine_in', 'takeaway'],
+        operational_modes: ['dine_in', 'takeaway', 'delivery'],
         delivery_radius_km: 5,
         delivery_fee: 0,
         independent_payments: false,

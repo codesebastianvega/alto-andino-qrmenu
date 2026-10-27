@@ -3,12 +3,20 @@ import { useLocation as useRouterLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { useLocations as useLocationsHook } from '../hooks/useLocations';
 import { safeStorage as localStorage } from '../utils/safeStorage';
+import { supabase } from '../config/supabase';
 
 const LocationContext = createContext({});
 
 export const LocationProvider = ({ children }) => {
   const { activeBrand } = useAuth();
-  const { locations, loading: locationsLoading } = useLocationsHook();
+  const { 
+    locations, 
+    loading: locationsLoading,
+    refresh: refreshLocations,
+    createLocation,
+    updateLocation,
+    deleteLocation
+  } = useLocationsHook();
   const routerLocation = useRouterLocation();
   
   // Helper to get location from URL
@@ -121,6 +129,25 @@ export const LocationProvider = ({ children }) => {
 
   // Loading state
   const loading = activeBrand ? locationsLoading : false;
+
+  // Supabase Realtime on locations table for active brand
+  useEffect(() => {
+    if (!activeBrand?.id) return;
+    const channel = supabase
+      .channel(`locations-sync-${activeBrand.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'locations', filter: `brand_id=eq.${activeBrand.id}` },
+        () => {
+          refreshLocations();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeBrand?.id, refreshLocations]);
 
   const value = {
     activeLocationId,
