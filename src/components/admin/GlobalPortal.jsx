@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../config/supabase';
 import { PLAN_IDS, PLAN_LABELS } from '../../config/plans';
 import { buildDefaultBusinessHours } from '../../utils/businessHours';
+import { buildDefaultPaymentMethods } from '../../utils/paymentDefaults';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -75,6 +76,7 @@ async function createBrand({ userId, name, businessType, planId }) {
       operational_modes: ['dine_in', 'takeaway', 'delivery']
     }),
     supabase.from('home_settings').insert({ brand_id: brand.id }),
+    supabase.from('payment_methods').insert(buildDefaultPaymentMethods(brand.id)),
     supabase.from('business_hours').insert(buildDefaultBusinessHours(brand.id)),
     supabase.from('staff').insert({
       name: 'Admin Principal',

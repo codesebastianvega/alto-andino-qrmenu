@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
+import { buildDefaultPaymentMethods } from '../utils/paymentDefaults';
 
 export function usePaymentMethods(explicitBrandId = null) {
   const { activeBrand } = useAuth();
@@ -22,6 +23,23 @@ export function usePaymentMethods(explicitBrandId = null) {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
+
+      if (!data || data.length === 0) {
+        // Auto-provision default Cash payment method if store has none
+        const defaultMethods = buildDefaultPaymentMethods(brandId, { 
+          phone: activeBrand?.whatsapp || activeBrand?.phone 
+        });
+        const { data: created, error: createErr } = await supabase
+          .from('payment_methods')
+          .insert(defaultMethods)
+          .select();
+        
+        if (!createErr && created && created.length > 0) {
+          setPaymentMethods(created);
+          return;
+        }
+      }
+
       setPaymentMethods(data || []);
     } catch (err) {
       console.error('Error fetching payment methods:', err);

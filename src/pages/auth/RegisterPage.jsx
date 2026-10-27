@@ -27,6 +27,7 @@ import { FadeIn, SpotlightCard, MagneticButton } from '../../components/aluna/an
 import { PLAN_IDS, PLAN_LABELS } from '../../config/plans';
 import { safeSessionStorage as sessionStorage } from '../../utils/safeStorage';
 import { buildDefaultBusinessHours } from '../../utils/businessHours';
+import { buildDefaultPaymentMethods } from '../../utils/paymentDefaults';
 
 
 

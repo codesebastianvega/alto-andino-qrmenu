@@ -103,6 +103,16 @@ export default function AdminOnboarding() {
             operational_modes: ['dine_in', 'takeaway', 'delivery']
           });
         }
+
+        // Asegurar metodos de pago por defecto
+        const { data: existingPms } = await supabase
+          .from('payment_methods')
+          .select('id')
+          .eq('brand_id', activeBrand.id);
+
+        if (!existingPms || existingPms.length === 0) {
+          await supabase.from('payment_methods').insert(buildDefaultPaymentMethods(activeBrand.id, { phone: formData.whatsapp || formData.phone }));
+        }
       }
 
       if (user?.id) await refreshProfile(user.id);
@@ -214,6 +224,16 @@ export default function AdminOnboarding() {
           is_active: true,
           operational_modes: ['dine_in', 'takeaway', 'delivery']
         });
+      }
+
+      // Asegurar metodos de pago por defecto
+      const { data: existingPms } = await supabase
+        .from('payment_methods')
+        .select('id')
+        .eq('brand_id', activeBrand.id);
+
+      if (!existingPms || existingPms.length === 0) {
+        await supabase.from('payment_methods').insert(buildDefaultPaymentMethods(activeBrand.id, { phone: formData.whatsapp || formData.phone }));
       }
 
       // 3. Refrescar contexto y navegar al slug actualizado. Si el usuario

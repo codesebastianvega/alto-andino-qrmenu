@@ -27,6 +27,7 @@ import { FadeIn, SpotlightCard, MagneticButton } from '../../components/aluna/an
 import { PLAN_IDS, PLAN_LABELS, DEFAULT_PLAN_SLUG } from '../../config/plans';
 import { safeSessionStorage as sessionStorage } from '../../utils/safeStorage';
 import { buildDefaultBusinessHours } from '../../utils/businessHours';
+import { buildDefaultPaymentMethods } from '../../utils/paymentDefaults';
 
 
 const BUSINESS_TYPES = [
