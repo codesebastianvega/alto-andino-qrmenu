@@ -12,11 +12,16 @@ export function useDynamicPWA({ brand, restaurantSettings }) {
   useEffect(() => {
     if (!brand && !restaurantSettings) return;
 
-    const brandName = restaurantSettings?.business_name || brand?.name || "BOKU BENTO";
+    // Do NOT run dynamic PWA manifest inside admin panels
+    if (window.location.hash.includes('#admin') || window.location.pathname.startsWith('/admin')) {
+      return;
+    }
+
+    const brandName = restaurantSettings?.business_name || brand?.name || "Aluna";
     const brandShortName = brand?.short_name || brandName;
     const isBoku = brand?.slug === 'boku-bento' || brandName.toLowerCase().includes('boku');
-    const brandLogo = isBoku ? '/boku-icon-512.png' : (brand?.logo_url || restaurantSettings?.logo_url || "/boku-icon-192.png");
-    const themeColor = isBoku ? '#bc0e0e' : (brand?.theme_color || restaurantSettings?.primary_color || "#bc0e0e");
+    const brandLogo = isBoku ? '/boku-icon-512.png' : (brand?.logo_url || restaurantSettings?.logo_url || "/favicon.png");
+    const themeColor = isBoku ? '#bc0e0e' : (brand?.theme_color || restaurantSettings?.primary_color || "#2f4131");
 
     // 1. Actualizar título del documento
     document.title = `${brandName} | Menú Digital`;
@@ -101,10 +106,13 @@ export function useDynamicPWA({ brand, restaurantSettings }) {
             img.src = brandLogo;
           });
 
-          const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
-          if (blob && !isCancelled) {
-            maskableBlobUrl = URL.createObjectURL(blob);
-            maskableUrl = maskableBlobUrl;
+          try {
+            const dataUrl = canvas.toDataURL('image/png');
+            if (dataUrl && !isCancelled) {
+              maskableUrl = dataUrl;
+            }
+          } catch (canvasErr) {
+            maskableUrl = brandLogo;
           }
         }
       } catch (err) {
@@ -121,7 +129,7 @@ export function useDynamicPWA({ brand, restaurantSettings }) {
         name: brandName,
         short_name: brandShortName,
         description: `Menú digital y pedidos para ${brandName}`,
-        start_url: window.location.pathname + window.location.search,
+        start_url: brand?.slug ? `/${brand.slug}/` : '/',
         display: "standalone",
         background_color: themeColor,
         theme_color: themeColor,

@@ -22,10 +22,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   if (url.origin === self.location.origin && /\.(?:js|css|png|jpe?g|webp|svg|woff2?)$/i.test(url.pathname)) {
-    event.respondWith(caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-      if (response.ok) caches.open(CACHE_VERSION).then((cache) => cache.put(request, response.clone()));
-      return response;
-    })));
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (response && response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_VERSION).then((cache) => cache.put(request, clone)).catch(() => {});
+          }
+          return response;
+        });
+      })
+    );
   }
 });
 

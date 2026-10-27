@@ -117,6 +117,20 @@ export default function AdminSettings() {
           data = brandLevelRow;
         }
       }
+
+      // Fallback 2: If searching for all locations and no row with location_id IS NULL exists, find ANY existing row for this brand
+      if (!data) {
+        const anyRes = await supabase
+          .from('restaurant_settings')
+          .select('*')
+          .eq('brand_id', activeBrand.id)
+          .order('location_id', { ascending: true, nullsFirst: true })
+          .limit(1)
+          .maybeSingle();
+        if (anyRes.data) {
+          data = anyRes.data;
+        }
+      }
       
       if (data) {
         setSettings(data);
@@ -355,13 +369,32 @@ export default function AdminSettings() {
           .eq('id', settings.id);
         error = updateErr;
       } else {
-        const { data: upsertData, error: upsertErr } = await supabase
+        // Safe check: verify if a row already exists for this brand before inserting
+        const { data: existingRow } = await supabase
           .from('restaurant_settings')
-          .upsert(payload, { onConflict: 'brand_id' })
-          .select()
-          .single();
-        error = upsertErr;
-        if (upsertData) setSettings(upsertData);
+          .select('id')
+          .eq('brand_id', activeBrand.id)
+          .limit(1)
+          .maybeSingle();
+
+        if (existingRow?.id) {
+          const { data: updateData, error: updateErr } = await supabase
+            .from('restaurant_settings')
+            .update(payload)
+            .eq('id', existingRow.id)
+            .select()
+            .single();
+          error = updateErr;
+          if (updateData) setSettings(updateData);
+        } else {
+          const { data: insertData, error: insertErr } = await supabase
+            .from('restaurant_settings')
+            .insert(payload)
+            .select()
+            .single();
+          error = insertErr;
+          if (insertData) setSettings(insertData);
+        }
       }
 
       if (error) throw error;
