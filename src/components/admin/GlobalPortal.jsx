@@ -67,6 +67,13 @@ async function createBrand({ userId, name, businessType, planId }) {
 
   await Promise.allSettled([
     supabase.from('restaurant_settings').insert({ brand_id: brand.id, business_name: name }),
+    supabase.from('locations').insert({
+      brand_id: brand.id,
+      name: 'Sede Principal',
+      is_main: true,
+      is_active: true,
+      operational_modes: ['dine_in', 'takeaway', 'delivery']
+    }),
     supabase.from('home_settings').insert({ brand_id: brand.id }),
     supabase.from('business_hours').insert(buildDefaultBusinessHours(brand.id)),
     supabase.from('staff').insert({

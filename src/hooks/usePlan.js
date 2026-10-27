@@ -127,27 +127,48 @@ export function usePlan(manualBrandId = null) {
    * Includes hierarchy fallback for resilience.
    */
   const can = useCallback((featureKey) => {
-    // 1. REGLA DE ORO: Si la prueba está activa, acceso total
-    if (isTrialActive) return true;
-    
-    // 2. Custom Pricing tiene acceso total
+    // 1. Custom Pricing (Enterprise) tiene acceso total
     if (plan?.is_custom_pricing) return true;
 
-    // 3. Add-ons independientes de producción ($50.000 COP / mes)
+    // 2. Add-ons independientes de producción ($50.000 COP / mes)
     if (featureKey === 'kitchen_display' && (plan?.has_kds_addon || activeBrand?.has_kds_addon)) return true;
     if (featureKey === 'bar_display' && (plan?.has_bds_addon || activeBrand?.has_bds_addon)) return true;
 
-    // 4. Obtener el slug actual (default a emprendedor si no hay plan)
-    const currentSlug = plan?.slug || 'emprendedor';
+    // 3. Obtener el slug y nivel actual
+    const currentSlug = plan?.slug || activeBrand?.plans?.slug || 'emprendedor';
     const currentLevel = PLAN_HIERARCHY[currentSlug] ?? 0;
 
-    // 5. Verificación en mapa de base de datos
-    if (features[featureKey]) return true;
+    // 4. KDS y BDS requieren estrictamente nivel Profesional o superior (o add-on arriba)
+    if (featureKey === 'kitchen_display' || featureKey === 'bar_display') {
+      if (currentLevel < (PLAN_HIERARCHY['profesional'] ?? 2)) return false;
+    }
 
-    // 6. Verificación por Jerarquía (Fallback en código)
+    // 5. Inventario / Recetas requieren nivel Profesional o superior
+    if (featureKey === 'inventory') {
+      if (currentLevel < (PLAN_HIERARCHY['profesional'] ?? 2)) return false;
+    }
+
+    // 6. Multi-location requiere nivel Profesional o superior
+    if (featureKey === 'multi_location' || featureKey === 'multi_sede') {
+      if (currentLevel < (PLAN_HIERARCHY['profesional'] ?? 2)) return false;
+    }
+
+    // 7. Si la prueba está activa para este plan, respetar la jerarquía del plan seleccionado
+    if (isTrialActive) {
+      const minRequiredSlug = FEATURE_MIN_LEVEL[featureKey];
+      if (minRequiredSlug) {
+        return currentLevel >= (PLAN_HIERARCHY[minRequiredSlug] ?? 0);
+      }
+      return true;
+    }
+
+    // 8. Verificación en mapa de base de datos
+    if (features[featureKey] !== undefined) return Boolean(features[featureKey]);
+
+    // 9. Verificación por Jerarquía (Fallback en código)
     const minRequiredSlug = FEATURE_MIN_LEVEL[featureKey];
     if (minRequiredSlug) {
-      const minLevel = PLAN_HIERARCHY[minRequiredSlug];
+      const minLevel = PLAN_HIERARCHY[minRequiredSlug] ?? 0;
       if (currentLevel >= minLevel) return true;
     }
 
@@ -199,6 +220,7 @@ export function usePlan(manualBrandId = null) {
     maxProducts: plan?.max_products ?? null,
     maxCategories: plan?.max_categories ?? null,
     maxAdmins: plan?.max_admins ?? 1,
+    maxLocations: plan?.max_locations ?? 1,
     /**
      * startTrial — activates a 21-day trial for the current brand via secure RPC.
      */

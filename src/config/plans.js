@@ -97,26 +97,25 @@ export const PLAN_HIERARCHY = {
 };
 
 export const FEATURE_MIN_LEVEL = {
-  // Esencial features
+  // Esencial features (Mesas, Staff hasta 3 usuarios, Landing Page, Pedidos Mesero)
   'landing_page': 'esencial',
   'staff_panel': 'esencial',
   'analytics_basic': 'esencial',
+  'table_management': 'esencial',
+  'staff': 'esencial',
+  'waiter_orders': 'esencial',
   
-  // Profesional features (incluye KDS y BDS por defecto)
-  'table_management': 'profesional',
+  // Profesional features (KDS, BDS, Inventario/Recetas, Multi-sede hasta 3)
   'kitchen_display': 'profesional',
   'bar_display': 'profesional',
   'inventory': 'profesional',
   'advanced_analytics': 'profesional',
   'experiences': 'profesional',
-  
-  // Aliases and mappings
   'multi_location': 'profesional',
   'multi_sede': 'profesional',
   'branding': 'emprendedor',
-  'staff': 'profesional',
 
-  // Premium features
+  // Premium features (CRM, Fidelización)
   'crm': 'premium',
   'loyalty': 'premium'
 };

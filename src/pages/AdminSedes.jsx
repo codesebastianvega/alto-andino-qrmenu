@@ -276,6 +276,14 @@ export default function AdminSedes({ isEmbedded = false }) {
   const isMultiLocationLocked = isFeatureLocked('multi_location');
   const canAddMore = !isMultiLocationLocked || locations.length === 0;
 
+  const handleAddSedeClick = () => {
+    if (!canAddMore) {
+      toast.error('Tu plan actual incluye 1 sede física. Para habilitar sucursales adicionales, actualiza a Plan Profesional.');
+      return;
+    }
+    handleOpenModal();
+  };
+
   if (loading && locations.length === 0) return (
     <div className="flex items-center justify-center h-64 text-gray-400 text-sm font-medium">
       <Loader2 className="w-5 h-5 animate-spin mr-2" /> Cargando sedes...
@@ -298,12 +306,12 @@ export default function AdminSedes({ isEmbedded = false }) {
           <div className="flex items-center gap-3">
             <button 
               type="button"
-              onClick={() => handleOpenModal()} 
-              disabled={!canAddMore}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+              onClick={handleAddSedeClick} 
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
             >
-              <Icon icon="solar:shop-2-bold" className="text-base" />
+              <Icon icon={canAddMore ? "solar:shop-2-bold" : "solar:lock-bold"} className="text-base" />
               <span>Nueva Sede</span>
+              {!canAddMore && <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Pro</span>}
             </button>
           </div>
         </div>
@@ -323,12 +331,12 @@ export default function AdminSedes({ isEmbedded = false }) {
           <div className="flex items-center gap-2 self-start sm:self-auto">
             <button 
               type="button"
-              onClick={() => handleOpenModal()} 
-              disabled={!canAddMore}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+              onClick={handleAddSedeClick} 
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
             >
-              <Icon icon="solar:add-circle-bold" className="text-base" />
+              <Icon icon={canAddMore ? "solar:add-circle-bold" : "solar:lock-bold"} className="text-base" />
               <span>Añadir Sede</span>
+              {!canAddMore && <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Pro</span>}
             </button>
           </div>
         </div>

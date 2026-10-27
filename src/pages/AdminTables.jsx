@@ -100,11 +100,9 @@ export default function AdminTables({ isEmbedded = false }) {
     e.preventDefault();
     if (!newAreaName.trim()) return;
 
-    let targetLocationId = activeLocationId;
-    if (isAllLocations || !targetLocationId || targetLocationId === 'all') {
-      const mainLoc = locations?.find(l => l.is_main) || locations?.[0];
-      targetLocationId = mainLoc?.id;
-    }
+    let targetLocationId = (!isAllLocations && activeLocationId && activeLocationId !== 'all')
+      ? activeLocationId
+      : (tableForm.location_id || locations?.find(l => l.is_main)?.id || locations?.[0]?.id);
 
     if (!targetLocationId) {
       // Auto-crear sede si no existe ninguna
@@ -130,7 +128,7 @@ export default function AdminTables({ isEmbedded = false }) {
       const { error } = await supabase.from('table_areas').insert([{
         name: newAreaName.trim(),
         brand_id: brandId,
-        location_id: activeLocationId,
+        location_id: targetLocationId,
         sort_order: areas.length
       }]);
       if (error) throw error;
@@ -161,10 +159,13 @@ export default function AdminTables({ isEmbedded = false }) {
 
   const openCreate = () => {
     setEditingTable(null);
+    const defaultLocationId = (!isAllLocations && activeLocationId && activeLocationId !== 'all')
+      ? activeLocationId
+      : (locations?.find(l => l.is_main)?.id || locations?.[0]?.id || '');
     setTableForm({ 
       table_number: '', 
       area_id: '',
-      location_id: isAllLocations ? '' : activeLocationId 
+      location_id: defaultLocationId 
     });
     setModalTab('datos');
     setIsFormOpen(true);
@@ -207,12 +208,9 @@ export default function AdminTables({ isEmbedded = false }) {
         if (error) throw error;
         toast.success('Mesa actualizada');
       } else {
-        let effectiveLocationId = isAllLocations ? tableForm.location_id : activeLocationId;
-        
-        if (!effectiveLocationId || effectiveLocationId === 'all') {
-          const mainLoc = locations?.find(l => l.is_main) || locations?.[0];
-          effectiveLocationId = mainLoc?.id;
-        }
+        let effectiveLocationId = (!isAllLocations && activeLocationId && activeLocationId !== 'all')
+          ? activeLocationId
+          : (tableForm.location_id || locations?.find(l => l.is_main)?.id || locations?.[0]?.id);
 
         if (!effectiveLocationId) {
           // Auto-crear sede principal si no existe
@@ -483,14 +481,14 @@ export default function AdminTables({ isEmbedded = false }) {
                   />
                 </FormField>
 
-                {isAllLocations && !editingTable && (
+                {isAllLocations && !editingTable && locations.length > 1 && (
                   <FormField label="Sede">
                     <SelectInput
                       value={tableForm.location_id || ''}
                       onChange={(e) => setTableForm({ ...tableForm, location_id: e.target.value, area_id: '' })}
                       required
                     >
-                      <option value="">Seleccionar Sede...</option>
+                      <option value="" disabled>Seleccionar Sede...</option>
                       {locations.map(loc => (
                         <option key={loc.id} value={loc.id}>{loc.name}</option>
                       ))}
@@ -618,7 +616,7 @@ export default function AdminTables({ isEmbedded = false }) {
                 </PrimaryButton>
               </div>
               
-              {isAllLocations && (
+              {isAllLocations && locations.length > 1 && (
                 <div className="px-1">
                   <SelectInput
                     value={tableForm.location_id || ''}
@@ -626,7 +624,7 @@ export default function AdminTables({ isEmbedded = false }) {
                     className="text-[10px] font-bold h-9"
                     required
                   >
-                    <option value="">Sede para el salón...</option>
+                    <option value="" disabled>Sede para el salón...</option>
                     {locations.map(loc => (
                       <option key={loc.id} value={loc.id}>{loc.name}</option>
                     ))}

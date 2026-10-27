@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '../config/supabase';
+import { PLAN_HIERARCHY, FEATURE_MIN_LEVEL } from '../config/plans';
 import { safeStorage as localStorage } from '../utils/safeStorage';
 import { withTimeout } from '../utils/withTimeout';
 
@@ -53,7 +54,7 @@ export const AuthProvider = ({ children }) => {
         .select(`
           id, name, slug, logo_url, business_type, plan_id, onboarding_completed, is_active,
           trial_end_date, has_ai_addon, has_kds_addon, has_bds_addon, payment_verified, ai_generation_limit, ai_generations_used, addon_ai_analytics, addon_ai_agent,
-          plans (name),
+          plans (id, name, slug),
           restaurant_settings (primary_color)
         `)
         .eq('id', brandId)
@@ -81,7 +82,7 @@ export const AuthProvider = ({ children }) => {
         .select(`
           id, name, slug, logo_url, business_type, plan_id, onboarding_completed, is_active,
           trial_end_date, has_ai_addon, has_kds_addon, has_bds_addon, payment_verified, ai_generation_limit, ai_generations_used, addon_ai_analytics, addon_ai_agent,
-          plans (name),
+          plans (id, name, slug),
           restaurant_settings (primary_color)
         `)
         .eq('slug', slug)
@@ -147,7 +148,7 @@ export const AuthProvider = ({ children }) => {
         .select(`
           id, name, slug, logo_url, business_type, plan_id, onboarding_completed, is_active,
           trial_end_date, has_ai_addon, has_kds_addon, has_bds_addon, payment_verified, ai_generation_limit, ai_generations_used, addon_ai_analytics, addon_ai_agent,
-          plans (name),
+          plans (id, name, slug),
           restaurant_settings (primary_color)
         `)
         .order('name');
@@ -167,7 +168,7 @@ export const AuthProvider = ({ children }) => {
             .select(`
               id, name, slug, logo_url, business_type, plan_id, onboarding_completed, is_active,
               trial_end_date, has_ai_addon, has_kds_addon, has_bds_addon, payment_verified, ai_generation_limit, ai_generations_used, addon_ai_analytics, addon_ai_agent,
-              plans (name),
+              plans (id, name, slug),
               restaurant_settings (primary_color)
             `)
             .eq('id', data.brand_id)
@@ -350,11 +351,55 @@ export const AuthProvider = ({ children }) => {
 
   // Feature Gating Helpers
   const hasFeature = (featureKey) => {
-    // REGLA DE ORO: Si la prueba está activa, acceso total para probar el ecosistema sin bloqueos
-    if (isTrialActive) return true;
-    if (!activeBrandFeatures) return false;
-    const feat = activeBrandFeatures.find(f => f.feature_key === featureKey);
-    return feat?.is_included || false;
+    // 1. Enterprise has full access
+    if (activePlan?.is_custom_pricing) return true;
+
+    // 2. Add-ons check
+    if (featureKey === 'kitchen_display' && (activeBrand?.has_kds_addon || activePlan?.has_kds_addon)) return true;
+    if (featureKey === 'bar_display' && (activeBrand?.has_bds_addon || activePlan?.has_bds_addon)) return true;
+
+    // 3. Resolve plan slug & level
+    const currentSlug = activePlan?.slug || activeBrand?.plans?.slug || 'emprendedor';
+    const currentLevel = PLAN_HIERARCHY[currentSlug] ?? 0;
+
+    // 4. KDS y BDS requieren estrictamente nivel Profesional o superior (o add-on activo)
+    if (featureKey === 'kitchen_display' || featureKey === 'bar_display') {
+      if (currentLevel < (PLAN_HIERARCHY['profesional'] ?? 2)) return false;
+    }
+
+    // 5. Inventario / Recetas requieren nivel Profesional o superior
+    if (featureKey === 'inventory') {
+      if (currentLevel < (PLAN_HIERARCHY['profesional'] ?? 2)) return false;
+    }
+
+    // 6. Multi-location requiere nivel Profesional o superior
+    if (featureKey === 'multi_location' || featureKey === 'multi_sede') {
+      if (currentLevel < (PLAN_HIERARCHY['profesional'] ?? 2)) return false;
+    }
+
+    // 7. Si la prueba está activa para este plan, respetar la jerarquía del plan seleccionado
+    if (isTrialActive) {
+      const minRequiredSlug = FEATURE_MIN_LEVEL[featureKey];
+      if (minRequiredSlug) {
+        return currentLevel >= (PLAN_HIERARCHY[minRequiredSlug] ?? 0);
+      }
+      return true;
+    }
+
+    // 8. Verificación en mapa de base de datos
+    if (activeBrandFeatures && activeBrandFeatures.length > 0) {
+      const feat = activeBrandFeatures.find(f => f.feature_key === featureKey);
+      if (feat !== undefined) return Boolean(feat.is_included);
+    }
+
+    // 9. Verificación por Jerarquía (Fallback en código)
+    const minRequiredSlug = FEATURE_MIN_LEVEL[featureKey];
+    if (minRequiredSlug) {
+      const minLevel = PLAN_HIERARCHY[minRequiredSlug] ?? 0;
+      if (currentLevel >= minLevel) return true;
+    }
+
+    return false;
   };
 
   const isFeatureLocked = (featureKey) => !hasFeature(featureKey);
