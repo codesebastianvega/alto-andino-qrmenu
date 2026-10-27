@@ -65,7 +65,7 @@ export function useDynamicPWA({ brand, restaurantSettings }) {
     }
 
     if (isBoku) {
-      manifestLink.href = '/manifest.webmanifest';
+      manifestLink.href = '/manifest-boku.webmanifest';
       return;
     }
 

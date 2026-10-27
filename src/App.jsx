@@ -479,7 +479,8 @@ export default function App() {
           >
             <LoadingScreen 
               mode="splash" 
-              brandLogo={activeBrand?.logo_url || restaurantSettings?.logo_url} 
+              brandLogo={restaurantSettings?.logo_url?.trim() || (activeBrand?.id === restaurantSettings?.brand_id ? activeBrand?.logo_url?.trim() : null) || null}
+              businessType={activeBrand?.business_type || 'restaurant'} 
             />
           </motion.div>
         )}
