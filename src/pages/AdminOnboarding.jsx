@@ -62,20 +62,57 @@ export default function AdminOnboarding() {
   }, [activeBrand]);
 
   const handleNext = () => {
-    // Validación por paso
+    // Validación flexible por paso: no bloquear al usuario en datos secundarios
     if (step === 1) {
-      if (!formData.name || !formData.slug || !formData.business_type) {
-        setError('Por favor completa todos los campos de Identidad.');
+      if (!formData.name?.trim()) {
+        setError('Por favor ingresa el nombre comercial de tu negocio.');
         return;
       }
-    } else if (step === 2) {
-      if (!formData.whatsapp || !formData.phone || !formData.email || !formData.city || !formData.country || !formData.address) {
-        setError('Por favor completa todos los datos obligatorios de Contacto y Ubicación.');
-        return;
+      if (!formData.slug?.trim()) {
+        const autoSlug = formData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        setFormData(prev => ({ ...prev, slug: autoSlug }));
       }
     }
+    // Paso 2 (Contacto y Ubicación): todos los campos son opcionales para permitir configuración rápida
     setError(null);
     setStep(s => s + 1);
+  };
+
+  const handleSkip = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (activeBrand?.id) {
+        await supabase
+          .from('brands')
+          .update({ onboarding_completed: true })
+          .eq('id', activeBrand.id);
+
+        // Asegurar que exista al menos una sede inicial
+        const { data: existingLocs } = await supabase
+          .from('locations')
+          .select('id')
+          .eq('brand_id', activeBrand.id);
+
+        if (!existingLocs || existingLocs.length === 0) {
+          await supabase.from('locations').insert({
+            brand_id: activeBrand.id,
+            name: 'Sede Principal',
+            is_main: true,
+            is_active: true,
+            operational_modes: ['dine_in', 'takeaway', 'delivery']
+          });
+        }
+      }
+
+      if (user?.id) await refreshProfile(user.id);
+      navigate(`/${formData.slug || activeBrand?.slug}/#admin?admin_page=orders`, { replace: true });
+    } catch (err) {
+      console.warn('Skip onboarding warning:', err);
+      navigate(`/${formData.slug || activeBrand?.slug}/#admin`, { replace: true });
+    } finally {
+      setLoading(false);
+    }
   };
   
   const handleBack = () => {
@@ -158,6 +195,27 @@ export default function AdminOnboarding() {
 
       if (settingsError) throw settingsError;
 
+      // 2b. Asegurar que exista una sede física activa para operaciones (Mesas, KDS, etc.)
+      const { data: existingLocs } = await supabase
+        .from('locations')
+        .select('id')
+        .eq('brand_id', activeBrand.id);
+
+      if (!existingLocs || existingLocs.length === 0) {
+        await supabase.from('locations').insert({
+          brand_id: activeBrand.id,
+          name: formData.name || 'Sede Principal',
+          address: formData.address || '',
+          phone: formData.phone || formData.whatsapp || '',
+          whatsapp: formData.whatsapp || '',
+          city: formData.city || '',
+          country: formData.country || '',
+          is_main: true,
+          is_active: true,
+          operational_modes: ['dine_in', 'takeaway', 'delivery']
+        });
+      }
+
       // 3. Refrescar contexto y navegar al slug actualizado. Si el usuario
       // cambio el slug durante onboarding, la URL anterior deja la app sin marca activa.
       const params = window.location.search || '?admin_page=checkout';
@@ -187,6 +245,15 @@ export default function AdminOnboarding() {
             Configura tu Negocio
           </h1>
           <p className="text-gray-400">Personaliza Aluna para que se adapte a tu marca en pocos minutos.</p>
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={handleSkip}
+              className="text-xs text-white/50 hover:text-white underline underline-offset-4 transition"
+            >
+              Omitir por ahora e ir directo al panel administrativo →
+            </button>
+          </div>
         </div>
 
         {/* Stepper */}
@@ -469,6 +536,14 @@ export default function AdminOnboarding() {
               Atrás
             </button>
 
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSkip}
+                className="px-4 py-2.5 text-xs text-white/40 hover:text-white transition"
+              >
+                Omitir
+              </button>
             {step < 4 ? (
               <button
                 onClick={handleNext}
@@ -486,6 +561,7 @@ export default function AdminOnboarding() {
                 <CheckCircle2 size={18} />
               </button>
             )}
+            </div>
           </div>
         </div>
 

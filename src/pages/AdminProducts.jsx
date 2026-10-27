@@ -95,7 +95,7 @@ export default function AdminProducts() {
   }, [activeLocationId]);
 
   const { activePlan } = useAuth();
-  const { withinLimit, isWithinProductLimit, planName } = usePlan();
+  const { withinLimit, isWithinProductLimit, planName, isTrialActive } = usePlan();
   const { recipes, fetchRecipes } = useAdminRecipes();
   const { ingredients, fetchIngredients } = useAdminIngredients();
   const { modifierGroups, fetchModifierGroups } = useAdminModifierGroups(activeLocationId);
@@ -242,7 +242,7 @@ export default function AdminProducts() {
     );
   }
 
-  const isAtLimit = !isWithinProductLimit;
+  const isAtLimit = !isTrialActive && !isWithinProductLimit;
 
   const filtered = products.filter(p => {
     if (p.is_addon) return false;
@@ -460,7 +460,7 @@ export default function AdminProducts() {
       </PageHeader>
 
       {/* Product Limit Banner */}
-      {!isWithinProductLimit && (
+      {!isTrialActive && !isWithinProductLimit && (
         <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-orange-100 rounded-[2rem] p-6 mb-2 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
           <div className="flex items-center gap-4 text-center sm:text-left flex-col sm:flex-row">
             <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm text-orange-500 shrink-0">

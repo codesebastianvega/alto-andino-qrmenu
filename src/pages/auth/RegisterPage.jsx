@@ -107,6 +107,16 @@ async function createBrand({ userId, name, businessType, planId }) {
     'No se pudo crear la configuracion del negocio'
   );
   await ensureMutation(
+    supabase.from('locations').insert({
+      brand_id: brandId,
+      name: 'Sede Principal',
+      is_main: true,
+      is_active: true,
+      operational_modes: ['dine_in', 'takeaway', 'delivery']
+    }),
+    'No se pudo crear la sede principal inicial'
+  );
+  await ensureMutation(
     supabase.from('home_settings').insert({ brand_id: brandId }),
     'No se pudo crear la configuracion de inicio'
   );

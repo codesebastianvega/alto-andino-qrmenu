@@ -340,8 +340,18 @@ export const AuthProvider = ({ children }) => {
     fetchBrandFeatures(brand.id, brand.plan_id);
   }, [user, fetchBrandFeatures]);
 
+  // Dynamic trial verification: 21-day trial grants full unrestricted access
+  const isTrialActive = Boolean(
+    activeBrand?.trial_end_date &&
+    new Date(activeBrand.trial_end_date) > new Date() &&
+    (activeBrand.subscription_status === 'trialing' || activeBrand.subscription_status === 'trial') &&
+    !activeBrand?.payment_verified
+  );
+
   // Feature Gating Helpers
   const hasFeature = (featureKey) => {
+    // REGLA DE ORO: Si la prueba está activa, acceso total para probar el ecosistema sin bloqueos
+    if (isTrialActive) return true;
     if (!activeBrandFeatures) return false;
     const feat = activeBrandFeatures.find(f => f.feature_key === featureKey);
     return feat?.is_included || false;
@@ -373,6 +383,7 @@ export const AuthProvider = ({ children }) => {
       activeBrandFeatures,
       hasFeature,
       isFeatureLocked,
+      isTrialActive,
       switchBrand,
       setActiveBrand: setActiveBrandState,
       fetchBrandById,

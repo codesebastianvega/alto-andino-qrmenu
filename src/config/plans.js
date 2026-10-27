@@ -110,10 +110,15 @@ export const FEATURE_MIN_LEVEL = {
   'advanced_analytics': 'profesional',
   'experiences': 'profesional',
   
+  // Aliases and mappings
+  'multi_location': 'profesional',
+  'multi_sede': 'profesional',
+  'branding': 'emprendedor',
+  'staff': 'profesional',
+
   // Premium features
   'crm': 'premium',
-  'loyalty': 'premium',
-  'multi_sede': 'premium'
+  'loyalty': 'premium'
 };
 
 /**

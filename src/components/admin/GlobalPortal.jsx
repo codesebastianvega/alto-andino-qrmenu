@@ -56,6 +56,10 @@ async function createBrand({ userId, name, businessType, planId }) {
       name, slug, owner_id: userId, is_active: true,
       plan_id: planId, business_type: businessType,
       onboarding_completed: false,
+      trial_end_date: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(),
+      subscription_status: 'trialing',
+      trial_already_used: true,
+      payment_verified: false
     })
     .select().single();
 
@@ -195,7 +199,7 @@ function NewBrandModal({ onClose, onCreated }) {
   const { user } = useAuth();
   const [name, setName] = useState('');
   const [businessType, setBusinessType] = useState('restaurant');
-  const [selectedPlanId, setSelectedPlanId] = useState(PLAN_IDS.emprendedor);
+  const [selectedPlanId, setSelectedPlanId] = useState(PLAN_IDS.profesional);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);

@@ -23,7 +23,7 @@ export default function AdminCategories() {
     if (activeLocationId) fetchCategories(activeLocationId);
   }, [activeLocationId, fetchCategories]);
 
-  const { withinLimit, maxCategories } = usePlan();
+  const { withinLimit, maxCategories, isTrialActive } = usePlan();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
@@ -71,7 +71,7 @@ export default function AdminCategories() {
     <div className="p-8 text-red-500 text-sm font-medium">Error cargando categorías: {error}</div>
   );
 
-  const isAtLimit = !withinLimit('max_categories', categories.length);
+  const isAtLimit = !isTrialActive && !withinLimit('max_categories', categories.length);
 
   const filtered = categories.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||

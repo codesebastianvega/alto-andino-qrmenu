@@ -99,9 +99,32 @@ export default function AdminTables({ isEmbedded = false }) {
   const handleCreateArea = async (e) => {
     e.preventDefault();
     if (!newAreaName.trim()) return;
-    if (isAllLocations || !activeLocationId) {
-      return toast.error('Selecciona una sede específica para crear un salón');
+
+    let targetLocationId = activeLocationId;
+    if (isAllLocations || !targetLocationId || targetLocationId === 'all') {
+      const mainLoc = locations?.find(l => l.is_main) || locations?.[0];
+      targetLocationId = mainLoc?.id;
     }
+
+    if (!targetLocationId) {
+      // Auto-crear sede si no existe ninguna
+      try {
+        const { data: newLoc } = await supabase.from('locations').insert([{
+          brand_id: brandId,
+          name: 'Sede Principal',
+          is_main: true,
+          is_active: true
+        }]).select().single();
+        targetLocationId = newLoc?.id;
+      } catch (errLoc) {
+        console.error('Error auto-creating location:', errLoc);
+      }
+    }
+
+    if (!targetLocationId) {
+      return toast.error('Por favor crea primero una sede en la sección de Sedes');
+    }
+
     setIsSubmittingArea(true);
     try {
       const { error } = await supabase.from('table_areas').insert([{
@@ -184,10 +207,30 @@ export default function AdminTables({ isEmbedded = false }) {
         if (error) throw error;
         toast.success('Mesa actualizada');
       } else {
-        const effectiveLocationId = isAllLocations ? tableForm.location_id : activeLocationId;
+        let effectiveLocationId = isAllLocations ? tableForm.location_id : activeLocationId;
         
         if (!effectiveLocationId || effectiveLocationId === 'all') {
-          toast.error('Selecciona una sede válida');
+          const mainLoc = locations?.find(l => l.is_main) || locations?.[0];
+          effectiveLocationId = mainLoc?.id;
+        }
+
+        if (!effectiveLocationId) {
+          // Auto-crear sede principal si no existe
+          try {
+            const { data: newLoc } = await supabase.from('locations').insert([{
+              brand_id: brandId,
+              name: 'Sede Principal',
+              is_main: true,
+              is_active: true
+            }]).select().single();
+            effectiveLocationId = newLoc?.id;
+          } catch (errLoc) {
+            console.error('Error auto-creating location:', errLoc);
+          }
+        }
+
+        if (!effectiveLocationId) {
+          toast.error('Por favor crea primero una sede en la sección de Sedes');
           setIsSubmittingTable(false);
           return;
         }
