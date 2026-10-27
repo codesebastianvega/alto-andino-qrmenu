@@ -39,12 +39,7 @@ const DIYProductModal = lazy(() => import('../components/DIYProductModal'));
 // =========================================================================
 // 🎛️ FALLBACK DATA (se usa si Supabase no tiene datos todavía)
 // =========================================================================
-const FALLBACK_HERO_DISHES = [
-  { category: "Pokes", name: "Poke Especial", rating: "4.9", prepTime: "10-15 mins", img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=1200" },
-  { category: "Bowls", name: "Sunrise Bowl", rating: "4.8", prepTime: "5-10 mins", img: "https://images.unsplash.com/photo-1494390248081-4e521a5940db?auto=format&fit=crop&q=80&w=1200" },
-  { category: "Café", name: "Filtrado de Origen", rating: "4.9", prepTime: "5 mins", img: "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&q=80&w=1200" },
-  { category: "Postres", name: "Tarta de Higo", rating: "4.7", prepTime: "15 mins", img: "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&q=80&w=1200" }
-];
+const FALLBACK_HERO_DISHES = [];
 
 const FALLBACK_HERO_IMAGE = "/img/products/bowl-poke-hawaiano.jpg";
 
@@ -55,12 +50,7 @@ const FALLBACK_FEATURED = [
   { name: "Açai Magic", img: "https://images.unsplash.com/photo-1590165482129-1b8b27698780?auto=format&fit=crop&q=80&w=400", price: 22000 }
 ];
 
-const FALLBACK_REVIEWS = [
-  { name: "Camila Rodríguez B.", role: "La Esmeralda, Zipaquirá", rating: 5, text: "Pedí el Tokyo Crunchy para almorzar en la oficina y llegó impecable. La textura del arroz y el toque crocante están a otro nivel.", img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150" },
-  { name: "Andrés Felipe Torres", role: "Sector Algarra III", rating: 5, text: "El Porky BOKU es una locura, la carne súper suavecita con ese crocante perfecto y la porción es bien generosa.", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150" },
-  { name: "Valentina Gómez", role: "Centro Histórico", rating: 5, text: "Fan total del Salmón Fresh. Se nota de inmediato la frescura de los ingredientes y el aguacate en su punto exacto.", img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150" },
-  { name: "Nicolás Pardo", role: "Barrio San Pablo", rating: 5, text: "El Pollito Crazy tiene un sabor oriental delicioso y nada grasoso. Domicilio súper puntual aquí en San Pablo.", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150" }
-];
+const FALLBACK_REVIEWS = [];
 
 const LandingPage = () => {
   const [activeCategory, setActiveCategory] = useState('');
@@ -198,7 +188,7 @@ const LandingPage = () => {
     }
 
     // 3. Reseñas
-    const reviews = (homeSettings?.reviews && homeSettings.reviews.length > 0) ? homeSettings.reviews : FALLBACK_REVIEWS;
+    const reviews = (homeSettings?.reviews && Array.isArray(homeSettings.reviews) && homeSettings.reviews.length > 0) ? homeSettings.reviews : [];
 
     // 4. Emojis y Textos
     const emojisConfig = homeSettings?.hero_emojis 
@@ -213,7 +203,7 @@ const LandingPage = () => {
       conciergeImg: homeSettings?.concierge_img || '',
       conciergeBgColor: homeSettings?.concierge_bg_color || restaurantSettings?.theme_footer_bg || '#1A2421',
       heroH1: homeSettings?.hero_h1 || 'Descubre tus\nplatos favoritos',
-      heroSubtitle: homeSettings?.hero_subtitle || `Ingredientes locales, nutrición premium y el toque artesanal de nuestra cocina${brandCity ? ` en ${brandCity}` : ''}, directo a tu mesa.`,
+      heroSubtitle: homeSettings?.hero_subtitle || `Los mejores sabores y el toque artesanal de nuestra cocina${brandCity ? ` en ${brandCity}` : ''}, directo a tu mesa.`,
       heroEmojis: emojisConfig.length > 0 ? emojisConfig : ['🥑', '🌿'],
       featuredTitle: homeSettings?.featured_items_title || 'Must Try',
       featuredTag: homeSettings?.featured_items_tag || 'Selección del Chef'
@@ -629,6 +619,7 @@ const LandingPage = () => {
       </section>
 
       {/* Community Reviews: Infinite Scroll (Light Variant) */}
+      {config.reviews && config.reviews.length > 0 && (
       <section className="py-24 md:py-32 bg-[#FAFAFA] relative overflow-hidden">
         <div className="container mx-auto px-4 md:px-6 lg:px-12 relative z-10">
           <div className="text-center max-w-3xl mx-auto mb-16 md:mb-20">
@@ -689,6 +680,7 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
+      )}
 
 
 

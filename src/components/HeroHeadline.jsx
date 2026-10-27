@@ -64,11 +64,12 @@ function getTimeContext(city = "") {
 export default function HeroHeadline() {
   const cart = useCart();
   // Selección de producto recomendado con stock disponible
-  const { homeSettings, restaurantSettings, categories, productsByCategory } = useMenuData();
+  const { homeSettings, restaurantSettings, categories, productsByCategory, brand: menuBrand } = useMenuData();
   const { activeBrand } = useAuth();
   
-  const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
-  const brandCity = activeBrand?.city || "";
+  const effectiveBrand = menuBrand || (activeBrand?.id === restaurantSettings?.brand_id ? activeBrand : null);
+  const brandName = restaurantSettings?.business_name || effectiveBrand?.name || "Aluna";
+  const brandCity = effectiveBrand?.city || "";
 
   const { emoji, label, time } = getTimeContext(brandCity);
 

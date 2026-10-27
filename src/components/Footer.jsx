@@ -34,22 +34,24 @@ function getGreetingMessage(homeSettings) {
 }
 
 export default function Footer({ hasCartBar, onInstallPWA, isPWAInstalled }) {
-  const { restaurantSettings, homeSettings, locations, businessHours } = useMenuData();
+  const { restaurantSettings, homeSettings, locations, businessHours, brand: menuBrand } = useMenuData();
   const { activeBrand } = useAuth();
   
   const mainLocation = locations?.find(loc => loc.is_main) || locations?.[0];
   
-  const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
-  const logoUrl = restaurantSettings?.logo_url;
+  const effectiveBrand = menuBrand || (activeBrand?.id === restaurantSettings?.brand_id ? activeBrand : null);
+  const brandName = restaurantSettings?.business_name || effectiveBrand?.name || "Aluna";
+  const rawLogo = restaurantSettings?.logo_url?.trim() || effectiveBrand?.logo_url?.trim() || null;
+  const logoUrl = rawLogo && rawLogo.length > 0 ? rawLogo : null;
   const footerBg = restaurantSettings?.theme_footer_bg || "#1A2421";
 
-  const IG_URL = restaurantSettings?.instagram_url || (activeBrand?.instagram ? `https://instagram.com/${activeBrand.instagram.replace('@', '')}` : null);
-  const RAW_WA = (restaurantSettings?.whatsapp_number_orders || mainLocation?.phone || activeBrand?.whatsapp || activeBrand?.phone || "").replace(/\D/g, "");
+  const IG_URL = restaurantSettings?.instagram_url || (effectiveBrand?.instagram ? `https://instagram.com/${activeBrand.instagram.replace('@', '')}` : null);
+  const RAW_WA = (restaurantSettings?.whatsapp_number_orders || mainLocation?.phone || effectiveBrand?.whatsapp || effectiveBrand?.phone || "").replace(/\D/g, "");
   const WA_NUM = RAW_WA ? (RAW_WA.startsWith("57") ? RAW_WA : `57${RAW_WA}`) : null;
   const WA_LINK = WA_NUM ? `https://wa.me/${WA_NUM}` : null;
   const REVIEWS_URL = restaurantSettings?.reviews_url;
 
-  const displayPhone = restaurantSettings?.whatsapp_number_orders || mainLocation?.phone || activeBrand?.whatsapp || activeBrand?.phone || "";
+  const displayPhone = restaurantSettings?.whatsapp_number_orders || mainLocation?.phone || effectiveBrand?.whatsapp || effectiveBrand?.phone || "";
 
   const formattedHours = React.useMemo(() => {
     if (!businessHours || businessHours.length === 0) return null;

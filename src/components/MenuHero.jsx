@@ -219,11 +219,13 @@ function clampFabPosition(position) {
 export default function MenuHero({ query, setQuery, activeCategory, setActiveCategory, categories = [] }) {
   const { label: greeting } = getTimeContext();
   const [user] = useState({ name: 'Invitado', isLogged: false });
-  const { homeSettings, restaurantSettings, categories: activeCategories, productsByCategory, currentLocation, locations, getAllProducts } = useMenuData();
+  const { homeSettings, restaurantSettings, categories: activeCategories, productsByCategory, currentLocation, locations, getAllProducts, brand: menuBrand } = useMenuData();
   const { activeBrand } = useAuth();
 
-  const brandName = restaurantSettings?.business_name || activeBrand?.name || 'Aluna';
-  const logoUrl = restaurantSettings?.logo_url || activeBrand?.logo_url;
+  const effectiveBrand = menuBrand || (activeBrand?.id === restaurantSettings?.brand_id ? activeBrand : null);
+  const brandName = restaurantSettings?.business_name || effectiveBrand?.name || 'Aluna';
+  const rawLogo = restaurantSettings?.logo_url?.trim() || effectiveBrand?.logo_url?.trim() || null;
+  const logoUrl = rawLogo && rawLogo.length > 0 ? rawLogo : null;
   const logoContrast = useLogoContrast(logoUrl, 'light');
   const isLightLogo = logoContrast === 'light';
   const primaryColor = restaurantSettings?.primary_color || '#4A7856';

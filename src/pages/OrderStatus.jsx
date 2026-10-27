@@ -16,10 +16,11 @@ export default function OrderStatus({ orderId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  const { restaurantSettings } = useMenuData();
+  const { restaurantSettings, brand: menuBrand } = useMenuData();
   const { activeBrand } = useAuth();
 
-  const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
+  const effectiveBrand = menuBrand || (activeBrand?.id === restaurantSettings?.brand_id ? activeBrand : null);
+  const brandName = restaurantSettings?.business_name || effectiveBrand?.name || "Aluna";
 
   // Estado de permisos de notificaciones del navegador
   const [notificationPermission, setNotificationPermission] = useState(() => {

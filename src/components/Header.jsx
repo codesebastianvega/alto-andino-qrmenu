@@ -16,7 +16,8 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
   const brandName = (brand?.slug !== 'alto-andino' && brand?.name)
     ? brand.name
     : (restaurantSettings?.business_name || brand?.name || "Aluna");
-  const logoUrl = restaurantSettings?.logo_url || brand?.logo_url;
+  const rawHeaderLogo = restaurantSettings?.logo_url?.trim() || brand?.logo_url?.trim() || null;
+  const logoUrl = rawHeaderLogo && rawHeaderLogo.length > 0 ? rawHeaderLogo : null;
   const primaryColor = restaurantSettings?.primary_color || "#BFAE78";
   const assistantName = cleanAssistantName(homeSettings?.concierge_h1, "Asistente");
   const logoContrast = useLogoContrast(logoUrl, 'light');

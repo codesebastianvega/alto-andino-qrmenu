@@ -82,7 +82,9 @@ export default function App() {
   
   // En el panel de admin, priorizamos SIEMPRE la marca de la sesión activa
   const isNewAdminPanel = window.location.hash.startsWith('#admin') || window.location.pathname.startsWith('/admin');
-  const activeBrand = isNewAdminPanel ? (activeBrandFromAuth || activeBrandFromContext) : (activeBrandFromContext || activeBrandFromAuth);
+  const activeBrand = isNewAdminPanel 
+    ? (activeBrandFromAuth || activeBrandFromContext) 
+    : (brand_slug ? activeBrandFromContext : (activeBrandFromContext || activeBrandFromAuth));
   
   const [open, setOpen] = useState(false);
   const [openGuide, setOpenGuide] = useState(false);
@@ -535,7 +537,7 @@ export default function App() {
                       restaurantSettings?.business_name ||
                       "Aluna"
                     }
-                    logoUrl={restaurantSettings?.logo_url || activeBrand?.logo_url}
+                    logoUrl={restaurantSettings?.logo_url?.trim() || (activeBrand?.id === restaurantSettings?.brand_id ? activeBrand?.logo_url?.trim() : null) || null}
                     bgUrl={homeSettings?.welcome_bg_img || homeSettings?.menu_banner_img}
                     mesa={new URLSearchParams(window.location.search).get('mesa')}
                     onStart={handleStartExperience}
@@ -557,7 +559,7 @@ export default function App() {
 
 
         {/* Si es vista Landing Y (no estamos en modo pedido O es un hash explícito #inicio) */}
-        {(isExplicitInicio || (isLandingView && !isOrderingMode)) && (
+        {(isExplicitInicio || (!brand_slug && isLandingView)) && (
           <Suspense fallback={<LoadingScreen mode="skeleton" />}>
             {brand_slug ? (
               <LandingPage />
