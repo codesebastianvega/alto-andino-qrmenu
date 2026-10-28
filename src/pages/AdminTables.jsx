@@ -4,6 +4,7 @@ import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useBrand } from '../context/BrandContext';
 import { useLocations } from '../context/LocationContext';
+import { useAdminModalBack } from '../hooks/useAdminModalBack';
 import { toast as toastFn } from '../components/Toast';
 import {
   PageHeader, PrimaryButton, SecondaryButton, Badge,
@@ -11,7 +12,7 @@ import {
 } from '../components/admin/ui';
 
 import { 
-  Plus, LayoutGrid, MapPin, QrCode, Edit3, Trash2, 
+  Plus, LayoutGrid, MapPin, QrCode, Edit3, Trash2, Sparkles, Loader2, 
   ChevronRight, Layers, Table, ExternalLink
 } from 'lucide-react';
 
@@ -38,8 +39,77 @@ export default function AdminTables({ isEmbedded = false }) {
   const [areas, setAreas] = useState([]);
   const [loadingAreas, setLoadingAreas] = useState(false);
   const [isAreaModalOpen, setIsAreaModalOpen] = useState(false);
+
+  useAdminModalBack(isFormOpen, () => setIsFormOpen(false));
+  useAdminModalBack(isAreaModalOpen, () => setIsAreaModalOpen(false));
   const [newAreaName, setNewAreaName] = useState('');
   const [isSubmittingArea, setIsSubmittingArea] = useState(false);
+  const [isBulkCreating, setIsBulkCreating] = useState(false);
+
+  const handleBulkCreateTables = async (customCount) => {
+    const inputCount = customCount || parseInt(document.getElementById('bulk-table-count')?.value || '6', 10);
+    const count = Math.min(Math.max(1, isNaN(inputCount) ? 6 : inputCount), 50);
+
+    setIsBulkCreating(true);
+    try {
+      let targetLocId = (!isAllLocations && activeLocationId && activeLocationId !== 'all')
+        ? activeLocationId
+        : (locations?.find(l => l.is_main)?.id || locations?.[0]?.id);
+
+      if (!targetLocId) {
+        const { data: dbLocs } = await supabase.from('locations').select('id').eq('brand_id', brandId).limit(1);
+        if (dbLocs && dbLocs.length > 0) {
+          targetLocId = dbLocs[0].id;
+        } else {
+          const { data: newLoc } = await supabase.from('locations').insert([{
+            brand_id: brandId,
+            name: 'Sede Principal',
+            is_main: true,
+            is_active: true,
+            operational_modes: ['dine_in', 'takeaway', 'delivery']
+          }]).select().single();
+          targetLocId = newLoc?.id;
+        }
+      }
+
+      if (!targetLocId) {
+        toast.error('No se pudo determinar la sede para las mesas');
+        return;
+      }
+
+      const existingNumbers = new Set(tables.map(t => t.table_number.toLowerCase().trim()));
+      const newRows = [];
+      let num = 1;
+      while (newRows.length < count && num <= 100) {
+        const name = `Mesa ${num}`;
+        if (!existingNumbers.has(name.toLowerCase())) {
+          newRows.push({
+            table_number: name,
+            brand_id: brandId,
+            location_id: targetLocId,
+            is_active: true
+          });
+        }
+        num++;
+      }
+
+      if (newRows.length === 0) {
+        toast.error('Ya existen mesas con esos identificadores');
+        return;
+      }
+
+      const { error } = await supabase.from('restaurant_tables').insert(newRows);
+      if (error) throw error;
+
+      toast.success(`¡${newRows.length} mesas creadas al instante!`);
+      fetchTables();
+    } catch (err) {
+      console.error('Error in bulk table creation:', err);
+      toast.error('Error al generar mesas en lote');
+    } finally {
+      setIsBulkCreating(false);
+    }
+  };
 
   useEffect(() => {
     if (brandId) {
@@ -105,17 +175,22 @@ export default function AdminTables({ isEmbedded = false }) {
       : (tableForm.location_id || locations?.find(l => l.is_main)?.id || locations?.[0]?.id);
 
     if (!targetLocationId) {
-      // Auto-crear sede si no existe ninguna
       try {
-        const { data: newLoc } = await supabase.from('locations').insert([{
-          brand_id: brandId,
-          name: 'Sede Principal',
-          is_main: true,
-          is_active: true
-        }]).select().single();
-        targetLocationId = newLoc?.id;
+        const { data: dbLocs } = await supabase.from('locations').select('id').eq('brand_id', brandId).limit(1);
+        if (dbLocs && dbLocs.length > 0) {
+          targetLocationId = dbLocs[0].id;
+        } else {
+          const { data: newLoc } = await supabase.from('locations').insert([{
+            brand_id: brandId,
+            name: 'Sede Principal',
+            is_main: true,
+            is_active: true,
+            operational_modes: ['dine_in', 'takeaway', 'delivery']
+          }]).select().single();
+          targetLocationId = newLoc?.id;
+        }
       } catch (errLoc) {
-        console.error('Error auto-creating location:', errLoc);
+        console.error('Error auto-creating location for area:', errLoc);
       }
     }
 
@@ -213,17 +288,22 @@ export default function AdminTables({ isEmbedded = false }) {
           : (tableForm.location_id || locations?.find(l => l.is_main)?.id || locations?.[0]?.id);
 
         if (!effectiveLocationId) {
-          // Auto-crear sede principal si no existe
           try {
-            const { data: newLoc } = await supabase.from('locations').insert([{
-              brand_id: brandId,
-              name: 'Sede Principal',
-              is_main: true,
-              is_active: true
-            }]).select().single();
-            effectiveLocationId = newLoc?.id;
+            const { data: dbLocs } = await supabase.from('locations').select('id').eq('brand_id', brandId).limit(1);
+            if (dbLocs && dbLocs.length > 0) {
+              effectiveLocationId = dbLocs[0].id;
+            } else {
+              const { data: newLoc } = await supabase.from('locations').insert([{
+                brand_id: brandId,
+                name: 'Sede Principal',
+                is_main: true,
+                is_active: true,
+                operational_modes: ['dine_in', 'takeaway', 'delivery']
+              }]).select().single();
+              effectiveLocationId = newLoc?.id;
+            }
           } catch (errLoc) {
-            console.error('Error auto-creating location:', errLoc);
+            console.error('Error auto-creating location for table:', errLoc);
           }
         }
 
@@ -367,7 +447,37 @@ export default function AdminTables({ isEmbedded = false }) {
           </thead>
           <tbody className="divide-y divide-gray-50">
             {tables.length === 0 ? (
-              <tr><td colSpan={4} className="px-5 py-24 text-center text-sm text-gray-300 font-medium italic">No hay mesas configuradas aún. Empieza agregando una nueva mesa.</td></tr>
+              <tr>
+                <td colSpan={4} className="p-8 sm:p-12 text-center bg-gradient-to-b from-gray-50/80 to-white rounded-3xl border border-dashed border-gray-200">
+                  <div className="max-w-md mx-auto space-y-4">
+                    <div className="w-14 h-14 mx-auto rounded-2xl bg-[#2f4131] text-white flex items-center justify-center shadow-lg shadow-[#2f4131]/20">
+                      <Table size={28} />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-bold text-gray-900">¿Cuántas mesas tienes en tu local?</h4>
+                      <p className="text-xs text-gray-500 mt-1">Generaremos tus códigos QR individuales listos para descargar e imprimir con un solo clic.</p>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 pt-2">
+                      <input 
+                        type="number" 
+                        min="1" 
+                        max="50" 
+                        defaultValue="6"
+                        id="bulk-table-count"
+                        className="w-20 px-3 py-2 text-center text-sm font-bold bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2f4131] outline-none"
+                      />
+                      <button
+                        onClick={() => handleBulkCreateTables()}
+                        disabled={isBulkCreating}
+                        className="px-5 py-2.5 text-xs font-bold bg-[#2f4131] hover:bg-[#243326] text-white rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                      >
+                        {isBulkCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-amber-300" />}
+                        <span>Crear Mesas al Instante</span>
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
             ) : tables.map((table) => (
               <tr key={table.id} className="group hover:bg-gray-50/60 transition-all duration-300">
                 <td className="px-6 py-6">

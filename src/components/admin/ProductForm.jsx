@@ -7,6 +7,7 @@ import { useLocations } from '../../hooks/useLocations';
 import { useLocationOverrides } from '../../hooks/useLocationOverrides';
 import { useRestaurantSettings } from '../../hooks/useRestaurantSettings';
 import { validateImageSize, convertDriveLink, compressAndWebp, getMaxImageSizeMB } from '../../utils/images';
+import { useAdminModalBack } from '../../hooks/useAdminModalBack';
 import { toast as toastFn } from '../Toast';
 import { useAuth } from '../../context/AuthContext';
 import { useGemini } from '../../hooks/useGemini';
@@ -52,6 +53,7 @@ export default function ProductForm({
   onCancel
 }) {
   const { activeBrand } = useAuth();
+  useAdminModalBack(true, onCancel);
   const { generateText, loading: isGeneratingText } = useGemini();
   const { rawModifierGroups: contextModifierGroups = [] } = useMenuData();
   const rawModifierGroups = propModifierGroups || contextModifierGroups;

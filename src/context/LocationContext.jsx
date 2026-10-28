@@ -155,7 +155,11 @@ export const LocationProvider = ({ children }) => {
     locations,
     loading,
     switchLocation,
-    isAllLocations: activeLocationId === 'all'
+    isAllLocations: activeLocationId === 'all',
+    createLocation,
+    updateLocation,
+    deleteLocation,
+    refreshLocations
   };
 
   return (

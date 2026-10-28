@@ -10,6 +10,7 @@ import { useAdminModifierGroups } from '../hooks/useAdminModifierGroups';
 import { useAllergens } from '../hooks/useAllergens';
 import { formatCOP } from '../utils/money';
 import ProductForm from '../components/admin/ProductForm';
+import QuickProductModal from '../components/admin/QuickProductModal';
 import { useLocationOverrides } from '../hooks/useLocationOverrides';
 import { useRestaurantSettings } from '../hooks/useRestaurantSettings';
 import BulkCostEditor from '../components/admin/BulkCostEditor';
@@ -121,6 +122,7 @@ export default function AdminProducts() {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [formMode, setFormMode] = useState('quick');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [isBulkEditorOpen, setIsBulkEditorOpen] = useState(false);
 

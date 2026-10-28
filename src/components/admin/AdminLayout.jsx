@@ -41,6 +41,7 @@ import Toast from '../Toast';
 import AccountSuspendedOverlay from './AccountSuspendedOverlay';
 import AlunaCopilot from './AlunaCopilot';
 import AlunaLab from '../../pages/AlunaLab';
+import { useAdminModalBack } from '../../hooks/useAdminModalBack';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
 const Icons = {
@@ -260,6 +261,10 @@ export default function AdminLayout() {
   const [showPlanSelector, setShowPlanSelector] = useState(false);
   const [lockedFeatureName, setLockedFeatureName] = useState('');
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+
+  useAdminModalBack(isMobileDrawerOpen, () => setIsMobileDrawerOpen(false));
+  useAdminModalBack(showUpgradeModal, () => setShowUpgradeModal(false));
+  useAdminModalBack(showPlanSelector, () => setShowPlanSelector(false));
   
   const { restaurantSettings } = useMenuData();
 
@@ -285,8 +290,27 @@ export default function AdminLayout() {
     }
     setShowUpgradeModal(false);
     setShowPlanSelector(false); // Close plan selector if it was open
-    setCurrentPage(pageId);
+    if (pageId !== currentPage) {
+      const params = new URLSearchParams(window.location.search);
+      params.set('admin_page', pageId);
+      const targetPath = effectiveBrand?.slug ? `/${effectiveBrand.slug}/` : window.location.pathname;
+      window.history.pushState({ adminPage: pageId }, '', `${targetPath}?${params.toString()}${window.location.hash || '#admin'}`);
+      setCurrentPage(pageId);
+    }
   };
+
+  // Listener para botón Atrás del navegador entre pestañas del Admin
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const pageInUrl = params.get('admin_page') || 'orders';
+      if (pageInUrl !== currentPage) {
+        setCurrentPage(pageInUrl);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [currentPage]);
 
   // ─── Aluna Copilot: listener para navegación y atajos asistidos (Camino 3) ───
   useEffect(() => {
@@ -1523,16 +1547,28 @@ export default function AdminLayout() {
               <span className="text-[10px] font-medium pointer-events-none">Barra</span>
             </button>
           ) : user.role !== 'waiter' && (
-            <button 
-              onClick={() => handleSelectPage('kitchen', 'Cocina', 'kitchen_display')}
-              className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'kitchen' ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              <div className="relative pointer-events-none">
-                <Icons.Kitchen />
-                {!planLoading && can('kitchen_display') && (newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white pointer-events-none" />}
-              </div>
-              <span className="text-[10px] font-medium pointer-events-none">Cocina</span>
-            </button>
+            can('kitchen_display') ? (
+              <button 
+                onClick={() => handleSelectPage('kitchen', 'Cocina', 'kitchen_display')}
+                className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'kitchen' ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                <div className="relative pointer-events-none">
+                  <Icons.Kitchen />
+                  {!planLoading && (newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white pointer-events-none" />}
+                </div>
+                <span className="text-[10px] font-medium pointer-events-none">Cocina</span>
+              </button>
+            ) : (
+              <button 
+                onClick={() => handleSelectPage('products', 'Carta Principal')}
+                className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'products' ? 'text-indigo-500' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                <div className="relative pointer-events-none">
+                  <Icons.Products />
+                </div>
+                <span className="text-[10px] font-medium pointer-events-none">Carta</span>
+              </button>
+            )
           )}
 
           {/* More Menu (Opens Drawer) */}

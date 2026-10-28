@@ -16,6 +16,7 @@ import soundService from '../utils/soundService';
 import OrderAdditionModal from '../components/admin/OrderAdditionModal';
 import { NewOrderAlertModal } from '../components/admin/NewOrderAlertModal';
 import { parsePaymentMethod, getGoogleMapsUrl, getWazeUrl } from '../utils/formatters';
+import { useAdminModalBack } from '../hooks/useAdminModalBack';
 
 const ORDER_STATUSES = [
   { id: 'new', label: 'Nuevos', color: 'text-blue-600', icon: 'heroicons:star' },
@@ -138,6 +139,12 @@ export default function AdminOrders() {
   const [incomingOrderIndex, setIncomingOrderIndex] = useState(0);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const [isSoundLoopActive, setIsSoundLoopActive] = useState(false);
+
+  useAdminModalBack(Boolean(selectedOrder), () => setSelectedOrder(null));
+  useAdminModalBack(isPOSModalOpen, () => setIsPOSModalOpen(false));
+  useAdminModalBack(Boolean(additionOrder), () => setAdditionOrder(null));
+  useAdminModalBack(showCancelledHistory, () => setShowCancelledHistory(false));
+  useAdminModalBack(showDeliveredHistory, () => setShowDeliveredHistory(false));
 
   // Escuchar eventos de la alarma continua para actualizar UI reactiva
   useEffect(() => {

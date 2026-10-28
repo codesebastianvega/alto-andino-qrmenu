@@ -6,8 +6,8 @@ export function useLocations() {
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { activeBrand } = useAuth();
-  const activeBrandId = activeBrand?.id;
+  const { activeBrand, profile } = useAuth();
+  const activeBrandId = activeBrand?.id || profile?.brand_id || localStorage.getItem("aa_active_brand_id");
 
   useEffect(() => {
     if (activeBrandId) {

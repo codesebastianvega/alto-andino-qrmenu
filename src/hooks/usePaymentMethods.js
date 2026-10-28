@@ -4,8 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { buildDefaultPaymentMethods } from '../utils/paymentDefaults';
 
 export function usePaymentMethods(explicitBrandId = null) {
-  const { activeBrand } = useAuth();
-  const brandId = explicitBrandId || activeBrand?.id;
+  const { activeBrand, profile } = useAuth();
+  const brandId = explicitBrandId || activeBrand?.id || profile?.brand_id || localStorage.getItem("aa_active_brand_id");
   
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [loading, setLoading] = useState(true);
