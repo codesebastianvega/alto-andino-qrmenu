@@ -314,10 +314,15 @@ export const MenuDataProvider = ({ children }) => {
       const groupName = group.name;
       const options = (group.modifier_options || [])
         .filter(opt => opt.is_active !== false)
-        .map(opt => ({
-          ...opt,
-          id: opt.id,
-          name: opt.name,
+        .map(opt => {
+          let optName = opt.name;
+          if (opt.id === 'b0000b22-0000-4000-a000-000000000002' || opt.name?.toLowerCase().includes('sopita de tomate') || opt.name?.toLowerCase().includes('sopa de tomate')) {
+            optName = '🍜 Sopita tipo Ramen de la Casa (16 oz)';
+          }
+          return {
+            ...opt,
+            id: opt.id,
+            name: optName,
           price: opt.price || 0,
           extra_price: opt.extra_price !== null && opt.extra_price !== undefined ? Number(opt.extra_price) : Number(opt.price || 0),
           emoji: opt.emoji,
@@ -329,7 +334,7 @@ export const MenuDataProvider = ({ children }) => {
           stock_status: opt.stock_status || (opt.is_active === false ? 'out' : 'in'),
           available_portions: opt.available_portions !== null && opt.available_portions !== undefined ? Number(opt.available_portions) : null,
           is_out: opt.stock_status === 'out' || opt.is_active === false
-        })).sort((a, b) => a.sort_order - b.sort_order);
+        }; }).sort((a, b) => a.sort_order - b.sort_order);
       modGroups[groupName] = options;
       modGroups[group.id] = options;
     });

@@ -77,6 +77,24 @@ export default function AdminLiveMenu() {
   }, [products]);
   const isArrozSpecialActive = arrozConPolloProduct && arrozConPolloProduct.stock_status !== 'out' && arrozConPolloProduct.is_active;
 
+  // ─── Auto-sync Sopa a Ramen ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!modifierGroups || modifierGroups.length === 0) return;
+    const soupGroup = modifierGroups.find(g => 
+      g.id === 'b0000b20-0000-4000-a000-000000000002' || g.name.toLowerCase().includes('sopa')
+    );
+    const tomatoOpt = soupGroup?.options?.find(o => 
+      o.id === 'b0000b22-0000-4000-a000-000000000002' || o.name.toLowerCase().includes('tomate')
+    );
+    if (tomatoOpt && !tomatoOpt.name.toLowerCase().includes('ramen')) {
+      updateOption(tomatoOpt.id, {
+        name: '🍜 Sopita tipo Ramen de la Casa (16 oz)',
+        stock_status: 'in',
+        is_active: true
+      });
+    }
+  }, [modifierGroups, updateOption]);
+
   // ─── Computed Statistics ──────────────────────────────────────────────────
   const totalProducts = products.length;
   const offProducts = products.filter(p => p.stock_status === 'out');
