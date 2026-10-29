@@ -3,7 +3,7 @@ import {
   Search, SlidersHorizontal, AlertTriangle, CheckCircle2, 
   Plus, Trash2, ChevronDown, ChevronRight, 
   ArrowLeft, Utensils, Sparkles, X, ShieldAlert,
-  Layers, Package, Flame
+  Layers, Package, Flame, Link2
 } from 'lucide-react';
 import { useAdminProducts } from '../hooks/useAdminProducts';
 import { useAdminModifierGroups } from '../hooks/useAdminModifierGroups';
@@ -36,19 +36,24 @@ export default function AdminLiveMenu() {
     deleteOption
   } = useAdminModifierGroups(activeLocationId);
 
-  // Ingredients hook
+  // Ingredients hook (para vincular opciones a insumos)
   const { ingredients } = useAdminIngredients();
 
-  // View & Filter States
-  const [activeTab, setActiveTab] = useState('products'); // 'products' | 'modifiers' | 'ingredients'
+  // View & Filter States (2 modos limpios: 'products' | 'modifiers')
+  const [activeTab, setActiveTab] = useState('products'); // 'products' | 'modifiers'
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyOffFilter, setOnlyOffFilter] = useState(false);
-  const [collapsedCategories, setCollapsedCategories] = useState({});
-  const [collapsedGroups, setCollapsedGroups] = useState({});
+  
+  // Por defecto TODOS los desplegables están RECOGIDOS (false = cerrado)
+  const [expandedCategories, setExpandedCategories] = useState({});
+  const [expandedGroups, setExpandedGroups] = useState({});
   
   // Selected Product for Column 3
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+
+  // Modal de Platos Vinculados a un Modificador
+  const [viewingLinkedDishesGroup, setViewingLinkedDishesGroup] = useState(null);
 
   // Quick Add Option State
   const [addOptionTargetGroup, setAddOptionTargetGroup] = useState(null);
@@ -88,6 +93,15 @@ export default function AdminLiveMenu() {
     return modifierGroups.filter(g => groupIds.includes(g.id));
   }, [selectedProduct, modifierGroups]);
 
+  // Map of dish counts linked to each modifier group
+  const dishCountByGroup = useMemo(() => {
+    const counts = {};
+    modifierGroups.forEach(g => {
+      counts[g.id] = products.filter(p => Array.isArray(p.modifier_groups) && p.modifier_groups.includes(g.id)).length;
+    });
+    return counts;
+  }, [modifierGroups, products]);
+
   // ─── Filtered Products (Column 2) ─────────────────────────────────────────
   const filteredProductsByCategory = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -123,22 +137,13 @@ export default function AdminLiveMenu() {
     });
   }, [modifierGroups, searchQuery]);
 
-  // ─── Filtered Ingredients (Column 2 when activeTab === 'ingredients') ────
-  const filteredIngredients = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    return (ingredients || []).filter(ing => {
-      if (!q) return true;
-      return ing.name.toLowerCase().includes(q);
-    });
-  }, [ingredients, searchQuery]);
-
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const toggleCategoryCollapse = (catId) => {
-    setCollapsedCategories(prev => ({ ...prev, [catId]: !prev[catId] }));
+    setExpandedCategories(prev => ({ ...prev, [catId]: !prev[catId] }));
   };
 
   const toggleGroupCollapse = (groupId) => {
-    setCollapsedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
+    setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
   };
 
   // Toggle Product Stock with optimistic chip
@@ -301,7 +306,7 @@ export default function AdminLiveMenu() {
               </span>
             </div>
             <p className="text-[11px] text-gray-400 truncate">
-              {restaurantSettings?.business_name || activeBrand?.name || 'Mi Restaurante'} · Disponibilidad inmediata de platos y opciones
+              {restaurantSettings?.business_name || activeBrand?.name || 'Mi Restaurante'} · Disponibilidad de platos y modificadores
             </p>
           </div>
         </div>
@@ -313,7 +318,7 @@ export default function AdminLiveMenu() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar platos o adiciones..."
+            placeholder="Buscar platos o modificadores..."
             className="w-full pl-8 pr-7 py-1.5 bg-gray-50 hover:bg-gray-100/80 focus:bg-white text-xs font-semibold text-gray-900 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-gray-400"
           />
           {searchQuery && (
@@ -358,13 +363,13 @@ export default function AdminLiveMenu() {
               </button>
             )}
 
-            {/* Vistas de Catálogo */}
+            {/* Vistas de Catálogo (2 Modos Claros: Platos vs Modificadores) */}
             <div className="space-y-1.5">
               <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 px-1">
                 Vistas de Catálogo
               </span>
 
-              {/* Card 1: Platos */}
+              {/* Card 1: Platos & Menú */}
               <button
                 onClick={() => { setActiveTab('products'); setSelectedProductId(null); }}
                 className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between ${
@@ -391,7 +396,7 @@ export default function AdminLiveMenu() {
                 <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'products' ? 'text-emerald-600' : 'text-gray-400'}`} />
               </button>
 
-              {/* Card 2: Personalizaciones */}
+              {/* Card 2: Modificadores */}
               <button
                 onClick={() => { setActiveTab('modifiers'); setSelectedProductId(null); }}
                 className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between ${
@@ -408,7 +413,7 @@ export default function AdminLiveMenu() {
                   </div>
                   <div className="min-w-0">
                     <p className={`text-xs font-black truncate ${activeTab === 'modifiers' ? 'text-emerald-950' : 'text-gray-900'}`}>
-                      Personalizaciones
+                      Modificadores
                     </p>
                     <p className="text-[10px] text-gray-500 font-semibold">
                       {modifierGroups.length} grupos · {allOptions.length - offOptions.length} activas
@@ -416,33 +421,6 @@ export default function AdminLiveMenu() {
                   </div>
                 </div>
                 <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'modifiers' ? 'text-emerald-600' : 'text-gray-400'}`} />
-              </button>
-
-              {/* Card 3: Insumos Críticos */}
-              <button
-                onClick={() => { setActiveTab('ingredients'); setSelectedProductId(null); }}
-                className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between ${
-                  activeTab === 'ingredients'
-                    ? 'bg-emerald-50 border-emerald-300 shadow-xs ring-1 ring-emerald-400/30'
-                    : 'bg-white border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
-                    activeTab === 'ingredients' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    🌾
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`text-xs font-black truncate ${activeTab === 'ingredients' ? 'text-emerald-950' : 'text-gray-900'}`}>
-                      Insumos Críticos
-                    </p>
-                    <p className="text-[10px] text-gray-500 font-semibold">
-                      {ingredients?.length || 0} materias primas
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'ingredients' ? 'text-emerald-600' : 'text-gray-400'}`} />
               </button>
             </div>
 
@@ -481,8 +459,7 @@ export default function AdminLiveMenu() {
           <div className="md:hidden flex border-b border-gray-200 p-2 gap-1 bg-gray-50 shrink-0">
             {[
               { id: 'products', label: '🍱 Platos' },
-              { id: 'modifiers', label: '⚙️ Opciones' },
-              { id: 'ingredients', label: '🌾 Insumos' },
+              { id: 'modifiers', label: '⚙️ Modificadores' },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -507,16 +484,17 @@ export default function AdminLiveMenu() {
                   </div>
                 ) : (
                   filteredProductsByCategory.map(({ category, items }) => {
-                    const isCollapsed = collapsedCategories[category.id];
+                    // Por defecto RECOGIDO (solo se abre si expandedCategories[category.id] === true)
+                    const isExpanded = !!expandedCategories[category.id];
                     const activeInCat = items.filter(p => p.stock_status !== 'out').length;
 
                     return (
                       <div key={category.id} className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-xs">
                         
-                        {/* Header de Categoría */}
+                        {/* Header de Categoría (Por defecto cerrado) */}
                         <button
                           onClick={() => toggleCategoryCollapse(category.id)}
-                          className="w-full px-3.5 py-2.5 bg-gray-50/80 hover:bg-gray-100/70 border-b border-gray-200 flex items-center justify-between text-left transition-colors"
+                          className="w-full px-3.5 py-3 bg-gray-50/80 hover:bg-gray-100/70 border-b border-gray-200 flex items-center justify-between text-left transition-colors"
                         >
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-black text-gray-900 uppercase tracking-wide">
@@ -526,11 +504,11 @@ export default function AdminLiveMenu() {
                               {activeInCat}/{items.length} disponibles
                             </span>
                           </div>
-                          {isCollapsed ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400 rotate-90" />}
+                          {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
                         </button>
 
-                        {/* Lista de Platos */}
-                        {!isCollapsed && (
+                        {/* Lista de Platos (Solo visible si está expandido) */}
+                        {isExpanded && (
                           <div className="divide-y divide-gray-100">
                             {items.map(product => {
                               const isOff = product.stock_status === 'out';
@@ -566,14 +544,14 @@ export default function AdminLiveMenu() {
                                           }}
                                           className="text-[10px] font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-0.5"
                                         >
-                                          <span>Opciones ({modCount})</span>
+                                          <span>Modificadores ({modCount})</span>
                                           <ChevronRight className="w-2.5 h-2.5" />
                                         </button>
                                       </div>
                                     </div>
                                   </div>
 
-                                  {/* CHIP DE STOCK ELEGANTE (En lugar del switch deformado) */}
+                                  {/* CHIP DE STOCK ELEGANTE */}
                                   <div className="shrink-0">
                                     <button
                                       type="button"
@@ -601,50 +579,68 @@ export default function AdminLiveMenu() {
               </div>
             )}
 
-            {/* ── MODO PERSONALIZACIONES / GRUPOS DE MODIFICADORES ── */}
+            {/* ── MODO MODIFICADORES (Grupos) ── */}
             {activeTab === 'modifiers' && (
               <div className="space-y-3">
                 {filteredModifierGroups.length === 0 ? (
                   <div className="py-16 text-center text-gray-400">
-                    <p className="text-sm font-bold">No hay grupos de personalizaciones</p>
+                    <p className="text-sm font-bold">No hay grupos de modificadores</p>
                   </div>
                 ) : (
                   filteredModifierGroups.map(group => {
-                    const isCollapsed = collapsedGroups[group.id];
+                    // Por defecto RECOGIDO
+                    const isExpanded = !!expandedGroups[group.id];
                     const options = group.options || [];
+                    const linkedCount = dishCountByGroup[group.id] || 0;
 
                     return (
                       <div key={group.id} className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-xs">
-                        <div className="px-3.5 py-2.5 bg-gray-50/80 border-b border-gray-200 flex items-center justify-between">
+                        <div className="px-3.5 py-3 bg-gray-50/80 border-b border-gray-200 flex items-center justify-between gap-2">
+                          
                           <button
                             onClick={() => toggleGroupCollapse(group.id)}
-                            className="flex items-center gap-2 text-left flex-1"
+                            className="flex items-center gap-2 text-left flex-1 min-w-0"
                           >
-                            <span className="text-xs font-black text-gray-900 uppercase tracking-wide">
+                            <span className="text-xs font-black text-gray-900 uppercase tracking-wide truncate">
                               {group.name}
                             </span>
-                            <span className="text-[10px] font-bold text-gray-500 bg-gray-200/60 px-2 py-0.5 rounded-full">
+                            <span className="text-[10px] font-bold text-gray-500 bg-gray-200/60 px-2 py-0.5 rounded-full shrink-0">
                               {options.length} opciones
                             </span>
                           </button>
-                          <div className="flex items-center gap-2">
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {/* BOTÓN: Platos Vinculados (Abre Modal de relación) */}
+                            <button
+                              onClick={() => setViewingLinkedDishesGroup(group)}
+                              className="px-2.5 py-1 text-[10px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200 flex items-center gap-1 transition-colors"
+                              title="Ver qué platos de la carta usan este modificador"
+                            >
+                              <Utensils className="w-3 h-3" />
+                              <span>{linkedCount} platos</span>
+                            </button>
+
+                            {/* Botón Añadir Opción */}
                             <button
                               onClick={() => {
                                 setAddOptionTargetGroup(group);
                                 setNewOptionForm({ name: '', price: 0, ingredient_id: '' });
                               }}
-                              className="px-2 py-0.5 text-[10px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg border border-emerald-200 flex items-center gap-1 transition-colors"
+                              className="px-2 py-1 text-[10px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg border border-emerald-200 flex items-center gap-1 transition-colors"
                             >
                               <Plus className="w-3 h-3" />
                               <span>Opción</span>
                             </button>
-                            <button onClick={() => toggleGroupCollapse(group.id)} className="text-gray-400">
-                              {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5 rotate-90" />}
+
+                            {/* Flecha Desplegable */}
+                            <button onClick={() => toggleGroupCollapse(group.id)} className="text-gray-400 p-0.5">
+                              {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-600" /> : <ChevronRight className="w-4 h-4" />}
                             </button>
                           </div>
                         </div>
 
-                        {!isCollapsed && (
+                        {/* Opciones del Grupo (Visible solo si está desplegado) */}
+                        {isExpanded && (
                           <div className="divide-y divide-gray-100">
                             {options.map(opt => {
                               const isOff = !opt.is_active || opt.stock_status === 'out';
@@ -659,11 +655,11 @@ export default function AdminLiveMenu() {
                                     </p>
                                   </div>
                                   
-                                  {/* Chip de Stock Opción */}
+                                  {/* Chip de Stock Opción Elegante */}
                                   <button
                                     type="button"
                                     onClick={() => handleOptionToggle(opt, group)}
-                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all active:scale-95 border ${
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all active:scale-95 border ${
                                       !isOff 
                                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80 shadow-2xs' 
                                         : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100/80'
@@ -684,30 +680,11 @@ export default function AdminLiveMenu() {
               </div>
             )}
 
-            {/* ── MODO INSUMOS CLAVE (Materia Prima) ── */}
-            {activeTab === 'ingredients' && (
-              <div className="space-y-2.5">
-                {filteredIngredients.map(ing => (
-                  <div key={ing.id} className="p-3 bg-white border border-gray-200 rounded-2xl flex items-center justify-between shadow-xs">
-                    <div>
-                      <h4 className="text-xs font-black text-gray-900">{ing.name}</h4>
-                      <p className="text-[10px] text-gray-500 font-semibold mt-0.5">
-                        Unidad: {ing.unit || 'unidad'} · Costo: {formatCOP(ing.cost || 0)}
-                      </p>
-                    </div>
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                      Insumo de Cocina
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
           </div>
         </main>
 
         {/* ══════════════════════════════════════════════════════════════════════
-            COLUMNA 3: Personalizaciones del Plato (Flex-1 con Espacio Cómodo)
+            COLUMNA 3: Modificadores del Plato Seleccionado (Flex-1)
         ══════════════════════════════════════════════════════════════════════ */}
         <aside className={`flex-1 bg-[#FBFBFC] flex flex-col shrink-0 overflow-y-auto ${mobileDetailOpen ? 'flex absolute inset-0 z-30 lg:relative lg:inset-auto' : 'hidden lg:flex'}`}>
           {selectedProduct ? (
@@ -727,7 +704,7 @@ export default function AdminLiveMenu() {
                   </button>
                   <div className="min-w-0">
                     <span className="text-[10px] font-black uppercase tracking-wider text-blue-600">
-                      Personalizaciones de
+                      Modificadores de
                     </span>
                     <h3 className="text-sm font-black text-gray-900 truncate">
                       {selectedProduct.name}
@@ -750,7 +727,7 @@ export default function AdminLiveMenu() {
               <div className="p-4 space-y-3.5 flex-1 overflow-y-auto max-w-2xl">
                 {selectedProductGroups.length === 0 ? (
                   <div className="py-12 text-center text-gray-400 p-6 bg-white rounded-2xl border border-dashed border-gray-300">
-                    <p className="text-xs font-bold text-gray-600">Este plato no tiene grupos de modificadores asignados.</p>
+                    <p className="text-xs font-bold text-gray-600">Este plato no tiene modificadores asignados.</p>
                     <p className="text-[11px] text-gray-400 mt-1">Puedes asignarle grupos en la pestaña de Carta Principal.</p>
                   </div>
                 ) : (
@@ -803,7 +780,7 @@ export default function AdminLiveMenu() {
                                     <button
                                       type="button"
                                       onClick={() => handleOptionToggle(opt, group)}
-                                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all active:scale-95 border ${
+                                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all active:scale-95 border ${
                                         !isOff 
                                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80 shadow-2xs' 
                                           : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100/80'
@@ -846,13 +823,97 @@ export default function AdminLiveMenu() {
               </div>
               <h4 className="text-sm font-black text-gray-700">Selecciona un plato</h4>
               <p className="text-xs text-gray-400 max-w-xs mt-1">
-                Haz clic en <span className="font-bold text-blue-600">"Opciones"</span> en cualquier plato para ver y apagar sus adiciones o bases con chips instantáneos.
+                Haz clic en <span className="font-bold text-blue-600">"Modificadores"</span> en cualquier plato para ver y apagar sus opciones o bases en caliente.
               </p>
             </div>
           )}
         </aside>
 
       </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          MODAL: Platos Vinculados a un Modificador (Lo que pediste)
+      ══════════════════════════════════════════════════════════════════════ */}
+      {viewingLinkedDishesGroup && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Utensils className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-gray-900">Platos Vinculados</h3>
+                  <p className="text-[11px] text-gray-500 font-bold">Modificador: {viewingLinkedDishesGroup.name}</p>
+                </div>
+              </div>
+              <button onClick={() => setViewingLinkedDishesGroup(null)} className="text-gray-400 hover:text-gray-600 p-1">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="mt-4">
+              <p className="text-xs text-gray-500 font-semibold mb-3">
+                Este grupo de modificadores está activo en los siguientes platos:
+              </p>
+
+              {(() => {
+                const linkedDishes = products.filter(p => Array.isArray(p.modifier_groups) && p.modifier_groups.includes(viewingLinkedDishesGroup.id));
+                if (linkedDishes.length === 0) {
+                  return (
+                    <div className="py-8 text-center text-gray-400 border border-dashed border-gray-200 rounded-2xl">
+                      <p className="text-xs font-bold">Ningún plato tiene asignado este grupo actualmente.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+                    {linkedDishes.map(dish => {
+                      const isOff = dish.stock_status === 'out';
+                      return (
+                        <div key={dish.id} className="p-2.5 bg-gray-50 rounded-2xl border border-gray-200/80 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-9 h-9 rounded-lg bg-white border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center">
+                              <AAImage src={dish.image_url} alt={dish.name} />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-xs font-black text-gray-900 truncate">{dish.name}</h4>
+                              <p className="text-[10px] text-emerald-600 font-bold">{formatCOP(dish.price)}</p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleProductStockToggle(dish)}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all active:scale-95 border shrink-0 ${
+                              !isOff 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
+                                : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${!isOff ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                            <span>{!isOff ? 'Disponible' : 'Agotado'}</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="mt-5 pt-3 border-t border-gray-100">
+              <button
+                onClick={() => setViewingLinkedDishesGroup(null)}
+                className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-black uppercase tracking-wider transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════════
           MODAL: Cascada Inteligente (Auto-86: Caso del Arroz)
@@ -868,7 +929,7 @@ export default function AdminLiveMenu() {
               </div>
               <div>
                 <h3 className="text-sm font-black text-gray-900 leading-tight">
-                  {cascadeModal.type === 'turn_off' ? 'Insumo Crítico Agotado' : 'Reactivación de Insumo'}
+                  {cascadeModal.type === 'turn_off' ? 'Modificador Crítico Agotado' : 'Reactivación de Modificador'}
                 </h3>
                 <p className="text-xs text-gray-500 font-semibold mt-0.5">
                   Opción: <span className="font-black text-gray-900">{cascadeModal.option.name}</span>
@@ -879,7 +940,7 @@ export default function AdminLiveMenu() {
             <div className="mt-4 p-3 bg-gray-50 rounded-2xl border border-gray-200/80">
               <p className="text-xs font-bold text-gray-700 mb-2">
                 {cascadeModal.type === 'turn_off' 
-                  ? `"${cascadeModal.option.name}" se utiliza como opción en ${cascadeModal.affectedProducts.length} platos activos:`
+                  ? `"${cascadeModal.option.name}" se utiliza en ${cascadeModal.affectedProducts.length} platos activos:`
                   : `Se reactivó "${cascadeModal.option.name}". ¿Deseas volver a habilitar los siguientes ${cascadeModal.affectedProducts.length} platos?`
                 }
               </p>
