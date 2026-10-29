@@ -26,7 +26,9 @@ export default function AdminLiveMenu() {
   const { 
     products, 
     toggleStock, 
-    refreshProducts 
+    refreshProducts, 
+    createProduct, 
+    updateProduct 
   } = useAdminProducts();
 
   // Modifier Groups hook
@@ -67,6 +69,13 @@ export default function AdminLiveMenu() {
   // Emergency Menu Pause Modal
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [emergencyAction, setEmergencyAction] = useState('pause'); // 'pause' | 'resume'
+
+  // Especial de Hoy: Bento Arroz con Pollo
+  const [isSettingUpSpecial, setIsSettingUpSpecial] = useState(false);
+  const arrozConPolloProduct = useMemo(() => {
+    return products.find(p => p.name.toLowerCase().includes('arroz con pollo'));
+  }, [products]);
+  const isArrozSpecialActive = arrozConPolloProduct && arrozConPolloProduct.stock_status !== 'out' && arrozConPolloProduct.is_active;
 
   // ─── Computed Statistics ──────────────────────────────────────────────────
   const totalProducts = products.length;
@@ -287,6 +296,105 @@ export default function AdminLiveMenu() {
     }
   };
 
+  // ─── Setup Bento Arroz con Pollo del Día ─────────────────────────────────
+  const handleSetupArrozConPolloSpecial = async () => {
+    setIsSettingUpSpecial(true);
+    try {
+      // 1. Sopa o Fruta Group: asegurar que existe "Sopita tipo Ramen"
+      const soupGroup = modifierGroups.find(g => 
+        g.id === 'b0000b20-0000-4000-a000-000000000002' || g.name.toLowerCase().includes('sopa')
+      );
+      const drinkGroup = modifierGroups.find(g => 
+        g.id === 'b0000b20-0000-4000-a000-000000000001' || g.name.toLowerCase().includes('bebida')
+      );
+      const bentoCategory = categories.find(c => 
+        c.id === 'b0000c01-0000-4000-a000-000000000001' || c.name.toLowerCase().includes('bento')
+      );
+
+      const ramenOption = soupGroup?.options?.find(o => o.name.toLowerCase().includes('ramen'));
+      if (!ramenOption && soupGroup) {
+        await createOption({
+          group_id: soupGroup.id,
+          name: '🍜 Sopita de Ramen de la Casa (16 oz)',
+          price: 0,
+          stock_status: 'in',
+          is_active: true,
+          sort_order: 1
+        });
+      }
+
+      const modGroups = [
+        soupGroup?.id || 'b0000b20-0000-4000-a000-000000000002',
+        drinkGroup?.id || 'b0000b20-0000-4000-a000-000000000001',
+        'b0000c40-0000-4000-a000-000000000005'
+      ];
+
+      // 2. Crear o actualizar plato Arroz con Pollo
+      const targetSpecial = products.find(p => 
+        p.name.toLowerCase().includes('arroz con pollo') || p.id === 'b0000b14-0000-4000-a000-000000000004'
+      );
+
+      if (targetSpecial) {
+        await updateProduct(targetSpecial.id, {
+          name: 'Bento Arroz con Pollo (Especial del Día)',
+          description: 'Reconfortante Arroz con Pollo desmechado preparado al estilo BOKU con verduras salteadas al wok, tajaditas de plátano maduro horneado, principio casero y ensalada fresca. 🍜 Incluye Sopita tipo Ramen de la Casa (16 oz) o Fruta + 🥤 Jugo del Día de la Casa (5 oz).',
+          price: 19000,
+          stock_status: 'in',
+          is_active: true,
+          category_id: bentoCategory?.id || targetSpecial.category_id,
+          modifier_groups: modGroups,
+          image_url: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&auto=format&fit=crop&q=80',
+          subcategory: 'El Bento del Día',
+          tags: ['Pollo', 'Arroz', 'Bento', 'Especial del Día']
+        });
+        toast('🍗 ¡Bento Arroz con Pollo activado como plato de hoy!');
+      } else {
+        await createProduct({
+          name: 'Bento Arroz con Pollo (Especial del Día)',
+          description: 'Reconfortante Arroz con Pollo desmechado preparado al estilo BOKU con verduras salteadas al wok, tajaditas de plátano maduro horneado, principio casero y ensalada fresca. 🍜 Incluye Sopita tipo Ramen de la Casa (16 oz) o Fruta + 🥤 Jugo del Día de la Casa (5 oz).',
+          price: 19000,
+          cost: 7500,
+          stock_status: 'in',
+          is_active: true,
+          category_id: bentoCategory?.id || 'b0000c01-0000-4000-a000-000000000001',
+          modifier_groups: modGroups,
+          image_url: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&auto=format&fit=crop&q=80',
+          subcategory: 'El Bento del Día',
+          tags: ['Pollo', 'Arroz', 'Bento', 'Especial del Día'],
+          station: 'kitchen',
+          requires_kitchen: true
+        });
+        toast('✨ ¡Bento Arroz con Pollo creado y disponible en la carta!');
+      }
+
+      if (bentoCategory) {
+        setExpandedCategories(prev => ({ ...prev, [bentoCategory.id]: true }));
+      }
+      await refreshProducts('all', { silent: true });
+    } catch (err) {
+      console.error('Error configurando plato especial:', err);
+      toast('Error al activar el plato del día');
+    } finally {
+      setIsSettingUpSpecial(false);
+    }
+  };
+
+  const handleSpecialButtonClick = async () => {
+    if (isArrozSpecialActive && arrozConPolloProduct) {
+      const bentoCategory = categories.find(c => 
+        c.id === 'b0000c01-0000-4000-a000-000000000001' || c.name.toLowerCase().includes('bento')
+      );
+      if (bentoCategory) {
+        setExpandedCategories(prev => ({ ...prev, [bentoCategory.id]: true }));
+      }
+      setSelectedProductId(arrozConPolloProduct.id);
+      setActiveTab('products');
+      toast('🍗 Mostrando opciones del Bento Arroz con Pollo');
+      return;
+    }
+    await handleSetupArrozConPolloSpecial();
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1700px] mx-auto space-y-6 select-none animate-in fade-in duration-300">
       
@@ -297,6 +405,30 @@ export default function AdminLiveMenu() {
         subtitle="Control táctil de disponibilidad inmediata para platos y modificadores."
       >
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Botón Especial de Hoy: Bento Arroz con Pollo */}
+          <button
+            onClick={handleSpecialButtonClick}
+            disabled={isSettingUpSpecial}
+            className={`px-3.5 py-2.5 rounded-xl text-xs font-black shadow-xs flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 border ${
+              isArrozSpecialActive 
+                ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100' 
+                : 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-sm'
+            }`}
+            title="Activar o gestionar el Bento Arroz con Pollo (Especial de Hoy) a $19.000 con Sopita tipo Ramen y Jugo del Día"
+          >
+            <Utensils className="w-4 h-4 shrink-0" />
+            <span>
+              {isSettingUpSpecial 
+                ? 'Configurando...' 
+                : isArrozSpecialActive 
+                  ? '🍗 Bento Arroz con Pollo (Activo Hoy)' 
+                  : '🍗 Activar Bento Arroz con Pollo (Especial Hoy)'
+              }
+            </span>
+            {isArrozSpecialActive ? (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            ) : null}
+          </button>
           {totalOffItems > 0 && (
             <button
               onClick={() => setOnlyOffFilter(!onlyOffFilter)}
