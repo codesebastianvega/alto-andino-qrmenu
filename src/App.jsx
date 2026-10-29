@@ -81,6 +81,16 @@ export default function App() {
   }
   
   // En el panel de admin, priorizamos SIEMPRE la marca de la sesión activa
+  // Normalizar /admin a #admin
+  useEffect(() => {
+    if (
+      (window.location.pathname.endsWith('/admin') || window.location.pathname.endsWith('/admin/')) &&
+      !window.location.hash.includes('#admin')
+    ) {
+      window.location.hash = '#admin';
+    }
+  }, []);
+
   const isNewAdminPanel = 
     window.location.hash.startsWith('#admin') || 
     window.location.pathname.startsWith('/admin') ||
@@ -447,7 +457,10 @@ export default function App() {
   // Render loading screen if still authenticating or loading critical brand data
   // El menú público no necesita esperar Auth. El panel y el portal sí requieren la sesión
   // antes de elegir la marca que administrará o renderizar el portal.
-  const isGlobalLoading = loadingBrand || (brand_slug && menuLoading) || ((isNewAdminPanel || isPortalView) && authLoading);
+  // En el panel de admin (isNewAdminPanel), nunca bloqueamos la pantalla con menuLoading de la carta pública
+  const isGlobalLoading = isNewAdminPanel
+    ? (loadingBrand || authLoading)
+    : (loadingBrand || (brand_slug && menuLoading) || (isPortalView && authLoading));
 
   // We use a small internal state to handle the fade-out duration
   const [actuallyDone, setActuallyDone] = useState(false);

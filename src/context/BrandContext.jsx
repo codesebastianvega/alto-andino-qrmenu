@@ -32,7 +32,9 @@ export const BrandProvider = ({ children }) => {
       }
 
       // 2. Modo Admin: Verificamos perfil
-      const is_admin_view = location.hash.includes('#admin');
+      const is_admin_view = location.hash.includes('#admin') || 
+                            location.pathname.endsWith('/admin') || 
+                            location.pathname.includes('/admin/');
       if (is_admin_view) {
         const { data: { session } } = await withTimeout(
           supabase.auth.getSession(),
@@ -105,10 +107,12 @@ export const BrandProvider = ({ children }) => {
     } finally {
       setLoadingBrand(false);
     }
-  }, [brand_slug, location.hash, location.search, navigate]);
+  }, [brand_slug, location.hash, location.pathname, location.search, navigate]);
 
   // 4. Estabilidad: Solo re-resolver si el slug cambia o el modo admin cambia
-  const isAdmin = location.hash.includes('#admin');
+  const isAdmin = location.hash.includes('#admin') || 
+                  location.pathname.endsWith('/admin') || 
+                  location.pathname.includes('/admin/');
   
   useEffect(() => {
     resolveCurrentBrand();

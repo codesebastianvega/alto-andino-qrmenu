@@ -18,10 +18,10 @@ export const useAdminProducts = () => {
   const isRealtimeActiveRef = useRef(false);
 
   const fetchProducts = useCallback(async (locationId = 'all', options = {}) => {
-    const { signal } = options;
+    const { signal, silent = false } = options;
     try {
       if (signal?.aborted) return;
-      if (isMountedRef.current) setLoading(true);
+      if (isMountedRef.current && !silent) setLoading(true);
       
       let query = supabase
         .from('products')
@@ -60,7 +60,7 @@ export const useAdminProducts = () => {
       console.error('Error fetching products:', err);
       if (isMountedRef.current) setError(err.message);
     } finally {
-      if (!signal?.aborted && isMountedRef.current) setLoading(false);
+      if (!signal?.aborted && isMountedRef.current && !silent) setLoading(false);
     }
   }, [activeBrandId]);
 
@@ -90,7 +90,7 @@ export const useAdminProducts = () => {
         filter: `brand_id=eq.${activeBrandId}`
       }, (payload) => {
         console.log('Realtime: Product change detected', payload);
-        fetchProducts('all', { signal: abortController.signal });
+        fetchProducts('all', { signal: abortController.signal, silent: true });
       })
       .on('postgres_changes', { 
         event: '*', 
@@ -98,7 +98,7 @@ export const useAdminProducts = () => {
         table: 'location_product_prices'
       }, (payload) => {
         console.log('Realtime: Price override change detected', payload);
-        fetchProducts('all', { signal: abortController.signal });
+        fetchProducts('all', { signal: abortController.signal, silent: true });
       })
       .on('postgres_changes', { 
         event: '*', 
@@ -106,7 +106,7 @@ export const useAdminProducts = () => {
         table: 'location_product_status'
       }, (payload) => {
         console.log('Realtime: Status override change detected', payload);
-        fetchProducts('all', { signal: abortController.signal });
+        fetchProducts('all', { signal: abortController.signal, silent: true });
       })
       .subscribe((status) => {
         console.log(`Realtime: Subscription status for products: ${status}`);
@@ -260,26 +260,45 @@ export const useAdminProducts = () => {
   };
 
   const toggleActive = async (id, currentStatus) => {
-    console.log('toggleActive called for id:', id, 'currentStatus:', currentStatus);
+    const nextStatus = !currentStatus;
+
+    // 1. Actualización optimista inmediata en UI (0ms)
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, is_active: nextStatus } : p));
+
     try {
       const { error } = await supabase
         .from('products')
-        .update({ is_active: !currentStatus })
+        .update({ is_active: nextStatus })
         .eq('id', id)
         .eq('brand_id', activeBrandId);
 
       if (error) throw error;
-      await fetchProducts();
+      await fetchProducts('all', { silent: true });
       return true;
     } catch (err) {
       console.error('Error toggling active status:', err);
-      toast.error('Error al cambiar estado');
+      // Revertir optimismo en caso de fallo
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, is_active: currentStatus } : p));
+      toast.error('Error al cambiar visibilidad');
       return false;
     }
   };
 
   const toggleStock = async (id, currentStatus) => {
     const next = currentStatus === 'in' ? 'out' : 'in';
+
+    // 1. Actualización optimista inmediata en UI (0ms)
+    setProducts(prev => prev.map(p => {
+      if (p.id === id) {
+        const updatedStatus = (p.location_product_status || []).map(lps => ({
+          ...lps,
+          stock_status: next
+        }));
+        return { ...p, stock_status: next, location_product_status: updatedStatus };
+      }
+      return p;
+    }));
+
     try {
       const { error } = await supabase
         .from('products')
@@ -294,10 +313,21 @@ export const useAdminProducts = () => {
         .update({ stock_status: next, updated_at: new Date().toISOString() })
         .eq('product_id', id);
 
-      await fetchProducts();
+      await fetchProducts('all', { silent: true });
       return true;
     } catch (err) {
       console.error('Error toggling stock status:', err);
+      // Revertir optimismo en caso de fallo
+      setProducts(prev => prev.map(p => {
+        if (p.id === id) {
+          const revertedStatus = (p.location_product_status || []).map(lps => ({
+            ...lps,
+            stock_status: currentStatus
+          }));
+          return { ...p, stock_status: currentStatus, location_product_status: revertedStatus };
+        }
+        return p;
+      }));
       toast.error('Error al cambiar disponibilidad');
       return false;
     }

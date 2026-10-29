@@ -236,7 +236,7 @@ export default function AdminProducts() {
     return { status: 'visible', label: 'Visible', icon: Eye, color: 'text-green-600 bg-green-50 border-green-100' };
   }, [locationFilter, categories]);
 
-  if (loadingProd || loadingCats) {
+  if ((loadingProd && products.length === 0) || (loadingCats && categories.length === 0)) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-400 text-sm font-medium">
         Cargando productos…

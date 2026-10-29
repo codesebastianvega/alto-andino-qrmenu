@@ -29,6 +29,7 @@ export const MenuDataProvider = ({ children }) => {
   const [planFeatures, setPlanFeatures] = useState([]);
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const currentLoadedBrandIdRef = React.useRef(null);
 
   // Get brand information from BrandContext (which resolves slug/session)
   const { brand: currentBrand, loadingBrand } = useBrand();
@@ -56,24 +57,29 @@ export const MenuDataProvider = ({ children }) => {
       setLoading(false);
       return true;
     }
-    setLoading(true);
-    // Clear old state immediately to avoid "ghost" data from other brands
-    setAllCategories([]);
-    setRawProducts([]);
-    setLocationPrices([]);
-    setLocationStatus([]);
-    setLocationModLinks([]);
-    setRawModifierGroups([]);
-    setExperiences([]);
-    setBanners([]);
-    setAllergens([]);
-    setHomeSettings(null);
-    setRestaurantSettings(null);
-    setBrand(null);
-    setPlanFeatures([]);
-    setLocations([]);
-    setBusinessHours([]);
-    setPromotions([]);
+    const isDifferentBrand = currentLoadedBrandIdRef.current !== brandId;
+
+    // Solo vaciamos estado y mostramos spinner global si cambiamos de restaurante.
+    // Si es revalidación de la misma marca (ej. toggle de stock), se actualiza silenciosamente en segundo plano.
+    if (isDifferentBrand) {
+      setLoading(true);
+      setAllCategories([]);
+      setRawProducts([]);
+      setLocationPrices([]);
+      setLocationStatus([]);
+      setLocationModLinks([]);
+      setRawModifierGroups([]);
+      setExperiences([]);
+      setBanners([]);
+      setAllergens([]);
+      setHomeSettings(null);
+      setRestaurantSettings(null);
+      setBrand(null);
+      setPlanFeatures([]);
+      setLocations([]);
+      setBusinessHours([]);
+      setPromotions([]);
+    }
 
     try {
       const cacheKey = `menu:v5:${brandId}`;
@@ -244,6 +250,7 @@ export const MenuDataProvider = ({ children }) => {
         console.warn('MenuData: el menú cargó, pero no se pudo actualizar el caché local.', cacheWriteError);
       }
 
+      currentLoadedBrandIdRef.current = brandId;
       console.log('✅ MenuData Parallel Fetch Complete');
       return true;
 
@@ -260,6 +267,7 @@ export const MenuDataProvider = ({ children }) => {
           setBrand(data.brand); setPlanFeatures(data.brand?.plans?.plan_features || []); setBusinessHours(data.businessHours);
           setLocationPrices(data.locationPrices); setLocationStatus(data.locationStatus);
           setLocationCategories(data.locationCategories); setLocationModLinks(data.locationModLinks);
+          currentLoadedBrandIdRef.current = brandId;
           recoveredFromCache = true;
         }
       } catch (cacheError) {
