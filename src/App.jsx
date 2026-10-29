@@ -216,7 +216,7 @@ export default function App() {
     !isSpecialPlatformView &&
     !orderTrackingId &&
     !driverOrderId &&
-    (isOrderingMode || isMenuView || (!isLandingView && !isNewAdminPanel));
+    !isNewAdminPanel;
 
   useEffect(() => {
     // En el panel de admin, priorizamos el nombre de la marca de la sesión
