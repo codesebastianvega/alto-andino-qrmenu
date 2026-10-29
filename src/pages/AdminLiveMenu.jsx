@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Search, SlidersHorizontal, AlertTriangle, CheckCircle2, 
-  XCircle, Plus, Trash2, ChevronDown, ChevronRight, 
-  ArrowLeft, Utensils, Sparkles, Layers, Package, 
-  RotateCcw, ShieldAlert, Check, X, Store
+  Plus, Trash2, ChevronDown, ChevronRight, 
+  ArrowLeft, Utensils, Sparkles, X, ShieldAlert,
+  Layers, Package, Flame
 } from 'lucide-react';
 import { useAdminProducts } from '../hooks/useAdminProducts';
 import { useAdminModifierGroups } from '../hooks/useAdminModifierGroups';
@@ -18,13 +18,12 @@ import { supabase } from '../config/supabase';
 
 export default function AdminLiveMenu() {
   const { activeBrand } = useAuth();
-  const { activeLocationId, locations } = useLocation();
+  const { activeLocationId } = useLocation();
   const { categories, restaurantSettings } = useMenuData();
 
-  // Products hook
+  // Products hook (optimistic stock updates)
   const { 
     products, 
-    loading: loadingProducts, 
     toggleStock, 
     refreshProducts 
   } = useAdminProducts();
@@ -32,35 +31,32 @@ export default function AdminLiveMenu() {
   // Modifier Groups hook
   const { 
     modifierGroups, 
-    loading: loadingModGroups, 
     updateOption, 
     createOption, 
-    deleteOption,
-    fetchModifierGroups 
+    deleteOption
   } = useAdminModifierGroups(activeLocationId);
 
   // Ingredients hook
   const { ingredients } = useAdminIngredients();
 
-  // Navigation & Filtering State
+  // View & Filter States
   const [activeTab, setActiveTab] = useState('products'); // 'products' | 'modifiers' | 'ingredients'
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyOffFilter, setOnlyOffFilter] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState({});
   const [collapsedGroups, setCollapsedGroups] = useState({});
   
-  // Selected Product for Column 3 (Personalizaciones)
+  // Selected Product for Column 3
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
 
-  // Quick Add Option Modal State
-  const [addOptionTargetGroup, setAddOptionTargetGroup] = useState(null); // group object
+  // Quick Add Option State
+  const [addOptionTargetGroup, setAddOptionTargetGroup] = useState(null);
   const [newOptionForm, setNewOptionForm] = useState({ name: '', price: 0, ingredient_id: '' });
   const [isSubmittingOption, setIsSubmittingOption] = useState(false);
 
   // Auto-86 Cascade State & Modal
   const [cascadeModal, setCascadeModal] = useState(null);
-  // Track products paused by cascade in local memory/session
   const [cascadePausedDishes, setCascadePausedDishes] = useState({});
 
   // Emergency Menu Pause Modal
@@ -96,12 +92,10 @@ export default function AdminLiveMenu() {
   const filteredProductsByCategory = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     
-    // Group products by category
     const grouped = {};
     (categories || []).forEach(cat => {
       grouped[cat.id] = { category: cat, items: [] };
     });
-    // Add uncategorized
     grouped['uncategorized'] = { category: { id: 'uncategorized', name: 'Sin Categoría' }, items: [] };
 
     products.forEach(p => {
@@ -115,7 +109,6 @@ export default function AdminLiveMenu() {
       grouped[catId].items.push(p);
     });
 
-    // Remove empty categories if searching or filtering
     return Object.values(grouped).filter(g => g.items.length > 0);
   }, [products, categories, searchQuery, onlyOffFilter]);
 
@@ -148,7 +141,7 @@ export default function AdminLiveMenu() {
     setCollapsedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
   };
 
-  // Toggle Product Stock with optimistic switch
+  // Toggle Product Stock with optimistic chip
   const handleProductStockToggle = async (product) => {
     const current = product.stock_status || 'in';
     await toggleStock(product.id, current);
@@ -160,7 +153,6 @@ export default function AdminLiveMenu() {
     const nextActive = !isCurrentlyActive;
     const nextStock = nextActive ? 'in' : 'out';
 
-    // 1. If turning OFF, check if this option/group is used in multiple dishes
     if (!nextActive) {
       // Find all products that have this group assigned
       const affected = products.filter(p => {
@@ -168,7 +160,6 @@ export default function AdminLiveMenu() {
         return Array.isArray(p.modifier_groups) && p.modifier_groups.includes(group.id);
       });
 
-      // If used in dishes and at least one is currently available, offer cascade
       const activeAffected = affected.filter(p => p.stock_status !== 'out');
       if (activeAffected.length > 1) {
         setCascadeModal({
@@ -181,7 +172,6 @@ export default function AdminLiveMenu() {
         return;
       }
     } else {
-      // If turning ON, check if we previously paused dishes for this option
       const previouslyPaused = cascadePausedDishes[option.id] || [];
       if (previouslyPaused.length > 0) {
         const dishesToRestore = products.filter(p => previouslyPaused.includes(p.id) && p.stock_status === 'out');
@@ -198,20 +188,17 @@ export default function AdminLiveMenu() {
       }
     }
 
-    // Direct toggle if no cascade needed
     await updateOption(option.id, { is_active: nextActive, stock_status: nextStock });
   };
 
   // Confirm Cascade Execution
   const handleConfirmCascade = async () => {
     if (!cascadeModal) return;
-    const { type, option, group, selectedDishIds } = cascadeModal;
+    const { type, option, selectedDishIds } = cascadeModal;
 
     if (type === 'turn_off') {
-      // 1. Turn off option
       await updateOption(option.id, { is_active: false, stock_status: 'out' });
 
-      // 2. Pause selected dishes
       if (selectedDishIds.length > 0) {
         for (const dishId of selectedDishIds) {
           await supabase
@@ -220,16 +207,13 @@ export default function AdminLiveMenu() {
             .eq('id', dishId)
             .eq('brand_id', activeBrand?.id);
         }
-        // Remember in session
         setCascadePausedDishes(prev => ({ ...prev, [option.id]: selectedDishIds }));
         toast(`⚠️ ${option.name} agotado. Se pausaron ${selectedDishIds.length} platos en cascada.`);
         refreshProducts('all', { silent: true });
       }
     } else if (type === 'turn_on') {
-      // 1. Turn on option
       await updateOption(option.id, { is_active: true, stock_status: 'in' });
 
-      // 2. Reactivate selected dishes
       if (selectedDishIds.length > 0) {
         for (const dishId of selectedDishIds) {
           await supabase
@@ -238,7 +222,6 @@ export default function AdminLiveMenu() {
             .eq('id', dishId)
             .eq('brand_id', activeBrand?.id);
         }
-        // Clean remembered
         setCascadePausedDishes(prev => {
           const next = { ...prev };
           delete next[option.id];
@@ -270,7 +253,7 @@ export default function AdminLiveMenu() {
       };
 
       await createOption(payload);
-      toast(`Opción "${payload.name}" agregada a ${addOptionTargetGroup.name}`);
+      toast(`Opción "${payload.name}" agregada`);
       setAddOptionTargetGroup(null);
       setNewOptionForm({ name: '', price: 0, ingredient_id: '' });
     } catch (err) {
@@ -293,7 +276,7 @@ export default function AdminLiveMenu() {
 
       setShowEmergencyModal(false);
       refreshProducts('all', { silent: true });
-      toast(emergencyAction === 'pause' ? '🛑 Menú pausado temporalmente' : '🟢 Menú reactivado por completo');
+      toast(emergencyAction === 'pause' ? '🛑 Carta pausada temporalmente' : '🟢 Carta reactivada por completo');
     } catch (err) {
       console.error('Error bulk updating menu:', err);
       toast('Error al modificar estado del menú');
@@ -303,40 +286,40 @@ export default function AdminLiveMenu() {
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] lg:h-[calc(100vh-64px)] bg-[#F8F9FA] overflow-hidden select-none">
       
-      {/* ─── Top Operation Sub-Header ────────────────────────────────────────── */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 shrink-0 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+      {/* ─── Top Operational Header ────────────────────────────────────────── */}
+      <header className="bg-white border-b border-gray-200 px-4 py-2.5 shrink-0 flex items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-xs shrink-0">
-            <SlidersHorizontal className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-xs shrink-0">
+            <SlidersHorizontal className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-black text-gray-900 truncate">Carta & Opciones</h1>
+              <h1 className="text-sm font-black text-gray-900 truncate">Carta & Opciones</h1>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Operación en Vivo
               </span>
             </div>
-            <p className="text-xs text-gray-500 truncate">
-              {restaurantSettings?.business_name || activeBrand?.name || 'Mi Restaurante'} · Control de disponibilidad inmediata
+            <p className="text-[11px] text-gray-400 truncate">
+              {restaurantSettings?.business_name || activeBrand?.name || 'Mi Restaurante'} · Disponibilidad inmediata de platos y opciones
             </p>
           </div>
         </div>
 
-        {/* Global Search Omnibox */}
-        <div className="relative w-full sm:w-72 md:w-80">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        {/* Omnibox Search */}
+        <div className="relative w-full sm:w-64 md:w-72">
+          <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar platos o personalizaciones..."
-            className="w-full pl-9 pr-8 py-1.5 bg-gray-50 hover:bg-gray-100/80 focus:bg-white text-xs font-semibold text-gray-900 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-gray-400"
+            placeholder="Buscar platos o adiciones..."
+            className="w-full pl-8 pr-7 py-1.5 bg-gray-50 hover:bg-gray-100/80 focus:bg-white text-xs font-semibold text-gray-900 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-gray-400"
           />
           {searchQuery && (
             <button 
               onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -344,54 +327,54 @@ export default function AdminLiveMenu() {
         </div>
       </header>
 
-      {/* ─── 3 Columns Main Workspace ────────────────────────────────────────── */}
-      <div className="flex-1 flex overflow-hidden relative">
+      {/* ─── 3 Columns Workspace (Balanced Widths) ─────────────────────────── */}
+      <div className="flex-1 flex overflow-hidden">
 
         {/* ══════════════════════════════════════════════════════════════════════
-            COLUMNA 1: Panel de Control, Modos y Resumen de Emergencia
+            COLUMNA 1: Panel de Control (Izquierda - Ancho Fijo 260px)
         ══════════════════════════════════════════════════════════════════════ */}
-        <aside className="w-full lg:w-72 xl:w-80 bg-white border-r border-gray-200 flex flex-col shrink-0 overflow-y-auto hidden md:flex">
-          <div className="p-4 space-y-4">
+        <aside className="w-64 xl:w-72 bg-white border-r border-gray-200 flex flex-col shrink-0 overflow-y-auto hidden md:flex">
+          <div className="p-3.5 space-y-3.5">
             
-            {/* Banner Alerta de Ítems Apagados (Estilo Rappi Aliados) */}
+            {/* Banner Alerta Ítems Apagados */}
             {totalOffItems > 0 && (
               <button
                 onClick={() => setOnlyOffFilter(!onlyOffFilter)}
-                className={`w-full text-left p-3.5 rounded-2xl border transition-all flex items-start gap-3 shadow-xs ${
+                className={`w-full text-left p-3 rounded-2xl border transition-all flex items-start gap-2.5 shadow-xs ${
                   onlyOffFilter 
                     ? 'bg-rose-500 text-white border-rose-600' 
                     : 'bg-rose-50 border-rose-200 hover:bg-rose-100/80 text-rose-900'
                 }`}
               >
-                <AlertTriangle className={`w-5 h-5 shrink-0 mt-0.5 ${onlyOffFilter ? 'text-white' : 'text-rose-600'}`} />
+                <AlertTriangle className={`w-4 h-4 shrink-0 mt-0.5 ${onlyOffFilter ? 'text-white' : 'text-rose-600'}`} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black leading-snug">
-                    {totalOffItems} {totalOffItems === 1 ? 'ítem se encuentra apagado' : 'ítems se encuentran apagados'}
+                  <p className="text-xs font-black leading-tight">
+                    {totalOffItems} {totalOffItems === 1 ? 'ítem apagado' : 'ítems apagados'}
                   </p>
-                  <p className={`text-[11px] mt-0.5 ${onlyOffFilter ? 'text-rose-100' : 'text-rose-600 font-semibold'}`}>
-                    {onlyOffFilter ? 'Mostrando solo apagados (clic para quitar)' : 'Clic para filtrar solo apagados >'}
+                  <p className={`text-[10px] mt-0.5 ${onlyOffFilter ? 'text-rose-100' : 'text-rose-600 font-semibold'}`}>
+                    {onlyOffFilter ? 'Filtro activo (clic para quitar)' : 'Filtrar solo apagados >'}
                   </p>
                 </div>
               </button>
             )}
 
-            {/* Selector de Modo (Productos vs Personalizaciones vs Insumos) */}
-            <div className="space-y-2">
+            {/* Vistas de Catálogo */}
+            <div className="space-y-1.5">
               <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 px-1">
                 Vistas de Catálogo
               </span>
 
-              {/* Card Modo 1: Productos */}
+              {/* Card 1: Platos */}
               <button
                 onClick={() => { setActiveTab('products'); setSelectedProductId(null); }}
-                className={`w-full p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between ${
+                className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between ${
                   activeTab === 'products'
-                    ? 'bg-emerald-50 border-emerald-300 shadow-sm ring-1 ring-emerald-400/30'
+                    ? 'bg-emerald-50 border-emerald-300 shadow-xs ring-1 ring-emerald-400/30'
                     : 'bg-white border-gray-200 hover:bg-gray-50'
                 }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
                     activeTab === 'products' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
                   }`}>
                     🍱
@@ -400,25 +383,25 @@ export default function AdminLiveMenu() {
                     <p className={`text-xs font-black truncate ${activeTab === 'products' ? 'text-emerald-950' : 'text-gray-900'}`}>
                       Platos & Menú
                     </p>
-                    <p className="text-[11px] text-gray-500 font-semibold mt-0.5">
+                    <p className="text-[10px] text-gray-500 font-semibold">
                       {onProductsCount} activos · {offProducts.length} agotados
                     </p>
                   </div>
                 </div>
-                <ChevronRight className={`w-4 h-4 shrink-0 ${activeTab === 'products' ? 'text-emerald-600' : 'text-gray-400'}`} />
+                <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'products' ? 'text-emerald-600' : 'text-gray-400'}`} />
               </button>
 
-              {/* Card Modo 2: Personalizaciones */}
+              {/* Card 2: Personalizaciones */}
               <button
                 onClick={() => { setActiveTab('modifiers'); setSelectedProductId(null); }}
-                className={`w-full p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between ${
+                className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between ${
                   activeTab === 'modifiers'
-                    ? 'bg-emerald-50 border-emerald-300 shadow-sm ring-1 ring-emerald-400/30'
+                    ? 'bg-emerald-50 border-emerald-300 shadow-xs ring-1 ring-emerald-400/30'
                     : 'bg-white border-gray-200 hover:bg-gray-50'
                 }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
                     activeTab === 'modifiers' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
                   }`}>
                     ⚙️
@@ -427,25 +410,25 @@ export default function AdminLiveMenu() {
                     <p className={`text-xs font-black truncate ${activeTab === 'modifiers' ? 'text-emerald-950' : 'text-gray-900'}`}>
                       Personalizaciones
                     </p>
-                    <p className="text-[11px] text-gray-500 font-semibold mt-0.5">
+                    <p className="text-[10px] text-gray-500 font-semibold">
                       {modifierGroups.length} grupos · {allOptions.length - offOptions.length} activas
                     </p>
                   </div>
                 </div>
-                <ChevronRight className={`w-4 h-4 shrink-0 ${activeTab === 'modifiers' ? 'text-emerald-600' : 'text-gray-400'}`} />
+                <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'modifiers' ? 'text-emerald-600' : 'text-gray-400'}`} />
               </button>
 
-              {/* Card Modo 3: Insumos Clave */}
+              {/* Card 3: Insumos Críticos */}
               <button
                 onClick={() => { setActiveTab('ingredients'); setSelectedProductId(null); }}
-                className={`w-full p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between ${
+                className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between ${
                   activeTab === 'ingredients'
-                    ? 'bg-emerald-50 border-emerald-300 shadow-sm ring-1 ring-emerald-400/30'
+                    ? 'bg-emerald-50 border-emerald-300 shadow-xs ring-1 ring-emerald-400/30'
                     : 'bg-white border-gray-200 hover:bg-gray-50'
                 }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
                     activeTab === 'ingredients' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
                   }`}>
                     🌾
@@ -454,33 +437,33 @@ export default function AdminLiveMenu() {
                     <p className={`text-xs font-black truncate ${activeTab === 'ingredients' ? 'text-emerald-950' : 'text-gray-900'}`}>
                       Insumos Críticos
                     </p>
-                    <p className="text-[11px] text-gray-500 font-semibold mt-0.5">
+                    <p className="text-[10px] text-gray-500 font-semibold">
                       {ingredients?.length || 0} materias primas
                     </p>
                   </div>
                 </div>
-                <ChevronRight className={`w-4 h-4 shrink-0 ${activeTab === 'ingredients' ? 'text-emerald-600' : 'text-gray-400'}`} />
+                <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'ingredients' ? 'text-emerald-600' : 'text-gray-400'}`} />
               </button>
             </div>
 
-            {/* Emergency Menu Controls */}
-            <div className="pt-4 border-t border-gray-100">
+            {/* Interruptores de Emergencia */}
+            <div className="pt-3 border-t border-gray-100">
               <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 px-1">
                 Interruptores de Cocina
               </span>
-              <div className="mt-2 space-y-2">
+              <div className="mt-2 space-y-1.5">
                 <button
                   onClick={() => { setEmergencyAction('pause'); setShowEmergencyModal(true); }}
-                  className="w-full py-2.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-black uppercase tracking-wide border border-rose-200 transition-all flex items-center justify-center gap-2"
+                  className="w-full py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-[11px] font-black uppercase tracking-wide border border-rose-200 transition-all flex items-center justify-center gap-1.5"
                 >
-                  <ShieldAlert className="w-4 h-4 text-rose-600" />
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
                   Pausar Toda la Carta
                 </button>
                 <button
                   onClick={() => { setEmergencyAction('resume'); setShowEmergencyModal(true); }}
-                  className="w-full py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-black uppercase tracking-wide border border-emerald-200 transition-all flex items-center justify-center gap-2"
+                  className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-[11px] font-black uppercase tracking-wide border border-emerald-200 transition-all flex items-center justify-center gap-1.5"
                 >
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                   Reactivar Toda la Carta
                 </button>
               </div>
@@ -490,11 +473,11 @@ export default function AdminLiveMenu() {
         </aside>
 
         {/* ══════════════════════════════════════════════════════════════════════
-            COLUMNA 2: Lista Central (Categorías con Platos / Grupos)
+            COLUMNA 2: Carta Central (Ancho Proporcionado ~540px - 600px)
         ══════════════════════════════════════════════════════════════════════ */}
-        <main className={`flex-1 bg-white border-r border-gray-200 flex flex-col overflow-y-auto ${mobileDetailOpen ? 'hidden lg:flex' : 'flex'}`}>
+        <main className={`w-full md:w-[500px] lg:w-[540px] xl:w-[580px] bg-white border-r border-gray-200 flex flex-col shrink-0 overflow-y-auto ${mobileDetailOpen ? 'hidden lg:flex' : 'flex'}`}>
           
-          {/* Mobile Filter Tabs Pill */}
+          {/* Mobile Tab Selector */}
           <div className="md:hidden flex border-b border-gray-200 p-2 gap-1 bg-gray-50 shrink-0">
             {[
               { id: 'products', label: '🍱 Platos' },
@@ -513,14 +496,14 @@ export default function AdminLiveMenu() {
             ))}
           </div>
 
-          <div className="p-4 sm:p-5 space-y-4">
+          <div className="p-3.5 sm:p-4 space-y-3.5">
             
             {/* ── MODO PRODUCTOS ── */}
             {activeTab === 'products' && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {filteredProductsByCategory.length === 0 ? (
                   <div className="py-16 text-center text-gray-400">
-                    <p className="text-sm font-bold">No se encontraron productos con el filtro aplicado</p>
+                    <p className="text-sm font-bold">No se encontraron platos</p>
                   </div>
                 ) : (
                   filteredProductsByCategory.map(({ category, items }) => {
@@ -529,23 +512,24 @@ export default function AdminLiveMenu() {
 
                     return (
                       <div key={category.id} className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-xs">
-                        {/* Header de Categoría Colapsable */}
+                        
+                        {/* Header de Categoría */}
                         <button
                           onClick={() => toggleCategoryCollapse(category.id)}
-                          className="w-full px-4 py-3 bg-gray-50/80 hover:bg-gray-100/70 border-b border-gray-200 flex items-center justify-between text-left transition-colors"
+                          className="w-full px-3.5 py-2.5 bg-gray-50/80 hover:bg-gray-100/70 border-b border-gray-200 flex items-center justify-between text-left transition-colors"
                         >
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-black text-gray-900 uppercase tracking-wide">
+                            <span className="text-xs font-black text-gray-900 uppercase tracking-wide">
                               {category.name}
                             </span>
-                            <span className="text-[11px] font-bold text-gray-500 bg-gray-200/60 px-2 py-0.5 rounded-full">
+                            <span className="text-[10px] font-bold text-gray-500 bg-gray-200/60 px-2 py-0.5 rounded-full">
                               {activeInCat}/{items.length} disponibles
                             </span>
                           </div>
-                          {isCollapsed ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400 rotate-90" />}
+                          {isCollapsed ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400 rotate-90" />}
                         </button>
 
-                        {/* Lista de Platos en la Categoría */}
+                        {/* Lista de Platos */}
                         {!isCollapsed && (
                           <div className="divide-y divide-gray-100">
                             {items.map(product => {
@@ -556,61 +540,53 @@ export default function AdminLiveMenu() {
                               return (
                                 <div 
                                   key={product.id}
-                                  className={`p-3.5 sm:px-4 sm:py-3.5 flex items-center justify-between gap-3 transition-colors ${
+                                  className={`p-3 flex items-center justify-between gap-3 transition-colors ${
                                     isSelected 
                                       ? 'bg-emerald-50/70 border-l-4 border-emerald-600' 
-                                      : 'hover:bg-gray-50/60'
+                                      : 'hover:bg-gray-50/50'
                                   }`}
                                 >
                                   {/* Info Principal */}
-                                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <div className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center">
+                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <div className="w-11 h-11 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center">
                                       <AAImage src={product.image_url} alt={product.name} />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                      <div className="flex items-center gap-2">
-                                        <h4 className={`text-sm font-black truncate leading-tight ${isOff ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                                          {product.name}
-                                        </h4>
-                                        {isOff && (
-                                          <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 shrink-0">
-                                            Agotado
-                                          </span>
-                                        )}
+                                      <h4 className={`text-xs font-black truncate leading-tight ${isOff ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                                        {product.name}
+                                      </h4>
+                                      <div className="flex items-center gap-2 mt-0.5">
+                                        <span className="text-xs font-black text-emerald-600">
+                                          {formatCOP(product.price)}
+                                        </span>
+                                        <button
+                                          onClick={() => {
+                                            setSelectedProductId(product.id);
+                                            setMobileDetailOpen(true);
+                                          }}
+                                          className="text-[10px] font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-0.5"
+                                        >
+                                          <span>Opciones ({modCount})</span>
+                                          <ChevronRight className="w-2.5 h-2.5" />
+                                        </button>
                                       </div>
-                                      <p className="text-xs font-black text-emerald-600 mt-0.5">
-                                        {formatCOP(product.price)}
-                                      </p>
-                                      
-                                      {/* Link a Personalizaciones */}
-                                      <button
-                                        onClick={() => {
-                                          setSelectedProductId(product.id);
-                                          setMobileDetailOpen(true);
-                                        }}
-                                        className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline mt-1"
-                                      >
-                                        <span>Personalizaciones ({modCount})</span>
-                                        <ChevronRight className="w-3 h-3" />
-                                      </button>
                                     </div>
                                   </div>
 
-                                  {/* iOS Style Switch de Disponibilidad (Stock) */}
-                                  <div className="shrink-0 flex items-center gap-3">
+                                  {/* CHIP DE STOCK ELEGANTE (En lugar del switch deformado) */}
+                                  <div className="shrink-0">
                                     <button
                                       type="button"
                                       onClick={() => handleProductStockToggle(product)}
-                                      className={`w-12 h-6.5 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-200 ease-in-out focus:outline-none ${
-                                        !isOff ? 'bg-emerald-500' : 'bg-gray-300'
+                                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all active:scale-95 border ${
+                                        !isOff 
+                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80 shadow-2xs' 
+                                          : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100/80'
                                       }`}
-                                      title={!isOff ? 'Disponible en Carta (Clic para Agotar)' : 'Agotado (Clic para Habilitar)'}
+                                      title={!isOff ? 'Disponible en carta (Clic para Agotar)' : 'Agotado (Clic para Habilitar)'}
                                     >
-                                      <div
-                                        className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
-                                          !isOff ? 'translate-x-5.5' : 'translate-x-0'
-                                        }`}
-                                      />
+                                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${!isOff ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                      <span>{!isOff ? 'Disponible' : 'Agotado'}</span>
                                     </button>
                                   </div>
                                 </div>
@@ -627,10 +603,10 @@ export default function AdminLiveMenu() {
 
             {/* ── MODO PERSONALIZACIONES / GRUPOS DE MODIFICADORES ── */}
             {activeTab === 'modifiers' && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {filteredModifierGroups.length === 0 ? (
                   <div className="py-16 text-center text-gray-400">
-                    <p className="text-sm font-bold">No hay grupos de personalizaciones creados</p>
+                    <p className="text-sm font-bold">No hay grupos de personalizaciones</p>
                   </div>
                 ) : (
                   filteredModifierGroups.map(group => {
@@ -639,15 +615,15 @@ export default function AdminLiveMenu() {
 
                     return (
                       <div key={group.id} className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-xs">
-                        <div className="px-4 py-3 bg-gray-50/80 border-b border-gray-200 flex items-center justify-between">
+                        <div className="px-3.5 py-2.5 bg-gray-50/80 border-b border-gray-200 flex items-center justify-between">
                           <button
                             onClick={() => toggleGroupCollapse(group.id)}
                             className="flex items-center gap-2 text-left flex-1"
                           >
-                            <span className="text-sm font-black text-gray-900 uppercase tracking-wide">
+                            <span className="text-xs font-black text-gray-900 uppercase tracking-wide">
                               {group.name}
                             </span>
-                            <span className="text-[11px] font-bold text-gray-500 bg-gray-200/60 px-2 py-0.5 rounded-full">
+                            <span className="text-[10px] font-bold text-gray-500 bg-gray-200/60 px-2 py-0.5 rounded-full">
                               {options.length} opciones
                             </span>
                           </button>
@@ -657,13 +633,13 @@ export default function AdminLiveMenu() {
                                 setAddOptionTargetGroup(group);
                                 setNewOptionForm({ name: '', price: 0, ingredient_id: '' });
                               }}
-                              className="px-2.5 py-1 text-[11px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg border border-emerald-200 flex items-center gap-1 transition-colors"
+                              className="px-2 py-0.5 text-[10px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg border border-emerald-200 flex items-center gap-1 transition-colors"
                             >
-                              <Plus className="w-3.5 h-3.5" />
+                              <Plus className="w-3 h-3" />
                               <span>Opción</span>
                             </button>
                             <button onClick={() => toggleGroupCollapse(group.id)} className="text-gray-400">
-                              {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4 rotate-90" />}
+                              {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5 rotate-90" />}
                             </button>
                           </div>
                         </div>
@@ -673,28 +649,29 @@ export default function AdminLiveMenu() {
                             {options.map(opt => {
                               const isOff = !opt.is_active || opt.stock_status === 'out';
                               return (
-                                <div key={opt.id} className="p-3.5 px-4 flex items-center justify-between gap-3 hover:bg-gray-50/60">
+                                <div key={opt.id} className="p-3 px-3.5 flex items-center justify-between gap-3 hover:bg-gray-50/50">
                                   <div>
                                     <p className={`text-xs font-bold ${isOff ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                                       {opt.name}
                                     </p>
-                                    <p className="text-[11px] font-bold text-gray-500">
+                                    <p className="text-[10px] font-bold text-gray-500">
                                       {opt.price > 0 ? `+ ${formatCOP(opt.price)}` : 'Incluido'}
                                     </p>
                                   </div>
-                                  <div className="flex items-center gap-3">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOptionToggle(opt, group)}
-                                      className={`w-12 h-6.5 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-200 ease-in-out ${
-                                        !isOff ? 'bg-emerald-500' : 'bg-gray-300'
-                                      }`}
-                                    >
-                                      <div className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
-                                        !isOff ? 'translate-x-5.5' : 'translate-x-0'
-                                      }`} />
-                                    </button>
-                                  </div>
+                                  
+                                  {/* Chip de Stock Opción */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOptionToggle(opt, group)}
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all active:scale-95 border ${
+                                      !isOff 
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80 shadow-2xs' 
+                                        : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100/80'
+                                    }`}
+                                  >
+                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${!isOff ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                    <span>{!isOff ? 'Disponible' : 'Agotado'}</span>
+                                  </button>
                                 </div>
                               );
                             })}
@@ -709,16 +686,16 @@ export default function AdminLiveMenu() {
 
             {/* ── MODO INSUMOS CLAVE (Materia Prima) ── */}
             {activeTab === 'ingredients' && (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {filteredIngredients.map(ing => (
-                  <div key={ing.id} className="p-3.5 bg-white border border-gray-200 rounded-2xl flex items-center justify-between shadow-xs">
+                  <div key={ing.id} className="p-3 bg-white border border-gray-200 rounded-2xl flex items-center justify-between shadow-xs">
                     <div>
-                      <h4 className="text-sm font-black text-gray-900">{ing.name}</h4>
-                      <p className="text-xs text-gray-500 font-semibold mt-0.5">
+                      <h4 className="text-xs font-black text-gray-900">{ing.name}</h4>
+                      <p className="text-[10px] text-gray-500 font-semibold mt-0.5">
                         Unidad: {ing.unit || 'unidad'} · Costo: {formatCOP(ing.cost || 0)}
                       </p>
                     </div>
-                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
                       Insumo de Cocina
                     </span>
                   </div>
@@ -730,13 +707,14 @@ export default function AdminLiveMenu() {
         </main>
 
         {/* ══════════════════════════════════════════════════════════════════════
-            COLUMNA 3: Personalizaciones del Plato Seleccionado (Derecha)
+            COLUMNA 3: Personalizaciones del Plato (Flex-1 con Espacio Cómodo)
         ══════════════════════════════════════════════════════════════════════ */}
-        <aside className={`w-full lg:w-80 xl:w-96 bg-[#FBFBFC] flex flex-col shrink-0 overflow-y-auto ${mobileDetailOpen ? 'flex absolute inset-0 z-30 lg:relative lg:inset-auto' : 'hidden lg:flex'}`}>
+        <aside className={`flex-1 bg-[#FBFBFC] flex flex-col shrink-0 overflow-y-auto ${mobileDetailOpen ? 'flex absolute inset-0 z-30 lg:relative lg:inset-auto' : 'hidden lg:flex'}`}>
           {selectedProduct ? (
             <div className="flex flex-col h-full">
-              {/* Header de la Columna 3 */}
-              <div className="p-4 border-b border-gray-200 bg-white shrink-0 flex items-center justify-between gap-3">
+              
+              {/* Header Columna 3 */}
+              <div className="p-3.5 px-4 border-b border-gray-200 bg-white shrink-0 flex items-center justify-between gap-3 shadow-2xs">
                 <div className="flex items-center gap-2 min-w-0">
                   <button
                     onClick={() => {
@@ -745,7 +723,7 @@ export default function AdminLiveMenu() {
                     }}
                     className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 lg:hidden"
                   >
-                    <ArrowLeft className="w-5 h-5" />
+                    <ArrowLeft className="w-4 h-4" />
                   </button>
                   <div className="min-w-0">
                     <span className="text-[10px] font-black uppercase tracking-wider text-blue-600">
@@ -768,8 +746,8 @@ export default function AdminLiveMenu() {
                 </button>
               </div>
 
-              {/* Contenido de Grupos de Modificadores del Plato */}
-              <div className="p-4 space-y-4 flex-1 overflow-y-auto">
+              {/* Contenido de Grupos de Modificadores */}
+              <div className="p-4 space-y-3.5 flex-1 overflow-y-auto max-w-2xl">
                 {selectedProductGroups.length === 0 ? (
                   <div className="py-12 text-center text-gray-400 p-6 bg-white rounded-2xl border border-dashed border-gray-300">
                     <p className="text-xs font-bold text-gray-600">Este plato no tiene grupos de modificadores asignados.</p>
@@ -781,8 +759,9 @@ export default function AdminLiveMenu() {
 
                     return (
                       <div key={group.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xs">
+                        
                         {/* Header de Grupo */}
-                        <div className="p-3.5 bg-gray-50/90 border-b border-gray-200 flex items-center justify-between">
+                        <div className="p-3 px-3.5 bg-gray-50/90 border-b border-gray-200 flex items-center justify-between">
                           <div>
                             <h4 className="text-xs font-black text-gray-900 uppercase tracking-wide">{group.name}</h4>
                             <p className="text-[10px] text-gray-400 font-semibold">
@@ -794,7 +773,7 @@ export default function AdminLiveMenu() {
                               setAddOptionTargetGroup(group);
                               setNewOptionForm({ name: '', price: 0, ingredient_id: '' });
                             }}
-                            className="p-1 px-2 text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg border border-emerald-200 flex items-center gap-1 transition-colors"
+                            className="p-1 px-2.5 text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg border border-emerald-200 flex items-center gap-1 transition-colors"
                           >
                             <Plus className="w-3 h-3" />
                             <span>Opción</span>
@@ -809,7 +788,7 @@ export default function AdminLiveMenu() {
                             options.map(opt => {
                               const isOff = !opt.is_active || opt.stock_status === 'out';
                               return (
-                                <div key={opt.id} className="p-3 px-3.5 flex items-center justify-between gap-2 hover:bg-gray-50/50">
+                                <div key={opt.id} className="p-2.5 px-3.5 flex items-center justify-between gap-2 hover:bg-gray-50/50">
                                   <div className="min-w-0 flex-1">
                                     <p className={`text-xs font-bold truncate ${isOff ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                                       {opt.name}
@@ -820,18 +799,19 @@ export default function AdminLiveMenu() {
                                   </div>
 
                                   <div className="flex items-center gap-2 shrink-0">
-                                    {/* Toggle individual de stock */}
+                                    {/* Chip de Stock Opción */}
                                     <button
                                       type="button"
                                       onClick={() => handleOptionToggle(opt, group)}
-                                      className={`w-10 h-5.5 flex items-center rounded-full p-0.5 cursor-pointer transition-colors duration-200 ${
-                                        !isOff ? 'bg-emerald-500' : 'bg-gray-300'
+                                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all active:scale-95 border ${
+                                        !isOff 
+                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80 shadow-2xs' 
+                                          : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100/80'
                                       }`}
                                       title={!isOff ? 'Disponible' : 'Agotado'}
                                     >
-                                      <div className={`bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform duration-200 ${
-                                        !isOff ? 'translate-x-4.5' : 'translate-x-0'
-                                      }`} />
+                                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${!isOff ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                      <span>{!isOff ? 'Disponible' : 'Agotado'}</span>
                                     </button>
 
                                     {/* Delete Option button */}
@@ -859,14 +839,14 @@ export default function AdminLiveMenu() {
               </div>
             </div>
           ) : (
-            // Estado vacío cuando no hay plato seleccionado
+            // Estado vacío Columna 3
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-400">
-              <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400 mb-3 border border-gray-200">
-                <Utensils className="w-8 h-8 text-gray-300" />
+              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400 mb-3 border border-gray-200">
+                <Utensils className="w-7 h-7 text-gray-300" />
               </div>
               <h4 className="text-sm font-black text-gray-700">Selecciona un plato</h4>
               <p className="text-xs text-gray-400 max-w-xs mt-1">
-                Haz clic en <span className="font-bold text-blue-600">"Personalizaciones"</span> en cualquier plato para ver y apagar sus adiciones o bases en caliente.
+                Haz clic en <span className="font-bold text-blue-600">"Opciones"</span> en cualquier plato para ver y apagar sus adiciones o bases con chips instantáneos.
               </p>
             </div>
           )}
@@ -875,19 +855,19 @@ export default function AdminLiveMenu() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          MODAL: Motor de Cascada Inteligente (Auto-86: Caso del Arroz)
+          MODAL: Cascada Inteligente (Auto-86: Caso del Arroz)
       ══════════════════════════════════════════════════════════════════════ */}
       {cascadeModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3">
-              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
                 cascadeModal.type === 'turn_off' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
               }`}>
-                {cascadeModal.type === 'turn_off' ? <AlertTriangle className="w-6 h-6" /> : <Sparkles className="w-6 h-6" />}
+                {cascadeModal.type === 'turn_off' ? <AlertTriangle className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
               </div>
               <div>
-                <h3 className="text-base font-black text-gray-900 leading-tight">
+                <h3 className="text-sm font-black text-gray-900 leading-tight">
                   {cascadeModal.type === 'turn_off' ? 'Insumo Crítico Agotado' : 'Reactivación de Insumo'}
                 </h3>
                 <p className="text-xs text-gray-500 font-semibold mt-0.5">
@@ -896,7 +876,7 @@ export default function AdminLiveMenu() {
               </div>
             </div>
 
-            <div className="mt-4 p-3.5 bg-gray-50 rounded-2xl border border-gray-200/80">
+            <div className="mt-4 p-3 bg-gray-50 rounded-2xl border border-gray-200/80">
               <p className="text-xs font-bold text-gray-700 mb-2">
                 {cascadeModal.type === 'turn_off' 
                   ? `"${cascadeModal.option.name}" se utiliza como opción en ${cascadeModal.affectedProducts.length} platos activos:`
@@ -926,10 +906,10 @@ export default function AdminLiveMenu() {
               </div>
             </div>
 
-            <div className="mt-5 space-y-2">
+            <div className="mt-4 space-y-2">
               <button
                 onClick={handleConfirmCascade}
-                className={`w-full py-3 rounded-2xl text-xs font-black uppercase tracking-wider text-white shadow-md transition-transform active:scale-98 ${
+                className={`w-full py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider text-white shadow-md transition-transform active:scale-98 ${
                   cascadeModal.type === 'turn_off' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'
                 }`}
               >
@@ -941,7 +921,6 @@ export default function AdminLiveMenu() {
 
               <button
                 onClick={async () => {
-                  // Only toggle the option without touching the dishes
                   const isTurnOff = cascadeModal.type === 'turn_off';
                   await updateOption(cascadeModal.option.id, { 
                     is_active: !isTurnOff, 
@@ -949,7 +928,7 @@ export default function AdminLiveMenu() {
                   });
                   setCascadeModal(null);
                 }}
-                className="w-full py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                className="w-full py-2 rounded-2xl text-xs font-black uppercase tracking-wider bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
               >
                 Solo cambiar la opción individual
               </button>
@@ -959,7 +938,7 @@ export default function AdminLiveMenu() {
       )}
 
       {/* ══════════════════════════════════════════════════════════════════════
-          MODAL: Añadir Opción Rápida a un Grupo en Caliente
+          MODAL: Añadir Opción Rápida
       ══════════════════════════════════════════════════════════════════════ */}
       {addOptionTargetGroup && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -1046,32 +1025,32 @@ export default function AdminLiveMenu() {
       )}
 
       {/* ══════════════════════════════════════════════════════════════════════
-          MODAL: Emergencia / Pausa Total del Menú
+          MODAL: Emergencia / Pausa Total
       ══════════════════════════════════════════════════════════════════════ */}
       {showEmergencyModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-gray-100 text-center animate-in fade-in zoom-in-95 duration-200">
-            <div className={`w-12 h-12 rounded-2xl mx-auto flex items-center justify-center ${
+            <div className={`w-11 h-11 rounded-2xl mx-auto flex items-center justify-center ${
               emergencyAction === 'pause' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'
             }`}>
-              <ShieldAlert className="w-6 h-6" />
+              <ShieldAlert className="w-5 h-5" />
             </div>
             
-            <h3 className="text-base font-black text-gray-900 mt-3">
+            <h3 className="text-sm font-black text-gray-900 mt-3">
               {emergencyAction === 'pause' ? '¿Pausar toda la carta?' : '¿Reactivar toda la carta?'}
             </h3>
             
             <p className="text-xs text-gray-500 font-semibold mt-1">
               {emergencyAction === 'pause' 
-                ? 'Todos los platos quedarán marcados como "Agotados por hoy" para evitar nuevos pedidos mientras la cocina se descongestiona.'
-                : 'Todos los platos activos volverán a estar disponibles inmediatamente para pedidos de clientes y meseros.'
+                ? 'Todos los platos quedarán marcados como "Agotados por hoy" temporalmente.'
+                : 'Todos los platos activos volverán a estar disponibles inmediatamente.'
               }
             </p>
 
-            <div className="mt-5 space-y-2">
+            <div className="mt-4 space-y-2">
               <button
                 onClick={handleEmergencyMenuToggle}
-                className={`w-full py-3 rounded-2xl text-xs font-black uppercase tracking-wider text-white shadow-md transition-transform active:scale-98 ${
+                className={`w-full py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider text-white shadow-md transition-transform active:scale-98 ${
                   emergencyAction === 'pause' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'
                 }`}
               >
@@ -1080,7 +1059,7 @@ export default function AdminLiveMenu() {
 
               <button
                 onClick={() => setShowEmergencyModal(false)}
-                className="w-full py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                className="w-full py-2 rounded-2xl text-xs font-black uppercase tracking-wider bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
               >
                 Cancelar
               </button>

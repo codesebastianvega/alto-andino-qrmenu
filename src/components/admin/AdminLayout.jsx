@@ -207,6 +207,7 @@ const ADMIN_ROLES = ['admin', 'owner', 'superadmin', 'encargado'];
 
 const ESTRATEGIA_ITEMS = [
   { id: 'analytics', label: 'Inteligencia', Icon: Icons.Strategy, roles: ADMIN_ROLES, feature: 'advanced_analytics' },
+  { id: 'live_menu', label: 'Carta & Opciones', Icon: Icons.LiveMenu, roles: ADMIN_ROLES },
   { id: 'promotions', label: 'Campañas & Descuentos', Icon: Icons.Promotions, roles: ADMIN_ROLES }
 ];
 
@@ -219,7 +220,6 @@ const OPERACION_ITEMS = [
 ];
 
 const CARTA_ITEMS = [
-  { id: 'live_menu',       label: 'Carta & Opciones',   Icon: Icons.LiveMenu, roles: ADMIN_ROLES },
   { id: 'products',        label: 'Carta Principal',   Icon: Icons.Products, roles: ADMIN_ROLES },
   { id: 'categories',      label: 'Categorías',         Icon: Icons.Categories, roles: ADMIN_ROLES },
   { id: 'modifier_groups', label: 'Extras y Opciones', Icon: Icons.Modifiers, roles: ADMIN_ROLES },
@@ -739,6 +739,27 @@ export default function AdminLayout() {
                     )}
                   </div>
                 </motion.button>
+
+                {/* Carta & Opciones Card (Operación en Vivo / Disponibilidad Rápida) */}
+                <button 
+                  onClick={() => handleSelectPage('live_menu', 'Carta & Opciones')}
+                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-10' : 'h-11'} rounded-xl border border-white/5 flex items-center ${
+                    currentPage === 'live_menu' 
+                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 shadow-md shadow-emerald-950/20' 
+                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10 text-white/60 hover:text-white'
+                  }`}
+                >
+                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${currentPage === 'live_menu' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
+                      <Icons.LiveMenu />
+                    </div>
+                    {!isCollapsed && (
+                      <div className="text-left flex-1">
+                        <p className={`text-[12px] font-bold leading-none ${currentPage === 'live_menu' ? 'text-white' : 'text-white/60'}`}>Carta & Opciones</p>
+                      </div>
+                    )}
+                  </div>
+                </button>
 
                 {/* Campañas & Descuentos Card (Sincronizado con versión Mobile) */}
                 <button 
