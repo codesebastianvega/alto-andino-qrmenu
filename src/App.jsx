@@ -81,7 +81,12 @@ export default function App() {
   }
   
   // En el panel de admin, priorizamos SIEMPRE la marca de la sesión activa
-  const isNewAdminPanel = window.location.hash.startsWith('#admin') || window.location.pathname.startsWith('/admin');
+  const isNewAdminPanel = 
+    window.location.hash.startsWith('#admin') || 
+    window.location.pathname.startsWith('/admin') ||
+    window.location.pathname.endsWith('/admin') ||
+    window.location.pathname.endsWith('/admin/') ||
+    window.location.pathname.includes('/admin/');
   const activeBrand = isNewAdminPanel 
     ? (activeBrandFromAuth || activeBrandFromContext) 
     : (brand_slug ? activeBrandFromContext : (activeBrandFromContext || activeBrandFromAuth));

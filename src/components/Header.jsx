@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Icon } from "@iconify-icon/react";
-import { Info, ShoppingBag } from "lucide-react";
+import { Info, ShoppingBag, ShieldCheck } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { safeSessionStorage as sessionStorage } from "../utils/safeStorage";
 import { getTableId } from "@/utils/table";
 import { useMenuData } from "../context/MenuDataContext";
 import { safeStorage as localStorage } from "../utils/safeStorage";
@@ -12,6 +14,16 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
   const [activeOrderId, setActiveOrderId] = useState(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const { restaurantSettings, brand, homeSettings } = useMenuData();
+  const { profile } = useAuth();
+
+  const hasAdminSession = Boolean(
+    (profile && ['admin', 'owner', 'superadmin', 'encargado', 'waiter', 'kitchen', 'bar'].includes(profile?.role)) ||
+    (typeof window !== 'undefined' && (
+      sessionStorage.getItem('aa_admin_session') ||
+      localStorage.getItem('aluna_admin_pin') ||
+      localStorage.getItem('aa_is_admin')
+    ))
+  );
 
   const brandName = (brand?.slug !== 'alto-andino' && brand?.name)
     ? brand.name
