@@ -729,6 +729,27 @@ export default function AdminLayout() {
                     )}
                   </div>
                 </motion.button>
+
+                {/* Campañas & Descuentos Card (Sincronizado con versión Mobile) */}
+                <button 
+                  onClick={() => handleSelectPage('promotions', 'Campañas & Descuentos')}
+                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-10' : 'h-11'} rounded-xl border border-white/5 flex items-center ${
+                    currentPage === 'promotions' 
+                    ? 'bg-rose-500/15 border-rose-500/30 text-rose-300 shadow-md shadow-rose-950/20' 
+                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10 text-white/60 hover:text-white'
+                  }`}
+                >
+                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${currentPage === 'promotions' ? 'bg-rose-500/20 text-rose-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
+                      <Icons.Promotions />
+                    </div>
+                    {!isCollapsed && (
+                      <div className="text-left flex-1">
+                        <p className={`text-[12px] font-bold leading-none ${currentPage === 'promotions' ? 'text-white' : 'text-white/60'}`}>Campañas & Descuentos</p>
+                      </div>
+                    )}
+                  </div>
+                </button>
               </div>
               )}
 

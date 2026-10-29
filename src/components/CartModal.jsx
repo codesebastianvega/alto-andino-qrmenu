@@ -147,7 +147,7 @@ export default function CartModal({ open, onClose }) {
   } = cart;
 
   const { brandSlug } = useParams();
-  const { getAllProducts, hasFeature, activeBrandId, currentLocation: contextLocation, locations, businessHours, restaurantSettings: menuRestaurantSettings, freeDeliveryPromo, activePromotions } = useMenuData();
+  const { getAllProducts, hasFeature, activeBrandId, currentLocation: contextLocation, locations, businessHours, restaurantSettings: menuRestaurantSettings, freeDeliveryPromo, activePromotions, brand: menuBrand } = useMenuData();
   const { paymentMethods, loading: loadingPayments } = usePaymentMethods(activeBrandId);
   const { isWithinOrderLimit } = usePlan(activeBrandId);
   
@@ -893,7 +893,7 @@ export default function CartModal({ open, onClose }) {
       // --- WHATSAPP LINK GENERATION (Aluna Localization) ---
       // SKIP in POS mode to avoid interrupting staff workflow
       if (hasFeature('whatsapp_orders') && !isPOSMode) {
-        const whatsappNumber = currentLocation?.whatsapp || settings?.whatsapp_number_orders;
+        const whatsappNumber = currentLocation?.whatsapp || settings?.whatsapp_number_orders || menuBrand?.whatsapp_number || menuBrand?.phone;
         
         if (whatsappNumber) {
           const cleanPhone = normalizeWhatsAppNumber(whatsappNumber);
@@ -2100,7 +2100,7 @@ export default function CartModal({ open, onClose }) {
                     )}
 
                     {!isPOSMode && fulfillmentType !== 'dine_in' && !isPaid && (() => {
-                      const proofPhone = normalizeWhatsAppNumber(currentLocation?.whatsapp || settings?.whatsapp_number_orders || '');
+                      const proofPhone = normalizeWhatsAppNumber(currentLocation?.whatsapp || settings?.whatsapp_number_orders || menuBrand?.whatsapp_number || menuBrand?.phone || '');
                       const proofOrderCode = lastOrderId ? lastOrderId.slice(-4).toUpperCase() : '';
                       const proofMsg = encodeURIComponent('¡Hola! 👋 Envío el comprobante de pago de mi pedido #' + proofOrderCode + '. ✨');
                       const proofUrl = 'https://wa.me/' + proofPhone + '?text=' + proofMsg;
@@ -2265,11 +2265,11 @@ export default function CartModal({ open, onClose }) {
                       </button>
 
                       {/* Customer Support WhatsApp button */}
-                      {(!isPOSMode && (currentLocation?.whatsapp || settings?.whatsapp_number_orders)) && (
+                      {(!isPOSMode && (currentLocation?.whatsapp || settings?.whatsapp_number_orders || menuBrand?.whatsapp_number || menuBrand?.phone)) && (
                         <button
                           type="button"
                           onClick={() => {
-                            const rawPhone = currentLocation?.whatsapp || settings?.whatsapp_number_orders || '';
+                            const rawPhone = currentLocation?.whatsapp || settings?.whatsapp_number_orders || menuBrand?.whatsapp_number || menuBrand?.phone || '';
                             const cleanPhone = rawPhone.replace(/\D/g, '');
                             const orderNum = lastOrderId ? lastOrderId.slice(-4).toUpperCase() : '';
                             const text = encodeURIComponent(`Hola, acabo de hacer el pedido #${orderNum} en ${currentLocation?.business_name || settings?.business_name || 'su restaurante'} y tengo una consulta.`);
