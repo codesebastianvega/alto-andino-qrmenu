@@ -3,7 +3,7 @@ import {
   Search, SlidersHorizontal, AlertTriangle, CheckCircle2, 
   Plus, Trash2, ChevronDown, ChevronRight, 
   ArrowLeft, Utensils, Sparkles, X, ShieldAlert,
-  Layers, Package, Flame, Link2
+  Layers, Package, Flame, Link2, Check
 } from 'lucide-react';
 import { useAdminProducts } from '../hooks/useAdminProducts';
 import { useAdminModifierGroups } from '../hooks/useAdminModifierGroups';
@@ -15,6 +15,7 @@ import { formatCOP } from '../utils/money';
 import AAImage from '../components/ui/AAImage';
 import { toast } from '../components/Toast';
 import { supabase } from '../config/supabase';
+import { PageHeader } from '../components/admin/ui';
 
 export default function AdminLiveMenu() {
   const { activeBrand } = useAuth();
@@ -39,8 +40,8 @@ export default function AdminLiveMenu() {
   // Ingredients hook (para vincular opciones a insumos)
   const { ingredients } = useAdminIngredients();
 
-  // View & Filter States (2 modos limpios: 'products' | 'modifiers')
-  const [activeTab, setActiveTab] = useState('products'); // 'products' | 'modifiers'
+  // 2 Modos Claros: 'products' | 'modifiers'
+  const [activeTab, setActiveTab] = useState('products');
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyOffFilter, setOnlyOffFilter] = useState(false);
   
@@ -48,9 +49,8 @@ export default function AdminLiveMenu() {
   const [expandedCategories, setExpandedCategories] = useState({});
   const [expandedGroups, setExpandedGroups] = useState({});
   
-  // Selected Product for Column 3
+  // Plato seleccionado para el panel derecho de Modificadores
   const [selectedProductId, setSelectedProductId] = useState(null);
-  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
 
   // Modal de Platos Vinculados a un Modificador
   const [viewingLinkedDishesGroup, setViewingLinkedDishesGroup] = useState(null);
@@ -102,7 +102,7 @@ export default function AdminLiveMenu() {
     return counts;
   }, [modifierGroups, products]);
 
-  // ─── Filtered Products (Column 2) ─────────────────────────────────────────
+  // ─── Filtered Products (Left Panel) ───────────────────────────────────────
   const filteredProductsByCategory = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     
@@ -126,7 +126,7 @@ export default function AdminLiveMenu() {
     return Object.values(grouped).filter(g => g.items.length > 0);
   }, [products, categories, searchQuery, onlyOffFilter]);
 
-  // ─── Filtered Modifier Groups (Column 2 when activeTab === 'modifiers') ──
+  // ─── Filtered Modifier Groups ─────────────────────────────────────────────
   const filteredModifierGroups = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return modifierGroups.filter(g => {
@@ -159,7 +159,6 @@ export default function AdminLiveMenu() {
     const nextStock = nextActive ? 'in' : 'out';
 
     if (!nextActive) {
-      // Find all products that have this group assigned
       const affected = products.filter(p => {
         if (!p.modifier_groups) return false;
         return Array.isArray(p.modifier_groups) && p.modifier_groups.includes(group.id);
@@ -289,550 +288,461 @@ export default function AdminLiveMenu() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] lg:h-[calc(100vh-64px)] bg-[#F8F9FA] overflow-hidden select-none">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1700px] mx-auto space-y-6 select-none animate-in fade-in duration-300">
       
-      {/* ─── Top Operational Header ────────────────────────────────────────── */}
-      <header className="bg-white border-b border-gray-200 px-4 py-2.5 shrink-0 flex items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-xs shrink-0">
-            <SlidersHorizontal className="w-4 h-4" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm font-black text-gray-900 truncate">Carta & Opciones</h1>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Operación en Vivo
-              </span>
-            </div>
-            <p className="text-[11px] text-gray-400 truncate">
-              {restaurantSettings?.business_name || activeBrand?.name || 'Mi Restaurante'} · Disponibilidad de platos y modificadores
-            </p>
-          </div>
+      {/* ─── Standard Centered Page Header (Cohesivo con Carta Principal) ─── */}
+      <PageHeader
+        badge="Operación en Vivo"
+        title="Carta & Opciones"
+        subtitle="Control táctil de disponibilidad inmediata para platos y modificadores."
+      >
+        <div className="flex flex-wrap items-center gap-2.5">
+          {totalOffItems > 0 && (
+            <button
+              onClick={() => setOnlyOffFilter(!onlyOffFilter)}
+              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                onlyOffFilter 
+                  ? 'bg-rose-500 text-white border-rose-600 shadow-sm' 
+                  : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+              }`}
+            >
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{totalOffItems} {totalOffItems === 1 ? 'apagado' : 'apagados'}</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => { setEmergencyAction('pause'); setShowEmergencyModal(true); }}
+            className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-rose-50 text-rose-700 border border-gray-200 hover:border-rose-200 shadow-xs flex items-center gap-1.5 transition-all"
+            title="Pausar disponibilidad de toda la carta en caso de congestión de pedidos"
+          >
+            <ShieldAlert className="w-4 h-4 text-rose-600" />
+            <span className="hidden sm:inline">Pausar Toda la Carta</span>
+            <span className="sm:hidden">Pausar</span>
+          </button>
+
+          <button
+            onClick={() => { setEmergencyAction('resume'); setShowEmergencyModal(true); }}
+            className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-emerald-50 text-emerald-700 border border-gray-200 hover:border-emerald-200 shadow-xs flex items-center gap-1.5 transition-all"
+            title="Reactivar disponibilidad de toda la carta"
+          >
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span className="hidden sm:inline">Reactivar Toda la Carta</span>
+            <span className="sm:hidden">Reactivar</span>
+          </button>
+        </div>
+      </PageHeader>
+
+      {/* ─── Control Bar: Buscador + Selector de Modos ────────────────────── */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3.5">
+        
+        {/* Modos Principales (Platos vs Modificadores) */}
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <button
+            onClick={() => { setActiveTab('products'); setSelectedProductId(null); }}
+            className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+              activeTab === 'products'
+                ? 'bg-[#2f4131] text-white shadow-sm'
+                : 'bg-gray-100 hover:bg-gray-200/80 text-gray-700'
+            }`}
+          >
+            <span>🍱 Platos & Menú</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+              activeTab === 'products' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
+            }`}>
+              {onProductsCount} activos · {offProducts.length} agotados
+            </span>
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('modifiers'); setSelectedProductId(null); }}
+            className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+              activeTab === 'modifiers'
+                ? 'bg-[#2f4131] text-white shadow-sm'
+                : 'bg-gray-100 hover:bg-gray-200/80 text-gray-700'
+            }`}
+          >
+            <span>⚙️ Modificadores</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+              activeTab === 'modifiers' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
+            }`}>
+              {modifierGroups.length} grupos
+            </span>
+          </button>
         </div>
 
-        {/* Omnibox Search */}
-        <div className="relative w-full sm:w-64 md:w-72">
-          <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        {/* Buscador Omnibox */}
+        <div className="relative w-full md:w-80">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar platos o modificadores..."
-            className="w-full pl-8 pr-7 py-1.5 bg-gray-50 hover:bg-gray-100/80 focus:bg-white text-xs font-semibold text-gray-900 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-gray-400"
+            placeholder={activeTab === 'products' ? "Buscar platos..." : "Buscar modificadores..."}
+            className="w-full pl-9 pr-8 py-2 bg-gray-50 hover:bg-gray-100/80 focus:bg-white text-xs font-semibold text-gray-900 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131] transition-all placeholder:text-gray-400"
           />
           {searchQuery && (
             <button 
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
-      </header>
+      </div>
 
-      {/* ─── 3 Columns Workspace (Balanced Widths) ─────────────────────────── */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* ─── Main 12-Column Balanced Grid (Llena el espacio sin vacíos) ───── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-        {/* ══════════════════════════════════════════════════════════════════════
-            COLUMNA 1: Panel de Control (Izquierda - Ancho Fijo 260px)
-        ══════════════════════════════════════════════════════════════════════ */}
-        <aside className="w-64 xl:w-72 bg-white border-r border-gray-200 flex flex-col shrink-0 overflow-y-auto hidden md:flex">
-          <div className="p-3.5 space-y-3.5">
-            
-            {/* Banner Alerta Ítems Apagados */}
-            {totalOffItems > 0 && (
-              <button
-                onClick={() => setOnlyOffFilter(!onlyOffFilter)}
-                className={`w-full text-left p-3 rounded-2xl border transition-all flex items-start gap-2.5 shadow-xs ${
-                  onlyOffFilter 
-                    ? 'bg-rose-500 text-white border-rose-600' 
-                    : 'bg-rose-50 border-rose-200 hover:bg-rose-100/80 text-rose-900'
-                }`}
-              >
-                <AlertTriangle className={`w-4 h-4 shrink-0 mt-0.5 ${onlyOffFilter ? 'text-white' : 'text-rose-600'}`} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black leading-tight">
-                    {totalOffItems} {totalOffItems === 1 ? 'ítem apagado' : 'ítems apagados'}
-                  </p>
-                  <p className={`text-[10px] mt-0.5 ${onlyOffFilter ? 'text-rose-100' : 'text-rose-600 font-semibold'}`}>
-                    {onlyOffFilter ? 'Filtro activo (clic para quitar)' : 'Filtrar solo apagados >'}
-                  </p>
-                </div>
-              </button>
-            )}
-
-            {/* Vistas de Catálogo (2 Modos Claros: Platos vs Modificadores) */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 px-1">
-                Vistas de Catálogo
-              </span>
-
-              {/* Card 1: Platos & Menú */}
-              <button
-                onClick={() => { setActiveTab('products'); setSelectedProductId(null); }}
-                className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between ${
-                  activeTab === 'products'
-                    ? 'bg-emerald-50 border-emerald-300 shadow-xs ring-1 ring-emerald-400/30'
-                    : 'bg-white border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
-                    activeTab === 'products' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    🍱
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`text-xs font-black truncate ${activeTab === 'products' ? 'text-emerald-950' : 'text-gray-900'}`}>
-                      Platos & Menú
-                    </p>
-                    <p className="text-[10px] text-gray-500 font-semibold">
-                      {onProductsCount} activos · {offProducts.length} agotados
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'products' ? 'text-emerald-600' : 'text-gray-400'}`} />
-              </button>
-
-              {/* Card 2: Modificadores */}
-              <button
-                onClick={() => { setActiveTab('modifiers'); setSelectedProductId(null); }}
-                className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between ${
-                  activeTab === 'modifiers'
-                    ? 'bg-emerald-50 border-emerald-300 shadow-xs ring-1 ring-emerald-400/30'
-                    : 'bg-white border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
-                    activeTab === 'modifiers' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    ⚙️
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`text-xs font-black truncate ${activeTab === 'modifiers' ? 'text-emerald-950' : 'text-gray-900'}`}>
-                      Modificadores
-                    </p>
-                    <p className="text-[10px] text-gray-500 font-semibold">
-                      {modifierGroups.length} grupos · {allOptions.length - offOptions.length} activas
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'modifiers' ? 'text-emerald-600' : 'text-gray-400'}`} />
-              </button>
-            </div>
-
-            {/* Interruptores de Emergencia */}
-            <div className="pt-3 border-t border-gray-100">
-              <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 px-1">
-                Interruptores de Cocina
-              </span>
-              <div className="mt-2 space-y-1.5">
-                <button
-                  onClick={() => { setEmergencyAction('pause'); setShowEmergencyModal(true); }}
-                  className="w-full py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-[11px] font-black uppercase tracking-wide border border-rose-200 transition-all flex items-center justify-center gap-1.5"
-                >
-                  <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
-                  Pausar Toda la Carta
-                </button>
-                <button
-                  onClick={() => { setEmergencyAction('resume'); setShowEmergencyModal(true); }}
-                  className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-[11px] font-black uppercase tracking-wide border border-emerald-200 transition-all flex items-center justify-center gap-1.5"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  Reactivar Toda la Carta
-                </button>
-              </div>
-            </div>
-
-          </div>
-        </aside>
-
-        {/* ══════════════════════════════════════════════════════════════════════
-            COLUMNA 2: Carta Central (Ancho Proporcionado ~540px - 600px)
-        ══════════════════════════════════════════════════════════════════════ */}
-        <main className={`w-full md:w-[500px] lg:w-[540px] xl:w-[580px] bg-white border-r border-gray-200 flex flex-col shrink-0 overflow-y-auto ${mobileDetailOpen ? 'hidden lg:flex' : 'flex'}`}>
+        {/* ════════════════════════════════════════════════════════════════════
+            PANEL IZQUIERDO: Carta por Categorías o Grupos de Modificadores (7 Cols)
+        ════════════════════════════════════════════════════════════════════ */}
+        <div className="lg:col-span-7 space-y-3.5">
           
-          {/* Mobile Tab Selector */}
-          <div className="md:hidden flex border-b border-gray-200 p-2 gap-1 bg-gray-50 shrink-0">
-            {[
-              { id: 'products', label: '🍱 Platos' },
-              { id: 'modifiers', label: '⚙️ Modificadores' },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 py-1.5 text-xs font-black rounded-lg transition-all ${
-                  activeTab === tab.id ? 'bg-white text-emerald-700 shadow-xs' : 'text-gray-500'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          {/* ── MODO PRODUCTOS ── */}
+          {activeTab === 'products' && (
+            <div className="space-y-3">
+              {filteredProductsByCategory.length === 0 ? (
+                <div className="py-16 text-center text-gray-400 bg-white rounded-3xl border border-gray-200">
+                  <p className="text-sm font-bold">No se encontraron platos con el filtro aplicado</p>
+                </div>
+              ) : (
+                filteredProductsByCategory.map(({ category, items }) => {
+                  // Por defecto RECOGIDO
+                  const isExpanded = !!expandedCategories[category.id];
+                  const activeInCat = items.filter(p => p.stock_status !== 'out').length;
 
-          <div className="p-3.5 sm:p-4 space-y-3.5">
-            
-            {/* ── MODO PRODUCTOS ── */}
-            {activeTab === 'products' && (
-              <div className="space-y-3">
-                {filteredProductsByCategory.length === 0 ? (
-                  <div className="py-16 text-center text-gray-400">
-                    <p className="text-sm font-bold">No se encontraron platos</p>
-                  </div>
-                ) : (
-                  filteredProductsByCategory.map(({ category, items }) => {
-                    // Por defecto RECOGIDO (solo se abre si expandedCategories[category.id] === true)
-                    const isExpanded = !!expandedCategories[category.id];
-                    const activeInCat = items.filter(p => p.stock_status !== 'out').length;
+                  return (
+                    <div key={category.id} className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-xs">
+                      
+                      {/* Header de Categoría (Plegado por defecto) */}
+                      <button
+                        onClick={() => toggleCategoryCollapse(category.id)}
+                        className="w-full px-4 py-3 bg-gray-50/90 hover:bg-gray-100/80 border-b border-gray-200 flex items-center justify-between text-left transition-colors"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-xs font-black text-gray-900 uppercase tracking-wide">
+                            {category.name}
+                          </span>
+                          <span className="text-[10px] font-bold text-gray-500 bg-gray-200/70 px-2 py-0.5 rounded-full">
+                            {activeInCat}/{items.length} disponibles
+                          </span>
+                        </div>
+                        {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-600" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+                      </button>
 
-                    return (
-                      <div key={category.id} className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-xs">
-                        
-                        {/* Header de Categoría (Por defecto cerrado) */}
-                        <button
-                          onClick={() => toggleCategoryCollapse(category.id)}
-                          className="w-full px-3.5 py-3 bg-gray-50/80 hover:bg-gray-100/70 border-b border-gray-200 flex items-center justify-between text-left transition-colors"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-gray-900 uppercase tracking-wide">
-                              {category.name}
-                            </span>
-                            <span className="text-[10px] font-bold text-gray-500 bg-gray-200/60 px-2 py-0.5 rounded-full">
-                              {activeInCat}/{items.length} disponibles
-                            </span>
-                          </div>
-                          {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
-                        </button>
+                      {/* Lista de Platos (Visible solo al desplegar) */}
+                      {isExpanded && (
+                        <div className="divide-y divide-gray-100">
+                          {items.map(product => {
+                            const isOff = product.stock_status === 'out';
+                            const isSelected = selectedProductId === product.id;
+                            const modCount = Array.isArray(product.modifier_groups) ? product.modifier_groups.length : 0;
 
-                        {/* Lista de Platos (Solo visible si está expandido) */}
-                        {isExpanded && (
-                          <div className="divide-y divide-gray-100">
-                            {items.map(product => {
-                              const isOff = product.stock_status === 'out';
-                              const isSelected = selectedProductId === product.id;
-                              const modCount = Array.isArray(product.modifier_groups) ? product.modifier_groups.length : 0;
-
-                              return (
-                                <div 
-                                  key={product.id}
-                                  className={`p-3 flex items-center justify-between gap-3 transition-colors ${
-                                    isSelected 
-                                      ? 'bg-emerald-50/70 border-l-4 border-emerald-600' 
-                                      : 'hover:bg-gray-50/50'
-                                  }`}
-                                >
-                                  {/* Info Principal */}
-                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    <div className="w-11 h-11 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center">
-                                      <AAImage src={product.image_url} alt={product.name} />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <h4 className={`text-xs font-black truncate leading-tight ${isOff ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                                        {product.name}
-                                      </h4>
-                                      <div className="flex items-center gap-2 mt-0.5">
-                                        <span className="text-xs font-black text-emerald-600">
-                                          {formatCOP(product.price)}
-                                        </span>
-                                        <button
-                                          onClick={() => {
-                                            setSelectedProductId(product.id);
-                                            setMobileDetailOpen(true);
-                                          }}
-                                          className="text-[10px] font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-0.5"
-                                        >
-                                          <span>Modificadores ({modCount})</span>
-                                          <ChevronRight className="w-2.5 h-2.5" />
-                                        </button>
-                                      </div>
-                                    </div>
+                            return (
+                              <div 
+                                key={product.id}
+                                className={`p-3.5 sm:px-4 sm:py-3.5 flex items-center justify-between gap-3 transition-colors ${
+                                  isSelected 
+                                    ? 'bg-emerald-50/70 border-l-4 border-emerald-600' 
+                                    : 'hover:bg-gray-50/60'
+                                }`}
+                              >
+                                {/* Info del Plato */}
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                  <div className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center">
+                                    <AAImage src={product.image_url} alt={product.name} />
                                   </div>
-
-                                  {/* CHIP DE STOCK ELEGANTE */}
-                                  <div className="shrink-0">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleProductStockToggle(product)}
-                                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all active:scale-95 border ${
-                                        !isOff 
-                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80 shadow-2xs' 
-                                          : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100/80'
-                                      }`}
-                                      title={!isOff ? 'Disponible en carta (Clic para Agotar)' : 'Agotado (Clic para Habilitar)'}
-                                    >
-                                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${!isOff ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                      <span>{!isOff ? 'Disponible' : 'Agotado'}</span>
-                                    </button>
+                                  <div className="min-w-0 flex-1">
+                                    <h4 className={`text-xs font-black truncate leading-tight ${isOff ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                                      {product.name}
+                                    </h4>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-xs font-black text-emerald-600">
+                                        {formatCOP(product.price)}
+                                      </span>
+                                      <button
+                                        onClick={() => setSelectedProductId(product.id)}
+                                        className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-0.5"
+                                      >
+                                        <span>Modificadores ({modCount})</span>
+                                        <ChevronRight className="w-3 h-3" />
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            )}
 
-            {/* ── MODO MODIFICADORES (Grupos) ── */}
-            {activeTab === 'modifiers' && (
-              <div className="space-y-3">
-                {filteredModifierGroups.length === 0 ? (
-                  <div className="py-16 text-center text-gray-400">
-                    <p className="text-sm font-bold">No hay grupos de modificadores</p>
-                  </div>
-                ) : (
-                  filteredModifierGroups.map(group => {
-                    // Por defecto RECOGIDO
-                    const isExpanded = !!expandedGroups[group.id];
-                    const options = group.options || [];
-                    const linkedCount = dishCountByGroup[group.id] || 0;
-
-                    return (
-                      <div key={group.id} className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-xs">
-                        <div className="px-3.5 py-3 bg-gray-50/80 border-b border-gray-200 flex items-center justify-between gap-2">
-                          
-                          <button
-                            onClick={() => toggleGroupCollapse(group.id)}
-                            className="flex items-center gap-2 text-left flex-1 min-w-0"
-                          >
-                            <span className="text-xs font-black text-gray-900 uppercase tracking-wide truncate">
-                              {group.name}
-                            </span>
-                            <span className="text-[10px] font-bold text-gray-500 bg-gray-200/60 px-2 py-0.5 rounded-full shrink-0">
-                              {options.length} opciones
-                            </span>
-                          </button>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            {/* BOTÓN: Platos Vinculados (Abre Modal de relación) */}
-                            <button
-                              onClick={() => setViewingLinkedDishesGroup(group)}
-                              className="px-2.5 py-1 text-[10px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200 flex items-center gap-1 transition-colors"
-                              title="Ver qué platos de la carta usan este modificador"
-                            >
-                              <Utensils className="w-3 h-3" />
-                              <span>{linkedCount} platos</span>
-                            </button>
-
-                            {/* Botón Añadir Opción */}
-                            <button
-                              onClick={() => {
-                                setAddOptionTargetGroup(group);
-                                setNewOptionForm({ name: '', price: 0, ingredient_id: '' });
-                              }}
-                              className="px-2 py-1 text-[10px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg border border-emerald-200 flex items-center gap-1 transition-colors"
-                            >
-                              <Plus className="w-3 h-3" />
-                              <span>Opción</span>
-                            </button>
-
-                            {/* Flecha Desplegable */}
-                            <button onClick={() => toggleGroupCollapse(group.id)} className="text-gray-400 p-0.5">
-                              {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-600" /> : <ChevronRight className="w-4 h-4" />}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Opciones del Grupo (Visible solo si está desplegado) */}
-                        {isExpanded && (
-                          <div className="divide-y divide-gray-100">
-                            {options.map(opt => {
-                              const isOff = !opt.is_active || opt.stock_status === 'out';
-                              return (
-                                <div key={opt.id} className="p-3 px-3.5 flex items-center justify-between gap-3 hover:bg-gray-50/50">
-                                  <div>
-                                    <p className={`text-xs font-bold ${isOff ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                                      {opt.name}
-                                    </p>
-                                    <p className="text-[10px] font-bold text-gray-500">
-                                      {opt.price > 0 ? `+ ${formatCOP(opt.price)}` : 'Incluido'}
-                                    </p>
-                                  </div>
-                                  
-                                  {/* Chip de Stock Opción Elegante */}
+                                {/* CHIP DE STOCK ELEGANTE */}
+                                <div className="shrink-0">
                                   <button
                                     type="button"
-                                    onClick={() => handleOptionToggle(opt, group)}
-                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all active:scale-95 border ${
+                                    onClick={() => handleProductStockToggle(product)}
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95 border ${
                                       !isOff 
-                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80 shadow-2xs' 
-                                        : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100/80'
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 shadow-2xs' 
+                                        : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
                                     }`}
+                                    title={!isOff ? 'Disponible (Clic para Agotar)' : 'Agotado (Clic para Habilitar)'}
                                   >
                                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${!isOff ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                                     <span>{!isOff ? 'Disponible' : 'Agotado'}</span>
                                   </button>
                                 </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
 
-          </div>
-        </main>
-
-        {/* ══════════════════════════════════════════════════════════════════════
-            COLUMNA 3: Modificadores del Plato Seleccionado (Flex-1)
-        ══════════════════════════════════════════════════════════════════════ */}
-        <aside className={`flex-1 bg-[#FBFBFC] flex flex-col shrink-0 overflow-y-auto ${mobileDetailOpen ? 'flex absolute inset-0 z-30 lg:relative lg:inset-auto' : 'hidden lg:flex'}`}>
-          {selectedProduct ? (
-            <div className="flex flex-col h-full">
-              
-              {/* Header Columna 3 */}
-              <div className="p-3.5 px-4 border-b border-gray-200 bg-white shrink-0 flex items-center justify-between gap-3 shadow-2xs">
-                <div className="flex items-center gap-2 min-w-0">
-                  <button
-                    onClick={() => {
-                      setSelectedProductId(null);
-                      setMobileDetailOpen(false);
-                    }}
-                    className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 lg:hidden"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                  </button>
-                  <div className="min-w-0">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-blue-600">
-                      Modificadores de
-                    </span>
-                    <h3 className="text-sm font-black text-gray-900 truncate">
-                      {selectedProduct.name}
-                    </h3>
-                  </div>
+          {/* ── MODO MODIFICADORES (Grupos) ── */}
+          {activeTab === 'modifiers' && (
+            <div className="space-y-3">
+              {filteredModifierGroups.length === 0 ? (
+                <div className="py-16 text-center text-gray-400 bg-white rounded-3xl border border-gray-200">
+                  <p className="text-sm font-bold">No hay grupos de modificadores registrados</p>
                 </div>
+              ) : (
+                filteredModifierGroups.map(group => {
+                  // Por defecto RECOGIDO
+                  const isExpanded = !!expandedGroups[group.id];
+                  const options = group.options || [];
+                  const linkedCount = dishCountByGroup[group.id] || 0;
 
-                <button
-                  onClick={() => {
-                    setSelectedProductId(null);
-                    setMobileDetailOpen(false);
-                  }}
-                  className="hidden lg:flex p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Contenido de Grupos de Modificadores */}
-              <div className="p-4 space-y-3.5 flex-1 overflow-y-auto max-w-2xl">
-                {selectedProductGroups.length === 0 ? (
-                  <div className="py-12 text-center text-gray-400 p-6 bg-white rounded-2xl border border-dashed border-gray-300">
-                    <p className="text-xs font-bold text-gray-600">Este plato no tiene modificadores asignados.</p>
-                    <p className="text-[11px] text-gray-400 mt-1">Puedes asignarle grupos en la pestaña de Carta Principal.</p>
-                  </div>
-                ) : (
-                  selectedProductGroups.map(group => {
-                    const options = group.options || [];
-
-                    return (
-                      <div key={group.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xs">
+                  return (
+                    <div key={group.id} className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-xs">
+                      <div className="px-4 py-3 bg-gray-50/90 border-b border-gray-200 flex items-center justify-between gap-2">
                         
-                        {/* Header de Grupo */}
-                        <div className="p-3 px-3.5 bg-gray-50/90 border-b border-gray-200 flex items-center justify-between">
-                          <div>
-                            <h4 className="text-xs font-black text-gray-900 uppercase tracking-wide">{group.name}</h4>
-                            <p className="text-[10px] text-gray-400 font-semibold">
-                              {group.min_selections > 0 ? `Obligatorio (${group.min_selections})` : 'Opcional'} · Máx {group.max_selections}
-                            </p>
-                          </div>
+                        <button
+                          onClick={() => toggleGroupCollapse(group.id)}
+                          className="flex items-center gap-2 text-left flex-1 min-w-0"
+                        >
+                          <span className="text-xs font-black text-gray-900 uppercase tracking-wide truncate">
+                            {group.name}
+                          </span>
+                          <span className="text-[10px] font-bold text-gray-500 bg-gray-200/70 px-2 py-0.5 rounded-full shrink-0">
+                            {options.length} opciones
+                          </span>
+                        </button>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {/* BOTÓN: Platos Vinculados (Abre Modal de relación) */}
+                          <button
+                            onClick={() => setViewingLinkedDishesGroup(group)}
+                            className="px-2.5 py-1 text-[11px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg border border-blue-200 flex items-center gap-1.5 transition-colors"
+                            title="Ver qué platos de la carta usan este modificador"
+                          >
+                            <Utensils className="w-3.5 h-3.5" />
+                            <span>{linkedCount} platos</span>
+                          </button>
+
+                          {/* Botón Añadir Opción */}
                           <button
                             onClick={() => {
                               setAddOptionTargetGroup(group);
                               setNewOptionForm({ name: '', price: 0, ingredient_id: '' });
                             }}
-                            className="p-1 px-2.5 text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg border border-emerald-200 flex items-center gap-1 transition-colors"
+                            className="px-2.5 py-1 text-[11px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg border border-emerald-200 flex items-center gap-1 transition-colors"
                           >
-                            <Plus className="w-3 h-3" />
+                            <Plus className="w-3.5 h-3.5" />
                             <span>Opción</span>
                           </button>
-                        </div>
 
-                        {/* Opciones del Grupo */}
-                        <div className="divide-y divide-gray-100">
-                          {options.length === 0 ? (
-                            <p className="p-3 text-[11px] text-gray-400 italic text-center">Sin opciones en este grupo</p>
-                          ) : (
-                            options.map(opt => {
-                              const isOff = !opt.is_active || opt.stock_status === 'out';
-                              return (
-                                <div key={opt.id} className="p-2.5 px-3.5 flex items-center justify-between gap-2 hover:bg-gray-50/50">
-                                  <div className="min-w-0 flex-1">
-                                    <p className={`text-xs font-bold truncate ${isOff ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                                      {opt.name}
-                                    </p>
-                                    <p className="text-[10px] font-bold text-gray-500 mt-0.5">
-                                      {opt.price > 0 ? `+ ${formatCOP(opt.price)}` : 'Incluido'}
-                                    </p>
-                                  </div>
-
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    {/* Chip de Stock Opción */}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOptionToggle(opt, group)}
-                                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all active:scale-95 border ${
-                                        !isOff 
-                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80 shadow-2xs' 
-                                          : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100/80'
-                                      }`}
-                                      title={!isOff ? 'Disponible' : 'Agotado'}
-                                    >
-                                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${!isOff ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                      <span>{!isOff ? 'Disponible' : 'Agotado'}</span>
-                                    </button>
-
-                                    {/* Delete Option button */}
-                                    <button
-                                      onClick={() => {
-                                        if (confirm(`¿Eliminar opción "${opt.name}" del grupo?`)) {
-                                          deleteOption(opt.id);
-                                        }
-                                      }}
-                                      className="p-1 text-gray-300 hover:text-rose-600 rounded-lg transition-colors"
-                                      title="Eliminar opción"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })
-                          )}
+                          {/* Flecha Desplegable */}
+                          <button onClick={() => toggleGroupCollapse(group.id)} className="text-gray-400 p-0.5">
+                            {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-600" /> : <ChevronRight className="w-4 h-4" />}
+                          </button>
                         </div>
                       </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          ) : (
-            // Estado vacío Columna 3
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-400">
-              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400 mb-3 border border-gray-200">
-                <Utensils className="w-7 h-7 text-gray-300" />
-              </div>
-              <h4 className="text-sm font-black text-gray-700">Selecciona un plato</h4>
-              <p className="text-xs text-gray-400 max-w-xs mt-1">
-                Haz clic en <span className="font-bold text-blue-600">"Modificadores"</span> en cualquier plato para ver y apagar sus opciones o bases en caliente.
-              </p>
+
+                      {/* Opciones del Grupo (Visible solo al desplegar) */}
+                      {isExpanded && (
+                        <div className="divide-y divide-gray-100">
+                          {options.map(opt => {
+                            const isOff = !opt.is_active || opt.stock_status === 'out';
+                            return (
+                              <div key={opt.id} className="p-3 px-4 flex items-center justify-between gap-3 hover:bg-gray-50/50">
+                                <div>
+                                  <p className={`text-xs font-bold ${isOff ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                                    {opt.name}
+                                  </p>
+                                  <p className="text-[10px] font-bold text-gray-500 mt-0.5">
+                                    {opt.price > 0 ? `+ ${formatCOP(opt.price)}` : 'Incluido'}
+                                  </p>
+                                </div>
+                                
+                                {/* Chip de Stock Opción Elegante */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleOptionToggle(opt, group)}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all active:scale-95 border ${
+                                    !isOff 
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 shadow-2xs' 
+                                      : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                                  }`}
+                                >
+                                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${!isOff ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                  <span>{!isOff ? 'Disponible' : 'Agotado'}</span>
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           )}
-        </aside>
+
+        </div>
+
+        {/* ════════════════════════════════════════════════════════════════════
+            PANEL DERECHO: Modificadores del Plato Seleccionado (5 Cols - Sticky)
+        ════════════════════════════════════════════════════════════════════ */}
+        <div className="lg:col-span-5 sticky top-6">
+          <div className="bg-white border border-gray-200 rounded-3xl shadow-xs overflow-hidden">
+            {selectedProduct ? (
+              <div className="flex flex-col">
+                
+                {/* Header Panel Derecho */}
+                <div className="p-4 border-b border-gray-200 bg-gray-50/60 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-blue-600">
+                      Modificadores del plato
+                    </span>
+                    <h3 className="text-sm font-black text-gray-900 truncate">
+                      {selectedProduct.name}
+                    </h3>
+                  </div>
+
+                  <button
+                    onClick={() => setSelectedProductId(null)}
+                    className="p-1.5 rounded-xl hover:bg-gray-200/80 text-gray-400 hover:text-gray-600 transition-colors"
+                    title="Cerrar panel de modificadores"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Lista de Grupos Asignados a este plato */}
+                <div className="p-4 space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto">
+                  {selectedProductGroups.length === 0 ? (
+                    <div className="py-12 text-center text-gray-400 p-6 border border-dashed border-gray-200 rounded-2xl">
+                      <p className="text-xs font-bold text-gray-600">Este plato no tiene modificadores asignados.</p>
+                      <p className="text-[11px] text-gray-400 mt-1">Puedes asignarle grupos en la pestaña de Carta Principal.</p>
+                    </div>
+                  ) : (
+                    selectedProductGroups.map(group => {
+                      const options = group.options || [];
+
+                      return (
+                        <div key={group.id} className="bg-gray-50/50 border border-gray-200 rounded-2xl overflow-hidden shadow-2xs">
+                          
+                          {/* Header de Grupo */}
+                          <div className="p-3 px-3.5 bg-gray-100/70 border-b border-gray-200 flex items-center justify-between">
+                            <div>
+                              <h4 className="text-xs font-black text-gray-900 uppercase tracking-wide">{group.name}</h4>
+                              <p className="text-[10px] text-gray-400 font-semibold">
+                                {group.min_selections > 0 ? `Obligatorio (${group.min_selections})` : 'Opcional'} · Máx {group.max_selections}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setAddOptionTargetGroup(group);
+                                setNewOptionForm({ name: '', price: 0, ingredient_id: '' });
+                              }}
+                              className="p-1 px-2.5 text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg border border-emerald-200 flex items-center gap-1 transition-colors"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>Opción</span>
+                            </button>
+                          </div>
+
+                          {/* Opciones del Grupo */}
+                          <div className="divide-y divide-gray-200/60 bg-white">
+                            {options.length === 0 ? (
+                              <p className="p-3 text-[11px] text-gray-400 italic text-center">Sin opciones en este grupo</p>
+                            ) : (
+                              options.map(opt => {
+                                const isOff = !opt.is_active || opt.stock_status === 'out';
+                                return (
+                                  <div key={opt.id} className="p-2.5 px-3.5 flex items-center justify-between gap-2 hover:bg-gray-50/50">
+                                    <div className="min-w-0 flex-1">
+                                      <p className={`text-xs font-bold truncate ${isOff ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                                        {opt.name}
+                                      </p>
+                                      <p className="text-[10px] font-bold text-gray-500 mt-0.5">
+                                        {opt.price > 0 ? `+ ${formatCOP(opt.price)}` : 'Incluido'}
+                                      </p>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      {/* Chip de Stock Opción */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOptionToggle(opt, group)}
+                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all active:scale-95 border ${
+                                          !isOff 
+                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 shadow-2xs' 
+                                            : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                                        }`}
+                                        title={!isOff ? 'Disponible' : 'Agotado'}
+                                      >
+                                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${!isOff ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                        <span>{!isOff ? 'Disponible' : 'Agotado'}</span>
+                                      </button>
+
+                                      {/* Delete Option button */}
+                                      <button
+                                        onClick={() => {
+                                          if (confirm(`¿Eliminar opción "${opt.name}" del grupo?`)) {
+                                            deleteOption(opt.id);
+                                          }
+                                        }}
+                                        className="p-1 text-gray-300 hover:text-rose-600 rounded-lg transition-colors"
+                                        title="Eliminar opción"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            ) : (
+              // Estado vacío cuando no hay plato seleccionado
+              <div className="p-12 text-center text-gray-400 flex flex-col items-center justify-center">
+                <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 mb-3 border border-gray-100">
+                  <Utensils className="w-7 h-7 text-gray-300" />
+                </div>
+                <h4 className="text-sm font-black text-gray-700">Selecciona un plato</h4>
+                <p className="text-xs text-gray-400 max-w-xs mt-1 leading-relaxed">
+                  Haz clic en <span className="font-bold text-blue-600">"Modificadores"</span> en cualquier plato para ver y gestionar sus opciones o bases en tiempo real.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
 
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          MODAL: Platos Vinculados a un Modificador (Lo que pediste)
+          MODAL: Platos Vinculados a un Modificador
       ══════════════════════════════════════════════════════════════════════ */}
       {viewingLinkedDishesGroup && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
