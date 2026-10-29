@@ -5,6 +5,7 @@ import { safeSessionStorage as sessionStorage } from '../../utils/safeStorage';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { useLocations } from '../../context/LocationContext';
+import AdminLiveMenu from '../../pages/AdminLiveMenu';
 import AdminProducts from '../../pages/AdminProducts';
 import AdminCategories from '../../pages/AdminCategories';
 import AdminModifiers from '../../pages/AdminModifiers';
@@ -192,6 +193,14 @@ const Icons = {
       <circle cx="16.5" cy="7.5" r="1.5" fill="currentColor"/>
     </svg>
   ),
+  LiveMenu: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 6h16M4 12h16M4 18h16"/>
+      <circle cx="8" cy="6" r="2" fill="currentColor"/>
+      <circle cx="16" cy="12" r="2" fill="currentColor"/>
+      <circle cx="10" cy="18" r="2" fill="currentColor"/>
+    </svg>
+  ),
 };
 
 const ADMIN_ROLES = ['admin', 'owner', 'superadmin', 'encargado'];
@@ -210,6 +219,7 @@ const OPERACION_ITEMS = [
 ];
 
 const CARTA_ITEMS = [
+  { id: 'live_menu',       label: 'Carta & Opciones',   Icon: Icons.LiveMenu, roles: ADMIN_ROLES },
   { id: 'products',        label: 'Carta Principal',   Icon: Icons.Products, roles: ADMIN_ROLES },
   { id: 'categories',      label: 'Categorías',         Icon: Icons.Categories, roles: ADMIN_ROLES },
   { id: 'modifier_groups', label: 'Extras y Opciones', Icon: Icons.Modifiers, roles: ADMIN_ROLES },
@@ -1212,6 +1222,7 @@ export default function AdminLayout() {
         {/* Content */}
         <div className="flex-1 relative w-full max-w-full overflow-x-hidden pb-[calc(env(safe-area-inset-bottom,0px)+84px)] lg:pb-0">
           {currentPage === 'web'         && <AdminWebContent />}
+          {currentPage === 'live_menu'   && <AdminLiveMenu />}
           {currentPage === 'products'    && <AdminProducts />}
           {currentPage === 'categories'  && <AdminCategories />}
           { currentPage === 'experiences' && <AdminExperiences /> }
@@ -1581,11 +1592,11 @@ export default function AdminLayout() {
               </button>
             ) : (
               <button 
-                onClick={() => handleSelectPage('products', 'Carta Principal')}
-                className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'products' ? 'text-indigo-500' : 'text-gray-400 hover:text-gray-600'}`}
+                onClick={() => handleSelectPage('live_menu', 'Carta & Opciones')}
+                className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'live_menu' || currentPage === 'products' ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600'}`}
               >
                 <div className="relative pointer-events-none">
-                  <Icons.Products />
+                  <Icons.LiveMenu />
                 </div>
                 <span className="text-[10px] font-medium pointer-events-none">Carta</span>
               </button>
