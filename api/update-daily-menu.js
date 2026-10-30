@@ -17,204 +17,113 @@ export default async function handler(req, res) {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY);
     const brandId = 'a63da806-a62a-49b9-a833-07e0976785ad';
     const locationId = '48be7326-6355-481b-b334-b7edc4b82e6f';
-    const now = new Date().toISOString();
-
     const baseUrl = 'https://aluna-qrmenu.vercel.app';
 
-    // 1. MODIFIER GROUP: Tu Proteína (Curry Dorado o Cerdo Teriyaki)
+    // 1. RESTAURAR AL 100% EL BENTO TEX-MEX ORIGINAL (SIN TOCARLO NI MODIFICARLO)
     await supabase
-      .from('modifier_groups')
+      .from('products')
       .update({
-        name: '🍗 Tu Proteína',
-        description: 'Elige tu proteína: Pollo al Curry Dorado o Cerdo Teriyaki',
-        is_required: true,
-        min_select: 1,
-        max_select: 1
+        name: 'Bento Tex-Mex (Bowl Mexicano)',
+        description: '¿Con antojo de algo diferente, fresco y lleno de sabor? Déjate tentar por nuestro Bento Tex Mex, servido sobre una base de arroz blanco aromatizado, frijoles negros, pico de gallo fresco, pimentón asado, totopos crocantes, crema agria y aguacate fresco en abanico. 🥑✨ 🍗 Elige tu proteína (bañada en salsa chipotle): Pollo a la plancha o Cerdo salteado. 🥣 ¡Viene en combo completo! Incluye Sopita de Tomate (16 oz) o Fruta + 🥤 Jugo del Día de la Casa (5 oz).',
+        price: 22000,
+        cost: 7262,
+        margin: 66.99,
+        stock_status: 'out',
+        image_url: 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/zwktqo800ep_1792766015049.webp',
+        is_active: false,
+        tags: ['Lácteos', 'Proteico', 'bento', 'tex-mex'],
+        modifier_groups: [
+          'b0000a01-0000-4000-a000-000000000001',
+          'b0000b20-0000-4000-a000-000000000002',
+          'b0000b20-0000-4000-a000-000000000001',
+          'b0000c40-0000-4000-a000-000000000002'
+        ],
+        recipe_id: 'ba000040-0000-4000-a000-000000000002',
+        sort_order: 2,
+        subcategory: 'Bentos Tradicionales & Fusión'
       })
-      .eq('id', 'b0000a01-0000-4000-a000-000000000001');
+      .eq('id', 'b0000b12-0000-4000-a000-000000000002');
 
-    await supabase
-      .from('modifier_options')
-      .update({
-        name: '🍗 Pollo al Curry Dorado',
-        price: 0,
-        is_active: true,
-        sort_order: 1
-      })
-      .eq('id', 'b0000a01-0001-4000-a000-000000000001');
+    // 2. CREAR BIRRIA BENTO COMO UN PRODUCTO TOTALMENTE NUEVO E INDEPENDIENTE
+    // Primero verificamos si ya existe con ID propio o lo insertamos
+    const birriaId = 'b0000b19-0000-4000-a000-000000000019';
+    const { data: existingBirria } = await supabase
+      .from('products')
+      .select('id')
+      .eq('id', birriaId)
+      .maybeSingle();
 
-    await supabase
-      .from('modifier_options')
-      .update({
-        name: '🥩 Cerdo Teriyaki',
-        price: 0,
-        is_active: true,
-        sort_order: 2
-      })
-      .eq('id', 'b0000a01-0001-4000-a000-000000000002');
+    const birriaData = {
+      id: birriaId,
+      brand_id: brandId,
+      category_id: 'b0000c01-0000-4000-a000-000000000001',
+      name: 'Birria Bento (Especial del Día)',
+      price: 19000,
+      description: 'Base de arroz blanco con jugosa carne desmechada en salsa de birria, picadillo fresco de cebolla y cilantro, pimentón en juliana y totopos crocantes.\n\n🥣 Todo almuerzo incluye: Sopita de Colicero (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
+      image_url: `${baseUrl}/brand/boku-birria-bento.webp`,
+      is_active: true,
+      stock_status: 'in',
+      subcategory: 'El Bento del Día',
+      sort_order: 2,
+      tags: ['Proteico', 'bento', 'birria'],
+      modifier_groups: [
+        'b0000b20-0000-4000-a000-000000000002', // Sopita de Colicero / Fruta
+        'b0000b20-0000-4000-a000-000000000001', // Jugo del Día
+        'b0000c40-0000-4000-a000-000000000002'  // Adiciones (totopos, etc)
+      ]
+    };
 
-    // 2. MODIFIER GROUP: Tu Principio (Garbanzos o Maduritos Melosos)
-    await supabase
-      .from('modifier_groups')
-      .update({
-        name: '🥘 Tu Principio',
-        description: 'Garbanzos Caseros o Maduritos Melosos en Panela',
-        is_required: true,
-        min_select: 1,
-        max_select: 1
-      })
-      .eq('id', 'b0000a02-0000-4000-a000-000000000002');
+    if (existingBirria) {
+      await supabase.from('products').update(birriaData).eq('id', birriaId);
+    } else {
+      await supabase.from('products').insert([birriaData]);
+    }
 
-    await supabase
-      .from('modifier_options')
-      .update({
-        name: '🍲 Garbanzos Caseros',
-        price: 0,
-        is_active: true,
-        sort_order: 1
-      })
-      .eq('id', 'b0000a02-0001-4000-a000-000000000001');
-
-    await supabase
-      .from('modifier_options')
-      .update({
-        name: '🍌 Maduritos Melosos en Panela',
-        price: 0,
-        is_active: true,
-        sort_order: 2
-      })
-      .eq('id', 'b0000a02-0001-4000-a000-000000000002');
-
-    // 3. MODIFIER GROUP: Sopita de Colicero (16 oz) o Fruta
-    await supabase
-      .from('modifier_groups')
-      .update({
-        name: '🥣 Entrada Incluida',
-        description: 'Sopita de Colicero (16 oz) o Fruta Fresca',
-        is_required: true,
-        min_select: 1,
-        max_select: 1
-      })
-      .eq('id', 'b0000b20-0000-4000-a000-000000000002');
-
-    await supabase
-      .from('modifier_options')
-      .update({
-        name: '🥣 Sopita de Colicero (16 oz)',
-        price: 0,
-        is_active: true,
-        sort_order: 1
-      })
-      .eq('id', 'b0000b22-0000-4000-a000-000000000002');
-
-    await supabase
-      .from('modifier_options')
-      .update({
-        name: '🍉 Cambiar por Fruta Fresca',
-        price: 0,
-        is_active: true,
-        sort_order: 2
-      })
-      .eq('id', 'b0000b22-0000-4000-a000-000000000004');
-
-    // 4. MODIFIER GROUP: Bebida de la casa (Jugo del Día 5 oz)
-    await supabase
-      .from('modifier_options')
-      .update({
-        name: '🥤 Jugo del Día (5 oz)',
-        price: 0,
-        is_active: true,
-        sort_order: 1
-      })
-      .eq('id', 'b0000b21-0000-4000-a000-000000000001');
-
-    // 5. PRODUCTO 1: Bento Mestizo (Especial del Día)
-    const mestizoDesc = 'Base de arroz blanco, champiñones al ajillo, brócoli al vapor, tomates cherry y ensalada criolla de remolacha y zanahoria.\n\n1. Tu proteína: Pollo al Curry Dorado o Cerdo Teriyaki.\n2. Tu principio: Garbanzos Caseros o Maduritos Melosos en Panela.\n\n🥣 Todo almuerzo incluye: Sopita de Colicero (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).';
-
+    // 3. ASEGURAR QUE BENTO MESTIZO ESTÉ PERFECTO
     await supabase
       .from('products')
       .update({
         name: 'Bento Mestizo (Especial del Día)',
         price: 19000,
-        description: mestizoDesc,
+        description: 'Base de arroz blanco, champiñones al ajillo, brócoli al vapor, tomates cherry y ensalada criolla de remolacha y zanahoria.\n\n1. Tu proteína: Pollo al Curry Dorado o Cerdo Teriyaki.\n2. Tu principio: Garbanzos Caseros o Maduritos Melosos en Panela.\n\n🥣 Todo almuerzo incluye: Sopita de Colicero (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
         image_url: `${baseUrl}/brand/boku-bento-mestizo.webp`,
         is_active: true,
         stock_status: 'in',
         subcategory: 'El Bento del Día',
-        sort_order: 1,
-        modifier_groups: [
-          'b0000a01-0000-4000-a000-000000000001', // Proteína
-          'b0000a02-0000-4000-a000-000000000002', // Principio
-          'b0000b20-0000-4000-a000-000000000002', // Sopita / Fruta
-          'b0000b20-0000-4000-a000-000000000001', // Bebida
-          'b0000c40-0000-4000-a000-000000000004'  // Adiciones Mestizo
-        ],
-        updated_at: now
+        sort_order: 1
       })
       .eq('id', 'b0000b14-0000-4000-a000-000000000004');
 
-    // 6. PRODUCTO 2: Birria Bento (Especial del Día)
-    const birriaDesc = 'Base de arroz blanco con jugosa carne desmechada en salsa de birria, picadillo fresco de cebolla y cilantro, pimentón en juliana y totopos crocantes.\n\n🥣 Todo almuerzo incluye: Sopita de Colicero (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).';
-
-    await supabase
-      .from('products')
-      .update({
-        name: 'Birria Bento (Especial del Día)',
-        price: 19000,
-        description: birriaDesc,
-        image_url: `${baseUrl}/brand/boku-birria-bento.webp`,
-        is_active: true,
-        stock_status: 'in',
-        subcategory: 'El Bento del Día',
-        sort_order: 2,
-        modifier_groups: [
-          'b0000b20-0000-4000-a000-000000000002', // Sopita / Fruta
-          'b0000b20-0000-4000-a000-000000000001', // Bebida
-          'b0000c40-0000-4000-a000-000000000002'  // Adiciones Texmex/Birria
-        ],
-        updated_at: now
-      })
-      .eq('id', 'b0000b12-0000-4000-a000-000000000002');
-
-    // 7. DESACTIVAR OTROS BENTOS ANTERIORES PARA DEJAR SOLO ESTOS DOS ESPECIALES DEL DÍA
-    const otherBentoIds = [
-      'b0000b11-0000-4000-a000-000000000001', // Paisa
-      'b0000b13-0000-4000-a000-000000000003', // Bogotano
-      'b0000b15-0000-4000-a000-000000000005', // Urodaki
-      'b0000b16-0000-4000-a000-000000000006'  // Tornillos Alfredo
-    ];
-
-    await supabase
-      .from('products')
-      .update({ is_active: false, updated_at: now })
-      .in('id', otherBentoIds);
-
-    // 8. SINCRONIZAR LOCATION_PRODUCT_STATUS
+    // 4. SINCRONIZAR LOCATION STATUS
     await supabase
       .from('location_product_status')
-      .update({ is_active: true, stock_status: 'in', updated_at: now })
-      .eq('location_id', locationId)
-      .in('product_id', [
-        'b0000b14-0000-4000-a000-000000000004',
-        'b0000b12-0000-4000-a000-000000000002'
-      ]);
-
-    await supabase
-      .from('location_product_status')
-      .update({ is_active: false, updated_at: now })
-      .eq('location_id', locationId)
-      .in('product_id', otherBentoIds);
+      .upsert([
+        {
+          location_id: locationId,
+          product_id: birriaId,
+          is_active: true,
+          stock_status: 'in'
+        },
+        {
+          location_id: locationId,
+          product_id: 'b0000b14-0000-4000-a000-000000000004',
+          is_active: true,
+          stock_status: 'in'
+        },
+        {
+          location_id: locationId,
+          product_id: 'b0000b12-0000-4000-a000-000000000002',
+          is_active: false,
+          stock_status: 'out'
+        }
+      ], { onConflict: 'location_id,product_id' });
 
     return res.status(200).json({
       success: true,
-      message: 'Menú del día actualizado con éxito en Boku Bento',
-      dishes: [
-        { name: 'Bento Mestizo (Especial del Día)', price: 19000, active: true },
-        { name: 'Birria Bento (Especial del Día)', price: 19000, active: true }
-      ]
+      message: 'Bento Tex-Mex restaurado íntegramente. Birria Bento creado como producto nuevo e independiente.'
     });
   } catch (err) {
-    console.error('Error updating daily menu:', err);
+    console.error('Error:', err);
     return res.status(500).json({ error: err.message });
   }
 }
