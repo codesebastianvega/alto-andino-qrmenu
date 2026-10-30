@@ -28,8 +28,25 @@ export function useClarity({ brand, currentLocation }) {
     }
 
     // 3. Excluir dispositivos del equipo interno (PC del dueño, móvil de Sebastián, tablet del local)
-    const isStaffDevice = (typeof localStorage !== 'undefined' && localStorage.getItem('aa_is_staff_device') === 'true') ||
-                          (typeof localStorage !== 'undefined' && localStorage.getItem('aa_current_staff') !== null);
+    let isStaffDevice = (typeof localStorage !== 'undefined' && localStorage.getItem('aa_is_staff_device') === 'true') ||
+                        (typeof localStorage !== 'undefined' && localStorage.getItem('aa_current_staff') !== null);
+
+    if (!isStaffDevice && typeof localStorage !== 'undefined') {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.includes('auth-token')) {
+            const val = localStorage.getItem(k);
+            if (val && (val.includes('sebaschanvega') || val.includes('boku') || val.includes('@'))) {
+              localStorage.setItem('aa_is_staff_device', 'true');
+              isStaffDevice = true;
+              break;
+            }
+          }
+        }
+      } catch {}
+    }
+
     if (isStaffDevice) {
       console.debug('[Clarity] Dispositivo del equipo detectado. Rastreo apagado.');
       return;

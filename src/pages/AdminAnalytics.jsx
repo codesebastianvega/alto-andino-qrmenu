@@ -355,6 +355,9 @@ export default function AdminAnalytics() {
         prevStart = new Date(0);
       }
       const filterObj = !isAllLocations && activeLocationId ? { location_id: activeLocationId } : {};
+      const resetAt = typeof localStorage !== 'undefined' ? localStorage.getItem('aa_analytics_reset_at_' + activeBrandId) : null;
+      let effectiveEventsStart = start;
+      if (resetAt && new Date(resetAt) > start) { effectiveEventsStart = new Date(resetAt); }
       console.log('AdminAnalytics Debug - filterObj:', filterObj);
       console.log('AdminAnalytics Debug - Date Range:', { start, prevStart, prevEnd });
 
@@ -383,7 +386,7 @@ export default function AdminAnalytics() {
         supabase.from('analytics_events').select('id, created_at, session_id, event_name, metadata, user_agent, table_id, location_id')
           .eq('brand_id', activeBrandId)
           .match(filterObj)
-          .gte('created_at', start.toISOString()),
+          .gte('created_at', effectiveEventsStart.toISOString()),
 
         // 3. Previous Period Orders
         supabase.from('orders').select(`

@@ -47,10 +47,27 @@ export const trackAnalyticsEvent = async (eventName, metadata = {}) => {
 
   // Dispositivos de administración y equipo interno no se rastrean
   if (typeof window !== 'undefined') {
-    const isStaffDevice = (typeof localStorage !== 'undefined' && localStorage.getItem('aa_is_staff_device') === 'true') ||
-                          (typeof localStorage !== 'undefined' && localStorage.getItem('aa_current_staff') !== null) ||
-                          window.location.hash.includes('admin') ||
-                          window.location.pathname.includes('/admin');
+    let isStaffDevice = (typeof localStorage !== 'undefined' && localStorage.getItem('aa_is_staff_device') === 'true') ||
+                        (typeof localStorage !== 'undefined' && localStorage.getItem('aa_current_staff') !== null) ||
+                        window.location.hash.includes('admin') ||
+                        window.location.pathname.includes('/admin');
+
+    if (!isStaffDevice && typeof localStorage !== 'undefined') {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.includes('auth-token')) {
+            const val = localStorage.getItem(k);
+            if (val && (val.includes('sebaschanvega') || val.includes('boku') || val.includes('@'))) {
+              localStorage.setItem('aa_is_staff_device', 'true');
+              isStaffDevice = true;
+              break;
+            }
+          }
+        }
+      } catch {}
+    }
+
     if (isStaffDevice) {
       return;
     }
