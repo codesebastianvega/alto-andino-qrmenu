@@ -418,16 +418,9 @@ export default function UpgradeModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 lg:p-6"
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0 z-[200] w-screen h-screen bg-[#F8FAFC] flex flex-col overflow-hidden font-sans text-gray-900"
         >
-          {/* ══ VENTANA PRINCIPAL TIPO E-COMMERCE (FONDO CLARO) ══════════════════════ */}
-          <motion.div
-            initial={{ scale: 0.96, y: 15 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.96, y: 15 }}
-            transition={{ duration: 0.2 }}
-            className="w-full max-w-7xl h-[92vh] max-h-[920px] bg-[#F8FAFC] rounded-3xl shadow-2xl border border-gray-200/80 flex flex-col overflow-hidden font-sans text-gray-900"
-          >
             
             {/* ── 1. HEADER DEL E-COMMERCE (BLANCO NÍTIDO) ─────────────────── */}
             <header className="bg-white px-5 sm:px-7 py-3.5 border-b border-gray-200/80 flex items-center justify-between gap-4 shrink-0 shadow-2xs">
@@ -849,7 +842,6 @@ export default function UpgradeModal({
               </aside>
             </div>
 
-          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
