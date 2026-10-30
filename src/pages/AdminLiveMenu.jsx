@@ -77,18 +77,18 @@ export default function AdminLiveMenu() {
   }, [products]);
   const isArrozSpecialActive = arrozConPolloProduct && arrozConPolloProduct.stock_status !== 'out' && arrozConPolloProduct.is_active;
 
-  // ─── Auto-sync Sopa a Ramen ──────────────────────────────────────────────
+  // ─── Auto-sync Sopa del Día ──────────────────────────────────────────────
   useEffect(() => {
     if (!modifierGroups || modifierGroups.length === 0) return;
     const soupGroup = modifierGroups.find(g => 
       g.id === 'b0000b20-0000-4000-a000-000000000002' || g.name.toLowerCase().includes('sopa')
     );
-    const tomatoOpt = soupGroup?.options?.find(o => 
-      o.id === 'b0000b22-0000-4000-a000-000000000002' || o.name.toLowerCase().includes('tomate')
+    const soupOpt = soupGroup?.options?.find(o => 
+      o.id === 'b0000b22-0000-4000-a000-000000000002' || o.name.toLowerCase().includes('tomate') || o.name.toLowerCase().includes('ramen')
     );
-    if (tomatoOpt && !tomatoOpt.name.toLowerCase().includes('ramen')) {
-      updateOption(tomatoOpt.id, {
-        name: '🍜 Sopita tipo Ramen de la Casa (16 oz)',
+    if (soupOpt && !soupOpt.name.toLowerCase().includes('sopita del día') && !soupOpt.name.toLowerCase().includes('sopita del dia')) {
+      updateOption(soupOpt.id, {
+        name: '🥣 Sopita del Día (16 oz)',
         stock_status: 'in',
         is_active: true
       });

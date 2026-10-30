@@ -59,7 +59,7 @@ export default async function handler(req, res) {
       category_id: 'b0000c01-0000-4000-a000-000000000001',
       name: 'Birria Bento (Especial del Día)',
       price: 19000,
-      description: 'Base de arroz blanco con jugosa carne desmechada en salsa de birria, picadillo fresco de cebolla y cilantro, pimentón en juliana y totopos crocantes.\n\n🥣 Todo almuerzo incluye: Sopita de Colicero (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
+      description: 'Base de arroz blanco con jugosa carne desmechada en salsa de birria, picadillo fresco de cebolla y cilantro, pimentón en juliana y totopos crocantes.\n\n🥣 Todo almuerzo incluye: Sopita del Día (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
       image_url: `${baseUrl}/brand/boku-birria-bento.webp`,
       is_active: true,
       stock_status: 'in',
@@ -85,7 +85,7 @@ export default async function handler(req, res) {
       .update({
         name: 'Bento Mestizo (Especial del Día)',
         price: 19000,
-        description: 'Base de arroz blanco, champiñones al ajillo, brócoli al vapor, tomates cherry y ensalada criolla de remolacha y zanahoria.\n\n1. Tu proteína: Pollo al Curry Dorado o Cerdo Teriyaki.\n2. Tu principio: Garbanzos Caseros o Maduritos Melosos en Panela.\n\n🥣 Todo almuerzo incluye: Sopita de Colicero (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
+        description: 'Base de arroz blanco, champiñones al ajillo, brócoli al vapor, tomates cherry y ensalada criolla de remolacha y zanahoria.\n\n1. Tu proteína: Pollo al Curry Dorado o Cerdo Teriyaki.\n2. Tu principio: Garbanzos Caseros o Maduritos Melosos en Panela.\n\n🥣 Todo almuerzo incluye: Sopita del Día (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
         image_url: `${baseUrl}/brand/boku-bento-mestizo.webp`,
         is_active: true,
         stock_status: 'in',
