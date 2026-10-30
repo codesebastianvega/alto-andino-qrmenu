@@ -800,7 +800,18 @@ export default function AdminHeatmaps({
                 Atribución: ¿De dónde vienen tus clientes?
               </h3>
             </div>
-            <span className="text-[10px] text-gray-400 font-bold">Por QR & Enlaces</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleClearTestAnalytics}
+                disabled={isClearing}
+                className="text-[11px] font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200/80 transition-all flex items-center gap-1 shrink-0 shadow-2xs"
+                title="Reiniciar visitas de prueba a 0"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>{isClearing ? 'Limpiando...' : 'Resetear a 0'}</span>
+              </button>
+              <span className="text-[10px] text-gray-400 font-bold hidden sm:inline">Por QR & Enlaces</span>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
