@@ -45,7 +45,6 @@ export default async function handler(req, res) {
       .eq('id', 'b0000b12-0000-4000-a000-000000000002');
 
     // 2. CREAR BIRRIA BENTO COMO UN PRODUCTO TOTALMENTE NUEVO E INDEPENDIENTE
-    // Primero verificamos si ya existe con ID propio o lo insertamos
     const birriaId = 'b0000b19-0000-4000-a000-000000000019';
     const { data: existingBirria } = await supabase
       .from('products')
@@ -67,9 +66,9 @@ export default async function handler(req, res) {
       sort_order: 2,
       tags: ['Proteico', 'bento', 'birria'],
       modifier_groups: [
-        'b0000b20-0000-4000-a000-000000000002', // Sopita de Colicero / Fruta
+        'b0000b20-0000-4000-a000-000000000002', // Sopita / Fruta
         'b0000b20-0000-4000-a000-000000000001', // Jugo del Día
-        'b0000c40-0000-4000-a000-000000000002'  // Adiciones (totopos, etc)
+        'b0000c40-0000-4000-a000-000000000002'  // Adiciones
       ]
     };
 
@@ -118,9 +117,67 @@ export default async function handler(req, res) {
         }
       ], { onConflict: 'location_id,product_id' });
 
+    // 5. ACTUALIZAR MODIFICADORES DE SOPA: "Sopita del Día (16 oz)"
+    await supabase
+      .from('modifier_options')
+      .update({
+        name: '🥣 Sopita del Día (16 oz)'
+      })
+      .eq('id', 'b0000b22-0000-4000-a000-000000000002');
+
+    await supabase
+      .from('modifier_groups')
+      .update({
+        description: 'Sopita del Día (16 oz) o Fruta Fresca'
+      })
+      .eq('id', 'b0000b20-0000-4000-a000-000000000002');
+
+    // 6. ACTUALIZAR HOME SETTINGS (PORTADA, HERO SUBTITLE Y DESTACADOS)
+    const homeUpdate = {
+      hero_h1: "🔥 ¡El almuerzo de hoy está listo en BOKU BENTO! 🔥",
+      hero_subtitle: "Dos platos contundentes, frescos y con toda la sazón de la casa por $19.000 c/u: Bento Mestizo (Pollo al Curry Dorado o Cerdo Teriyaki con Champiñones y Brócoli) o Birria Bento (Carne desmechada en salsa de birria con totopos y picadillo). 🥣 Todo almuerzo incluye: Sopita del Día (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).",
+      hero_images: [
+        {
+          img: `${baseUrl}/brand/boku-bento-mestizo.webp`,
+          name: "Bento Mestizo (Especial del Día)",
+          price: 19000
+        },
+        {
+          img: `${baseUrl}/brand/boku-birria-bento.webp`,
+          name: "Birria Bento (Especial del Día)",
+          price: 19000
+        }
+      ],
+      featured_items: [
+        {
+          img: `${baseUrl}/brand/boku-bento-mestizo.webp`,
+          name: "Bento Mestizo (Especial del Día)",
+          price: 19000,
+          product_id: "b0000b14-0000-4000-a000-000000000004"
+        },
+        {
+          img: `${baseUrl}/brand/boku-birria-bento.webp`,
+          name: "Birria Bento (Especial del Día)",
+          price: 19000,
+          product_id: birriaId
+        }
+      ],
+      updated_at: new Date().toISOString()
+    };
+
+    const { error: homeErr } = await supabase
+      .from('home_settings')
+      .update(homeUpdate)
+      .eq('brand_id', brandId);
+
+    if (homeErr) {
+      console.error('Error updating home_settings:', homeErr);
+      return res.status(500).json({ error: homeErr.message });
+    }
+
     return res.status(200).json({
       success: true,
-      message: 'Bento Tex-Mex restaurado íntegramente. Birria Bento creado como producto nuevo e independiente.'
+      message: 'Menú del día actualizado con éxito: Bento Mestizo y Birria Bento configurados, modificador Sopita del Día y portada home_settings actualizados.'
     });
   } catch (err) {
     console.error('Error:', err);
