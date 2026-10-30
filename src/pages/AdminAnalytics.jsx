@@ -380,7 +380,7 @@ export default function AdminAnalytics() {
           .order('created_at', { ascending: false }),
 
         // 2. Current Period Events
-        supabase.from('analytics_events').select('id, created_at, session_id, event_name, metadata, table_id, location_id')
+        supabase.from('analytics_events').select('id, created_at, session_id, event_name, metadata, user_agent, table_id, location_id')
           .eq('brand_id', activeBrandId)
           .match(filterObj)
           .gte('created_at', start.toISOString()),
@@ -403,7 +403,7 @@ export default function AdminAnalytics() {
           .lt('created_at', prevEnd.toISOString()),
 
         // 5. Previous Period Events
-        supabase.from('analytics_events').select('id, created_at, session_id, event_name, metadata, table_id, location_id')
+        supabase.from('analytics_events').select('id, created_at, session_id, event_name, metadata, user_agent, table_id, location_id')
           .eq('brand_id', activeBrandId)
           .match(filterObj)
           .gte('created_at', prevStart.toISOString())
