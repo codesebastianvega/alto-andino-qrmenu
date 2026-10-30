@@ -36,7 +36,8 @@ import {
   Zap,
   Plus,
   Check,
-  X
+  X,
+  Flame
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -48,6 +49,7 @@ import {
 import BulkCostEditor from '../components/admin/BulkCostEditor';
 import OperationsIntelligence from '../components/admin/OperationsIntelligence';
 import CustomerDirectory from '../components/admin/CustomerDirectory';
+import AdminHeatmaps from '../components/admin/AdminHeatmaps';
 // Prospectos components removed as per user request to revert
 
 const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#6366F1'];
@@ -61,7 +63,7 @@ const GlassCard = ({ children, className = "", noHover = false }) => (
   </motion.div>
 );
 
-const TabButton = ({ active, onClick, icon: Icon, label }) => (
+const TabButton = ({ active, onClick, icon: Icon, label, badge }) => (
   <button
     onClick={onClick}
     className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-[13px] font-bold transition-all duration-300 whitespace-nowrap shrink-0 ${
@@ -70,8 +72,15 @@ const TabButton = ({ active, onClick, icon: Icon, label }) => (
         : 'bg-white/50 text-gray-500 hover:bg-white hover:text-gray-900 border border-transparent'
     }`}
   >
-    <Icon className={`w-4 h-4 ${active ? 'text-emerald-400' : ''}`} />
-    {label}
+    <Icon className={`w-4 h-4 ${active ? 'text-amber-400' : ''}`} />
+    <span>{label}</span>
+    {badge && (
+      <span className={`text-[9px] font-black tracking-widest px-1.5 py-0.5 rounded-full uppercase ${
+        active ? 'bg-amber-400 text-gray-950' : 'bg-amber-100 text-amber-800'
+      }`}>
+        {badge}
+      </span>
+    )}
   </button>
 );
 
@@ -371,7 +380,7 @@ export default function AdminAnalytics() {
           .order('created_at', { ascending: false }),
 
         // 2. Current Period Events
-        supabase.from('analytics_events').select('id, created_at, session_id')
+        supabase.from('analytics_events').select('id, created_at, session_id, event_name, metadata, table_id, location_id')
           .eq('brand_id', activeBrandId)
           .match(filterObj)
           .gte('created_at', start.toISOString()),
@@ -394,7 +403,7 @@ export default function AdminAnalytics() {
           .lt('created_at', prevEnd.toISOString()),
 
         // 5. Previous Period Events
-        supabase.from('analytics_events').select('id, created_at, session_id')
+        supabase.from('analytics_events').select('id, created_at, session_id, event_name, metadata, table_id, location_id')
           .eq('brand_id', activeBrandId)
           .match(filterObj)
           .gte('created_at', prevStart.toISOString())
@@ -2897,6 +2906,7 @@ export default function AdminAnalytics() {
         <TabButton active={activeTab === 'analitica'} onClick={() => setActiveTab('analitica')} icon={TrendingUp} label="Analítica" />
         <TabButton active={activeTab === 'operaciones'} onClick={() => setActiveTab('operaciones')} icon={Database} label="Pedidos (Log)" />
         <TabButton active={activeTab === 'crm'} onClick={() => setActiveTab('crm')} icon={Users} label="Clientes (CRM)" />
+        <TabButton active={activeTab === 'heatmaps'} onClick={() => setActiveTab('heatmaps')} icon={Flame} label="Comportamiento & Heatmaps" badge="VIP" />
       </div>
 
       {loading ? (
@@ -2922,6 +2932,14 @@ export default function AdminAnalytics() {
                 {activeTab === 'analitica' && <RenderAnalitica />}
                 {activeTab === 'operaciones' && <RenderOperaciones />}
                 {activeTab === 'crm' && <CustomerDirectory />}
+                {activeTab === 'heatmaps' && (
+                  <AdminHeatmaps 
+                    activeBrand={activeBrand} 
+                    orders={data.orders} 
+                    events={data.events}
+                    formatCurrency={formatCurrency}
+                  />
+                )}
               </AnalyticsTabBoundary>
             </motion.div>
           </AnimatePresence>

@@ -1,4 +1,5 @@
 import { supabase } from "@/config/supabase";
+import { getAttribution } from "./attribution";
 import { safeStorage as localStorage, safeSessionStorage as sessionStorage } from "./safeStorage";
 
 const SESSION_KEY = "aluna_session_id";
@@ -47,19 +48,31 @@ export const trackAnalyticsEvent = async (eventName, metadata = {}) => {
   try {
     const sessionId = getOrCreateSessionId();
     const finalLocationId = locationId || getStoredLocationId();
+    const attr = getAttribution();
 
     // Bridge to Microsoft Clarity custom events if active
     if (typeof window !== 'undefined' && typeof window.clarity === 'function') {
       window.clarity('event', eventName);
+      // Prioridad máxima de grabación en Clarity para actividad de carrito y checkout
+      if (['cart_add', 'cart_open', 'checkout_start', 'order_completed'].includes(eventName)) {
+        window.clarity('upgrade', eventName);
+      }
     }
+
+    const enrichedMetadata = {
+      ...safeMetadata,
+      source: safeMetadata.source || attr.source,
+      campaign: safeMetadata.campaign || attr.campaign,
+      mesa: safeMetadata.mesa || attr.mesa,
+    };
 
     const { error } = await supabase.from("analytics_events").insert([
       {
         event_name: eventName,
         session_id: sessionId,
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
-        metadata: safeMetadata,
-        table_id: tableId,
+        metadata: enrichedMetadata,
+        table_id: tableId || (attr.mesa ? String(attr.mesa) : null),
         brand_id: brandId,
         location_id: finalLocationId,
       },

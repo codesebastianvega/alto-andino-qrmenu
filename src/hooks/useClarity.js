@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
+import { getAttribution } from '../utils/attribution';
 
-const CLARITY_PROJECT_IDS = {
+export const CLARITY_PROJECT_IDS = {
   'boku-bento': 'z5k4ivj9i5',
 };
 
 /**
  * Hook para inyectar Microsoft Clarity exclusivamente en marcas autorizadas
- * (Actualmente configurado de forma exclusiva para Boku Bento).
+ * (Actualmente configurado de forma exclusiva para Boku Bento o marcas con Addon activo).
  */
 export function useClarity({ brand, currentLocation }) {
   useEffect(() => {
@@ -24,18 +25,30 @@ export function useClarity({ brand, currentLocation }) {
 
     if (!clarityId) return;
 
-    // 3. Si ya está inicializado, solo refrescar tags de sesión
+    // 3. Capturar atribución (volantes, mesas, campañas)
+    const attr = getAttribution();
+
+    // 4. Si ya está inicializado, solo refrescar tags de sesión
     if (window.clarityInitialized) {
       if (typeof window.clarity === 'function') {
         window.clarity('set', 'brand', brand?.name || brandSlug);
         if (currentLocation?.name) {
           window.clarity('set', 'location', currentLocation.name);
         }
+        if (attr.source) {
+          window.clarity('set', 'canal_origen', String(attr.source));
+        }
+        if (attr.campaign) {
+          window.clarity('set', 'campaña', String(attr.campaign));
+        }
+        if (attr.mesa) {
+          window.clarity('set', 'mesa', String(attr.mesa));
+        }
       }
       return;
     }
 
-    // 4. Inyección oficial de Microsoft Clarity
+    // 5. Inyección oficial de Microsoft Clarity
     (function(c, l, a, r, i, t, y) {
       c[a] = c[a] || function() { (c[a].q = c[a].q || []).push(arguments); };
       t = l.createElement(r);
@@ -47,16 +60,20 @@ export function useClarity({ brand, currentLocation }) {
 
     window.clarityInitialized = true;
 
-    // 5. Configurar tags de segmentación inicial
+    // 6. Configurar tags de segmentación inicial
     if (typeof window.clarity === 'function') {
       window.clarity('set', 'brand', brand?.name || brandSlug);
       if (currentLocation?.name) {
         window.clarity('set', 'location', currentLocation.name);
       }
-      const searchParams = new URLSearchParams(window.location.search);
-      const mesa = searchParams.get('mesa') || (typeof localStorage !== 'undefined' ? localStorage.getItem('aa_current_mesa') : null);
-      if (mesa) {
-        window.clarity('set', 'mesa', mesa);
+      if (attr.mesa) {
+        window.clarity('set', 'mesa', String(attr.mesa));
+      }
+      if (attr.source) {
+        window.clarity('set', 'canal_origen', String(attr.source));
+      }
+      if (attr.campaign) {
+        window.clarity('set', 'campaña', String(attr.campaign));
       }
     }
   }, [brand, currentLocation]);
