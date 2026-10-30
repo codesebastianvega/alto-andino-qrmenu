@@ -5,6 +5,7 @@ import { useLocation as useAppLocation } from './LocationContext';
 import { catalogCache } from '../utils/offlineDb';
 import { withTimeout } from '../utils/withTimeout';
 import { useDynamicPWA } from '../hooks/useDynamicPWA';
+import { useClarity } from '../hooks/useClarity';
 import { getCategoryScheduleInfo } from '../utils/businessHours';
 
 const MenuDataContext = createContext({});
@@ -50,6 +51,9 @@ export const MenuDataProvider = ({ children }) => {
   }, [locations, activeLocationId]);
 
 
+
+  // Inyectar Microsoft Clarity exclusivamente en marcas autorizadas (Boku Bento)
+  useClarity({ brand: brand || currentBrand, currentLocation });
 
   // Fetch menu data for a given brand
   const fetchMenuData = useCallback(async (brandId, { force = false } = {}) => {

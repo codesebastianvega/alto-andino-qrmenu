@@ -48,6 +48,11 @@ export const trackAnalyticsEvent = async (eventName, metadata = {}) => {
     const sessionId = getOrCreateSessionId();
     const finalLocationId = locationId || getStoredLocationId();
 
+    // Bridge to Microsoft Clarity custom events if active
+    if (typeof window !== 'undefined' && typeof window.clarity === 'function') {
+      window.clarity('event', eventName);
+    }
+
     const { error } = await supabase.from("analytics_events").insert([
       {
         event_name: eventName,
