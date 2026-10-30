@@ -336,13 +336,29 @@ export default function UpgradeModal({
     }
   };
 
+  // Precio anual total (12 meses con el 20% de descuento)
+  const getAnnualPrice = (copVal, usdVal) => {
+    if (currency === 'USD') {
+      const annualVal = Math.round(usdVal * 0.8) * 12;
+      return `$${annualVal}`;
+    } else {
+      const annualVal = Math.round(copVal * 0.8) * 12;
+      return `$${annualVal.toLocaleString('es-CO')}`;
+    }
+  };
+
   // Toggle item en el carrito
   const handleToggleCart = (productId) => {
+    const product = STORE_PRODUCTS.find(p => p.id === productId);
     setCartItems(prev => {
       const next = new Set(prev);
       if (next.has(productId)) {
         next.delete(productId);
       } else {
+        // Si el producto es un plan base, reemplazamos cualquier otro plan previo
+        if (product?.type === 'plan') {
+          STORE_PRODUCTS.filter(p => p.type === 'plan').forEach(p => next.delete(p.id));
+        }
         next.add(productId);
       }
       return next;
@@ -364,35 +380,55 @@ export default function UpgradeModal({
     return STORE_PRODUCTS.filter(p => p.category === selectedCategory);
   }, [selectedCategory]);
 
-  // Resumen del Carrito
+  // Resumen del Carrito con cálculo exacto mensual vs anual (12 meses)
   const cartSummary = useMemo(() => {
     const isAnnual = billingCycle === 'annual';
-    const discount = isAnnual ? 0.8 : 1.0;
-
     const items = STORE_PRODUCTS.filter(p => cartItems.has(p.id));
     
-    let totalMonthly = 0;
+    let monthlyRegularSum = 0;      // Suma mensual sin descuento
+    let monthlyDiscountedSum = 0;   // Suma mensual con descuento si es anual
+    let totalPayable = 0;           // Total a pagar hoy (1 mes si mensual, 12 meses si anual)
+    let annualSavings = 0;          // Ahorro total acumulado al año
+
     items.forEach(item => {
       if (!item.isCustomPricing) {
-        const itemPrice = currency === 'USD' 
-          ? Math.round(item.usdMonthly * discount)
-          : Math.round(item.copMonthly * discount);
-        totalMonthly += itemPrice;
+        const rawMonthly = currency === 'USD' ? item.usdMonthly : item.copMonthly;
+        const discMonthly = isAnnual ? Math.round(rawMonthly * 0.8) : rawMonthly;
+        
+        monthlyRegularSum += rawMonthly;
+        monthlyDiscountedSum += discMonthly;
       }
     });
+
+    if (isAnnual) {
+      totalPayable = monthlyDiscountedSum * 12; // ¡Cobro de los 12 meses completos!
+      annualSavings = (monthlyRegularSum * 12) - totalPayable;
+    } else {
+      totalPayable = monthlyDiscountedSum; // 1 mes
+      annualSavings = 0;
+    }
+
+    const fmtFull = (val) => currency === 'USD' ? `$${val} USD` : `$${val.toLocaleString('es-CO')} COP`;
 
     return {
       items,
       count: items.length,
-      totalMonthly,
-      formattedTotal: currency === 'USD' ? `$${totalMonthly} USD` : `$${totalMonthly.toLocaleString('es-CO')} COP`
+      isAnnual,
+      monthlyRegularSum,
+      monthlyDiscountedSum,
+      totalPayable,
+      annualSavings,
+      formattedMonthly: fmtFull(monthlyDiscountedSum),
+      formattedTotalPayable: fmtFull(totalPayable),
+      formattedSavings: fmtFull(annualSavings)
     };
   }, [cartItems, billingCycle, currency]);
 
   // Checkout por WhatsApp con mensaje estructurado de tienda
   const handleCheckoutWhatsApp = () => {
     const brandName = activeBrand?.name || 'Mi Restaurante';
-    const cycleText = billingCycle === 'annual' ? 'Anual (-20% de descuento aplicado)' : 'Mensual';
+    const isAnnual = billingCycle === 'annual';
+    const cycleText = isAnnual ? 'Anual (12 meses con -20% de descuento aplicado)' : 'Mensual (Mes a mes)';
     
     if (cartSummary.count === 0) {
       openWhatsApp(`¡Hola Aluna! 👋 Mi restaurante es *${brandName}*. Quisiera conocer más sobre las opciones de planes y módulos disponibles.`);
@@ -400,13 +436,26 @@ export default function UpgradeModal({
     }
 
     const itemsList = cartSummary.items.map(it => {
-      const priceStr = it.isCustomPricing 
-        ? 'A cotizar' 
-        : (currency === 'USD' ? `$${it.usdMonthly} USD/mes` : `$${it.copMonthly.toLocaleString('es-CO')} COP/mes`);
-      return `• *${it.name}* (${priceStr})`;
+      if (it.isCustomPricing) return `• *${it.name}* (A cotizar)`;
+      const rawMonthly = currency === 'USD' ? it.usdMonthly : it.copMonthly;
+      const discMonthly = isAnnual ? Math.round(rawMonthly * 0.8) : rawMonthly;
+      const itemAnnual = discMonthly * 12;
+
+      if (isAnnual) {
+        const fmtM = currency === 'USD' ? `$${discMonthly} USD/mes` : `$${discMonthly.toLocaleString('es-CO')} COP/mes`;
+        const fmtA = currency === 'USD' ? `$${itemAnnual} USD/año` : `$${itemAnnual.toLocaleString('es-CO')} COP/año`;
+        return `• *${it.name}* — ${fmtA} (equivale a ${fmtM})`;
+      } else {
+        const fmtM = currency === 'USD' ? `$${discMonthly} USD/mes` : `$${discMonthly.toLocaleString('es-CO')} COP/mes`;
+        return `• *${it.name}* — ${fmtM}`;
+      }
     }).join('\n');
 
-    const message = `¡Hola Aluna Store! 🛍️✨\n\nMi restaurante es *${brandName}* y deseo solicitar los siguientes módulos desde la tienda:\n\n${itemsList}\n\n📋 *Modalidad:* Facturación ${cycleText}\n💰 *Total Estimado:* ${cartSummary.formattedTotal} / mes\n\n¿Podrían indicarme los pasos para la activación y métodos de pago disponibles (Transferencia, Nequi, Wompi o Tarjeta)?`;
+    const totalText = isAnnual 
+      ? `💰 *Total a Pagar Hoy (12 Meses):* ${cartSummary.formattedTotalPayable}\n🎉 *Ahorro Total por Pago Anual:* ${cartSummary.formattedSavings}`
+      : `💰 *Total Mensual:* ${cartSummary.formattedTotalPayable}`;
+
+    const message = `¡Hola Aluna Store! 🛍️✨\n\nMi restaurante es *${brandName}* y deseo solicitar los siguientes módulos desde la tienda:\n\n${itemsList}\n\n📋 *Modalidad:* Facturación ${cycleText}\n${totalText}\n\n¿Podrían indicarme los pasos para la activación y métodos de pago disponibles (Transferencia, Nequi, Wompi o Tarjeta)?`;
 
     openWhatsApp(message);
   };
@@ -638,18 +687,29 @@ export default function UpgradeModal({
                                 <span className="text-[11px] text-gray-400">según sedes</span>
                               </div>
                             ) : (
-                              <div className="flex items-baseline gap-1">
-                                <span className="text-2xl font-black text-gray-900 tracking-tight">
-                                  {getDisplayPrice(product.copMonthly, product.usdMonthly)}
-                                </span>
-                                <span className="text-xs text-gray-500 font-bold">/ mes</span>
-                              </div>
-                            )}
+                              <div>
+                                <div className="flex items-baseline gap-1">
+                                  <span className="text-2xl font-black text-gray-900 tracking-tight">
+                                    {getDisplayPrice(product.copMonthly, product.usdMonthly)}
+                                  </span>
+                                  <span className="text-xs text-gray-500 font-bold">/ mes</span>
+                                </div>
 
-                            {billingCycle === 'annual' && !isEnterprise && (
-                              <p className="text-[10px] font-bold text-emerald-600 mt-0.5">
-                                Facturado anual (20% de descuento)
-                              </p>
+                                {billingCycle === 'annual' ? (
+                                  <div className="flex items-center justify-between text-[11px] mt-1.5 pt-1.5 border-t border-gray-100">
+                                    <span className="text-gray-500 font-medium">
+                                      Cobro anual: <strong className="text-gray-900">{getAnnualPrice(product.copMonthly, product.usdMonthly)}/año</strong>
+                                    </span>
+                                    <span className="text-emerald-700 font-black bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 text-[10px]">
+                                      Ahorras 20%
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <p className="text-[10px] text-gray-400 mt-0.5">
+                                    Facturación mensual sin compromiso
+                                  </p>
+                                )}
+                              </div>
                             )}
                           </div>
 
@@ -684,17 +744,29 @@ export default function UpgradeModal({
                               <ArrowRight className="w-3.5 h-3.5" />
                             </button>
                           ) : isPlan ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                navigate(`?plan=${product.slug}#checkout`);
-                                onClose?.();
-                              }}
-                              className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black transition-all flex items-center justify-center gap-1.5 shadow-xs"
-                            >
-                              <span>Cambiar a este Plan</span>
-                              <ArrowRight className="w-3.5 h-3.5" />
-                            </button>
+                            <div className="space-y-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleCart(product.id)}
+                                className={`w-full py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 shadow-xs ${
+                                  isInCart
+                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                    : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                                }`}
+                              >
+                                {isInCart ? (
+                                  <>
+                                    <Check className="w-4 h-4 stroke-[3]" />
+                                    <span>Plan en Carrito (Quitar)</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <ShoppingCart className="w-4 h-4" />
+                                    <span>+ Añadir Plan al Carrito</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
                           ) : (
                             <button
                               type="button"
@@ -765,55 +837,112 @@ export default function UpgradeModal({
                         </p>
                       </div>
                     ) : (
-                      cartSummary.items.map(item => (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100 gap-2"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-black text-gray-900 truncate">
-                              {item.name}
-                            </p>
-                            <p className="text-[11px] font-bold text-emerald-700">
-                              {getDisplayPrice(item.copMonthly, item.usdMonthly)} <span className="text-[9px] text-gray-400 font-normal">/ mes</span>
-                            </p>
-                          </div>
+                      cartSummary.items.map(item => {
+                        const isAnnual = billingCycle === 'annual';
+                        const rawMonthly = currency === 'USD' ? item.usdMonthly : item.copMonthly;
+                        const discMonthly = isAnnual ? Math.round(rawMonthly * 0.8) : rawMonthly;
+                        const itemAnnualTotal = discMonthly * 12;
 
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveFromCart(item.id)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-all shrink-0"
-                            title="Quitar"
+                        return (
+                          <div
+                            key={item.id}
+                            className="flex items-start justify-between p-3 rounded-xl bg-gray-50 border border-gray-100 gap-2"
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-black text-gray-900 truncate">
+                                {item.name}
+                              </p>
+                              <div className="flex flex-col mt-0.5">
+                                <span className="text-xs font-black text-emerald-700">
+                                  {isAnnual ? (
+                                    <>
+                                      {currency === 'USD' ? `$${itemAnnualTotal} USD` : `$${itemAnnualTotal.toLocaleString('es-CO')} COP`}
+                                      <span className="text-[10px] text-gray-400 font-normal"> / año</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      {currency === 'USD' ? `$${discMonthly} USD` : `$${discMonthly.toLocaleString('es-CO')} COP`}
+                                      <span className="text-[10px] text-gray-400 font-normal"> / mes</span>
+                                    </>
+                                  )}
+                                </span>
+                                {isAnnual && (
+                                  <span className="text-[10px] text-gray-500 font-medium">
+                                    Equivale a {currency === 'USD' ? `$${discMonthly}` : `$${discMonthly.toLocaleString('es-CO')}`}/mes (-20%)
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFromCart(item.id)}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-all shrink-0 mt-0.5"
+                              title="Quitar"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 </div>
 
                 {/* Resumen de Pago & Botón de Checkout */}
                 <div className="pt-4 border-t border-gray-100 space-y-3.5">
-                  <div className="space-y-1.5 text-xs text-gray-500">
-                    <div className="flex justify-between">
-                      <span>Ciclo de facturación:</span>
-                      <span className="font-bold text-gray-800 capitalize">
-                        {billingCycle === 'annual' ? 'Anual (-20% OFF)' : 'Mensual'}
+                  <div className="space-y-2 text-xs text-gray-500">
+                    <div className="flex justify-between items-center">
+                      <span>Ciclo seleccionado:</span>
+                      <span className="font-bold text-gray-800">
+                        {billingCycle === 'annual' ? 'Anual (12 meses con -20% OFF)' : 'Mensual (Mes a mes)'}
                       </span>
                     </div>
 
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span>Moneda:</span>
-                      <span className="font-bold text-gray-800">{currency}</span>
-                    </div>
-
-                    <div className="flex justify-between pt-2 border-t border-gray-100 text-sm">
-                      <span className="font-black text-gray-900">Total Mensual:</span>
-                      <span className="text-base font-black text-emerald-700">
-                        {cartSummary.formattedTotal}
+                      <span className="font-bold text-gray-800">
+                        {currency === 'USD' ? 'Dólares (USD)' : 'Pesos Colombianos (COP)'}
                       </span>
                     </div>
+
+                    {billingCycle === 'annual' ? (
+                      <div className="pt-2 border-t border-gray-100 space-y-2">
+                        <div className="flex justify-between items-center text-gray-600">
+                          <span>Equivalente por mes:</span>
+                          <span className="font-bold text-gray-800">
+                            {cartSummary.formattedMonthly} <span className="text-[10px] text-gray-400 font-normal">/ mes</span>
+                          </span>
+                        </div>
+
+                        {cartSummary.annualSavings > 0 && (
+                          <div className="flex justify-between items-center text-emerald-800 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 font-bold text-xs">
+                            <span>Ahorro del 20% anual:</span>
+                            <span>-{cartSummary.formattedSavings}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-baseline justify-between pt-2 border-t border-gray-200">
+                          <div>
+                            <span className="block font-black text-gray-900 text-sm">Total a pagar hoy:</span>
+                            <span className="text-[10px] text-gray-400 font-medium">12 meses completos facturados</span>
+                          </div>
+                          <span className="text-xl font-black text-emerald-700 tracking-tight">
+                            {cartSummary.formattedTotalPayable}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-baseline justify-between pt-2 border-t border-gray-100 text-sm">
+                        <div>
+                          <span className="block font-black text-gray-900">Total a pagar hoy:</span>
+                          <span className="text-[10px] text-gray-400 font-medium">Facturación mensual</span>
+                        </div>
+                        <span className="text-xl font-black text-emerald-700 tracking-tight">
+                          {cartSummary.formattedTotalPayable} <span className="text-xs text-gray-400 font-normal">/ mes</span>
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Botón Principal de Checkout */}
@@ -821,10 +950,10 @@ export default function UpgradeModal({
                     type="button"
                     onClick={handleCheckoutWhatsApp}
                     disabled={cartSummary.count === 0}
-                    className="w-full py-3 rounded-xl bg-[#2f4131] hover:bg-[#253527] text-white font-black text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-emerald-950/20 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+                    className="w-full py-3.5 rounded-xl bg-[#2f4131] hover:bg-[#253527] text-white font-black text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-emerald-950/20 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
                   >
                     <MessageCircle className="w-4 h-4" />
-                    <span>Confirmar y Activar Selección</span>
+                    <span>Confirmar y Activar ({billingCycle === 'annual' ? 'Pago Anual de 12 Meses' : 'Pago Mensual'})</span>
                   </button>
 
                   {/* Garantías al pie */}
