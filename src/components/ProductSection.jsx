@@ -324,7 +324,9 @@ export default function ProductSection({
     const heroGroup = grouped?.find(g => g.items.some(it => it.id === heroItem?.id));
     const otherGroup = grouped?.find(g => g.title !== heroGroup?.title);
     const heroTitle = heroGroup?.title || (heroItem?.daily_special_label || (heroItem?.is_bento_del_dia ? "Plato del Día" : "Plato Destacado"));
-    const otherTitle = otherGroup?.title || (otherItems.length > 0 ? "Carta & Especialidades" : "");
+    const allOthersAreSpecials = otherItems.length > 0 && otherItems.every(it => it.is_daily_special || it.is_bento_del_dia);
+    const defaultOtherTitle = allOthersAreSpecials ? "Más Opciones del Día" : "Carta & Especialidades";
+    const otherTitle = otherGroup?.title || (otherItems.length > 0 ? defaultOtherTitle : "");
 
     const hasPromoHero = allAvailableItems.some(it => it.is_bento_del_dia || it.is_daily_special);
     const isWeekendBento = allAvailableItems.some(it => it.category_id === 'b0000c01-0000-4000-a000-000000000001') && !hasPromoHero;

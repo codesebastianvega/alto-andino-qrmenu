@@ -420,20 +420,30 @@ export const MenuDataProvider = ({ children }) => {
       }
 
       // Universal Daily Special Rotation
-      const isSpecialToday = Boolean(activeSpecialId && product.id === activeSpecialId);
+      const isScheduledSpecial = Boolean(activeSpecialId && product.id === activeSpecialId);
+      const isExplicitSpecial = product.subcategory === specialLabel 
+        || product.subcategory === 'El Bento del Día' 
+        || (product.name && product.name.toLowerCase().includes('especial del día'));
+      const isSpecialToday = isScheduledSpecial || isExplicitSpecial;
       const isBento = catSlug === 'boku-bentos' || product.category_id === 'b0000c01-0000-4000-a000-000000000001';
       let productSubcategory = product.subcategory;
       let originalPrice = undefined;
 
       if (isSpecialToday) {
-        if (promoPrice > 0) {
-          originalPrice = product.price > promoPrice ? product.price : (standardPrice > promoPrice ? standardPrice : product.price);
-          finalPrice = promoPrice;
+        // If product has an explicit price set in DB, honor it; otherwise fallback to promoPrice
+        finalPrice = (product.price !== undefined && product.price !== null && Number(product.price) > 0)
+          ? Number(product.price)
+          : (promoPrice > 0 ? promoPrice : 19000);
+        if (standardPrice > finalPrice) {
+          originalPrice = standardPrice;
         }
         productSubcategory = specialLabel;
-      } else if (isBento && standardPrice > 0) {
-        finalPrice = standardPrice;
-        productSubcategory = 'Bentos Tradicionales & Fusión';
+      } else if (isBento) {
+        // Respect the product's actual price from DB/location! Never overwrite a custom DB price.
+        if ((finalPrice === undefined || finalPrice === null || Number(finalPrice) === 0) && standardPrice > 0) {
+          finalPrice = standardPrice;
+        }
+        productSubcategory = product.subcategory || 'Bentos Tradicionales & Fusión';
       }
 
       let finalStockStatus = product.stock_status || 'in';
