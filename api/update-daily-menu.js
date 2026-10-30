@@ -175,9 +175,31 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: homeErr.message });
     }
 
+    // 7. RESTAURAR TARIFA DE DOMICILIO EN LA SEDE
+    const parsedFee = req.query?.delivery_fee !== undefined 
+      ? Number(req.query.delivery_fee) 
+      : (req.query?.fee !== undefined ? Number(req.query.fee) : 4000);
+
+    const locationUpdate = {
+      delivery_fee: parsedFee
+    };
+    if (req.query?.radius !== undefined) {
+      locationUpdate.delivery_radius_km = Number(req.query.radius);
+    }
+
+    const { error: locErr } = await supabase
+      .from('locations')
+      .update(locationUpdate)
+      .eq('id', locationId);
+
+    if (locErr) {
+      console.error('Error updating location delivery fee:', locErr);
+    }
+
     return res.status(200).json({
       success: true,
-      message: 'Menú del día actualizado con éxito: Bento Mestizo y Birria Bento configurados, modificador Sopita del Día y portada home_settings actualizados.'
+      delivery_fee: parsedFee,
+      message: `Menú del día actualizado con éxito: Bento Mestizo y Birria Bento configurados, modificador Sopita del Día, portada y tarifa de domicilio ($${parsedFee}) restaurada.`
     });
   } catch (err) {
     console.error('Error:', err);

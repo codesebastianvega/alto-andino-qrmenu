@@ -413,6 +413,21 @@ export default function CartModal({ open, onClose }) {
   // Order Totals
   const packagingFeeTotal = items.reduce((acc, it) => acc + ((Number(it.packaging_fee) || 0) * (Number(it.qty) || 1)), 0);
   const serviceFeeAmount = (isTipEnabled && includeTip) ? Math.round(Math.max(0, total - discountAmount) * (tipPercentage / 100)) : 0;
+  const isFreeDeliveryPromoActive = useMemo(() => {
+    if (freeDeliveryPromo && (!freeDeliveryPromo.min_order_amount || total >= Number(freeDeliveryPromo.min_order_amount))) {
+      return true;
+    }
+    if (effectivePromo && (effectivePromo.type === 'free_delivery' || effectivePromo.target === 'delivery')) {
+      if (!effectivePromo.min_order_amount || total >= Number(effectivePromo.min_order_amount)) {
+        return true;
+      }
+    }
+    if (currentLocation?.free_delivery_threshold > 0 && total >= Number(currentLocation.free_delivery_threshold)) {
+      return true;
+    }
+    return false;
+  }, [freeDeliveryPromo, effectivePromo, currentLocation, total]);
+
   const deliveryFee = useMemo(() => {
     if (fulfillmentType !== 'delivery') return 0;
     // Si hay una campaña de Domicilio Gratis activa y cumple el monto mínimo
@@ -1360,14 +1375,14 @@ export default function CartModal({ open, onClose }) {
             <div className="flex justify-between items-center mb-1 animate-in fade-in slide-in-from-right-2">
               <div className="flex items-center gap-1.5">
                 <span className="text-sm text-neutral-500 font-medium">Costo de Domicilio</span>
-                {deliveryFee === 0 && (
+                {deliveryFee === 0 && isFreeDeliveryPromoActive && (
                   <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
-                    {freeDeliveryPromo?.name ? 'Promo' : 'Apertura'}
+                    {freeDeliveryPromo?.name ? 'Promo' : 'Cupón'}
                   </span>
                 )}
               </div>
-              <span className={`text-sm font-semibold ${deliveryFee > 0 ? 'text-emerald-700' : 'text-emerald-600 font-black'}`}>
-                {deliveryFee > 0 ? formatCOP(deliveryFee) : '¡GRATIS! 🎉'}
+              <span className={`text-sm font-semibold ${deliveryFee > 0 ? 'text-emerald-700' : isFreeDeliveryPromoActive ? 'text-emerald-600 font-black' : 'text-neutral-600'}`}>
+                {deliveryFee > 0 ? formatCOP(deliveryFee) : isFreeDeliveryPromoActive ? '¡GRATIS! 🎉' : '$ 0'}
               </span>
             </div>
           )}
