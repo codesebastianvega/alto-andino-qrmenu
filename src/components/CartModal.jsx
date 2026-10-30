@@ -1415,8 +1415,8 @@ export default function CartModal({ open, onClose }) {
         </div>
         
         <div
-          className={`px-4 pt-3 sm:px-6 sm:pt-4 ${idSuffix === 'desktop' ? 'pb-8 sm:pb-6' : 'pb-8 sm:pb-12'}`}
-          style={idSuffix === 'mobile' ? { paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 36px)" } : undefined}
+          className={`px-4 pt-3 sm:px-6 sm:pt-4 ${idSuffix === 'desktop' ? 'pb-8 sm:pb-6' : 'pb-6'}`}
+          style={idSuffix === 'mobile' ? { paddingBottom: "max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))" } : undefined}
         >
           <div className="flex items-center justify-between mb-4">
             <span className="text-base sm:text-lg font-bold text-neutral-900">Total</span>
@@ -1452,30 +1452,38 @@ export default function CartModal({ open, onClose }) {
             ) : !showFulfillmentSelector && !initialMesa && !isPOSMode ? (
               <button
                 type="button"
-                onClick={() => setShowFulfillmentSelector(true)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowFulfillmentSelector(true);
+                }}
                 disabled={!items.length}
-                className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] hover:bg-[#202c21] text-white shadow-[#2f4131]/20 hover:-translate-y-0.5 transition-all active:scale-[0.98]"
+                className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] active:bg-[#202c21] text-white shadow-[#2f4131]/20 sm:hover:-translate-y-0.5 sm:hover:bg-[#202c21] transition-all active:scale-[0.98] cursor-pointer touch-manipulation select-none relative z-10"
               >
-                <Icon icon={isDarkKitchen ? "heroicons:truck" : "heroicons:sparkles"} className="text-xl" />
-                {isDarkKitchen ? "Datos de Entrega a Domicilio" : "Confirmar Pedido"}
+                <Icon icon={isDarkKitchen ? "heroicons:truck" : "heroicons:sparkles"} className="text-xl pointer-events-none" />
+                <span className="pointer-events-none">{isDarkKitchen ? "Datos de Entrega a Domicilio" : "Confirmar Pedido"}</span>
               </button>
             ) : !showFulfillmentSelector && (initialMesa || isPOSMode) && !isDarkKitchen ? (
               <button
                 type="button"
-                onClick={handleConfirmOrder}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleConfirmOrder(e);
+                }}
                 disabled={isSubmitting || !items.length || !isLeadValid}
-                className={`flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg transition-all active:scale-[0.98] ${
+                className={`flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg transition-all active:scale-[0.98] cursor-pointer touch-manipulation select-none relative z-10 ${
                   !isLeadValid || isSubmitting
                   ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
-                  : "bg-[#2f4131] hover:bg-[#202c21] text-white shadow-[#2f4131]/20 hover:-translate-y-0.5"
+                  : "bg-[#2f4131] active:bg-[#202c21] text-white shadow-[#2f4131]/20 sm:hover:-translate-y-0.5 sm:hover:bg-[#202c21]"
                 }`}
               >
                 {isSubmitting ? (
-                  <Icon icon="line-md:loading-loop" className="text-xl" />
+                  <Icon icon="line-md:loading-loop" className="text-xl pointer-events-none" />
                 ) : (
                   <>
-                    <Icon icon="heroicons:sparkles" className="text-xl" />
-                    Confirmar Pedido
+                    <Icon icon="heroicons:sparkles" className="text-xl pointer-events-none" />
+                    <span className="pointer-events-none">Confirmar Pedido</span>
                   </>
                 )}
               </button>
@@ -1922,20 +1930,24 @@ export default function CartModal({ open, onClose }) {
                   ) : (
                     <button
                       type="button"
-                      onClick={handleConfirmOrder}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleConfirmOrder(e);
+                      }}
                       disabled={isSubmitting || !isLeadValid}
-                      className={`flex-1 h-14 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 ${
+                      className={`flex-1 h-14 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 cursor-pointer touch-manipulation select-none relative z-10 ${
                         !isLeadValid || isSubmitting
                         ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
-                        : "bg-[#2f4131] text-white shadow-[#2f4131]/20"
+                        : "bg-[#2f4131] active:bg-[#202c21] text-white shadow-[#2f4131]/20 sm:hover:-translate-y-0.5 sm:hover:bg-[#202c21]"
                       }`}
                     >
                       {isSubmitting ? (
-                        <Icon icon="line-md:loading-loop" className="text-xl" />
+                        <Icon icon="line-md:loading-loop" className="text-xl pointer-events-none" />
                       ) : (
                         <>
-                          <Icon icon="heroicons:sparkles" className="text-xl" />
-                          Confirmar Pedido
+                          <Icon icon="heroicons:sparkles" className="text-xl pointer-events-none" />
+                          <span className="pointer-events-none">Confirmar Pedido</span>
                         </>
                       )}
                     </button>
@@ -1953,7 +1965,7 @@ export default function CartModal({ open, onClose }) {
 
     <Portal>
       <>
-        <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-[500] flex items-end justify-center sm:items-center sm:p-4">
         {/* Overlay */}
         <div
           className="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm transition-opacity"
@@ -1963,7 +1975,7 @@ export default function CartModal({ open, onClose }) {
 
         {/* Modal Window */}
         <div
-          className={`relative w-full h-[100dvh] ${
+          className={`relative w-full h-full max-h-full ${
             items.length > 0
               ? 'sm:h-[88vh] sm:max-h-[860px] sm:min-h-[480px]'
               : 'sm:h-auto sm:max-h-[85vh]'

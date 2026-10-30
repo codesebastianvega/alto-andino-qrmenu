@@ -687,7 +687,7 @@ export default function App() {
           </>
         )}
 
-          {!isDemo && brand_slug && !currentHash.startsWith('#asistente') && !currentHash.startsWith('#mesero') && !currentHash.startsWith('#chat') && !currentHash.startsWith('#checkout') && (
+          {!isDemo && brand_slug && !open && !currentHash.startsWith('#asistente') && !currentHash.startsWith('#mesero') && !currentHash.startsWith('#chat') && !currentHash.startsWith('#checkout') && (
             <BottomTabBar
               currentHash={currentHash}
               onAllergensOpen={() => setOpenGuide(true)}
