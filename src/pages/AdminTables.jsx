@@ -40,9 +40,6 @@ export default function AdminTables({ isEmbedded = false }) {
   const [loadingAreas, setLoadingAreas] = useState(false);
   const [isAreaModalOpen, setIsAreaModalOpen] = useState(false);
 
-  useAdminModalBack(isFormOpen, () => setIsFormOpen(false));
-  useAdminModalBack(isAreaModalOpen, () => setIsAreaModalOpen(false));
-  useAdminModalBack(isPrintSheetOpen, () => setIsPrintSheetOpen(false));
   const [newAreaName, setNewAreaName] = useState('');
   const [isSubmittingArea, setIsSubmittingArea] = useState(false);
   const [isBulkCreating, setIsBulkCreating] = useState(false);
@@ -50,6 +47,10 @@ export default function AdminTables({ isEmbedded = false }) {
   const [isCampaignQrModalOpen, setIsCampaignQrModalOpen] = useState(false);
   const [campaignChannel, setCampaignChannel] = useState('volante_calle');
   const [campaignCustomName, setCampaignCustomName] = useState('');
+
+  useAdminModalBack(isFormOpen, () => setIsFormOpen(false));
+  useAdminModalBack(isAreaModalOpen, () => setIsAreaModalOpen(false));
+  useAdminModalBack(isPrintSheetOpen, () => setIsPrintSheetOpen(false));
   useAdminModalBack(isCampaignQrModalOpen, () => setIsCampaignQrModalOpen(false));
 
   const handleBulkCreateTables = async (customCount) => {
