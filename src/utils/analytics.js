@@ -45,6 +45,17 @@ export const trackAnalyticsEvent = async (eventName, metadata = {}) => {
     return;
   }
 
+  // Dispositivos de administración y equipo interno no se rastrean
+  if (typeof window !== 'undefined') {
+    const isStaffDevice = (typeof localStorage !== 'undefined' && localStorage.getItem('aa_is_staff_device') === 'true') ||
+                          (typeof localStorage !== 'undefined' && localStorage.getItem('aa_current_staff') !== null) ||
+                          window.location.hash.includes('admin') ||
+                          window.location.pathname.includes('/admin');
+    if (isStaffDevice) {
+      return;
+    }
+  }
+
   try {
     const sessionId = getOrCreateSessionId();
     const finalLocationId = locationId || getStoredLocationId();

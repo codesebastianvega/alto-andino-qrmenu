@@ -24,7 +24,8 @@ import {
   RefreshCw,
   AlertCircle,
   HelpCircle,
-  Activity
+  ShieldCheck,
+  Trash2
 } from 'lucide-react';
 import { toast } from '../Toast';
 import { CLARITY_PROJECT_IDS } from '../../hooks/useClarity';
@@ -63,20 +64,32 @@ export default function AdminHeatmaps({
     return (typeof localStorage !== 'undefined' ? localStorage.getItem(`aa_clarity_token_${brandSlug}`) : '') || '';
   });
   const [isSyncingApi, setIsSyncingApi] = useState(false);
-  const [lastSyncTime, setLastSyncTime] = useState(null);
+  const [lastSyncTime, setLastSyncTime] = useState(() => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const cached = localStorage.getItem(`aa_clarity_insights_cache_${brandSlug}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.timestamp) return new Date(parsed.timestamp);
+        }
+      }
+    } catch {}
+    return null;
+  });
   const [apiData, setApiData] = useState(() => {
     try {
       if (typeof localStorage !== 'undefined') {
         const cached = localStorage.getItem(`aa_clarity_insights_cache_${brandSlug}`);
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (parsed?.timestamp) setLastSyncTime(new Date(parsed.timestamp));
           return parsed.data || null;
         }
       }
     } catch {}
     return null;
   });
+
+  const [isClearing, setIsClearing] = useState(false);
 
   // URL base
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://aluna-qrmenu.vercel.app';
@@ -169,7 +182,6 @@ export default function AdminHeatmaps({
         totalDurationSeconds += diffSec;
         measurableSessions++;
       } else if (count === 1) {
-        // Sesión de un solo toque: duración mínima real medible
         totalDurationSeconds += 10;
         measurableSessions++;
       }
@@ -300,12 +312,40 @@ export default function AdminHeatmaps({
         }));
       }
 
-      toast.success('¡Datos oficiales de Microsoft Clarity sincronizados!');
+      const returnedCount = responseData?.metrics?.length || 0;
+      if (returnedCount > 0) {
+        toast.success(`¡Sincronizado! Microsoft reportó ${returnedCount} grupos de datos.`);
+      } else {
+        toast.success('¡Conectado con éxito! Microsoft está procesando las sesiones de hoy.');
+      }
     } catch (err) {
       console.error(err);
       toast.error(`Error de sincronización: ${err.message}`);
     } finally {
       setIsSyncingApi(false);
+    }
+  };
+
+  // Limpiar visitas de prueba para empezar de cero
+  const handleClearTestAnalytics = async () => {
+    if (!window.confirm('¿Deseas resetear las visitas y eventos de prueba anteriores para dejar el contador en 0 y registrar solo clientes reales?')) {
+      return;
+    }
+    setIsClearing(true);
+    try {
+      const res = await fetch('/api/clear-test-analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandSlug })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error limpiando');
+      toast.success(data.message || 'Visitas de prueba reseteadas');
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (err) {
+      toast.error(`Error: ${err.message}`);
+    } finally {
+      setIsClearing(false);
     }
   };
 
@@ -627,7 +667,7 @@ export default function AdminHeatmaps({
               )}
             </div>
           ) : (
-            <p className="text-xs text-gray-400 py-3 italic">Esperando primeras visitas para identificar teléfonos...</p>
+            <p className="text-xs text-gray-400 py-3 italic">Esperando visitas de clientes...</p>
           )}
         </div>
 
@@ -703,20 +743,34 @@ export default function AdminHeatmaps({
                     <span className="text-base">{getCountryFlag(item.country)}</span>
                     <div>
                       <p className="text-xs font-bold text-gray-900">{item.country}</p>
-                      <p className="text-[10px] text-gray-400">{item.traffic} visitas registradas por Microsoft</p>
+                      <p className="text-[10px] text-gray-400">{item.traffic} visitas oficiales</p>
                     </div>
                   </div>
                   <span className="text-xs font-black text-gray-800">{item.traffic}</span>
                 </div>
               ))
+            ) : lastSyncTime ? (
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-2">
+                <p className="text-xs font-bold flex items-center gap-1.5 text-emerald-800">
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                  Conexión con Microsoft Clarity Verificada
+                </p>
+                <p className="text-[11px] text-emerald-800/80 leading-relaxed">
+                  Tu API Token está conectado correctamente. Microsoft Clarity procesa la geolocalización IP en lotes cada pocas horas para proyectos nuevos. En cuanto Microsoft complete el lote en Azure, los países aparecerán aquí con sus banderas.
+                </p>
+                <div className="flex items-center justify-between pt-1 text-[10px] text-emerald-700 font-bold">
+                  <span>Última consulta:</span>
+                  <span>{lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+              </div>
             ) : (
               <div className="p-4 rounded-xl bg-amber-50/50 border border-amber-200/60 text-amber-900 space-y-2">
                 <p className="text-xs font-bold flex items-center gap-1.5">
                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                  Sincronización de Países con Clarity
+                  Sincronización con Clarity
                 </p>
                 <p className="text-[11px] text-amber-800/80 leading-relaxed">
-                  Para no inventar países, Aluna consulta la geolocalización IP oficial de Microsoft. Haz clic en el botón de abajo para consultar los países reales de tus visitantes.
+                  Haz clic abajo para consultar a los servidores de Microsoft qué países han visitado tu menú.
                 </p>
                 <button
                   onClick={handleSyncClarityApi}
@@ -761,7 +815,68 @@ export default function AdminHeatmaps({
         </div>
       </div>
 
-      {/* 5. Conexión con Microsoft Clarity Data API (Token Oficial) */}
+      {/* 5. Exclusión de Dispositivos del Equipo & Reset de Pruebas */}
+      <div className="rounded-2xl bg-white border border-gray-200/80 p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-wider text-gray-800">
+                Filtro de Tráfico Interno (Tus Dispositivos y Personal)
+              </h3>
+              <p className="text-[11px] text-gray-400">
+                Evita que tus propias visitas, la tablet del restaurante o tu celular alteren las métricas reales.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleClearTestAnalytics}
+            disabled={isClearing}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-bold transition-all disabled:opacity-50"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>{isClearing ? 'Limpiando...' : 'Resetear Visitas de Prueba a 0'}</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-200/70 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-gray-700">🖥️ Este Computador / Navegador:</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800">
+                Excluido Automáticamente ✅
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-500 leading-relaxed">
+              Al estar dentro del panel de administración, este navegador quedó marcado para siempre como equipo interno. Ya no sumará visitas cuando abras el menú ni te grabará en Clarity.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-200/70 space-y-2">
+            <span className="font-bold text-gray-700">📱 Tu Celular Personal o Tablet del Restaurante:</span>
+            <p className="text-[11px] text-gray-500 leading-relaxed">
+              Abre el menú una sola vez desde ese dispositivo con este enlace para excluirlo permanentemente:
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="text-[10px] font-mono bg-white px-2 py-1 rounded border border-gray-200 text-indigo-700 flex-1 truncate">
+                {baseUrl}/{brandSlug}/?exclude_me=true
+              </code>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`${baseUrl}/${brandSlug}/?exclude_me=true`);
+                  toast.success('Enlace de exclusión copiado al portapapeles');
+                }}
+                className="px-2 py-1 bg-white border border-gray-200 rounded text-[11px] font-bold hover:bg-gray-100 shrink-0"
+              >
+                Copiar Enlace
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 6. Conexión con Microsoft Clarity Data API (Token Oficial) */}
       <div className="rounded-2xl bg-gradient-to-r from-gray-900 to-neutral-900 text-white p-5 shadow-sm border border-gray-800 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">

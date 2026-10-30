@@ -13,22 +13,39 @@ export function useClarity({ brand, currentLocation }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // 1. No trackear sesiones dentro del panel de administración
+    // 1. Detectar si la URL trae parámetro de exclusión para personal/dueño
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('exclude_me') === 'true' || searchParams.get('internal') === 'true') {
+      try { localStorage.setItem('aa_is_staff_device', 'true'); } catch {}
+    }
+
+    // 2. Si entra al panel de administración o tiene sesión de admin, marcar como dispositivo de equipo
     const isAdmin = window.location.hash.includes('admin') || 
                     window.location.pathname.includes('/admin');
-    if (isAdmin) return;
+    if (isAdmin) {
+      try { localStorage.setItem('aa_is_staff_device', 'true'); } catch {}
+      return;
+    }
 
-    // 2. Determinar el Project ID según la marca (desde el context o deducido de la URL)
+    // 3. Excluir dispositivos del equipo interno (PC del dueño, móvil de Sebastián, tablet del local)
+    const isStaffDevice = (typeof localStorage !== 'undefined' && localStorage.getItem('aa_is_staff_device') === 'true') ||
+                          (typeof localStorage !== 'undefined' && localStorage.getItem('aa_current_staff') !== null);
+    if (isStaffDevice) {
+      console.debug('[Clarity] Dispositivo del equipo detectado. Rastreo apagado.');
+      return;
+    }
+
+    // 4. Determinar el Project ID según la marca (desde el context o deducido de la URL)
     const urlSlug = window.location.pathname.split('/').filter(Boolean)[0];
     const brandSlug = brand?.slug || urlSlug;
     const clarityId = brand?.clarity_project_id || CLARITY_PROJECT_IDS[brandSlug];
 
     if (!clarityId) return;
 
-    // 3. Capturar atribución (volantes, mesas, campañas)
+    // 5. Capturar atribución (volantes, mesas, campañas)
     const attr = getAttribution();
 
-    // 4. Si ya está inicializado, solo refrescar tags de sesión
+    // 6. Si ya está inicializado, solo refrescar tags de sesión
     if (window.clarityInitialized) {
       if (typeof window.clarity === 'function') {
         window.clarity('set', 'brand', brand?.name || brandSlug);
