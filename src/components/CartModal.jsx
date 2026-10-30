@@ -324,26 +324,195 @@ export default function CartModal({ open, onClose }) {
   const isLeadRequired = !isPOSMode && (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' || fulfillmentType === 'scheduled');
   const isAddressRequired = !isPOSMode && fulfillmentType === 'delivery';
 
+  // Coupon / Promo States
+  const [appliedCoupon, setAppliedCoupon] = useState(() => {
+    try {
+      const saved = localStorage.getItem("aa_applied_coupon");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [couponInput, setCouponInput] = useState("");
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [isCouponAccordionOpen, setIsCouponAccordionOpen] = useState(false);
+
+  // Listen to external coupon application (e.g. from banner)
+  useEffect(() => {
+    const handlePromoEvent = (e) => {
+      if (e?.detail) setAppliedCoupon(e.detail);
+    };
+    window.addEventListener('aa_coupon_applied', handlePromoEvent);
+    return () => window.removeEventListener('aa_coupon_applied', handlePromoEvent);
+  }, []);
+
+  // 1. Calculate discount for any promotion
+  const calculateDiscountForPromo = useCallback((promo, cartItems, cartTotal) => {
+    if (!promo) return 0;
+    
+    // Check minimum order amount
+    if (promo.min_order_amount && cartTotal < Number(promo.min_order_amount)) {
+      return 0;
+    }
+
+    const promoType = promo.type;
+    const promoValue = Number(promo.value) || 0;
+    const promoTarget = promo.target || 'all';
+    const targetIds = Array.isArray(promo.target_ids) ? promo.target_ids : [];
+
+    let applicableBase = cartTotal;
+
+    if (promoTarget === 'category' && targetIds.length > 0) {
+      applicableBase = cartItems.reduce((acc, it) => {
+        if (targetIds.includes(it.categoryId)) {
+          return acc + ((Number(it.unitPrice) || Number(it.price) || 0) * (Number(it.qty) || 1));
+        }
+        return acc;
+      }, 0);
+    } else if (promoTarget === 'product' && targetIds.length > 0) {
+      applicableBase = cartItems.reduce((acc, it) => {
+        const pid = it.productId || it.id;
+        if (targetIds.includes(pid)) {
+          return acc + ((Number(it.unitPrice) || Number(it.price) || 0) * (Number(it.qty) || 1));
+        }
+        return acc;
+      }, 0);
+    }
+
+    if (applicableBase <= 0) return 0;
+
+    if (promoType === 'percentage_discount') {
+      return Math.round(applicableBase * (promoValue / 100));
+    } else if (promoType === 'fixed_discount') {
+      return Math.min(applicableBase, promoValue);
+    }
+    return 0;
+  }, []);
+
+  // 2. Identify automatic discount campaign (if any, where code is empty)
+  const automaticDiscountPromo = useMemo(() => {
+    return (activePromotions || []).find(p => 
+      !p.code && 
+      (p.type === 'percentage_discount' || p.type === 'fixed_discount') &&
+      (!p.min_order_amount || total >= Number(p.min_order_amount))
+    ) || null;
+  }, [activePromotions, total]);
+
+  // 3. Effective Promo: entered coupon takes precedence over automatic promo
+  const effectivePromo = appliedCoupon || automaticDiscountPromo;
+
+  // 4. Discount amount
+  const discountAmount = useMemo(() => {
+    return calculateDiscountForPromo(effectivePromo, items, total);
+  }, [effectivePromo, calculateDiscountForPromo, items, total]);
+
+  const availableCouponPromos = useMemo(() => {
+    return (activePromotions || []).filter(p => p.code && p.is_active);
+  }, [activePromotions]);
+
   // Order Totals
   const packagingFeeTotal = items.reduce((acc, it) => acc + ((Number(it.packaging_fee) || 0) * (Number(it.qty) || 1)), 0);
-  const serviceFeeAmount = (isTipEnabled && includeTip) ? Math.round(total * (tipPercentage / 100)) : 0;
+  const serviceFeeAmount = (isTipEnabled && includeTip) ? Math.round(Math.max(0, total - discountAmount) * (tipPercentage / 100)) : 0;
   const deliveryFee = useMemo(() => {
     if (fulfillmentType !== 'delivery') return 0;
     // Si hay una campaña de Domicilio Gratis activa y cumple el monto mínimo
     if (freeDeliveryPromo && (!freeDeliveryPromo.min_order_amount || total >= Number(freeDeliveryPromo.min_order_amount))) {
       return 0;
     }
+    // Si el cupón aplicado otorga envío gratis
+    if (effectivePromo && (effectivePromo.type === 'free_delivery' || effectivePromo.target === 'delivery')) {
+      if (!effectivePromo.min_order_amount || total >= Number(effectivePromo.min_order_amount)) {
+        return 0;
+      }
+    }
     if (deliveryLocationInfo && typeof deliveryLocationInfo.fee === 'number') {
       return deliveryLocationInfo.fee;
     }
     return Number(currentLocation?.delivery_fee) || 0;
-  }, [fulfillmentType, deliveryLocationInfo, currentLocation, freeDeliveryPromo, total]);
+  }, [fulfillmentType, deliveryLocationInfo, currentLocation, freeDeliveryPromo, effectivePromo, total]);
 
   const finalTotal = useMemo(() => {
     const delivery = fulfillmentType === 'delivery' ? deliveryFee : 0;
     const packaging = (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery') ? packagingFeeTotal : 0;
-    return total + delivery + packaging + serviceFeeAmount;
-  }, [fulfillmentType, total, deliveryFee, packagingFeeTotal, serviceFeeAmount]);
+    const subtotalAfterDiscount = Math.max(0, total - discountAmount);
+    return subtotalAfterDiscount + delivery + packaging + serviceFeeAmount;
+  }, [fulfillmentType, total, discountAmount, deliveryFee, packagingFeeTotal, serviceFeeAmount]);
+
+  const handleApplyCoupon = async (codeToApply) => {
+    const rawCode = (typeof codeToApply === 'string' ? codeToApply : couponInput).trim();
+    if (!rawCode) {
+      toast.error('Por favor escribe un código de cupón');
+      return;
+    }
+    const cleanCode = rawCode.toUpperCase();
+    setIsApplyingCoupon(true);
+
+    try {
+      let promo = (activePromotions || []).find(p => 
+        p.code && p.code.trim().toUpperCase() === cleanCode
+      );
+
+      if (!promo && activeBrandId) {
+        const { data: dbPromo } = await supabase
+          .from('promotions')
+          .select('*')
+          .eq('brand_id', activeBrandId)
+          .ilike('code', cleanCode)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (dbPromo) {
+          const now = new Date();
+          const validDate = (!dbPromo.start_date || new Date(dbPromo.start_date) <= now) &&
+                            (!dbPromo.end_date || new Date(dbPromo.end_date) >= now);
+          const validLocation = !dbPromo.location_id || !currentLocation?.id || dbPromo.location_id === currentLocation.id;
+          if (validDate && validLocation) {
+            promo = dbPromo;
+          }
+        }
+      }
+
+      if (!promo) {
+        toast.error(`El cupón "${cleanCode}" no es válido o ha expirado`);
+        return;
+      }
+
+      if (promo.min_order_amount && total < Number(promo.min_order_amount)) {
+        toast.error(`Este cupón requiere un pedido mínimo de ${formatCOP(promo.min_order_amount)}`);
+        return;
+      }
+
+      if (promo.target === 'category' || promo.target === 'product') {
+        const targetIds = Array.isArray(promo.target_ids) ? promo.target_ids : [];
+        const hasMatchingItem = items.some(it => {
+          if (promo.target === 'category') return targetIds.includes(it.categoryId);
+          return targetIds.includes(it.productId || it.id);
+        });
+
+        if (!hasMatchingItem) {
+          toast.error('Este cupón aplica únicamente para platos o categorías específicas');
+          return;
+        }
+      }
+
+      setAppliedCoupon(promo);
+      localStorage.setItem("aa_applied_coupon", JSON.stringify(promo));
+      setCouponInput("");
+      setIsCouponAccordionOpen(false);
+      toast.success(`¡Cupón "${cleanCode}" aplicado con éxito! 🎉`);
+    } catch (err) {
+      console.error('Error aplicando cupón:', err);
+      toast.error('Error al validar el cupón');
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    localStorage.removeItem("aa_applied_coupon");
+    toast.success("Cupón removido");
+  };
 
   // Customer Payment States (Delivery / Takeaway)
   const [customerPaymentType, setCustomerPaymentType] = useState(() => {
@@ -657,8 +826,7 @@ export default function CartModal({ open, onClose }) {
 
       console.log("🔍 [Order Flow] tableId:", tableId, "activeBrandId:", activeBrandId, "locationId:", orderLocationId, "fulfillmentType:", fulfillmentType, "stations:", { hasKitchenItemsInOrder, hasBarItemsInOrder });
 
-      // 2. Insert or Update Order
-      const finalTotal = fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount;
+      // 2. Insert or Update Order (Uses component-level finalTotal accounting for discount & delivery)
 
       // Status logic: Dine-in and Takeaway go straight to kitchen ('new').
       // Delivery orders with payment method selected are immediately sent to kitchen ('new') with pending payment status.
@@ -689,7 +857,7 @@ export default function CartModal({ open, onClose }) {
           order: {
             status: orderStatus, origin: fulfillmentType === 'dine_in' ? 'table' : 'takeaway',
             fulfillment_type: fulfillmentType, table_id: tableId, brand_id: activeBrandId,
-            location_id: orderLocationId || null, total_amount: finalTotal, service_fee: serviceFeeAmount,
+            location_id: orderLocationId || null, total_amount: finalTotal, discount_amount: discountAmount || 0, discount_reason: effectivePromo ? `${effectivePromo.code || effectivePromo.name} (${effectivePromo.type === 'percentage_discount' ? `${effectivePromo.value}%` : formatCOP(effectivePromo.value)})` : null, service_fee: serviceFeeAmount,
             customer_name: fullCustomerName || customerName, customer_phone: customerPhone, customer_id: customerId,
             scheduled_time: scheduledTime || null, payment_status: isPOSMode && isPaid ? 'paid' : 'pending',
             payment_method: isPOSMode ? (isPaid ? paymentMethod : null) : paymentMethodSummary,
@@ -724,6 +892,8 @@ export default function CartModal({ open, onClose }) {
           // to ensure kitchen notification triggers correctly for the new items.
           const updatePayload = {
             total_amount: Number(existingOrder.total_amount) + Number(finalTotal),
+            discount_amount: Number(existingOrder.discount_amount || 0) + Number(discountAmount || 0),
+            discount_reason: effectivePromo ? (existingOrder.discount_reason ? `${existingOrder.discount_reason}, ${effectivePromo.code || effectivePromo.name}` : (effectivePromo.code || effectivePromo.name)) : existingOrder.discount_reason,
             service_fee: Number(existingOrder.service_fee || 0) + Number(serviceFeeAmount),
             status: 'new',
             kitchen_status: hasKitchenItemsInOrder ? 'pending' : existingOrder.kitchen_status,
@@ -757,6 +927,8 @@ export default function CartModal({ open, onClose }) {
             brand_id: activeBrandId,
             location_id: orderLocationId || null,
             total_amount: finalTotal,
+            discount_amount: discountAmount || 0,
+            discount_reason: effectivePromo ? `${effectivePromo.code || effectivePromo.name} (${effectivePromo.type === 'percentage_discount' ? `${effectivePromo.value}%` : formatCOP(effectivePromo.value)})` : null,
             service_fee: serviceFeeAmount,
             customer_name: fullCustomerName || customerName,
             customer_phone: customerPhone,
@@ -860,6 +1032,8 @@ export default function CartModal({ open, onClose }) {
           unitPrice: getItemUnit(it)
         })),
         finalTotal,
+        discountAmount,
+        appliedCoupon: effectivePromo,
         fulfillmentType,
         paymentMethodSummary,
         formattedAddress,
@@ -908,7 +1082,11 @@ export default function CartModal({ open, onClose }) {
             deliveryInfo +
             `\n*Productos:*\n` +
             items.map(it => `- ${it.qty}x ${it.name} (${formatCOP(getItemUnit(it) * it.qty)})`).join('\n') +
-            `\n\n*Total:* ${formatCOP(finalTotal)}\n` +
+            `\n\n*Subtotal:* ${formatCOP(total)}\n` +
+            (discountAmount > 0 ? `*Descuento (${effectivePromo?.code || 'Cupón'}):* -${formatCOP(discountAmount)}\n` : '') +
+            (packagingFeeTotal > 0 ? `*Empaque:* ${formatCOP(packagingFeeTotal)}\n` : '') +
+            (serviceFeeAmount > 0 ? `*Servicio voluntario:* ${formatCOP(serviceFeeAmount)}\n` : '') +
+            `*Total:* ${formatCOP(finalTotal)}\n` +
             `*Método de pago:* ${paymentMethodSummary}\n\n` +
             `Ver pedido en: ${window.location.origin}/${brandSlug}/#order/${orderData.id}`
           );
@@ -922,6 +1100,8 @@ export default function CartModal({ open, onClose }) {
       if (typeof clearCart === 'function') {
         clearCart();
       }
+      setAppliedCoupon(null);
+      localStorage.removeItem("aa_applied_coupon");
       setShowSuccess(true);
       
       // Track Conversion
@@ -978,6 +1158,8 @@ export default function CartModal({ open, onClose }) {
 
   const clearCartNow = () => {
     clearCart?.();
+    setAppliedCoupon(null);
+    localStorage.removeItem("aa_applied_coupon");
     setConfirmingClear(false);
     toastFn("Carrito vaciado", {
       actionLabel: "Deshacer",
@@ -1031,10 +1213,143 @@ export default function CartModal({ open, onClose }) {
     return (
       <div className="w-full bg-white border-t border-neutral-100 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] transition-all">
         <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-neutral-100/60 border-dashed">
+          {/* Coupon Code Section */}
+          <div className="mb-3 pt-0.5">
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200/90 rounded-xl shadow-2xs animate-in fade-in slide-in-from-top-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                    <Icon icon="solar:ticket-sale-bold" className="text-base" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-black text-xs text-emerald-950 uppercase tracking-wider">{appliedCoupon.code || appliedCoupon.name}</span>
+                      <span className="text-[10px] font-black bg-emerald-200/80 text-emerald-800 px-1.5 py-0.2 rounded">
+                        {appliedCoupon.type === 'percentage_discount' ? `-${appliedCoupon.value}%` : appliedCoupon.type === 'free_delivery' ? 'Envío Gratis' : `-${formatCOP(appliedCoupon.value)}`}
+                      </span>
+                    </div>
+                    <p className="text-[10px] font-medium text-emerald-700 truncate">
+                      {appliedCoupon.type === 'free_delivery' ? 'Domicilio 100% gratis' : `Ahorras ${formatCOP(discountAmount)}`}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveCoupon}
+                  className="text-[11px] font-bold text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors shrink-0"
+                  title="Quitar cupón"
+                >
+                  Quitar
+                </button>
+              </div>
+            ) : automaticDiscountPromo ? (
+              <div className="flex items-center justify-between p-2.5 bg-blue-50 border border-blue-200/80 rounded-xl shadow-2xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Icon icon="solar:sale-bold" className="text-blue-600 text-lg shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-blue-950">{automaticDiscountPromo.name}</span>
+                    <p className="text-[10px] text-blue-700">Promo automática aplicada ({formatCOP(discountAmount)} de descuento)</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div>
+                {!isCouponAccordionOpen ? (
+                  <div className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsCouponAccordionOpen(true)}
+                      className="w-full flex items-center justify-between py-1.5 px-2 text-xs font-bold text-[#2f4131] hover:text-emerald-800 hover:bg-emerald-50/50 rounded-lg transition-all group"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Icon icon="solar:ticket-sale-bold" className="text-sm text-emerald-600 group-hover:scale-110 transition-transform" />
+                        <span>¿Tienes un cupón de descuento?</span>
+                      </span>
+                      <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-0.5">
+                        Ingresar <Icon icon="solar:alt-arrow-right-linear" className="text-xs" />
+                      </span>
+                    </button>
+                    {availableCouponPromos.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 px-2">
+                        {availableCouponPromos.slice(0, 2).map(p => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => handleApplyCoupon(p.code)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/70 text-[10px] font-bold text-emerald-800 transition-colors"
+                          >
+                            <Icon icon="solar:ticket-sale-bold" className="text-xs text-emerald-600" />
+                            <span>Usar <strong>{p.code}</strong></span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2 p-2.5 bg-neutral-50 border border-neutral-200/80 rounded-xl animate-in fade-in slide-in-from-top-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-black text-neutral-500 uppercase tracking-wider flex items-center gap-1">
+                        <Icon icon="solar:ticket-sale-bold" className="text-emerald-600 text-xs" />
+                        <span>Cupón de Descuento</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsCouponAccordionOpen(false)}
+                        className="text-[10px] font-semibold text-neutral-400 hover:text-neutral-600"
+                      >
+                        Cerrar
+                      </button>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={couponInput}
+                          onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleApplyCoupon();
+                            }
+                          }}
+                          placeholder="Ej: BOKU15"
+                          className="w-full h-9 pl-3 pr-2 text-xs font-mono font-bold tracking-wider bg-white rounded-lg border border-neutral-200 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 uppercase placeholder:normal-case placeholder:font-sans placeholder:font-normal placeholder:tracking-normal placeholder:text-neutral-400"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyCoupon()}
+                        disabled={isApplyingCoupon || !couponInput.trim()}
+                        className="px-3 h-9 bg-[#2f4131] hover:bg-[#202c21] disabled:bg-neutral-200 text-white disabled:text-neutral-400 rounded-lg text-xs font-bold transition-all shrink-0 active:scale-95 flex items-center gap-1"
+                      >
+                        {isApplyingCoupon ? (
+                          <Icon icon="line-md:loading-loop" className="text-sm" />
+                        ) : (
+                          'Aplicar'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-between items-center mb-1">
             <span className="text-sm text-neutral-500 font-medium">Subtotal</span>
             <span className="text-sm font-semibold text-neutral-700">{formatCOP(total)}</span>
           </div>
+          {discountAmount > 0 && (
+            <div className="flex justify-between items-center mb-1 animate-in fade-in slide-in-from-right-2 text-emerald-700">
+              <div className="flex items-center gap-1.5">
+                <Icon icon="solar:ticket-sale-bold" className="text-base text-emerald-600" />
+                <span className="text-sm font-bold">Descuento ({effectivePromo?.code || effectivePromo?.name})</span>
+              </div>
+              <span className="text-sm font-black text-emerald-700">
+                -{formatCOP(discountAmount)}
+              </span>
+            </div>
+          )}
           {packagingFeeTotal > 0 && (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery') && (
             <div className="flex justify-between items-center mb-1 animate-in fade-in slide-in-from-right-2">
               <span className="text-sm text-neutral-500 font-medium">Empaque</span>
@@ -2041,6 +2356,15 @@ export default function CartModal({ open, onClose }) {
                           </div>
                           <span className="text-xs font-black text-neutral-900">{formatCOP(confirmedOrderSnapshot.finalTotal)}</span>
                         </div>
+                        {confirmedOrderSnapshot.discountAmount > 0 && (
+                          <div className="flex justify-between items-center text-xs text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200/70">
+                            <span className="flex items-center gap-1">
+                              <Icon icon="solar:ticket-sale-bold" />
+                              <span>Descuento aplicado ({confirmedOrderSnapshot.appliedCoupon?.code || 'Cupón'}):</span>
+                            </span>
+                            <span>-{formatCOP(confirmedOrderSnapshot.discountAmount)}</span>
+                          </div>
+                        )}
                         <div className="divide-y divide-neutral-200/50 max-h-48 overflow-y-auto pr-1 space-y-2">
                           {confirmedOrderSnapshot.items.map((it, idx) => (
                             <div key={idx} className="pt-2 first:pt-0 flex justify-between items-start gap-2 text-xs">

@@ -50,6 +50,23 @@ export default function PromotionBanner() {
               Válido hasta {new Date(activePromoBanner.end_date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
             </span>
           )}
+          {activePromoBanner.code && (
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.setItem('aa_applied_coupon', JSON.stringify(activePromoBanner));
+                  navigator.clipboard.writeText(activePromoBanner.code);
+                  window.dispatchEvent(new CustomEvent('aa_coupon_applied', { detail: activePromoBanner }));
+                } catch {}
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 hover:bg-white/30 text-white font-mono font-black text-xs transition-all active:scale-95 cursor-pointer border border-white/30 ml-2"
+              title="Copiar y aplicar este cupón"
+            >
+              <Icon icon="solar:ticket-sale-bold" className="text-xs" />
+              <span>Usar cupón: <strong>{activePromoBanner.code}</strong></span>
+            </button>
+          )}
         </div>
 
         <button
