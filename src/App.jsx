@@ -319,32 +319,66 @@ export default function App() {
       }
 
       // --- ANALYTICS TRACKING ---
-      const hasVisited = localStorage.getItem('aluna_tracked_visit');
-      if (!hasVisited) {
+          const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('include_me') === 'true' || urlParams.get('test_visitor') === 'true') {
+      try {
+        localStorage.removeItem('aa_is_staff_device');
+        localStorage.removeItem('aa_current_staff');
+      } catch {}
+    }
+
+      const searchParams = new URLSearchParams(window.location.search);
+      const urlSource = searchParams.get('src') || searchParams.get('source') || searchParams.get('utm_source');
+      const urlCamp = searchParams.get('camp') || searchParams.get('campaign') || searchParams.get('utm_campaign');
+      const urlMesa = searchParams.get('mesa');
+
+      // Clave de sesión: si viene con campaña/fuente específica, rastrear esa campaña por sesión
+      const sessionTrackKey = urlSource 
+        ? `aluna_visit_${urlSource}_${urlCamp || 'direct'}` 
+        : 'aluna_session_menu_visit';
+
+      const alreadyTracked = sessionStorage.getItem(sessionTrackKey);
+      if (!alreadyTracked) {
         trackAnalyticsEvent('menu_visit', {
           brandId: activeBrand.id,
           locationId: currentLocation?.id || (activeLocation?.brand_id === activeBrand.id ? activeLocation.id : null),
+          source: urlSource || undefined,
+          campaign: urlCamp || undefined,
+          mesa: urlMesa || undefined,
         });
-        localStorage.setItem('aluna_tracked_visit', 'true');
+        sessionStorage.setItem(sessionTrackKey, 'true');
       }
 
-      const mesa = new URLSearchParams(window.location.search).get('mesa');
-      if (mesa) {
-        const hasTrackedScan = localStorage.getItem('aluna_tracked_qr');
+      if (urlMesa) {
+        const hasTrackedScan = sessionStorage.getItem(`aluna_tracked_qr_${urlMesa}`);
         if (!hasTrackedScan) {
           trackAnalyticsEvent('qr_scan', {
             brandId: activeBrand.id,
             locationId: currentLocation?.id || (activeLocation?.brand_id === activeBrand.id ? activeLocation.id : null),
-            tableId: mesa,
-            qrTable: mesa,
+            tableId: urlMesa,
+            qrTable: urlMesa,
           });
-          localStorage.setItem('aluna_tracked_qr', 'true');
+          sessionStorage.setItem(`aluna_tracked_qr_${urlMesa}`, 'true');
         }
       }
     } else {
       setShowWelcome(false);
     }
   }, [brand_slug, isNewAdminPanel, isOnboardingView, orderTrackingId, driverOrderId, activeBrand, loadingBrand, isQr]);
+
+  // Heartbeat de interacción para registrar tiempo real en pantalla
+  useEffect(() => {
+    if (!isMenuView || !activeBrand?.id) return;
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        trackAnalyticsEvent('engagement_ping', {
+          brandId: activeBrand.id,
+          locationId: currentLocation?.id || (activeLocation?.brand_id === activeBrand.id ? activeLocation.id : null),
+        });
+      }
+    }, 45000);
+    return () => clearInterval(interval);
+  }, [isMenuView, activeBrand?.id, currentLocation?.id]);
 
   // ✅ Trigger Customer Search Modal for Waiters
   useEffect(() => {

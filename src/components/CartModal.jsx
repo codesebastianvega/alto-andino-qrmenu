@@ -637,6 +637,19 @@ export default function CartModal({ open, onClose }) {
     isCashAmountValid
   );
 
+  // Track cart_open in analytics
+  useEffect(() => {
+    if (open && activeBrandId) {
+      try {
+        trackAnalyticsEvent('cart_open', {
+          brandId: activeBrandId,
+          itemsCount: items?.length || 0,
+          total: finalTotal || 0,
+        });
+      } catch {}
+    }
+  }, [open, activeBrandId]);
+
   // Si estamos en POS y es manual (Takeaway/Delivery), forzamos el tipo
   useEffect(() => {
     const flowFromStorage = localStorage.getItem("aa_fulfillment_flow");

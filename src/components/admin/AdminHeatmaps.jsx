@@ -90,6 +90,21 @@ export default function AdminHeatmaps({
   });
 
   const [isClearing, setIsClearing] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefreshData = async () => {
+    if (typeof onRefresh === 'function') {
+      setIsRefreshing(true);
+      try {
+        await onRefresh();
+        toast.success('Métricas actualizadas en vivo');
+      } catch {
+        toast.error('No se pudieron recargar las métricas');
+      } finally {
+        setIsRefreshing(false);
+      }
+    }
+  };
 
   // URL base
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://aluna-qrmenu.vercel.app';
@@ -109,14 +124,28 @@ export default function AdminHeatmaps({
     const sessionDevices = new Map();
     const sessionWithCart = new Set();
     const sessionWithOrder = new Set();
-    const channelMap = {
-      volante_calle: { name: 'Volantes Calle', visits: 0, orders: 0 },
-      instagram_bio: { name: 'Instagram Bio', visits: 0, orders: 0 },
-      whatsapp: { name: 'WhatsApp', visits: 0, orders: 0 },
-      qr_mesa: { name: 'Mesas QR', visits: 0, orders: 0 },
-      direct: { name: 'Directo / Web', visits: 0, orders: 0 },
-      otros: { name: 'Otros', visits: 0, orders: 0 }
+    const sessionSources = new Map();
+
+    const KNOWN_PRESETS = {
+      whatsapp: { name: 'WhatsApp', icon: '💬' },
+      instagram_bio: { name: 'Instagram Bio', icon: '📸' },
+      facebook: { name: 'Facebook Ads', icon: '👥' },
+      tiktok: { name: 'TikTok', icon: '🎵' },
+      volante_calle: { name: 'Volantes Calle', icon: '📄' },
+      qr_mesa: { name: 'Mesas QR', icon: '🍽️' },
+      direct: { name: 'Directo / Web', icon: '🌐' }
     };
+
+    const channelMap = {};
+    Object.entries(KNOWN_PRESETS).forEach(([key, conf]) => {
+      channelMap[key] = {
+        name: conf.name,
+        icon: conf.icon,
+        visits: 0,
+        orders: 0,
+        isCustom: false
+      };
+    });
 
     let iphoneCount = 0;
     let androidCount = 0;
@@ -137,7 +166,7 @@ export default function AdminHeatmaps({
         s.count += 1;
       }
 
-      // 2. Dispositivos reales (desde el User-Agent exacto del navegador)
+      // 2. Dispositivos reales (desde el User-Agent exacto)
       if (!sessionDevices.has(ev.session_id)) {
         const ua = (ev.user_agent || '').toLowerCase();
         let deviceType = 'Otro';
@@ -155,13 +184,23 @@ export default function AdminHeatmaps({
         }
         sessionDevices.set(ev.session_id, deviceType);
 
-        // Atribución de canal
-        const src = ev.metadata?.source || (ev.metadata?.mesa ? 'qr_mesa' : 'direct');
-        if (channelMap[src]) {
-          channelMap[src].visits++;
-        } else {
-          channelMap.otros.visits++;
+        // Atribución dinámica de canal (sin forzar a otros)
+        const rawSrc = (ev.metadata?.source || (ev.metadata?.mesa ? 'qr_mesa' : 'direct')).toLowerCase().trim();
+        sessionSources.set(ev.session_id, rawSrc);
+
+        if (!channelMap[rawSrc]) {
+          const prettyName = rawSrc
+            .replace(/[_-]/g, ' ')
+            .replace(/\b\w/g, l => l.toUpperCase());
+          channelMap[rawSrc] = {
+            name: prettyName,
+            icon: '🎯',
+            visits: 0,
+            orders: 0,
+            isCustom: true
+          };
         }
+        channelMap[rawSrc].visits++;
       }
 
       // 3. Carritos y Pedidos estrictamente registrados
@@ -170,10 +209,24 @@ export default function AdminHeatmaps({
       }
       if (ev.event_name === 'order_completed') {
         sessionWithOrder.add(ev.session_id);
+        const sSrc = sessionSources.get(ev.session_id) || 'direct';
+        if (channelMap[sSrc]) {
+          channelMap[sSrc].orders++;
+        }
       }
     });
 
-    // Calcular duración promedio estrictamente real (sin números inventados)
+    // Atribuir órdenes que no se hayan cruzado por evento
+    if (sessionWithOrder.size === 0 && orders.length > 0) {
+      orders.forEach(ord => {
+        const ordSource = (ord.fulfillment_type === 'dine_in' && ord.restaurant_tables) ? 'qr_mesa' : 'direct';
+        if (channelMap[ordSource]) {
+          channelMap[ordSource].orders++;
+        }
+      });
+    }
+
+    // Calcular duración promedio estrictamente real
     let totalDurationSeconds = 0;
     let measurableSessions = 0;
     sessionTimes.forEach(({ min, max, count }) => {
@@ -182,7 +235,7 @@ export default function AdminHeatmaps({
         totalDurationSeconds += diffSec;
         measurableSessions++;
       } else if (count === 1) {
-        totalDurationSeconds += 10;
+        totalDurationSeconds += 20;
         measurableSessions++;
       }
     });
@@ -200,12 +253,17 @@ export default function AdminHeatmaps({
     const androidPct = totalDevices > 0 ? Math.round((androidCount / totalDevices) * 100) : 0;
     const desktopPct = totalDevices > 0 ? Math.round((desktopCount / totalDevices) * 100) : 0;
 
-    // Carritos estrictamente reales
+    // Carritos y Conversión estrictamente reales
     const totalSessions = sessionTimes.size || 0;
     const cartsCount = sessionWithCart.size;
     const ordersCount = Math.max(sessionWithOrder.size, orders.length);
     const abandonedCarts = Math.max(0, cartsCount - ordersCount);
     const abandonmentRate = cartsCount > 0 ? Math.round((abandonedCarts / cartsCount) * 100) : 0;
+
+    // Ordenar canales: primero los que tienen actividad real, luego los principales
+    const sortedChannels = Object.entries(channelMap)
+      .map(([k, v]) => ({ key: k, ...v }))
+      .sort((a, b) => (b.visits + b.orders * 5) - (a.visits + a.orders * 5));
 
     return {
       formattedDuration,
@@ -223,7 +281,7 @@ export default function AdminHeatmaps({
         abandonedCarts,
         abandonmentRate
       },
-      channels: Object.entries(channelMap).map(([k, v]) => ({ key: k, ...v }))
+      channels: sortedChannels
     };
   }, [events, orders]);
 
@@ -438,14 +496,25 @@ export default function AdminHeatmaps({
             </div>
           </div>
 
-          {/* Enlace al Módulo de Mesas y QRs */}
-          <div className="flex items-center gap-2">
+          {/* Botones de acción superior */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {typeof onRefresh === 'function' && (
+              <button
+                onClick={handleRefreshData}
+                disabled={isRefreshing}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 text-gray-800 text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer disabled:opacity-50"
+                title="Recargar métricas con los últimos eventos"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-emerald-600 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span>{isRefreshing ? 'Actualizando...' : 'Recargar en Vivo'}</span>
+              </button>
+            )}
             <button
               onClick={() => setShowQrDrawer(!showQrDrawer)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold transition-all cursor-pointer"
             >
               <QrCode className="w-3.5 h-3.5 text-gray-600" />
-              <span>{showQrDrawer ? 'Ocultar Creador' : 'Crear QR Volante'}</span>
+              <span>{showQrDrawer ? 'Ocultar Creador' : 'Crear Campaña / QR'}</span>
             </button>
             <a
               href="#admin"
@@ -539,12 +608,15 @@ export default function AdminHeatmaps({
 
               <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
                 <div className="md:col-span-8 space-y-3">
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {[
-                      { id: 'volante_calle', label: '📄 Volante Calle' },
-                      { id: 'instagram_bio', label: '📸 Instagram Bio' },
                       { id: 'whatsapp', label: '💬 WhatsApp' },
-                      { id: 'custom', label: '✨ Personalizado' }
+                      { id: 'instagram_bio', label: '📸 Instagram' },
+                      { id: 'facebook', label: '👥 Facebook Ads' },
+                      { id: 'tiktok', label: '🎵 TikTok' },
+                      { id: 'volante_calle', label: '📄 Volante' },
+                      { id: 'qr_mesa', label: '🍽️ Mesa QR' },
+                      { id: 'custom', label: '✨ Otra Campaña' }
                     ].map(ch => (
                       <button
                         key={ch.id}
@@ -561,13 +633,18 @@ export default function AdminHeatmaps({
                   </div>
 
                   {selectedChannel === 'custom' && (
-                    <input
-                      type="text"
-                      placeholder="Nombre de campaña (ej: volante_octubre)"
-                      value={customCampaignName}
-                      onChange={(e) => setCustomCampaignName(e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-gray-300 focus:outline-hidden"
-                    />
+                    <div className="space-y-1 animate-fade-in">
+                      <input
+                        type="text"
+                        placeholder="Escribe el nombre de tu campaña (ej: promo_almuerzo, volante_oficinas, influencer_juan)"
+                        value={customCampaignName}
+                        onChange={(e) => setCustomCampaignName(e.target.value)}
+                        className="w-full px-3.5 py-2 text-xs rounded-xl border border-amber-300 bg-amber-50/30 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-amber-500 font-medium"
+                      />
+                      <p className="text-[11px] text-amber-800">
+                        💡 Este nombre aparecerá directamente en tu tablero de atribución con sus visitas y ventas separadas.
+                      </p>
+                    </div>
                   )}
 
                   <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl border border-gray-200">
@@ -814,16 +891,49 @@ export default function AdminHeatmaps({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {behaviorMetrics.channels.map(ch => (
-              <div key={ch.key} className="p-3 rounded-xl bg-gray-50 border border-gray-100 space-y-1">
-                <p className="text-[11px] font-bold text-gray-700 truncate">{ch.name}</p>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-sm font-black text-gray-900">{ch.visits} visitas</span>
-                  <span className="text-[10px] font-bold text-emerald-600">{ch.orders} pedidos</span>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+            {behaviorMetrics.channels.map(ch => {
+              const hasActivity = ch.visits > 0 || ch.orders > 0;
+              const channelUrl = `${baseUrl}/${brandSlug}/?src=${encodeURIComponent(ch.key)}`;
+              return (
+                <div 
+                  key={ch.key} 
+                  className={`p-3 rounded-2xl border transition-all space-y-1.5 ${
+                    hasActivity 
+                      ? 'bg-white border-emerald-200/90 shadow-2xs' 
+                      : 'bg-gray-50/70 border-gray-100 opacity-70 hover:opacity-100'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-[11px] font-bold text-gray-800 truncate flex items-center gap-1" title={ch.name}>
+                      <span>{ch.icon || '🎯'}</span>
+                      <span className="truncate">{ch.name}</span>
+                    </p>
+                    {ch.key !== 'direct' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(channelUrl);
+                          toast.success(`Link de ${ch.name} copiado`);
+                        }}
+                        className="text-[10px] font-bold text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 px-1.5 py-0.5 rounded transition-all shrink-0 cursor-pointer"
+                        title="Copiar enlace directo de este canal"
+                      >
+                        Copiar
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-baseline justify-between pt-0.5 border-t border-gray-100">
+                    <span className="text-xs font-black text-gray-900">
+                      {ch.visits} {ch.visits === 1 ? 'visita' : 'visitas'}
+                    </span>
+                    <span className={`text-[10px] font-bold ${ch.orders > 0 ? 'text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-200' : 'text-gray-400'}`}>
+                      {ch.orders} {ch.orders === 1 ? 'pedido' : 'pedidos'}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <p className="text-[11px] text-gray-400">

@@ -5,6 +5,7 @@ import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { useCart } from "@/context/CartContext";
 import { useMenuData } from "@/context/MenuDataContext";
 import { formatCOP } from "@/utils/money";
+import { trackAnalyticsEvent } from "@/utils/analytics";
 import { toast } from "./Toast";
 import { getProductImage } from "@/utils/images";
 import AAImage from "@/components/ui/AAImage";
@@ -45,6 +46,19 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
       scrollContainerRef.current.scrollTo({ top: 0, behavior: 'instant' });
     }
   }, [productId, isOpen]);
+
+  // Track product view in analytics
+  useEffect(() => {
+    if (isOpen && product?.id) {
+      try {
+        trackAnalyticsEvent('product_view', {
+          brandId: product.brand_id,
+          productId: product.id,
+          productName: product.name,
+        });
+      } catch {}
+    }
+  }, [isOpen, product?.id]);
 
   // Keyboard / focus trap
   useEffect(() => {

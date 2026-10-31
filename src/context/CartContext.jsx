@@ -1,3 +1,4 @@
+import { trackAnalyticsEvent } from "../utils/analytics";
 // src/context/CartContext.jsx
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
 import { useBrand } from "./BrandContext";
@@ -161,6 +162,14 @@ export function CartProvider({ children }) {
     const item = normalizeItem(payload);
     setItems((prev) => normalize([...asArray(prev), { qty: 1, ...item }]));
     setTimeout(() => toastEvent(`Añadido: ${item?.name || "Producto"}`), 0);
+    try {
+      trackAnalyticsEvent('cart_add', {
+        brandId: item?.brand_id || currentBrand?.id,
+        productId: item?.id || item?.productId,
+        productName: item?.name,
+        price: item?.price,
+      });
+    } catch {}
   }
 
   function removeAt(index) {

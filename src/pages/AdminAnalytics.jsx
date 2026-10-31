@@ -2941,6 +2941,7 @@ export default function AdminAnalytics() {
                     orders={data.orders} 
                     events={data.events}
                     formatCurrency={formatCurrency}
+                    onRefresh={fetchData}
                   />
                 )}
               </AnalyticsTabBoundary>

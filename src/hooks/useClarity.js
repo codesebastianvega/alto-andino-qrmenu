@@ -13,10 +13,16 @@ export function useClarity({ brand, currentLocation }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // 1. Detectar si la URL trae parámetro de exclusión para personal/dueño
+    // 1. Detectar si la URL trae parámetro de exclusión o inclusión
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get('exclude_me') === 'true' || searchParams.get('internal') === 'true') {
       try { localStorage.setItem('aa_is_staff_device', 'true'); } catch {}
+    }
+    if (searchParams.get('include_me') === 'true' || searchParams.get('test_visitor') === 'true') {
+      try {
+        localStorage.removeItem('aa_is_staff_device');
+        localStorage.removeItem('aa_current_staff');
+      } catch {}
     }
 
     // 2. Si entra al panel de administración o tiene sesión de admin, marcar como dispositivo de equipo

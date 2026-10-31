@@ -47,10 +47,17 @@ export const trackAnalyticsEvent = async (eventName, metadata = {}) => {
 
   // Dispositivos de administración y equipo interno no se rastrean
   if (typeof window !== 'undefined') {
-    let isStaffDevice = (typeof localStorage !== 'undefined' && localStorage.getItem('aa_is_staff_device') === 'true') ||
-                        (typeof localStorage !== 'undefined' && localStorage.getItem('aa_current_staff') !== null) ||
-                        window.location.hash.includes('admin') ||
-                        window.location.pathname.includes('/admin');
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('include_me') === 'true' || searchParams.get('test_visitor') === 'true') {
+      try {
+        localStorage.removeItem('aa_is_staff_device');
+        localStorage.removeItem('aa_current_staff');
+      } catch {}
+    } else {
+      let isStaffDevice = (typeof localStorage !== 'undefined' && localStorage.getItem('aa_is_staff_device') === 'true') ||
+                          (typeof localStorage !== 'undefined' && localStorage.getItem('aa_current_staff') !== null) ||
+                          window.location.hash.includes('admin') ||
+                          window.location.pathname.includes('/admin');
 
     if (!isStaffDevice && typeof localStorage !== 'undefined') {
       try {
@@ -70,6 +77,7 @@ export const trackAnalyticsEvent = async (eventName, metadata = {}) => {
 
     if (isStaffDevice) {
       return;
+    }
     }
   }
 
