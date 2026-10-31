@@ -320,8 +320,8 @@ export const MenuDataProvider = ({ children }) => {
         .filter(opt => opt.is_active !== false)
         .map(opt => {
           let optName = opt.name;
-          if (opt.id === 'b0000b22-0000-4000-a000-000000000002' || opt.name?.toLowerCase().includes('sopita de tomate') || opt.name?.toLowerCase().includes('sopa de tomate') || opt.name?.toLowerCase().includes('ramen')) {
-            optName = '🥣 Sopita del Día (16 oz)';
+          if (opt.name?.toLowerCase().includes('sopita de tomate') || opt.name?.toLowerCase().includes('sopa de tomate') || opt.name?.toLowerCase().includes('ramen')) {
+            optName = '🥣 Crema de Espinaca casera (16 oz)';
           }
           return {
             ...opt,

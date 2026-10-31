@@ -44,64 +44,215 @@ export default async function handler(req, res) {
       })
       .eq('id', 'b0000b12-0000-4000-a000-000000000002');
 
-    // 2. CREAR BIRRIA BENTO COMO UN PRODUCTO TOTALMENTE NUEVO E INDEPENDIENTE
-    const birriaId = 'b0000b19-0000-4000-a000-000000000019';
-    const { data: existingBirria } = await supabase
-      .from('products')
-      .select('id')
-      .eq('id', birriaId)
-      .maybeSingle();
+    // 2. CREAR / ACTUALIZAR GRUPOS DE MODIFICADORES PARA EL BENTO HAWAIANO
+    const hawaianoModifierGroups = [
+      {
+        id: 'b0000h01-0000-4000-a000-000000000001',
+        brand_id: brandId,
+        name: '🍚 1. Elige tu Base',
+        description: 'Arroz blanco suelto, 50/50 o 100% verdes',
+        is_required: true,
+        min_select: 1,
+        max_select: 1,
+        allow_quantity: false
+      },
+      {
+        id: 'b0000h01-0000-4000-a000-000000000002',
+        brand_id: brandId,
+        name: '🍗 2. Elige tu Proteína',
+        description: 'Pollo salteado jugoso o Cerdo salteado en su punto',
+        is_required: true,
+        min_select: 1,
+        max_select: 1,
+        allow_quantity: false
+      },
+      {
+        id: 'b0000h01-0000-4000-a000-000000000003',
+        brand_id: brandId,
+        name: '🍍 3. Tu Toque Tropical',
+        description: 'Piña fresca o Mango dulce en cubos',
+        is_required: true,
+        min_select: 1,
+        max_select: 1,
+        allow_quantity: false
+      },
+      {
+        id: 'b0000h01-0000-4000-a000-000000000004',
+        brand_id: brandId,
+        name: '🥑 4. El Infaltable Cremoso',
+        description: 'Aguacate fresco en abanico o Guacamole casero',
+        is_required: true,
+        min_select: 1,
+        max_select: 1,
+        allow_quantity: false
+      }
+    ];
 
-    const birriaData = {
-      id: birriaId,
+    for (const group of hawaianoModifierGroups) {
+      await supabase.from('modifier_groups').upsert(group, { onConflict: 'id' });
+    }
+
+    // 3. OPCIONES DE MODIFICADORES PARA EL BENTO HAWAIANO
+    const hawaianoOptions = [
+      // Bases
+      {
+        id: 'b0000h02-0001-4000-a000-000000000001',
+        group_id: 'b0000h01-0000-4000-a000-000000000001',
+        name: '🍚 Arroz blanco suelto',
+        price: 0,
+        sort_order: 1,
+        is_active: true,
+        stock_status: 'in'
+      },
+      {
+        id: 'b0000h02-0001-4000-a000-000000000002',
+        group_id: 'b0000h01-0000-4000-a000-000000000001',
+        name: '🥗 50/50 (Mitad arroz y mitad mix de lechugas)',
+        price: 0,
+        sort_order: 2,
+        is_active: true,
+        stock_status: 'in'
+      },
+      {
+        id: 'b0000h02-0001-4000-a000-000000000003',
+        group_id: 'b0000h01-0000-4000-a000-000000000001',
+        name: '🥬 100% Base de verdes (Mix de lechugas)',
+        price: 0,
+        sort_order: 3,
+        is_active: true,
+        stock_status: 'in'
+      },
+      // Proteínas
+      {
+        id: 'b0000h02-0002-4000-a000-000000000001',
+        group_id: 'b0000h01-0000-4000-a000-000000000002',
+        name: '🍗 Pollo salteado jugoso',
+        price: 0,
+        sort_order: 1,
+        is_active: true,
+        stock_status: 'in'
+      },
+      {
+        id: 'b0000h02-0002-4000-a000-000000000002',
+        group_id: 'b0000h01-0000-4000-a000-000000000002',
+        name: '🥩 Cerdo salteado en su punto',
+        price: 0,
+        sort_order: 2,
+        is_active: true,
+        stock_status: 'in'
+      },
+      // Tropical
+      {
+        id: 'b0000h02-0003-4000-a000-000000000001',
+        group_id: 'b0000h01-0000-4000-a000-000000000003',
+        name: '🍍 Piña fresca en cubos',
+        price: 0,
+        sort_order: 1,
+        is_active: true,
+        stock_status: 'in'
+      },
+      {
+        id: 'b0000h02-0003-4000-a000-000000000002',
+        group_id: 'b0000h01-0000-4000-a000-000000000003',
+        name: '🥭 Mango dulce en cubos',
+        price: 0,
+        sort_order: 2,
+        is_active: true,
+        stock_status: 'in'
+      },
+      // Cremoso
+      {
+        id: 'b0000h02-0004-4000-a000-000000000001',
+        group_id: 'b0000h01-0000-4000-a000-000000000004',
+        name: '🥑 Aguacate fresco en abanico',
+        price: 0,
+        sort_order: 1,
+        is_active: true,
+        stock_status: 'in'
+      },
+      {
+        id: 'b0000h02-0004-4000-a000-000000000002',
+        group_id: 'b0000h01-0000-4000-a000-000000000004',
+        name: '🥑 Guacamole casero',
+        price: 0,
+        sort_order: 2,
+        is_active: true,
+        stock_status: 'in'
+      }
+    ];
+
+    for (const opt of hawaianoOptions) {
+      await supabase.from('modifier_options').upsert(opt, { onConflict: 'id' });
+    }
+
+    // 4. ACTUALIZAR MODIFICADOR DE SOPA INCLUIDA: "🥣 Crema de Espinaca casera (16 oz)"
+    await supabase
+      .from('modifier_options')
+      .update({
+        name: '🥣 Crema de Espinaca casera (16 oz)'
+      })
+      .eq('id', 'b0000b22-0000-4000-a000-000000000002');
+
+    await supabase
+      .from('modifier_groups')
+      .update({
+        description: 'Crema de Espinaca casera (16 oz) o Fruta fresca'
+      })
+      .eq('id', 'b0000b20-0000-4000-a000-000000000002');
+
+    // 5. CREAR / ACTUALIZAR BENTO HAWAIANO (ESPECIAL DE HOY SÁBADO)
+    const hawaianoId = 'b0000b19-0000-4000-a000-000000000020';
+    const hawaianoData = {
+      id: hawaianoId,
       brand_id: brandId,
       category_id: 'b0000c01-0000-4000-a000-000000000001',
-      name: 'Birria Bento (Especial del Día)',
+      name: 'Bento Hawaiano (Ármalo a tu gusto)',
       price: 19000,
-      description: 'Base de arroz blanco con jugosa carne desmechada en salsa de birria, picadillo fresco de cebolla y cilantro, pimentón en juliana y totopos crocantes.\n\n🥣 Todo almuerzo incluye: Sopita del Día (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
-      image_url: `${baseUrl}/brand/boku-birria-bento.webp`,
+      description: 'Una explosión de frescura con ingredientes en su punto:\n\n1. Elige tu base: Arroz blanco suelto, 50/50 o 100% verdes. 🥬🍚\n2. Elige tu proteína: Pollo salteado jugoso 🍗 o Cerdo salteado en su punto 🥩.\n3. Tus toppings frescos: Tomates cherry dulces, pepino fresco en rodajas, bastones de zanahoria, tu toque tropical a elección (piña o mango) y el infaltable cremoso (aguacate en abanico o guacamole). 🥑🥭\n\n🥣 ¡Viene en combo completo! Incluye Crema de Espinaca casera (16 oz) o Fruta + 🥤 Jugo del Día de la Casa (5 oz).\n\n⏰ Disponible de 11:00 AM a 5:00 PM.',
+      image_url: `${baseUrl}/brand/boku-bento-hawaiano.jpg`,
       is_active: true,
       stock_status: 'in',
       subcategory: 'El Bento del Día',
-      sort_order: 2,
-      tags: ['Proteico', 'bento', 'birria'],
+      sort_order: 1,
+      tags: ['Fresco', 'Proteico', 'bento', 'hawaiano'],
       modifier_groups: [
-        'b0000b20-0000-4000-a000-000000000002', // Sopita / Fruta
-        'b0000b20-0000-4000-a000-000000000001', // Jugo del Día
-        'b0000c40-0000-4000-a000-000000000002'  // Adiciones
+        'b0000h01-0000-4000-a000-000000000001', // Base
+        'b0000h01-0000-4000-a000-000000000002', // Proteína
+        'b0000h01-0000-4000-a000-000000000003', // Toque Tropical
+        'b0000h01-0000-4000-a000-000000000004', // Infaltable Cremoso
+        'b0000b20-0000-4000-a000-000000000002', // Entrada Incluida (Crema de Espinaca / Fruta)
+        'b0000b20-0000-4000-a000-000000000001', // Bebida de la Casa Incluida
+        'b0000c40-0000-4000-a000-000000000002'  // Adiciones Opcionales
       ]
     };
 
-    if (existingBirria) {
-      await supabase.from('products').update(birriaData).eq('id', birriaId);
-    } else {
-      await supabase.from('products').insert([birriaData]);
-    }
+    await supabase.from('products').upsert(hawaianoData, { onConflict: 'id' });
 
-    // 3. ASEGURAR QUE BENTO MESTIZO ESTÉ PERFECTO
+    // 6. ACTUALIZAR BIRRIA BENTO (PASARLO A SEGUNDO PLANO O INACTIVO PARA HOY)
     await supabase
       .from('products')
       .update({
-        name: 'Bento Mestizo (Especial del Día)',
-        price: 19000,
-        description: 'Base de arroz blanco, champiñones al ajillo, brócoli al vapor, tomates cherry y ensalada criolla de remolacha y zanahoria.\n\n1. Tu proteína: Pollo al Curry Dorado o Cerdo Teriyaki.\n2. Tu principio: Garbanzos Caseros o Maduritos Melosos en Panela.\n\n🥣 Todo almuerzo incluye: Sopita del Día (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
-        image_url: `${baseUrl}/brand/boku-bento-mestizo.webp`,
-        is_active: true,
-        stock_status: 'in',
-        subcategory: 'El Bento del Día',
-        sort_order: 1
+        is_active: false,
+        stock_status: 'out',
+        sort_order: 10
       })
-      .eq('id', 'b0000b14-0000-4000-a000-000000000004');
+      .eq('id', 'b0000b19-0000-4000-a000-000000000019');
 
-    // 4. SINCRONIZAR LOCATION STATUS
+    // 7. SINCRONIZAR LOCATION PRODUCT STATUS
     await supabase
       .from('location_product_status')
       .upsert([
         {
           location_id: locationId,
-          product_id: birriaId,
+          product_id: hawaianoId,
           is_active: true,
           stock_status: 'in'
+        },
+        {
+          location_id: locationId,
+          product_id: 'b0000b19-0000-4000-a000-000000000019',
+          is_active: false,
+          stock_status: 'out'
         },
         {
           location_id: locationId,
@@ -117,49 +268,23 @@ export default async function handler(req, res) {
         }
       ], { onConflict: 'location_id,product_id' });
 
-    // 5. ACTUALIZAR MODIFICADORES DE SOPA: "Sopita del Día (16 oz)"
-    await supabase
-      .from('modifier_options')
-      .update({
-        name: '🥣 Sopita del Día (16 oz)'
-      })
-      .eq('id', 'b0000b22-0000-4000-a000-000000000002');
-
-    await supabase
-      .from('modifier_groups')
-      .update({
-        description: 'Sopita del Día (16 oz) o Fruta Fresca'
-      })
-      .eq('id', 'b0000b20-0000-4000-a000-000000000002');
-
-    // 6. ACTUALIZAR HOME SETTINGS (PORTADA, HERO SUBTITLE Y DESTACADOS)
+    // 8. ACTUALIZAR HOME SETTINGS (PORTADA, HERO SUBTITLE Y DESTACADOS)
     const homeUpdate = {
-      hero_h1: "🔥 ¡El almuerzo de hoy está listo en BOKU BENTO! 🔥",
-      hero_subtitle: "Dos platos contundentes, frescos y con toda la sazón de la casa por $19.000 c/u: Bento Mestizo (Pollo al Curry Dorado o Cerdo Teriyaki con Champiñones y Brócoli) o Birria Bento (Carne desmechada en salsa de birria con totopos y picadillo). 🥣 Todo almuerzo incluye: Sopita del Día (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).",
+      hero_h1: "🍍 ¡Hoy el almuerzo en BOKU BENTO trae toda la frescura! 🍍",
+      hero_subtitle: "Bento Hawaiano (Ármalo a tu gusto): Elige tu base (Arroz blanco, 50/50 o mix de verdes), tu proteína (Pollo o Cerdo salteado), tus toppings frescos con toque tropical (Piña o Mango) y cremoso (Aguacate o Guacamole) por solo $19.000. 🥣 Incluye Crema de Espinaca casera (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).",
       hero_images: [
         {
-          img: `${baseUrl}/brand/boku-bento-mestizo.webp`,
-          name: "Bento Mestizo (Especial del Día)",
-          price: 19000
-        },
-        {
-          img: `${baseUrl}/brand/boku-birria-bento.webp`,
-          name: "Birria Bento (Especial del Día)",
+          img: `${baseUrl}/brand/boku-bento-hawaiano.jpg`,
+          name: "Bento Hawaiano (Ármalo a tu gusto)",
           price: 19000
         }
       ],
       featured_items: [
         {
-          img: `${baseUrl}/brand/boku-bento-mestizo.webp`,
-          name: "Bento Mestizo (Especial del Día)",
+          img: `${baseUrl}/brand/boku-bento-hawaiano.jpg`,
+          name: "Bento Hawaiano (Ármalo a tu gusto)",
           price: 19000,
-          product_id: "b0000b14-0000-4000-a000-000000000004"
-        },
-        {
-          img: `${baseUrl}/brand/boku-birria-bento.webp`,
-          name: "Birria Bento (Especial del Día)",
-          price: 19000,
-          product_id: birriaId
+          product_id: hawaianoId
         }
       ],
       updated_at: new Date().toISOString()
@@ -175,7 +300,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: homeErr.message });
     }
 
-    // 7. RESTAURAR TARIFA DE DOMICILIO EN LA SEDE
+    // 9. CONFIGURAR TARIFA DE DOMICILIO EN LA SEDE ($4.000)
     const parsedFee = req.query?.delivery_fee !== undefined 
       ? Number(req.query.delivery_fee) 
       : (req.query?.fee !== undefined ? Number(req.query.fee) : 4000);
@@ -196,7 +321,7 @@ export default async function handler(req, res) {
       console.error('Error updating location delivery fee:', locErr);
     }
 
-    // 8. CONFIGURAR MÉTODOS DE PAGO OFICIALES (NEQUI, LLAVE BRE-B 3244402642, EFECTIVO, DATÁFONO)
+    // 10. CONFIGURAR MÉTODOS DE PAGO OFICIALES (NEQUI, LLAVE BRE-B 3244402642, EFECTIVO, DATÁFONO)
     const methodsToUpsert = [
       {
         brand_id: brandId,
@@ -270,12 +395,12 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       hasServiceKey: Boolean(SUPABASE_SERVICE_KEY),
-      pmResult,
-      pmError,
+      hawaianoId,
+      modifierGroups: hawaianoModifierGroups.map(g => g.name),
       delivery_fee: parsedFee,
       nequi: '3244402642',
       bre_b_key: '3244402642',
-      message: `Menú del día actualizado: Bento Mestizo y Birria Bento, portada, tarifa de domicilio ($${parsedFee}) y métodos de pago (Nequi / Llave Bre-B: 3244402642) configurados.`
+      message: `¡Bento Hawaiano (Ármalo a tu gusto) activado exitosamente para hoy sábado! Portada, modificadores (Base, Proteína, Tropical, Cremoso, Crema de Espinaca / Fruta, Bebida), tarifa de domicilio ($${parsedFee}) y pagos Nequi/Bre-B (3244402642) sincronizados.`
     });
   } catch (err) {
     console.error('Error:', err);
