@@ -928,8 +928,16 @@ export default function AdminOrders() {
                <div className="divide-y divide-gray-50">
                  {orders.filter(o => o.status === 'delivered').length > 0 ? (
                    orders.filter(o => o.status === 'delivered').map(order => (
-                     <div key={order.id} className="px-6 py-5 flex items-center gap-6 hover:bg-gray-50/80 transition-colors group">
-                       <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0 group-hover:scale-110 transition-transform">
+                     <div 
+                       key={order.id} 
+                       onClick={() => {
+                         setShowDeliveredHistory(false);
+                         setSelectedOrder(order);
+                       }}
+                       className="px-6 py-5 flex items-start gap-4 hover:bg-gray-50/80 transition-colors group cursor-pointer border-b border-gray-100/70 last:border-b-0"
+                       title="Haz clic para ver el detalle completo o ticket"
+                     >
+                       <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0 group-hover:scale-105 transition-transform mt-0.5">
                          <Icon icon="heroicons:truck" className="text-xl" />
                        </div>
                        <div className="flex-1 min-w-0">
@@ -938,20 +946,66 @@ export default function AdminOrders() {
                              {order.customer_name || 'Sin nombre'}
                              <span className="text-[9px] font-mono text-gray-300 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100/50">#{order.id.slice(0,4).toUpperCase()}</span>
                            </p>
-                           <p className="text-[10px] font-black text-gray-400 bg-white px-2 py-1 rounded shadow-sm border border-gray-50">
+                           <p className="text-[10px] font-black text-gray-400 bg-white px-2 py-1 rounded shadow-xs border border-gray-100">
                              {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                            </p>
                          </div>
                          <div className="flex items-center gap-4 text-xs text-gray-500">
                             <span className="font-bold text-gray-800">${Number(order.total_amount).toLocaleString()}</span>
                             <span className="text-gray-300">•</span>
-                            <span>{order.order_items?.length || 0} productos</span>
+                            <span className="font-semibold text-gray-700">{order.order_items?.length || 0} {order.order_items?.length === 1 ? 'producto' : 'productos'}</span>
                             <span className="text-gray-300">•</span>
                             <span className="capitalize">{order.fulfillment_type?.replace('_', ' ')}</span>
                          </div>
+
+                         {/* Lista detallada de productos pedidos */}
+                         <div className="mt-3 space-y-1.5">
+                           {order.order_items && order.order_items.length > 0 ? (
+                             order.order_items.map((item, idx) => (
+                               <div key={item.id || idx} className="text-xs text-gray-700 bg-gray-50/90 p-2.5 rounded-xl border border-gray-100 space-y-1">
+                                 <div className="flex items-center justify-between gap-2">
+                                   <div className="flex items-center gap-2 min-w-0">
+                                     <span className="font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-lg text-[11px] shrink-0 border border-emerald-200/80">
+                                       {item.quantity}x
+                                     </span>
+                                     <span className="font-bold text-gray-900 truncate text-[13px]">
+                                       {item.products?.name || item.name || 'Producto'}
+                                     </span>
+                                   </div>
+                                   <span className="font-black text-gray-800 text-xs shrink-0">
+                                     ${(Number(item.unit_price || 0) * (item.quantity || 1)).toLocaleString()}
+                                   </span>
+                                 </div>
+                                 {item.modifiers && Object.keys(item.modifiers).length > 0 && (
+                                   <div className="flex flex-wrap gap-1 pl-7">
+                                     {Object.entries(item.modifiers).map(([k, v]) => {
+                                       const displayVal = Array.isArray(v) 
+                                         ? v.join(', ') 
+                                         : (typeof v === 'object' && v ? (v.name || JSON.stringify(v)) : String(v));
+                                       return (
+                                         <span key={k} className="text-[10px] bg-white text-gray-600 px-2 py-0.5 rounded-md font-semibold border border-gray-200 shadow-2xs">
+                                           <span className="text-gray-400 font-bold">{translateGroup(k)}:</span> {displayVal}
+                                         </span>
+                                       );
+                                     })}
+                                   </div>
+                                 )}
+                                 {item.notes && (
+                                   <p className="text-[10px] text-amber-800 bg-amber-50/80 border border-amber-200/60 px-2 py-1 rounded-md italic font-medium ml-7 flex items-center gap-1.5">
+                                     <span>📝</span>
+                                     <span>"{item.notes}"</span>
+                                   </p>
+                                 )}
+                               </div>
+                             ))
+                           ) : (
+                             <p className="text-[11px] text-gray-400 italic">Sin detalle de productos</p>
+                           )}
+                         </div>
                        </div>
-                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Icon icon="heroicons:check-circle" className="text-emerald-500 text-xl" />
+                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center text-emerald-600 gap-1 text-xs font-bold shrink-0 self-center">
+                          <span>Ver</span>
+                          <Icon icon="heroicons:chevron-right" className="text-base" />
                        </div>
                      </div>
                    ))
@@ -994,8 +1048,16 @@ export default function AdminOrders() {
                <div className="divide-y divide-gray-50">
                  {orders.filter(o => o.status === 'cancelled').length > 0 ? (
                    orders.filter(o => o.status === 'cancelled').map(order => (
-                     <div key={order.id} className="px-6 py-5 flex items-center gap-6 hover:bg-rose-50/30 transition-colors group">
-                       <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 flex-shrink-0 group-hover:scale-110 transition-transform">
+                     <div 
+                       key={order.id} 
+                       onClick={() => {
+                         setShowCancelledHistory(false);
+                         setSelectedOrder(order);
+                       }}
+                       className="px-6 py-5 flex items-start gap-4 hover:bg-rose-50/30 transition-colors group cursor-pointer border-b border-rose-100/50 last:border-b-0"
+                       title="Haz clic para ver el detalle de la orden cancelada"
+                     >
+                       <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 flex-shrink-0 group-hover:scale-105 transition-transform mt-0.5">
                          <Icon icon="heroicons:x-circle" className="text-xl" />
                        </div>
                        <div className="flex-1 min-w-0">
@@ -1004,7 +1066,7 @@ export default function AdminOrders() {
                              {order.customer_name || 'Sin nombre'}
                              <span className="text-[9px] font-mono text-rose-300 bg-rose-50/50 px-1.5 py-0.5 rounded border border-rose-100/50">#{order.id.slice(0,4).toUpperCase()}</span>
                            </p>
-                           <p className="text-[10px] font-black text-gray-400 bg-white px-2 py-1 rounded shadow-sm border border-gray-50">
+                           <p className="text-[10px] font-black text-gray-400 bg-white px-2 py-1 rounded shadow-xs border border-gray-100">
                              {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                            </p>
                          </div>
@@ -1016,6 +1078,53 @@ export default function AdminOrders() {
                                 <span>{order.order_items?.length || 0} ítems</span>
                             </div>
                          </div>
+
+                         {/* Lista detallada de productos pedidos en orden cancelada */}
+                         <div className="mt-3 space-y-1.5">
+                           {order.order_items && order.order_items.length > 0 ? (
+                             order.order_items.map((item, idx) => (
+                               <div key={item.id || idx} className="text-xs text-gray-700 bg-rose-50/40 p-2.5 rounded-xl border border-rose-100/60 space-y-1">
+                                 <div className="flex items-center justify-between gap-2">
+                                   <div className="flex items-center gap-2 min-w-0">
+                                     <span className="font-black text-rose-800 bg-rose-100/80 px-2 py-0.5 rounded-lg text-[11px] shrink-0 border border-rose-200/80">
+                                       {item.quantity}x
+                                     </span>
+                                     <span className="font-bold text-gray-900 truncate text-[13px]">
+                                       {item.products?.name || item.name || 'Producto'}
+                                     </span>
+                                   </div>
+                                   <span className="font-black text-gray-800 text-xs shrink-0">
+                                     ${(Number(item.unit_price || 0) * (item.quantity || 1)).toLocaleString()}
+                                   </span>
+                                 </div>
+                                 {item.modifiers && Object.keys(item.modifiers).length > 0 && (
+                                   <div className="flex flex-wrap gap-1 pl-7">
+                                     {Object.entries(item.modifiers).map(([k, v]) => {
+                                       const displayVal = Array.isArray(v) 
+                                         ? v.join(', ') 
+                                         : (typeof v === 'object' && v ? (v.name || JSON.stringify(v)) : String(v));
+                                       return (
+                                         <span key={k} className="text-[10px] bg-white text-gray-600 px-2 py-0.5 rounded-md font-semibold border border-gray-200 shadow-2xs">
+                                           <span className="text-gray-400 font-bold">{translateGroup(k)}:</span> {displayVal}
+                                         </span>
+                                       );
+                                     })}
+                                   </div>
+                                 )}
+                                 {item.notes && (
+                                   <p className="text-[10px] text-amber-800 bg-amber-50/80 border border-amber-200/60 px-2 py-1 rounded-md italic font-medium ml-7 flex items-center gap-1.5">
+                                     <span>📝</span>
+                                     <span>"{item.notes}"</span>
+                                   </p>
+                                 )}
+                               </div>
+                             ))
+                           ) : null}
+                         </div>
+                       </div>
+                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center text-rose-600 gap-1 text-xs font-bold shrink-0 self-center">
+                          <span>Ver</span>
+                          <Icon icon="heroicons:chevron-right" className="text-base" />
                        </div>
                      </div>
                    ))
