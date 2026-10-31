@@ -132,6 +132,7 @@ export default function AdminOrders() {
   const [isMergeConfirmOpen, setIsMergeConfirmOpen] = useState(false);
   const [showCancelledHistory, setShowCancelledHistory] = useState(false);
   const [showDeliveredHistory, setShowDeliveredHistory] = useState(false);
+  const [historyDetailOrder, setHistoryDetailOrder] = useState(null);
   const [mobileActiveStatus, setMobileActiveStatus] = useState('new');
   const [searchQuery, setSearchQuery] = useState('');
   const [additionOrder, setAdditionOrder] = useState(null);
@@ -145,6 +146,7 @@ export default function AdminOrders() {
   useAdminModalBack(Boolean(additionOrder), () => setAdditionOrder(null));
   useAdminModalBack(showCancelledHistory, () => setShowCancelledHistory(false));
   useAdminModalBack(showDeliveredHistory, () => setShowDeliveredHistory(false));
+  useAdminModalBack(Boolean(historyDetailOrder), () => setHistoryDetailOrder(null));
 
   // Escuchar eventos de la alarma continua para actualizar UI reactiva
   useEffect(() => {
@@ -928,89 +930,47 @@ export default function AdminOrders() {
                <div className="divide-y divide-gray-50">
                  {orders.filter(o => o.status === 'delivered').length > 0 ? (
                    orders.filter(o => o.status === 'delivered').map(order => (
-                     <div 
-                       key={order.id} 
-                       onClick={() => {
-                         setShowDeliveredHistory(false);
-                         setSelectedOrder(order);
-                       }}
-                       className="px-6 py-5 flex items-start gap-4 hover:bg-gray-50/80 transition-colors group cursor-pointer border-b border-gray-100/70 last:border-b-0"
-                       title="Haz clic para ver el detalle completo o ticket"
-                     >
-                       <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0 group-hover:scale-105 transition-transform mt-0.5">
-                         <Icon icon="heroicons:truck" className="text-xl" />
-                       </div>
-                       <div className="flex-1 min-w-0">
-                         <div className="flex justify-between items-start mb-0.5">
-                           <p className="font-black text-gray-900 text-base flex items-center gap-3">
-                             {order.customer_name || 'Sin nombre'}
-                             <span className="text-[9px] font-mono text-gray-300 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100/50">#{order.id.slice(0,4).toUpperCase()}</span>
-                           </p>
-                           <p className="text-[10px] font-black text-gray-400 bg-white px-2 py-1 rounded shadow-xs border border-gray-100">
-                             {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                           </p>
-                         </div>
-                         <div className="flex items-center gap-4 text-xs text-gray-500">
-                            <span className="font-bold text-gray-800">${Number(order.total_amount).toLocaleString()}</span>
-                            <span className="text-gray-300">•</span>
-                            <span className="font-semibold text-gray-700">{order.order_items?.length || 0} {order.order_items?.length === 1 ? 'producto' : 'productos'}</span>
-                            <span className="text-gray-300">•</span>
-                            <span className="capitalize">{order.fulfillment_type?.replace('_', ' ')}</span>
-                         </div>
+                      <div 
+                        key={order.id} 
+                        onClick={() => setHistoryDetailOrder(order)}
+                        className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-gray-50/90 transition-all group cursor-pointer border-b border-gray-100/70 last:border-b-0"
+                        title="Haz clic para ver el detalle del pedido"
+                      >
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-11 h-11 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0 group-hover:scale-105 transition-transform">
+                            <Icon icon="heroicons:truck" className="text-xl" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <p className="font-black text-gray-900 text-sm truncate">
+                                {order.customer_name || 'Sin nombre'}
+                              </p>
+                              <span className="text-[9px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200/50 shrink-0">
+                                #{order.id.slice(0,4).toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2.5 text-xs text-gray-500">
+                               <span className="font-extrabold text-gray-900">${Number(order.total_amount).toLocaleString()}</span>
+                               <span className="text-gray-300">•</span>
+                               <span className="font-medium text-gray-700">{order.order_items?.length || 0} {order.order_items?.length === 1 ? 'producto' : 'productos'}</span>
+                               <span className="text-gray-300">•</span>
+                               <span className="capitalize">{order.fulfillment_type?.replace('_', ' ')}</span>
+                            </div>
+                          </div>
+                        </div>
 
-                         {/* Lista detallada de productos pedidos */}
-                         <div className="mt-3 space-y-1.5">
-                           {order.order_items && order.order_items.length > 0 ? (
-                             order.order_items.map((item, idx) => (
-                               <div key={item.id || idx} className="text-xs text-gray-700 bg-gray-50/90 p-2.5 rounded-xl border border-gray-100 space-y-1">
-                                 <div className="flex items-center justify-between gap-2">
-                                   <div className="flex items-center gap-2 min-w-0">
-                                     <span className="font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-lg text-[11px] shrink-0 border border-emerald-200/80">
-                                       {item.quantity}x
-                                     </span>
-                                     <span className="font-bold text-gray-900 truncate text-[13px]">
-                                       {item.products?.name || item.name || 'Producto'}
-                                     </span>
-                                   </div>
-                                   <span className="font-black text-gray-800 text-xs shrink-0">
-                                     ${(Number(item.unit_price || 0) * (item.quantity || 1)).toLocaleString()}
-                                   </span>
-                                 </div>
-                                 {item.modifiers && Object.keys(item.modifiers).length > 0 && (
-                                   <div className="flex flex-wrap gap-1 pl-7">
-                                     {Object.entries(item.modifiers).map(([k, v]) => {
-                                       const displayVal = Array.isArray(v) 
-                                         ? v.join(', ') 
-                                         : (typeof v === 'object' && v ? (v.name || JSON.stringify(v)) : String(v));
-                                       return (
-                                         <span key={k} className="text-[10px] bg-white text-gray-600 px-2 py-0.5 rounded-md font-semibold border border-gray-200 shadow-2xs">
-                                           <span className="text-gray-400 font-bold">{translateGroup(k)}:</span> {displayVal}
-                                         </span>
-                                       );
-                                     })}
-                                   </div>
-                                 )}
-                                 {item.notes && (
-                                   <p className="text-[10px] text-amber-800 bg-amber-50/80 border border-amber-200/60 px-2 py-1 rounded-md italic font-medium ml-7 flex items-center gap-1.5">
-                                     <span>📝</span>
-                                     <span>"{item.notes}"</span>
-                                   </p>
-                                 )}
-                               </div>
-                             ))
-                           ) : (
-                             <p className="text-[11px] text-gray-400 italic">Sin detalle de productos</p>
-                           )}
-                         </div>
-                       </div>
-                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center text-emerald-600 gap-1 text-xs font-bold shrink-0 self-center">
-                          <span>Ver</span>
-                          <Icon icon="heroicons:chevron-right" className="text-base" />
-                       </div>
-                     </div>
-                   ))
-                 ) : (
-                   <div className="py-24 text-center">
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-[10px] font-bold text-gray-400 bg-white px-2 py-1 rounded shadow-2xs border border-gray-100">
+                            {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <div className="w-8 h-8 rounded-xl bg-gray-100 group-hover:bg-[#2f4131] text-gray-400 group-hover:text-white flex items-center justify-center transition-all shadow-2xs">
+                            <Icon icon="heroicons:chevron-right" className="text-sm font-bold" />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-24 text-center">
                      <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
                         <Icon icon="heroicons:archive-box" className="text-4xl text-gray-200" />
                      </div>
@@ -1048,88 +1008,45 @@ export default function AdminOrders() {
                <div className="divide-y divide-gray-50">
                  {orders.filter(o => o.status === 'cancelled').length > 0 ? (
                    orders.filter(o => o.status === 'cancelled').map(order => (
-                     <div 
-                       key={order.id} 
-                       onClick={() => {
-                         setShowCancelledHistory(false);
-                         setSelectedOrder(order);
-                       }}
-                       className="px-6 py-5 flex items-start gap-4 hover:bg-rose-50/30 transition-colors group cursor-pointer border-b border-rose-100/50 last:border-b-0"
-                       title="Haz clic para ver el detalle de la orden cancelada"
-                     >
-                       <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 flex-shrink-0 group-hover:scale-105 transition-transform mt-0.5">
-                         <Icon icon="heroicons:x-circle" className="text-xl" />
-                       </div>
-                       <div className="flex-1 min-w-0">
-                         <div className="flex justify-between items-start mb-0.5">
-                           <p className="font-black text-gray-900 text-base flex items-center gap-3">
-                             {order.customer_name || 'Sin nombre'}
-                             <span className="text-[9px] font-mono text-rose-300 bg-rose-50/50 px-1.5 py-0.5 rounded border border-rose-100/50">#{order.id.slice(0,4).toUpperCase()}</span>
-                           </p>
-                           <p className="text-[10px] font-black text-gray-400 bg-white px-2 py-1 rounded shadow-xs border border-gray-100">
-                             {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                           </p>
-                         </div>
-                         <div className="flex flex-col gap-1">
-                            <p className="text-xs text-rose-600 font-black mt-0.5 italic">MOTIVO: {order.cancellation_reason || 'Sin especificar'}</p>
-                            <div className="flex items-center gap-4 text-[10px] text-gray-400 uppercase font-black tracking-widest mt-1">
-                                <span>Subtotal: ${Number(order.total_amount).toLocaleString()}</span>
-                                <span>•</span>
-                                <span>{order.order_items?.length || 0} ítems</span>
+                      <div 
+                        key={order.id} 
+                        onClick={() => setHistoryDetailOrder(order)}
+                        className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-rose-50/40 transition-all group cursor-pointer border-b border-rose-100/50 last:border-b-0"
+                        title="Haz clic para ver el detalle de la cancelación"
+                      >
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 flex-shrink-0 group-hover:scale-105 transition-transform">
+                            <Icon icon="heroicons:x-circle" className="text-xl" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <p className="font-black text-gray-900 text-sm truncate">
+                                {order.customer_name || 'Sin nombre'}
+                              </p>
+                              <span className="text-[9px] font-mono text-rose-400 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 shrink-0">
+                                #{order.id.slice(0,4).toUpperCase()}
+                              </span>
                             </div>
-                         </div>
+                            <div className="flex items-center gap-2.5 text-xs text-gray-500">
+                               <span className="font-extrabold text-gray-900">${Number(order.total_amount).toLocaleString()}</span>
+                               <span className="text-gray-300">•</span>
+                               <span className="text-rose-600 font-bold truncate">Motivo: {order.cancellation_reason || 'Sin especificar'}</span>
+                            </div>
+                          </div>
+                        </div>
 
-                         {/* Lista detallada de productos pedidos en orden cancelada */}
-                         <div className="mt-3 space-y-1.5">
-                           {order.order_items && order.order_items.length > 0 ? (
-                             order.order_items.map((item, idx) => (
-                               <div key={item.id || idx} className="text-xs text-gray-700 bg-rose-50/40 p-2.5 rounded-xl border border-rose-100/60 space-y-1">
-                                 <div className="flex items-center justify-between gap-2">
-                                   <div className="flex items-center gap-2 min-w-0">
-                                     <span className="font-black text-rose-800 bg-rose-100/80 px-2 py-0.5 rounded-lg text-[11px] shrink-0 border border-rose-200/80">
-                                       {item.quantity}x
-                                     </span>
-                                     <span className="font-bold text-gray-900 truncate text-[13px]">
-                                       {item.products?.name || item.name || 'Producto'}
-                                     </span>
-                                   </div>
-                                   <span className="font-black text-gray-800 text-xs shrink-0">
-                                     ${(Number(item.unit_price || 0) * (item.quantity || 1)).toLocaleString()}
-                                   </span>
-                                 </div>
-                                 {item.modifiers && Object.keys(item.modifiers).length > 0 && (
-                                   <div className="flex flex-wrap gap-1 pl-7">
-                                     {Object.entries(item.modifiers).map(([k, v]) => {
-                                       const displayVal = Array.isArray(v) 
-                                         ? v.join(', ') 
-                                         : (typeof v === 'object' && v ? (v.name || JSON.stringify(v)) : String(v));
-                                       return (
-                                         <span key={k} className="text-[10px] bg-white text-gray-600 px-2 py-0.5 rounded-md font-semibold border border-gray-200 shadow-2xs">
-                                           <span className="text-gray-400 font-bold">{translateGroup(k)}:</span> {displayVal}
-                                         </span>
-                                       );
-                                     })}
-                                   </div>
-                                 )}
-                                 {item.notes && (
-                                   <p className="text-[10px] text-amber-800 bg-amber-50/80 border border-amber-200/60 px-2 py-1 rounded-md italic font-medium ml-7 flex items-center gap-1.5">
-                                     <span>📝</span>
-                                     <span>"{item.notes}"</span>
-                                   </p>
-                                 )}
-                               </div>
-                             ))
-                           ) : null}
-                         </div>
-                       </div>
-                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center text-rose-600 gap-1 text-xs font-bold shrink-0 self-center">
-                          <span>Ver</span>
-                          <Icon icon="heroicons:chevron-right" className="text-base" />
-                       </div>
-                     </div>
-                   ))
-                 ) : (
-                   <div className="py-24 text-center">
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-[10px] font-black text-gray-400 bg-white px-2 py-1 rounded shadow-2xs border border-gray-100">
+                            {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <div className="w-8 h-8 rounded-xl bg-gray-100 group-hover:bg-rose-600 text-gray-400 group-hover:text-white flex items-center justify-center transition-all shadow-2xs">
+                            <Icon icon="heroicons:chevron-right" className="text-sm font-bold" />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-24 text-center">
                      <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
                         <Icon icon="heroicons:archive-box-x-mark" className="text-4xl text-gray-200" />
                      </div>
@@ -1145,7 +1062,204 @@ export default function AdminOrders() {
          </div>
        )}
 
-       {loading && orders.length === 0 ? (
+       
+
+        {/* Modal Extra Optimizado para Ver el Detalle del Pedido del Historial */}
+        {historyDetailOrder && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <div 
+              className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" 
+              onClick={() => setHistoryDetailOrder(null)} 
+            />
+            <div className="bg-white w-full max-w-xl rounded-[2rem] shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh] border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
+              
+              {/* Header */}
+              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setHistoryDetailOrder(null)}
+                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+                    title="Volver al historial"
+                  >
+                    <Icon icon="heroicons:arrow-left" className="text-base" />
+                    <span>Volver</span>
+                  </button>
+                  <div className="w-px h-5 bg-gray-200" />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-black text-gray-900 tracking-tight">
+                        Pedido #{historyDetailOrder.id.slice(0,4).toUpperCase()}
+                      </h3>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        historyDetailOrder.status === 'delivered' 
+                          ? 'bg-emerald-100 text-emerald-800' 
+                          : 'bg-rose-100 text-rose-800'
+                      }`}>
+                        {historyDetailOrder.status === 'delivered' ? '✓ Entregado' : '✕ Cancelado'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 font-medium">
+                      {new Date(historyDetailOrder.created_at).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })} • {new Date(historyDetailOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setHistoryDetailOrder(null)} 
+                  className="p-2 hover:bg-gray-100 rounded-xl transition-all text-gray-400 hover:text-gray-700 cursor-pointer"
+                >
+                  <Icon icon="heroicons:x-mark" className="text-xl" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="overflow-y-auto p-6 space-y-5 scrollbar-thin">
+                
+                {/* Cliente & Entrega */}
+                <div className="p-4 bg-gray-50/80 rounded-2xl border border-gray-100 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Datos de Entrega</span>
+                    <span className="text-xs font-bold text-gray-600 capitalize bg-white px-2 py-0.5 rounded-lg border border-gray-200">
+                      {historyDetailOrder.fulfillment_type?.replace('_', ' ') || 'Delivery'}
+                    </span>
+                  </div>
+                  <p className="font-black text-gray-900 text-sm">{historyDetailOrder.customer_name || 'Sin nombre'}</p>
+                  {historyDetailOrder.delivery_address && (
+                    <p className="text-xs text-gray-600 flex items-start gap-1.5 font-medium">
+                      <span className="text-emerald-700 font-bold shrink-0">📍</span>
+                      <span>{historyDetailOrder.delivery_address}</span>
+                    </p>
+                  )}
+                  {historyDetailOrder.customer_phone && (
+                    <p className="text-xs text-gray-600 flex items-center gap-1.5 font-medium">
+                      <span className="text-emerald-700 font-bold">📞</span>
+                      <span>{historyDetailOrder.customer_phone}</span>
+                    </p>
+                  )}
+                  {historyDetailOrder.status === 'cancelled' && historyDetailOrder.cancellation_reason && (
+                    <div className="mt-2 p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-bold">
+                      Motivo de cancelación: {historyDetailOrder.cancellation_reason}
+                    </div>
+                  )}
+                </div>
+
+                {/* Desglose de Productos */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between pb-1 border-b border-gray-100">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-gray-500">
+                      Productos Ordenados ({historyDetailOrder.order_items?.length || 0})
+                    </h4>
+                    <span className="text-xs font-bold text-gray-400">Total ítems: {historyDetailOrder.order_items?.reduce((acc, it) => acc + (it.quantity || 1), 0) || 0}</span>
+                  </div>
+
+                  <div className="divide-y divide-gray-100 space-y-3">
+                    {historyDetailOrder.order_items && historyDetailOrder.order_items.length > 0 ? (
+                      historyDetailOrder.order_items.map((item, idx) => (
+                        <div key={item.id || idx} className="pt-3 first:pt-0 space-y-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-2.5 min-w-0">
+                              <span className="font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-lg text-xs shrink-0 border border-emerald-200">
+                                {item.quantity}x
+                              </span>
+                              <div className="min-w-0">
+                                <p className="font-extrabold text-gray-900 text-sm leading-snug">
+                                  {item.products?.name || item.name || 'Producto'}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="font-black text-gray-900 text-sm shrink-0">
+                              ${(Number(item.unit_price || 0) * (item.quantity || 1)).toLocaleString()}
+                            </span>
+                          </div>
+
+                          {/* Modificadores */}
+                          {item.modifiers && Object.keys(item.modifiers).length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 pl-8">
+                              {Object.entries(item.modifiers).map(([k, v]) => {
+                                const displayVal = Array.isArray(v) 
+                                  ? v.join(', ') 
+                                  : (typeof v === 'object' && v ? (v.name || JSON.stringify(v)) : String(v));
+                                return (
+                                  <span key={k} className="text-[11px] bg-gray-50 text-gray-700 px-2.5 py-1 rounded-lg font-medium border border-gray-200">
+                                    <strong className="text-gray-900 font-bold">{translateGroup(k)}:</strong> {displayVal}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Notas */}
+                          {item.notes && (
+                            <div className="ml-8 text-xs text-amber-900 bg-amber-50/90 border border-amber-200/70 px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5">
+                              <span>📝</span>
+                              <span>"{item.notes}"</span>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-gray-400 italic py-4 text-center">Sin detalle de productos</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Resumen Financiero */}
+                <div className="p-4 bg-gray-50/80 rounded-2xl border border-gray-100 space-y-2">
+                  <div className="flex justify-between items-center text-xs text-gray-500 font-semibold">
+                    <span>Subtotal consumo:</span>
+                    <span>${historyDetailOrder.order_items?.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toLocaleString() || Number(historyDetailOrder.total_amount).toLocaleString()}</span>
+                  </div>
+                  {Number(historyDetailOrder.delivery_fee) > 0 && (
+                    <div className="flex justify-between items-center text-xs text-gray-500 font-semibold">
+                      <span>Costo de envío:</span>
+                      <span>+${Number(historyDetailOrder.delivery_fee).toLocaleString()}</span>
+                    </div>
+                  )}
+                  {historyDetailOrder.payment_method && (
+                    <div className="flex justify-between items-center text-xs text-gray-500 font-semibold">
+                      <span>Método de pago:</span>
+                      <span className="font-bold text-gray-800">{historyDetailOrder.payment_method}</span>
+                    </div>
+                  )}
+                  <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
+                    <span className="text-sm font-black text-gray-900 uppercase tracking-tight">Total Facturado</span>
+                    <span className="text-xl font-black text-emerald-800 tracking-tight">
+                      ${Number(historyDetailOrder.total_amount).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ord = historyDetailOrder;
+                    setHistoryDetailOrder(null);
+                    setShowDeliveredHistory(false);
+                    setShowCancelledHistory(false);
+                    setSelectedOrder(ord);
+                  }}
+                  className="px-4 py-2 text-xs font-bold text-[#2f4131] hover:bg-[#2f4131]/10 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Icon icon="heroicons:printer" className="text-base" />
+                  <span>Abrir Comanda Completa</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHistoryDetailOrder(null)}
+                  className="px-5 py-2.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+                >
+                  Cerrar
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
+{loading && orders.length === 0 ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div>
         </div>
