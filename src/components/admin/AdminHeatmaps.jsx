@@ -25,10 +25,72 @@ import {
   AlertCircle,
   HelpCircle,
   ShieldCheck,
-  Trash2
+  Trash2,
+  Table,
+  X
 } from 'lucide-react';
 import { toast } from '../Toast';
 import { CLARITY_PROJECT_IDS } from '../../hooks/useClarity';
+
+
+const CHANNEL_STYLES = {
+  whatsapp: {
+    bg: 'bg-gradient-to-br from-emerald-50 via-emerald-50/40 to-white',
+    border: 'border-emerald-200/90 hover:border-emerald-500 hover:shadow-emerald-100/50',
+    topBar: 'from-[#25D366] to-[#128C7E]',
+    titleColor: 'text-emerald-950',
+    badgeActive: 'bg-[#25D366] text-white shadow-xs',
+  },
+  instagram_bio: {
+    bg: 'bg-gradient-to-br from-pink-50 via-purple-50/40 to-amber-50/30',
+    border: 'border-pink-200/90 hover:border-pink-500 hover:shadow-pink-100/50',
+    topBar: 'from-[#833AB4] via-[#FD1D1D] to-[#FCB045]',
+    titleColor: 'text-pink-950',
+    badgeActive: 'bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] text-white shadow-xs',
+  },
+  facebook: {
+    bg: 'bg-gradient-to-br from-blue-50 via-sky-50/40 to-white',
+    border: 'border-blue-200/90 hover:border-blue-500 hover:shadow-blue-100/50',
+    topBar: 'from-[#1877F2] to-[#0A54BD]',
+    titleColor: 'text-blue-950',
+    badgeActive: 'bg-[#1877F2] text-white shadow-xs',
+  },
+  tiktok: {
+    bg: 'bg-gradient-to-br from-neutral-100 via-cyan-50/30 to-pink-50/30',
+    border: 'border-neutral-300 hover:border-neutral-800 hover:shadow-neutral-200/50',
+    topBar: 'from-neutral-900 via-cyan-500 to-pink-500',
+    titleColor: 'text-neutral-950',
+    badgeActive: 'bg-neutral-900 text-cyan-300 shadow-xs',
+  },
+  volante_calle: {
+    bg: 'bg-gradient-to-br from-amber-50 via-orange-50/40 to-white',
+    border: 'border-amber-200/90 hover:border-amber-500 hover:shadow-amber-100/50',
+    topBar: 'from-amber-500 to-orange-600',
+    titleColor: 'text-amber-950',
+    badgeActive: 'bg-amber-600 text-white shadow-xs',
+  },
+  qr_mesa: {
+    bg: 'bg-gradient-to-br from-[#2f4131]/10 via-[#2f4131]/5 to-white',
+    border: 'border-[#2f4131]/30 hover:border-[#2f4131] hover:shadow-stone-200/50',
+    topBar: 'from-[#2f4131] to-[#1f2d21]',
+    titleColor: 'text-[#2f4131]',
+    badgeActive: 'bg-[#2f4131] text-white shadow-xs',
+  },
+  direct: {
+    bg: 'bg-gradient-to-br from-indigo-50 via-blue-50/40 to-white',
+    border: 'border-indigo-200/90 hover:border-indigo-500 hover:shadow-indigo-100/50',
+    topBar: 'from-indigo-500 to-blue-600',
+    titleColor: 'text-indigo-950',
+    badgeActive: 'bg-indigo-600 text-white shadow-xs',
+  },
+  default: {
+    bg: 'bg-gradient-to-br from-purple-50 via-violet-50/40 to-white',
+    border: 'border-purple-200/90 hover:border-purple-500 hover:shadow-purple-100/50',
+    topBar: 'from-purple-500 to-violet-600',
+    titleColor: 'text-purple-950',
+    badgeActive: 'bg-purple-600 text-white shadow-xs',
+  }
+};
 
 function getCountryFlag(name = '') {
   const lower = name.toLowerCase();
@@ -90,6 +152,7 @@ export default function AdminHeatmaps({
   });
 
   const [isClearing, setIsClearing] = useState(false);
+  const [showTableModal, setShowTableModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefreshData = async () => {
@@ -298,6 +361,44 @@ export default function AdminHeatmaps({
       },
       channels: sortedChannels
     };
+  }, [events, orders]);
+
+  
+  // Desglose de rendimiento por mesa individual
+  const tableBreakdown = useMemo(() => {
+    const map = new Map();
+    // 1. Visitas/Escaneos por mesa desde eventos
+    (events || []).forEach(ev => {
+      const t = ev.table_id || ev.metadata?.mesa;
+      if (t && ev.session_id) {
+        const key = String(t);
+        if (!map.has(key)) {
+          map.set(key, { identifier: key, sessions: new Set(), orders: 0, revenue: 0 });
+        }
+        map.get(key).sessions.add(ev.session_id);
+      }
+    });
+    // 2. Pedidos y ventas por mesa desde órdenes
+    (orders || []).forEach(ord => {
+      const tName = ord.restaurant_tables?.table_number || ord.restaurant_tables?.name || (ord.table_id ? String(ord.table_id) : null);
+      if (tName) {
+        const key = String(tName);
+        if (!map.has(key)) {
+          map.set(key, { identifier: key, sessions: new Set(), orders: 0, revenue: 0 });
+        }
+        const item = map.get(key);
+        item.orders++;
+        item.revenue += Number(ord.total_amount || 0);
+      }
+    });
+
+    return Array.from(map.values()).map(item => ({
+      name: item.identifier.startsWith('Mesa') || item.identifier.toLowerCase().includes('kitchen') ? item.identifier : `Mesa ${item.identifier}`,
+      visits: item.sessions.size,
+      orders: item.orders,
+      revenue: item.revenue,
+      conversion: item.sessions.size > 0 ? Math.round((item.orders / item.sessions.size) * 100) : (item.orders > 0 ? 100 : 0)
+    })).sort((a, b) => b.revenue - a.revenue || b.orders - a.orders || b.visits - a.visits);
   }, [events, orders]);
 
   // ==========================================
@@ -910,39 +1011,62 @@ export default function AdminHeatmaps({
             {behaviorMetrics.channels.map(ch => {
               const hasActivity = ch.visits > 0 || ch.orders > 0;
               const channelUrl = `${baseUrl}/${brandSlug}/?src=${encodeURIComponent(ch.key)}`;
+              const style = CHANNEL_STYLES[ch.key] || CHANNEL_STYLES.default;
+              const isMesas = ch.key === 'qr_mesa';
+
               return (
                 <div 
                   key={ch.key} 
-                  className={`p-3 rounded-2xl border transition-all space-y-1.5 ${
+                  className={`p-3.5 rounded-2xl border transition-all duration-300 flex flex-col justify-between space-y-2 relative overflow-hidden ${
                     hasActivity 
-                      ? 'bg-white border-emerald-200/90 shadow-2xs' 
-                      : 'bg-gray-50/70 border-gray-100 opacity-70 hover:opacity-100'
+                      ? `${style.bg} ${style.border} shadow-xs scale-[1.01]` 
+                      : 'bg-white/70 border-gray-200/70 opacity-75 hover:opacity-100 hover:bg-white'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-1">
-                    <p className="text-[11px] font-bold text-gray-800 truncate flex items-center gap-1" title={ch.name}>
-                      <span>{ch.icon || '🎯'}</span>
+                  <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${style.topBar || 'from-gray-200 to-gray-300'}`} />
+
+                  <div className="flex items-center justify-between gap-1 pt-0.5">
+                    <p className={`text-[12px] font-bold truncate flex items-center gap-1.5 ${style.titleColor}`} title={ch.name}>
+                      <span className="text-sm shrink-0">{ch.icon || '🎯'}</span>
                       <span className="truncate">{ch.name}</span>
                     </p>
-                    {ch.key !== 'direct' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(channelUrl);
-                          toast.success(`Link de ${ch.name} copiado`);
-                        }}
-                        className="text-[10px] font-bold text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 px-1.5 py-0.5 rounded transition-all shrink-0 cursor-pointer"
-                        title="Copiar enlace directo de este canal"
-                      >
-                        Copiar
-                      </button>
-                    )}
+                    
+                    <div className="flex items-center gap-1 shrink-0">
+                      {isMesas && (
+                        <button
+                          type="button"
+                          onClick={() => setShowTableModal(true)}
+                          className="text-[9px] font-black uppercase text-[#2f4131] bg-white/90 hover:bg-white px-2 py-0.5 rounded-md border border-[#2f4131]/20 transition-all cursor-pointer shadow-2xs"
+                          title="Ver desglose por mesa individual"
+                        >
+                          Ver Mesas
+                        </button>
+                      )}
+                      {ch.key !== 'direct' && !isMesas && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(channelUrl);
+                            toast.success(`Link de ${ch.name} copiado`);
+                          }}
+                          className="text-[9px] font-bold text-gray-500 hover:text-emerald-700 bg-white/80 hover:bg-white px-1.5 py-0.5 rounded-md border border-gray-200/60 transition-all shrink-0 cursor-pointer shadow-2xs"
+                          title="Copiar enlace directo de este canal"
+                        >
+                          Copiar
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-baseline justify-between pt-0.5 border-t border-gray-100">
+
+                  <div className="flex items-baseline justify-between pt-1.5 border-t border-black/5">
                     <span className="text-xs font-black text-gray-900">
-                      {ch.visits} {ch.visits === 1 ? 'visita' : 'visitas'}
+                      {ch.visits} <span className="text-[10px] font-bold text-gray-500 font-normal">{ch.visits === 1 ? 'visita' : 'visitas'}</span>
                     </span>
-                    <span className={`text-[10px] font-bold ${ch.orders > 0 ? 'text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-200' : 'text-gray-400'}`}>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                      ch.orders > 0 
+                        ? style.badgeActive 
+                        : 'text-gray-400 bg-black/5'
+                    }`}>
                       {ch.orders} {ch.orders === 1 ? 'pedido' : 'pedidos'}
                     </span>
                   </div>
@@ -956,6 +1080,77 @@ export default function AdminHeatmaps({
           </p>
         </div>
       </div>
+
+
+      {/* Modal Desglose Inteligente de Mesas */}
+      {showTableModal && (
+        <div className="fixed inset-0 z-50 bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#2f4131]/10 text-[#2f4131] flex items-center justify-center">
+                  <Table className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Rendimiento por Mesa / Activo</h3>
+                  <p className="text-[11px] text-gray-400">Escaneos, pedidos y facturación de cada punto físico</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowTableModal(false)}
+                className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[360px] overflow-y-auto space-y-2 pr-1">
+              {tableBreakdown.length === 0 ? (
+                <div className="text-center py-8 text-gray-400 text-xs">
+                  Aún no hay visitas registradas por mesas en este período.
+                </div>
+              ) : (
+                tableBreakdown.map((item, idx) => (
+                  <div key={idx} className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200/70 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-white border border-gray-200 text-xs font-black text-gray-700 flex items-center justify-center shrink-0">
+                        {idx + 1}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-gray-900 truncate">{item.name}</p>
+                        <p className="text-[10px] text-gray-400">
+                          {item.visits} {item.visits === 1 ? 'escaneo' : 'escaneos'} • {item.conversion}% conv.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="inline-block text-[11px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                        {item.orders} {item.orders === 1 ? 'pedido' : 'pedidos'}
+                      </span>
+                      {item.revenue > 0 && (
+                        <p className="text-[10px] font-black text-gray-700 mt-0.5">
+                          ${Number(item.revenue).toLocaleString('es-CO')} COP
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="pt-3 flex justify-between items-center border-t border-gray-100">
+              <span className="text-[11px] text-gray-400">Métricas en vivo de Supabase</span>
+              <a 
+                href="/admin#admin?admin_page=tables"
+                className="px-4 py-2 text-xs font-bold text-white bg-[#2f4131] hover:bg-[#253527] rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+              >
+                <span>Ir a Gestión de Mesas</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 5. Exclusión de Dispositivos del Equipo & Reset de Pruebas */}
       <div className="rounded-2xl bg-white border border-gray-200/80 p-5 shadow-xs space-y-4">

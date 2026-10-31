@@ -13,7 +13,7 @@ import {
 
 import { 
   Plus, LayoutGrid, MapPin, QrCode, Edit3, Trash2, Sparkles, Loader2, Printer, 
-  ChevronRight, Layers, Table, ExternalLink
+  ChevronRight, Layers, Table, ExternalLink, TrendingUp, Smartphone, ShoppingBag, DollarSign
 } from 'lucide-react';
 
 const toast = {
@@ -28,6 +28,8 @@ export default function AdminTables({ isEmbedded = false }) {
   const brandId = activeBrand?.id || brandFromContext?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
   const [tables, setTables] = useState([]);
   const [loadingTables, setLoadingTables] = useState(false);
+  const [tableMetrics, setTableMetrics] = useState({});
+  const [loadingMetrics, setLoadingMetrics] = useState(false);
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTable, setEditingTable] = useState(null);
@@ -150,6 +152,7 @@ export default function AdminTables({ isEmbedded = false }) {
 
   const fetchTables = async () => {
     setLoadingTables(true);
+    setLoadingMetrics(true);
     try {
       let query = supabase
         .from('restaurant_tables')
@@ -165,11 +168,74 @@ export default function AdminTables({ isEmbedded = false }) {
       
       if (error) throw error;
       setTables(data || []);
+
+      // Cargar métricas en vivo para cada mesa/activo
+      try {
+        const [eventsRes, ordersRes] = await Promise.allSettled([
+          supabase
+            .from('analytics_events')
+            .select('session_id, metadata, table_id')
+            .eq('brand_id', brandId),
+          supabase
+            .from('orders')
+            .select('id, total_amount, table_id, status')
+            .eq('brand_id', brandId)
+        ]);
+
+        const eventsData = eventsRes.status === 'fulfilled' ? (eventsRes.value.data || []) : [];
+        const ordersData = ordersRes.status === 'fulfilled' ? (ordersRes.value.data || []) : [];
+
+        const sessionsPerTable = new Map();
+        eventsData.forEach(ev => {
+          const tId = ev.table_id || ev.metadata?.mesa;
+          if (tId && ev.session_id) {
+            const key = String(tId).toLowerCase().trim();
+            if (!sessionsPerTable.has(key)) sessionsPerTable.set(key, new Set());
+            sessionsPerTable.get(key).add(ev.session_id);
+          }
+        });
+
+        const metricsMap = {};
+        (data || []).forEach(table => {
+          const idKey = String(table.id).toLowerCase().trim();
+          const numKey = String(table.table_number).toLowerCase().trim();
+
+          const scansSet = new Set();
+          if (sessionsPerTable.has(idKey)) {
+            sessionsPerTable.get(idKey).forEach(s => scansSet.add(s));
+          }
+          if (sessionsPerTable.has(numKey)) {
+            sessionsPerTable.get(numKey).forEach(s => scansSet.add(s));
+          }
+          const scans = scansSet.size;
+
+          const tableOrders = ordersData.filter(o => {
+            const oTable = String(o.table_id || '').toLowerCase().trim();
+            return oTable === idKey || oTable === numKey;
+          });
+          const completedOrders = tableOrders.filter(o => o.status !== 'cancelled');
+          const ordersCount = completedOrders.length;
+          const revenue = completedOrders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+          const conversionRate = scans > 0 ? Math.round((ordersCount / scans) * 100) : (ordersCount > 0 ? 100 : 0);
+
+          metricsMap[table.id] = {
+            scans,
+            orders: ordersCount,
+            revenue,
+            conversionRate
+          };
+        });
+
+        setTableMetrics(metricsMap);
+      } catch (metricsErr) {
+        console.warn('Error calculando métricas de mesas:', metricsErr);
+      }
     } catch (err) {
       console.error(err);
       toast.error('Error al cargar mesas');
     } finally {
       setLoadingTables(false);
+      setLoadingMetrics(false);
     }
   };
 
@@ -446,12 +512,58 @@ export default function AdminTables({ isEmbedded = false }) {
         </div>
       )}
 
+      
+      {/* ── Resumen de Rendimiento de Mesas y QRs Físicos ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-gray-200/80 shadow-2xs space-y-1">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Smartphone className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Escaneos Reales</span>
+          </p>
+          <p className="text-2xl font-black text-gray-900 tracking-tight">
+            {Object.values(tableMetrics).reduce((acc, m) => acc + (m.scans || 0), 0)}
+          </p>
+        </div>
+        <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-gray-200/80 shadow-2xs space-y-1">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+            <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Pedidos en Mesa</span>
+          </p>
+          <p className="text-2xl font-black text-gray-900 tracking-tight">
+            {Object.values(tableMetrics).reduce((acc, m) => acc + (m.orders || 0), 0)}
+          </p>
+        </div>
+        <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-gray-200/80 shadow-2xs space-y-1">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+            <DollarSign className="w-3.5 h-3.5 text-amber-600" />
+            <span>Facturación QR</span>
+          </p>
+          <p className="text-2xl font-black text-gray-900 tracking-tight">
+            ${Object.values(tableMetrics).reduce((acc, m) => acc + (m.revenue || 0), 0).toLocaleString('es-CO')}
+          </p>
+        </div>
+        <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-gray-200/80 shadow-2xs space-y-1">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+            <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
+            <span>Conversión QR</span>
+          </p>
+          <p className="text-2xl font-black text-gray-900 tracking-tight">
+            {(() => {
+              const scans = Object.values(tableMetrics).reduce((acc, m) => acc + (m.scans || 0), 0);
+              const orders = Object.values(tableMetrics).reduce((acc, m) => acc + (m.orders || 0), 0);
+              return scans > 0 ? Math.round((orders / scans) * 100) : 0;
+            })()}%
+          </p>
+        </div>
+      </div>
+
       <TableContainer>
         <table className="w-full min-w-[600px] border-collapse">
           <thead>
             <tr>
               <Th>Identificador</Th>
               <Th>Salón / Entorno</Th>
+              <Th>Métricas del QR (En Vivo)</Th>
               <Th>Estado</Th>
               <Th right>Acciones</Th>
             </tr>
@@ -524,6 +636,40 @@ export default function AdminTables({ isEmbedded = false }) {
                       ) : 'sin salón'}
                     </span>
                   </div>
+                </td>
+                {/* ── Métricas en Vivo de la Mesa / QR ── */}
+                <td className="px-6 py-6">
+                  {(() => {
+                    const m = tableMetrics[table.id] || { scans: 0, orders: 0, revenue: 0, conversionRate: 0 };
+                    const hasActivity = m.scans > 0 || m.orders > 0;
+                    return (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-bold ${
+                            m.scans > 0 ? 'bg-indigo-50 text-indigo-700 border border-indigo-200/60' : 'bg-gray-100 text-gray-500'
+                          }`} title="Dispositivos distintos que han abierto este QR">
+                            <span>📱</span>
+                            <span>{m.scans} {m.scans === 1 ? 'escaneo' : 'escaneos'}</span>
+                          </span>
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-bold ${
+                            m.orders > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs' : 'bg-gray-100 text-gray-400'
+                          }`} title="Pedidos generados">
+                            <span>🛍️</span>
+                            <span>{m.orders} {m.orders === 1 ? 'pedido' : 'pedidos'}</span>
+                          </span>
+                        </div>
+                        {hasActivity ? (
+                          <div className="flex items-center gap-2 text-[10px] text-gray-500 font-medium pt-0.5">
+                            <span className="font-black text-emerald-800">${Number(m.revenue).toLocaleString('es-CO')} COP</span>
+                            <span>•</span>
+                            <span className="font-bold text-gray-400">{m.conversionRate}% éxito</span>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-gray-400 italic">Listo para escanear</span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </td>
                 <td className="px-6 py-6">
                   <button onClick={() => toggleTableActive(table)} className="active:scale-95 transition-transform">
