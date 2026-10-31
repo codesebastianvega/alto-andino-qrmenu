@@ -196,10 +196,72 @@ export default async function handler(req, res) {
       console.error('Error updating location delivery fee:', locErr);
     }
 
+    // 8. CONFIGURAR MÉTODOS DE PAGO OFICIALES (NEQUI, LLAVE BRE-B 3244402642, EFECTIVO, DATÁFONO)
+    const methodsToUpsert = [
+      {
+        brand_id: brandId,
+        name: 'Nequi / Llave Bre-B',
+        type: 'digital_wallet',
+        icon: 'solar:wallet-bold',
+        is_active: true,
+        details: {
+          bank_name: 'Nequi / Llave Bre-B',
+          account_number: '3244402642',
+          account_type: 'Billetera Digital',
+          holder_name: 'Boku Bento',
+          bre_b_key: '3244402642',
+          instructions: 'Transfiere a Nequi o con Llave Bre-B al 3244402642 y envía tu comprobante por WhatsApp.'
+        }
+      },
+      {
+        brand_id: brandId,
+        name: 'Efectivo',
+        type: 'cash',
+        icon: 'solar:bill-check-bold',
+        is_active: true,
+        details: {
+          instructions: 'Pagas al recibir tu pedido en efectivo.'
+        }
+      },
+      {
+        brand_id: brandId,
+        name: 'Datáfono contra entrega',
+        type: 'card',
+        icon: 'solar:card-2-bold',
+        is_active: true,
+        details: {
+          instructions: 'Cobro con datáfono inalámbrico al recibir tu pedido.'
+        }
+      }
+    ];
+
+    const { data: currentMethods } = await supabase
+      .from('payment_methods')
+      .select('id, name')
+      .eq('brand_id', brandId);
+
+    if (!currentMethods || currentMethods.length === 0) {
+      await supabase.from('payment_methods').insert(methodsToUpsert);
+    } else {
+      const nequiMethod = currentMethods.find(m => /nequi|bre-b|transfer/i.test(m.name));
+      if (nequiMethod) {
+        await supabase
+          .from('payment_methods')
+          .update(methodsToUpsert[0])
+          .eq('id', nequiMethod.id);
+      } else {
+        await supabase
+          .from('payment_methods')
+          .insert([methodsToUpsert[0]]);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       delivery_fee: parsedFee,
-      message: `Menú del día actualizado con éxito: Bento Mestizo y Birria Bento configurados, modificador Sopita del Día, portada y tarifa de domicilio ($${parsedFee}) restaurada.`
+      nequi: '3244402642',
+      bre_b_key: '3244402642',
+      message: `Menú del día actualizado: Bento Mestizo y Birria Bento, portada, tarifa de domicilio ($${parsedFee}) y métodos de pago (Nequi / Llave Bre-B: 3244402642) configurados.`
     });
   } catch (err) {
     console.error('Error:', err);

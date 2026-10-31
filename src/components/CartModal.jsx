@@ -197,6 +197,31 @@ export default function CartModal({ open, onClose }) {
     return paymentMethods.filter(m => m.is_active);
   }, [paymentMethods, locationPayments, currentLocation]);
 
+  const transferMethods = useMemo(() => {
+    const list = activeMethods.filter(m => (m.type === 'transfer' || m.type === 'digital_wallet') && m.details?.account_number);
+    if (list.length > 0) return list;
+
+    // Fallback garantizado para que el comensal siempre tenga el número de Nequi / Bre-B
+    const rawNumber = currentLocation?.whatsapp || currentLocation?.phone || menuBrand?.whatsapp_number || menuBrand?.phone || '3244402642';
+    const cleanNumber = String(rawNumber).replace(/[^0-9]/g, '').replace(/^57/, '') || '3244402642';
+
+    return [
+      {
+        id: 'default-nequi-breb',
+        name: 'Nequi / Llave Bre-B',
+        type: 'digital_wallet',
+        details: {
+          bank_name: 'Nequi / Llave Bre-B',
+          account_number: cleanNumber,
+          account_type: 'Billetera Digital',
+          holder_name: currentLocation?.business_name || menuBrand?.name || 'Boku Bento',
+          bre_b_key: cleanNumber,
+          instructions: `Transfiere a Nequi o con Llave Bre-B al ${cleanNumber} y envía tu comprobante por WhatsApp.`
+        }
+      }
+    ];
+  }, [activeMethods, currentLocation, menuBrand]);
+
   const availablePaymentTypes = useMemo(() => {
     // If methods haven't loaded or none exist, fallback safely
     if (!activeMethods || activeMethods.length === 0) {
@@ -596,13 +621,14 @@ export default function CartModal({ open, onClose }) {
       return `Efectivo (Paga con: ${formatCOP(effectiveCashAmount)} - Cambio: ${formatCOP(cashChange)})`;
     }
     if (customerPaymentType === 'transfer') {
-      return 'Transferencia / Nequi / Bre-B';
+      const primaryAccount = transferMethods[0]?.details?.account_number || '3244402642';
+      return `Transferencia Nequi / Llave Bre-B (${primaryAccount})`;
     }
     if (customerPaymentType === 'card') {
       return 'Datáfono contra entrega';
     }
     return 'Por acordar';
-  }, [isPOSMode, isPaid, paymentMethod, customerPaymentType, cashTenderedType, effectiveCashAmount, finalTotal, cashChange]);
+  }, [isPOSMode, isPaid, paymentMethod, customerPaymentType, cashTenderedType, effectiveCashAmount, finalTotal, cashChange, transferMethods]);
 
   const isLeadValid = !isLeadRequired || (
     Boolean(customerName?.trim()) && 
@@ -1782,22 +1808,22 @@ export default function CartModal({ open, onClose }) {
                           </p>
                         </div>
 
-                        {/* List configured transfer accounts if any */}
-                        {activeMethods.filter(m => (m.type === 'transfer' || m.type === 'digital_wallet') && m.details?.account_number).length > 0 ? (
+                        {/* List configured transfer accounts */}
+                        {transferMethods.length > 0 ? (
                           <div className="space-y-2">
-                            {activeMethods.filter(m => (m.type === 'transfer' || m.type === 'digital_wallet') && m.details?.account_number).map(m => (
+                            {transferMethods.map(m => (
                               <div key={m.id} className="p-2.5 bg-white rounded-lg border border-blue-200/80 shadow-2xs space-y-1">
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="text-xs font-bold text-slate-800">
-                                    {m.details.bank_name || m.name} ({m.details.account_type || 'Cuenta'})
+                                    {m.details?.bank_name || m.name} ({m.details?.account_type || 'Billetera Digital'})
                                   </span>
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      navigator.clipboard.writeText(m.details.account_number);
+                                      navigator.clipboard.writeText(m.details?.account_number);
                                       toast.success('Número de cuenta copiado');
                                     }}
-                                    className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 transition-colors flex items-center gap-1"
+                                    className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded border border-blue-200 transition-colors flex items-center gap-1 cursor-pointer touch-manipulation"
                                     title="Copiar número"
                                   >
                                     <Icon icon="heroicons:clipboard" className="text-xs" />
@@ -1805,25 +1831,25 @@ export default function CartModal({ open, onClose }) {
                                   </button>
                                 </div>
                                 <div className="flex items-baseline justify-between text-xs font-mono font-bold text-slate-900">
-                                  <span>{m.details.account_number}</span>
-                                  {m.details.holder_name && (
+                                  <span className="text-sm tracking-wide text-blue-950 font-black">{m.details?.account_number}</span>
+                                  {m.details?.holder_name && (
                                     <span className="text-[10px] font-sans font-medium text-slate-500">
                                       Titular: {m.details.holder_name}
                                     </span>
                                   )}
                                 </div>
-                                {m.details.bre_b_key && (
-                                  <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
+                                {m.details?.bre_b_key && (
+                                  <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-100">
                                     <span className="font-semibold text-emerald-700">⚡ Llave Bre-B:</span>
-                                    <div className="flex items-center gap-1">
-                                      <span className="font-mono font-bold text-emerald-900">{m.details.bre_b_key}</span>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-mono font-bold text-emerald-900 text-xs">{m.details.bre_b_key}</span>
                                       <button
                                         type="button"
                                         onClick={() => {
                                           navigator.clipboard.writeText(m.details.bre_b_key);
                                           toast.success('Llave Bre-B copiada');
                                         }}
-                                        className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded"
+                                        className="text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 cursor-pointer touch-manipulation"
                                       >
                                         Copiar
                                       </button>
@@ -1835,7 +1861,7 @@ export default function CartModal({ open, onClose }) {
                           </div>
                         ) : (
                           <p className="text-[11px] text-blue-800/90 leading-relaxed font-medium">
-                            Transfiere desde tu app bancaria a nuestra cuenta o llave Bre-B. Al confirmar tu pedido te compartiremos los datos y número para reportar el comprobante de pago.
+                            Transfiere a nuestra cuenta Nequi o Llave Bre-B. Al confirmar tu pedido te compartiremos los datos y número para reportar el comprobante de pago.
                           </p>
                         )}
                       </div>
@@ -2458,7 +2484,7 @@ export default function CartModal({ open, onClose }) {
 
                       // Si es transferencia (Nequi / Bre-B / Daviplata / Banco), pedimos el comprobante por WhatsApp
                       if (customerPaymentType === 'transfer') {
-                        const transferMethodsWithDetails = activeMethods.filter(m => (m.type === 'transfer' || m.type === 'digital_wallet') && m.details?.account_number);
+                        const transferMethodsWithDetails = transferMethods;
 
                         return (
                           <div className="mt-4 sm:mt-6 w-full max-w-sm mx-auto space-y-3">
