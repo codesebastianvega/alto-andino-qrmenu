@@ -44,10 +44,10 @@ export default async function handler(req, res) {
       })
       .eq('id', 'b0000b12-0000-4000-a000-000000000002');
 
-    // 2. CREAR / ACTUALIZAR GRUPOS DE MODIFICADORES PARA EL BENTO HAWAIANO
+    // 2. CREAR / ACTUALIZAR GRUPOS DE MODIFICADORES PARA EL BENTO HAWAIANO (UUID VÁLIDOS)
     const hawaianoModifierGroups = [
       {
-        id: 'b0000h01-0000-4000-a000-000000000001',
+        id: 'b0000a11-0000-4000-a000-000000000001',
         brand_id: brandId,
         name: '🍚 1. Elige tu Base',
         description: 'Arroz blanco suelto, 50/50 o 100% verdes',
@@ -57,7 +57,7 @@ export default async function handler(req, res) {
         allow_quantity: false
       },
       {
-        id: 'b0000h01-0000-4000-a000-000000000002',
+        id: 'b0000a11-0000-4000-a000-000000000002',
         brand_id: brandId,
         name: '🍗 2. Elige tu Proteína',
         description: 'Pollo salteado jugoso o Cerdo salteado en su punto',
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
         allow_quantity: false
       },
       {
-        id: 'b0000h01-0000-4000-a000-000000000003',
+        id: 'b0000a11-0000-4000-a000-000000000003',
         brand_id: brandId,
         name: '🍍 3. Tu Toque Tropical',
         description: 'Piña fresca o Mango dulce en cubos',
@@ -77,7 +77,7 @@ export default async function handler(req, res) {
         allow_quantity: false
       },
       {
-        id: 'b0000h01-0000-4000-a000-000000000004',
+        id: 'b0000a11-0000-4000-a000-000000000004',
         brand_id: brandId,
         name: '🥑 4. El Infaltable Cremoso',
         description: 'Aguacate fresco en abanico o Guacamole casero',
@@ -89,15 +89,16 @@ export default async function handler(req, res) {
     ];
 
     for (const group of hawaianoModifierGroups) {
-      await supabase.from('modifier_groups').upsert(group, { onConflict: 'id' });
+      const { error: gErr } = await supabase.from('modifier_groups').upsert(group, { onConflict: 'id' });
+      if (gErr) console.error('Error upserting group:', group.name, gErr);
     }
 
-    // 3. OPCIONES DE MODIFICADORES PARA EL BENTO HAWAIANO
+    // 3. OPCIONES DE MODIFICADORES PARA EL BENTO HAWAIANO (UUID VÁLIDOS)
     const hawaianoOptions = [
       // Bases
       {
-        id: 'b0000h02-0001-4000-a000-000000000001',
-        group_id: 'b0000h01-0000-4000-a000-000000000001',
+        id: 'b0000a12-0001-4000-a000-000000000001',
+        group_id: 'b0000a11-0000-4000-a000-000000000001',
         name: '🍚 Arroz blanco suelto',
         price: 0,
         sort_order: 1,
@@ -105,8 +106,8 @@ export default async function handler(req, res) {
         stock_status: 'in'
       },
       {
-        id: 'b0000h02-0001-4000-a000-000000000002',
-        group_id: 'b0000h01-0000-4000-a000-000000000001',
+        id: 'b0000a12-0001-4000-a000-000000000002',
+        group_id: 'b0000a11-0000-4000-a000-000000000001',
         name: '🥗 50/50 (Mitad arroz y mitad mix de lechugas)',
         price: 0,
         sort_order: 2,
@@ -114,8 +115,8 @@ export default async function handler(req, res) {
         stock_status: 'in'
       },
       {
-        id: 'b0000h02-0001-4000-a000-000000000003',
-        group_id: 'b0000h01-0000-4000-a000-000000000001',
+        id: 'b0000a12-0001-4000-a000-000000000003',
+        group_id: 'b0000a11-0000-4000-a000-000000000001',
         name: '🥬 100% Base de verdes (Mix de lechugas)',
         price: 0,
         sort_order: 3,
@@ -124,8 +125,8 @@ export default async function handler(req, res) {
       },
       // Proteínas
       {
-        id: 'b0000h02-0002-4000-a000-000000000001',
-        group_id: 'b0000h01-0000-4000-a000-000000000002',
+        id: 'b0000a12-0002-4000-a000-000000000001',
+        group_id: 'b0000a11-0000-4000-a000-000000000002',
         name: '🍗 Pollo salteado jugoso',
         price: 0,
         sort_order: 1,
@@ -133,8 +134,8 @@ export default async function handler(req, res) {
         stock_status: 'in'
       },
       {
-        id: 'b0000h02-0002-4000-a000-000000000002',
-        group_id: 'b0000h01-0000-4000-a000-000000000002',
+        id: 'b0000a12-0002-4000-a000-000000000002',
+        group_id: 'b0000a11-0000-4000-a000-000000000002',
         name: '🥩 Cerdo salteado en su punto',
         price: 0,
         sort_order: 2,
@@ -143,8 +144,8 @@ export default async function handler(req, res) {
       },
       // Tropical
       {
-        id: 'b0000h02-0003-4000-a000-000000000001',
-        group_id: 'b0000h01-0000-4000-a000-000000000003',
+        id: 'b0000a12-0003-4000-a000-000000000001',
+        group_id: 'b0000a11-0000-4000-a000-000000000003',
         name: '🍍 Piña fresca en cubos',
         price: 0,
         sort_order: 1,
@@ -152,8 +153,8 @@ export default async function handler(req, res) {
         stock_status: 'in'
       },
       {
-        id: 'b0000h02-0003-4000-a000-000000000002',
-        group_id: 'b0000h01-0000-4000-a000-000000000003',
+        id: 'b0000a12-0003-4000-a000-000000000002',
+        group_id: 'b0000a11-0000-4000-a000-000000000003',
         name: '🥭 Mango dulce en cubos',
         price: 0,
         sort_order: 2,
@@ -162,8 +163,8 @@ export default async function handler(req, res) {
       },
       // Cremoso
       {
-        id: 'b0000h02-0004-4000-a000-000000000001',
-        group_id: 'b0000h01-0000-4000-a000-000000000004',
+        id: 'b0000a12-0004-4000-a000-000000000001',
+        group_id: 'b0000a11-0000-4000-a000-000000000004',
         name: '🥑 Aguacate fresco en abanico',
         price: 0,
         sort_order: 1,
@@ -171,8 +172,8 @@ export default async function handler(req, res) {
         stock_status: 'in'
       },
       {
-        id: 'b0000h02-0004-4000-a000-000000000002',
-        group_id: 'b0000h01-0000-4000-a000-000000000004',
+        id: 'b0000a12-0004-4000-a000-000000000002',
+        group_id: 'b0000a11-0000-4000-a000-000000000004',
         name: '🥑 Guacamole casero',
         price: 0,
         sort_order: 2,
@@ -182,7 +183,8 @@ export default async function handler(req, res) {
     ];
 
     for (const opt of hawaianoOptions) {
-      await supabase.from('modifier_options').upsert(opt, { onConflict: 'id' });
+      const { error: oErr } = await supabase.from('modifier_options').upsert(opt, { onConflict: 'id' });
+      if (oErr) console.error('Error upserting option:', opt.name, oErr);
     }
 
     // 4. ACTUALIZAR MODIFICADOR DE SOPA INCLUIDA: "🥣 Crema de Espinaca casera (16 oz)"
@@ -216,17 +218,18 @@ export default async function handler(req, res) {
       sort_order: 1,
       tags: ['Fresco', 'Proteico', 'bento', 'hawaiano'],
       modifier_groups: [
-        'b0000h01-0000-4000-a000-000000000001', // Base
-        'b0000h01-0000-4000-a000-000000000002', // Proteína
-        'b0000h01-0000-4000-a000-000000000003', // Toque Tropical
-        'b0000h01-0000-4000-a000-000000000004', // Infaltable Cremoso
+        'b0000a11-0000-4000-a000-000000000001', // Base
+        'b0000a11-0000-4000-a000-000000000002', // Proteína
+        'b0000a11-0000-4000-a000-000000000003', // Toque Tropical
+        'b0000a11-0000-4000-a000-000000000004', // Infaltable Cremoso
         'b0000b20-0000-4000-a000-000000000002', // Entrada Incluida (Crema de Espinaca / Fruta)
         'b0000b20-0000-4000-a000-000000000001', // Bebida de la Casa Incluida
         'b0000c40-0000-4000-a000-000000000002'  // Adiciones Opcionales
       ]
     };
 
-    await supabase.from('products').upsert(hawaianoData, { onConflict: 'id' });
+    const { error: pErr } = await supabase.from('products').upsert(hawaianoData, { onConflict: 'id' });
+    if (pErr) console.error('Error upserting product:', pErr);
 
     // 6. ACTUALIZAR BIRRIA BENTO (PASARLO A SEGUNDO PLANO O INACTIVO PARA HOY)
     await supabase
