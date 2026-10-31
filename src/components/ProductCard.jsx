@@ -11,7 +11,7 @@ import { useMenuData } from "@/context/MenuDataContext";
 {/* Las imagenes de producto se configuran en src/utils/images.js.
     Coloca las fotos en /public/img/products y mapea claves en IMAGE_MAP. */}
 
-const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard", isHero = false, allergens = [] }) => {
+const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard", isHero = false, allergens = [], priority = false }) => {
   if (!item) return null;
 
   const productId = item.id || slugify(item.name);
@@ -124,9 +124,15 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
         {/* Big Hero Image */}
         {imageSrc && (
           <div className="relative w-full aspect-[16/10] sm:aspect-[4/3] rounded-xl overflow-hidden bg-neutral-100 mb-3 shrink-0">
+            {!imgLoaded && (
+              <div className="absolute inset-0 bg-neutral-100 animate-pulse flex items-center justify-center">
+                <span className="text-[11px] font-bold text-neutral-300 tracking-wider">BOKU BENTO</span>
+              </div>
+            )}
             <AAImage
               src={imageSrc}
               alt={item.name || "Producto"}
+              priority={true}
               onLoad={() => setImgLoaded(true)}
               onError={() => setImgLoaded(false)}
               className={`h-full w-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out ${
@@ -389,14 +395,20 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
       role="button"
     >
       {imageSrc ? (
-        <div className={`relative overflow-hidden ${
+        <div className={`relative overflow-hidden bg-neutral-100 ${
           isCompact ? "h-20 w-20 rounded-xl flex-shrink-0" 
           : isHero ? "w-full aspect-[4/3] lg:w-1/2 lg:aspect-auto lg:h-full lg:self-stretch rounded-xl shrink-0" 
           : "w-full aspect-[4/3] rounded-xl shrink-0"
         }`}>
+          {!imgLoaded && (
+            <div className="absolute inset-0 bg-neutral-100 animate-pulse flex items-center justify-center">
+              <span className="text-[10px] font-bold text-neutral-300 tracking-wider">BOKU</span>
+            </div>
+          )}
           <AAImage
             src={imageSrc}
             alt={item.name || "Producto"}
+            priority={priority || isHero}
             onLoad={() => setImgLoaded(true)}
             onError={() => setImgLoaded(false)}
             className={`h-full w-full object-cover transition-opacity duration-500 ease-out ${

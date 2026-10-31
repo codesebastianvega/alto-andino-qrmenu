@@ -402,6 +402,7 @@ export default function ProductSection({
                     <ProductCard
                       item={item}
                       variant="standard"
+                      priority={idx < 2}
                       onAdd={(payload) => addItem(payload)}
                       onQuickView={onQuickView}
                       allergens={allergens}
