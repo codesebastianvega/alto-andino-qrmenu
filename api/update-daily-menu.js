@@ -240,24 +240,38 @@ export default async function handler(req, res) {
       .select('id, name')
       .eq('brand_id', brandId);
 
+    let pmResult = null;
+    let pmError = null;
+
     if (!currentMethods || currentMethods.length === 0) {
-      await supabase.from('payment_methods').insert(methodsToUpsert);
+      const res = await supabase.from('payment_methods').insert(methodsToUpsert).select();
+      pmResult = res.data;
+      pmError = res.error;
     } else {
       const nequiMethod = currentMethods.find(m => /nequi|bre-b|transfer/i.test(m.name));
       if (nequiMethod) {
-        await supabase
+        const res = await supabase
           .from('payment_methods')
           .update(methodsToUpsert[0])
-          .eq('id', nequiMethod.id);
+          .eq('id', nequiMethod.id)
+          .select();
+        pmResult = res.data;
+        pmError = res.error;
       } else {
-        await supabase
+        const res = await supabase
           .from('payment_methods')
-          .insert([methodsToUpsert[0]]);
+          .insert([methodsToUpsert[0]])
+          .select();
+        pmResult = res.data;
+        pmError = res.error;
       }
     }
 
     return res.status(200).json({
       success: true,
+      hasServiceKey: Boolean(SUPABASE_SERVICE_KEY),
+      pmResult,
+      pmError,
       delivery_fee: parsedFee,
       nequi: '3244402642',
       bre_b_key: '3244402642',
