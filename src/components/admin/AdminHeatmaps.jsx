@@ -128,7 +128,7 @@ export default function AdminHeatmaps({
 
     const KNOWN_PRESETS = {
       whatsapp: { name: 'WhatsApp', icon: '💬' },
-      instagram_bio: { name: 'Instagram Bio', icon: '📸' },
+      instagram_bio: { name: 'Instagram', icon: '📸' },
       facebook: { name: 'Facebook Ads', icon: '👥' },
       tiktok: { name: 'TikTok', icon: '🎵' },
       volante_calle: { name: 'Volantes Calle', icon: '📄' },
@@ -184,8 +184,23 @@ export default function AdminHeatmaps({
         }
         sessionDevices.set(ev.session_id, deviceType);
 
-        // Atribución dinámica de canal (sin forzar a otros)
-        const rawSrc = (ev.metadata?.source || (ev.metadata?.mesa ? 'qr_mesa' : 'direct')).toLowerCase().trim();
+        // Atribución dinámica de canal (sin forzar a otros y con alias inteligentes)
+        let rawSrc = (ev.metadata?.source || (ev.metadata?.mesa ? 'qr_mesa' : 'direct')).toLowerCase().trim();
+        const ALIASES = {
+          ig: 'instagram_bio',
+          instagram: 'instagram_bio',
+          insta: 'instagram_bio',
+          wsp: 'whatsapp',
+          wa: 'whatsapp',
+          ws: 'whatsapp',
+          fb: 'facebook',
+          face: 'facebook',
+          tt: 'tiktok',
+          web: 'direct'
+        };
+        if (ALIASES[rawSrc]) {
+          rawSrc = ALIASES[rawSrc];
+        }
         sessionSources.set(ev.session_id, rawSrc);
 
         if (!channelMap[rawSrc]) {
