@@ -570,13 +570,16 @@ export default function AdminKitchen() {
                 {/* Modificadores */}
                 {item.modifiers && Object.keys(item.modifiers).length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">
-                    {Object.entries(item.modifiers).map(([group, choice]) => (
-                      <span key={group} className={`text-[11px] font-medium ${
-                        isDark ? 'text-amber-300' : 'text-slate-600'
-                      }`}>
-                        • {choice}
-                      </span>
-                    ))}
+                    {Object.entries(item.modifiers).map(([group, choice]) => {
+                      const formatted = Array.isArray(choice) ? choice.join(', ') : (typeof choice === 'object' && choice ? (choice.name || JSON.stringify(choice)) : choice);
+                      return (
+                        <span key={group} className={`text-[11px] font-semibold px-2 py-0.5 rounded border ${
+                          isDark ? 'text-amber-300 bg-amber-950/40 border-amber-800/60' : 'text-amber-950 bg-amber-50 border-amber-200'
+                        }`}>
+                          <span className="opacity-75">{group}:</span> {formatted}
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
 

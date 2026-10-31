@@ -700,7 +700,16 @@ export default function AdminOrders() {
     if (type === 'summary') {
       message = `*Resumen de tu pedido ${orderNum} en ${brand}*\n\n`;
       (order.order_items || []).forEach(item => {
-          message += `${item.quantity}x ${item.products?.name || item.name} - $${(item.quantity * item.unit_price).toLocaleString()}\n`;
+        message += `• *${item.quantity}x ${item.products?.name || item.name}* - ${(item.quantity * item.unit_price).toLocaleString()}\n`;
+        if (item.modifiers && Object.keys(item.modifiers).length > 0) {
+          const mods = Object.entries(item.modifiers)
+            .map(([k, v]) => `   ↳ _${translateGroup(k)}:_ ${Array.isArray(v) ? v.join(', ') : (typeof v === 'object' && v ? (v.name || JSON.stringify(v)) : v)}`)
+            .join('\n');
+          message += `${mods}\n`;
+        }
+        if (item.notes) {
+          message += `   ↳ 📝 _Nota:_ ${item.notes}\n`;
+        }
       });
       if (order.service_fee > 0) {
         message += `\n*Servicio: $${order.service_fee.toLocaleString()}*`;

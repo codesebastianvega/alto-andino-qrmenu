@@ -313,7 +313,10 @@ export function NewOrderAlertModal({
                 if (Array.isArray(item.modifiers)) {
                   modifiersList = item.modifiers.map(m => typeof m === 'string' ? m : (m.name || m.label || ''));
                 } else if (typeof item.modifiers === 'object') {
-                  modifiersList = Object.values(item.modifiers).map(v => typeof v === 'string' ? v : (v.name || ''));
+                  modifiersList = Object.entries(item.modifiers).map(([k, v]) => {
+                    const text = Array.isArray(v) ? v.join(', ') : (typeof v === 'object' && v ? (v.name || JSON.stringify(v)) : v);
+                    return `${k}: ${text}`;
+                  });
                 }
               }
 

@@ -1122,7 +1122,19 @@ export default function CartModal({ open, onClose }) {
             `*Teléfono:* ${customerPhone}\n` +
             deliveryInfo +
             `\n*Productos:*\n` +
-            items.map(it => `- ${it.qty}x ${it.name} (${formatCOP(getItemUnit(it) * it.qty)})`).join('\n') +
+            items.map(it => {
+              let line = `• *${it.qty}x ${it.name}* (${formatCOP(getItemUnit(it) * it.qty)})`;
+              if (it.options && Object.keys(it.options).length > 0) {
+                const mods = Object.entries(it.options)
+                  .map(([k, v]) => `   ↳ _${k}:_ ${Array.isArray(v) ? v.join(', ') : (typeof v === 'object' && v ? (v.name || JSON.stringify(v)) : v)}`)
+                  .join('\n');
+                line += `\n${mods}`;
+              }
+              if (it.note) {
+                line += `\n   ↳ 📝 _Nota:_ ${it.note}`;
+              }
+              return line;
+            }).join('\n\n') +
             `\n\n*Subtotal:* ${formatCOP(total)}\n` +
             (discountAmount > 0 ? `*Descuento (${effectivePromo?.code || 'Cupón'}):* -${formatCOP(discountAmount)}\n` : '') +
             (packagingFeeTotal > 0 ? `*Empaque:* ${formatCOP(packagingFeeTotal)}\n` : '') +

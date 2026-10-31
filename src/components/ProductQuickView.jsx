@@ -28,6 +28,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   const lastFocused = useRef(null);
   const scrollContainerRef = useRef(null);
   const prevGroupsLength = useRef(0);
+  const initialRenderDone = useRef(false);
 
   // Selections per group: required → string id, optional → array of ids
   const [selections, setSelections] = useState({});
@@ -38,7 +39,12 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   useEffect(() => {
     setSelections({});
     setSpecialInstructions("");
-  }, [productId]);
+    initialRenderDone.current = false;
+    prevGroupsLength.current = 0;
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [productId, isOpen]);
 
   // Keyboard / focus trap
   useEffect(() => {
@@ -176,19 +182,24 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   }, [effectiveGroups.join(","), JSON.stringify(modifierConfig), modifierGroupsData, rawModifierGroups, selections]);
 
   useEffect(() => {
-    if (groups.length > prevGroupsLength.current) {
-      // Allow DOM to render the new group before scrolling
+    if (!isOpen) return;
+    if (!initialRenderDone.current) {
+      initialRenderDone.current = true;
+      prevGroupsLength.current = groups.length;
+      return;
+    }
+    if (groups.length > prevGroupsLength.current && prevGroupsLength.current > 0) {
       setTimeout(() => {
         if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTo({
-            top: scrollContainerRef.current.scrollHeight,
+          scrollContainerRef.current.scrollBy({
+            top: 180,
             behavior: 'smooth'
           });
         }
-      }, 150);
+      }, 100);
     }
     prevGroupsLength.current = groups.length;
-  }, [groups.length]);
+  }, [groups.length, isOpen]);
 
   const extraPrice = useMemo(() => {
     let total = 0;
@@ -301,7 +312,15 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
     if (isOutOfStock) { toast("Producto agotado"); return; }
     if (!canAdd) { toast("Producto no disponible"); return; }
     if (missingRequired.length > 0) {
-      toast(`Por favor selecciona: ${missingRequired.map((n) => n.replace(/-/g, " ")).join(", ")}`);
+      const missingLabels = missingRequired.map((n) => n.replace(/-/g, " ")).join(", ");
+      toast(`⚠️ Por favor selecciona: ${missingLabels}`);
+      const firstMissingIdx = groups.findIndex(g => missingRequired.includes(g.name));
+      if (firstMissingIdx >= 0) {
+        const el = document.getElementById(`modifier-group-${firstMissingIdx}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
       return;
     }
     const selectedModifiers = {};
@@ -468,7 +487,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                     const isMissing = missingRequired.includes(group.name);
 
                     return (
-                      <div key={group.name} style={stagger(3 + gi)} className="bg-white">
+                      <div key={group.name} id={`modifier-group-${gi}`} style={stagger(3 + gi)} className={`bg-white transition-all duration-200 ${isMissing ? 'p-3 rounded-2xl bg-amber-50/50 border border-amber-200/90 shadow-2xs' : ''}`}>
                         <div className="flex items-center justify-between mb-3 pb-2 border-b border-neutral-100">
                           <div>
                             <p className="text-base font-bold text-neutral-900 capitalize">
@@ -499,9 +518,15 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                             </p>
                           </div>
                           {group.min > 0 ? (
-                            <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-500 bg-neutral-100 px-2 py-1 rounded">
-                              {group.min === group.max ? "Obligatorio" : "Requerido"}
-                            </span>
+                            (groupSel || []).length >= group.min ? (
+                              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs">
+                                <span>✓</span> Listo
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs animate-pulse">
+                                <span>*</span> Obligatorio {group.min === 1 ? '(Elige 1)' : `(Elige ${group.min})`}
+                              </span>
+                            )
                           ) : (
                             <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400 bg-neutral-50 px-2 py-1 rounded border border-neutral-100">
                               Opcional
@@ -733,8 +758,12 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                 <button
                   type="button"
                   onClick={handleAdd}
-                  disabled={!canAdd}
-                  className="w-full h-14 rounded-2xl bg-brand-primary text-white font-bold text-lg shadow-lg hover:brightness-105 active:scale-[0.98] disabled:opacity-50 disabled:bg-brand-primary disabled:text-white/70 disabled:shadow-none disabled:active:scale-100 disabled:translate-y-0 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative overflow-hidden group cursor-pointer"
+                  disabled={!id || !Number.isFinite(basePrice) || basePrice <= 0 || isOutOfStock || isScheduleRestricted}
+                  className={`w-full h-14 rounded-2xl font-bold text-lg shadow-lg active:scale-[0.98] flex items-center justify-center gap-2 relative overflow-hidden group cursor-pointer transition-all ${
+                    missingRequired.length > 0
+                      ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/30'
+                      : 'bg-brand-primary text-white hover:brightness-105'
+                  } disabled:opacity-50 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:shadow-none disabled:active:scale-100 disabled:cursor-not-allowed`}
                 >
                   <span className="relative z-10">
                     {isOutOfStock
@@ -742,7 +771,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                       : isScheduleRestricted
                       ? `🕒 ${scheduleNotice}`
                       : missingRequired.length > 0
-                      ? `${missingRequired.length === 1 ? 'Falta 1 opción' : `Faltan ${missingRequired.length} opciones`}`
+                      ? `⚠️ Falta ${missingRequired.length === 1 ? '1 opción obligatoria' : `${missingRequired.length} opciones obligatorias`}`
                       : "Agregar al pedido"}
                   </span>
                   {canAdd && (

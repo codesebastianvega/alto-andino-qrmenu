@@ -545,13 +545,16 @@ export default function AdminBar() {
                 {/* Modificadores */}
                 {item.modifiers && Object.keys(item.modifiers).length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">
-                    {Object.entries(item.modifiers).map(([group, choice]) => (
-                      <span key={group} className={`text-[11px] font-medium ${
-                        isDark ? 'text-cyan-300' : 'text-slate-600'
-                      }`}>
-                        • {choice}
-                      </span>
-                    ))}
+                    {Object.entries(item.modifiers).map(([group, choice]) => {
+                      const formatted = Array.isArray(choice) ? choice.join(', ') : (typeof choice === 'object' && choice ? (choice.name || JSON.stringify(choice)) : choice);
+                      return (
+                        <span key={group} className={`text-[11px] font-semibold px-2 py-0.5 rounded border ${
+                          isDark ? 'text-cyan-300 bg-cyan-950/40 border-cyan-800/60' : 'text-cyan-950 bg-cyan-50 border-cyan-200'
+                        }`}>
+                          <span className="opacity-75">{group}:</span> {formatted}
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
 

@@ -5,7 +5,8 @@ import { useMenuData } from '../context/MenuDataContext';
 import { useAuth } from '../context/AuthContext';
 import { 
   ArrowLeft, CheckCircle2, ChefHat, ShoppingBag, Clock, XIcon, 
-  Loader2, AlertCircle, Banknote, Home, Truck, Utensils, CreditCard, Bell
+  Loader2, AlertCircle, Banknote, Home, Truck, Utensils, CreditCard, Bell,
+  Copy, Check, MessageCircle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import soundService from '../utils/soundService';
@@ -15,6 +16,7 @@ export default function OrderStatus({ orderId }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [copiedAccount, setCopiedAccount] = useState(null);
   
   const { restaurantSettings, brand: menuBrand } = useMenuData();
   const { activeBrand } = useAuth();
@@ -272,9 +274,12 @@ export default function OrderStatus({ orderId }) {
   const fulfillmentText = isDineIn ? 'Consumo en local' : 
                           isTakeaway ? 'Para llevar' : 'Domicilio';
   
-  const rawPhone = restaurantSettings?.whatsapp_number_orders || activeBrand?.phone || "";
-  const whatsappNumber = normalizeWhatsAppNumber(rawPhone);
-  const wppMessage = encodeURIComponent(`¡Hola! 👋 Envío el comprobante de pago de mi pedido #${order.id.slice(0,4).toUpperCase()} en ${brandName}. ✨`);
+  const rawPhone = restaurantSettings?.whatsapp_number_orders || activeBrand?.phone || "3244402642";
+  const whatsappNumber = normalizeWhatsAppNumber(rawPhone) || "573244402642";
+  const totalFormatted = Number(order.total_amount || 0).toLocaleString();
+  const wppMessage = encodeURIComponent(
+    `¡Hola! 👋 Envío el comprobante de pago de mi pedido #${order.id.slice(0,4).toUpperCase()} ($${totalFormatted} COP) en ${brandName}. ✨`
+  );
 
 
   return (
@@ -403,11 +408,11 @@ export default function OrderStatus({ orderId }) {
                 const isPast = orderStepId > step.id;
                 
                 return (
-                  <div key={idx} className="relative z-10 flex flex-col items-center gap-2">
+                  <div key={idx} className="relative z-10 flex flex-col items-center gap-2 cursor-default select-none">
                     <motion.div 
                       animate={isActive ? { scale: [1, 1.15, 1] } : {}}
                       transition={{ repeat: isActive ? Infinity : 0, duration: 2 }}
-                      className={`w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center border-4 transition-all duration-500 ${
+                      className={`w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center border-4 transition-all duration-500 cursor-default select-none ${
                         isActive 
                           ? 'bg-white border-[#E6B05C] text-[#E6B05C] shadow-lg scale-110' 
                           : isPast 
@@ -499,43 +504,127 @@ export default function OrderStatus({ orderId }) {
           </motion.div>
         )}
 
-        {/* Si es TRANSFERENCIA (Nequi / Bre-B / Daviplata) y está pendiente: botón de comprobante */}
+        {/* Si es TRANSFERENCIA (Nequi / Bre-B / Daviplata) y está pendiente: tarjeta con datos completos de pago */}
         {isTransfer && order.status !== 'cancelled' && order.status !== 'delivered' && (
           <motion.div 
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-orange-200 mb-8 overflow-hidden relative"
+            className="bg-white rounded-[1.75rem] p-5 sm:p-6 shadow-sm border border-blue-200 mb-8 overflow-hidden relative"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-bl-full pointer-events-none" />
-            <div className="flex items-start gap-4 relative z-10">
-              <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 shrink-0 border border-orange-100">
-                <Banknote size={24} />
+            <div className="absolute top-0 right-0 w-36 h-36 bg-blue-500/5 rounded-bl-full pointer-events-none" />
+            
+            <div className="relative z-10 space-y-4">
+              {/* Header con monto */}
+              <div className="flex items-start justify-between gap-3 pb-3.5 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 border border-blue-100 shadow-2xs">
+                    <Banknote size={22} />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-[#1A1A1A] text-base leading-tight">Transfiere para iniciar tu pedido</h4>
+                    <p className="text-[11px] font-medium text-slate-500 mt-0.5">
+                      Nequi o Llave Bre-B (desde cualquier banco)
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total a transferir</span>
+                  <span className="text-lg font-black text-slate-900 leading-none">
+                    ${totalFormatted}
+                  </span>
+                </div>
               </div>
-              <div className="w-full">
-                <h4 className="font-extrabold text-[#1A1A1A] mb-1">Confirmación de Pago Pendiente</h4>
-                <p className="text-xs font-medium text-black/60 mb-4 leading-relaxed max-w-[90%]">
-                  Para iniciar la preparación de tu pedido, necesitamos confirmar tu pago. Por favor envía el comprobante a nuestro WhatsApp.
-                </p>
-                {whatsappNumber ? (
-                  <a 
-                    href={`https://wa.me/${whatsappNumber}?text=${wppMessage}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full bg-[#25D366] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(37,211,102,0.3)] hover:shadow-[0_6px_20px_rgba(37,211,102,0.4)] hover:-translate-y-0.5 transition-all cursor-pointer text-sm"
+
+              {/* Tarjetas de cuentas con botón Copiar */}
+              <div className="bg-gradient-to-br from-slate-50 to-blue-50/40 p-4 rounded-2xl border border-blue-100 space-y-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-extrabold text-blue-800 uppercase tracking-wider block">
+                      📱 Cuenta Nequi
+                    </span>
+                    <span className="font-mono font-black text-slate-900 text-lg tracking-wide block">
+                      324 440 2642
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-medium block">
+                      Titular: Boku Bento
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText('3244402642');
+                      setCopiedAccount('nequi');
+                      setTimeout(() => setCopiedAccount(null), 2000);
+                    }}
+                    className="shrink-0 px-3.5 py-2 rounded-xl bg-white hover:bg-blue-50 active:scale-95 text-blue-700 font-bold text-xs border border-blue-200 shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
                   >
-                    Enviar Comprobante
-                  </a>
-                ) : (
-                  <p className="text-xs font-semibold text-amber-800 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
-                    Comunícate con el local para enviar tu comprobante.
-                  </p>
-                )}
+                    {copiedAccount === 'nequi' ? (
+                      <>
+                        <Check size={14} className="text-emerald-600" />
+                        <span className="text-emerald-700 font-black">¡Copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={14} />
+                        <span>Copiar Número</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="pt-3 border-t border-blue-100 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider block">
+                      ⚡ Llave Bre-B (Transfiere gratis desde Bancolombia, Davivienda, etc.)
+                    </span>
+                    <span className="font-mono font-black text-slate-900 text-base block">
+                      3244402642
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText('3244402642');
+                      setCopiedAccount('breb');
+                      setTimeout(() => setCopiedAccount(null), 2000);
+                    }}
+                    className="shrink-0 px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 active:scale-95 text-emerald-700 font-bold text-xs border border-emerald-200 shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    {copiedAccount === 'breb' ? (
+                      <>
+                        <Check size={14} className="text-emerald-600" />
+                        <span className="text-emerald-700 font-black">¡Copiada!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={14} />
+                        <span>Copiar Llave</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Botón WhatsApp Comprobante */}
+              <div className="pt-1">
+                <p className="text-[11px] font-medium text-slate-600 mb-2.5 leading-relaxed">
+                  ¿Ya transferiste? Toca el botón para enviar tu comprobante a nuestro WhatsApp y pasar tu pedido a cocina:
+                </p>
+                <a 
+                  href={`https://wa.me/${whatsappNumber}?text=${wppMessage}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-extrabold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(37,211,102,0.3)] hover:shadow-[0_6px_20px_rgba(37,211,102,0.4)] active:scale-[0.99] transition-all cursor-pointer text-sm"
+                >
+                  <MessageCircle size={18} />
+                  <span>Enviar Comprobante por WhatsApp</span>
+                </a>
               </div>
             </div>
           </motion.div>
         )}
 
         {/* =========================================
-            2. RESUMEN DEL PEDIDO (Compacto)
+            2. RESUMEN DEL PEDIDO (Compacto y Completo)
         ========================================= */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
@@ -554,10 +643,23 @@ export default function OrderStatus({ orderId }) {
                     {item.quantity}x
                   </div>
                   <div className="min-w-0">
-                    <h4 className="font-bold text-sm text-[#1A1A1A] truncate">{item.product?.name || 'Producto'}</h4>
+                    <h4 className="font-bold text-sm text-[#1A1A1A]">{item.product?.name || 'Producto'}</h4>
                     {item.modifiers && Object.keys(item.modifiers).length > 0 && (
-                      <p className="text-[10px] font-medium text-black/40 mt-0.5 line-clamp-2">
-                         {Object.entries(item.modifiers).map(([cat, val]) => `${translateGroup(cat)}: ${val}`).join(' • ')}
+                      <div className="mt-1 space-y-0.5">
+                        {Object.entries(item.modifiers).map(([cat, val]) => {
+                          const formattedVal = Array.isArray(val) ? val.join(', ') : (typeof val === 'object' && val ? (val.name || JSON.stringify(val)) : val);
+                          return (
+                            <p key={cat} className="text-[11px] font-medium text-black/60 flex items-start gap-1">
+                              <span className="text-black/40 shrink-0">•</span>
+                              <span><strong className="text-black/80 font-semibold">{translateGroup(cat)}:</strong> {formattedVal}</span>
+                            </p>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {item.notes && (
+                      <p className="text-[10px] italic text-amber-800 bg-amber-50 px-2 py-0.5 rounded mt-1 border border-amber-200/60 inline-block">
+                        Nota: "{item.notes}"
                       </p>
                     )}
                   </div>
