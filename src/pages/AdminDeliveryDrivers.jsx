@@ -40,12 +40,28 @@ export default function AdminDeliveryDrivers() {
   const [deliveryOrders, setDeliveryOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [selectedDriverForDispatch, setSelectedDriverForDispatch] = useState({});
+  const [showCancelledDeliveries, setShowCancelledDeliveries] = useState(false);
 
   useEffect(() => {
-    if (brandId) {
-      loadDrivers();
-      loadTodayDeliveryOrders();
-    }
+    if (!brandId) return;
+    loadDrivers();
+    loadTodayDeliveryOrders();
+
+    const channel = supabase
+      .channel(`drivers-deliveries-${brandId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'orders',
+        filter: `brand_id=eq.${brandId}`
+      }, () => {
+        loadTodayDeliveryOrders();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [brandId]);
 
   // Cargar Domiciliarios desde brands.config
@@ -92,7 +108,8 @@ export default function AdminDeliveryDrivers() {
         .from('orders')
         .select(`
           id, status, created_at, total_amount, payment_status, payment_method,
-          customer_name, customer_phone, delivery_address, delivery_notes
+          customer_name, customer_phone, delivery_address, delivery_notes,
+          cancellation_reason, cancelled_by
         `)
         .eq('brand_id', brandId)
         .eq('fulfillment_type', 'delivery')
@@ -214,7 +231,7 @@ export default function AdminDeliveryDrivers() {
   };
 
   // Despacho de pedido hacia un domiciliario específico por WhatsApp
-  const handleDispatchOrder = (order, driver) => {
+  const handleDispatchOrder = async (order, driver) => {
     if (!driver || !driver.phone) {
       toast.error('Selecciona un domiciliario con número de WhatsApp registrado.');
       return;
@@ -230,15 +247,78 @@ export default function AdminDeliveryDrivers() {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(driverUrl);
     }
-    toast.success(`Abriendo WhatsApp de ${driver.name} con la orden #${shortNum}...`);
+
+    if (order.status !== 'on_table' && order.status !== 'delivered') {
+      try {
+        await supabase.from('orders').update({ status: 'on_table' }).eq('id', order.id);
+        loadTodayDeliveryOrders();
+      } catch (e) {}
+    }
+
+    toast.success(`Abriendo WhatsApp de ${driver.name} con la orden ${shortNum}...`);
     window.open(`https://wa.me/${cleanDriverPhone}?text=${encodeURIComponent(message)}`, '_blank');
+  };
+
+  const handleMarkOrderDelivered = async (order) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'delivered', delivered_at: new Date().toISOString() })
+        .eq('id', order.id);
+      if (error) throw error;
+      toast.success(`Pedido #${order.id.slice(0, 4).toUpperCase()} marcado como Entregado ✅`);
+      loadTodayDeliveryOrders();
+    } catch (err) {
+      toast.error('No se pudo actualizar el pedido');
+    }
+  };
+
+  const handleCancelDeliveryOrder = async (order) => {
+    const reason = window.prompt('Escribe el motivo de la cancelación (el cliente lo verá en su pantalla):', 'Plato agotado por ahora');
+    if (!reason || !reason.trim()) return;
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          status: 'cancelled',
+          cancelled_by: 'restaurant',
+          cancellation_reason: reason.trim(),
+          cancelled_at: new Date().toISOString()
+        })
+        .eq('id', order.id);
+      if (error) throw error;
+      toast.success('Pedido cancelado');
+      loadTodayDeliveryOrders();
+
+      if (order.customer_phone && window.confirm('¿Deseas enviarle un WhatsApp al cliente con la explicación y el cupón de disculpas DISCULPABOKU (15% OFF)?')) {
+        handleSendCustomerApologyWhatsApp({ ...order, cancellation_reason: reason.trim() });
+      }
+    } catch (err) {
+      toast.error('Error al cancelar el pedido');
+    }
+  };
+
+  const handleSendCustomerApologyWhatsApp = (order) => {
+    const cleanPhone = normalizeWhatsAppNumber(order.customer_phone || '');
+    if (!cleanPhone) {
+      toast.error('El pedido no tiene teléfono válido');
+      return;
+    }
+    const cleanCustomerName = (order.customer_name || 'Cliente').replace(/\s*\[Dir:.*$/i, '').trim();
+    const shortNum = `#${order.id.slice(0, 4).toUpperCase()}`;
+    const brandSlug = effectiveBrand?.slug || 'boku-bento';
+    const recoveryUrl = `${window.location.origin}/${brandSlug}/?src=recuperacion`;
+    const msg = `Hola ${cleanCustomerName} 🙏, te escribimos de *${effectiveBrand?.name || 'Boku Bento'}* respecto a tu pedido *${shortNum}*.\n\nLamentablemente tuvimos que cancelarlo por el siguiente motivo: *${order.cancellation_reason || 'Inconveniente operativo en cocina'}*.\n\nTe pedimos mil disculpas por la molestia 😔. Para compensarte, te activamos el cupón *DISCULPABOKU* con un *15% DE DESCUENTO* para que pidas otro plato hoy o en tu próxima orden entrando desde este enlace:\n👉 ${recoveryUrl}`;
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   // KPIs
   const totalDrivers = drivers.length;
   const activeDrivers = drivers.filter(d => d.is_active).length;
-  const inRouteOrders = deliveryOrders.filter(o => o.status === 'on_table').length;
-  const deliveredOrders = deliveryOrders.filter(o => o.status === 'delivered').length;
+  const activeDeliveryOrders = deliveryOrders.filter(o => o.status !== 'cancelled');
+  const cancelledDeliveryOrders = deliveryOrders.filter(o => o.status === 'cancelled');
+  const inRouteOrders = activeDeliveryOrders.filter(o => o.status === 'on_table' || o.status === 'on_the_way').length;
+  const deliveredOrders = activeDeliveryOrders.filter(o => o.status === 'delivered').length;
 
   return (
     <div className="p-4 sm:p-8 max-w-[1500px] mx-auto space-y-6 animate-fadeUp">
@@ -341,7 +421,7 @@ export default function AdminDeliveryDrivers() {
           }`}
         >
           <Icon icon="solar:scooter-bold-duotone" className="text-base" />
-          <span>Monitor de Entregas Hoy ({deliveryOrders.length})</span>
+          <span>Monitor de Entregas Hoy ({activeDeliveryOrders.length})</span>
           {inRouteOrders > 0 && (
             <span className="h-2 w-2 rounded-full bg-purple-600 animate-ping"></span>
           )}
@@ -481,39 +561,66 @@ export default function AdminDeliveryDrivers() {
       {/* TAB 2: MONITOR DE ENTREGAS HOY */}
       {activeTab === 'deliveries' && (
         <div className="space-y-4">
+          {cancelledDeliveryOrders.length > 0 && (
+            <div className="flex items-center justify-between bg-rose-50/70 border border-rose-200/80 px-4 py-2.5 rounded-2xl">
+              <div className="flex items-center gap-2 text-xs font-bold text-rose-800">
+                <Icon icon="solar:info-circle-bold" className="text-base text-rose-600" />
+                <span>
+                  Hay {cancelledDeliveryOrders.length} {cancelledDeliveryOrders.length === 1 ? 'domicilio cancelado' : 'domicilios cancelados'} hoy (oculto de los pendientes por despachar).
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCancelledDeliveries(prev => !prev)}
+                className="text-xs font-black text-rose-700 hover:text-rose-900 underline cursor-pointer"
+              >
+                {showCancelledDeliveries ? 'Ocultar cancelados' : `Ver cancelados (${cancelledDeliveryOrders.length})`}
+              </button>
+            </div>
+          )}
+
           {loadingOrders ? (
             <div className="py-16 text-center text-xs font-bold text-gray-400 flex items-center justify-center gap-2">
               <Icon icon="solar:refresh-bold" className="animate-spin text-lg" />
               <span>Cargando entregas del día...</span>
             </div>
-          ) : deliveryOrders.length === 0 ? (
+          ) : (showCancelledDeliveries ? deliveryOrders : activeDeliveryOrders).length === 0 ? (
             <div className="bg-white p-12 rounded-3xl border border-gray-200 text-center space-y-2">
               <Icon icon="solar:box-minimalistic-bold" className="text-4xl text-gray-300 mx-auto" />
-              <h3 className="text-sm font-black text-gray-800">No hay pedidos de domicilio registrados hoy</h3>
-              <p className="text-xs text-gray-400">Cuando un cliente ordene a domicilio, aparecerá aquí para ser despachado.</p>
+              <h3 className="text-sm font-black text-gray-800">No hay pedidos de domicilio activos por despachar</h3>
+              <p className="text-xs text-gray-400">Cuando un cliente ordene a domicilio, aparecerá aquí en tiempo real para ser despachado.</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {deliveryOrders.map(order => {
+              {(showCancelledDeliveries ? deliveryOrders : activeDeliveryOrders).map(order => {
                 const shortNum = `#${order.id.slice(0, 4).toUpperCase()}`;
+                const isCancelled = order.status === 'cancelled';
                 const isDelivered = order.status === 'delivered';
-                const isOnTheWay = order.status === 'on_table';
+                const isOnTheWay = order.status === 'on_table' || order.status === 'on_the_way';
                 const selectedDriverId = selectedDriverForDispatch[order.id] || (drivers[0]?.id || '');
                 const targetDriver = drivers.find(d => d.id === selectedDriverId);
 
                 return (
                   <div
                     key={order.id}
-                    className="bg-white rounded-3xl border border-gray-200/90 p-5 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                    className={`rounded-3xl border p-5 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${
+                      isCancelled
+                        ? 'bg-rose-50/40 border-rose-200/80 opacity-85'
+                        : 'bg-white border-gray-200/90'
+                    }`}
                   >
                     <div className="space-y-2 flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-black text-gray-900 text-base">{shortNum}</span>
+                        <span className={`font-black text-base ${isCancelled ? 'line-through text-rose-700' : 'text-gray-900'}`}>{shortNum}</span>
                         <span className="text-xs text-gray-400 font-semibold">
                           {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
 
-                        {isDelivered ? (
+                        {isCancelled ? (
+                          <span className="px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-black uppercase border border-rose-200">
+                            ❌ Cancelado
+                          </span>
+                        ) : isDelivered ? (
                           <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase">
                             ✅ Entregado
                           </span>
@@ -523,7 +630,7 @@ export default function AdminDeliveryDrivers() {
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-black uppercase">
-                            ⏳ Por despachar
+                            ⏳ Por despachar ({order.status === 'preparing' ? 'En Cocina' : order.status === 'ready' ? 'Listo' : 'Nuevo'})
                           </span>
                         )}
 
@@ -531,6 +638,13 @@ export default function AdminDeliveryDrivers() {
                           ${Number(order.total_amount || 0).toLocaleString()}
                         </span>
                       </div>
+
+                      {isCancelled && (
+                        <div className="text-xs font-bold text-rose-700 bg-rose-100/70 border border-rose-200 px-3 py-1.5 rounded-xl inline-flex items-center gap-1.5">
+                          <Icon icon="solar:danger-triangle-bold" className="text-sm shrink-0" />
+                          <span>Motivo de cancelación: "{order.cancellation_reason || 'Sin motivo especificado'}"</span>
+                        </div>
+                      )}
 
                       <div className="text-xs text-gray-700 font-bold flex items-center gap-2">
                         <Icon icon="heroicons:user" className="text-gray-400" />
@@ -564,45 +678,81 @@ export default function AdminDeliveryDrivers() {
                       )}
                     </div>
 
-                    {/* Acciones de Despacho */}
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-gray-100">
-                      {/* Enlace para abrir la vista del domiciliario */}
-                      <a
-                        href={`/domi/${order.id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-3 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs"
-                        title="Ver app del repartidor para este pedido"
-                      >
-                        <Icon icon="solar:eye-bold" className="text-sm" />
-                        <span>Ver App Repartidor</span>
-                      </a>
-
-                      {/* Selector de Domiciliario y Botón de Despacho */}
-                      {drivers.length > 0 && !isDelivered && (
-                        <div className="flex items-center gap-1.5">
-                          <select
-                            value={selectedDriverId}
-                            onChange={(e) => setSelectedDriverForDispatch(prev => ({ ...prev, [order.id]: e.target.value }))}
-                            className="p-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 bg-white focus:outline-none"
-                          >
-                            {drivers.map(d => (
-                              <option key={d.id} value={d.id}>
-                                {d.name} {d.is_active ? '(Activo)' : ''}
-                              </option>
-                            ))}
-                          </select>
-
+                    {/* Acciones de Despacho / Estado */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-gray-100 flex-wrap">
+                      {isCancelled ? (
+                        order.customer_phone && (
                           <button
                             type="button"
-                            onClick={() => handleDispatchOrder(order, targetDriver)}
-                            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all shadow-md flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
-                            title="Despachar pedido por WhatsApp al repartidor"
+                            onClick={() => handleSendCustomerApologyWhatsApp(order)}
+                            className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-neutral-950 font-black text-xs transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
                           >
                             <Icon icon="logos:whatsapp-icon" className="text-sm" />
-                            <span>Despachar</span>
+                            <span>Enviar Disculpas + Cupón 15% OFF</span>
                           </button>
-                        </div>
+                        )
+                      ) : (
+                        <>
+                          {/* Enlace para abrir la vista del domiciliario */}
+                          <a
+                            href={`/domi/${order.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs"
+                            title="Ver app del repartidor para este pedido"
+                          >
+                            <Icon icon="solar:eye-bold" className="text-sm" />
+                            <span>Ver App Repartidor</span>
+                          </a>
+
+                          {/* Selector de Domiciliario y Botón de Despacho */}
+                          {drivers.length > 0 && !isDelivered && (
+                            <div className="flex items-center gap-1.5">
+                              <select
+                                value={selectedDriverId}
+                                onChange={(e) => setSelectedDriverForDispatch(prev => ({ ...prev, [order.id]: e.target.value }))}
+                                className="p-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 bg-white focus:outline-none"
+                              >
+                                {drivers.map(d => (
+                                  <option key={d.id} value={d.id}>
+                                    {d.name} {d.is_active ? '(Activo)' : ''}
+                                  </option>
+                                ))}
+                              </select>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDispatchOrder(order, targetDriver)}
+                                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all shadow-md flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
+                                title="Despachar pedido por WhatsApp al repartidor"
+                              >
+                                <Icon icon="logos:whatsapp-icon" className="text-sm" />
+                                <span>Despachar</span>
+                              </button>
+                            </div>
+                          )}
+
+                          {!isDelivered && (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleMarkOrderDelivered(order)}
+                                className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs transition-all cursor-pointer"
+                                title="Marcar este domicilio como Entregado"
+                              >
+                                ✅ Entregado
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCancelDeliveryOrder(order)}
+                                className="px-2.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs transition-all cursor-pointer"
+                                title="Cancelar este domicilio"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

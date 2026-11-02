@@ -43,6 +43,8 @@ import AccountSuspendedOverlay from './AccountSuspendedOverlay';
 import AlunaCopilot from './AlunaCopilot';
 import AlunaLab from '../../pages/AlunaLab';
 import StoreStatusControl from './StoreStatusControl';
+import soundService from '../../utils/soundService';
+import { toast as toastAlert } from '../Toast';
 import { useAdminModalBack } from '../../hooks/useAdminModalBack';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
@@ -268,6 +270,7 @@ export default function AdminLayout() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [newOrdersCount, setNewOrdersCount] = useState(0);
   const [preparingOrdersCount, setPreparingOrdersCount] = useState(0);
+  const [globalIncomingOrder, setGlobalIncomingOrder] = useState(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showPlanSelector, setShowPlanSelector] = useState(false);
   const [lockedFeatureName, setLockedFeatureName] = useState('');
@@ -464,6 +467,20 @@ export default function AdminLayout() {
         filter: `brand_id=eq.${activeBrandId}`
       }, (payload) => {
         console.log('AdminLayout: Realtime change detected', payload.eventType);
+        if (payload.eventType === 'INSERT' && payload.new) {
+          soundService.startNewOrderLoop(3500);
+          setGlobalIncomingOrder(payload.new);
+          const shortCode = payload.new.id ? `#${payload.new.id.slice(0, 4).toUpperCase()}` : '';
+          toastAlert(`🔔 ¡Nuevo pedido ${shortCode} recibido!`, { duration: 6000 });
+          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+            try {
+              new Notification(`🔔 ¡Nuevo Pedido ${shortCode}!`, {
+                body: `${payload.new.customer_name || 'Cliente'} - $${Number(payload.new.total_amount || 0).toLocaleString()}`,
+                icon: '/boku-icon-192.png'
+              });
+            } catch (e) {}
+          }
+        }
         // Al recibir cualquier cambio en la marca, re-consultamos el conteo 
         // Añadimos un pequeño delay para asegurar que la DB haya terminado la escritura
         setTimeout(() => {
@@ -1245,6 +1262,39 @@ export default function AdminLayout() {
         </header>
 
         {/* Content */}
+        {globalIncomingOrder && currentPage !== 'orders' && (
+          <div className="bg-red-600 text-white px-4 py-3 flex flex-wrap items-center justify-between gap-3 shadow-lg z-40 animate-pulse">
+            <div className="flex items-center gap-2.5">
+              <span className="text-lg">🔔</span>
+              <div className="text-xs sm:text-sm font-black">
+                ¡NUEVO PEDIDO #{globalIncomingOrder.id?.slice(0, 4).toUpperCase()}! — {globalIncomingOrder.customer_name || 'Cliente'} (${Number(globalIncomingOrder.total_amount || 0).toLocaleString()})
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  soundService.stopNewOrderLoop();
+                  setGlobalIncomingOrder(null);
+                  handleSelectPage('orders', 'Pedidos');
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-xs shadow-sm cursor-pointer"
+              >
+                Ir a Pedidos Ahora →
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  soundService.stopNewOrderLoop();
+                  setGlobalIncomingOrder(null);
+                }}
+                className="px-2.5 py-1.5 rounded-xl bg-red-800 hover:bg-red-900 text-white font-bold text-xs cursor-pointer"
+              >
+                Silenciar
+              </button>
+            </div>
+          </div>
+        )}
         <div className="flex-1 relative w-full max-w-full overflow-x-hidden pb-[calc(env(safe-area-inset-bottom,0px)+84px)] lg:pb-0">
           {currentPage === 'web'         && <AdminWebContent />}
           {currentPage === 'live_menu'   && <AdminLiveMenu />}

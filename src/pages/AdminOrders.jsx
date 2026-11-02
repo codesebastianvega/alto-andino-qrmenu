@@ -499,9 +499,24 @@ export default function AdminOrders() {
     setSelectedOrder(order);
   };
 
+  const sendCancellationApologyWhatsApp = (targetOrder, reasonText) => {
+    if (!targetOrder?.customer_phone) return;
+    const rawDigits = String(targetOrder.customer_phone).replace(/\D/g, '');
+    if (!rawDigits) return;
+    const cleanPhone = rawDigits.startsWith('57') ? rawDigits : `57${rawDigits}`;
+    const cleanName = (targetOrder.customer_name || 'Cliente').replace(/\s*\[Dir:.*$/i, '').trim();
+    const shortNum = `#${targetOrder.id.slice(0, 4).toUpperCase()}`;
+    const brandSlug = activeBrand?.slug || brandFromContext?.slug || 'boku-bento';
+    const brandName = activeBrand?.name || brandFromContext?.name || 'Boku Bento';
+    const recoveryUrl = `${window.location.origin}/${brandSlug}/?src=recuperacion`;
+    const msg = `Hola ${cleanName} 🙏, te escribimos de *${brandName}* respecto a tu pedido *${shortNum}*.\n\nLamentablemente tuvimos que cancelarlo por el siguiente motivo: *${reasonText || targetOrder.cancellation_reason || 'Inconveniente en cocina'}*.\n\nTe pedimos mil disculpas por la molestia 😔. Para compensarte, te habilitamos el cupón *DISCULPABOKU* con un *15% DE DESCUENTO* para que elijas otro plato hoy o en tu próxima compra entrando aquí:\n👉 ${recoveryUrl}`;
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
   const handleCancelIncomingOrder = async (orderId, reason) => {
     soundService.stopNewOrderLoop();
     setIsSoundLoopActive(false);
+    const targetOrder = orders.find(o => o.id === orderId) || incomingOrdersQueue.find(o => o.id === orderId);
     await updateOrderStatus(orderId, 'cancelled', {
       cancelled_by: 'restaurant',
       cancellation_reason: reason
@@ -517,6 +532,9 @@ export default function AdminOrders() {
       return remaining;
     });
     toast('Pedido cancelado', { icon: '❌' });
+    if (targetOrder?.customer_phone && window.confirm('¿Deseas avisar al cliente por WhatsApp con el motivo y enviarle el cupón de disculpas DISCULPABOKU (15% OFF)?')) {
+      sendCancellationApologyWhatsApp(targetOrder, reason);
+    }
   };
 
   const applyDiscount = async (orderId, percentage) => {
@@ -556,9 +574,14 @@ export default function AdminOrders() {
       toast.error("Por favor ingresa un motivo");
       return;
     }
-    updateOrderStatus(orderId, 'cancelled', { cancelled_by: 'restaurant', cancellation_reason: cancellationReason });
+    const targetOrder = orders.find(o => o.id === orderId) || selectedOrder;
+    const reasonText = cancellationReason.trim();
+    updateOrderStatus(orderId, 'cancelled', { cancelled_by: 'restaurant', cancellation_reason: reasonText });
     setIsCancelling(false);
     setCancellationReason("");
+    if (targetOrder?.customer_phone && window.confirm('¿Deseas avisar al cliente por WhatsApp con el motivo y enviarle el cupón de disculpas DISCULPABOKU (15% OFF)?')) {
+      sendCancellationApologyWhatsApp(targetOrder, reasonText);
+    }
   };
 
   const handleMergeOrders = async (sourceOrder, targetOrder) => {
@@ -1137,8 +1160,18 @@ export default function AdminOrders() {
                     </p>
                   )}
                   {historyDetailOrder.status === 'cancelled' && historyDetailOrder.cancellation_reason && (
-                    <div className="mt-2 p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-bold">
-                      Motivo de cancelación: {historyDetailOrder.cancellation_reason}
+                    <div className="mt-2 p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-bold flex items-center justify-between gap-2 flex-wrap">
+                      <span>Motivo de cancelación: {historyDetailOrder.cancellation_reason}</span>
+                      {historyDetailOrder.customer_phone && (
+                        <button
+                          type="button"
+                          onClick={() => sendCancellationApologyWhatsApp(historyDetailOrder, historyDetailOrder.cancellation_reason)}
+                          className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-neutral-950 font-black text-[11px] flex items-center gap-1 cursor-pointer"
+                        >
+                          <Icon icon="logos:whatsapp-icon" className="text-xs" />
+                          <span>Enviar Disculpas + Cupón 15% OFF</span>
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

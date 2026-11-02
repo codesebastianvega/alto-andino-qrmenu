@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import soundService from '../utils/soundService';
+import { getDeviceFingerprint, getDefaultBrandCoupons } from '../utils/couponSecurity';
 
 export default function OrderStatus({ orderId }) {
   const [order, setOrder] = useState(null);
@@ -70,7 +71,7 @@ export default function OrderStatus({ orderId }) {
         // 1. Sonido de aviso
         if (newStatus === 'ready' || newStatus === 'on_table') {
           soundService.playOrderReady();
-        } else if (newStatus === 'preparing') {
+        } else if (newStatus === 'preparing' || newStatus === 'cancelled') {
           soundService.playOrderReceived();
         }
 
@@ -95,6 +96,11 @@ export default function OrderStatus({ orderId }) {
           } else if (newStatus === 'delivered') {
             title = `✅ ¡Pedido Entregado! - ${brandName}`;
             body = `¡Buen provecho! Gracias por ordenar en ${brandName}.`;
+          } else if (newStatus === 'cancelled') {
+            title = `⚠️ Actualización de tu pedido ${orderNum} - ${brandName}`;
+            body = payload.new?.cancellation_reason
+              ? `Tu pedido fue cancelado. Motivo: ${payload.new.cancellation_reason}. Toca para reclamar tu 15% OFF de compensación.`
+              : `Tu pedido fue cancelado. Toca aquí para ver los detalles y tu cupón de compensación.`;
           }
 
           if (title) {
@@ -349,18 +355,88 @@ export default function OrderStatus({ orderId }) {
         {order.status === 'cancelled' ? (
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            className={`rounded-[2.5rem] p-8 md:p-10 shadow-lg ${currentStatus.bg} ${currentStatus.border} border-2 mb-8 relative overflow-hidden flex flex-col items-center justify-center text-center`}
+            className={`rounded-[2.5rem] p-6 sm:p-8 md:p-10 shadow-lg ${currentStatus.bg} ${currentStatus.border} border-2 mb-8 relative overflow-hidden flex flex-col items-center justify-center text-center`}
           >
              <motion.div 
                 initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring" }}
-                className={`w-24 h-24 rounded-full bg-white flex items-center justify-center ${currentStatus.color} shadow-sm mb-6`}
+                className={`w-20 h-20 rounded-full bg-white flex items-center justify-center ${currentStatus.color} shadow-sm mb-4`}
               >
                 {currentStatus.icon}
               </motion.div>
-              <h2 className={`text-3xl font-black mb-2 ${currentStatus.text}`}>{currentStatus.label}</h2>
-              <p className="text-sm font-medium text-black/60 max-w-[250px]">
-                Este pedido ha sido cancelado y ya no está activo.
+              <h2 className={`text-2xl sm:text-3xl font-black mb-1.5 ${currentStatus.text}`}>Pedido Cancelado</h2>
+              <p className="text-xs sm:text-sm font-medium text-black/60 max-w-md">
+                Lo sentimos mucho, no pudimos procesar tu pedido en este momento.
               </p>
+
+              {/* Motivo exacto informado por el restaurante */}
+              {order.cancellation_reason && (
+                <div className="mt-4 w-full max-w-md bg-white/90 border border-red-200 rounded-2xl p-4 text-left shadow-2xs">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-red-600 block mb-1">
+                    📝 Motivo informado por el restaurante:
+                  </span>
+                  <p className="text-sm font-bold text-slate-900">
+                    "{order.cancellation_reason}"
+                  </p>
+                </div>
+              )}
+
+              {/* Tarjeta Automática de Retribución / Compensación al Cliente */}
+              {order.cancelled_by !== 'customer' && (
+                <div className="mt-5 w-full max-w-md bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300/90 rounded-2xl p-4 sm:p-5 text-left shadow-sm space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center text-xl shrink-0 font-black shadow-xs">
+                      🎁
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-200/70 px-2 py-0.5 rounded-full">
+                        Compensación Activada
+                      </span>
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 mt-1 leading-snug">
+                        ¡Tienes 15% OFF para pedir otro plato o para tu próxima compra!
+                      </h3>
+                      <p className="text-xs text-slate-600 font-medium mt-0.5 leading-relaxed">
+                        Como disculpa por el inconveniente, hemos habilitado para tu dispositivo el cupón <strong className="font-mono font-black text-amber-950 bg-amber-200/60 px-1.5 py-0.5 rounded">DISCULPABOKU</strong>.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          const fp = getDeviceFingerprint();
+                          const bId = order.brand_id || effectiveBrand?.id || 'default';
+                          localStorage.setItem(`aa_crm_recovery_stamp_${bId}`, JSON.stringify({
+                            fingerprint: fp,
+                            stampedAt: new Date().toISOString(),
+                            source: 'order_cancelled_screen'
+                          }));
+                          const coupons = getDefaultBrandCoupons(bId);
+                          const disculpaPromo = coupons.find(c => c.code === 'DISCULPABOKU');
+                          if (disculpaPromo) {
+                            localStorage.setItem('aa_applied_coupon', JSON.stringify(disculpaPromo));
+                          }
+                        } catch (e) {}
+                        window.location.hash = '#menu';
+                      }}
+                      className="flex-1 py-3 px-4 rounded-xl bg-[#1A2421] hover:bg-black text-white font-black text-xs sm:text-sm shadow-md transition-all active:scale-95 cursor-pointer text-center"
+                    >
+                      🎁 Activar 15% OFF y Elegir Otro Plato
+                    </button>
+
+                    <a
+                      href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hola! Vi que mi pedido #${order.id.slice(0, 4).toUpperCase()} fue cancelado (${order.cancellation_reason || 'agotado'}). ¿Qué otro plato me recomiendan pedir con mi cupón DISCULPABOKU?`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-3 px-4 rounded-xl bg-[#25D366] hover:bg-[#1ebe5d] text-white font-extrabold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <MessageCircle size={16} />
+                      <span>Escribir al WhatsApp</span>
+                    </a>
+                  </div>
+                </div>
+              )}
           </motion.div>
         ) : (
           <motion.div 
