@@ -378,9 +378,13 @@ export const MenuDataProvider = ({ children }) => {
     const hasLocProductConfig = statusMap.size > 0;
 
     // 2. Plato / Especial del Día universal dynamic rotation
+    const isBoku = restaurantSettings?.brand_id === 'a63da806-a62a-49b9-a833-07e0976785ad' 
+      || brand?.id === 'a63da806-a62a-49b9-a833-07e0976785ad' 
+      || brand?.slug === 'boku-bento';
+
     const dailySpecialConcept = (restaurantSettings?.brand_concepts || []).find(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config'));
     const isSpecialEnabled = dailySpecialConcept ? dailySpecialConcept.enabled !== false : false;
-    const specialLabel = dailySpecialConcept?.label || (restaurantSettings?.brand_id === 'a63da806-a62a-49b9-a833-07e0976785ad' ? 'El Bento del Día' : 'Plato del Día');
+    const specialLabel = dailySpecialConcept?.label || (isBoku ? 'El Bento del Día' : 'Plato del Día');
     const promoPrice = Number(dailySpecialConcept?.promo_price) || 0;
     const standardPrice = Number(dailySpecialConcept?.standard_price) || 0;
     const defaultSchedule = {
@@ -395,18 +399,32 @@ export const MenuDataProvider = ({ children }) => {
     const specialSchedule = dailySpecialConcept?.schedule || defaultSchedule;
     const manualOverride = dailySpecialConcept?.manual_override_product_id;
     const currentDayOfWeek = new Date().getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-    const activeSpecialId = manualOverride || (isSpecialEnabled ? specialSchedule[currentDayOfWeek] : null);
+    
+    // Si es Boku, hoy lunes el Bento del Día es Bento Bogotano
+    const activeSpecialId = isBoku 
+      ? 'b0000b13-0000-4000-a000-000000000003' 
+      : (manualOverride || (isSpecialEnabled ? specialSchedule[currentDayOfWeek] : null));
 
     (rawProducts || []).forEach(product => {
+      const catSlug = product.categories?.slug || 'otros';
+
+      // ── Desactivar Desayunos por hoy en Boku Bento ──
+      if (isBoku && (product.category_id === 'b0000c04-0000-4000-a000-000000000004' || catSlug === 'boku-desayunos-brunch')) {
+        return;
+      }
+
       // Apply location product status override
       if (activeLocationId && activeLocationId !== 'all' && hasLocProductConfig) {
-        const isActiveOverride = statusMap.get(product.id);
+        // En Boku Bento, Bento Bogotano es el plato de hoy y nunca debe ser bloqueado por status anterior
+        const isActiveOverride = (isBoku && product.id === 'b0000b13-0000-4000-a000-000000000003') 
+          ? true 
+          : statusMap.get(product.id);
+
         if (isActiveOverride === false) {
           return;
         }
       }
 
-      const catSlug = product.categories?.slug || 'otros';
       const cat = (allCategories || []).find(c => c.slug === catSlug || c.id === product.category_id);
       const catSchedule = getCategoryScheduleInfo(cat);
       
@@ -421,9 +439,15 @@ export const MenuDataProvider = ({ children }) => {
 
       // Universal Daily Special Rotation
       const isScheduledSpecial = Boolean(activeSpecialId && product.id === activeSpecialId);
-      const isExplicitSpecial = product.subcategory === specialLabel 
+      let isExplicitSpecial = product.subcategory === specialLabel 
         || product.subcategory === 'El Bento del Día' 
         || (product.name && product.name.toLowerCase().includes('especial del día'));
+
+      // Si es Boku y es el Bento Hawaiano de ayer, no debe mostrarse como plato de hoy
+      if (isBoku && product.id === 'b0000b19-0000-4000-a000-000000000020') {
+        isExplicitSpecial = false;
+      }
+
       const isSpecialToday = isScheduledSpecial || isExplicitSpecial;
       const isBento = catSlug === 'boku-bentos' || product.category_id === 'b0000c01-0000-4000-a000-000000000001';
       let productSubcategory = product.subcategory;
@@ -492,8 +516,75 @@ export const MenuDataProvider = ({ children }) => {
         grouped[catSlug].push(normalizedProduct);
       }
     });
+
+    // En Boku Bento: asegurar que Bento Bogotano sea el Hero y Bento Pasta Boloñesa esté como 2da opción de Bento del Día
+    if (isBoku) {
+      if (!grouped['boku-bentos']) grouped['boku-bentos'] = [];
+
+      // Ordenar: Bento Bogotano siempre primero como Hero del Día
+      grouped['boku-bentos'].sort((a, b) => {
+        if (a.id === 'b0000b13-0000-4000-a000-000000000003') return -1;
+        if (b.id === 'b0000b13-0000-4000-a000-000000000003') return 1;
+        return 0;
+      });
+
+      // Incluir Bento Pasta Boloñesa como opción complementaria del día si no está ya presente
+      const hasBoloBento = grouped['boku-bentos'].some(p => p.id === 'b0000b17-0000-4000-a000-000000000007' || p.name?.toLowerCase().includes('pasta boloñesa'));
+      if (!hasBoloBento) {
+        grouped['boku-bentos'].push({
+          id: 'b0000b17-0000-4000-a000-000000000007',
+          name: 'Bento Pasta Boloñesa (Especial del Día)',
+          is_active: true,
+          price: 19000,
+          original_price: 26000,
+          is_bento_del_dia: true,
+          is_daily_special: true,
+          daily_special_label: specialLabel,
+          desc: 'Espagueti al dente bañado en nuestra tradicional salsa boloñesa casera de cocción lenta con carne seleccionada, queso parmesano rallado y finas hierbas. 🥣 ¡Viene en combo completo! Incluye Sopa del Día (16 oz) o Fruta + 🥤 Bebida de la Casa (5 oz).',
+          description: 'Espagueti al dente bañado en nuestra tradicional salsa boloñesa casera de cocción lenta con carne seleccionada, queso parmesano rallado y finas hierbas. 🥣 ¡Viene en combo completo! Incluye Sopa del Día (16 oz) o Fruta + 🥤 Bebida de la Casa (5 oz).',
+          tags: ['Pasta', 'Boloñesa', 'Bento', 'Especial del Día'],
+          stock_status: 'in',
+          available_portions: 50,
+          out_reason: null,
+          image: 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/92xztzpto8_1792020477890.webp',
+          image_url: 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/92xztzpto8_1792020477890.webp',
+          variants: [],
+          modifierGroups: [
+            'b0000b20-0000-4000-a000-000000000002', // 🥣 Entrada Incluida
+            'b0000b20-0000-4000-a000-000000000001', // 🥤 Bebida de la Casa Incluida
+            'b0000c20-0000-4000-a000-000000000002'  // 🍝 Queso & Adiciones para tu Pasta
+          ],
+          configOptions: {},
+          is_upsell: false,
+          requires_kitchen: true,
+          station: 'kitchen',
+          subcategory: specialLabel,
+          categorySlug: 'boku-bentos',
+          categoryId: 'b0000c01-0000-4000-a000-000000000001',
+          categoryName: 'BOKU Bentos Caseros',
+          is_schedule_available: true,
+          schedule_label: 'Disponible',
+          schedule_info: { isAvailableNow: true, label: 'Disponible', isRestricted: false },
+          is_addon: false,
+          _supabase: {
+            id: 'b0000b17-0000-4000-a000-000000000007',
+            name: 'Bento Pasta Boloñesa (Especial del Día)',
+            category_id: 'b0000c01-0000-4000-a000-000000000001',
+            brand_id: 'a63da806-a62a-49b9-a833-07e0976785ad',
+            price: 19000,
+            is_active: true,
+            stock_status: 'in',
+            modifier_groups: [
+              'b0000b20-0000-4000-a000-000000000002',
+              'b0000b20-0000-4000-a000-000000000001',
+              'b0000c20-0000-4000-a000-000000000002'
+            ]
+          }
+        });
+      }
+    }
     return grouped;
-  }, [rawProducts, locationPrices, locationStatus, activeLocationId, restaurantSettings, allCategories]);
+  }, [rawProducts, locationPrices, locationStatus, activeLocationId, restaurantSettings, allCategories, brand]);
 
   // Compute categories reactively (Dayparting + Has Products + Location Filter)
   const categories = useMemo(() => {
@@ -503,10 +594,18 @@ export const MenuDataProvider = ({ children }) => {
       : [];
     const hasLocCatConfig = locCatsForActive.length > 0;
     const now = new Date();
+    const isBokuBrand = restaurantSettings?.brand_id === 'a63da806-a62a-49b9-a833-07e0976785ad' 
+      || brand?.id === 'a63da806-a62a-49b9-a833-07e0976785ad' 
+      || brand?.slug === 'boku-bento';
 
     return (allCategories || []).filter(cat => {
       // 1. Basic active status (desactivada manualmente por admin)
       if (cat.is_active === false) return false;
+
+      // Desactivación operativa: Desayunos & Brunch desactivados por hoy en Boku Bento
+      if (isBokuBrand && (cat.id === 'b0000c04-0000-4000-a000-000000000004' || cat.slug === 'boku-desayunos-brunch' || cat.name?.toLowerCase().includes('desayuno'))) {
+        return false;
+      }
 
       // 2. ESTRATEGIA HÍBRIDA de sede:
       //    Si la sede tiene categorías asignadas → modo estricto (solo esas).
@@ -533,7 +632,7 @@ export const MenuDataProvider = ({ children }) => {
         is_schedule_restricted: scheduleInfo.isRestricted
       };
     });
-  }, [allCategories, productsByCategory, activeLocationId, locationCategories]);
+  }, [allCategories, productsByCategory, activeLocationId, locationCategories, restaurantSettings, brand]);
 
   // Trigger fetch when brand changes (resolved from URL slug or session)
   const lastFetchedBrandRef = React.useRef(undefined);
