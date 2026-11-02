@@ -1,6 +1,7 @@
 import { supabase } from "@/config/supabase";
 import { getAttribution } from "./attribution";
 import { safeStorage as localStorage, safeSessionStorage as sessionStorage } from "./safeStorage";
+import { isBot } from "./botDetection";
 
 const SESSION_KEY = "aluna_session_id";
 
@@ -32,6 +33,11 @@ const getStoredLocationId = () => {
 };
 
 export const trackAnalyticsEvent = async (eventName, metadata = {}) => {
+  // Ignore search engine bots, social media link preview scrapers (Facebook, Twitter, WhatsApp), and headless crawlers
+  if (isBot()) {
+    return;
+  }
+
   const {
     brandId = null,
     locationId = null,

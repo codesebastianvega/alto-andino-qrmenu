@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { getAttribution } from '../utils/attribution';
+import { isBot } from '../utils/botDetection';
 
 export const CLARITY_PROJECT_IDS = {
   'boku-bento': 'z5k4ivj9i5',
@@ -12,6 +13,11 @@ export const CLARITY_PROJECT_IDS = {
 export function useClarity({ brand, currentLocation }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    // 0. Excluir rastreadores, scrapers de Facebook/WhatsApp y bots automatizados
+    if (isBot()) {
+      return;
+    }
 
     // 1. Detectar si la URL trae parámetro de exclusión o inclusión
     const searchParams = new URLSearchParams(window.location.search);

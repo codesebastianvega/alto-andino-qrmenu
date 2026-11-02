@@ -1,67 +1,123 @@
 import React, { useState, useMemo } from 'react';
 import { useCRM } from '../../hooks/useCRM';
+import { useAuth } from '../../context/AuthContext';
 import { 
   Users, Search, Filter, MessageSquare, Phone, 
   ChevronRight, Calendar, DollarSign, TrendingUp,
   Star, Clock, Zap, Ghost, MinusCircle, ExternalLink,
-  ArrowUpRight, AlertCircle, ShoppingBag
+  ArrowUpRight, AlertCircle, ShoppingBag, MapPin,
+  AlertTriangle, Tag, Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomerProfileModal from './CustomerProfileModal';
 
-const SEGMENTS = {
-  frecuente: { label: 'Frecuente', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', icon: Star },
-  recurrente: { label: 'Recurrente', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', icon: TrendingUp },
-  nuevo: { label: 'Nuevo', color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', icon: Zap },
-  dormido: { label: 'Dormido', color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20', icon: Clock },
-  perdido: { label: 'Perdido', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', icon: Ghost },
-  prospecto: { label: 'Prospecto', color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', icon: Users },
-  ocasional: { label: 'Ocasional', color: 'text-gray-400', bg: 'bg-gray-500/10', border: 'border-gray-500/20', icon: MinusCircle },
+const SEGMENT_CONFIG = {
+  friccion: { 
+    label: 'Cancelados / Fricción', 
+    color: 'text-rose-700', 
+    bg: 'bg-rose-50', 
+    border: 'border-rose-200', 
+    badgeBg: 'bg-rose-100 text-rose-800 border-rose-300',
+    icon: AlertTriangle 
+  },
+  vip: { 
+    label: 'VIP', 
+    color: 'text-amber-800', 
+    bg: 'bg-amber-50', 
+    border: 'border-amber-200', 
+    badgeBg: 'bg-amber-100 text-amber-900 border-amber-300',
+    icon: Star 
+  },
+  frecuente: { 
+    label: 'Frecuente', 
+    color: 'text-emerald-700', 
+    bg: 'bg-emerald-50', 
+    border: 'border-emerald-200', 
+    badgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    icon: TrendingUp 
+  },
+  nuevo: { 
+    label: 'Nuevo', 
+    color: 'text-blue-700', 
+    bg: 'bg-blue-50', 
+    border: 'border-blue-200', 
+    badgeBg: 'bg-blue-100 text-blue-800 border-blue-300',
+    icon: Zap 
+  },
+  dormido: { 
+    label: 'Inactivo (+21d)', 
+    color: 'text-orange-700', 
+    bg: 'bg-orange-50', 
+    border: 'border-orange-200', 
+    badgeBg: 'bg-orange-100 text-orange-800 border-orange-300',
+    icon: Clock 
+  },
+  perdido: { 
+    label: 'Perdido (+45d)', 
+    color: 'text-gray-700', 
+    bg: 'bg-gray-100', 
+    border: 'border-gray-300', 
+    badgeBg: 'bg-gray-200 text-gray-800 border-gray-300',
+    icon: Ghost 
+  },
+  prospecto: { 
+    label: 'Prospecto', 
+    color: 'text-indigo-700', 
+    bg: 'bg-indigo-50', 
+    border: 'border-indigo-200', 
+    badgeBg: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+    icon: Users 
+  },
+  ocasional: { 
+    label: 'Ocasional', 
+    color: 'text-gray-700', 
+    bg: 'bg-gray-50', 
+    border: 'border-gray-200', 
+    badgeBg: 'bg-gray-100 text-gray-700 border-gray-200',
+    icon: MinusCircle 
+  },
 };
-
-const GlassCard = ({ children, className = "" }) => (
-  <div className={`bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl ${className}`}>
-    {children}
-  </div>
-);
-
-const StatCard = ({ label, value, icon: Icon, color }) => (
-  <GlassCard className="p-6">
-    <div className="flex items-center justify-between mb-4">
-      <div className={`p-3 rounded-2xl ${color.bg}`}>
-        <Icon className={`w-6 h-6 ${color.text}`} />
-      </div>
-      <div className="flex items-center gap-1 text-[10px] font-black text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-full">
-        <ArrowUpRight className="w-3 h-3" />
-        LIVE
-      </div>
-    </div>
-    <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest">{label}</p>
-    <p className="text-3xl font-black text-white mt-1">{value}</p>
-  </GlassCard>
-);
 
 export default function CustomerDirectory() {
   const { customers, stats, loading, refresh } = useCRM();
+  const { activeBrand } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSegment, setFilterSegment] = useState('all');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
+  const brandName = activeBrand?.name || 'Boku Bento';
+
   const filteredCustomers = useMemo(() => {
     return customers.filter(c => {
+      const term = searchTerm.toLowerCase();
       const matchesSearch = 
-        (c.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
+        (c.name?.toLowerCase() || '').includes(term) || 
+        (c.address?.toLowerCase() || '').includes(term) ||
+        (c.favoriteProduct?.toLowerCase() || '').includes(term) ||
         c.phone.includes(searchTerm);
       
       let matchesFilter = true;
-      if (filterSegment === 'whales') {
-        matchesFilter = c.isWhale;
+      if (filterSegment === 'friccion') {
+        matchesFilter = c.segment === 'friccion' || c.hasCancelled;
+      } else if (filterSegment === 'whales' || filterSegment === 'vip') {
+        matchesFilter = c.isWhale || c.segment === 'vip';
+      } else if (filterSegment === 'frecuente') {
+        matchesFilter = c.segment === 'frecuente' || c.ordersCount >= 2;
+      } else if (filterSegment === 'dormido') {
+        matchesFilter = c.segment === 'dormido' || c.segment === 'perdido';
       } else if (filterSegment !== 'all') {
         matchesFilter = c.segment === filterSegment;
       }
       
       return matchesSearch && matchesFilter;
-    }).sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
+    }).sort((a, b) => {
+      // Prioritize customers with cancelled orders / friction if viewing all or friction
+      if (filterSegment === 'all' || filterSegment === 'friccion') {
+        if (a.hasCancelled && !b.hasCancelled) return -1;
+        if (!a.hasCancelled && b.hasCancelled) return 1;
+      }
+      return new Date(b.lastVisit) - new Date(a.lastVisit);
+    });
   }, [customers, searchTerm, filterSegment]);
 
   const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { 
@@ -70,197 +126,437 @@ export default function CustomerDirectory() {
     maximumFractionDigits: 0 
   }).format(val);
 
+  const sendDirectWhatsApp = (customer, e) => {
+    if (e) e.stopPropagation();
+    const phone = customer.phone.replace(/\D/g, '');
+    const firstName = customer.name?.split(' ')[0] || 'Hola';
+
+    let message = '';
+    if (customer.hasCancelled || customer.segment === 'friccion') {
+      const dish = customer.favoriteProduct && customer.favoriteProduct !== 'Sin preferencia'
+        ? ` tu ${customer.favoriteProduct}` 
+        : ' tu pedido';
+      const reasonDetail = customer.lastCancellationReason 
+        ? ` por el inconveniente con tu pedido ("${customer.lastCancellationReason}")` 
+        : ' por la cancelación de tu pedido';
+
+      message = `Hola ${firstName}! 👋 Te saludamos del equipo de ${brandName}.
+
+Queremos pedirte una sincera disculpa${reasonDetail}. Para nosotros tu experiencia es lo más importante y lamentamos mucho no haberte podido atender como mereces.
+
+Para compensarte y que no te quedes con las ganas de disfrutar${dish}, te dejamos un descuento especial del 15% en tu próximo pedido usando el código DISCULPABOKU desde nuestro menú:
+https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
+
+¡Esperamos tener la oportunidad de atenderte pronto! 🍱✨`;
+    } else if (customer.isWhale || customer.segment === 'vip') {
+      message = `Hola ${firstName}! ⭐ Como uno de nuestros clientes más especiales en ${brandName}, queríamos saludarte y agradecerte por tu preferencia constante. ¡Esperamos verte pronto! 🍱`;
+    } else {
+      message = `Hola ${firstName}! 👋 Te saludamos de ${brandName}. ¿Qué tal estuvo tu experiencia con nosotros? ¡Nos encantaría saber cómo podemos hacer tu próximo pedido aún más delicioso! 🍱`;
+    }
+
+    const url = `https://wa.me/57${phone.slice(-10)}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
+  const navigateToPromotions = () => {
+    window.location.hash = '#admin?page=promotions';
+    window.location.reload();
+  };
+
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center p-20 animate-pulse">
-        <Users className="w-12 h-12 text-gray-700 mb-4" />
-        <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest">Cargando base de datos...</p>
+      <div className="flex flex-col items-center justify-center p-20 animate-pulse bg-white rounded-2xl border border-gray-100">
+        <Users className="w-12 h-12 text-gray-400 mb-4 animate-bounce" />
+        <p className="text-gray-600 font-bold uppercase text-xs tracking-widest">Cargando base de datos de clientes...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 pb-20">
-      {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          label="Total Clientes" 
-          value={stats.totalCustomers} 
-          icon={Users} 
-          color={{ text: 'text-blue-400', bg: 'bg-blue-500/10' }} 
-        />
-        <StatCard 
-          label="Valor de Vida (LTV)" 
-          value={formatCurrency(stats.totalLTV)} 
-          icon={DollarSign} 
-          color={{ text: 'text-emerald-400', bg: 'bg-emerald-500/10' }} 
-        />
-        <StatCard 
-          label="Activos (30d)" 
-          value={stats.activeCustomers} 
-          icon={Zap} 
-          color={{ text: 'text-yellow-400', bg: 'bg-yellow-500/10' }} 
-        />
-        <StatCard 
-          label="Ticket Promedio" 
-          value={formatCurrency(stats.avgLTV)} 
-          icon={TrendingUp} 
-          color={{ text: 'text-purple-400', bg: 'bg-purple-500/10' }} 
-        />
+    <div className="space-y-6 pb-20">
+      {/* Alerta Destacada si hay clientes con pedidos cancelados */}
+      {stats.frictionCustomers > 0 && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-500/10 via-rose-500/5 to-white border border-rose-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <AlertTriangle className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <p className="text-sm font-black text-rose-900">
+                {stats.frictionCustomers} {stats.frictionCustomers === 1 ? 'cliente con pedido cancelado requiere atención' : 'clientes con pedidos cancelados requieren atención'}
+              </p>
+              <p className="text-xs text-rose-700 mt-0.5">
+                No dejes que se vayan a la competencia. Envíales un mensaje de disculpa y un cupón de compensación por WhatsApp.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-center">
+            <button
+              onClick={() => setFilterSegment('friccion')}
+              className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+            >
+              <Users className="w-3.5 h-3.5" />
+              Ver Afectados ({stats.frictionCustomers})
+            </button>
+            <button
+              onClick={navigateToPromotions}
+              className="px-3.5 py-2 rounded-xl bg-white hover:bg-gray-50 text-rose-700 border border-rose-200 font-bold text-xs flex items-center gap-1.5 transition-all"
+              title="Abrir módulo de cupones y descuentos"
+            >
+              <Tag className="w-3.5 h-3.5" />
+              Crear Cupón
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Tarjetas de Métricas Ejecutivas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Clientes */}
+        <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-gray-500 text-[11px] font-bold uppercase tracking-wider">Total Clientes</p>
+            <p className="text-2xl font-black text-gray-900 mt-1">{stats.totalCustomers}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">En agenda y base de datos</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+            <Users className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* LTV Total */}
+        <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-gray-500 text-[11px] font-bold uppercase tracking-wider">Valor de Vida (LTV)</p>
+            <p className="text-2xl font-black text-emerald-600 mt-1">{formatCurrency(stats.totalLTV)}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">Ventas totales acumuladas</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+            <DollarSign className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Clientes en Fricción / Cancelados */}
+        <div 
+          onClick={() => setFilterSegment('friccion')}
+          className={`cursor-pointer bg-white border rounded-2xl p-5 shadow-xs flex items-center justify-between transition-all hover:border-rose-300 ${
+            stats.frictionCustomers > 0 ? 'border-rose-200 bg-rose-50/20' : 'border-gray-200/90'
+          }`}
+        >
+          <div>
+            <div className="flex items-center gap-1.5">
+              <p className="text-gray-500 text-[11px] font-bold uppercase tracking-wider">Cancelados / Fricción</p>
+              {stats.frictionCustomers > 0 && (
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+              )}
+            </div>
+            <p className={`text-2xl font-black mt-1 ${stats.frictionCustomers > 0 ? 'text-rose-600' : 'text-gray-900'}`}>
+              {stats.frictionCustomers}
+            </p>
+            <p className="text-[11px] text-rose-500 font-bold mt-0.5">
+              {stats.frictionCustomers > 0 ? 'Requieren recuperación urgente' : 'Cero cancelaciones'}
+            </p>
+          </div>
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${
+            stats.frictionCustomers > 0 ? 'bg-rose-100 text-rose-600 border-rose-200' : 'bg-gray-50 text-gray-400 border-gray-100'
+          }`}>
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Ticket Promedio */}
+        <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-gray-500 text-[11px] font-bold uppercase tracking-wider">Ticket Promedio</p>
+            <p className="text-2xl font-black text-purple-600 mt-1">{formatCurrency(stats.avgLTV)}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">Por cliente recurrente</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
+            <TrendingUp className="w-6 h-6" />
+          </div>
+        </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="relative w-full md:w-96 group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-emerald-400 transition-colors" />
+      {/* Toolbar & Filtros */}
+      <div className="flex flex-col md:flex-row gap-3 items-center justify-between bg-white p-4 rounded-2xl border border-gray-200/90 shadow-xs">
+        {/* Búsqueda */}
+        <div className="relative w-full md:w-80 group">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-emerald-600 transition-colors" />
           <input 
             type="text"
-            placeholder="Buscar por nombre o teléfono..."
+            placeholder="Buscar por nombre, teléfono, plato o dirección..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 pl-10 pr-4 text-gray-900 text-xs font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:bg-white transition-all"
           />
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 custom-scrollbar w-full md:w-auto">
+        {/* Tabs de Filtro */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 custom-scrollbar w-full md:w-auto">
           <button 
             onClick={() => setFilterSegment('all')}
-            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-              filterSegment === 'all' ? 'bg-white text-black' : 'bg-white/5 text-gray-400 border border-white/10'
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              filterSegment === 'all' 
+                ? 'bg-gray-900 text-white shadow-xs' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            Todos
+            Todos ({customers.length})
           </button>
-          <button 
-            onClick={() => setFilterSegment('whales')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-              filterSegment === 'whales' ? 'bg-amber-400 text-black border-2 border-amber-500' : 'bg-amber-400/10 text-amber-400 border border-amber-500/20'
-            }`}
-          >
-            <Star className="w-3 h-3 fill-current" />
-            Top 20% (Whales)
-          </button>
-          {Object.entries(SEGMENTS).map(([key, cfg]) => (
+
+          {stats.frictionCustomers > 0 && (
             <button 
-              key={key}
-              onClick={() => setFilterSegment(key)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                filterSegment === key ? `${cfg.bg} ${cfg.color} border-2 border-current` : 'bg-white/5 text-gray-400 border border-white/10'
+              onClick={() => setFilterSegment('friccion')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all whitespace-nowrap ${
+                filterSegment === 'friccion' 
+                  ? 'bg-rose-600 text-white shadow-xs' 
+                  : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
               }`}
             >
-              <cfg.icon className="w-3 h-3" />
-              {cfg.label}
+              <AlertTriangle className="w-3.5 h-3.5" />
+              🚨 Cancelados ({stats.frictionCustomers})
             </button>
-          ))}
+          )}
+
+          <button 
+            onClick={() => setFilterSegment('whales')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              filterSegment === 'whales' 
+                ? 'bg-amber-500 text-white shadow-xs' 
+                : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+            }`}
+          >
+            <Star className="w-3.5 h-3.5 fill-current" />
+            VIPs ({customers.filter(c => c.isWhale || c.segment === 'vip').length})
+          </button>
+
+          <button 
+            onClick={() => setFilterSegment('frecuente')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              filterSegment === 'frecuente' 
+                ? 'bg-emerald-600 text-white shadow-xs' 
+                : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+            }`}
+          >
+            <TrendingUp className="w-3.5 h-3.5" />
+            Frecuentes ({customers.filter(c => c.ordersCount >= 2).length})
+          </button>
+
+          <button 
+            onClick={() => setFilterSegment('dormido')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              filterSegment === 'dormido' 
+                ? 'bg-orange-500 text-white shadow-xs' 
+                : 'bg-orange-50 text-orange-800 border border-orange-200 hover:bg-orange-100'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            Inactivos (+21d)
+          </button>
+
+          <button 
+            onClick={() => setFilterSegment('prospecto')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              filterSegment === 'prospecto' 
+                ? 'bg-indigo-600 text-white shadow-xs' 
+                : 'bg-indigo-50 text-indigo-800 border border-indigo-200 hover:bg-indigo-100'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            Prospectos
+          </button>
         </div>
       </div>
 
-      {/* Customer Grid/Table */}
-      <GlassCard className="overflow-hidden border-white/5">
+      {/* Tabla Principal de Clientes */}
+      <div className="bg-white border border-gray-200/90 rounded-2xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-white/5">
-                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Cliente</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Inteligencia RFM</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest text-center">Salud / Riesgo</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest text-center">Pedidos</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">LTV Total</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Última Visita</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest"></th>
+              <tr className="bg-gray-50/80 border-b border-gray-200 text-gray-500 text-[10px] font-black uppercase tracking-wider">
+                <th className="px-5 py-3.5">Cliente & Ubicación</th>
+                <th className="px-5 py-3.5">Historial & Gustos</th>
+                <th className="px-5 py-3.5">Estado & Salud</th>
+                <th className="px-5 py-3.5 text-center">Pedidos</th>
+                <th className="px-5 py-3.5">Ventas Totales (LTV)</th>
+                <th className="px-5 py-3.5">Última Visita</th>
+                <th className="px-5 py-3.5 text-right">Acción Rápida</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-gray-100">
               {filteredCustomers.map((customer) => {
-                const seg = SEGMENTS[customer.segment];
-                const riskColor = customer.churnRisk > 70 ? 'text-red-400' : customer.churnRisk > 40 ? 'text-orange-400' : 'text-emerald-400';
+                const seg = SEGMENT_CONFIG[customer.segment] || SEGMENT_CONFIG.ocasional;
+                const isFriction = customer.segment === 'friccion' || customer.hasCancelled;
                 
                 return (
                   <tr 
                     key={customer.phone}
-                    className="group hover:bg-white/5 transition-all cursor-pointer"
+                    className={`group hover:bg-gray-50/80 transition-all cursor-pointer ${
+                      isFriction ? 'bg-rose-50/30' : ''
+                    }`}
                     onClick={() => setSelectedCustomer(customer)}
                   >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <div className={`w-10 h-10 rounded-full ${seg.bg} flex items-center justify-center border ${seg.border}`}>
-                            <span className={`text-[13px] font-black ${seg.color}`}>
+                    {/* Cliente & Ubicación */}
+                    <td className="px-5 py-4">
+                      <div className="flex items-start gap-3">
+                        <div className="relative shrink-0">
+                          <div className={`w-10 h-10 rounded-2xl ${seg.bg} flex items-center justify-center border ${seg.border} shadow-2xs`}>
+                            <span className={`text-sm font-black ${seg.color}`}>
                               {customer.name?.charAt(0).toUpperCase() || '?'}
                             </span>
                           </div>
                           {customer.isWhale && (
-                            <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-0.5 border-2 border-[#0a0a0a]">
-                              <Star className="w-2.5 h-2.5 text-black fill-current" />
+                            <div className="absolute -top-1 -right-1 bg-amber-400 text-black rounded-full p-0.5 border border-white shadow-xs" title="Cliente Whale (Top 20% ventas)">
+                              <Star className="w-2.5 h-2.5 fill-current" />
+                            </div>
+                          )}
+                          {isFriction && (
+                            <div className="absolute -top-1 -right-1 bg-rose-600 text-white rounded-full p-0.5 border border-white shadow-xs" title="Tiene pedidos cancelados">
+                              <AlertTriangle className="w-2.5 h-2.5" />
                             </div>
                           )}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-white font-bold text-sm tracking-tight">{customer.name || 'Sin nombre'}</p>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-gray-900 font-bold text-sm tracking-tight truncate max-w-[220px]">
+                              {customer.name}
+                            </p>
                             {customer.isWhale && (
-                              <span className="text-[8px] bg-amber-400/10 text-amber-400 border border-amber-400/20 px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Whale</span>
+                              <span className="text-[9px] bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.2 rounded-full font-black uppercase">
+                                VIP
+                              </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <Phone className="w-3 h-3 text-gray-500" />
-                            <span className="text-[11px] text-gray-500 font-medium">{customer.phone}</span>
+                          
+                          {/* Dirección / Ubicación si existe */}
+                          {customer.address ? (
+                            <div className="flex items-center gap-1 mt-0.5 text-gray-500 text-xs truncate max-w-[250px]" title={customer.address + (customer.deliveryNotes ? ` (${customer.deliveryNotes})` : '')}>
+                              <MapPin className="w-3 h-3 text-gray-400 shrink-0" />
+                              <span className="truncate">{customer.address}</span>
+                              {customer.deliveryNotes && (
+                                <span className="text-[10px] text-gray-400 truncate">· {customer.deliveryNotes}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 mt-0.5 text-gray-400 text-xs">
+                              <Phone className="w-3 h-3 text-gray-400 shrink-0" />
+                              <span className="font-mono text-[11px]">{customer.phone}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Historial & Gustos (Reemplaza RFM incomprensible) */}
+                    <td className="px-5 py-4">
+                      <div className="flex flex-col gap-1 max-w-[200px]">
+                        {/* Conteo de entregados vs cancelados */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {customer.cancelledCount > 0 ? (
+                            <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 border border-rose-200 text-[10px] font-black">
+                              {customer.ordersCount} entregado{customer.ordersCount !== 1 ? 's' : ''} · {customer.cancelledCount} cancelado{customer.cancelledCount !== 1 ? 's' : ''}
+                            </span>
+                          ) : customer.ordersCount > 0 ? (
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
+                              {customer.ordersCount} entregado{customer.ordersCount !== 1 ? 's' : ''}
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-[10px] font-medium">
+                              Sin compras aún
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Plato de preferencia o interés */}
+                        {customer.favoriteProduct && customer.favoriteProduct !== 'Sin preferencia' && (
+                          <div className="flex items-center gap-1 text-gray-700 text-xs font-semibold truncate" title={`Plato de interés: ${customer.favoriteProduct}`}>
+                            <ShoppingBag className="w-3 h-3 text-emerald-600 shrink-0" />
+                            <span className="truncate">{customer.favoriteProduct}</span>
                           </div>
-                        </div>
+                        )}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-1">
-                          {[1, 2, 3, 4, 5].map((s) => (
-                            <div 
-                              key={s} 
-                              className={`w-1.5 h-1.5 rounded-full ${s <= customer.rfmScore ? 'bg-purple-400' : 'bg-white/10'}`} 
-                            />
-                          ))}
-                          <span className="text-[10px] text-purple-400 font-black ml-1">v{customer.rfmScore}</span>
-                        </div>
-                        <div className="flex gap-2 text-[8px] font-bold text-gray-500 uppercase">
-                          <span>R:{customer.rfm.r}</span>
-                          <span>F:{customer.rfm.f}</span>
-                          <span>M:{customer.rfm.m}</span>
-                        </div>
+
+                    {/* Estado & Salud */}
+                    <td className="px-5 py-4">
+                      <div className="flex flex-col items-start gap-1">
+                        {isFriction ? (
+                          <>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 border border-rose-300 animate-pulse">
+                              <AlertTriangle className="w-3 h-3" /> Pedido Cancelado
+                            </span>
+                            {customer.lastCancellationReason && (
+                              <span className="text-[10px] text-rose-700 font-medium italic truncate max-w-[180px]" title={`Motivo: ${customer.lastCancellationReason}`}>
+                                "{customer.lastCancellationReason}"
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black border ${seg.badgeBg}`}>
+                            <seg.icon className="w-3 h-3" />
+                            {seg.label}
+                          </span>
+                        )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full transition-all duration-1000 ${customer.churnRisk > 70 ? 'bg-red-500' : customer.churnRisk > 40 ? 'bg-orange-500' : 'bg-emerald-500'}`}
-                            style={{ width: `${100 - customer.churnRisk}%` }}
-                          />
-                        </div>
-                        <span className={`text-[10px] font-black uppercase ${riskColor}`}>
-                          {customer.churnRisk > 70 ? 'Alto Riesgo' : customer.churnRisk > 40 ? 'En Alerta' : 'Saludable'}
-                        </span>
-                      </div>
+
+                    {/* Pedidos Completados */}
+                    <td className="px-5 py-4 text-center">
+                      <span className={`font-black text-sm ${customer.ordersCount > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
+                        {customer.ordersCount}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="text-white font-black text-sm">{customer.ordersCount}</span>
+
+                    {/* LTV Total */}
+                    <td className="px-5 py-4">
+                      <p className="text-gray-900 font-black text-sm">{formatCurrency(customer.ltv)}</p>
+                      {customer.ordersCount > 1 && (
+                        <p className="text-[10px] text-gray-400 font-medium">Prom: {formatCurrency(customer.avgTicket)}</p>
+                      )}
                     </td>
-                    <td className="px-6 py-4">
-                      <p className="text-white font-black text-sm">{formatCurrency(customer.ltv)}</p>
-                      <p className="text-[10px] text-gray-500 font-bold uppercase">Avg: {formatCurrency(customer.avgTicket)}</p>
-                    </td>
-                    <td className="px-6 py-4">
+
+                    {/* Última Visita */}
+                    <td className="px-5 py-4">
                       <div className="flex flex-col">
-                        <span className="text-gray-300 text-xs font-medium">
+                        <span className="text-gray-800 text-xs font-semibold">
                           {new Date(customer.lastVisit).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
                         </span>
-                        <span className="text-[10px] text-gray-500 font-bold">
-                          Hace {customer.daysSinceLastVisit} días
+                        <span className="text-[10px] text-gray-400 font-medium">
+                          {customer.daysSinceLastVisit === 0 ? 'Hoy' : `Hace ${customer.daysSinceLastVisit} días`}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="p-2 rounded-xl bg-white/5 text-gray-500 hover:text-white hover:bg-white/10 transition-all">
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
+
+                    {/* Acción Rápida (WhatsApp / Recuperar) */}
+                    <td className="px-5 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        {isFriction ? (
+                          <button 
+                            onClick={(e) => sendDirectWhatsApp(customer, e)}
+                            className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black flex items-center gap-1.5 shadow-xs transition-all hover:scale-105"
+                            title="Enviar disculpa y cupón de compensación por WhatsApp"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            Recuperar
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={(e) => sendDirectWhatsApp(customer, e)}
+                            className="p-2 rounded-xl bg-gray-100 hover:bg-emerald-50 text-gray-600 hover:text-emerald-700 border border-gray-200 transition-all"
+                            title="Escribir por WhatsApp"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => setSelectedCustomer(customer)}
+                          className="p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-all"
+                          title="Ver detalle del cliente"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -268,12 +564,10 @@ export default function CustomerDirectory() {
               
               {filteredCustomers.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="px-6 py-20 text-center">
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="p-4 rounded-full bg-white/5 border border-white/10">
-                        <Users className="w-8 h-8 text-gray-700" />
-                      </div>
-                      <p className="text-gray-500 font-bold uppercase text-[11px] tracking-widest">No se encontraron clientes</p>
+                  <td colSpan="7" className="px-6 py-16 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <Users className="w-8 h-8 text-gray-300" />
+                      <p className="text-gray-500 font-bold text-xs uppercase tracking-wider">No se encontraron clientes con este filtro</p>
                     </div>
                   </td>
                 </tr>
@@ -281,13 +575,15 @@ export default function CustomerDirectory() {
             </tbody>
           </table>
         </div>
-      </GlassCard>
+      </div>
 
       {/* Customer Profile Modal */}
       <CustomerProfileModal 
         isOpen={!!selectedCustomer}
         customer={selectedCustomer}
         onClose={() => setSelectedCustomer(null)}
+        brandName={brandName}
+        onNavigateToPromotions={navigateToPromotions}
       />
     </div>
   );

@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { toast } from '../Toast';
 import { CLARITY_PROJECT_IDS } from '../../hooks/useClarity';
+import { isBotUserAgent } from '../../utils/botDetection';
 
 
 const CHANNEL_STYLES = {
@@ -225,6 +226,8 @@ export default function AdminHeatmaps({
 
     events.forEach(ev => {
       if (!ev.session_id) return;
+      // Excluir bots de rastreo, scrapers de previsualización (Facebook, Google, WhatsApp)
+      if (isBotUserAgent(ev.user_agent)) return;
       const time = new Date(ev.created_at).getTime();
 
       // 1. Tiempos reales por sesión

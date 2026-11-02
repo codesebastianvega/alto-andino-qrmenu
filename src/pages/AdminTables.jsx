@@ -16,6 +16,7 @@ import {
   ChevronRight, Layers, Table, ExternalLink, TrendingUp, Smartphone, ShoppingBag, DollarSign,
   Download, Copy
 } from 'lucide-react';
+import { isBotUserAgent } from '../utils/botDetection';
 
 const toast = {
   success: (msg, opts) => toastFn.success(msg, { duration: 2500, ...opts }),
@@ -234,6 +235,7 @@ export default function AdminTables({ isEmbedded = false }) {
         // Calcular métricas de canales de marketing/redes
         const mSources = {};
         eventsData.forEach(ev => {
+          if (isBotUserAgent(ev.user_agent)) return;
           let rawSrc = (ev.metadata?.source || (ev.metadata?.mesa ? 'qr_mesa' : 'direct')).toLowerCase().trim();
           const ALIASES = { ig: 'instagram_bio', instagram: 'instagram_bio', insta: 'instagram_bio', wsp: 'whatsapp', wa: 'whatsapp', ws: 'whatsapp', fb: 'facebook', face: 'facebook', tt: 'tiktok', web: 'direct' };
           rawSrc = ALIASES[rawSrc] || rawSrc;
