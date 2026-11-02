@@ -7,12 +7,13 @@ import { useBrand } from '../context/BrandContext';
 import { useLocations } from '../context/LocationContext';
 import { useMenuData } from '../context/MenuDataContext';
 import { formatCOP } from '../utils/money';
+import { getDefaultBrandCoupons } from '../utils/couponSecurity';
 
 export default function AdminPromotions() {
   const { activeBrand, profile } = useAuth();
   const { brand: brandFromContext } = useBrand();
   const { activeLocationId, isAllLocations, locations } = useLocations();
-  const { allCategories = [], getAllProducts } = useMenuData();
+  const { allCategories = [], getAllProducts, refetchPromotions } = useMenuData();
   const allProducts = useMemo(() => getAllProducts?.() || [], [getAllProducts]);
 
   const activeBrandId = activeBrand?.id || brandFromContext?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
@@ -64,7 +65,12 @@ export default function AdminPromotions() {
 
       const { data, error } = await query;
       if (error) throw error;
-      setPromotions(data || []);
+      const dbList = data || [];
+      const existingCodes = new Set(dbList.map(p => (p.code || '').trim().toUpperCase()).filter(Boolean));
+      const defaultCoupons = getDefaultBrandCoupons(activeBrandId).filter(
+        dc => !existingCodes.has((dc.code || '').trim().toUpperCase())
+      );
+      setPromotions([...dbList, ...defaultCoupons]);
     } catch (err) {
       console.error('Error fetching promotions:', err);
       toast.error('Error al cargar promociones');
@@ -132,18 +138,34 @@ export default function AdminPromotions() {
     } else if (templateType === 'social_coupon') {
       setFormData({
         ...initialFormState,
-        name: 'Cupón Redes Sociales 15% OFF',
+        name: 'Cupón Personalizado de Carrito (10% OFF)',
         type: 'percentage_discount',
         target: 'all',
-        value: 15,
-        code: 'BOKU15',
-        min_order_amount: 30000,
-        banner_message: '🎟️ Usa el código BOKU15 y recibe 15% OFF en tu orden',
+        value: 10,
+        code: 'BOKU10',
+        min_order_amount: 20000,
+        banner_message: '🎟️ Usa el código BOKU10 en tu carrito y recibe 10% OFF',
         banner_bg_color: '#b45309',
         start_date: now.toISOString().slice(0, 16),
         end_date: oneWeek.toISOString().slice(0, 16),
         is_active: true,
-        show_banner: true
+        show_banner: false
+      });
+    } else if (templateType === 'free_delivery_coupon') {
+      setFormData({
+        ...initialFormState,
+        name: 'Cupón Domicilio Gratis en Carrito',
+        type: 'free_delivery',
+        target: 'delivery',
+        value: 0,
+        code: 'DOMIGRATIS',
+        min_order_amount: 25000,
+        banner_message: '🛵 Cupón DOMIGRATIS: Domicilio sin costo en tu pedido',
+        banner_bg_color: '#047857',
+        start_date: now.toISOString().slice(0, 16),
+        end_date: oneWeek.toISOString().slice(0, 16),
+        is_active: true,
+        show_banner: false
       });
     }
 
@@ -157,6 +179,24 @@ export default function AdminPromotions() {
     // Optimistic update
     setPromotions(prev => prev.map(p => p.id === promo.id ? { ...p, is_active: newStatus } : p));
 
+    if (promo.is_default_template) {
+      try {
+        const storageKey = `aa_disabled_default_coupons_${activeBrandId}`;
+        const raw = localStorage.getItem(storageKey);
+        const disabledList = raw ? JSON.parse(raw) : [];
+        const codeUpper = (promo.code || '').trim().toUpperCase();
+        const updated = newStatus
+          ? disabledList.filter(c => c !== codeUpper)
+          : Array.from(new Set([...disabledList, codeUpper]));
+        localStorage.setItem(storageKey, JSON.stringify(updated));
+        refetchPromotions?.();
+        toast.success(newStatus ? `Cupón ${codeUpper} activado 🚀` : `Cupón ${codeUpper} pausado`);
+      } catch (e) {
+        console.error('Error toggling default coupon:', e);
+      }
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('promotions')
@@ -164,6 +204,7 @@ export default function AdminPromotions() {
         .eq('id', promo.id);
 
       if (error) throw error;
+      refetchPromotions?.();
       toast.success(newStatus ? 'Campaña activada con éxito 🚀' : 'Campaña pausada');
     } catch (err) {
       console.error('Error toggling promo:', err);
@@ -174,11 +215,17 @@ export default function AdminPromotions() {
 
   // Delete promotion
   const handleDeletePromo = async (promoId) => {
+    const targetPromo = promotions.find(p => p.id === promoId);
+    if (targetPromo?.is_default_template) {
+      handleToggleActive(targetPromo);
+      return;
+    }
     if (!window.confirm('¿Seguro que deseas eliminar esta campaña?')) return;
     try {
       const { error } = await supabase.from('promotions').delete().eq('id', promoId);
       if (error) throw error;
       setPromotions(prev => prev.filter(p => p.id !== promoId));
+      refetchPromotions?.();
       toast.success('Campaña eliminada');
     } catch (err) {
       console.error('Error deleting promo:', err);
@@ -239,7 +286,7 @@ export default function AdminPromotions() {
         updated_at: new Date().toISOString()
       };
 
-      if (editingPromo) {
+      if (editingPromo && !editingPromo.is_default_template) {
         const { error } = await supabase
           .from('promotions')
           .update(payload)
@@ -251,12 +298,13 @@ export default function AdminPromotions() {
           .from('promotions')
           .insert([payload]);
         if (error) throw error;
-        toast.success('¡Campaña creada con éxito! 🎉');
+        toast.success('¡Campaña / Cupón guardado con éxito! 🎉');
       }
 
       setIsModalOpen(false);
       setEditingPromo(null);
       fetchPromotions();
+      refetchPromotions?.();
     } catch (err) {
       console.error('Error saving promotion:', err);
       toast.error('Error al guardar la campaña');
@@ -300,7 +348,27 @@ export default function AdminPromotions() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            onClick={() => {
+              setEditingPromo(null);
+              setFormData({
+                ...initialFormState,
+                name: 'Cupón Personalizado',
+                type: 'percentage_discount',
+                target: 'all',
+                value: 10,
+                code: 'BOKU10',
+                min_order_amount: 20000,
+                show_banner: false
+              });
+              setIsModalOpen(true);
+            }}
+            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-neutral-950 text-xs sm:text-sm font-black flex items-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer"
+          >
+            <Icon icon="solar:ticket-sale-bold" className="text-lg" />
+            <span>Crear Cupón de Carrito</span>
+          </button>
           <button
             onClick={() => {
               setEditingPromo(null);
@@ -492,8 +560,34 @@ export default function AdminPromotions() {
                           {status.label}
                         </span>
                         {promo.code && (
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                            CUPÓN: {promo.code}
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                            <span>CUPÓN: {promo.code}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard?.writeText(promo.code);
+                                toast.success(`Código ${promo.code} copiado`);
+                              }}
+                              className="text-amber-600 hover:text-amber-900 underline font-sans font-bold cursor-pointer"
+                              title="Copiar código"
+                            >
+                              Copiar
+                            </button>
+                          </span>
+                        )}
+                        {promo.code && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                            🔒 1 uso por Dispositivo / Teléfono
+                          </span>
+                        )}
+                        {(promo.code === 'VOLVER10' || promo.coupon_scope === 'pause_only') && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100/80 text-amber-900 border border-amber-300">
+                            🛡️ Exclusivo Pausa de Cocina (Huella Digital)
+                          </span>
+                        )}
+                        {(promo.code === 'DISCULPABOKU' || promo.coupon_scope === 'crm_recovery') && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-50 text-rose-800 border border-rose-200">
+                            💛 Exclusivo Recuperación CRM
                           </span>
                         )}
                       </div>
@@ -647,9 +741,9 @@ export default function AdminPromotions() {
                 </button>
               </div>
 
-              {/* Valor del Descuento (si no es free_delivery) */}
-              {formData.type !== 'free_delivery' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Valor del Descuento y Monto Mínimo */}
+              <div className={`grid grid-cols-1 ${formData.type !== 'free_delivery' ? 'sm:grid-cols-2' : ''} gap-3`}>
+                {formData.type !== 'free_delivery' && (
                   <div>
                     <label className="block font-bold text-neutral-700 mb-1">
                       {formData.type === 'percentage_discount' ? 'Porcentaje de Descuento (%)' : 'Valor del Descuento (COP)'}
@@ -663,21 +757,21 @@ export default function AdminPromotions() {
                       className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 focus:ring-2 focus:ring-emerald-500/20 font-medium"
                     />
                   </div>
+                )}
 
-                  <div>
-                    <label className="block font-bold text-neutral-700 mb-1">Monto Mínimo de Pedido (COP)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1000"
-                      value={formData.min_order_amount}
-                      onChange={e => setFormData({ ...formData, min_order_amount: Number(e.target.value) })}
-                      placeholder="0 = Sin mínimo"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 focus:ring-2 focus:ring-emerald-500/20 font-medium"
-                    />
-                  </div>
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Monto Mínimo de Pedido (COP)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    value={formData.min_order_amount}
+                    onChange={e => setFormData({ ...formData, min_order_amount: Number(e.target.value) })}
+                    placeholder="0 = Sin mínimo"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 focus:ring-2 focus:ring-emerald-500/20 font-medium"
+                  />
                 </div>
-              )}
+              </div>
 
               {/* Código de Cupón Opcional */}
               <div>

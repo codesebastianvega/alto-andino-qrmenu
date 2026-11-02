@@ -42,6 +42,7 @@ import Toast from '../Toast';
 import AccountSuspendedOverlay from './AccountSuspendedOverlay';
 import AlunaCopilot from './AlunaCopilot';
 import AlunaLab from '../../pages/AlunaLab';
+import StoreStatusControl from './StoreStatusControl';
 import { useAdminModalBack } from '../../hooks/useAdminModalBack';
 
 // ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
@@ -1194,7 +1195,9 @@ export default function AdminLayout() {
                );
              })()}
           </div>
-          <div className="hidden lg:flex items-center gap-3">
+          <div className="flex items-center gap-3">
+            <StoreStatusControl />
+            <div className="hidden lg:flex items-center gap-3">
             <div 
               className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => setCurrentPage('profile')}
@@ -1238,6 +1241,7 @@ export default function AdminLayout() {
               </svg>
             </button>
           </div>
+            </div>
         </header>
 
         {/* Content */}

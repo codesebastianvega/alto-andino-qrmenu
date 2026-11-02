@@ -19,6 +19,13 @@ import { useLocationPayments } from "@/hooks/useLocationPayments";
 import { usePlan } from "@/hooks/usePlan";
 import { trackAnalyticsEvent } from "@/utils/analytics";
 import { isRestaurantOpen } from "@/utils/businessHours";
+import { 
+  hasValidPauseClaim, 
+  getPendingPauseCoupon, 
+  hasCrmRecoveryStamp, 
+  hasDeviceUsedCoupon, 
+  markCouponUsedOnDevice 
+} from "@/utils/couponSecurity";
 import { safeStorage as localStorage, safeSessionStorage as sessionStorage } from "@/utils/safeStorage";
 import { createClientOrderId, submitOrderResilient } from "@/services/orderSync";
 import { getFulfillmentModes } from "@/constants/businessTypes";
@@ -432,8 +439,28 @@ export default function CartModal({ open, onClose }) {
   }, [effectivePromo, calculateDiscountForPromo, items, total]);
 
   const availableCouponPromos = useMemo(() => {
-    return (activePromotions || []).filter(p => p.code && p.is_active);
-  }, [activePromotions]);
+    const pendingPauseCode = getPendingPauseCoupon(activeBrandId);
+    return (activePromotions || []).filter(p => {
+      if (!p.code || !p.is_active) return false;
+      const codeUpper = p.code.trim().toUpperCase();
+      if (hasDeviceUsedCoupon(codeUpper, activeBrandId)) return false;
+      // Solo sugerir públicamente si tiene show_banner=true O si este dispositivo reclamó el cupón durante la pausa
+      return Boolean(p.show_banner) || (pendingPauseCode && codeUpper === pendingPauseCode);
+    });
+  }, [activePromotions, activeBrandId]);
+
+  // Si el dispositivo guardó un cupón durante la pausa (ej. VOLVER10), pre-activarlo al abrir el carrito
+  useEffect(() => {
+    if (!open || !activeBrandId || appliedCoupon) return;
+    const pendingCode = getPendingPauseCoupon(activeBrandId);
+    if (pendingCode && !hasDeviceUsedCoupon(pendingCode, activeBrandId)) {
+      const matched = (activePromotions || []).find(p => p.code && p.code.trim().toUpperCase() === pendingCode);
+      if (matched && (!matched.min_order_amount || total >= Number(matched.min_order_amount))) {
+        setAppliedCoupon(matched);
+        localStorage.setItem("aa_applied_coupon", JSON.stringify(matched));
+      }
+    }
+  }, [open, activeBrandId, appliedCoupon, activePromotions, total]);
 
   // Order Totals
   const packagingFeeTotal = items.reduce((acc, it) => acc + ((Number(it.packaging_fee) || 0) * (Number(it.qty) || 1)), 0);
@@ -488,6 +515,12 @@ export default function CartModal({ open, onClose }) {
     setIsApplyingCoupon(true);
 
     try {
+      // Candado 1: Verificar si este dispositivo ya usó este cupón
+      if (hasDeviceUsedCoupon(cleanCode, activeBrandId)) {
+        toast.error(`Ya utilizaste el cupón "${cleanCode}" en este dispositivo (máximo 1 uso por persona).`);
+        return;
+      }
+
       let promo = (activePromotions || []).find(p => 
         p.code && p.code.trim().toUpperCase() === cleanCode
       );
@@ -515,6 +548,59 @@ export default function CartModal({ open, onClose }) {
       if (!promo) {
         toast.error(`El cupón "${cleanCode}" no es válido o ha expirado`);
         return;
+      }
+
+      // Candado 2: Si es un cupón exclusivo de Tienda en Pausa (ej. VOLVER10), verificar sello de huella del dispositivo
+      if (promo.coupon_scope === 'pause_only' || cleanCode === 'VOLVER10') {
+        if (!hasValidPauseClaim(cleanCode, activeBrandId)) {
+          toast.error(`El cupón "${cleanCode}" solo se activa en dispositivos que visitaron el menú mientras la cocina estaba en pausa.`);
+          return;
+        }
+      }
+
+      // Candado 3: Si es un cupón exclusivo de Recuperación CRM (ej. DISCULPABOKU), verificar sello o pedido cancelado
+      if (promo.coupon_scope === 'crm_recovery' || cleanCode === 'DISCULPABOKU') {
+        const hasStamp = hasCrmRecoveryStamp(activeBrandId);
+        let hasCancelledInDb = false;
+        const phoneDigits = (customerPhone || '').replace(/\D/g, '').slice(-10);
+
+        if (!hasStamp && phoneDigits.length >= 7 && activeBrandId) {
+          const { data: cancelledOrders } = await supabase
+            .from('orders')
+            .select('id')
+            .eq('brand_id', activeBrandId)
+            .eq('status', 'cancelled')
+            .ilike('customer_phone', `%${phoneDigits}%`)
+            .limit(1);
+          hasCancelledInDb = Boolean(cancelledOrders && cancelledOrders.length > 0);
+        }
+
+        if (!hasStamp && !hasCancelledInDb) {
+          if (phoneDigits.length < 7) {
+            toast.error('Ingresa primero tu número de celular arriba para validar tu cupón de compensación.');
+          } else {
+            toast.error(`El cupón "${cleanCode}" es exclusivo de compensación para clientes con pedidos cancelados.`);
+          }
+          return;
+        }
+      }
+
+      // Candado 4: Si ya ingresó su teléfono, verificar en base de datos que ese teléfono no haya usado ya este cupón
+      const phoneDigitsCheck = (customerPhone || '').replace(/\D/g, '').slice(-10);
+      if (phoneDigitsCheck.length >= 7 && activeBrandId) {
+        const { data: prevUsedOrders } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('brand_id', activeBrandId)
+          .neq('status', 'cancelled')
+          .ilike('customer_phone', `%${phoneDigitsCheck}%`)
+          .ilike('discount_reason', `%${cleanCode}%`)
+          .limit(1);
+
+        if (prevUsedOrders && prevUsedOrders.length > 0) {
+          toast.error(`Este número de teléfono ya redimió el cupón "${cleanCode}" en un pedido anterior.`);
+          return;
+        }
       }
 
       if (promo.min_order_amount && total < Number(promo.min_order_amount)) {
@@ -805,11 +891,80 @@ export default function CartModal({ open, onClose }) {
         !h.location_id || (currentLocationId && h.location_id === currentLocationId)
       );
       
-      const { isOpen, message } = isRestaurantOpen(relevantHours);
+      const { isOpen, message } = isRestaurantOpen(relevantHours, menuBrand?.config);
       if (!isOpen) {
         toast.error(message || "Lo sentimos, el restaurante está cerrado en este momento.");
         setIsSubmitting(false);
         return;
+      }
+
+      // 0.05 Re-validate Coupon Security at Submit Time (Phone + Device Fingerprint + CRM/Pause Locks)
+      if (effectivePromo?.code) {
+        const cleanCode = effectivePromo.code.trim().toUpperCase();
+        if (hasDeviceUsedCoupon(cleanCode, activeBrandId)) {
+          toast.error(`El cupón ${cleanCode} ya fue redimido desde este dispositivo.`);
+          setAppliedCoupon(null);
+          localStorage.removeItem("aa_applied_coupon");
+          setIsSubmitting(false);
+          return;
+        }
+        if (cleanCode === 'VOLVER10' || effectivePromo.coupon_scope === 'pause_only') {
+          if (!hasValidPauseClaim(activeBrandId, cleanCode)) {
+            toast.error("El cupón VOLVER10 es exclusivo para clientes que visitaron durante una pausa operativa.");
+            setAppliedCoupon(null);
+            localStorage.removeItem("aa_applied_coupon");
+            setIsSubmitting(false);
+            return;
+          }
+        }
+        const cleanPhoneDigits = (customerPhone || '').replace(/\D/g, '').slice(-10);
+        if (cleanPhoneDigits.length >= 7) {
+          try {
+            const { data: prevUsed } = await supabase
+              .from('orders')
+              .select('id, status')
+              .eq('brand_id', activeBrandId)
+              .ilike('customer_phone', `%${cleanPhoneDigits}`)
+              .ilike('discount_reason', `%${cleanCode}%`)
+              .neq('status', 'cancelled')
+              .limit(1);
+            if (prevUsed && prevUsed.length > 0) {
+              toast.error(`El número ${cleanPhoneDigits} ya redimió el cupón ${cleanCode} anteriormente.`);
+              setAppliedCoupon(null);
+              localStorage.removeItem("aa_applied_coupon");
+              setIsSubmitting(false);
+              return;
+            }
+          } catch (err) {
+            console.warn('Error checking coupon phone usage on submit:', err);
+          }
+        }
+        if (cleanCode === 'DISCULPABOKU' || effectivePromo.coupon_scope === 'crm_recovery') {
+          let isAuthorizedCrm = hasCrmRecoveryStamp(activeBrandId);
+          if (!isAuthorizedCrm && cleanPhoneDigits.length >= 7) {
+            try {
+              const { data: cancelledOrders } = await supabase
+                .from('orders')
+                .select('id')
+                .eq('brand_id', activeBrandId)
+                .eq('status', 'cancelled')
+                .ilike('customer_phone', `%${cleanPhoneDigits}`)
+                .limit(1);
+              if (cancelledOrders && cancelledOrders.length > 0) {
+                isAuthorizedCrm = true;
+              }
+            } catch (err) {
+              console.warn('Error checking CRM recovery on submit:', err);
+            }
+          }
+          if (!isAuthorizedCrm) {
+            toast.error("El cupón DISCULPABOKU es exclusivo para clientes con una orden previa cancelada.");
+            setAppliedCoupon(null);
+            localStorage.removeItem("aa_applied_coupon");
+            setIsSubmitting(false);
+            return;
+          }
+        }
       }
     }
 
@@ -911,7 +1066,7 @@ export default function CartModal({ open, onClose }) {
           order: {
             status: orderStatus, origin: fulfillmentType === 'dine_in' ? 'table' : 'takeaway',
             fulfillment_type: fulfillmentType, table_id: tableId, brand_id: activeBrandId,
-            location_id: orderLocationId || null, total_amount: finalTotal, discount_amount: discountAmount || 0, discount_reason: effectivePromo ? `${effectivePromo.code || effectivePromo.name} (${effectivePromo.type === 'percentage_discount' ? `${effectivePromo.value}%` : formatCOP(effectivePromo.value)})` : null, service_fee: serviceFeeAmount,
+            location_id: orderLocationId || null, total_amount: finalTotal, discount_amount: discountAmount || 0, discount_reason: effectivePromo ? `${effectivePromo.code || effectivePromo.name} (${effectivePromo.type === 'free_delivery' ? 'Domicilio Gratis' : effectivePromo.type === 'percentage_discount' ? `${effectivePromo.value}%` : formatCOP(effectivePromo.value)})` : null, service_fee: serviceFeeAmount,
             customer_name: fullCustomerName || customerName, customer_phone: customerPhone, customer_id: customerId,
             scheduled_time: scheduledTime || null, payment_status: isPOSMode && isPaid ? 'paid' : 'pending',
             payment_method: isPOSMode ? (isPaid ? paymentMethod : null) : paymentMethodSummary,
@@ -982,7 +1137,7 @@ export default function CartModal({ open, onClose }) {
             location_id: orderLocationId || null,
             total_amount: finalTotal,
             discount_amount: discountAmount || 0,
-            discount_reason: effectivePromo ? `${effectivePromo.code || effectivePromo.name} (${effectivePromo.type === 'percentage_discount' ? `${effectivePromo.value}%` : formatCOP(effectivePromo.value)})` : null,
+            discount_reason: effectivePromo ? `${effectivePromo.code || effectivePromo.name} (${effectivePromo.type === 'free_delivery' ? 'Domicilio Gratis' : effectivePromo.type === 'percentage_discount' ? `${effectivePromo.value}%` : formatCOP(effectivePromo.value)})` : null,
             service_fee: serviceFeeAmount,
             customer_name: fullCustomerName || customerName,
             customer_phone: customerPhone,
@@ -1165,6 +1320,9 @@ export default function CartModal({ open, onClose }) {
 
       if (typeof clearCart === 'function') {
         clearCart();
+      }
+      if (effectivePromo?.code) {
+        markCouponUsedOnDevice(effectivePromo.code, activeBrandId, customerPhone);
       }
       setAppliedCoupon(null);
       localStorage.removeItem("aa_applied_coupon");
@@ -1477,7 +1635,19 @@ export default function CartModal({ open, onClose }) {
           </div>
           
           <div className="flex flex-col gap-2.5">
-            {hasRestrictedItems ? (
+            {(!isPOSMode && !isRestaurantOpen(businessHours, menuBrand?.config).isOpen) ? (
+              <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2">
+                <Icon icon="solar:clock-circle-bold" className="text-amber-600 text-2xl flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-black text-amber-950 uppercase tracking-wide">
+                    🔒 Cocina en Pausa / Cerrado Temporalmente
+                  </p>
+                  <p className="text-xs font-medium text-amber-800 mt-1 leading-snug">
+                    {isRestaurantOpen(businessHours, menuBrand?.config).message || 'En este momento no estamos recibiendo pedidos. Tus platos quedan guardados en el carrito para cuando abramos.'}
+                  </p>
+                </div>
+              </div>
+            ) : hasRestrictedItems ? (
               <div className="bg-amber-500/10 border border-amber-300 rounded-2xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2">
                 <Icon icon="heroicons:clock" className="text-amber-600 text-2xl flex-shrink-0 mt-0.5" />
                 <div className="flex-1">

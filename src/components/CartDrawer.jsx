@@ -164,7 +164,7 @@ const renderOptionsPills = (opts) => {
 
 export default function CartDrawer({ open, onClose }) {
   const cart = useCart?.() || {};
-  const { restaurantSettings, currentBusinessHours, activeBrandId } = useMenuData();
+  const { restaurantSettings, currentBusinessHours, activeBrandId, brand: menuBrand } = useMenuData();
   const { activeBrand } = useAuth();
   
   const brandId = activeBrandId || activeBrand?.id;
@@ -272,7 +272,7 @@ export default function CartDrawer({ open, onClose }) {
     setIsSubmitting(true);
     try {
       // 0. Check Business Hours
-      const { isOpen, message } = isRestaurantOpen(currentBusinessHours);
+      const { isOpen, message } = isRestaurantOpen(currentBusinessHours, menuBrand?.config);
       if (!isOpen) {
         toast.error(message);
         setIsSubmitting(false);
@@ -704,19 +704,19 @@ export default function CartDrawer({ open, onClose }) {
                     </div>
                   ) : !showFulfillmentSelector ? (
                     <div className="flex flex-col gap-2">
-                      {!isRestaurantOpen(currentBusinessHours).isOpen && (
+                      {!isRestaurantOpen(currentBusinessHours, menuBrand?.config).isOpen && (
                         <div className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100">
                           <Icon icon="heroicons:clock" className="text-lg" />
-                          <span>{isRestaurantOpen(currentBusinessHours).message}</span>
+                          <span>{isRestaurantOpen(currentBusinessHours, menuBrand?.config).message}</span>
                         </div>
                       )}
                       <button
                         type="button"
                         onClick={() => setShowFulfillmentSelector(true)}
-                        disabled={!items.length || !isRestaurantOpen(currentBusinessHours).isOpen}
+                        disabled={!items.length || !isRestaurantOpen(currentBusinessHours, menuBrand?.config).isOpen}
                         className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] hover:bg-[#202c21] text-white shadow-[#2f4131]/20 hover:-translate-y-0.5 transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale disabled:hover:translate-y-0"
                       >
-                        {isRestaurantOpen(currentBusinessHours).isOpen ? (
+                        {isRestaurantOpen(currentBusinessHours, menuBrand?.config).isOpen ? (
                           <>
                             {isDarkKitchen ? "Siguiente: Datos de Entrega" : "Siguiente: Tipo de Pedido"}
                             <Icon icon={isDarkKitchen ? "heroicons:truck" : "heroicons:arrow-right"} className="text-xl" />

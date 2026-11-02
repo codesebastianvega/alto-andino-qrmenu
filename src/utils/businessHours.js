@@ -1,13 +1,31 @@
 /**
- * Checks if the restaurant is currently open based on the business hours settings.
+ * Checks if the restaurant is currently open based on manual pause state and business hours settings.
  * 
  * @param {Array} businessHours - Array of business hour objects from the database.
- * @returns {Object} - { isOpen: boolean, message: string }
+ * @param {Object} brandConfig - Optional brand.config object containing store_status.
+ * @returns {Object} - { isOpen: boolean, isManualPause: boolean, pauseInfo: Object|null, message: string }
  */
-export function isRestaurantOpen(businessHours) {
+export function isRestaurantOpen(businessHours, brandConfig = null) {
+  const storeStatus = brandConfig?.store_status;
+
+  if (storeStatus?.is_paused) {
+    const now = new Date();
+    const pauseUntil = storeStatus.pause_until ? new Date(storeStatus.pause_until) : null;
+
+    // Si es pausa indefinida o aún no se cumple la hora de reapertura automática
+    if (!pauseUntil || pauseUntil > now) {
+      return {
+        isOpen: false,
+        isManualPause: true,
+        pauseInfo: storeStatus,
+        message: storeStatus.custom_message || "Cocina en pausa temporalmente — En este momento no estamos recibiendo pedidos."
+      };
+    }
+  }
+
   if (!businessHours || businessHours.length === 0) {
     // Si no hay horarios explícitos configurados en DB, asumimos ABIERTO por defecto para permitir operar de inmediato
-    return { isOpen: true, message: "" };
+    return { isOpen: true, isManualPause: false, pauseInfo: null, message: "" };
   }
 
   const now = new Date();
@@ -19,11 +37,11 @@ export function isRestaurantOpen(businessHours) {
 
   if (!todayHours) {
     // Si no hay restricción explícita para hoy, permitimos operar
-    return { isOpen: true, message: "" }; 
+    return { isOpen: true, isManualPause: false, pauseInfo: null, message: "" }; 
   }
 
   if (todayHours.is_closed) {
-    return { isOpen: false, message: "Lo sentimos, hoy estamos cerrados." };
+    return { isOpen: false, isManualPause: false, pauseInfo: null, message: "Lo sentimos, hoy estamos cerrados." };
   }
 
   const [openH, openM] = (todayHours.open_time || "00:00").split(':').map(Number);
@@ -36,18 +54,20 @@ export function isRestaurantOpen(businessHours) {
   if (closeTimeValue < openTimeValue) {
     // If current time is after opening OR before closing (next day)
     if (currentTime >= openTimeValue || currentTime < closeTimeValue) {
-      return { isOpen: true, message: "" };
+      return { isOpen: true, isManualPause: false, pauseInfo: null, message: "" };
     }
   } else {
     // Normal shift
     if (currentTime >= openTimeValue && currentTime < closeTimeValue) {
-      return { isOpen: true, message: "" };
+      return { isOpen: true, isManualPause: false, pauseInfo: null, message: "" };
     }
   }
 
   return { 
     isOpen: false, 
-    message: `Estamos cerrados. Abrimos hoy de ${todayHours.open_time} a ${todayHours.close_time}.` 
+    isManualPause: false,
+    pauseInfo: null,
+    message: `Estamos cerrados. Abrimos hoy de ${(todayHours.open_time || '').slice(0, 5)} a ${(todayHours.close_time || '').slice(0, 5)}.` 
   };
 }
 
@@ -183,4 +203,3 @@ export function getCategoryScheduleInfo(cat, referenceDate = new Date()) {
     allowedDays
   };
 }
-

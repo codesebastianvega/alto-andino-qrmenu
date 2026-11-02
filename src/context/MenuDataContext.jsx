@@ -6,7 +6,8 @@ import { catalogCache } from '../utils/offlineDb';
 import { withTimeout } from '../utils/withTimeout';
 import { useDynamicPWA } from '../hooks/useDynamicPWA';
 import { useClarity } from '../hooks/useClarity';
-import { getCategoryScheduleInfo } from '../utils/businessHours';
+import { getCategoryScheduleInfo, isRestaurantOpen } from '../utils/businessHours';
+import { getDefaultBrandCoupons } from '../utils/couponSecurity';
 
 const MenuDataContext = createContext({});
 
@@ -345,9 +346,33 @@ export const MenuDataProvider = ({ children }) => {
     return modGroups;
   }, [rawModifierGroups, locationModLinks, activeLocationId]);
 
+  const currentBusinessHours = useMemo(() => {
+    if (!activeLocationId || activeLocationId === 'all') {
+      return businessHours.filter(h => !h.location_id);
+    }
+    return businessHours.filter(h => h.location_id === activeLocationId);
+  }, [businessHours, activeLocationId]);
+
+  // Ticker para reevaluar automáticamente si una pausa por tiempo (30m, 1h, 2h) ya expiró
+  const [statusTick, setStatusTick] = useState(0);
+  useEffect(() => {
+    const pauseUntil = brand?.config?.store_status?.pause_until;
+    if (!brand?.config?.store_status?.is_paused || !pauseUntil) return;
+    const interval = setInterval(() => {
+      setStatusTick(t => t + 1);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [brand?.config?.store_status?.is_paused, brand?.config?.store_status?.pause_until]);
+
+  const storeStatusInfo = useMemo(() => {
+    return isRestaurantOpen(currentBusinessHours, brand?.config);
+  }, [currentBusinessHours, brand?.config, statusTick]);
+
   // Compute productsByCategory reactively
   const productsByCategory = useMemo(() => {
     const grouped = {};
+    const isAdminContext = typeof window !== 'undefined' && window.location.hash.startsWith('#admin');
+    const isStorePausedForPublic = !isAdminContext && storeStatusInfo && !storeStatusInfo.isOpen;
 
     // 1. Create Maps for O(1) lookups of location overrides
     // This avoids using .find() or .filter() inside the product loop
@@ -504,8 +529,8 @@ export const MenuDataProvider = ({ children }) => {
         categorySlug: catSlug,
         categoryId: product.category_id,
         categoryName: cat?.name || product.categories?.name,
-        is_schedule_available: catSchedule.isAvailableNow,
-        schedule_label: catSchedule.label,
+        is_schedule_available: isStorePausedForPublic ? false : catSchedule.isAvailableNow,
+        schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : catSchedule.label,
         schedule_info: catSchedule,
         is_addon: product.is_addon,
         _supabase: product
@@ -562,9 +587,9 @@ export const MenuDataProvider = ({ children }) => {
           categorySlug: 'boku-bentos',
           categoryId: 'b0000c01-0000-4000-a000-000000000001',
           categoryName: 'BOKU Bentos Caseros',
-          is_schedule_available: true,
-          schedule_label: 'Disponible',
-          schedule_info: { isAvailableNow: true, label: 'Disponible', isRestricted: false },
+          is_schedule_available: !isStorePausedForPublic,
+          schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible',
+          schedule_info: { isAvailableNow: !isStorePausedForPublic, label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible', isRestricted: isStorePausedForPublic },
           is_addon: false,
           _supabase: {
             id: 'b0000b17-0000-4000-a000-000000000007',
@@ -584,7 +609,7 @@ export const MenuDataProvider = ({ children }) => {
       }
     }
     return grouped;
-  }, [rawProducts, locationPrices, locationStatus, activeLocationId, restaurantSettings, allCategories, brand]);
+  }, [rawProducts, locationPrices, locationStatus, activeLocationId, restaurantSettings, allCategories, brand, storeStatusInfo]);
 
   // Compute categories reactively (Dayparting + Has Products + Location Filter)
   const categories = useMemo(() => {
@@ -723,6 +748,8 @@ export const MenuDataProvider = ({ children }) => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'location_product_status' }, () => fetchMenuData(activeBrandId, { force: true }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'location_categories' }, () => fetchMenuData(activeBrandId, { force: true }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'location_modifier_groups' }, () => fetchMenuData(activeBrandId, { force: true }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'brands', filter: `id=eq.${activeBrandId}` }, () => fetchMenuData(activeBrandId, { force: true }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'promotions', filter: `brand_id=eq.${activeBrandId}` }, () => fetchMenuData(activeBrandId, { force: true }))
       .subscribe();
 
     return () => {
@@ -769,17 +796,20 @@ export const MenuDataProvider = ({ children }) => {
   const getModifiers = useCallback((group) => modifiers[group] || [], [modifiers]);
   const getAllProducts = useCallback(() => Object.values(productsByCategory).flat(), [productsByCategory]);
 
-  const currentBusinessHours = useMemo(() => {
-    if (!activeLocationId || activeLocationId === 'all') {
-      return businessHours.filter(h => !h.location_id);
-    }
-    return businessHours.filter(h => h.location_id === activeLocationId);
-  }, [businessHours, activeLocationId]);
+  // Merge DB promotions with built-in starter coupons (DOMIGRATIS, BOKU10, DISCULPABOKU, VOLVER10)
+  const mergedPromotions = useMemo(() => {
+    const dbList = promotions || [];
+    if (!activeBrandId) return dbList;
+    const defaults = getDefaultBrandCoupons(activeBrandId);
+    const dbCodes = new Set(dbList.map(p => (p.code || '').trim().toUpperCase()).filter(Boolean));
+    const missingDefaults = defaults.filter(d => !dbCodes.has(d.code.toUpperCase()));
+    return [...dbList, ...missingDefaults];
+  }, [promotions, activeBrandId]);
 
   const activePromotions = useMemo(() => {
-    if (!promotions || promotions.length === 0) return [];
+    if (!mergedPromotions || mergedPromotions.length === 0) return [];
     const now = new Date();
-    return promotions.filter(p => {
+    return mergedPromotions.filter(p => {
       if (!p.is_active) return false;
       if (p.location_id && currentLocation?.id && p.location_id !== currentLocation.id) return false;
       if (p.start_date && new Date(p.start_date) > now) return false;
@@ -787,10 +817,11 @@ export const MenuDataProvider = ({ children }) => {
       if (typeof p.usage_limit === 'number' && p.usage_limit > 0 && (p.usage_count || 0) >= p.usage_limit) return false;
       return true;
     });
-  }, [promotions, currentLocation]);
+  }, [mergedPromotions, currentLocation]);
 
+  // Automatic Free Delivery only applies if the promo does NOT require a coupon code
   const freeDeliveryPromo = useMemo(() => {
-    return activePromotions.find(p => p.type === 'free_delivery') || null;
+    return activePromotions.find(p => p.type === 'free_delivery' && !p.code) || null;
   }, [activePromotions]);
 
   const activePromoBanner = useMemo(() => {
@@ -814,13 +845,14 @@ export const MenuDataProvider = ({ children }) => {
     brand,
     businessHours,
     currentBusinessHours,
+    storeStatusInfo,
     planFeatures,
     locations,
     loading,
     activeBrandId,
     currentLocation,
     currentLocationId: activeLocationId,
-    promotions,
+    promotions: mergedPromotions,
     activePromotions,
     freeDeliveryPromo,
     activePromoBanner,
@@ -830,9 +862,9 @@ export const MenuDataProvider = ({ children }) => {
   }), [
     categories, allCategories, productsByCategory, getProductsByCategory, getAllProducts, 
     getModifiers, modifiers, rawModifierGroups, experiences, banners, allergens,
-    homeSettings, restaurantSettings, brand, businessHours, currentBusinessHours,
+    homeSettings, restaurantSettings, brand, businessHours, currentBusinessHours, storeStatusInfo,
     planFeatures, locations, loading, activeBrandId, currentLocation, activeLocationId,
-    promotions, activePromotions, freeDeliveryPromo, activePromoBanner,
+    mergedPromotions, activePromotions, freeDeliveryPromo, activePromoBanner,
     fetchMenuData,
   ]);
 
