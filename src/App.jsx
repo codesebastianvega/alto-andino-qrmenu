@@ -707,6 +707,8 @@ export default function App() {
                 setActiveCategory={handleCategorySelect}
                 categories={dbCategories}
                 onOpenCart={() => setOpen(true)}
+                onInstallPWA={promptPWAInstall}
+                isPWAInstalled={isPWAInstalled}
               />
               <ProductLists
                 query={query}

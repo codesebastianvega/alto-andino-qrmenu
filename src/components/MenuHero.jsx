@@ -10,6 +10,7 @@ import { formatCOP } from '../utils/money';
 import ProductQuickView from './ProductQuickView';
 import DIYProductModal from './DIYProductModal';
 import StorePausedBanner from './StorePausedBanner';
+import MealPlanVIPBanner from './MealPlanVIPBanner';
 import { cleanAssistantName } from '../utils/formatters';
 import { useLogoContrast } from '../hooks/useLogoContrast';
 
@@ -217,7 +218,7 @@ function clampFabPosition(position) {
   };
 }
 
-export default function MenuHero({ query, setQuery, activeCategory, setActiveCategory, categories = [], onOpenCart }) {
+export default function MenuHero({ query, setQuery, activeCategory, setActiveCategory, categories = [], onOpenCart, onInstallPWA, isPWAInstalled }) {
   const { label: greeting } = getTimeContext();
   const [user] = useState({ name: 'Invitado', isLogged: false });
   const { homeSettings, restaurantSettings, categories: activeCategories, productsByCategory, currentLocation, locations, getAllProducts, brand: menuBrand, storeStatusInfo } = useMenuData();
@@ -554,6 +555,7 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
           </div>
 
           <StorePausedBanner onOpenCart={onOpenCart} />
+          <MealPlanVIPBanner onOpenCart={onOpenCart} onInstallPWA={onInstallPWA} isPWAInstalled={isPWAInstalled} />
 
           <h1 className="mb-1.5 text-2xl font-extrabold tracking-tight text-[#1A1A1A] md:text-3xl">
             {homeSettings?.hero_h1 ? (

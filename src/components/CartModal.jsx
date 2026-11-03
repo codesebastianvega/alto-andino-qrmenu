@@ -26,6 +26,14 @@ import {
   hasDeviceUsedCoupon, 
   markCouponUsedOnDevice 
 } from "@/utils/couponSecurity";
+import {
+  getConfiguredMealPlans,
+  findSubscriberPlan,
+  saveActiveMemberSession,
+  getActiveMemberSession,
+  fetchPlanUsage,
+  buildPlanPromoObject
+} from "@/utils/mealPlans";
 import { safeStorage as localStorage, safeSessionStorage as sessionStorage } from "@/utils/safeStorage";
 import { createClientOrderId, submitOrderResilient } from "@/services/orderSync";
 import { getFulfillmentModes } from "@/constants/businessTypes";
@@ -449,9 +457,33 @@ export default function CartModal({ open, onClose }) {
     });
   }, [activePromotions, activeBrandId]);
 
-  // Si el dispositivo guardó un cupón durante la pausa (ej. VOLVER10), pre-activarlo al abrir el carrito
+  // Si el dispositivo tiene una Tiquetera BOKU Fit activa o guardó un cupón durante la pausa, sincronizar al abrir el carrito
   useEffect(() => {
-    if (!open || !activeBrandId || appliedCoupon) return;
+    if (!open || !activeBrandId) return;
+
+    const configuredPlans = getConfiguredMealPlans(settings);
+    const activeMemberPlan = getActiveMemberSession(activeBrandId, configuredPlans);
+    if (activeMemberPlan) {
+      if (!customerName && activeMemberPlan.customer_name) setCustomerName(activeMemberPlan.customer_name);
+      if (!customerPhone && activeMemberPlan.customer_phone) setCustomerPhone(activeMemberPlan.customer_phone);
+      if (!deliveryAddress && activeMemberPlan.default_address) setDeliveryAddress(activeMemberPlan.default_address);
+      if (!deliveryNotes && (activeMemberPlan.default_time || activeMemberPlan.dietary_notes)) {
+        const parts = [];
+        if (activeMemberPlan.default_time) parts.push(`Hora programada: ${activeMemberPlan.default_time}`);
+        if (activeMemberPlan.dietary_notes) parts.push(activeMemberPlan.dietary_notes);
+        setDeliveryNotes(parts.join(' • '));
+      }
+      if (!appliedCoupon) {
+        const planPromo = buildPlanPromoObject(activeMemberPlan);
+        if (planPromo) {
+          setAppliedCoupon(planPromo);
+          localStorage.setItem("aa_applied_coupon", JSON.stringify(planPromo));
+        }
+      }
+      return;
+    }
+
+    if (appliedCoupon) return;
     const pendingCode = getPendingPauseCoupon(activeBrandId);
     if (pendingCode && !hasDeviceUsedCoupon(pendingCode, activeBrandId)) {
       const matched = (activePromotions || []).find(p => p.code && p.code.trim().toUpperCase() === pendingCode);
@@ -460,12 +492,15 @@ export default function CartModal({ open, onClose }) {
         localStorage.setItem("aa_applied_coupon", JSON.stringify(matched));
       }
     }
-  }, [open, activeBrandId, appliedCoupon, activePromotions, total]);
+  }, [open, activeBrandId, appliedCoupon, activePromotions, total, settings]);
 
   // Order Totals
   const packagingFeeTotal = items.reduce((acc, it) => acc + ((Number(it.packaging_fee) || 0) * (Number(it.qty) || 1)), 0);
   const serviceFeeAmount = (isTipEnabled && includeTip) ? Math.round(Math.max(0, total - discountAmount) * (tipPercentage / 100)) : 0;
   const isFreeDeliveryPromoActive = useMemo(() => {
+    if (effectivePromo?.is_meal_plan && effectivePromo?.includes_delivery) {
+      return true;
+    }
     if (freeDeliveryPromo && (!freeDeliveryPromo.min_order_amount || total >= Number(freeDeliveryPromo.min_order_amount))) {
       return true;
     }
@@ -482,6 +517,13 @@ export default function CartModal({ open, onClose }) {
 
   const deliveryFee = useMemo(() => {
     if (fulfillmentType !== 'delivery') return 0;
+    // Si tiene Plan Tiquetera con domicilio incluido -> $0; si es con domicilio aparte -> tarifa del plan
+    if (effectivePromo?.is_meal_plan) {
+      if (effectivePromo.includes_delivery) return 0;
+      if (effectivePromo.delivery_fee_override !== undefined && effectivePromo.delivery_fee_override !== null) {
+        return Number(effectivePromo.delivery_fee_override);
+      }
+    }
     // Si hay una campaña de Domicilio Gratis activa y cumple el monto mínimo
     if (freeDeliveryPromo && (!freeDeliveryPromo.min_order_amount || total >= Number(freeDeliveryPromo.min_order_amount))) {
       return 0;
@@ -515,6 +557,32 @@ export default function CartModal({ open, onClose }) {
     setIsApplyingCoupon(true);
 
     try {
+      // 0. Verificar primero si corresponde a un Plan Tiquetera BOKU Fit (por código o celular)
+      const configuredPlans = getConfiguredMealPlans(settings);
+      const matchedMealPlan = findSubscriberPlan(configuredPlans, {
+        code: cleanCode,
+        phone: cleanCode
+      });
+
+      if (matchedMealPlan) {
+        const usageRes = await fetchPlanUsage(supabase, activeBrandId, matchedMealPlan);
+        if (usageRes.remainingCredits <= 0) {
+          toast.error(`Tu Plan Tiquetera (${matchedMealPlan.code}) ya agotó sus ${usageRes.totalCredits} créditos. ¡Contáctanos para renovarlo!`);
+          return;
+        }
+        saveActiveMemberSession(activeBrandId, matchedMealPlan);
+        const planPromo = buildPlanPromoObject(matchedMealPlan);
+        setAppliedCoupon(planPromo);
+        localStorage.setItem("aa_applied_coupon", JSON.stringify(planPromo));
+        if (matchedMealPlan.customer_name) setCustomerName(matchedMealPlan.customer_name);
+        if (matchedMealPlan.customer_phone) setCustomerPhone(matchedMealPlan.customer_phone);
+        if (matchedMealPlan.default_address) setDeliveryAddress(matchedMealPlan.default_address);
+        setCouponInput("");
+        setIsCouponAccordionOpen(false);
+        toast.success(`🥗 ¡Tiquetera ${matchedMealPlan.code} aplicada! (${usageRes.remainingCredits} créditos disponibles)`);
+        return;
+      }
+
       // Candado 1: Verificar si este dispositivo ya usó este cupón
       if (hasDeviceUsedCoupon(cleanCode, activeBrandId)) {
         toast.error(`Ya utilizaste el cupón "${cleanCode}" en este dispositivo (máximo 1 uso por persona).`);
@@ -898,8 +966,19 @@ export default function CartModal({ open, onClose }) {
         return;
       }
 
-      // 0.05 Re-validate Coupon Security at Submit Time (Phone + Device Fingerprint + CRM/Pause Locks)
-      if (effectivePromo?.code) {
+      // 0.05 Re-validate Coupon Security or Meal Plan Credits at Submit Time
+      if (effectivePromo?.is_meal_plan) {
+        const configuredPlans = getConfiguredMealPlans(settings);
+        const matchedMealPlan = findSubscriberPlan(configuredPlans, { code: effectivePromo.code }) || effectivePromo;
+        const usageRes = await fetchPlanUsage(supabase, activeBrandId, matchedMealPlan);
+        if (usageRes.remainingCredits <= 0) {
+          toast.error(`Tu Plan Tiquetera (${effectivePromo.code}) ya no tiene créditos disponibles.`);
+          setAppliedCoupon(null);
+          localStorage.removeItem("aa_applied_coupon");
+          setIsSubmitting(false);
+          return;
+        }
+      } else if (effectivePromo?.code) {
         const cleanCode = effectivePromo.code.trim().toUpperCase();
         if (hasDeviceUsedCoupon(cleanCode, activeBrandId)) {
           toast.error(`El cupón ${cleanCode} ya fue redimido desde este dispositivo.`);
@@ -1321,11 +1400,13 @@ export default function CartModal({ open, onClose }) {
       if (typeof clearCart === 'function') {
         clearCart();
       }
-      if (effectivePromo?.code) {
+      if (effectivePromo?.code && !effectivePromo?.is_meal_plan) {
         markCouponUsedOnDevice(effectivePromo.code, activeBrandId, customerPhone);
+        setAppliedCoupon(null);
+        localStorage.removeItem("aa_applied_coupon");
+      } else if (effectivePromo?.is_meal_plan) {
+        window.dispatchEvent(new CustomEvent('aa_meal_plan_updated'));
       }
-      setAppliedCoupon(null);
-      localStorage.removeItem("aa_applied_coupon");
       setShowSuccess(true);
       
       // Track Conversion

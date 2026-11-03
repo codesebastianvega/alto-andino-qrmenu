@@ -165,8 +165,56 @@ export const MenuDataProvider = ({ children }) => {
         setPlanFeatures(features);
       }
 
+      const enrichedModGroups = (modsRes.data || []).map(group => {
+        const opts = Array.isArray(group.modifier_options) ? [...group.modifier_options] : [];
+        if (group.id === 'b0000d14-0000-4000-a000-000000000004') {
+          if (!opts.some(o => /ma[ií]z/i.test(o.name || ''))) {
+            opts.push({
+              id: 'boku-opt-maiz-tierno',
+              group_id: group.id,
+              name: 'Maíz Tierno Dulce',
+              emoji: '🌽',
+              price: 0,
+              extra_price: 1500,
+              is_active: true,
+              stock_status: 'in',
+              sort_order: 2
+            });
+          }
+          if (!opts.some(o => /zanahoria/i.test(o.name || ''))) {
+            opts.push({
+              id: 'boku-opt-zanahoria-fresca',
+              group_id: group.id,
+              name: 'Zanahoria Fresca Rallada',
+              emoji: '🥕',
+              price: 0,
+              extra_price: 1500,
+              is_active: true,
+              stock_status: 'in',
+              sort_order: 3
+            });
+          }
+        }
+        if (group.id === 'b0000d14-0000-4000-a000-000000000006') {
+          if (!opts.some(o => /ch[ií]a/i.test(o.name || ''))) {
+            opts.push({
+              id: 'boku-opt-semillas-chia',
+              group_id: group.id,
+              name: 'Semillas de Chía',
+              emoji: '🌱',
+              price: 0,
+              extra_price: 500,
+              is_active: true,
+              stock_status: 'in',
+              sort_order: 1
+            });
+          }
+        }
+        return { ...group, modifier_options: opts };
+      });
+
       setAllCategories(catsRes.data || []);
-      setRawModifierGroups(modsRes.data || []);
+      setRawModifierGroups(enrichedModGroups);
       setExperiences(expRes.data || []);
       setAllergens(allgsRes.data || []);
       setLocations(locsRes.data || []);
@@ -188,12 +236,19 @@ export const MenuDataProvider = ({ children }) => {
           if (!bestRS.brand_concepts || bestRS.brand_concepts.length === 0) {
             bestRS.brand_concepts = brandLevelRS.brand_concepts;
           } else {
-            // Keep brand-level concepts (like bento_del_dia_config) always in sync with brand-level row
+            // Keep brand-level concepts (like bento_del_dia_config & meal_plans_config) always in sync with brand-level row
             const brandSpecial = brandLevelRS.brand_concepts.find(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config'));
+            const brandMealPlans = brandLevelRS.brand_concepts.find(c => c && c.id === 'meal_plans_config');
             if (brandSpecial) {
               bestRS.brand_concepts = [
                 ...bestRS.brand_concepts.filter(c => c && c.id !== 'bento_del_dia_config' && c.id !== 'daily_special_config'),
                 brandSpecial
+              ];
+            }
+            if (brandMealPlans) {
+              bestRS.brand_concepts = [
+                ...bestRS.brand_concepts.filter(c => c && c.id !== 'meal_plans_config'),
+                brandMealPlans
               ];
             }
           }

@@ -8,6 +8,7 @@ import { useLocations } from '../context/LocationContext';
 import { useMenuData } from '../context/MenuDataContext';
 import { formatCOP } from '../utils/money';
 import { getDefaultBrandCoupons } from '../utils/couponSecurity';
+import MealPlansAdminSection from '../components/admin/MealPlansAdminSection';
 
 export default function AdminPromotions() {
   const { activeBrand, profile } = useAuth();
@@ -424,6 +425,12 @@ export default function AdminPromotions() {
           </div>
         </div>
       </div>
+
+      {/* Planes & Tiqueteras Digitales BOKU Fit */}
+      <MealPlansAdminSection
+        brandId={activeBrandId}
+        brandSlug={activeBrand?.slug || brandFromContext?.slug || 'boku-bento'}
+      />
 
       {/* 1-Click Launch Templates (Rappi Ads Style) */}
       <div className="bg-gradient-to-br from-amber-50/80 via-emerald-50/40 to-neutral-50 p-5 rounded-2xl border border-amber-200/60 shadow-xs space-y-3">

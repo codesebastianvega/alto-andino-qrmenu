@@ -101,7 +101,9 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
       let max = groupMeta?.max_select ?? 999;
       let isRequired = groupMeta?.is_required ?? false;
       const allowQuantity = Boolean(groupMeta?.allow_quantity || max > 1);
-      const includedQuantity = groupMeta?.included_quantity ?? (isRequired ? min : 0);
+      const includedQuantity = (typeof config === 'object' && config?.included !== undefined)
+        ? config.included
+        : (groupMeta?.included_quantity ?? (isRequired ? min : 0));
 
       if (config === 'required') { min = 1; max = 1; isRequired = true; }
       else if (config === 'optional') { min = 0; max = 999; isRequired = false; }
