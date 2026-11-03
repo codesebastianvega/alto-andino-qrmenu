@@ -87,7 +87,7 @@ export const MenuDataProvider = ({ children }) => {
     }
 
     try {
-      const cacheKey = `menu:v8:${brandId}`;
+      const cacheKey = `menu:v9:${brandId}`;
       let recentCache = null;
       if (!force) {
         try {
@@ -326,7 +326,7 @@ export const MenuDataProvider = ({ children }) => {
       console.error('❌ MenuData Fetch Error:', err);
       let recoveredFromCache = false;
       try {
-        const cached = await withTimeout(catalogCache.get(`menu:v8:${brandId}`), 2500, 'La recuperación del catálogo local');
+        const cached = await withTimeout(catalogCache.get(`menu:v9:${brandId}`), 2500, 'La recuperación del catálogo local');
         if (cached?.value) {
           const data = cached.value;
           setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);
@@ -498,6 +498,17 @@ export const MenuDataProvider = ({ children }) => {
 
       // ── Desactivar Desayunos por hoy en Boku Bento ──
       if (isBoku && (product.category_id === 'b0000c04-0000-4000-a000-000000000004' || catSlug === 'boku-desayunos-brunch')) {
+        return;
+      }
+
+      // ── Desactivar Boloñesa en Boku Bento ──
+      if (isBoku && (
+        product.id === 'b0000f02-0000-4000-a000-000000000002' ||
+        product.id === 'b0000f03-0000-4000-a000-000000000003' ||
+        product.id === 'b0000b17-0000-4000-a000-000000000007' ||
+        product.name?.toLowerCase().includes('boloñesa') ||
+        product.name?.toLowerCase().includes('bolonesa')
+      )) {
         return;
       }
 
