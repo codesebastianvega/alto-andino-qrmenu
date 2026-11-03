@@ -360,7 +360,7 @@ export default function ProductSection({
         {headerNode}
         {scheduleNoticeNode}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
           {/* Left Column: Hero Spotlight Bento */}
           <div className="lg:col-span-5 flex flex-col">
             {heroTitle && norm(heroTitle) !== norm(title) && (
@@ -371,7 +371,7 @@ export default function ProductSection({
                 </h3>
               </div>
             )}
-            <div className="flex-1 flex flex-col">
+            <div className="flex flex-col">
               <ProductCard
                 item={heroItem}
                 variant="hero-spotlight"
@@ -383,7 +383,7 @@ export default function ProductSection({
             </div>
           </div>
 
-          {/* Right Column: 2x2 Grid with remaining items */}
+          {/* Right Column: Other Items */}
           {otherItems.length > 0 && (
             <div className="lg:col-span-7 flex flex-col">
               {otherTitle && norm(otherTitle) !== norm(title) && (
@@ -392,24 +392,37 @@ export default function ProductSection({
                     {otherTitle}
                   </h3>
                   <span className="text-[11px] font-semibold text-neutral-400">
-                    {otherItems.length} opciones
+                    {otherItems.length} {otherItems.length === 1 ? "opción" : "opciones"}
                   </span>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3 sm:gap-4 flex-1 items-stretch">
-                {otherItems.map((item, idx) => (
-                  <div key={item.id || idx} className="h-full flex flex-col">
-                    <ProductCard
-                      item={item}
-                      variant="standard"
-                      priority={idx < 2}
-                      onAdd={(payload) => addItem(payload)}
-                      onQuickView={onQuickView}
-                      allergens={allergens}
-                    />
-                  </div>
-                ))}
-              </div>
+              {otherItems.length === 1 ? (
+                <div className="w-full">
+                  <ProductCard
+                    item={otherItems[0]}
+                    variant="wide"
+                    priority={true}
+                    onAdd={(payload) => addItem(payload)}
+                    onQuickView={onQuickView}
+                    allergens={allergens}
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full items-start">
+                  {otherItems.map((item, idx) => (
+                    <div key={item.id || idx} className="flex flex-col">
+                      <ProductCard
+                        item={item}
+                        variant="standard"
+                        priority={idx < 2}
+                        onAdd={(payload) => addItem(payload)}
+                        onQuickView={onQuickView}
+                        allergens={allergens}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -555,50 +555,84 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
           </div>
 
           <StorePausedBanner onOpenCart={onOpenCart} />
-          <MealPlanVIPBanner onOpenCart={onOpenCart} onInstallPWA={onInstallPWA} isPWAInstalled={isPWAInstalled} />
 
-          <h1 className="mb-1.5 text-2xl font-extrabold tracking-tight text-[#1A1A1A] md:text-3xl">
-            {homeSettings?.hero_h1 ? (
+          <h1 className="mb-1 text-lg sm:text-2xl font-extrabold tracking-tight text-[#1A1A1A] leading-snug">
+            {homeSettings?.hero_h1 && !/hawaiano|frescura/i.test(homeSettings?.hero_h1 + (homeSettings?.hero_subtitle || '')) ? (
               <span dangerouslySetInnerHTML={{ __html: homeSettings.hero_h1.replace(/\n/g, '<br/>') }} />
+            ) : effectiveBrand?.slug === 'boku-bento' ? (
+              '🔥 ¡Almuerzos de hoy en BOKU BENTO! 🔥'
             ) : (
-              <>
-                Comer <span style={{ color: primaryColor }}>sano</span> nunca fue tan fácil
-              </>
+              <>Comer <span style={{ color: primaryColor }}>sano</span> nunca fue tan fácil</>
             )}
           </h1>
-          <p className="text-xs font-medium text-[#1A1A1A]/40 md:text-sm">
-            {homeSettings?.hero_subtitle || 'Ingredientes locales, directo a tu mesa.'}
+          <p className="text-xs font-medium text-[#1A1A1A]/55 leading-relaxed md:text-sm">
+            {(effectiveBrand?.slug === 'boku-bento' && (!homeSettings?.hero_subtitle || /hawaiano/i.test(homeSettings?.hero_subtitle)))
+              ? 'Dos opciones brutales por solo $19.000 c/u: Bento Tex-Mex 🍛 o Pasta Alfredo 🍝. 🥣 Combo completo: Crema de verduras (16 oz) o Fruta + 🥤 Bebida de la Casa.'
+              : (homeSettings?.hero_subtitle || 'Ingredientes locales, directo a tu mesa.')}
           </p>
-        </motion.div>
 
-        {instantProduct && storeStatusInfo?.isOpen !== false && (
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="mb-5 hidden w-full rounded-[1.5rem] border border-white/80 bg-white/82 p-4 shadow-[0_18px_50px_rgba(28,28,28,0.07)] backdrop-blur-xl lg:block"
-          >
-            <div className="flex items-center justify-between gap-5">
-              <div>
-                <div className="mb-1 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-white" style={{ backgroundColor: primaryColor }}>
-                  <Sparkles size={12} />
-                  Guía de antojo
-                </div>
-                <h3 className="text-lg font-black text-[#1A1A1A]">{greeting}</h3>
-                <p className="text-sm font-medium text-[#1A1A1A]/50">Haz un match rápido con algo de la carta.</p>
+          {/* SECCIÓN DÚO APPLE-STYLE (Club BOKU + Guía de Antojo) */}
+          <div className="w-full my-4">
+            <div className="flex md:grid md:grid-cols-2 gap-3 sm:gap-4 overflow-x-auto md:overflow-visible snap-x snap-mandatory scrollbar-none pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+              {/* CARD 1: Club BOKU (Pase de Almuerzos) */}
+              <div className="min-w-[85vw] sm:min-w-[340px] md:min-w-0 snap-start flex-1 flex flex-col">
+                <MealPlanVIPBanner
+                  onOpenCart={onOpenCart}
+                  onInstallPWA={onInstallPWA}
+                  isPWAInstalled={isPWAInstalled}
+                />
               </div>
-              <button
-                type="button"
-                onClick={openGuide}
-                className="shrink-0 rounded-full px-5 py-2 text-sm font-black text-white"
-                style={{ backgroundColor: primaryColor }}
-              >
-                Abrir guía
-              </button>
+
+              {/* CARD 2: Guía de Antojo (Aluna) */}
+              {instantProduct && storeStatusInfo?.isOpen !== false && (
+                <div className="min-w-[85vw] sm:min-w-[340px] md:min-w-0 snap-start flex-1 flex flex-col">
+                  <div
+                    data-clarity-unmask="true"
+                    className="relative z-20 w-full h-full rounded-[1.25rem] bg-white/95 backdrop-blur-md border border-stone-200/80 p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-stone-300 flex flex-col justify-between transition-all duration-300"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white"
+                          style={{ backgroundColor: primaryColor || '#2f4131' }}
+                        >
+                          <Sparkles size={11} />
+                          <span>Guía de Antojo</span>
+                        </span>
+                        <span className="text-[10px] font-bold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
+                          Match en 2 clics
+                        </span>
+                      </div>
+
+                      <h3 className="text-sm sm:text-base font-black text-stone-900 tracking-tight leading-snug mt-2.5">
+                        {greeting || '¿Qué se te antoja hoy?'}
+                      </h3>
+                      <p className="text-xs text-stone-500 font-medium leading-relaxed mt-1 line-clamp-2">
+                        Haz un match rápido con algo de la carta según tu apetito o momento del día.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 mt-3.5 pt-3 border-t border-stone-100">
+                      <span className="text-[11px] font-bold text-stone-400 truncate">
+                        Asistente inteligente Aluna
+                      </span>
+                      <button
+                        type="button"
+                        onClick={openGuide}
+                        className="px-4 py-2 rounded-xl text-white font-black text-xs transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0 active:scale-95"
+                        style={{ backgroundColor: primaryColor || '#2f4131' }}
+                      >
+                        <span>Abrir guía</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          </motion.div>
-        )}
-        </div>
+          </div>
+        </motion.div>
+      </div>
 
         <motion.div
           initial={{ opacity: 0, y: 15 }}

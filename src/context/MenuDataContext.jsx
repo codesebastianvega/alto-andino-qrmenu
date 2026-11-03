@@ -87,7 +87,7 @@ export const MenuDataProvider = ({ children }) => {
     }
 
     try {
-      const cacheKey = `menu:v5:${brandId}`;
+      const cacheKey = `menu:v8:${brandId}`;
       let recentCache = null;
       if (!force) {
         try {
@@ -149,7 +149,7 @@ export const MenuDataProvider = ({ children }) => {
         brandFilter(supabase.from('home_settings').select('*').limit(1)),
         brandFilter(supabase.from('restaurant_settings').select('*')),
         supabase.from('brands').select('*, plans(*, plan_features(*))').eq('id', brandId).single(),
-        brandFilter(supabase.from('products').select('*, categories:category_id (slug)').eq('is_active', true).order('sort_order', { ascending: true })),
+        brandFilter(supabase.from('products').select('*, categories:category_id (slug)').order('sort_order', { ascending: true })),
         brandFilter(supabase.from('business_hours').select('*').order('day_of_week', { ascending: true })),
         brandFilter(supabase.from('promotions').select('*').eq('is_active', true).order('created_at', { ascending: false }))
       ]), 15000, 'La carga inicial del menú');
@@ -219,7 +219,15 @@ export const MenuDataProvider = ({ children }) => {
       setAllergens(allgsRes.data || []);
       setLocations(locsRes.data || []);
       setBanners(bnrsRes.data || []);
-      setHomeSettings(hSettRes.data?.[0] || null);
+      const rawHomeSettings = hSettRes.data?.[0] || null;
+      const normalizedHomeSettings = (rawHomeSettings && brandId === 'a63da806-a62a-49b9-a833-07e0976785ad' && /hawaiano/i.test(rawHomeSettings.hero_subtitle || ''))
+        ? {
+            ...rawHomeSettings,
+            hero_h1: '🔥 ¡Almuerzos de hoy en BOKU BENTO! 🔥',
+            hero_subtitle: 'Dos opciones brutales por solo $19.000 c/u: Bento Tex-Mex 🍛 o Pasta Alfredo 🍝. 🥣 Combo completo: Crema de verduras (16 oz) o Fruta + 🥤 Bebida de la Casa.'
+          }
+        : rawHomeSettings;
+      setHomeSettings(normalizedHomeSettings);
 
       const allRS = rSettRes.data || [];
       const brandLevelRS = allRS.find(s => !s.location_id) || null;
@@ -297,7 +305,7 @@ export const MenuDataProvider = ({ children }) => {
       const cachePayload = {
         categories: catsRes.data || [], products: prodsRes.data || [], modifierGroups: modsRes.data || [],
         experiences: expRes.data || [], allergens: allgsRes.data || [], locations: locsRes.data || [],
-        banners: bnrsRes.data || [], homeSettings: hSettRes.data?.[0] || null,
+        banners: bnrsRes.data || [], homeSettings: normalizedHomeSettings,
         restaurantSettings: bestRS, brand: brandRes.data || null,
         businessHours: hoursRes.data || [], locationPrices: cachedLocationPrices,
         locationStatus: cachedLocationStatus, locationCategories: cachedLocationCategories,
@@ -318,7 +326,7 @@ export const MenuDataProvider = ({ children }) => {
       console.error('❌ MenuData Fetch Error:', err);
       let recoveredFromCache = false;
       try {
-        const cached = await withTimeout(catalogCache.get(`menu:v5:${brandId}`), 2500, 'La recuperación del catálogo local');
+        const cached = await withTimeout(catalogCache.get(`menu:v8:${brandId}`), 2500, 'La recuperación del catálogo local');
         if (cached?.value) {
           const data = cached.value;
           setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);
@@ -480,9 +488,9 @@ export const MenuDataProvider = ({ children }) => {
     const manualOverride = dailySpecialConcept?.manual_override_product_id;
     const currentDayOfWeek = new Date().getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
     
-    // Si es Boku, hoy lunes el Bento del Día es Bento Bogotano
+    // Si es Boku, el Bento del Día configurado es Bento Tex-Mex (o el manualOverride activo)
     const activeSpecialId = isBoku 
-      ? 'b0000b13-0000-4000-a000-000000000003' 
+      ? (manualOverride || 'b0000b12-0000-4000-a000-000000000002')
       : (manualOverride || (isSpecialEnabled ? specialSchedule[currentDayOfWeek] : null));
 
     (rawProducts || []).forEach(product => {
@@ -493,10 +501,22 @@ export const MenuDataProvider = ({ children }) => {
         return;
       }
 
+      // En Boku Bento, activar únicamente el Bento del Día activo (Tex-Mex) y ocultar Bogotano/Hawaiano inactivos
+      if (isBoku) {
+        if (product.id === 'b0000b13-0000-4000-a000-000000000003' || product.id === 'b0000b19-0000-4000-a000-000000000020') {
+          if (product.id !== activeSpecialId) return;
+        }
+        if (product.is_active === false && product.id !== activeSpecialId) {
+          return;
+        }
+      } else if (product.is_active === false) {
+        return;
+      }
+
       // Apply location product status override
       if (activeLocationId && activeLocationId !== 'all' && hasLocProductConfig) {
-        // En Boku Bento, Bento Bogotano es el plato de hoy y nunca debe ser bloqueado por status anterior
-        const isActiveOverride = (isBoku && product.id === 'b0000b13-0000-4000-a000-000000000003') 
+        // En Boku Bento, el Bento del Día activo nunca debe ser bloqueado por status anterior
+        const isActiveOverride = (isBoku && product.id === activeSpecialId) 
           ? true 
           : statusMap.get(product.id);
 
@@ -534,10 +554,12 @@ export const MenuDataProvider = ({ children }) => {
       let originalPrice = undefined;
 
       if (isSpecialToday) {
-        // If product has an explicit price set in DB, honor it; otherwise fallback to promoPrice
-        finalPrice = (product.price !== undefined && product.price !== null && Number(product.price) > 0)
-          ? Number(product.price)
-          : (promoPrice > 0 ? promoPrice : 19000);
+        // Si es el Bento del Día programado o activo en Boku, usar promoPrice ($19.000)
+        finalPrice = isBoku
+          ? (promoPrice > 0 ? promoPrice : 19000)
+          : ((product.price !== undefined && product.price !== null && Number(product.price) > 0)
+            ? Number(product.price)
+            : (promoPrice > 0 ? promoPrice : 19000));
         if (standardPrice > finalPrice) {
           originalPrice = standardPrice;
         }
@@ -550,9 +572,12 @@ export const MenuDataProvider = ({ children }) => {
         productSubcategory = product.subcategory || 'Bentos Tradicionales & Fusión';
       }
 
-      let finalStockStatus = product.stock_status || 'in';
-      let finalAvailablePortions = product.available_portions !== null && product.available_portions !== undefined ? Number(product.available_portions) : null;
-      if (activeLocationId && activeLocationId !== 'all') {
+      const isBokuDailySpecial = isBoku && (product.id === activeSpecialId || product.id === 'b0000b16-0000-4000-a000-000000000006');
+      let finalStockStatus = isBokuDailySpecial ? 'in' : (product.stock_status || 'in');
+      let finalAvailablePortions = isBokuDailySpecial
+        ? 50
+        : (product.available_portions !== null && product.available_portions !== undefined ? Number(product.available_portions) : null);
+      if (activeLocationId && activeLocationId !== 'all' && !isBokuDailySpecial) {
         if (stockStatusMap.has(product.id)) finalStockStatus = stockStatusMap.get(product.id);
         if (portionsMap.has(product.id)) finalAvailablePortions = portionsMap.get(product.id);
       }
@@ -597,71 +622,20 @@ export const MenuDataProvider = ({ children }) => {
       }
     });
 
-    // En Boku Bento: asegurar que Bento Bogotano sea el Hero y Bento Pasta Boloñesa esté como 2da opción de Bento del Día
+    // En Boku Bento: asegurar que Bento Tex-Mex y Pasta Alfredo estén de primero como los 2 platos de hoy
     if (isBoku) {
       if (!grouped['boku-bentos']) grouped['boku-bentos'] = [];
 
-      // Ordenar: Bento Bogotano siempre primero como Hero del Día
+      // Ordenar: Bento Tex-Mex primero, Pasta Alfredo segundo, luego demás
       grouped['boku-bentos'].sort((a, b) => {
-        if (a.id === 'b0000b13-0000-4000-a000-000000000003') return -1;
-        if (b.id === 'b0000b13-0000-4000-a000-000000000003') return 1;
+        const aSpecial = a.id === activeSpecialId || a.id === 'b0000b16-0000-4000-a000-000000000006' || a.is_bento_del_dia;
+        const bSpecial = b.id === activeSpecialId || b.id === 'b0000b16-0000-4000-a000-000000000006' || b.is_bento_del_dia;
+        if (aSpecial && !bSpecial) return -1;
+        if (!aSpecial && bSpecial) return 1;
+        if (a.id === activeSpecialId) return -1;
+        if (b.id === activeSpecialId) return 1;
         return 0;
       });
-
-      // Incluir Bento Pasta Boloñesa como opción complementaria del día si no está ya presente
-      const hasBoloBento = grouped['boku-bentos'].some(p => p.id === 'b0000b17-0000-4000-a000-000000000007' || p.name?.toLowerCase().includes('pasta boloñesa'));
-      if (!hasBoloBento) {
-        grouped['boku-bentos'].push({
-          id: 'b0000b17-0000-4000-a000-000000000007',
-          name: 'Bento Pasta Boloñesa (Especial del Día)',
-          is_active: true,
-          price: 19000,
-          original_price: 26000,
-          is_bento_del_dia: true,
-          is_daily_special: true,
-          daily_special_label: specialLabel,
-          desc: 'Espagueti al dente bañado en nuestra tradicional salsa boloñesa casera de cocción lenta con carne seleccionada, queso parmesano rallado y finas hierbas. 🥣 ¡Viene en combo completo! Incluye Sopa del Día (16 oz) o Fruta + 🥤 Bebida de la Casa (5 oz).',
-          description: 'Espagueti al dente bañado en nuestra tradicional salsa boloñesa casera de cocción lenta con carne seleccionada, queso parmesano rallado y finas hierbas. 🥣 ¡Viene en combo completo! Incluye Sopa del Día (16 oz) o Fruta + 🥤 Bebida de la Casa (5 oz).',
-          tags: ['Pasta', 'Boloñesa', 'Bento', 'Especial del Día'],
-          stock_status: 'in',
-          available_portions: 50,
-          out_reason: null,
-          image: 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/92xztzpto8_1792020477890.webp',
-          image_url: 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/92xztzpto8_1792020477890.webp',
-          variants: [],
-          modifierGroups: [
-            'b0000b20-0000-4000-a000-000000000002', // 🥣 Entrada Incluida
-            'b0000b20-0000-4000-a000-000000000001', // 🥤 Bebida de la Casa Incluida
-            'b0000c20-0000-4000-a000-000000000002'  // 🍝 Queso & Adiciones para tu Pasta
-          ],
-          configOptions: {},
-          is_upsell: false,
-          requires_kitchen: true,
-          station: 'kitchen',
-          subcategory: specialLabel,
-          categorySlug: 'boku-bentos',
-          categoryId: 'b0000c01-0000-4000-a000-000000000001',
-          categoryName: 'BOKU Bentos Caseros',
-          is_schedule_available: !isStorePausedForPublic,
-          schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible',
-          schedule_info: { isAvailableNow: !isStorePausedForPublic, label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible', isRestricted: isStorePausedForPublic },
-          is_addon: false,
-          _supabase: {
-            id: 'b0000b17-0000-4000-a000-000000000007',
-            name: 'Bento Pasta Boloñesa (Especial del Día)',
-            category_id: 'b0000c01-0000-4000-a000-000000000001',
-            brand_id: 'a63da806-a62a-49b9-a833-07e0976785ad',
-            price: 19000,
-            is_active: true,
-            stock_status: 'in',
-            modifier_groups: [
-              'b0000b20-0000-4000-a000-000000000002',
-              'b0000b20-0000-4000-a000-000000000001',
-              'b0000c20-0000-4000-a000-000000000002'
-            ]
-          }
-        });
-      }
     }
     return grouped;
   }, [rawProducts, locationPrices, locationStatus, activeLocationId, restaurantSettings, allCategories, brand, storeStatusInfo]);

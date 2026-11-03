@@ -376,19 +376,56 @@ export default function CartModal({ open, onClose }) {
   const [couponInput, setCouponInput] = useState("");
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [isCouponAccordionOpen, setIsCouponAccordionOpen] = useState(false);
+  const [skipPlanCreditForOrder, setSkipPlanCreditForOrder] = useState(false);
 
   // Listen to external coupon application (e.g. from banner)
   useEffect(() => {
     const handlePromoEvent = (e) => {
-      if (e?.detail) setAppliedCoupon(e.detail);
+      if (e?.detail) {
+        setSkipPlanCreditForOrder(false);
+        setAppliedCoupon(prev => {
+          if (prev?.id === e.detail.id && prev?.code === e.detail.code && prev?.discount_amount === e.detail.discount_amount) {
+            return prev;
+          }
+          return e.detail;
+        });
+      } else {
+        setAppliedCoupon(prev => prev ? null : prev);
+      }
     };
     window.addEventListener('aa_coupon_applied', handlePromoEvent);
     return () => window.removeEventListener('aa_coupon_applied', handlePromoEvent);
   }, []);
 
-  // 1. Calculate discount for any promotion
+  // 1. Calculate discount for any promotion (con candado anti-trampa para Tiqueteras)
   const calculateDiscountForPromo = useCallback((promo, cartItems, cartTotal) => {
     if (!promo) return 0;
+
+    // CANDADO ANTI-TRAMPA TIQUETERA:
+    // 1 Crédito cubre estrictamente 1 unidad base de Almuerzo (Bowl del Plan o Bento del Día).
+    // NO cubre un 2° plato, NO cubre cantidad > 1, NO cubre proteínas extra/upgrades de bebida, ni postres/bebidas sueltas.
+    if (promo.is_meal_plan) {
+      const qualifyingItem = (cartItems || []).find(it => {
+        const pid = String(it.productId || it.id || '');
+        return (
+          Boolean(it.is_plan_bowl) ||
+          Boolean(it.is_bento_del_dia) ||
+          Boolean(it.is_daily_special) ||
+          pid === 'b0000d14-0000-4000-a000-000000000000' ||
+          pid === 'b0000b12-0000-4000-a000-000000000002' ||
+          /bowl|bento/i.test(String(it.name || ''))
+        );
+      });
+
+      if (!qualifyingItem) return 0;
+
+      const fullUnitPrice = Number(qualifyingItem.unitPrice) || Number(qualifyingItem.price) || 0;
+      const extraModsPrice = Number(qualifyingItem.extra_modifiers_price) || 0;
+      const baseUnitPrice = Number(qualifyingItem.base_plan_price) || Math.max(0, fullUnitPrice - extraModsPrice);
+      const maxCoveredUnit = Number(promo.max_covered_unit_value) || Math.max(Number(promo.value) || 17000, 19000);
+
+      return Math.max(0, Math.min(baseUnitPrice, maxCoveredUnit));
+    }
     
     // Check minimum order amount
     if (promo.min_order_amount && cartTotal < Number(promo.min_order_amount)) {
@@ -457,24 +494,28 @@ export default function CartModal({ open, onClose }) {
     });
   }, [activePromotions, activeBrandId]);
 
+  const activeMemberPlanSession = useMemo(() => {
+    if (!activeBrandId) return null;
+    const configuredPlans = getConfiguredMealPlans(settings);
+    return getActiveMemberSession(activeBrandId, configuredPlans);
+  }, [activeBrandId, settings, open]);
+
   // Si el dispositivo tiene una Tiquetera BOKU Fit activa o guardó un cupón durante la pausa, sincronizar al abrir el carrito
   useEffect(() => {
     if (!open || !activeBrandId) return;
 
-    const configuredPlans = getConfiguredMealPlans(settings);
-    const activeMemberPlan = getActiveMemberSession(activeBrandId, configuredPlans);
-    if (activeMemberPlan) {
-      if (!customerName && activeMemberPlan.customer_name) setCustomerName(activeMemberPlan.customer_name);
-      if (!customerPhone && activeMemberPlan.customer_phone) setCustomerPhone(activeMemberPlan.customer_phone);
-      if (!deliveryAddress && activeMemberPlan.default_address) setDeliveryAddress(activeMemberPlan.default_address);
-      if (!deliveryNotes && (activeMemberPlan.default_time || activeMemberPlan.dietary_notes)) {
+    if (activeMemberPlanSession) {
+      if (!customerName && activeMemberPlanSession.customer_name) setCustomerName(activeMemberPlanSession.customer_name);
+      if (!customerPhone && activeMemberPlanSession.customer_phone) setCustomerPhone(activeMemberPlanSession.customer_phone);
+      if (!deliveryAddress && activeMemberPlanSession.default_address) setDeliveryAddress(activeMemberPlanSession.default_address);
+      if (!deliveryNotes && (activeMemberPlanSession.default_time || activeMemberPlanSession.dietary_notes)) {
         const parts = [];
-        if (activeMemberPlan.default_time) parts.push(`Hora programada: ${activeMemberPlan.default_time}`);
-        if (activeMemberPlan.dietary_notes) parts.push(activeMemberPlan.dietary_notes);
+        if (activeMemberPlanSession.default_time) parts.push(`Hora programada: ${activeMemberPlanSession.default_time}`);
+        if (activeMemberPlanSession.dietary_notes) parts.push(activeMemberPlanSession.dietary_notes);
         setDeliveryNotes(parts.join(' • '));
       }
-      if (!appliedCoupon) {
-        const planPromo = buildPlanPromoObject(activeMemberPlan);
+      if (!appliedCoupon && !skipPlanCreditForOrder) {
+        const planPromo = buildPlanPromoObject(activeMemberPlanSession);
         if (planPromo) {
           setAppliedCoupon(planPromo);
           localStorage.setItem("aa_applied_coupon", JSON.stringify(planPromo));
@@ -492,19 +533,22 @@ export default function CartModal({ open, onClose }) {
         localStorage.setItem("aa_applied_coupon", JSON.stringify(matched));
       }
     }
-  }, [open, activeBrandId, appliedCoupon, activePromotions, total, settings]);
+  }, [open, activeBrandId, activeMemberPlanSession, skipPlanCreditForOrder, appliedCoupon, activePromotions, total]);
 
   // Order Totals
   const packagingFeeTotal = items.reduce((acc, it) => acc + ((Number(it.packaging_fee) || 0) * (Number(it.qty) || 1)), 0);
   const serviceFeeAmount = (isTipEnabled && includeTip) ? Math.round(Math.max(0, total - discountAmount) * (tipPercentage / 100)) : 0;
+  const isMealPlanDeliveryCovered = Boolean(
+    effectivePromo?.is_meal_plan && effectivePromo?.includes_delivery && discountAmount > 0
+  );
   const isFreeDeliveryPromoActive = useMemo(() => {
-    if (effectivePromo?.is_meal_plan && effectivePromo?.includes_delivery) {
+    if (isMealPlanDeliveryCovered) {
       return true;
     }
     if (freeDeliveryPromo && (!freeDeliveryPromo.min_order_amount || total >= Number(freeDeliveryPromo.min_order_amount))) {
       return true;
     }
-    if (effectivePromo && (effectivePromo.type === 'free_delivery' || effectivePromo.target === 'delivery')) {
+    if (effectivePromo && !effectivePromo.is_meal_plan && (effectivePromo.type === 'free_delivery' || effectivePromo.target === 'delivery')) {
       if (!effectivePromo.min_order_amount || total >= Number(effectivePromo.min_order_amount)) {
         return true;
       }
@@ -513,12 +557,12 @@ export default function CartModal({ open, onClose }) {
       return true;
     }
     return false;
-  }, [freeDeliveryPromo, effectivePromo, currentLocation, total]);
+  }, [isMealPlanDeliveryCovered, freeDeliveryPromo, effectivePromo, currentLocation, total]);
 
   const deliveryFee = useMemo(() => {
     if (fulfillmentType !== 'delivery') return 0;
-    // Si tiene Plan Tiquetera con domicilio incluido -> $0; si es con domicilio aparte -> tarifa del plan
-    if (effectivePromo?.is_meal_plan) {
+    // Solo cubrir el domicilio por Tiquetera si está redimiendo 1 almuerzo del plan (discountAmount > 0) y su plan incluye domicilio
+    if (effectivePromo?.is_meal_plan && discountAmount > 0) {
       if (effectivePromo.includes_delivery) return 0;
       if (effectivePromo.delivery_fee_override !== undefined && effectivePromo.delivery_fee_override !== null) {
         return Number(effectivePromo.delivery_fee_override);
@@ -703,9 +747,26 @@ export default function CartModal({ open, onClose }) {
   };
 
   const handleRemoveCoupon = () => {
+    const wasMealPlan = Boolean(appliedCoupon?.is_meal_plan);
     setAppliedCoupon(null);
     localStorage.removeItem("aa_applied_coupon");
-    toast.success("Cupón removido");
+    if (wasMealPlan) {
+      setSkipPlanCreditForOrder(true);
+      toast.success("No se descontará crédito de tu tiquetera en este pedido.");
+    } else {
+      toast.success("Cupón removido");
+    }
+  };
+
+  const handleRestoreMealPlanCredit = () => {
+    if (!activeMemberPlanSession) return;
+    const planPromo = buildPlanPromoObject(activeMemberPlanSession);
+    if (planPromo) {
+      setSkipPlanCreditForOrder(false);
+      setAppliedCoupon(planPromo);
+      localStorage.setItem("aa_applied_coupon", JSON.stringify(planPromo));
+      toast.success(`🎟️ Tiquetera #${activeMemberPlanSession.code} reactivada para este pedido.`);
+    }
   };
 
   // Customer Payment States (Delivery / Takeaway)
@@ -967,7 +1028,7 @@ export default function CartModal({ open, onClose }) {
       }
 
       // 0.05 Re-validate Coupon Security or Meal Plan Credits at Submit Time
-      if (effectivePromo?.is_meal_plan) {
+      if (effectivePromo?.is_meal_plan && discountAmount > 0) {
         const configuredPlans = getConfiguredMealPlans(settings);
         const matchedMealPlan = findSubscriberPlan(configuredPlans, { code: effectivePromo.code }) || effectivePromo;
         const usageRes = await fetchPlanUsage(supabase, activeBrandId, matchedMealPlan);
@@ -978,7 +1039,15 @@ export default function CartModal({ open, onClose }) {
           setIsSubmitting(false);
           return;
         }
-      } else if (effectivePromo?.code) {
+        if (usageRes.usedTodayCount >= 1) {
+          toast.error(`Ya redimiste tu almuerzo del plan de hoy (máx. 1 crédito personal por día). Puedes pedir a precio normal.`);
+          setAppliedCoupon(null);
+          setSkipPlanCreditForOrder(true);
+          localStorage.removeItem("aa_applied_coupon");
+          setIsSubmitting(false);
+          return;
+        }
+      } else if (effectivePromo?.code && !effectivePromo?.is_meal_plan) {
         const cleanCode = effectivePromo.code.trim().toUpperCase();
         if (hasDeviceUsedCoupon(cleanCode, activeBrandId)) {
           toast.error(`El cupón ${cleanCode} ya fue redimido desde este dispositivo.`);
@@ -1527,24 +1596,56 @@ export default function CartModal({ open, onClose }) {
                     <Icon icon="solar:ticket-sale-bold" className="text-base" />
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono font-black text-xs text-emerald-950 uppercase tracking-wider">{appliedCoupon.code || appliedCoupon.name}</span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-mono font-black text-xs text-emerald-950 uppercase tracking-wider">
+                        {appliedCoupon.is_meal_plan ? `Tiquetera #${appliedCoupon.code}` : (appliedCoupon.code || appliedCoupon.name)}
+                      </span>
                       <span className="text-[10px] font-black bg-emerald-200/80 text-emerald-800 px-1.5 py-0.2 rounded">
-                        {appliedCoupon.type === 'percentage_discount' ? `-${appliedCoupon.value}%` : appliedCoupon.type === 'free_delivery' ? 'Envío Gratis' : `-${formatCOP(appliedCoupon.value)}`}
+                        {appliedCoupon.is_meal_plan
+                          ? '1 Crédito = 1 Almuerzo'
+                          : appliedCoupon.type === 'percentage_discount'
+                          ? `-${appliedCoupon.value}%`
+                          : appliedCoupon.type === 'free_delivery'
+                          ? 'Envío Gratis'
+                          : `-${formatCOP(appliedCoupon.value)}`}
                       </span>
                     </div>
-                    <p className="text-[10px] font-medium text-emerald-700 truncate">
-                      {appliedCoupon.type === 'free_delivery' ? 'Domicilio 100% gratis' : `Ahorras ${formatCOP(discountAmount)}`}
+                    <p className="text-[10px] font-medium text-emerald-700 leading-tight mt-0.5">
+                      {appliedCoupon.is_meal_plan
+                        ? discountAmount > 0
+                          ? `Cubre 1 almuerzo base (-${formatCOP(discountAmount)})${appliedCoupon.includes_delivery ? ' + domicilio del plan' : ' • Domicilio aparte'}. Extras o 2° plato se cobran normal.`
+                          : 'Agrega tu Bowl del Plan o Bento del Día para redimir 1 crédito.'
+                        : appliedCoupon.type === 'free_delivery'
+                        ? 'Domicilio 100% gratis'
+                        : `Ahorras ${formatCOP(discountAmount)}`}
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={handleRemoveCoupon}
-                  className="text-[11px] font-bold text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors shrink-0"
-                  title="Quitar cupón"
+                  className="text-[11px] font-bold text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-lg transition-colors shrink-0 cursor-pointer"
+                  title={appliedCoupon.is_meal_plan ? "No usar crédito hoy (Pagar normal)" : "Quitar cupón"}
                 >
-                  Quitar
+                  {appliedCoupon.is_meal_plan ? 'No usar hoy' : 'Quitar'}
+                </button>
+              </div>
+            ) : skipPlanCreditForOrder && activeMemberPlanSession ? (
+              <div className="flex items-center justify-between p-2.5 bg-stone-100 border border-stone-200 rounded-xl shadow-2xs">
+                <div className="min-w-0">
+                  <span className="block text-xs font-extrabold text-stone-800">
+                    🎟️ Tiquetera #{activeMemberPlanSession.code} pausada en este pedido
+                  </span>
+                  <span className="block text-[10px] text-stone-500">
+                    Pagarás este pedido normal sin gastar créditos de tu plan.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRestoreMealPlanCredit}
+                  className="px-2.5 py-1.5 rounded-lg bg-[#2f4131] text-white text-[11px] font-bold shrink-0 cursor-pointer"
+                >
+                  Usar 1 Crédito
                 </button>
               </div>
             ) : automaticDiscountPromo ? (
@@ -1648,7 +1749,11 @@ export default function CartModal({ open, onClose }) {
             <div className="flex justify-between items-center mb-1 animate-in fade-in slide-in-from-right-2 text-emerald-700">
               <div className="flex items-center gap-1.5">
                 <Icon icon="solar:ticket-sale-bold" className="text-base text-emerald-600" />
-                <span className="text-sm font-bold">Descuento ({effectivePromo?.code || effectivePromo?.name})</span>
+                <span className="text-sm font-bold">
+                  {effectivePromo?.is_meal_plan
+                    ? `1 Crédito Tiquetera (#${effectivePromo.code})`
+                    : `Descuento (${effectivePromo?.code || effectivePromo?.name})`}
+                </span>
               </div>
               <span className="text-sm font-black text-emerald-700">
                 -{formatCOP(discountAmount)}
@@ -1667,12 +1772,12 @@ export default function CartModal({ open, onClose }) {
                 <span className="text-sm text-neutral-500 font-medium">Costo de Domicilio</span>
                 {deliveryFee === 0 && isFreeDeliveryPromoActive && (
                   <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
-                    {freeDeliveryPromo?.name ? 'Promo' : 'Cupón'}
+                    {isMealPlanDeliveryCovered ? 'Plan Todo Incluido' : freeDeliveryPromo?.name ? 'Promo' : 'Cupón'}
                   </span>
                 )}
               </div>
               <span className={`text-sm font-semibold ${deliveryFee > 0 ? 'text-emerald-700' : isFreeDeliveryPromoActive ? 'text-emerald-600 font-black' : 'text-neutral-600'}`}>
-                {deliveryFee > 0 ? formatCOP(deliveryFee) : isFreeDeliveryPromoActive ? '¡GRATIS! 🎉' : '$ 0'}
+                {deliveryFee > 0 ? formatCOP(deliveryFee) : isMealPlanDeliveryCovered ? 'Incluido en tu Plan 🛵' : isFreeDeliveryPromoActive ? '¡GRATIS! 🎉' : '$ 0'}
               </span>
             </div>
           )}

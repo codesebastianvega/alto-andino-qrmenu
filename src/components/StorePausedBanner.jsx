@@ -7,10 +7,10 @@ import {
   hasDeviceUsedCoupon 
 } from '../utils/couponSecurity';
 import { toast } from './Toast';
-import { Clock, Lock, Tag, CheckCircle2, Sparkles, ShieldCheck } from 'lucide-react';
+import { Clock, CheckCircle2, Sparkles, Tag } from 'lucide-react';
 
 export default function StorePausedBanner({ onOpenCart }) {
-  const { storeStatusInfo, activeBrandId, activePromotions } = useMenuData();
+  const { storeStatusInfo, activeBrandId } = useMenuData();
   const [claimedCode, setClaimedCode] = useState(null);
   const [pendingCodeWhenOpen, setPendingCodeWhenOpen] = useState(null);
 
@@ -19,7 +19,6 @@ export default function StorePausedBanner({ onOpenCart }) {
   const couponCode = pauseInfo?.offer_compensation_coupon 
     ? (pauseInfo?.compensation_coupon_code || 'VOLVER10') 
     : null;
-  const couponLabel = pauseInfo?.compensation_coupon_label || '10% de descuento en tu próximo pedido';
 
   useEffect(() => {
     if (!activeBrandId) return;
@@ -45,52 +44,39 @@ export default function StorePausedBanner({ onOpenCart }) {
       try {
         navigator.clipboard?.writeText(couponCode);
       } catch {}
-      toast.success(`🎉 ¡Cupón ${couponCode} vinculado a tu dispositivo! Podrás usarlo en el carrito apenas abramos.`);
+      toast.success(`🎉 ¡Cupón ${couponCode} guardado! Se aplicará en tu carrito apenas abramos.`);
     }
   };
 
-  // Caso 1: La tienda ya volvió a abrir y este dispositivo tiene un cupón guardado durante la pausa
+  // Caso 1: La tienda ya volvió a abrir y este dispositivo tiene un cupón guardado
   if (!isStoreClosed && pendingCodeWhenOpen) {
     return (
       <div
         data-clarity-unmask="true"
-        className="relative z-20 mb-4 w-full rounded-2xl bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white p-3 sm:p-4 shadow-md border border-emerald-500/40"
+        className="relative z-20 mb-2.5 w-full rounded-2xl bg-emerald-50/95 border border-emerald-200/90 px-3.5 py-2.5 flex items-center justify-between gap-2.5 shadow-2xs"
       >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center shrink-0">
-              <Sparkles className="w-4 h-4 text-emerald-300" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
-                <p className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-emerald-200 truncate">
-                  ¡Cocina Abierta! Tu cupón está listo
-                </p>
-              </div>
-              <p className="text-[11px] sm:text-xs text-white/90 mt-0.5">
-                Usa tu cupón <strong className="font-mono bg-white/15 px-1.5 py-0.5 rounded">{pendingCodeWhenOpen}</strong> en el carrito.
-              </p>
-            </div>
-          </div>
-          {onOpenCart && (
-            <button
-              type="button"
-              onClick={onOpenCart}
-              className="w-full sm:w-auto px-3.5 py-1.5 rounded-xl bg-white text-emerald-950 font-black text-xs hover:bg-emerald-50 transition-all shrink-0 shadow-xs cursor-pointer text-center"
-            >
-              Ver en mi Carrito →
-            </button>
-          )}
+        <div className="flex items-center gap-2 min-w-0">
+          <Sparkles className="w-4 h-4 text-emerald-700 shrink-0" />
+          <p className="text-[11px] font-bold text-emerald-950 leading-tight">
+            ¡Ya abrimos! Tienes activo tu cupón <span className="font-mono font-black underline">{pendingCodeWhenOpen}</span> (10% OFF)
+          </p>
         </div>
+        {onOpenCart && (
+          <button
+            type="button"
+            onClick={onOpenCart}
+            className="px-3 py-1.5 rounded-xl bg-[#2f4131] text-white font-extrabold text-[11px] hover:bg-[#233124] transition-all shrink-0 cursor-pointer"
+          >
+            Usar →
+          </button>
+        )}
       </div>
     );
   }
 
-  // Caso 2: La tienda está abierta y no hay cupón pendiente -> No mostrar nada
+  // Caso 2: La tienda está abierta y no hay cupón pendiente
   if (!isStoreClosed) return null;
 
-  // Formatear hora estimada de reapertura si existe
   let reopenTimeStr = null;
   if (pauseInfo?.pause_until && pauseInfo?.pause_mode !== 'today') {
     try {
@@ -104,70 +90,59 @@ export default function StorePausedBanner({ onOpenCart }) {
   return (
     <div
       data-clarity-unmask="true"
-      className="relative z-20 mb-4 w-full rounded-2xl bg-gradient-to-br from-stone-900 via-neutral-900 to-stone-950 text-white p-3.5 sm:p-4 shadow-[0_12px_28px_rgba(0,0,0,0.16)] border border-amber-500/40 overflow-hidden"
+      className="relative z-20 mb-2.5 w-full rounded-2xl bg-[#FFFDF8] border border-amber-300/80 p-3 shadow-[0_6px_18px_rgba(180,83,9,0.06)]"
     >
-      {/* Glow decorativo sutil */}
-      <div className="absolute -top-10 -right-10 w-28 h-28 bg-amber-500/15 rounded-full blur-2xl pointer-events-none" />
-
-      <div className="relative z-10 flex flex-col">
-        {/* Fila de Badges Compactos (1 sola línea en móvil) */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400 text-stone-950 text-[10px] sm:text-[11px] font-black uppercase tracking-wider shadow-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-stone-950 animate-ping" />
-            Cocina en Pausa
-          </span>
-          {reopenTimeStr && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 text-[10px] font-bold border border-amber-400/30">
-              <Clock className="w-2.5 h-2.5 shrink-0" />
-              Regresa {reopenTimeStr}
-            </span>
-          )}
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/75 text-[10px] font-semibold">
-            <Lock className="w-2.5 h-2.5 shrink-0" />
-            Modo Vitrina
+      {/* Línea 1: Estado claro y completo sin cortar texto */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+          <span className="text-xs font-black text-amber-950">
+            Cocina en pausa temporal
           </span>
         </div>
-
-        {/* Mensaje conciso */}
-        <p className="text-xs sm:text-sm font-medium text-white/90 mt-2 leading-snug">
-          {storeStatusInfo.message || 'En este momento no estamos recibiendo pedidos. Puedes explorar nuestra carta y precios.'}
-        </p>
-
-        {/* Barra de Cupón de Compensación por la Espera (si está habilitado) */}
-        {couponCode && (
-          <div className="mt-2.5 pt-2.5 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="flex items-start sm:items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-amber-400/15 border border-amber-400/30 flex items-center justify-center text-amber-300 shrink-0 mt-0.5 sm:mt-0">
-                <Tag className="w-3.5 h-3.5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] sm:text-xs font-extrabold text-amber-300 leading-tight">
-                  🎁 Regalo por la espera: {couponLabel}
-                </p>
-                <p className="text-[11px] text-white/75 leading-tight mt-0.5">
-                  Guarda el cupón <strong className="font-mono text-white bg-white/10 px-1.5 py-0.5 rounded">{couponCode}</strong> para cuando abramos
-                </p>
-              </div>
-            </div>
-
-            {claimedCode === couponCode ? (
-              <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-[11px] font-black shrink-0">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-                <span>¡Guardado en tu celular! ({couponCode})</span>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleClaimCoupon}
-                className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all shrink-0 cursor-pointer active:scale-95"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                <span>Guardar Cupón {couponCode}</span>
-              </button>
-            )}
-          </div>
+        {reopenTimeStr ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold">
+            <Clock className="w-2.5 h-2.5" />
+            Regresa {reopenTimeStr}
+          </span>
+        ) : (
+          <span className="text-[10px] font-bold text-amber-800/80 bg-amber-100/70 px-2 py-0.5 rounded-full">
+            Solo vitrina por ahora
+          </span>
         )}
       </div>
+
+      <p className="text-[11px] text-stone-600 font-medium leading-snug mt-1">
+        En este momento no estamos recibiendo pedidos, pero puedes ver nuestra carta.
+      </p>
+
+      {/* Línea 2: Explicación clara del cupón de compensación */}
+      {couponCode && (
+        <div className="mt-2 pt-2 border-t border-amber-200/70 flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Tag className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+            <p className="text-[11px] text-stone-800 leading-tight">
+              <span className="font-extrabold text-amber-950">🎁 10% OFF para cuando abramos</span>{' '}
+              <span className="text-stone-500 font-medium">({couponCode})</span>
+            </p>
+          </div>
+
+          {claimedCode === couponCode ? (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-900 text-[10px] font-extrabold shrink-0">
+              <CheckCircle2 className="w-3 h-3 text-emerald-700 shrink-0" />
+              Guardado
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={handleClaimCoupon}
+              className="px-3 py-1.5 rounded-xl bg-amber-950 hover:bg-stone-800 text-amber-50 font-extrabold text-[11px] transition-all shrink-0 cursor-pointer active:scale-95 shadow-2xs"
+            >
+              Guardar cupón
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

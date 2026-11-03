@@ -563,7 +563,7 @@ function ProductRow({ item, onQuickView, style, index }) {
         >
           <div
             className={`h-24 w-24 overflow-hidden rounded-xl md:h-28 md:w-28 relative ${
-              imgLoaded ? "" : "bg-neutral-200 animate-pulse"
+              "bg-neutral-100"
             }`}
           >
             <AAImage

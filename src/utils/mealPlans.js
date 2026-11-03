@@ -96,17 +96,20 @@ export const MEAL_PLAN_TEMPLATES = [
 
 export const DEFAULT_PROGRAM_CONFIG = {
   is_enabled: true,
-  program_title: 'Planes & Tiqueteras Digitales (Club BOKU Fit)',
-  program_subtitle: 'Arma tu Bowl saludable todos los días a precio especial o ingresa con tu código de miembro.',
-  public_badge: '🥗 Planes Tiquetera BOKU Fit',
+  program_title: 'Planes & Tiqueteras Digitales',
+  program_subtitle: 'Pide tu almuerzo o arma tu Bowl todos los días con tu tiquetera activa.',
+  public_badge: 'Tiquetera Digital',
   credit_unit_singular: 'Almuerzo',
   credit_unit_plural: 'Almuerzos',
   code_suffix: 'BOKU',
   linked_product_id: 'b0000d14-0000-4000-a000-000000000000',
-  custom_product_title: '🥗 Arma tu Bowl BOKU Fit de Hoy',
+  soup_group_id: 'b0000b20-0000-4000-a000-000000000002',
+  allow_daily_bento: true,
+  default_soup_preference: 'flexible', // 'flexible' | 'con_sopa' | 'sin_sopa'
+  custom_product_title: '🥗 Arma tu Bowl de Hoy (Tiquetera)',
   default_unit_value: 17000,
   default_delivery_fee: 5000,
-  default_dietary_rules: 'Sin sopa • Proteína + 5 Verduras/Toppings + 1 Base Carbohidrato + Semillas + Salsa',
+  default_dietary_rules: 'Incluye Base + Proteína + 5 Toppings/Verduras + Semillas + Salsa (Opción Con Sopa o Sin Sopa)',
   included_toppings_count: 5,
   included_crunches_count: 2,
   included_sauces_count: 1,
@@ -126,6 +129,7 @@ export const DEFAULT_ERIKA_PLAN = {
   bowl_value: 17000,
   includes_delivery: true,
   delivery_fee: 0,
+  soup_preference: 'sin_sopa',
   default_address: 'Paso Ancho, Zipaquirá',
   default_delivery_notes: 'Entrega fija 2:30 PM',
   default_coords: { lat: 5.0189, lng: -73.9942 },
@@ -304,10 +308,18 @@ export async function fetchPlanUsage(supabase, brandId, plan) {
     const usedCredits = Math.max(0, validOrders.length + manualAdj);
     const remainingCredits = Math.max(0, totalCredits - usedCredits);
 
+    const todayBogota = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+    const usedTodayCount = validOrders.filter(ord => {
+      if (!ord?.created_at) return false;
+      const ordDate = new Date(ord.created_at).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+      return ordDate === todayBogota;
+    }).length;
+
     return {
       totalCredits,
       usedCredits,
       remainingCredits,
+      usedTodayCount,
       ordersHistory: validOrders
     };
   } catch (err) {
@@ -317,6 +329,7 @@ export async function fetchPlanUsage(supabase, brandId, plan) {
       totalCredits,
       usedCredits: used,
       remainingCredits: Math.max(0, totalCredits - used),
+      usedTodayCount: 0,
       ordersHistory: []
     };
   }
@@ -331,7 +344,8 @@ export function buildPlanPromoObject(plan) {
     name: `🎟️ Tiquetera ${plan.plan_label || 'Plan BOKU Fit'} (${plan.customer_name})`,
     type: 'fixed_discount',
     value: bowlValue,
-    target: 'all',
+    max_covered_unit_value: Math.max(bowlValue, 19000),
+    target: 'meal_plan_lunch',
     is_active: true,
     is_meal_plan: true,
     plan_id: plan.id,
@@ -345,9 +359,49 @@ export function buildPlanPromoObject(plan) {
   };
 }
 
-export function buildPlanDIYBowlProduct(allProducts = [], plan = null, programConfig = null) {
+export function getPlanSoupMode(plan = null, programConfig = null) {
+  if (plan?.soup_preference) return plan.soup_preference; // 'con_sopa' | 'sin_sopa' | 'flexible'
+  const nameLower = String(plan?.customer_name || '').toLowerCase();
+  const codeUpper = String(plan?.code || '').toUpperCase();
+  if (nameLower.includes('erika') || codeUpper.includes('ERIKA')) {
+    return 'sin_sopa';
+  }
+  return programConfig?.default_soup_preference || 'flexible';
+}
+
+export function getPlanDisplaySummary(plan = null, programConfig = null, wantsSoupToday = true) {
+  const soupMode = getPlanSoupMode(plan, programConfig);
+  const customNotes = String(plan?.dietary_notes || '').trim();
+  const isLegacyHardcodedNote =
+    customNotes.startsWith('Sin sopa • Proteína + 5 Verduras') && soupMode !== 'sin_sopa';
+
+  if (customNotes && !isLegacyHardcodedNote) {
+    return customNotes;
+  }
+
+  const toppingsInc = Number(programConfig?.included_toppings_count) || 5;
+  if (soupMode === 'sin_sopa') {
+    return `Sin sopa • 1 Base + 1 Proteína + ${toppingsInc} Verduras/Toppings + Semillas + Salsa`;
+  }
+  if (soupMode === 'con_sopa') {
+    return `Con Sopa del Día o Fruta • 1 Base + 1 Proteína + ${toppingsInc} Toppings + Semillas + Salsa`;
+  }
+  return wantsSoupToday
+    ? `Incluye Sopa del Día o Fruta + Bowl completo (${toppingsInc} Toppings)`
+    : `Modalidad Bowl Fit (Sin sopa) • 1 Base + 1 Proteína + ${toppingsInc} Toppings`;
+}
+
+export function buildPlanDIYBowlProduct(
+  allProducts = [],
+  plan = null,
+  programConfig = null,
+  wantsSoupOverride = null,
+  wantsDrinkOverride = null
+) {
   const prog = programConfig || DEFAULT_PROGRAM_CONFIG;
   const linkedId = plan?.linked_product_id || prog?.linked_product_id || 'b0000d14-0000-4000-a000-000000000000';
+  const soupGroupId = prog?.soup_group_id || 'b0000b20-0000-4000-a000-000000000002';
+  const drinkGroupId = prog?.drink_group_id || 'b0000b20-0000-4000-a000-000000000001';
 
   const baseBowl =
     (allProducts || []).find(p => p.id === linkedId) ||
@@ -360,35 +414,76 @@ export function buildPlanDIYBowlProduct(allProducts = [], plan = null, programCo
     return null;
   }
 
+  const soupMode = getPlanSoupMode(plan, prog);
+  const includeSoupStep =
+    wantsSoupOverride !== null ? Boolean(wantsSoupOverride) : soupMode !== 'sin_sopa';
+  const includeDrinkStep =
+    wantsDrinkOverride !== null ? Boolean(wantsDrinkOverride) : true;
+
   const toppingsInc = Number(prog?.included_toppings_count) || 5;
   const crunchesInc = Number(prog?.included_crunches_count) || 2;
   const saucesInc = Number(prog?.included_sauces_count) || 1;
+
+  const existingGroups = Array.isArray(baseBowl.modifierGroups || baseBowl.modifier_groups)
+    ? [...(baseBowl.modifierGroups || baseBowl.modifier_groups)]
+    : [
+        'b0000d14-0000-4000-a000-000000000001',
+        'b0000d14-0000-4000-a000-000000000003',
+        'b0000d14-0000-4000-a000-000000000004',
+        'b0000d14-0000-4000-a000-000000000006',
+        'b0000d14-0000-4000-a000-000000000005'
+      ];
+
+  const filteredGroups = existingGroups.filter(gId => gId !== soupGroupId && gId !== drinkGroupId);
+  const prependedGroups = [];
+  if (includeSoupStep) prependedGroups.push(soupGroupId);
+  if (includeDrinkStep) prependedGroups.push(drinkGroupId);
+
+  const finalModifierGroups = [...prependedGroups, ...filteredGroups];
+
+  const modConfig = {
+    ...(baseBowl.config_options?.modifier_config || {}),
+    'b0000d14-0000-4000-a000-000000000001': { min: 1, max: 2, included: 1 },
+    'b0000d14-0000-4000-a000-000000000003': { min: 1, max: 3, included: 1 },
+    'b0000d14-0000-4000-a000-000000000004': { min: 1, max: 8, included: toppingsInc },
+    'b0000d14-0000-4000-a000-000000000006': { min: 0, max: 4, included: crunchesInc },
+    'b0000d14-0000-4000-a000-000000000005': { min: 0, max: 3, included: saucesInc }
+  };
+
+  if (includeSoupStep) {
+    modConfig[soupGroupId] = { min: 1, max: 1, included: 1 };
+  } else {
+    delete modConfig[soupGroupId];
+  }
+
+  if (includeDrinkStep) {
+    modConfig[drinkGroupId] = { min: 1, max: 1, included: 1 };
+  } else {
+    delete modConfig[drinkGroupId];
+  }
 
   return {
     ...baseBowl,
     id: baseBowl.id,
     productId: baseBowl.id,
-    name: prog?.custom_product_title || '🥗 Bowl BOKU Fit (Mi Plan Tiquetera)',
-    title: prog?.custom_product_title || '🥗 Arma tu Bowl BOKU Fit de Hoy',
-    description:
-      plan?.dietary_notes ||
-      prog?.default_dietary_rules ||
-      'Incluye 1 Base + 1 Proteína + hasta 5 Toppings/Verduras + Semillas + Salsa. Cubierto por 1 crédito de tu Plan.',
+    modifierGroups: finalModifierGroups,
+    modifier_groups: finalModifierGroups,
+    name: includeSoupStep
+      ? '🍲 Almuerzo Bowl + Sopa (Mi Tiquetera)'
+      : (prog?.custom_product_title || '🥗 Bowl BOKU Fit (Mi Tiquetera)'),
+    title: includeSoupStep
+      ? '🍲 Arma tu Almuerzo de Hoy (Con Sopa/Fruta)'
+      : (prog?.custom_product_title || '🥗 Arma tu Bowl BOKU Fit de Hoy'),
+    description: getPlanDisplaySummary(plan, prog, includeSoupStep),
     price: bowlPrice,
+    base_plan_price: bowlPrice,
     is_plan_bowl: true,
     plan_code: plan?.code || 'PLAN-BOKU',
     config_options: {
       ...(baseBowl.config_options || {}),
       is_diy: Boolean(baseBowl.config_options?.is_diy ?? true),
       creator_type: baseBowl.config_options?.creator_type || 'bowl',
-      modifier_config: {
-        ...(baseBowl.config_options?.modifier_config || {}),
-        'b0000d14-0000-4000-a000-000000000001': { min: 1, max: 2, included: 1 },
-        'b0000d14-0000-4000-a000-000000000003': { min: 1, max: 3, included: 1 },
-        'b0000d14-0000-4000-a000-000000000004': { min: 1, max: 8, included: toppingsInc },
-        'b0000d14-0000-4000-a000-000000000006': { min: 0, max: 4, included: crunchesInc },
-        'b0000d14-0000-4000-a000-000000000005': { min: 0, max: 3, included: saucesInc }
-      }
+      modifier_config: modConfig
     }
   };
 }

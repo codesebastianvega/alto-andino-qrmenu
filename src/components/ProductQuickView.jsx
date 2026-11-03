@@ -367,6 +367,8 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
     const cartItem = { 
       ...product, 
       price: finalPrice, 
+      base_plan_price: basePrice,
+      extra_modifiers_price: extraPrice,
       options: selectedModifiers,
       note: specialInstructions.trim() || undefined,
       image_url: image || product.image_url || product.image,

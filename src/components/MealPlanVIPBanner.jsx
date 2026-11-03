@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '../config/supabase';
 import { useMenuData } from '../context/MenuDataContext';
 import { useAuth } from '../context/AuthContext';
 import { formatCOP } from '../utils/money';
 import { toast } from './Toast';
 import DIYProductModal from './DIYProductModal';
+import ProductQuickView from './ProductQuickView';
+import Portal from './Portal';
 import AddressInputWithMap from './delivery/AddressInputWithMap';
 import {
   MEAL_PLAN_TEMPLATES,
@@ -16,7 +18,8 @@ import {
   clearActiveMemberSession,
   fetchPlanUsage,
   buildPlanPromoObject,
-  buildPlanDIYBowlProduct
+  buildPlanDIYBowlProduct,
+  getPlanSoupMode
 } from '../utils/mealPlans';
 import {
   Sparkles,
@@ -26,16 +29,23 @@ import {
   Smartphone,
   History,
   LogOut,
-  Lock,
   ArrowRight,
   X,
   ShieldCheck,
   MessageCircle,
-  Navigation
+  Navigation,
+  UtensilsCrossed,
+  SlidersHorizontal
 } from 'lucide-react';
 
 export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInstalled }) {
-  const { restaurantSettings, activeBrandId, getAllProducts, currentLocation, brand: menuBrand, storeStatusInfo } = useMenuData();
+  const {
+    restaurantSettings,
+    activeBrandId,
+    getAllProducts,
+    currentLocation,
+    brand: menuBrand
+  } = useMenuData();
   const { user: authUser } = useAuth();
 
   const programConfig = useMemo(
@@ -49,13 +59,21 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
   );
 
   const [activePlan, setActivePlan] = useState(null);
+  const [wantsSoupToday, setWantsSoupToday] = useState(true);
+  const [wantsDrinkToday, setWantsDrinkToday] = useState(true);
   const [usage, setUsage] = useState({
     totalCredits: 0,
     usedCredits: 0,
     remainingCredits: 0,
+    usedTodayCount: 0,
     ordersHistory: []
   });
   const [loadingUsage, setLoadingUsage] = useState(false);
+
+  // Cajón deslizable (Bottom Sheet) para opciones completas, historial y Bento del Día
+  const [showMemberDrawer, setShowMemberDrawer] = useState(false);
+
+  // Modal de Login / Ver Planes para visitantes
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [modalTab, setModalTab] = useState('login'); // 'login' | 'plans'
   const [includeDeliveryInPreview, setIncludeDeliveryInPreview] = useState(true);
@@ -63,18 +81,26 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
   const [showHistory, setShowHistory] = useState(false);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [diyPlanProduct, setDiyPlanProduct] = useState(null);
+  const [quickBentoProduct, setQuickBentoProduct] = useState(null);
 
-  // Modal para que la clienta marque en el mapa el punto exacto donde recibe
+  // Modal de dirección con Pin en Mapa
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [customAddr, setCustomAddr] = useState('');
   const [customNotes, setCustomNotes] = useState('');
   const [customCoords, setCustomCoords] = useState(null);
+  const lastActivatedCodeRef = useRef(null);
 
   const activateMemberPlan = useCallback(
-    (plan, showWelcomeToast = false) => {
+    (plan, showWelcomeToast = false, autoOpenDrawer = false) => {
       if (!plan || !activeBrandId) return;
 
-      // Recuperar dirección/pin personalizado si la clienta ya lo ajustó en su teléfono
+      const activationKey = `${activeBrandId}_${plan.code}_${plan.id}`;
+      if (lastActivatedCodeRef.current === activationKey && !showWelcomeToast && !autoOpenDrawer) {
+        return; // Ya activado previamente, corta loops infinitos de render
+      }
+      lastActivatedCodeRef.current = activationKey;
+      if (!plan || !activeBrandId) return;
+
       let enrichedPlan = { ...plan };
       try {
         const savedLoc = JSON.parse(
@@ -85,10 +111,16 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
             ...enrichedPlan,
             default_address: savedLoc.address || enrichedPlan.default_address,
             default_delivery_notes: savedLoc.notes ?? enrichedPlan.default_delivery_notes,
-            default_coords: savedLoc.coords || enrichedPlan.default_coords
+            default_coords: savedLoc.coords || enrichedPlan.default_coords,
+            soup_preference: savedLoc.soup_preference || enrichedPlan.soup_preference,
+            drink_preference: savedLoc.drink_preference || enrichedPlan.drink_preference
           };
         }
       } catch {}
+
+      const initialSoupMode = getPlanSoupMode(enrichedPlan, programConfig);
+      setWantsSoupToday(initialSoupMode !== 'sin_sopa');
+      setWantsDrinkToday(enrichedPlan.drink_preference !== 'sin_bebida');
 
       saveActiveMemberSession(activeBrandId, enrichedPlan);
       setActivePlan(enrichedPlan);
@@ -105,10 +137,13 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
       }
 
       if (showWelcomeToast) {
-        toast.success(`🥗 ¡Hola ${enrichedPlan.customer_name}! Tu Tiquetera está activa.`);
+        toast.success(`🥗 ¡Hola ${enrichedPlan.customer_name}! Tu Pase de Almuerzos está activo.`);
+      }
+      if (autoOpenDrawer) {
+        setShowMemberDrawer(true);
       }
     },
-    [activeBrandId]
+    [activeBrandId, programConfig]
   );
 
   useEffect(() => {
@@ -123,7 +158,7 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
           phone: urlVip
         });
         if (matchedFromUrl) {
-          activateMemberPlan(matchedFromUrl, true);
+          activateMemberPlan(matchedFromUrl, false);
           return;
         }
       }
@@ -164,6 +199,40 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
     return () => window.removeEventListener('aa_meal_plan_updated', handleOrderCreated);
   }, [refreshPlanUsage]);
 
+  const handleToggleSoupPreference = (nextWantsSoup) => {
+    setWantsSoupToday(nextWantsSoup);
+    if (!activePlan || !activeBrandId) return;
+    try {
+      const existing = JSON.parse(
+        window.localStorage.getItem(`aa_plan_custom_loc_${activeBrandId}_${activePlan.code}`) || '{}'
+      );
+      window.localStorage.setItem(
+        `aa_plan_custom_loc_${activeBrandId}_${activePlan.code}`,
+        JSON.stringify({
+          ...existing,
+          soup_preference: nextWantsSoup ? 'con_sopa' : 'sin_sopa'
+        })
+      );
+    } catch {}
+  };
+
+  const handleToggleDrinkPreference = (nextWantsDrink) => {
+    setWantsDrinkToday(nextWantsDrink);
+    if (!activePlan || !activeBrandId) return;
+    try {
+      const existing = JSON.parse(
+        window.localStorage.getItem(`aa_plan_custom_loc_${activeBrandId}_${activePlan.code}`) || '{}'
+      );
+      window.localStorage.setItem(
+        `aa_plan_custom_loc_${activeBrandId}_${activePlan.code}`,
+        JSON.stringify({
+          ...existing,
+          drink_preference: nextWantsDrink ? 'con_bebida' : 'sin_bebida'
+        })
+      );
+    } catch {}
+  };
+
   const handleManualLogin = (e) => {
     e.preventDefault();
     const clean = loginInput.trim();
@@ -179,11 +248,11 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
     });
 
     if (!found) {
-      toast.error('No encontramos una tiquetera activa con ese número o código. Verifica o escríbenos por WhatsApp.');
+      toast.error('No encontramos una tiquetera activa con ese número o código.');
       return;
     }
 
-    activateMemberPlan(found, true);
+    activateMemberPlan(found, true, false);
     setShowAuthModal(false);
     setLoginInput('');
   };
@@ -220,7 +289,8 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
         JSON.stringify({
           address: updatedPlan.default_address,
           notes: updatedPlan.default_delivery_notes,
-          coords: updatedPlan.default_coords
+          coords: updatedPlan.default_coords,
+          soup_preference: wantsSoupToday ? 'con_sopa' : 'sin_sopa'
         })
       );
     } catch {}
@@ -228,15 +298,20 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
     saveActiveMemberSession(activeBrandId, updatedPlan);
     setActivePlan(updatedPlan);
     setShowAddressModal(false);
-    toast.success('📍 ¡Tu dirección y punto exacto en el mapa quedaron guardados para el domiciliario!');
+    toast.success('📍 ¡Tu dirección y punto exacto en el mapa quedaron guardados!');
   };
 
-  const handleOpenPlanDIYBowl = () => {
-    if (storeStatusInfo && !storeStatusInfo.isOpen) {
-      toast.error('En este momento la cocina está en pausa. Podrás pedir tu Bowl apenas abramos.');
-      return;
-    }
+  const activeDailyBento = useMemo(() => {
+    const allProds = typeof getAllProducts === 'function' ? getAllProducts() : [];
+    return (
+      allProds.find(p => p.id === 'b0000b12-0000-4000-a000-000000000002') ||
+      allProds.find(p => p.is_bento_del_dia || p.is_daily_special) ||
+      allProds.find(p => /bento\s+(tex-mex|mestizo|criollo|urodaki|birria)/i.test(p.name || '')) ||
+      null
+    );
+  }, [getAllProducts]);
 
+  const handleOpenPlanDIYBowl = () => {
     if (usage.remainingCredits <= 0) {
       toast.error('Ya consumiste todos los créditos de tu plan actual. ¡Escríbenos para renovarlo!');
       return;
@@ -251,21 +326,63 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
     }
 
     const allProds = typeof getAllProducts === 'function' ? getAllProducts() : [];
-    const planBowl = buildPlanDIYBowlProduct(allProds, activePlan, programConfig);
+    const planBowl = buildPlanDIYBowlProduct(
+      allProds,
+      activePlan,
+      programConfig,
+      wantsSoupToday,
+      wantsDrinkToday
+    );
     if (!planBowl) {
       toast.error('No se encontró el armador de Bowl en el catálogo.');
       return;
     }
 
+    setShowMemberDrawer(false);
     setDiyPlanProduct(planBowl);
   };
 
+  const handleOpenDailyBento = () => {
+    if (!activeDailyBento) return;
+    if (usage.remainingCredits <= 0) {
+      toast.error('Ya consumiste todos los créditos de tu plan actual. ¡Escríbenos para renovarlo!');
+      return;
+    }
+
+    const promoObj = buildPlanPromoObject(activePlan);
+    if (promoObj) {
+      try {
+        window.localStorage.setItem('aa_applied_coupon', JSON.stringify(promoObj));
+        window.dispatchEvent(new CustomEvent('aa_coupon_applied', { detail: promoObj }));
+      } catch {}
+    }
+
+    const bentoPrice = Number(activeDailyBento?.price) || 19000;
+    const bentoForPlan = {
+      ...activeDailyBento,
+      price: bentoPrice,
+      base_plan_price: bentoPrice,
+      is_plan_bowl: true,
+      plan_code: activePlan?.code || 'PLAN-BOKU'
+    };
+
+    setShowMemberDrawer(false);
+    const isDiy = bentoForPlan.configOptions?.is_diy || bentoForPlan.config_options?.is_diy;
+    if (isDiy) {
+      setDiyPlanProduct(bentoForPlan);
+    } else {
+      setQuickBentoProduct(bentoForPlan);
+    }
+  };
+
   const handleLogoutPlan = () => {
+    lastActivatedCodeRef.current = null;
     clearActiveMemberSession(activeBrandId);
     try {
       window.localStorage.removeItem('aa_applied_coupon');
       window.dispatchEvent(new CustomEvent('aa_coupon_applied', { detail: null }));
     } catch {}
+    setShowMemberDrawer(false);
     setActivePlan(null);
     toast.info('Saliste de tu sesión de tiquetera');
   };
@@ -290,7 +407,10 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
   }, [currentLocation, menuBrand]);
 
   const activeTiers = useMemo(
-    () => (Array.isArray(programConfig?.tiers) && programConfig.tiers.length > 0 ? programConfig.tiers : MEAL_PLAN_TEMPLATES),
+    () =>
+      Array.isArray(programConfig?.tiers) && programConfig.tiers.length > 0
+        ? programConfig.tiers
+        : MEAL_PLAN_TEMPLATES,
     [programConfig?.tiers]
   );
 
@@ -303,246 +423,481 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
 
   if (programConfig?.is_enabled === false && !activePlan) return null;
 
+  const totalStamps = Math.min(10, Math.max(5, Number(usage.totalCredits) || 5));
+  const filledStamps = Math.round(
+    (Math.max(0, usage.remainingCredits) / Math.max(1, usage.totalCredits)) * totalStamps
+  );
+
   return (
     <>
-      {/* VISTA 1: MIEMBRO VALIDADO -> TARJETA VIP EN EL INICIO DEL MENÚ */}
+      {/* TARJETA PASE VIP PREMIUM PARA EL COMENSAL (ESTILO APPLE LUMINOUS) */}
       {activePlan ? (
         <div
           data-clarity-unmask="true"
-          className="relative z-20 mb-4 w-full rounded-2xl bg-gradient-to-br from-emerald-950 via-[#132A21] to-stone-950 text-white p-4 sm:p-5 shadow-[0_14px_34px_rgba(16,185,129,0.16)] border border-emerald-500/40 overflow-hidden"
+          className="relative z-20 w-full h-full rounded-[1.25rem] bg-gradient-to-br from-[#FFFFFF] via-[#FDFCF9] to-[#F5F8F5] border border-[#cba258]/55 p-3.5 sm:p-4 shadow-[0_4px_20px_rgba(47,65,49,0.05)] hover:shadow-[0_8px_30px_rgba(47,65,49,0.08)] flex flex-col justify-between transition-all duration-300"
         >
-          <div className="absolute -top-12 -right-12 w-36 h-36 bg-emerald-400/15 rounded-full blur-2xl pointer-events-none" />
-
-          <div className="relative z-10 flex flex-col gap-3">
-            {/* Cabecera Miembro */}
-            <div className="flex items-start justify-between gap-2">
-              <div>
+          <div>
+            {/* FILA 1: Identidad del Suscriptor + Contador de Almuerzos */}
+            <div className="relative z-10 flex items-start justify-between gap-2.5">
+              <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-400 text-emerald-950 text-[10px] font-black uppercase tracking-wider">
-                    <Sparkles className="w-3 h-3" />
-                    {programConfig.public_badge || 'Mi Plan BOKU Fit'}
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#cba258]/15 border border-[#cba258]/40 text-amber-950 text-[10px] font-black tracking-wide">
+                    <Sparkles className="w-2.5 h-2.5 text-[#cba258]" />
+                    Club BOKU VIP • #{activePlan.code}
                   </span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-emerald-200 text-[10px] font-bold border border-white/10">
-                    Código: {activePlan.code}
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
+                    {activePlan.includes_delivery
+                      ? '🛵 Domicilio en tu plan'
+                      : `🛵 Envío aparte ${formatCOP(activePlan.delivery_fee || 5000)}`}
                   </span>
                 </div>
-                <h2 className="text-base sm:text-lg font-black text-white mt-1.5 leading-tight">
-                  ¡Hola, {activePlan.customer_name}! 🥗
+
+                <h2 className="text-[15px] sm:text-base font-black text-stone-900 mt-1 leading-tight">
+                  Hola, {activePlan.customer_name}
                 </h2>
-                <p className="text-[11px] sm:text-xs text-emerald-100/80 font-medium">
-                  {activePlan.dietary_notes || programConfig.default_dietary_rules}
-                </p>
-              </div>
 
-              <button
-                type="button"
-                onClick={handleLogoutPlan}
-                title="Cambiar de cuenta"
-                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors text-[10px] flex items-center gap-1 shrink-0"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Contador Visual de Créditos (Tiquetera) + Dirección en Mapa */}
-            <div className="p-3 rounded-xl bg-black/25 border border-white/10 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
-                  <Ticket className="w-3.5 h-3.5" />
-                  {programConfig.credit_unit_plural || 'Almuerzos'} Disponibles
-                </span>
-                <span className="text-sm sm:text-base font-black text-white">
-                  {loadingUsage ? '...' : `${usage.remainingCredits} de ${usage.totalCredits}`}
-                </span>
-              </div>
-
-              <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-emerald-400 to-teal-300 rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      Math.max(0, (usage.remainingCredits / Math.max(1, usage.totalCredits)) * 100)
-                    )}%`
-                  }}
-                />
-              </div>
-
-              {/* Info de entrega + Botón para que la clienta fije su Pin en el Mapa */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-white/10 text-[11px] text-white/80">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="inline-flex items-center gap-1 text-white/95 font-bold">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    {activePlan.default_address || 'Asignar mi dirección'}
-                  </span>
+                <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] text-stone-600 font-medium">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddressModal(true)}
+                    className="inline-flex items-center gap-1 hover:text-stone-900 transition-colors cursor-pointer"
+                  >
+                    <MapPin className="w-3 h-3 text-[#2f4131] shrink-0" />
+                    <span className="underline decoration-stone-300 underline-offset-2">
+                      {activePlan.default_address || 'Asignar dirección'}
+                    </span>
+                  </button>
                   {activePlan.default_time && (
-                    <span className="inline-flex items-center gap-1 text-emerald-200 font-semibold">
-                      <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <span className="inline-flex items-center gap-1 text-stone-500 font-semibold">
+                      <Clock className="w-3 h-3 text-[#2f4131] shrink-0" />
                       {activePlan.default_time}
                     </span>
                   )}
                 </div>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddressModal(true)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[10px] font-black transition-all cursor-pointer"
-                  >
-                    <Navigation className="w-3 h-3 text-emerald-300" />
-                    <span>
-                      {activePlan.default_coords?.lat
-                        ? 'Cambiar Pin en Mapa'
-                        : '📍 Marcar mi Casa en Mapa'}
-                    </span>
-                  </button>
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 text-[10px] font-bold">
-                    {activePlan.includes_delivery
-                      ? '🛵 Envío $0'
-                      : `🛵 Envío ${formatCOP(activePlan.delivery_fee || 5000)}`}
-                  </span>
-                </div>
               </div>
+
+              {/* Contador Visual de Almuerzos Disponibles */}
+              <button
+                type="button"
+                onClick={() => setShowMemberDrawer(true)}
+                title="Ver detalles e historial de mi plan"
+                className="shrink-0 rounded-xl bg-[#1D2B20] hover:bg-[#283a2c] px-3 py-1.5 text-center transition-all cursor-pointer shadow-xs"
+              >
+                <span className="block text-base font-black text-[#f3d493] leading-none">
+                  {loadingUsage ? '...' : `${usage.remainingCredits} / ${usage.totalCredits}`}
+                </span>
+                <span className="block text-[8px] font-black uppercase tracking-widest text-white/70 mt-1">
+                  Disponibles
+                </span>
+              </button>
             </div>
 
-            {/* Botón Principal para Armar el Bowl del Día */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            {/* FILA DE SELLOS VISUALES */}
+            <div className="relative z-10 mt-2.5 flex items-center gap-1">
+              {Array.from({ length: totalStamps }).map((_, idx) => {
+                const isAvailable = idx < filledStamps;
+                return (
+                  <div
+                    key={idx}
+                    className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                      isAvailable
+                        ? 'bg-gradient-to-r from-[#e3be78] to-[#cba258] shadow-[0_0_6px_rgba(203,162,88,0.4)]'
+                        : 'bg-stone-200'
+                    }`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* FILA 2: Selector Rápido Sopa & Bebida + Botón Principal */}
+          <div className="relative z-10 mt-3 pt-2.5 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {/* Switch 1-Toque Con Sopa vs Sin Sopa */}
+              <div className="inline-flex items-center p-0.5 rounded-xl bg-stone-100 border border-stone-200/80">
+                <button
+                  type="button"
+                  onClick={() => handleToggleSoupPreference(true)}
+                  className={`px-2 py-1 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
+                    wantsSoupToday
+                      ? 'bg-[#2f4131] text-white shadow-2xs'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  🥣 Sopa/Fruta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleSoupPreference(false)}
+                  className={`px-2 py-1 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
+                    !wantsSoupToday
+                      ? 'bg-[#2f4131] text-white shadow-2xs'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  🥗 Sin Sopa
+                </button>
+              </div>
+
+              {/* Switch 1-Toque Con Bebida vs Sin Bebida */}
+              <button
+                type="button"
+                onClick={() => handleToggleDrinkPreference(!wantsDrinkToday)}
+                className={`px-2 py-1.5 rounded-xl border text-[10px] font-extrabold transition-all cursor-pointer ${
+                  wantsDrinkToday
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                    : 'bg-stone-100 border-stone-200/80 text-stone-500 hover:text-stone-800'
+                }`}
+                title="Incluir o quitar Jugo del Día en tu almuerzo"
+              >
+                {wantsDrinkToday ? '🥤 Con Jugo' : '🚫 Sin Bebida'}
+              </button>
+            </div>
+
+            {/* Acciones derechas: Opciones + Armar Plato */}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowMemberDrawer(true)}
+                title="Opciones de mi plan, mapa e historial"
+                className="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors cursor-pointer"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+              </button>
+
               <button
                 type="button"
                 onClick={handleOpenPlanDIYBowl}
                 disabled={usage.remainingCredits <= 0}
-                className="flex-1 py-3 px-4 rounded-xl bg-emerald-400 hover:bg-emerald-300 disabled:bg-stone-700 disabled:text-stone-400 text-emerald-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer active:scale-98"
+                className="px-3.5 py-2 rounded-xl bg-[#1D2B20] hover:bg-[#283a2c] disabled:opacity-50 text-[#f3d493] font-black text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
               >
-                <Sparkles className="w-4 h-4 shrink-0" />
                 <span>
-                  {usage.remainingCredits > 0
-                    ? `Armar mi ${programConfig.credit_unit_singular || 'Bowl'} de Hoy (Usar 1 Crédito)`
-                    : 'Sin créditos disponibles — Renovar Plan'}
+                  {usage.remainingCredits > 0 ? 'Armar plato' : 'Renovar Plan'}
                 </span>
-                <ArrowRight className="w-4 h-4 shrink-0" />
+                <ArrowRight className="w-3.5 h-3.5 shrink-0" />
               </button>
-
-              <div className="flex items-center gap-2">
-                {!isPWAInstalled && (
-                  <button
-                    type="button"
-                    onClick={handleInstallClick}
-                    className="flex-1 sm:flex-initial py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Smartphone className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-                    <span>Instalar App</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setShowHistory(prev => !prev)}
-                  className="py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <History className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-                  <span>Usados ({usage.usedCredits})</span>
-                </button>
-              </div>
             </div>
-
-            {showHistory && (
-              <div className="mt-1 p-3 rounded-xl bg-black/30 border border-white/10 text-xs space-y-1.5">
-                <p className="font-bold text-emerald-300 text-[11px] uppercase tracking-wider">
-                  Historial de consumos en tu plan:
-                </p>
-                {usage.ordersHistory.length === 0 ? (
-                  <p className="text-white/60 text-[11px]">
-                    Aún no has redimido ningún crédito de este paquete. ¡Arma tu primero hoy!
-                  </p>
-                ) : (
-                  <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
-                    {usage.ordersHistory.map((ord, idx) => (
-                      <div
-                        key={ord.id}
-                        className="flex items-center justify-between py-1 border-b border-white/5 text-[11px]"
-                      >
-                        <span className="text-white/90 font-medium">
-                          #{usage.ordersHistory.length - idx} •{' '}
-                          {new Date(ord.created_at).toLocaleDateString('es-CO', {
-                            weekday: 'short',
-                            day: 'numeric',
-                            month: 'short',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                        <span className="text-emerald-300 font-bold">✓ 1 Crédito usado</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
       ) : (
-        /* VISTA 2: BARRA COMPACTA PARA ACTIVAR TIQUETERA O VER PLANES */
+        /* VISTA VISITANTE: CARD APPLE-STYLE PREMIUM */
         <div
           data-clarity-unmask="true"
-          className="relative z-20 mb-3.5 w-full rounded-2xl bg-gradient-to-r from-[#1A2421] via-[#22312C] to-[#1A2421] text-white p-3 sm:px-4 sm:py-3 shadow-sm border border-emerald-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5"
+          className="relative z-20 w-full h-full rounded-[1.25rem] bg-white/95 backdrop-blur-md border border-stone-200/80 p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-stone-300 flex flex-col justify-between transition-all duration-300"
         >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shrink-0">
-              <Ticket className="w-4 h-4" />
+          <div>
+            {/* Fila superior: Badge Apple-style + Pill de Ahorro */}
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/60 text-[10px] font-black uppercase tracking-wider">
+                <span>🥗</span>
+                <span>Club BOKU</span>
+              </span>
+              <span className="text-[10px] font-bold text-amber-900 bg-amber-50/90 px-2 py-0.5 rounded-full border border-amber-200/60">
+                Desde $15.000 / día
+              </span>
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] sm:text-xs font-black text-emerald-300 uppercase tracking-wide">
-                  {programConfig.public_badge || '🥗 Planes Tiquetera BOKU Fit'}
-                </span>
-                <span className="px-1.5 py-0.2 rounded bg-white/10 text-[9px] font-bold text-white/80">
-                  Semanal • Quincenal • Mensual
-                </span>
-              </div>
-              <p className="text-[11px] text-white/75 truncate">
-                {programConfig.program_subtitle}
-              </p>
-            </div>
+
+            {/* Título y Subtítulo exactos solicitados */}
+            <h3 className="text-sm sm:text-base font-black text-stone-900 tracking-tight leading-snug mt-2.5">
+              Club BOKU (Pase de Almuerzos)
+            </h3>
+            <p className="text-xs text-stone-500 font-medium leading-relaxed mt-1 line-clamp-2">
+              Tu almuerzo fit listo cada día en tu puerta a precio especial.
+            </p>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                setModalTab('login');
-                setShowAuthModal(true);
-              }}
-              className="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-stone-950 font-black text-[11px] flex items-center justify-center gap-1 transition-all cursor-pointer"
-            >
-              <Lock className="w-3 h-3" />
-              <span>Soy Miembro</span>
-            </button>
+          {/* Fila inferior de botones de acción */}
+          <div className="flex items-center justify-between gap-2 mt-3.5 pt-3 border-t border-stone-100">
             <button
               type="button"
               onClick={() => {
                 setModalTab('plans');
                 setShowAuthModal(true);
               }}
-              className="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-bold text-[11px] transition-all cursor-pointer text-center"
+              className="px-3.5 py-2 rounded-xl bg-stone-100/90 hover:bg-stone-200/80 text-stone-800 font-bold text-xs transition-colors cursor-pointer"
             >
               Ver Planes
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setModalTab('login');
+                setShowAuthModal(true);
+              }}
+              className="px-3.5 py-2 rounded-xl bg-[#1D2B20] hover:bg-[#283a2c] text-[#f3d493] font-black text-xs transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+            >
+              <span>Soy Miembro</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       )}
 
-      {/* MODAL PARA QUE LA CLIENTA MARQUE EN EL MAPA SU UBICACIÓN EXACTA PARA EL DOMICILIARIO */}
+      {/* CAJÓN DESLIZABLE (BOTTOM SHEET) CON PORTAL PARA NO SOLAPARSE NUNCA CON LA NAVBAR */}
+      {showMemberDrawer && activePlan && (
+        <Portal>
+          <div
+            data-clarity-unmask="true"
+            className="fixed inset-0 z-[9990] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
+            onClick={() => setShowMemberDrawer(false)}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              className="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 pb-8 sm:pb-6 shadow-2xl border-t sm:border border-stone-200 space-y-3.5 max-h-[90dvh] overflow-y-auto"
+            >
+              <div className="w-10 h-1 rounded-full bg-stone-200 mx-auto -mt-1 sm:hidden" />
+
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-full bg-[#2f4131]/10 text-[#2f4131] text-[10px] font-extrabold uppercase tracking-wide">
+                      Pase Activo
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 font-mono text-[10px] font-bold">
+                      #{activePlan.code}
+                    </span>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-[#1A1A1A] mt-1">
+                    Hola, {activePlan.customer_name}
+                  </h3>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={handleLogoutPlan}
+                    title="Cambiar de cuenta"
+                    className="p-2 rounded-xl bg-stone-100 hover:bg-rose-50 text-stone-500 hover:text-rose-600 transition-colors cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowMemberDrawer(false)}
+                    className="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-stone-200/90 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-stone-500 flex items-center gap-1.5">
+                    <Ticket className="w-3.5 h-3.5 text-[#2f4131]" />
+                    Almuerzos Disponibles
+                  </span>
+                  <span className="text-sm font-black text-[#2f4131]">
+                    {loadingUsage ? '...' : `${usage.remainingCredits} de ${usage.totalCredits}`}
+                  </span>
+                </div>
+
+                <div className="w-full h-2 rounded-full bg-stone-200/80 overflow-hidden">
+                  <div
+                    className="h-full bg-[#2f4131] rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.max(0, (usage.remainingCredits / Math.max(1, usage.totalCredits)) * 100)
+                      )}%`
+                    }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-1 text-[11px] text-stone-500">
+                  <span>
+                    {activePlan.includes_delivery
+                      ? '🛵 Domicilio incluido en tu plan'
+                      : `🛵 Envío aparte (${formatCOP(activePlan.delivery_fee || 5000)})`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowHistory(prev => !prev)}
+                    className="inline-flex items-center gap-1 font-bold text-stone-700 hover:text-[#2f4131] cursor-pointer"
+                  >
+                    <History className="w-3 h-3" />
+                    <span>Historial ({usage.usedCredits} usados)</span>
+                  </button>
+                </div>
+
+                {showHistory && (
+                  <div className="pt-2 border-t border-stone-200/70 space-y-1 max-h-28 overflow-y-auto text-[11px]">
+                    {usage.ordersHistory.length === 0 ? (
+                      <p className="text-stone-400">Aún no has redimido créditos de este plan.</p>
+                    ) : (
+                      usage.ordersHistory.map((ord, idx) => (
+                        <div key={ord.id} className="flex items-center justify-between py-0.5 text-stone-600">
+                          <span>
+                            #{usage.ordersHistory.length - idx} •{' '}
+                            {new Date(ord.created_at).toLocaleDateString('es-CO', {
+                              weekday: 'short',
+                              day: 'numeric',
+                              month: 'short'
+                            })}
+                          </span>
+                          <span className="font-bold text-[#2f4131]">✓ 1 Crédito</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-[11px] font-extrabold uppercase tracking-wider text-stone-500">
+                  1. ¿Cómo quieres tu almuerzo hoy?
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSoupPreference(true)}
+                    className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                      wantsSoupToday
+                        ? 'border-[#2f4131] bg-[#2f4131]/5 ring-1 ring-[#2f4131]'
+                        : 'border-stone-200 bg-white hover:bg-stone-50'
+                    }`}
+                  >
+                    <span className="text-xs font-black text-stone-900 block">🥣 Con Sopa / Fruta</span>
+                    <span className="text-[10px] text-stone-500 leading-tight block mt-0.5">
+                      Sopita del día (16 oz) o Fruta fresca
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSoupPreference(false)}
+                    className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                      !wantsSoupToday
+                        ? 'border-[#2f4131] bg-[#2f4131]/5 ring-1 ring-[#2f4131]'
+                        : 'border-stone-200 bg-white hover:bg-stone-50'
+                    }`}
+                  >
+                    <span className="text-xs font-black text-stone-900 block">🥗 Sin Sopa (Solo Bowl)</span>
+                    <span className="text-[10px] text-stone-500 leading-tight block mt-0.5">
+                      1 Base + Proteína + 5 Toppings
+                    </span>
+                  </button>
+                </div>
+
+                {/* Selector de Bebida del Almuerzo */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleDrinkPreference(true)}
+                    className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                      wantsDrinkToday
+                        ? 'border-[#2f4131] bg-[#2f4131]/5 ring-1 ring-[#2f4131]'
+                        : 'border-stone-200 bg-white hover:bg-stone-50'
+                    }`}
+                  >
+                    <span className="text-xs font-black text-stone-900 block">🥤 Con Bebida</span>
+                    <span className="text-[10px] text-stone-500 leading-tight block mt-0.5">
+                      Jugo del Día (5 oz) o upgrade a Té Hatsu
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleToggleDrinkPreference(false)}
+                    className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                      !wantsDrinkToday
+                        ? 'border-[#2f4131] bg-[#2f4131]/5 ring-1 ring-[#2f4131]'
+                        : 'border-stone-200 bg-white hover:bg-stone-50'
+                    }`}
+                  >
+                    <span className="text-xs font-black text-stone-900 block">🚫 Sin Bebida</span>
+                    <span className="text-[10px] text-stone-500 leading-tight block mt-0.5">
+                      No incluir bebida con mi almuerzo
+                    </span>
+                  </button>
+                </div>
+
+                <p className="text-[10px] text-stone-500 bg-stone-50 border border-stone-200/70 rounded-xl px-2.5 py-1.5 leading-snug">
+                  💡 <strong>Regla de Tiquetera:</strong> 1 crédito cubre 1 almuerzo personal por día. Si agregas adiciones extra, otra bebida o un 2° plato para alguien más, se suman a precio normal.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-2xl border border-stone-200/90 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">
+                    Punto de entrega programado
+                  </p>
+                  <p className="text-xs font-extrabold text-stone-800 truncate flex items-center gap-1 mt-0.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#2f4131] shrink-0" />
+                    <span>{activePlan.default_address || 'Asignar dirección'}</span>
+                    {activePlan.default_time && (
+                      <span className="text-stone-500 font-semibold">• {activePlan.default_time}</span>
+                    )}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAddressModal(true)}
+                  className="px-2.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-[11px] font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+                >
+                  <Navigation className="w-3 h-3 text-[#2f4131]" />
+                  <span>{activePlan.default_coords?.lat ? 'Editar Mapa' : 'Fijar Pin'}</span>
+                </button>
+              </div>
+
+              <div className="space-y-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleOpenPlanDIYBowl}
+                  disabled={usage.remainingCredits <= 0}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-[#2f4131] hover:bg-[#233124] disabled:bg-stone-200 disabled:text-stone-400 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer active:scale-98"
+                >
+                  <Sparkles className="w-4 h-4 text-[#cba258] shrink-0" />
+                  <span>
+                    {usage.remainingCredits > 0
+                      ? wantsSoupToday
+                        ? 'Armar mi Bowl + Sopa de Hoy (1 Crédito)'
+                        : 'Armar mi Bowl de Hoy (1 Crédito)'
+                      : 'Sin créditos disponibles — Renovar Plan'}
+                  </span>
+                  <ArrowRight className="w-4 h-4 shrink-0" />
+                </button>
+
+                {activeDailyBento && usage.remainingCredits > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleOpenDailyBento}
+                    className="w-full py-2.5 px-4 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <UtensilsCrossed className="w-3.5 h-3.5 text-[#cba258] shrink-0" />
+                    <span>O pedir hoy: {activeDailyBento.name} (1 Crédito)</span>
+                  </button>
+                )}
+
+                {!isPWAInstalled && (
+                  <button
+                    type="button"
+                    onClick={handleInstallClick}
+                    className="w-full py-2 text-stone-500 hover:text-stone-800 text-[11px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>Instalar acceso directo en mi pantalla de inicio</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* MODAL PARA MARCAR EN EL MAPA LA UBICACIÓN EXACTA PARA EL DOMICILIARIO */}
       {showAddressModal && activePlan && (
         <div
           data-clarity-unmask="true"
-          className="fixed inset-0 z-[210] flex items-center justify-center bg-black/65 backdrop-blur-xs p-4"
+          className="fixed inset-0 z-[220] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
         >
           <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div>
                 <h3 className="text-base font-black text-stone-900 flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-emerald-600" />
-                  Mi Punto Exacto de Entrega en el Mapa
+                  <MapPin className="w-5 h-5 text-[#2f4131]" />
+                  Punto Exacto de Entrega en el Mapa
                 </h3>
                 <p className="text-xs text-stone-500">
                   Marca tu casa en el mapa para que el domiciliario llegue directo todos los días.
@@ -599,7 +954,7 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-[#2f4131] hover:bg-[#233124] text-white font-black text-xs shadow-md cursor-pointer"
                 >
                   ✓ Guardar mi Punto Exacto
                 </button>
@@ -613,27 +968,27 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
       {showAuthModal && (
         <div
           data-clarity-unmask="true"
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/65 backdrop-blur-xs p-4"
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
         >
           <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-stone-200 animate-in fade-in zoom-in-95 duration-200">
-            <div className="bg-gradient-to-r from-[#1A2421] to-[#24352F] p-4 sm:p-5 text-white flex items-center justify-between">
+            <div className="bg-[#FAF7F2] border-b border-stone-200/80 p-4 sm:p-5 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-emerald-400/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300">
+                <div className="w-9 h-9 rounded-xl bg-[#2f4131]/10 text-[#2f4131] flex items-center justify-center">
                   <Ticket className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm sm:text-base font-black leading-tight">
-                    {programConfig.program_title || 'Club BOKU Fit • Tiquetera Digital'}
+                  <h3 className="text-sm sm:text-base font-black text-[#1A1A1A] leading-tight">
+                    Club BOKU • Pase de Almuerzos
                   </h3>
-                  <p className="text-[11px] text-white/70">
-                    Arma tu pedido saludable todos los días
+                  <p className="text-[11px] text-stone-500">
+                    Almuerzos personalizados con o sin sopa todos los días
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAuthModal(false)}
-                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                className="p-1.5 rounded-xl bg-stone-200/60 hover:bg-stone-200 text-stone-600 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -649,7 +1004,7 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                     : 'text-stone-500 hover:text-stone-800'
                 }`}
               >
-                🔐 Validar mi Plan
+                🔐 Ingresar a mi Pase Club BOKU
               </button>
               <button
                 type="button"
@@ -666,36 +1021,36 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
 
             {modalTab === 'login' ? (
               <div className="p-5 space-y-4">
-                <p className="text-xs font-bold text-stone-700 leading-relaxed">
-                  Si ya activaste tu Plan Semanal, Quincenal o Mensual, valida tu identidad para desbloquear tus créditos:
+                <p className="text-xs font-bold text-stone-600 leading-relaxed">
+                  Ingresa tu número de celular o código de miembro para abrir tu tiquetera:
                 </p>
 
                 <form onSubmit={handleManualLogin} className="space-y-3">
                   <div>
                     <label className="block text-[11px] font-black uppercase tracking-wider text-stone-500 mb-1">
-                      Tu Número de Celular o Código VIP
+                      Celular o Código VIP
                     </label>
                     <input
                       type="text"
                       value={loginInput}
                       onChange={e => setLoginInput(e.target.value)}
-                      placeholder="Ej: 3125535583 o ERIKA-BOKU"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="Ej: 3125535583 o CHAN"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#2f4131]"
                     />
                   </div>
                   <button
                     type="submit"
-                    className="w-full py-3 rounded-xl bg-[#1A2421] hover:bg-emerald-900 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                    className="w-full py-3 rounded-xl bg-[#2f4131] hover:bg-[#233124] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
                   >
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    <span>Desbloquear mi Tiquetera</span>
+                    <ShieldCheck className="w-4 h-4 text-[#cba258]" />
+                    <span>Ingresar a mi Pase</span>
                   </button>
                 </form>
 
                 <div className="relative flex py-1 items-center">
                   <div className="flex-grow border-t border-stone-200" />
                   <span className="flex-shrink mx-3 text-[10px] font-bold uppercase text-stone-400">
-                    O con tu correo
+                    O con tu cuenta Google
                   </span>
                   <div className="flex-grow border-t border-stone-200" />
                 </div>
@@ -738,14 +1093,14 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                         : 'text-stone-500'
                     }`}
                   >
-                    Solo Bowls
+                    Solo Almuerzos
                   </button>
                   <button
                     type="button"
                     onClick={() => setIncludeDeliveryInPreview(true)}
                     className={`flex-1 py-1.5 px-2 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
                       includeDeliveryInPreview
-                        ? 'bg-emerald-600 text-white shadow-xs'
+                        ? 'bg-[#2f4131] text-white shadow-xs'
                         : 'text-stone-500'
                     }`}
                   >
@@ -757,10 +1112,10 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                   {displayedTemplates.map(t => (
                     <div
                       key={t.id}
-                      className="p-3.5 rounded-2xl border border-stone-200 hover:border-emerald-500/50 bg-stone-50/60 flex items-center justify-between gap-3 transition-all"
+                      className="p-3.5 rounded-2xl border border-stone-200 hover:border-[#2f4131]/50 bg-[#FAF7F2]/60 flex items-center justify-between gap-3 transition-all"
                     >
                       <div>
-                        <span className="inline-block px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[10px] font-black">
+                        <span className="inline-block px-2 py-0.5 rounded-full bg-[#2f4131]/10 text-[#2f4131] text-[10px] font-black">
                           {t.badge}
                         </span>
                         <h4 className="text-xs sm:text-sm font-black text-stone-900 mt-1">
@@ -769,7 +1124,7 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                         <p className="text-[11px] text-stone-500">{t.description}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm sm:text-base font-black text-emerald-700">
+                        <p className="text-sm sm:text-base font-black text-[#2f4131]">
                           {formatCOP(t.plan_price)}
                         </p>
                         <a
@@ -780,10 +1135,10 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                           )}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-1 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black"
+                          className="mt-1 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#2f4131] hover:bg-[#233124] text-white text-[10px] font-black"
                         >
                           <MessageCircle className="w-3 h-3" />
-                          Pedir Plan
+                          Activar Plan
                         </a>
                       </div>
                     </div>
@@ -791,7 +1146,7 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                 </div>
 
                 <p className="text-[11px] text-stone-500 text-center leading-relaxed">
-                  ✨ Todos los planes funcionan como **Tiquetera Flexible**: si un día no pides, tu crédito se conserva.
+                  ✨ Funciona como <strong>Tiquetera Flexible</strong>: eliges cada día con sopa o sin sopa, y si un día no pides tu crédito se conserva.
                 </p>
               </div>
             )}
@@ -799,54 +1154,68 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
         </div>
       )}
 
-      {/* MODAL DE AYUDA PARA INSTALAR LA APP EN EL CELULAR */}
+      {/* MODAL DE INSTRUCCIONES PARA INSTALAR LA APP (PWA) */}
       {showInstallHelp && (
-        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/65 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-3.5 shadow-2xl">
+        <div
+          data-clarity-unmask="true"
+          className="fixed inset-0 z-[210] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
+        >
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-stone-900 flex items-center gap-1.5">
-                <Smartphone className="w-4 h-4 text-emerald-600" />
-                Instalar App en tu celular
+              <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-[#2f4131]" />
+                Instala la App en tu Celular
               </h3>
               <button
                 type="button"
                 onClick={() => setShowInstallHelp(false)}
-                className="p-1 rounded-lg text-stone-400 hover:text-stone-700"
+                className="p-1 rounded-lg bg-stone-100 text-stone-500"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-xs text-stone-600 leading-relaxed">
-              Agrega la App a tu pantalla de inicio para entrar en 1 toque cada día con tu tiquetera ya iniciada:
-            </p>
-            <div className="space-y-2 text-xs bg-stone-50 p-3 rounded-xl border border-stone-200">
-              <p className="font-bold text-stone-800">🍏 En iPhone (Safari):</p>
-              <p className="text-stone-600 text-[11px]">
-                Toca el botón **Compartir** en la barra inferior y selecciona **&quot;Agregar a inicio&quot;**.
+            <div className="text-xs text-stone-600 space-y-2 leading-relaxed">
+              <p>
+                Para entrar en 1 toque todos los días con tu tiquetera ya abierta:
               </p>
-              <p className="font-bold text-stone-800 pt-1">🤖 En Android (Chrome):</p>
-              <p className="text-stone-600 text-[11px]">
-                Toca los **3 puntos (⋮)** arriba a la derecha y selecciona **&quot;Instalar aplicación&quot;**.
+              <p className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 font-medium">
+                📱 <strong>En iPhone (Safari):</strong> Toca el botón <strong>Compartir</strong> y elige <strong>&quot;Agregar a inicio&quot;</strong>.
+              </p>
+              <p className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 font-medium">
+                🤖 <strong>En Android (Chrome):</strong> Toca los <strong>3 puntos (⋮)</strong> arriba a la derecha y elige <strong>&quot;Instalar aplicación&quot;</strong>.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setShowInstallHelp(false)}
-              className="w-full py-2.5 rounded-xl bg-stone-900 text-white text-xs font-black cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-stone-900 text-white font-black text-xs cursor-pointer"
             >
-              ¡Entendido!
+              Entendido
             </button>
           </div>
         </div>
       )}
 
-      {/* DIY MODAL ESPECIAL DEL PLAN TIQUETERA */}
+      {/* MODAL DIY PARA ARMAR EL BOWL DEL DÍA DE LA TIQUETERA */}
       <DIYProductModal
         open={Boolean(diyPlanProduct)}
         product={diyPlanProduct}
         onClose={() => setDiyPlanProduct(null)}
         onAdd={() => {
           setDiyPlanProduct(null);
+          if (typeof onOpenCart === 'function') {
+            onOpenCart();
+          }
+        }}
+      />
+
+      {/* MODAL QUICKVIEW SI EL MIEMBRO ELIGE EL BENTO DEL DÍA CON SU CRÉDITO */}
+      <ProductQuickView
+        open={Boolean(quickBentoProduct)}
+        product={quickBentoProduct}
+        onClose={() => setQuickBentoProduct(null)}
+        onAdded={() => {
+          setQuickBentoProduct(null);
           if (typeof onOpenCart === 'function') {
             onOpenCart();
           }

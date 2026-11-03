@@ -125,7 +125,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
         {imageSrc && (
           <div className="relative w-full aspect-[16/10] sm:aspect-[4/3] rounded-xl overflow-hidden bg-neutral-100 mb-3 shrink-0">
             {!imgLoaded && (
-              <div className="absolute inset-0 bg-neutral-100 animate-pulse flex items-center justify-center">
+              <div className="absolute inset-0 bg-neutral-100 flex items-center justify-center pointer-events-none">
                 <span className="text-[11px] font-bold text-neutral-300 tracking-wider">BOKU BENTO</span>
               </div>
             )}
@@ -137,9 +137,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
               onError={() => setImgLoaded(false)}
               className={`h-full w-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out ${
                 isOutOfStock ? "grayscale contrast-90 brightness-95" : ""
-              } ${
-                imgLoaded ? "opacity-100" : "opacity-0"
-              }`}
+              } opacity-100`}
               width={600}
               height={450}
             />
@@ -301,6 +299,187 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
     );
   }
 
+  if (isWide) {
+    return (
+      <article
+        className={`group relative flex flex-col sm:flex-row w-full rounded-2xl bg-white p-3 sm:p-4 border ${
+          isOutOfStock
+            ? "opacity-75 grayscale bg-neutral-100/70 border-neutral-300"
+            : isScheduleRestricted
+            ? "border-amber-300/80 opacity-80 saturate-[0.88] bg-neutral-50/60"
+            : "border-neutral-200/90 hover:border-amber-300/90 shadow-2xs hover:shadow-md"
+        } transition-all duration-300 cursor-pointer overflow-hidden gap-3.5 sm:gap-4 items-center`}
+        onClick={handleQuickView}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+        role="button"
+      >
+        {/* Left: Image (stacked on mobile, side-by-side on sm+) */}
+        {imageSrc ? (
+          <div className="relative w-full sm:w-44 md:w-48 aspect-[16/10] sm:aspect-square rounded-xl overflow-hidden bg-neutral-100 shrink-0">
+            {!imgLoaded && (
+              <div className="absolute inset-0 bg-neutral-100 flex items-center justify-center pointer-events-none">
+                <span className="text-[10px] font-bold text-neutral-300 tracking-wider">BOKU</span>
+              </div>
+            )}
+            <AAImage
+              src={imageSrc}
+              alt={item.name || "Producto"}
+              priority={priority}
+              onLoad={() => setImgLoaded(true)}
+              onError={() => setImgLoaded(false)}
+              className={`h-full w-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out ${
+                isOutOfStock ? "grayscale contrast-90 brightness-95" : ""
+              } opacity-100`}
+              width={300}
+              height={300}
+            />
+            {isOutOfStock && (
+              <div className="absolute inset-0 bg-neutral-900/35 backdrop-grayscale flex items-center justify-center z-10 pointer-events-none">
+                <span className="bg-neutral-900/85 backdrop-blur-md text-white font-extrabold text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1">
+                  <span>🚫</span>
+                  <span>Agotado</span>
+                </span>
+              </div>
+            )}
+            {/* Allergens / Diets badge overlay */}
+            {(productAllergens.length > 0 || productDiets.length > 0) && (
+              <div className="absolute top-2 right-2 flex gap-1 items-center z-10 pointer-events-none">
+                {productDiets.map((diet) => (
+                  <span key={diet.id} title={diet.name} className="bg-black/50 backdrop-blur-md rounded-full px-1.5 py-0.5 border border-white/20 text-white text-[10px] leading-none">
+                    {diet.emoji}
+                  </span>
+                ))}
+                {productAllergens.map((alg) => (
+                  <span key={alg.id} title={alg.name} className="bg-red-950/70 backdrop-blur-md rounded-full px-1.5 py-0.5 border border-red-400/30 text-white text-[10px] leading-none">
+                    {alg.emoji}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="relative w-full sm:w-44 md:w-48 aspect-[16/10] sm:aspect-square rounded-xl overflow-hidden bg-neutral-100 shrink-0 flex items-center justify-center">
+            <span className="text-[10px] font-bold text-neutral-300 tracking-wider">BOKU</span>
+          </div>
+        )}
+
+        {/* Right: Content */}
+        <div className="flex flex-col flex-1 min-w-0 justify-between self-stretch py-0.5 w-full">
+          <div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {item.is_bento_del_dia && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-300 shadow-2xs">
+                  <span>🔥</span> {item.daily_special_label || "Opción del Día"}
+                </span>
+              )}
+              {item.original_price && item.original_price > item.price && (
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Ahorras {formatCOP(item.original_price - item.price)}
+                </span>
+              )}
+            </div>
+
+            <h3 className="font-extrabold text-neutral-900 text-base sm:text-lg leading-snug tracking-tight group-hover:text-amber-800 transition-colors mt-1 line-clamp-1">
+              {item.name}
+            </h3>
+
+            {item.desc && (
+              <p className="mt-1 text-xs sm:text-[13px] leading-relaxed text-neutral-600 line-clamp-2">
+                {item.desc}
+              </p>
+            )}
+
+            {/* Daily special combo badge */}
+            {item.is_bento_del_dia && (
+              <div className="mt-2 flex items-center gap-1.5 text-[11px] font-bold text-amber-950 bg-amber-50/90 border border-amber-200/80 px-2.5 py-1 rounded-lg">
+                <span>🥣</span>
+                <span className="truncate">Combo: Crema / Fruta (16 oz) + Bebida de la Casa</span>
+              </div>
+            )}
+
+            {/* Diets & allergens badges */}
+            {(productDiets.length > 0 || productAllergens.length > 0) && (
+              <div className="mt-2 flex flex-wrap items-center gap-1">
+                {productDiets.map((diet) => (
+                  <span key={diet.id} className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                    <span>{diet.emoji}</span>
+                    <span>{diet.name}</span>
+                  </span>
+                ))}
+                {productAllergens.map((alg) => (
+                  <span key={alg.id} className="inline-flex items-center gap-1 text-[9px] font-bold text-red-800 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                    <span>{alg.emoji}</span>
+                    <span>Contiene {alg.name}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {isOutOfStock ? (
+              <div className="mt-2">
+                <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-rose-800 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                  🚫 Agotado
+                </span>
+              </div>
+            ) : isLastPortion ? (
+              <div className="mt-1.5">
+                <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 animate-pulse">
+                  🔥 ¡Última porción!
+                </span>
+              </div>
+            ) : isLowPortions ? (
+              <div className="mt-1.5">
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                  ⚡ Quedan {availablePortions} porciones
+                </span>
+              </div>
+            ) : null}
+          </div>
+
+          {/* Price & CTA Button */}
+          <div className="mt-3 pt-2.5 flex items-center justify-between gap-3 border-t border-neutral-100">
+            <div className="flex flex-col">
+              {item.original_price && item.original_price > item.price && (
+                <span className="text-[11px] text-neutral-400 line-through font-bold leading-none mb-0.5">
+                  {formatCOP(item.original_price)}
+                </span>
+              )}
+              <div className="text-base sm:text-lg font-black text-neutral-900 tracking-tight">
+                {typeof item.price === "number" ? formatCOP(item.price) : item.price}
+              </div>
+            </div>
+
+            {isScheduleRestricted ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleQuickView();
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-bold text-xs border border-neutral-200 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                title={scheduleNotice}
+              >
+                <span>🕒</span>
+                <span>Info</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                aria-label={`Agregar ${item.name || "producto"}`}
+                onClick={handleAdd}
+                disabled={isOutOfStock}
+                className="flex items-center justify-center rounded-full bg-brand-primary text-white font-bold shadow-md shadow-brand-primary/25 transition-all duration-200 active:scale-90 hover:scale-110 h-8 w-8 sm:h-9 sm:w-9 text-lg"
+              >
+                <span style={{ transform: "translateY(-1px)" }}>+</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </article>
+    );
+  }
+
   if (isMinimal) {
     return (
       <article
@@ -401,7 +580,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
           : "w-full aspect-[4/3] rounded-xl shrink-0"
         }`}>
           {!imgLoaded && (
-            <div className="absolute inset-0 bg-neutral-100 animate-pulse flex items-center justify-center">
+            <div className="absolute inset-0 bg-neutral-100 flex items-center justify-center pointer-events-none">
               <span className="text-[10px] font-bold text-neutral-300 tracking-wider">BOKU</span>
             </div>
           )}
@@ -413,7 +592,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             onError={() => setImgLoaded(false)}
             className={`h-full w-full object-cover transition-opacity duration-500 ease-out ${
               isHero ? "lg:absolute lg:inset-0" : ""
-            } ${isOutOfStock ? "grayscale contrast-90 brightness-95" : ""} ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+            } ${isOutOfStock ? "grayscale contrast-90 brightness-95" : ""} opacity-100`}
             width={isCompact ? 80 : isHero ? 600 : 400}
             height={isCompact ? 80 : isHero ? 600 : 400}
           />

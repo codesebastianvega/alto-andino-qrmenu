@@ -8,7 +8,8 @@ import {
   DEFAULT_PROGRAM_CONFIG,
   getConfiguredMealPlans,
   getMealPlanProgramConfig,
-  fetchPlanUsage
+  fetchPlanUsage,
+  getPlanSoupMode
 } from '../../utils/mealPlans';
 import {
   Ticket,
@@ -63,12 +64,13 @@ export default function MealPlansAdminSection({
     bowl_value: 17000,
     includes_delivery: true,
     delivery_fee: 0,
+    soup_preference: 'flexible',
     payment_status: 'paid',
     default_address: '',
     default_delivery_notes: '',
     default_coords: null,
     default_time: '2:30 PM',
-    dietary_notes: 'Sin sopa • Proteína + 5 Verduras/Toppings + 1 Base Carbohidrato + Semillas + Salsa'
+    dietary_notes: ''
   });
 
   // Modal CRUD de Paquete / Nivel (Tier)
@@ -257,6 +259,31 @@ export default function MealPlansAdminSection({
     }
   };
 
+  const handleQuickSoupChange = async (plan, nextSoupPref) => {
+    const nextNotes =
+      nextSoupPref === 'sin_sopa'
+        ? 'Sin sopa • 1 Base + 1 Proteína + 5 Verduras/Toppings + Semillas + Salsa'
+        : 'Con Sopa del Día o Fruta • 1 Base + 1 Proteína + 5 Toppings + Semillas + Salsa';
+
+    const updated = plans.map(p => {
+      if ((p.id || p.code) !== (plan.id || plan.code)) return p;
+      return {
+        ...p,
+        soup_preference: nextSoupPref,
+        dietary_notes: nextNotes
+      };
+    });
+
+    const ok = await persistMealPlansConcept(updated, programConfig);
+    if (ok) {
+      toast.success(
+        nextSoupPref === 'sin_sopa'
+          ? `🥗 ${plan.customer_name} configurado en modalidad Sin Sopa (Bowl Fit)`
+          : `🥣 ${plan.customer_name} configurado Con Sopa / Fruta Incluida`
+      );
+    }
+  };
+
   const openCreateModal = () => {
     const firstTier = activeTiers[1] || activeTiers[0] || MEAL_PLAN_TEMPLATES[0];
     setEditingPlanId(null);
@@ -270,18 +297,20 @@ export default function MealPlansAdminSection({
       bowl_value: firstTier.bowl_value || programConfig.default_unit_value || 17000,
       includes_delivery: Boolean(firstTier.includes_delivery),
       delivery_fee: Number(firstTier.delivery_fee) || 0,
+      soup_preference: programConfig.default_soup_preference || 'flexible',
       payment_status: 'paid',
       default_address: '',
       default_delivery_notes: '',
       default_coords: null,
       default_time: '12:30 PM',
-      dietary_notes: programConfig.default_dietary_rules || ''
+      dietary_notes: 'Incluye Sopa del Día o Fruta + 1 Base + 1 Proteína + 5 Toppings + Semillas + Salsa'
     });
     setShowModal(true);
   };
 
   const openEditModal = (plan) => {
     setEditingPlanId(plan.id || plan.code);
+    const detectedSoup = getPlanSoupMode(plan, programConfig);
     setForm({
       customer_name: plan.customer_name || '',
       customer_phone: plan.customer_phone || '',
@@ -292,6 +321,7 @@ export default function MealPlansAdminSection({
       bowl_value: Number(plan.bowl_value) || 17000,
       includes_delivery: Boolean(plan.includes_delivery),
       delivery_fee: Number(plan.delivery_fee) || 0,
+      soup_preference: detectedSoup,
       payment_status: plan.payment_status || 'paid',
       default_address: plan.default_address || '',
       default_delivery_notes: plan.default_delivery_notes || '',
@@ -328,6 +358,11 @@ export default function MealPlansAdminSection({
       `${form.customer_name.trim().split(' ')[0].toUpperCase()}-${suffix}`;
 
     const tpl = activeTiers.find(t => t.id === form.template_id);
+    const soupPref = form.soup_preference || 'flexible';
+    const autoNotes =
+      soupPref === 'sin_sopa'
+        ? 'Sin sopa • 1 Base + 1 Proteína + 5 Verduras/Toppings + Semillas + Salsa'
+        : 'Con Sopa del Día o Fruta • 1 Base + 1 Proteína + 5 Toppings + Semillas + Salsa';
 
     const newPlanObj = {
       id: editingPlanId || `plan-${Date.now()}`,
@@ -344,12 +379,13 @@ export default function MealPlansAdminSection({
       bowl_value: Number(form.bowl_value) || 17000,
       includes_delivery: Boolean(form.includes_delivery),
       delivery_fee: form.includes_delivery ? 0 : (Number(form.delivery_fee) || 5000),
+      soup_preference: soupPref,
       payment_status: form.payment_status || 'paid',
       default_address: form.default_address.trim(),
       default_delivery_notes: form.default_delivery_notes.trim(),
       default_coords: form.default_coords || null,
       default_time: form.default_time.trim(),
-      dietary_notes: form.dietary_notes.trim(),
+      dietary_notes: form.dietary_notes.trim() || autoNotes,
       status: 'active',
       cycle_start_at: editingPlanId
         ? plans.find(p => (p.id || p.code) === editingPlanId)?.cycle_start_at || new Date().toISOString()
@@ -674,8 +710,8 @@ export default function MealPlansAdminSection({
                           )}
                         </div>
 
-                        {/* Selector Limpio de Modalidad (Reemplaza los 6 chips grises) */}
-                        <div className="pt-0.5">
+                        {/* Selector Limpio de Modalidad y Sopa (Reemplaza los 6 chips grises) */}
+                        <div className="pt-0.5 flex flex-wrap items-center gap-1.5">
                           <div className="inline-flex items-center gap-1.5 bg-emerald-50/90 border border-emerald-200/90 rounded-xl px-2.5 py-1">
                             <span className="text-[10px] font-black uppercase text-emerald-800">
                               Plan:
@@ -693,6 +729,29 @@ export default function MealPlansAdminSection({
                               ))}
                             </select>
                           </div>
+
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={() =>
+                              handleQuickSoupChange(
+                                plan,
+                                getPlanSoupMode(plan, programConfig) === 'sin_sopa'
+                                  ? 'flexible'
+                                  : 'sin_sopa'
+                              )
+                            }
+                            title="Clic para alternar entre Con Sopa/Fruta y Sin Sopa"
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-black border transition-all cursor-pointer ${
+                              getPlanSoupMode(plan, programConfig) === 'sin_sopa'
+                                ? 'bg-stone-100 text-stone-700 border-stone-200 hover:bg-stone-200'
+                                : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
+                            }`}
+                          >
+                            {getPlanSoupMode(plan, programConfig) === 'sin_sopa'
+                              ? '🥗 Sin Sopa (Fit)'
+                              : '🥣 Con Sopa / Fruta'}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -1212,6 +1271,37 @@ export default function MealPlansAdminSection({
                       <option value="no">Aparte ($5.000)</option>
                     </select>
                   </div>
+                </div>
+
+                <div className="pt-1 border-t border-stone-200/70">
+                  <label className="block text-[10px] font-black uppercase text-stone-500 mb-1">
+                    Modalidad de Entrada / Sopa del Suscriptor
+                  </label>
+                  <select
+                    value={form.soup_preference || 'flexible'}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setForm(prev => ({
+                        ...prev,
+                        soup_preference: val,
+                        dietary_notes:
+                          val === 'sin_sopa'
+                            ? 'Sin sopa • 1 Base + 1 Proteína + 5 Verduras/Toppings + Semillas + Salsa'
+                            : 'Con Sopa del Día o Fruta • 1 Base + 1 Proteína + 5 Toppings + Semillas + Salsa'
+                      }));
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 bg-white text-xs font-black text-stone-900"
+                  >
+                    <option value="flexible">
+                      🥣 Flexible: Con Sopa del Día / Fruta o Solo Bowl (El cliente elige cada día)
+                    </option>
+                    <option value="con_sopa">
+                      🍲 Almuerzo Completo (Siempre incluye Sopa del Día o Fruta)
+                    </option>
+                    <option value="sin_sopa">
+                      🥗 Línea Fit Sin Sopa (Solo Bowl: Base + Proteína + 5 Verduras/Toppings)
+                    </option>
+                  </select>
                 </div>
               </div>
 

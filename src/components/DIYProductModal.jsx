@@ -12,6 +12,7 @@ import { Icon } from "@iconify-icon/react";
 
 const getCategoryTheme = (groupName = '') => {
   const s = groupName.toLowerCase();
+  if (s.includes('entrada') || s.includes('sopa')) return { bg: 'from-orange-500/10 to-amber-500/5', border: 'hover:border-orange-400', badge: 'bg-orange-100 text-orange-900', icon: '🥣' };
   if (s.includes('base')) return { bg: 'from-amber-500/10 to-orange-500/5', border: 'hover:border-amber-400', badge: 'bg-amber-100 text-amber-900', icon: '🍚' };
   if (s.includes('prote')) return { bg: 'from-rose-500/10 to-red-500/5', border: 'hover:border-rose-400', badge: 'bg-rose-100 text-rose-900', icon: '🍗' };
   if (s.includes('veg') || s.includes('fresc')) return { bg: 'from-emerald-500/10 to-teal-500/5', border: 'hover:border-emerald-400', badge: 'bg-emerald-100 text-emerald-900', icon: '🥗' };
@@ -52,7 +53,7 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
   const title = product?.title || product?.name || "Arma tu Propio Bowl";
   const subtitle = product?.subtitle || product?.description || product?.desc || "";
   const image = product ? getProductImage(product) : null;
-  const isScheduleRestricted = product?.is_schedule_available === false;
+  const isScheduleRestricted = product?.is_schedule_available === false && !product?.is_plan_bowl;
   const scheduleNotice = product?.schedule_label || "Fuera de horario de servicio";
   const assignedGroups = product?.modifierGroups || product?.modifier_groups || [];
   const rawModifierGroups = menuData?.rawModifierGroups || [];
@@ -418,7 +419,16 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
       }
     });
 
-    addItem({ ...product, price: finalPrice, options: selectedModifiers }, 1);
+    addItem(
+      {
+        ...product,
+        price: finalPrice,
+        base_plan_price: basePrice,
+        extra_modifiers_price: extraPrice,
+        options: selectedModifiers
+      },
+      1
+    );
     toast("¡Bowl agregado a tu pedido! 🥣✨");
     setSelections({});
     setCurrentStep(0);
