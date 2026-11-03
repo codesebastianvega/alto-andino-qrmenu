@@ -80,47 +80,119 @@ export function CartProvider({ children }) {
   const { brand } = useBrand() || {};
   const brandId = brand?.id;
 
-  // Key remains stable for a given brand
-  const currentKey = useMemo(() => 
-    brandId ? `${BASE_STORAGE_KEY}_${brandId}` : BASE_STORAGE_KEY
-  , [brandId]);
+  // Resolucin sincrnica e inmediata de la clave del carrito
+  const currentKey = useMemo(() => {
+    if (brandId) return `${BASE_STORAGE_KEY}_${brandId}`;
+    if (hasWindow) {
+      try {
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        const slug = pathParts[0];
+        if (slug && slug !== 'admin' && slug !== 'checkout' && slug !== 'login') {
+          const cached = localStorage.getItem(`aa_cached_brand_slug_${slug}`);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed?.id) return `${BASE_STORAGE_KEY}_${parsed.id}`;
+          }
+        }
+        const lastId = localStorage.getItem('aa_last_brand_id');
+        if (lastId) return `${BASE_STORAGE_KEY}_${lastId}`;
+      } catch {}
+    }
+    return BASE_STORAGE_KEY;
+  }, [brandId, hasWindow]);
 
-  const [items, setItems] = useState([]);
-  const [note, setNote] = useState("");
-  const [isLoaded, setIsLoaded] = useState(false);
+  // Inicializacin sincrnica en frame 0: jams arranca en vaco si hay items guardados
+  const [items, setItems] = useState(() => {
+    if (!hasWindow) return [];
+    try {
+      const pathParts = window.location.pathname.split('/').filter(Boolean);
+      const slug = pathParts[0];
+      let initialKey = BASE_STORAGE_KEY;
+      if (slug && slug !== 'admin' && slug !== 'checkout') {
+        const cached = localStorage.getItem(`aa_cached_brand_slug_${slug}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.id) initialKey = `${BASE_STORAGE_KEY}_${parsed.id}`;
+        }
+      }
+      if (initialKey === BASE_STORAGE_KEY) {
+        const lastId = localStorage.getItem('aa_last_brand_id');
+        if (lastId) initialKey = `${BASE_STORAGE_KEY}_${lastId}`;
+      }
 
-  // Load brand-specific data
+      let raw = localStorage.getItem(initialKey);
+      if (!raw || raw === '[]' || raw === 'null') {
+        const baseRaw = localStorage.getItem(BASE_STORAGE_KEY);
+        if (baseRaw && baseRaw !== '[]' && baseRaw !== 'null') raw = baseRaw;
+      }
+      const parsed = safeParse(raw, []);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [note, setNote] = useState(() => {
+    if (!hasWindow) return "";
+    try {
+      return localStorage.getItem(`${currentKey}_note`) || localStorage.getItem(`${BASE_STORAGE_KEY}_note`) || "";
+    } catch {
+      return "";
+    }
+  });
+  const [isLoaded, setIsLoaded] = useState(true);
+
+  // Sincronizacin suave cuando currentKey cambia de genrico a especfico sin prdida de datos
   useEffect(() => {
     if (!hasWindow) return;
     
     const raw = localStorage.getItem(currentKey);
-    const parsed = safeParse(raw, []);
-    setItems(Array.isArray(parsed) ? parsed : []);
+    const parsed = safeParse(raw, null);
+    if (Array.isArray(parsed)) {
+      if (parsed.length > 0) {
+        setItems(parsed);
+      } else {
+        // Si la nueva clave est vaca pero ya tenemos items en memoria, NO borrarlos; migrarlos!
+        setItems(prev => {
+          if (prev && prev.length > 0) {
+            try {
+              localStorage.setItem(currentKey, JSON.stringify(prev));
+            } catch {}
+            return prev;
+          }
+          return [];
+        });
+      }
+    }
 
     const rawNote = localStorage.getItem(`${currentKey}_note`);
-    setNote(rawNote || "");
-    
-    setIsLoaded(true);
+    if (rawNote) setNote(rawNote);
   }, [currentKey, hasWindow]);
 
-  // Persist always
+  // Persistir siempre con doble escritura para proteger sincronizacin entre rutas
   const saveCart = useCallback((itemsToSave, noteToSave) => {
-    if (!hasWindow || !isLoaded) return;
+    if (!hasWindow) return;
     try {
       if (itemsToSave !== undefined) {
         const json = JSON.stringify(asArray(itemsToSave));
         localStorage.setItem(currentKey, json);
+        if (currentKey !== BASE_STORAGE_KEY) {
+          localStorage.setItem(BASE_STORAGE_KEY, json);
+        }
       }
       if (noteToSave !== undefined) {
         localStorage.setItem(`${currentKey}_note`, String(noteToSave));
+        if (currentKey !== BASE_STORAGE_KEY) {
+          localStorage.setItem(`${BASE_STORAGE_KEY}_note`, String(noteToSave));
+        }
       }
     } catch (err) {
       console.error("Error saving cart to localStorage:", err);
     }
-  }, [currentKey, hasWindow, isLoaded]);
+  }, [currentKey, hasWindow]);
 
   useEffect(() => {
-    if (!hasWindow || !isLoaded) return;
+    if (!hasWindow) return;
     saveCart(items, note);
 
     // Ensure save on page leave for mobile reliability

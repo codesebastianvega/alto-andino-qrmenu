@@ -6,12 +6,44 @@ import { withTimeout } from '../utils/withTimeout';
 const BrandContext = createContext({});
 
 export const BrandProvider = ({ children }) => {
-  const [brand, setBrand] = useState(null);
-  const [features, setFeatures] = useState([]);
-  const [loadingBrand, setLoadingBrand] = useState(true);
   const { brand_slug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Pre-cargar marca sincronica desde cache local para frame 0 inmediato
+  const [brand, setBrand] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        const slug = brand_slug || pathParts[0];
+        if (slug && slug !== 'admin' && slug !== 'checkout' && slug !== 'login') {
+          const cached = window.localStorage.getItem('aa_cached_brand_slug_' + slug);
+          if (cached) return JSON.parse(cached);
+        }
+        const lastId = window.localStorage.getItem('aa_last_brand_id');
+        if (lastId) {
+          const cached = window.localStorage.getItem('aa_cached_brand_' + lastId);
+          if (cached) return JSON.parse(cached);
+        }
+      }
+    } catch {}
+    return null;
+  });
+
+  const [features, setFeatures] = useState([]);
+  const [loadingBrand, setLoadingBrand] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        const slug = brand_slug || pathParts[0];
+        if (slug && slug !== 'admin' && slug !== 'checkout' && slug !== 'login') {
+          const cached = window.localStorage.getItem('aa_cached_brand_slug_' + slug);
+          if (cached) return false;
+        }
+      }
+    } catch {}
+    return true;
+  });
 
   const resolveCurrentBrand = useCallback(async () => {
     // Evitar múltiples resoluciones simultáneas
@@ -86,6 +118,13 @@ export const BrandProvider = ({ children }) => {
           // Solo actualizar si la marca es diferente para evitar loops de renderizado
           if (brand?.id !== brandData.id) {
             setBrand(brandData);
+            try {
+              window.localStorage.setItem('aa_cached_brand_' + brandData.id, JSON.stringify(brandData));
+              if (brandData.slug) {
+                window.localStorage.setItem('aa_cached_brand_slug_' + brandData.slug, JSON.stringify(brandData));
+              }
+              window.localStorage.setItem('aa_last_brand_id', brandData.id);
+            } catch {}
 
             if (brandData.plan_id) {
               const { data: featuresData } = await withTimeout(supabase
