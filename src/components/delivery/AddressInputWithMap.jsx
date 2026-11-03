@@ -12,15 +12,19 @@ export default function AddressInputWithMap({
   currentLocation,
   orderSubtotal = 0,
   freeDeliveryPromo = null,
-  placeholder = "Ej: Calle 4 # 5-20, Barrio San Pablo"
+  initialCoords = null,
+  placeholder = "Ej: Calle 4 # 5-20, Barrio Paso Ancho"
 }) {
   const inputRef = useRef(null);
   const [isLocating, setIsLocating] = useState(false);
   const [geoError, setGeoError] = useState(null);
   const [calculatedDistance, setCalculatedDistance] = useState(null);
   const [feeDetails, setFeeDetails] = useState(null);
-  const [userCoords, setUserCoords] = useState(null);
+  const [userCoords, setUserCoords] = useState(() =>
+    initialCoords?.lat && initialCoords?.lng ? { lat: Number(initialCoords.lat), lng: Number(initialCoords.lng) } : null
+  );
   const [showMiniMap, setShowMiniMap] = useState(true);
+  const [openPinModal, setOpenPinModal] = useState(false);
 
   const { isLoaded: isGoogleLoaded, attachAutocomplete } = useGooglePlaces();
 
@@ -28,19 +32,30 @@ export default function AddressInputWithMap({
   const sedeLng = Number(currentLocation?.longitude);
   const hasSedeCoords = Boolean(sedeLat && sedeLng);
 
+  useEffect(() => {
+    if (initialCoords?.lat && initialCoords?.lng) {
+      const lat = Number(initialCoords.lat);
+      const lng = Number(initialCoords.lng);
+      setUserCoords({ lat, lng });
+      if (hasSedeCoords) {
+        setCalculatedDistance(estimateRoadDistance(sedeLat, sedeLng, lat, lng));
+      }
+    }
+  }, [initialCoords?.lat, initialCoords?.lng, hasSedeCoords, sedeLat, sedeLng]);
+
   // Recalculate fee whenever distance, location settings, or subtotal changes
   useEffect(() => {
-    if (!currentLocation) return;
-
-    const details = calculateDynamicDeliveryFee({
-      distanceKm: calculatedDistance,
-      maxRadiusKm: currentLocation.delivery_radius_km || 5,
-      baseDistanceKm: currentLocation.base_delivery_distance_km || 3,
-      baseFee: currentLocation.delivery_fee || 0,
-      extraKmFee: currentLocation.extra_km_fee || 1000,
-      freeDeliveryThreshold: currentLocation.free_delivery_threshold || 0,
-      orderSubtotal
-    });
+    const details = currentLocation
+      ? calculateDynamicDeliveryFee({
+          distanceKm: calculatedDistance,
+          maxRadiusKm: currentLocation.delivery_radius_km || 8,
+          baseDistanceKm: currentLocation.base_delivery_distance_km || 3,
+          baseFee: currentLocation.delivery_fee || 0,
+          extraKmFee: currentLocation.extra_km_fee || 1000,
+          freeDeliveryThreshold: currentLocation.free_delivery_threshold || 0,
+          orderSubtotal
+        })
+      : { isCovered: true, fee: 0, message: 'Punto GPS fijado' };
 
     if (freeDeliveryPromo && (!freeDeliveryPromo.min_order_amount || orderSubtotal >= Number(freeDeliveryPromo.min_order_amount))) {
       details.fee = 0;
@@ -51,12 +66,14 @@ export default function AddressInputWithMap({
     setFeeDetails(details);
     onLocationSelect?.({
       address: value,
+      coords: userCoords,
+      googleMapsUrl: userCoords ? `https://www.google.com/maps?q=${userCoords.lat},${userCoords.lng}` : null,
       distanceKm: calculatedDistance,
       isCovered: details.isCovered,
       fee: details.fee,
       feeDetails: details
     });
-  }, [calculatedDistance, currentLocation, orderSubtotal, value, freeDeliveryPromo]);
+  }, [calculatedDistance, currentLocation, orderSubtotal, value, freeDeliveryPromo, userCoords?.lat, userCoords?.lng]);
 
   // Attach Google Places Autocomplete when Google script is ready
   useEffect(() => {
@@ -75,6 +92,41 @@ export default function AddressInputWithMap({
     });
   }, [isGoogleLoaded, attachAutocomplete, hasSedeCoords, sedeLat, sedeLng, onChange]);
 
+  const reverseGeocodeAndSync = async (lat, lng, overwriteAddressIfEmpty = false) => {
+    setUserCoords({ lat, lng });
+    if (hasSedeCoords) {
+      const roadDist = estimateRoadDistance(sedeLat, sedeLng, lat, lng);
+      setCalculatedDistance(roadDist);
+    }
+
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        { headers: { 'Accept-Language': 'es' } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.display_name) {
+          const road = data.address?.road || data.address?.pedestrian || '';
+          const houseNumber = data.address?.house_number || '';
+          const neighbourhood = data.address?.neighbourhood || data.address?.suburb || '';
+          const city = data.address?.city || data.address?.town || data.address?.village || '';
+          const formatted = road
+            ? `${road} ${houseNumber ? `# ${houseNumber}` : ''}${neighbourhood ? `, ${neighbourhood}` : ''}${city ? ` (${city})` : ''}`.trim()
+            : data.display_name.split(',').slice(0, 3).join(', ');
+
+          if (overwriteAddressIfEmpty || !value || value.startsWith('Ubicación GPS')) {
+            onChange(formatted);
+          }
+        }
+      }
+    } catch (revErr) {
+      if (overwriteAddressIfEmpty && !value) {
+        onChange(`Ubicación GPS (${lat.toFixed(5)}, ${lng.toFixed(5)})`);
+      }
+    }
+  };
+
   // Native Browser GPS Geolocation
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -89,53 +141,50 @@ export default function AddressInputWithMap({
       async (pos) => {
         const userLat = pos.coords.latitude;
         const userLng = pos.coords.longitude;
-        setUserCoords({ lat: userLat, lng: userLng });
-
-        let detectedAddress = `Ubicación GPS (${userLat.toFixed(4)}, ${userLng.toFixed(4)})`;
-
-        // Reverse Geocoding with OpenStreetMap Nominatim (Free, no API key needed)
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${userLat}&lon=${userLng}&zoom=18&addressdetails=1`,
-            { headers: { 'Accept-Language': 'es' } }
-          );
-          if (res.ok) {
-            const data = await res.json();
-            if (data.display_name) {
-              const road = data.address?.road || data.address?.pedestrian || '';
-              const houseNumber = data.address?.house_number || '';
-              const neighbourhood = data.address?.neighbourhood || data.address?.suburb || '';
-              const city = data.address?.city || data.address?.town || data.address?.village || '';
-              
-              if (road) {
-                detectedAddress = `${road} ${houseNumber ? `# ${houseNumber}` : ''}${neighbourhood ? `, ${neighbourhood}` : ''}${city ? ` (${city})` : ''}`.trim();
-              } else {
-                detectedAddress = data.display_name.split(',').slice(0, 3).join(', ');
-              }
-            }
-          }
-        } catch (revErr) {
-          console.warn("Reverse geocode fallback used:", revErr);
-        }
-
-        onChange(detectedAddress);
+        await reverseGeocodeAndSync(userLat, userLng, true);
         setIsLocating(false);
-
-        if (hasSedeCoords) {
-          const roadDist = estimateRoadDistance(sedeLat, sedeLng, userLat, userLng);
-          setCalculatedDistance(roadDist);
-        }
       },
       (err) => {
         setIsLocating(false);
         if (err.code === 1) {
-          setGeoError("Permiso de ubicación denegado. Puedes escribir tu dirección manualmente.");
+          setGeoError("Permiso GPS denegado. Usa el botón 'Mapa' para marcar tu casa manualmente.");
         } else {
-          setGeoError("No se pudo obtener la ubicación actual.");
+          setGeoError("No se pudo obtener el GPS. Usa el botón 'Mapa' para fijar el pin.");
         }
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
+  };
+
+  const handleOpenManualPinPicker = async () => {
+    setGeoError(null);
+    // Si aún no hay coordenadas pero escribió texto (ej. "Paso Ancho"), intentar geocodificar con Nominatim para centrar el mapa cerca
+    if (!userCoords && value && value.trim().length > 2) {
+      try {
+        const query = encodeURIComponent(`${value.trim()}, Zipaquirá, Colombia`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
+        if (res.ok) {
+          const list = await res.json();
+          if (list?.[0]?.lat && list?.[0]?.lon) {
+            const lat = Number(list[0].lat);
+            const lng = Number(list[0].lon);
+            setUserCoords({ lat, lng });
+            if (hasSedeCoords) {
+              setCalculatedDistance(estimateRoadDistance(sedeLat, sedeLng, lat, lng));
+            }
+            setOpenPinModal(true);
+            return;
+          }
+        }
+      } catch {}
+    }
+
+    if (!userCoords) {
+      const defaultLat = hasSedeCoords ? sedeLat : 5.0224;
+      const defaultLng = hasSedeCoords ? sedeLng : -74.0018;
+      setUserCoords({ lat: defaultLat, lng: defaultLng });
+    }
+    setOpenPinModal(true);
   };
 
   return (
@@ -151,31 +200,38 @@ export default function AddressInputWithMap({
           value={value}
           onChange={(e) => {
             onChange(e.target.value);
-            // Reset distance if manual typing changes significantly
-            if (!e.target.value) {
-              setCalculatedDistance(null);
-              setUserCoords(null);
-            }
           }}
           placeholder={placeholder}
-          className="w-full pl-10 pr-24 py-3 text-xs sm:text-sm font-semibold text-neutral-800 bg-white hover:bg-neutral-50/50 focus:bg-white border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 transition-all placeholder:text-amber-300 placeholder:font-normal"
+          className="w-full pl-10 pr-40 py-3 text-xs sm:text-sm font-semibold text-neutral-800 bg-white hover:bg-neutral-50/50 focus:bg-white border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 transition-all placeholder:text-stone-400 placeholder:font-normal"
         />
 
-        {/* GPS Location Button */}
-        <button
-          type="button"
-          onClick={handleUseCurrentLocation}
-          disabled={isLocating}
-          title="Detectar mi ubicación actual por GPS"
-          className="absolute right-2 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50"
-        >
-          {isLocating ? (
-            <Icon icon="eos-icons:loading" className="animate-spin text-xs" />
-          ) : (
-            <Icon icon="solar:gps-bold" className="text-xs text-emerald-600" />
-          )}
-          <span>{isLocating ? "Detectando..." : "Mi GPS"}</span>
-        </button>
+        {/* Botones Rápidos: Mi GPS + Fijar Pin en Mapa */}
+        <div className="absolute right-1.5 flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handleUseCurrentLocation}
+            disabled={isLocating}
+            title="Detectar mi ubicación actual por GPS"
+            className="px-2 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            {isLocating ? (
+              <Icon icon="eos-icons:loading" className="animate-spin text-xs" />
+            ) : (
+              <Icon icon="solar:gps-bold" className="text-xs text-emerald-600" />
+            )}
+            <span>{isLocating ? "..." : "GPS"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleOpenManualPinPicker}
+            title="Abrir mapa para marcar el punto exacto con un pin"
+            className="px-2.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+          >
+            <Icon icon="solar:map-point-bold" className="text-xs text-emerald-400" />
+            <span>Mapa</span>
+          </button>
+        </div>
       </div>
 
       {/* Geolocation feedback / error message */}
@@ -186,63 +242,55 @@ export default function AddressInputWithMap({
         </p>
       )}
 
-      {/* Distance and Coverage Indicator */}
-      {feeDetails && calculatedDistance !== null && (
-        <div className="space-y-2">
-          <div
-            className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all ${
-              feeDetails.isCovered
-                ? 'bg-emerald-50/90 border-emerald-200 text-emerald-900'
-                : 'bg-rose-50 border-rose-200 text-rose-800'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Icon
-                icon={feeDetails.isCovered ? "solar:routing-2-bold" : "solar:danger-triangle-bold"}
-                className={`text-base shrink-0 ${feeDetails.isCovered ? 'text-emerald-600' : 'text-rose-600'}`}
-              />
-              <div>
-                <span className="block leading-tight font-extrabold">
-                  {feeDetails.isCovered
-                    ? `Aprox. ${calculatedDistance} km de la sede`
-                    : `Fuera de cobertura: ${calculatedDistance} km`}
-                </span>
-                <span className="text-[10px] font-medium opacity-80 block">
-                  {feeDetails.message}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs font-black">
-                {feeDetails.isCovered 
-                  ? (feeDetails.isFree || feeDetails.isPromoFree || feeDetails.fee === 0 ? '¡GRATIS! 🎉' : formatCOP(feeDetails.fee)) 
-                  : 'No disponible'}
-              </span>
-              {hasSedeCoords && userCoords && (
-                <button
-                  type="button"
-                  onClick={() => setShowMiniMap(prev => !prev)}
-                  className="p-1 rounded-lg hover:bg-black/5 text-gray-500 text-[10px] font-semibold"
-                  title="Ver mapa"
-                >
-                  <Icon icon={showMiniMap ? "solar:eye-closed-bold" : "solar:map-bold"} className="text-sm" />
-                </button>
-              )}
-            </div>
+      {/* GPS Coords Confirmation Bar */}
+      {userCoords && (
+        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-50/90 border border-emerald-200 text-xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <Icon icon="solar:check-circle-bold" className="text-emerald-600 text-sm shrink-0" />
+            <span className="font-bold text-emerald-950 truncate">
+              Pin GPS exacto fijado {calculatedDistance !== null ? `(${calculatedDistance} km)` : ''}
+            </span>
           </div>
-
-          {/* Mini Interactive Route Map */}
-          {hasSedeCoords && userCoords && showMiniMap && (
-            <CustomerRouteMap
-              sedeCoords={[sedeLat, sedeLng]}
-              customerCoords={[userCoords.lat, userCoords.lng]}
-              isCovered={feeDetails.isCovered}
-              radiusKm={currentLocation?.delivery_radius_km}
-              distanceKm={calculatedDistance}
-            />
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href={`https://www.google.com/maps?q=${userCoords.lat},${userCoords.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] font-black text-emerald-700 hover:underline"
+            >
+              Ver en Google Maps ↗
+            </a>
+            <button
+              type="button"
+              onClick={() => setShowMiniMap(prev => !prev)}
+              className="p-1 rounded-lg hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold cursor-pointer"
+            >
+              {showMiniMap ? 'Ocultar mapa' : 'Ver mapa'}
+            </button>
+          </div>
         </div>
+      )}
+
+      {/* Mini Interactive Route Map + Modal Pin Picker */}
+      {(userCoords || openPinModal) && showMiniMap && (
+        <CustomerRouteMap
+          sedeCoords={hasSedeCoords ? [sedeLat, sedeLng] : [5.0224, -74.0018]}
+          customerCoords={
+            userCoords
+              ? [userCoords.lat, userCoords.lng]
+              : hasSedeCoords
+              ? [sedeLat, sedeLng]
+              : [5.0224, -74.0018]
+          }
+          isCovered={feeDetails?.isCovered ?? true}
+          radiusKm={currentLocation?.delivery_radius_km || 6}
+          distanceKm={calculatedDistance}
+          externalModalOpen={openPinModal}
+          onExternalModalClose={() => setOpenPinModal(false)}
+          onCoordsChange={(newCoords) => {
+            reverseGeocodeAndSync(newCoords.lat, newCoords.lng, false);
+          }}
+        />
       )}
     </div>
   );

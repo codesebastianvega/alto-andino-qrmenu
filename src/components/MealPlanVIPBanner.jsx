@@ -5,9 +5,11 @@ import { useAuth } from '../context/AuthContext';
 import { formatCOP } from '../utils/money';
 import { toast } from './Toast';
 import DIYProductModal from './DIYProductModal';
+import AddressInputWithMap from './delivery/AddressInputWithMap';
 import {
   MEAL_PLAN_TEMPLATES,
   getConfiguredMealPlans,
+  getMealPlanProgramConfig,
   findSubscriberPlan,
   saveActiveMemberSession,
   getActiveMemberSession,
@@ -19,7 +21,6 @@ import {
 import {
   Sparkles,
   Ticket,
-  CheckCircle2,
   MapPin,
   Clock,
   Smartphone,
@@ -29,12 +30,18 @@ import {
   ArrowRight,
   X,
   ShieldCheck,
-  MessageCircle
+  MessageCircle,
+  Navigation
 } from 'lucide-react';
 
 export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInstalled }) {
   const { restaurantSettings, activeBrandId, getAllProducts, currentLocation, brand: menuBrand, storeStatusInfo } = useMenuData();
   const { user: authUser } = useAuth();
+
+  const programConfig = useMemo(
+    () => getMealPlanProgramConfig(restaurantSettings),
+    [restaurantSettings]
+  );
 
   const configuredPlans = useMemo(
     () => getConfiguredMealPlans(restaurantSettings),
@@ -57,14 +64,39 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [diyPlanProduct, setDiyPlanProduct] = useState(null);
 
+  // Modal para que la clienta marque en el mapa el punto exacto donde recibe
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [customAddr, setCustomAddr] = useState('');
+  const [customNotes, setCustomNotes] = useState('');
+  const [customCoords, setCustomCoords] = useState(null);
+
   const activateMemberPlan = useCallback(
     (plan, showWelcomeToast = false) => {
       if (!plan || !activeBrandId) return;
-      saveActiveMemberSession(activeBrandId, plan);
-      setActivePlan(plan);
 
-      // Aplicar automáticamente el beneficio de la tiquetera al carrito
-      const promoObj = buildPlanPromoObject(plan);
+      // Recuperar dirección/pin personalizado si la clienta ya lo ajustó en su teléfono
+      let enrichedPlan = { ...plan };
+      try {
+        const savedLoc = JSON.parse(
+          window.localStorage.getItem(`aa_plan_custom_loc_${activeBrandId}_${plan.code}`) || 'null'
+        );
+        if (savedLoc) {
+          enrichedPlan = {
+            ...enrichedPlan,
+            default_address: savedLoc.address || enrichedPlan.default_address,
+            default_delivery_notes: savedLoc.notes ?? enrichedPlan.default_delivery_notes,
+            default_coords: savedLoc.coords || enrichedPlan.default_coords
+          };
+        }
+      } catch {}
+
+      saveActiveMemberSession(activeBrandId, enrichedPlan);
+      setActivePlan(enrichedPlan);
+      setCustomAddr(enrichedPlan.default_address || '');
+      setCustomNotes(enrichedPlan.default_delivery_notes || '');
+      setCustomCoords(enrichedPlan.default_coords || null);
+
+      const promoObj = buildPlanPromoObject(enrichedPlan);
       if (promoObj) {
         try {
           window.localStorage.setItem('aa_applied_coupon', JSON.stringify(promoObj));
@@ -73,13 +105,12 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
       }
 
       if (showWelcomeToast) {
-        toast.success(`🥗 ¡Hola ${plan.customer_name}! Tu Tiquetera BOKU Fit está activa.`);
+        toast.success(`🥗 ¡Hola ${enrichedPlan.customer_name}! Tu Tiquetera está activa.`);
       }
     },
     [activeBrandId]
   );
 
-  // 1. Detectar parámetro ?vip=CODE o ?plan=CODE en la URL, o sesión previa / Google OAuth
   useEffect(() => {
     if (!activeBrandId || !configuredPlans.length) return;
 
@@ -110,7 +141,6 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
     }
   }, [activeBrandId, configuredPlans, authUser?.email, activateMemberPlan]);
 
-  // 2. Consultar créditos consumidos en tiempo real desde la tabla orders
   const refreshPlanUsage = useCallback(async () => {
     if (!activeBrandId || !activePlan) return;
     setLoadingUsage(true);
@@ -126,7 +156,6 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
     refreshPlanUsage();
   }, [refreshPlanUsage]);
 
-  // Escuchar evento cuando se confirma un pedido para actualizar el contador al instante
   useEffect(() => {
     const handleOrderCreated = () => {
       refreshPlanUsage();
@@ -174,6 +203,34 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
     }
   };
 
+  const handleSaveCustomerLocation = (e) => {
+    e.preventDefault();
+    if (!activePlan || !activeBrandId) return;
+
+    const updatedPlan = {
+      ...activePlan,
+      default_address: customAddr.trim() || activePlan.default_address,
+      default_delivery_notes: customNotes.trim(),
+      default_coords: customCoords || activePlan.default_coords
+    };
+
+    try {
+      window.localStorage.setItem(
+        `aa_plan_custom_loc_${activeBrandId}_${activePlan.code}`,
+        JSON.stringify({
+          address: updatedPlan.default_address,
+          notes: updatedPlan.default_delivery_notes,
+          coords: updatedPlan.default_coords
+        })
+      );
+    } catch {}
+
+    saveActiveMemberSession(activeBrandId, updatedPlan);
+    setActivePlan(updatedPlan);
+    setShowAddressModal(false);
+    toast.success('📍 ¡Tu dirección y punto exacto en el mapa quedaron guardados para el domiciliario!');
+  };
+
   const handleOpenPlanDIYBowl = () => {
     if (storeStatusInfo && !storeStatusInfo.isOpen) {
       toast.error('En este momento la cocina está en pausa. Podrás pedir tu Bowl apenas abramos.');
@@ -185,7 +242,6 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
       return;
     }
 
-    // Asegurar que el cupón/crédito del plan esté activo en el carrito
     const promoObj = buildPlanPromoObject(activePlan);
     if (promoObj) {
       try {
@@ -195,7 +251,7 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
     }
 
     const allProds = typeof getAllProducts === 'function' ? getAllProducts() : [];
-    const planBowl = buildPlanDIYBowlProduct(allProds, activePlan);
+    const planBowl = buildPlanDIYBowlProduct(allProds, activePlan, programConfig);
     if (!planBowl) {
       toast.error('No se encontró el armador de Bowl en el catálogo.');
       return;
@@ -233,11 +289,19 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
     return digits.startsWith('57') ? digits : `57${digits}`;
   }, [currentLocation, menuBrand]);
 
+  const activeTiers = useMemo(
+    () => (Array.isArray(programConfig?.tiers) && programConfig.tiers.length > 0 ? programConfig.tiers : MEAL_PLAN_TEMPLATES),
+    [programConfig?.tiers]
+  );
+
   const displayedTemplates = useMemo(() => {
-    return MEAL_PLAN_TEMPLATES.filter(t =>
+    const filtered = activeTiers.filter(t =>
       includeDeliveryInPreview ? t.includes_delivery : !t.includes_delivery
     );
-  }, [includeDeliveryInPreview]);
+    return filtered.length > 0 ? filtered : activeTiers;
+  }, [activeTiers, includeDeliveryInPreview]);
+
+  if (programConfig?.is_enabled === false && !activePlan) return null;
 
   return (
     <>
@@ -256,7 +320,7 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-400 text-emerald-950 text-[10px] font-black uppercase tracking-wider">
                     <Sparkles className="w-3 h-3" />
-                    Mi Plan BOKU Fit
+                    {programConfig.public_badge || 'Mi Plan BOKU Fit'}
                   </span>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-emerald-200 text-[10px] font-bold border border-white/10">
                     Código: {activePlan.code}
@@ -266,7 +330,7 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                   ¡Hola, {activePlan.customer_name}! 🥗
                 </h2>
                 <p className="text-[11px] sm:text-xs text-emerald-100/80 font-medium">
-                  {activePlan.dietary_notes || '1 Base + 1 Proteína + 5 Toppings/Verduras + Semillas + Salsa'}
+                  {activePlan.dietary_notes || programConfig.default_dietary_rules}
                 </p>
               </div>
 
@@ -280,19 +344,18 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
               </button>
             </div>
 
-            {/* Contador Visual de Créditos (Tiquetera) */}
+            {/* Contador Visual de Créditos (Tiquetera) + Dirección en Mapa */}
             <div className="p-3 rounded-xl bg-black/25 border border-white/10 flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
                   <Ticket className="w-3.5 h-3.5" />
-                  Almuerzos Disponibles
+                  {programConfig.credit_unit_plural || 'Almuerzos'} Disponibles
                 </span>
                 <span className="text-sm sm:text-base font-black text-white">
                   {loadingUsage ? '...' : `${usage.remainingCredits} de ${usage.totalCredits}`}
                 </span>
               </div>
 
-              {/* Barra de progreso */}
               <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-emerald-400 to-teal-300 rounded-full transition-all duration-500"
@@ -305,15 +368,13 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                 />
               </div>
 
-              {/* Info de entrega preconfigurada */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-white/80">
+              {/* Info de entrega + Botón para que la clienta fije su Pin en el Mapa */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-white/10 text-[11px] text-white/80">
                 <div className="flex items-center gap-2 flex-wrap">
-                  {activePlan.default_address && (
-                    <span className="inline-flex items-center gap-1 text-white/90 font-semibold">
-                      <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
-                      {activePlan.default_address}
-                    </span>
-                  )}
+                  <span className="inline-flex items-center gap-1 text-white/95 font-bold">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    {activePlan.default_address || 'Asignar mi dirección'}
+                  </span>
                   {activePlan.default_time && (
                     <span className="inline-flex items-center gap-1 text-emerald-200 font-semibold">
                       <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
@@ -321,11 +382,26 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                     </span>
                   )}
                 </div>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 text-[10px] font-bold">
-                  {activePlan.includes_delivery
-                    ? '🛵 Domicilio Incluido ($0)'
-                    : `🛵 Envío: ${formatCOP(activePlan.delivery_fee || 5000)}`}
-                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddressModal(true)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[10px] font-black transition-all cursor-pointer"
+                  >
+                    <Navigation className="w-3 h-3 text-emerald-300" />
+                    <span>
+                      {activePlan.default_coords?.lat
+                        ? 'Cambiar Pin en Mapa'
+                        : '📍 Marcar mi Casa en Mapa'}
+                    </span>
+                  </button>
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 text-[10px] font-bold">
+                    {activePlan.includes_delivery
+                      ? '🛵 Envío $0'
+                      : `🛵 Envío ${formatCOP(activePlan.delivery_fee || 5000)}`}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -340,7 +416,7 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                 <Sparkles className="w-4 h-4 shrink-0" />
                 <span>
                   {usage.remainingCredits > 0
-                    ? 'Armar mi Bowl de Hoy (Usar 1 Crédito)'
+                    ? `Armar mi ${programConfig.credit_unit_singular || 'Bowl'} de Hoy (Usar 1 Crédito)`
                     : 'Sin créditos disponibles — Renovar Plan'}
                 </span>
                 <ArrowRight className="w-4 h-4 shrink-0" />
@@ -369,15 +445,14 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
               </div>
             </div>
 
-            {/* Historial desplegable de almuerzos redimidos */}
             {showHistory && (
               <div className="mt-1 p-3 rounded-xl bg-black/30 border border-white/10 text-xs space-y-1.5">
                 <p className="font-bold text-emerald-300 text-[11px] uppercase tracking-wider">
-                  Historial de almuerzos redimidos en tu plan:
+                  Historial de consumos en tu plan:
                 </p>
                 {usage.ordersHistory.length === 0 ? (
                   <p className="text-white/60 text-[11px]">
-                    Aún no has redimido ningún almuerzo de este paquete. ¡Arma tu primer Bowl hoy!
+                    Aún no has redimido ningún crédito de este paquete. ¡Arma tu primero hoy!
                   </p>
                 ) : (
                   <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
@@ -418,14 +493,14 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-[11px] sm:text-xs font-black text-emerald-300 uppercase tracking-wide">
-                  🥗 Planes Tiquetera BOKU Fit
+                  {programConfig.public_badge || '🥗 Planes Tiquetera BOKU Fit'}
                 </span>
                 <span className="px-1.5 py-0.2 rounded bg-white/10 text-[9px] font-bold text-white/80">
                   Semanal • Quincenal • Mensual
                 </span>
               </div>
               <p className="text-[11px] text-white/75 truncate">
-                Arma tu Bowl todos los días a precio especial o ingresa con tu código de miembro.
+                {programConfig.program_subtitle}
               </p>
             </div>
           </div>
@@ -456,14 +531,91 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
         </div>
       )}
 
-      {/* MODAL DE VALIDACIÓN DE IDENTIDAD + CATÁLOGO DE PLANES BOKU FIT */}
+      {/* MODAL PARA QUE LA CLIENTA MARQUE EN EL MAPA SU UBICACIÓN EXACTA PARA EL DOMICILIARIO */}
+      {showAddressModal && activePlan && (
+        <div
+          data-clarity-unmask="true"
+          className="fixed inset-0 z-[210] flex items-center justify-center bg-black/65 backdrop-blur-xs p-4"
+        >
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div>
+                <h3 className="text-base font-black text-stone-900 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-emerald-600" />
+                  Mi Punto Exacto de Entrega en el Mapa
+                </h3>
+                <p className="text-xs text-stone-500">
+                  Marca tu casa en el mapa para que el domiciliario llegue directo todos los días.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddressModal(false)}
+                className="p-1.5 rounded-xl bg-stone-100 text-stone-500 hover:text-stone-800 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCustomerLocation} className="space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-black uppercase text-stone-500 mb-1">
+                  Dirección y Punto en el Mapa (Toca &quot;GPS&quot; o &quot;Mapa&quot;)
+                </label>
+                <AddressInputWithMap
+                  value={customAddr}
+                  onChange={setCustomAddr}
+                  currentLocation={currentLocation}
+                  initialCoords={customCoords}
+                  onLocationSelect={locInfo => {
+                    if (locInfo?.coords) {
+                      setCustomCoords(locInfo.coords);
+                    }
+                  }}
+                  placeholder="Ej: Paso Ancho, Calle 4 # 5-20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-black uppercase text-stone-500 mb-1">
+                  Indicaciones para el Domiciliario (Casa / Apto / Color de Portón)
+                </label>
+                <input
+                  type="text"
+                  value={customNotes}
+                  onChange={e => setCustomNotes(e.target.value)}
+                  placeholder="Ej: Casa segundo piso portón blanco, entregar 2:30 PM"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs sm:text-sm font-semibold text-stone-800"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddressModal(false)}
+                  className="px-4 py-2.5 rounded-xl bg-stone-100 text-stone-700 font-bold text-xs cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md cursor-pointer"
+                >
+                  ✓ Guardar mi Punto Exacto
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE VALIDACIÓN DE IDENTIDAD + CATÁLOGO DE PLANES */}
       {showAuthModal && (
         <div
           data-clarity-unmask="true"
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/65 backdrop-blur-xs p-4"
         >
           <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-stone-200 animate-in fade-in zoom-in-95 duration-200">
-            {/* Header */}
             <div className="bg-gradient-to-r from-[#1A2421] to-[#24352F] p-4 sm:p-5 text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-emerald-400/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300">
@@ -471,10 +623,10 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                 </div>
                 <div>
                   <h3 className="text-sm sm:text-base font-black leading-tight">
-                    Club BOKU Fit • Tiquetera Digital
+                    {programConfig.program_title || 'Club BOKU Fit • Tiquetera Digital'}
                   </h3>
                   <p className="text-[11px] text-white/70">
-                    Arma tu Bowl saludable todos los días
+                    Arma tu pedido saludable todos los días
                   </p>
                 </div>
               </div>
@@ -487,7 +639,6 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
               </button>
             </div>
 
-            {/* Selector de Pestañas */}
             <div className="grid grid-cols-2 p-1.5 bg-stone-100 border-b border-stone-200">
               <button
                 type="button"
@@ -515,11 +666,9 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
 
             {modalTab === 'login' ? (
               <div className="p-5 space-y-4">
-                <div>
-                  <p className="text-xs font-bold text-stone-700 leading-relaxed">
-                    Si ya activaste tu Plan Semanal, Quincenal o Mensual, valida tu identidad para desbloquear el armador de **Bowl BOKU Fit** y tus créditos:
-                  </p>
-                </div>
+                <p className="text-xs font-bold text-stone-700 leading-relaxed">
+                  Si ya activaste tu Plan Semanal, Quincenal o Mensual, valida tu identidad para desbloquear tus créditos:
+                </p>
 
                 <form onSubmit={handleManualLogin} className="space-y-3">
                   <div>
@@ -625,9 +774,9 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                         </p>
                         <a
                           href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-                            `¡Hola Boku! Quiero activar el *${t.label}* (${formatCOP(
+                            `¡Hola! Quiero activar el *${t.label}* (${formatCOP(
                               t.plan_price
-                            )}) para armar mi Bowl todos los días 🥗`
+                            )}) para pedir todos los días 🥗`
                           )}`}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -657,7 +806,7 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-black text-stone-900 flex items-center gap-1.5">
                 <Smartphone className="w-4 h-4 text-emerald-600" />
-                Instalar App BOKU en tu celular
+                Instalar App en tu celular
               </h3>
               <button
                 type="button"
@@ -668,20 +817,16 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
               </button>
             </div>
             <p className="text-xs text-stone-600 leading-relaxed">
-              Agrega BOKU a tu pantalla de inicio para entrar en 1 toque cada día a armar tu Bowl con tu tiquetera ya iniciada:
+              Agrega la App a tu pantalla de inicio para entrar en 1 toque cada día con tu tiquetera ya iniciada:
             </p>
             <div className="space-y-2 text-xs bg-stone-50 p-3 rounded-xl border border-stone-200">
-              <p className="font-bold text-stone-800">
-                🍏 En iPhone (Safari):
-              </p>
+              <p className="font-bold text-stone-800">🍏 En iPhone (Safari):</p>
               <p className="text-stone-600 text-[11px]">
-                Toca el botón **Compartir** (cuadro con flecha arriba) en la barra inferior y selecciona **&quot;Agregar a inicio&quot;**.
+                Toca el botón **Compartir** en la barra inferior y selecciona **&quot;Agregar a inicio&quot;**.
               </p>
-              <p className="font-bold text-stone-800 pt-1">
-                🤖 En Android (Chrome):
-              </p>
+              <p className="font-bold text-stone-800 pt-1">🤖 En Android (Chrome):</p>
               <p className="text-stone-600 text-[11px]">
-                Toca los **3 puntos (⋮)** arriba a la derecha y selecciona **&quot;Instalar aplicación&quot;** o **&quot;Agregar a la pantalla principal&quot;**.
+                Toca los **3 puntos (⋮)** arriba a la derecha y selecciona **&quot;Instalar aplicación&quot;**.
               </p>
             </div>
             <button

@@ -430,6 +430,8 @@ export default function AdminPromotions() {
       <MealPlansAdminSection
         brandId={activeBrandId}
         brandSlug={activeBrand?.slug || brandFromContext?.slug || 'boku-bento'}
+        allProducts={allProducts}
+        currentLocation={locations?.find(l => l.is_main) || locations?.[0] || null}
       />
 
       {/* 1-Click Launch Templates (Rappi Ads Style) */}

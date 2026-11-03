@@ -11,6 +11,7 @@ export const MEAL_PLAN_TEMPLATES = [
     plan_price: 80000,
     bowl_value: 17000,
     unit_price_display: 16000,
+    validity_days: 10,
     includes_delivery: false,
     delivery_fee: 5000,
     badge: '5 Bowls ($16.000 c/u) + envío aparte',
@@ -25,6 +26,7 @@ export const MEAL_PLAN_TEMPLATES = [
     plan_price: 105000,
     bowl_value: 17000,
     unit_price_display: 21000,
+    validity_days: 10,
     includes_delivery: true,
     delivery_fee: 0,
     badge: '5 Bowls + Domicilio incluido ($21.000/día)',
@@ -39,6 +41,7 @@ export const MEAL_PLAN_TEMPLATES = [
     plan_price: 155000,
     bowl_value: 17000,
     unit_price_display: 15500,
+    validity_days: 20,
     includes_delivery: false,
     delivery_fee: 5000,
     badge: '10 Bowls ($15.500 c/u) + envío aparte',
@@ -53,6 +56,7 @@ export const MEAL_PLAN_TEMPLATES = [
     plan_price: 205000,
     bowl_value: 17000,
     unit_price_display: 20500,
+    validity_days: 20,
     includes_delivery: true,
     delivery_fee: 0,
     badge: '10 Bowls + Domicilio incluido ($20.500/día)',
@@ -67,6 +71,7 @@ export const MEAL_PLAN_TEMPLATES = [
     plan_price: 300000,
     bowl_value: 17000,
     unit_price_display: 15000,
+    validity_days: 35,
     includes_delivery: false,
     delivery_fee: 5000,
     badge: '20 Bowls ($15.000 c/u) + envío aparte',
@@ -81,6 +86,7 @@ export const MEAL_PLAN_TEMPLATES = [
     plan_price: 395000,
     bowl_value: 17000,
     unit_price_display: 19750,
+    validity_days: 35,
     includes_delivery: true,
     delivery_fee: 0,
     badge: '20 Bowls + Domicilio incluido (Ahorras $65.000)',
@@ -88,21 +94,43 @@ export const MEAL_PLAN_TEMPLATES = [
   }
 ];
 
+export const DEFAULT_PROGRAM_CONFIG = {
+  is_enabled: true,
+  program_title: 'Planes & Tiqueteras Digitales (Club BOKU Fit)',
+  program_subtitle: 'Arma tu Bowl saludable todos los días a precio especial o ingresa con tu código de miembro.',
+  public_badge: '🥗 Planes Tiquetera BOKU Fit',
+  credit_unit_singular: 'Almuerzo',
+  credit_unit_plural: 'Almuerzos',
+  code_suffix: 'BOKU',
+  linked_product_id: 'b0000d14-0000-4000-a000-000000000000',
+  custom_product_title: '🥗 Arma tu Bowl BOKU Fit de Hoy',
+  default_unit_value: 17000,
+  default_delivery_fee: 5000,
+  default_dietary_rules: 'Sin sopa • Proteína + 5 Verduras/Toppings + 1 Base Carbohidrato + Semillas + Salsa',
+  included_toppings_count: 5,
+  included_crunches_count: 2,
+  included_sauces_count: 1,
+  tiers: MEAL_PLAN_TEMPLATES
+};
+
 export const DEFAULT_ERIKA_PLAN = {
   id: 'plan-erika-pasoancho',
   code: 'ERIKA-BOKU',
   customer_name: 'Erika',
   customer_phone: '3125535583',
   customer_email: '',
-  template_id: 'mensual_full',
-  plan_label: 'Plan BOKU Fit (Sin Sopa)',
-  total_credits: 20,
+  template_id: 'semanal_full',
+  plan_label: 'Plan Semanal Todo Incluido (5 Bowls + Domicilio)',
+  total_credits: 5,
   manual_used_adjustment: 0,
   bowl_value: 17000,
   includes_delivery: true,
   delivery_fee: 0,
-  default_address: 'Paso Ancho',
+  default_address: 'Paso Ancho, Zipaquirá',
+  default_delivery_notes: 'Entrega fija 2:30 PM',
+  default_coords: { lat: 5.0189, lng: -73.9942 },
   default_time: '2:30 PM',
+  payment_status: 'paid',
   dietary_notes: 'Sin sopa • Proteína + 5 Verduras/Toppings + 1 Base Carbohidrato + Semillas + Salsa',
   status: 'active',
   cycle_start_at: '2026-11-01T00:00:00.000Z',
@@ -113,6 +141,23 @@ export function normalizePhoneDigits(phone = '') {
   return String(phone || '').replace(/\D/g, '').slice(-10);
 }
 
+export function getMealPlanProgramConfig(restaurantSettings) {
+  const concepts = Array.isArray(restaurantSettings?.brand_concepts)
+    ? restaurantSettings.brand_concepts
+    : [];
+  const configConcept = concepts.find(c => c && c.id === 'meal_plans_config');
+  const savedProgram = configConcept?.program || {};
+
+  return {
+    ...DEFAULT_PROGRAM_CONFIG,
+    ...savedProgram,
+    tiers:
+      Array.isArray(savedProgram.tiers) && savedProgram.tiers.length > 0
+        ? savedProgram.tiers
+        : MEAL_PLAN_TEMPLATES
+  };
+}
+
 export function getConfiguredMealPlans(restaurantSettings) {
   const concepts = Array.isArray(restaurantSettings?.brand_concepts)
     ? restaurantSettings.brand_concepts
@@ -120,7 +165,6 @@ export function getConfiguredMealPlans(restaurantSettings) {
   const configConcept = concepts.find(c => c && c.id === 'meal_plans_config');
   const savedPlans = Array.isArray(configConcept?.plans) ? configConcept.plans : [];
 
-  // Si aún no se ha guardado la lista en base de datos, incluir el perfil base de Erika listo para usar/editar
   const hasErika = savedPlans.some(
     p =>
       normalizePhoneDigits(p.customer_phone) === '3125535583' ||
@@ -146,7 +190,6 @@ export function findSubscriberPlan(plans = [], { code = '', phone = '', email = 
       const pEmail = String(p.customer_email || '').trim().toLowerCase();
 
       if (cleanCode && pCode && cleanCode === pCode) return true;
-      // Si el usuario escribió su teléfono en el campo de código
       const inputAsPhone = normalizePhoneDigits(code);
       if (inputAsPhone.length >= 10 && pPhone && inputAsPhone === pPhone) return true;
       if (cleanPhone.length >= 10 && pPhone && cleanPhone === pPhone) return true;
@@ -171,7 +214,6 @@ export function saveActiveMemberSession(brandId, plan) {
     };
     localStorage.setItem(`${SESSION_KEY_PREFIX}${brandId}`, JSON.stringify(payload));
 
-    // Pre-llenar datos de entrega del cliente para que su checkout sea en 1 clic
     if (plan.customer_name) {
       localStorage.setItem('aa_customer_name', plan.customer_name);
     }
@@ -181,10 +223,17 @@ export function saveActiveMemberSession(brandId, plan) {
     if (plan.default_address) {
       localStorage.setItem('aa_delivery_address', plan.default_address);
     }
-    if (plan.default_time || plan.dietary_notes) {
-      const notesParts = [];
-      if (plan.default_time) notesParts.push(`Hora programada: ${plan.default_time}`);
-      if (plan.dietary_notes) notesParts.push(plan.dietary_notes);
+    if (plan.default_coords?.lat && plan.default_coords?.lng) {
+      localStorage.setItem('aa_delivery_coords', JSON.stringify(plan.default_coords));
+    }
+
+    const notesParts = [];
+    if (plan.default_delivery_notes) notesParts.push(plan.default_delivery_notes);
+    if (plan.default_time) notesParts.push(`Hora: ${plan.default_time}`);
+    if (plan.default_coords?.lat && plan.default_coords?.lng) {
+      notesParts.push(`GPS: https://www.google.com/maps?q=${plan.default_coords.lat},${plan.default_coords.lng}`);
+    }
+    if (notesParts.length > 0) {
       localStorage.setItem('aa_delivery_notes', notesParts.join(' • '));
     }
   } catch (e) {
@@ -195,13 +244,11 @@ export function saveActiveMemberSession(brandId, plan) {
 export function getActiveMemberSession(brandId, configuredPlans = [], authUserEmail = '') {
   if (!brandId) return null;
   try {
-    // 1. Si el usuario inició sesión con Google OAuth y su email coincide con un plan activo
     if (authUserEmail) {
       const byEmail = findSubscriberPlan(configuredPlans, { email: authUserEmail });
       if (byEmail) return byEmail;
     }
 
-    // 2. Buscar sesión guardada en el dispositivo
     const raw = localStorage.getItem(`${SESSION_KEY_PREFIX}${brandId}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
@@ -291,50 +338,56 @@ export function buildPlanPromoObject(plan) {
     customer_name: plan.customer_name,
     customer_phone: plan.customer_phone,
     default_address: plan.default_address || '',
+    default_coords: plan.default_coords || null,
     default_time: plan.default_time || '',
     includes_delivery: Boolean(plan.includes_delivery),
     delivery_fee_override: plan.includes_delivery ? 0 : (Number(plan.delivery_fee) || 5000)
   };
 }
 
-export function buildPlanDIYBowlProduct(allProducts = [], plan = null) {
-  const baseBowl =
-    (allProducts || []).find(p => p.id === 'b0000d14-0000-4000-a000-000000000000') ||
-    (allProducts || []).find(p => p.config_options?.is_diy || p.configOptions?.is_diy || /arma tu propio.*bowl/i.test(p.name || ''));
+export function buildPlanDIYBowlProduct(allProducts = [], plan = null, programConfig = null) {
+  const prog = programConfig || DEFAULT_PROGRAM_CONFIG;
+  const linkedId = plan?.linked_product_id || prog?.linked_product_id || 'b0000d14-0000-4000-a000-000000000000';
 
-  const bowlPrice = Number(plan?.bowl_value) || 17000;
+  const baseBowl =
+    (allProducts || []).find(p => p.id === linkedId) ||
+    (allProducts || []).find(p => p.config_options?.is_diy || p.configOptions?.is_diy || /arma tu propio.*bowl/i.test(p.name || '')) ||
+    (allProducts || [])[0];
+
+  const bowlPrice = Number(plan?.bowl_value) || Number(prog?.default_unit_value) || 17000;
 
   if (!baseBowl) {
     return null;
   }
 
+  const toppingsInc = Number(prog?.included_toppings_count) || 5;
+  const crunchesInc = Number(prog?.included_crunches_count) || 2;
+  const saucesInc = Number(prog?.included_sauces_count) || 1;
+
   return {
     ...baseBowl,
     id: baseBowl.id,
     productId: baseBowl.id,
-    name: '🥗 Bowl BOKU Fit (Mi Plan Tiquetera)',
-    title: '🥗 Arma tu Bowl BOKU Fit de Hoy',
+    name: prog?.custom_product_title || '🥗 Bowl BOKU Fit (Mi Plan Tiquetera)',
+    title: prog?.custom_product_title || '🥗 Arma tu Bowl BOKU Fit de Hoy',
     description:
-      'Incluye 1 Base (Arroz, Verdes o 50/50) + 1 Proteína con tu preparación favorita + hasta 5 Toppings/Verduras + Semillas (Chía, Ajonjolí, Alga Nori) + Salsa de la casa. Cubierto por 1 crédito de tu Plan.',
+      plan?.dietary_notes ||
+      prog?.default_dietary_rules ||
+      'Incluye 1 Base + 1 Proteína + hasta 5 Toppings/Verduras + Semillas + Salsa. Cubierto por 1 crédito de tu Plan.',
     price: bowlPrice,
     is_plan_bowl: true,
     plan_code: plan?.code || 'PLAN-BOKU',
     config_options: {
       ...(baseBowl.config_options || {}),
-      is_diy: true,
-      creator_type: 'bowl',
+      is_diy: Boolean(baseBowl.config_options?.is_diy ?? true),
+      creator_type: baseBowl.config_options?.creator_type || 'bowl',
       modifier_config: {
         ...(baseBowl.config_options?.modifier_config || {}),
-        // 1 Base incluida
         'b0000d14-0000-4000-a000-000000000001': { min: 1, max: 2, included: 1 },
-        // 1 Proteína incluida
         'b0000d14-0000-4000-a000-000000000003': { min: 1, max: 3, included: 1 },
-        // Hasta 5 Vegetales / Toppings incluidos
-        'b0000d14-0000-4000-a000-000000000004': { min: 1, max: 8, included: 5 },
-        // Hasta 2 Semillas / Crunches incluidos
-        'b0000d14-0000-4000-a000-000000000006': { min: 0, max: 4, included: 2 },
-        // 1 Salsa incluida
-        'b0000d14-0000-4000-a000-000000000005': { min: 0, max: 3, included: 1 }
+        'b0000d14-0000-4000-a000-000000000004': { min: 1, max: 8, included: toppingsInc },
+        'b0000d14-0000-4000-a000-000000000006': { min: 0, max: 4, included: crunchesInc },
+        'b0000d14-0000-4000-a000-000000000005': { min: 0, max: 3, included: saucesInc }
       }
     }
   };
