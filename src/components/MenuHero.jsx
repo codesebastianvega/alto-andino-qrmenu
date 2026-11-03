@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, Loader2, MapPin, Plus, Search, Sparkles, X } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { ArrowRight, ArrowDown, Loader2, MapPin, Plus, Search, Sparkles, X } from 'lucide-react';
 import { Icon } from '@iconify-icon/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getStockState } from '../utils/stock';
@@ -268,6 +268,46 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
+
+  // Destino y texto configurables para el botón Hero CTA (SaaS multi-restaurante)
+  const featuredTargetSlug = useMemo(() => {
+    const conceptConfig = (restaurantSettings?.brand_concepts || []).find(c => c && (c.id === 'featured_cta_config' || c.id === 'bento_del_dia_config' || c.id === 'daily_special_config'));
+    if (conceptConfig?.target_category_slug) return conceptConfig.target_category_slug;
+    if (homeSettings?.hero_cta_target) return homeSettings.hero_cta_target;
+    if (restaurantSettings?.featured_category_slug) return restaurantSettings.featured_category_slug;
+    if (effectiveBrand?.slug === 'boku-bento') return 'boku-bentos';
+    return categories?.[0]?.slug || 'todos';
+  }, [restaurantSettings?.brand_concepts, restaurantSettings?.featured_category_slug, homeSettings?.hero_cta_target, effectiveBrand?.slug, categories]);
+
+  const featuredButtonLabel = useMemo(() => {
+    const conceptConfig = (restaurantSettings?.brand_concepts || []).find(c => c && (c.id === 'featured_cta_config' || c.id === 'bento_del_dia_config' || c.id === 'daily_special_config'));
+    if (conceptConfig?.button_label) return conceptConfig.button_label;
+    if (homeSettings?.hero_cta_label) return homeSettings.hero_cta_label;
+    if (effectiveBrand?.slug === 'boku-bento') return 'Ver Bento del Día ($19.000)';
+    return 'Ver Especial del Día';
+  }, [restaurantSettings?.brand_concepts, homeSettings?.hero_cta_label, effectiveBrand?.slug]);
+
+  const handleScrollToFeatured = useCallback(() => {
+    const targetId = `section-${featuredTargetSlug}`;
+    const targetEl = document.getElementById(targetId) || document.getElementById(featuredTargetSlug);
+    if (targetEl) {
+      const headerOffset = 76;
+      const elementPosition = targetEl.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+      if (typeof setActiveCategory === 'function') {
+        setActiveCategory(featuredTargetSlug);
+      }
+    } else {
+      const catalogEl = document.getElementById('catalog-content') || document.querySelector('section');
+      if (catalogEl) {
+        catalogEl.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }, [featuredTargetSlug, setActiveCategory]);
 
   const candidates = useMemo(() => {
     return activeCategories.flatMap((cat) => {
@@ -571,6 +611,26 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
               : (homeSettings?.hero_subtitle || 'Ingredientes locales, directo a tu mesa.')}
           </p>
 
+          {/* BOTÓN CTA HERO: Desplazamiento suave directo hacia el Bento del Día / Categoría destacada */}
+          <div className="mt-3 flex items-center gap-2.5 flex-wrap">
+            <button
+              type="button"
+              onClick={handleScrollToFeatured}
+              className="inline-flex items-center gap-2 px-4 py-2 sm:py-2.5 rounded-2xl text-white font-extrabold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all duration-300 active:scale-95 cursor-pointer group"
+              style={{
+                background: `linear-gradient(135deg, ${primaryColor || '#8a0a0a'} 0%, ${accentColor || '#1a0505'} 100%)`,
+              }}
+            >
+              <span>🍛</span>
+              <span>{featuredButtonLabel}</span>
+              <ArrowDown size={14} className="group-hover:translate-y-0.5 transition-transform" />
+            </button>
+            <span className="text-[11px] font-semibold text-[#1A1A1A]/45 hidden sm:inline-flex items-center gap-1">
+              <span>✨</span>
+              <span>Desplazamiento directo</span>
+            </span>
+          </div>
+
           {/* SECCIÓN DÚO APPLE-STYLE (Club BOKU + Guía de Antojo) */}
           <div className="w-full my-4">
             <div className="flex md:grid md:grid-cols-2 gap-3 sm:gap-4 overflow-x-auto md:overflow-visible snap-x snap-mandatory scrollbar-none pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
@@ -583,23 +643,40 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
                 />
               </div>
 
-              {/* CARD 2: Guía de Antojo (Aluna) */}
+              {/* CARD 2: Guía de Antojo (Aluna) con gradiente personalizado de la marca */}
               {instantProduct && storeStatusInfo?.isOpen !== false && (
                 <div className="min-w-[85vw] sm:min-w-[340px] md:min-w-0 snap-start flex-1 flex flex-col">
                   <div
                     data-clarity-unmask="true"
-                    className="relative z-20 w-full h-full rounded-[1.25rem] bg-white/95 backdrop-blur-md border border-stone-200/80 p-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-stone-300 flex flex-col justify-between transition-all duration-300"
+                    className="relative z-20 w-full h-full rounded-[1.25rem] p-4 sm:p-4.5 border shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] flex flex-col justify-between transition-all duration-300 overflow-hidden group"
+                    style={{
+                      background: `linear-gradient(140deg, #FFFFFF 0%, #FAFAF9 35%, ${primaryColor}14 70%, ${accentColor}22 100%)`,
+                      borderColor: `${primaryColor}35`
+                    }}
                   >
-                    <div>
+                    {/* Glow ambiental con los tonos vivos de la marca */}
+                    <div
+                      className="absolute -top-10 -right-10 w-32 h-32 rounded-full blur-2xl pointer-events-none opacity-40 group-hover:opacity-65 transition-opacity duration-500"
+                      style={{ background: `radial-gradient(circle, ${primaryColor} 0%, ${accentColor} 100%)` }}
+                    />
+
+                    <div className="relative z-10">
                       <div className="flex items-center justify-between gap-2">
                         <span
-                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white"
-                          style={{ backgroundColor: primaryColor || '#2f4131' }}
+                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-xs"
+                          style={{ background: `linear-gradient(135deg, ${primaryColor || '#8a0a0a'} 0%, ${accentColor || '#cba258'} 100%)` }}
                         >
-                          <Sparkles size={11} />
+                          <Sparkles size={11} className="animate-pulse" />
                           <span>Guía de Antojo</span>
                         </span>
-                        <span className="text-[10px] font-bold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
+                        <span
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                          style={{
+                            backgroundColor: `${primaryColor}10`,
+                            borderColor: `${primaryColor}25`,
+                            color: primaryColor || '#8a0a0a'
+                          }}
+                        >
                           Match en 2 clics
                         </span>
                       </div>
@@ -607,20 +684,21 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
                       <h3 className="text-sm sm:text-base font-black text-stone-900 tracking-tight leading-snug mt-2.5">
                         {greeting || '¿Qué se te antoja hoy?'}
                       </h3>
-                      <p className="text-xs text-stone-500 font-medium leading-relaxed mt-1 line-clamp-2">
+                      <p className="text-xs text-stone-600 font-medium leading-relaxed mt-1 line-clamp-2">
                         Haz un match rápido con algo de la carta según tu apetito o momento del día.
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between gap-2 mt-3.5 pt-3 border-t border-stone-100">
-                      <span className="text-[11px] font-bold text-stone-400 truncate">
-                        Asistente inteligente Aluna
+                    <div className="relative z-10 flex items-center justify-between gap-2 mt-3.5 pt-3 border-t border-stone-200/60">
+                      <span className="text-[11px] font-bold text-stone-500 truncate flex items-center gap-1">
+                        <span>✨</span>
+                        <span>Asistente inteligente Aluna</span>
                       </span>
                       <button
                         type="button"
                         onClick={openGuide}
-                        className="px-4 py-2 rounded-xl text-white font-black text-xs transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0 active:scale-95"
-                        style={{ backgroundColor: primaryColor || '#2f4131' }}
+                        className="px-4 py-2 rounded-xl text-white font-black text-xs transition-all shadow-sm hover:shadow-md cursor-pointer flex items-center gap-1.5 shrink-0 active:scale-95 hover:brightness-105"
+                        style={{ background: `linear-gradient(135deg, ${primaryColor || '#8a0a0a'} 0%, ${accentColor || '#cba258'} 100%)` }}
                       >
                         <span>Abrir guía</span>
                         <ArrowRight className="w-3.5 h-3.5" />
