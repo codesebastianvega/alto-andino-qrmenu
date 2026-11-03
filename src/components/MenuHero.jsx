@@ -9,6 +9,7 @@ import { categoryIcons } from '../data/categoryIcons';
 import { formatCOP } from '../utils/money';
 import ProductQuickView from './ProductQuickView';
 import DIYProductModal from './DIYProductModal';
+import StorePausedBanner from './StorePausedBanner';
 import { cleanAssistantName } from '../utils/formatters';
 import { useLogoContrast } from '../hooks/useLogoContrast';
 
@@ -216,10 +217,10 @@ function clampFabPosition(position) {
   };
 }
 
-export default function MenuHero({ query, setQuery, activeCategory, setActiveCategory, categories = [] }) {
+export default function MenuHero({ query, setQuery, activeCategory, setActiveCategory, categories = [], onOpenCart }) {
   const { label: greeting } = getTimeContext();
   const [user] = useState({ name: 'Invitado', isLogged: false });
-  const { homeSettings, restaurantSettings, categories: activeCategories, productsByCategory, currentLocation, locations, getAllProducts, brand: menuBrand } = useMenuData();
+  const { homeSettings, restaurantSettings, categories: activeCategories, productsByCategory, currentLocation, locations, getAllProducts, brand: menuBrand, storeStatusInfo } = useMenuData();
   const { activeBrand } = useAuth();
 
   const effectiveBrand = menuBrand || (activeBrand?.id === restaurantSettings?.brand_id ? activeBrand : null);
@@ -233,7 +234,7 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
   const heroBg = restaurantSettings?.theme_background || '#F5F5F7';
   const displayLocation = currentLocation || locations?.find((loc) => loc.is_main) || locations?.[0];
   const locationLabel = displayLocation?.name || brandName;
-  const locationHint = displayLocation?.city || displayLocation?.address || 'Listo para ordenar';
+  const locationHint = storeStatusInfo?.isOpen === false ? 'Modo Vitrina' : (displayLocation?.city || displayLocation?.address || 'Listo para ordenar');
   const [menuBannerError, setMenuBannerError] = useState(false);
   const [quickBannerProduct, setQuickBannerProduct] = useState(null);
   const [diyBannerProduct, setDiyBannerProduct] = useState(null);
@@ -475,7 +476,7 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
 
   return (
     <div className="w-full flex justify-center mb-6">
-      {instantProduct && (
+      {instantProduct && storeStatusInfo?.isOpen !== false && (
         <button
           type="button"
           onPointerDown={handleFabPointerDown}
@@ -552,6 +553,8 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
             </div>
           </div>
 
+          <StorePausedBanner onOpenCart={onOpenCart} />
+
           <h1 className="mb-1.5 text-2xl font-extrabold tracking-tight text-[#1A1A1A] md:text-3xl">
             {homeSettings?.hero_h1 ? (
               <span dangerouslySetInnerHTML={{ __html: homeSettings.hero_h1.replace(/\n/g, '<br/>') }} />
@@ -566,7 +569,7 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
           </p>
         </motion.div>
 
-        {instantProduct && (
+        {instantProduct && storeStatusInfo?.isOpen !== false && (
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}

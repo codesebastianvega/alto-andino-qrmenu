@@ -25,7 +25,6 @@ import ProductLists from "./components/ProductLists";
 import SearchBar from "./components/SearchBar";
 import HeroHeadline from "./components/HeroHeadline";
 import MenuHero from "./components/MenuHero";
-import StorePausedBanner from "./components/StorePausedBanner";
 import { recordCrmRecoveryVisit } from "./utils/couponSecurity";
 const GuideModal = lazy(() => import("./components/GuideModal"));
 const DietaryGuide = lazy(() => import("./components/DietaryGuide"));
@@ -701,13 +700,13 @@ export default function App() {
             <main
               className={`mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl px-5 ${isDemo ? 'pt-12 pb-20 sm:px-6 md:px-8' : 'pt-6 pb-24 sm:px-6 sm:pt-8 md:px-8 md:pt-24'}`}
             >
-              <StorePausedBanner onOpenCart={() => setOpen(true)} />
               <MenuHero 
                 query={query}
                 setQuery={setQuery}
                 activeCategory={selectedCategory}
                 setActiveCategory={handleCategorySelect}
                 categories={dbCategories}
+                onOpenCart={() => setOpen(true)}
               />
               <ProductLists
                 query={query}
