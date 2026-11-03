@@ -155,6 +155,11 @@ export const IMAGE_MAP = {
   // === Bowls (Prearmado) ===
   "bowl-poke-hawaiano": "/img/products/bowl-poke-hawaiano.jpg",
 
+  // === BOKU Pasta Alfredo con Pollo y Champiñones ===
+  "b0000b16-0000-4000-a000-000000000006": "/img/products/boku-pasta-alfredo.jpg",
+  "pasta-alfredo-con-pollo-y-champinones": "/img/products/boku-pasta-alfredo.jpg",
+  "boku-pasta-alfredo": "/img/products/boku-pasta-alfredo.jpg",
+
   // === Platos Fuertes ===
   // "main-salmon": "/img/products/main-salmon.jpg", // Salmón Andino 200 gr
   // "main-trucha": "/img/products/main-trucha.jpg", // Trucha del Páramo 450 gr

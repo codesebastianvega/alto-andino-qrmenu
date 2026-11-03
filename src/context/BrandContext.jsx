@@ -9,6 +9,7 @@ export const BrandProvider = ({ children }) => {
   const { brand_slug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const isResolvingRef = React.useRef(false);
 
   // Pre-cargar marca sincronica desde cache local para frame 0 inmediato
   const [brand, setBrand] = useState(() => {
@@ -47,7 +48,8 @@ export const BrandProvider = ({ children }) => {
 
   const resolveCurrentBrand = useCallback(async () => {
     // Evitar múltiples resoluciones simultáneas
-    if (loadingBrand && brand) return; 
+    if (isResolvingRef.current) return;
+    isResolvingRef.current = true;
 
     try {
       setLoadingBrand(true);
@@ -115,26 +117,23 @@ export const BrandProvider = ({ children }) => {
           .single(), 10000, 'La carga de la marca activa');
 
         if (!error && brandData) {
-          // Solo actualizar si la marca es diferente para evitar loops de renderizado
-          if (brand?.id !== brandData.id) {
-            setBrand(brandData);
-            try {
-              window.localStorage.setItem('aa_cached_brand_' + brandData.id, JSON.stringify(brandData));
-              if (brandData.slug) {
-                window.localStorage.setItem('aa_cached_brand_slug_' + brandData.slug, JSON.stringify(brandData));
-              }
-              window.localStorage.setItem('aa_last_brand_id', brandData.id);
-            } catch {}
-
-            if (brandData.plan_id) {
-              const { data: featuresData } = await withTimeout(supabase
-                .from('plan_features')
-                .select('*')
-                .eq('plan_id', brandData.plan_id)
-                .eq('is_included', true), 10000, 'La carga de funciones del plan');
-              
-              setFeatures(featuresData || []);
+          setBrand(prev => (prev?.id === brandData.id ? prev : brandData));
+          try {
+            window.localStorage.setItem('aa_cached_brand_' + brandData.id, JSON.stringify(brandData));
+            if (brandData.slug) {
+              window.localStorage.setItem('aa_cached_brand_slug_' + brandData.slug, JSON.stringify(brandData));
             }
+            window.localStorage.setItem('aa_last_brand_id', brandData.id);
+          } catch {}
+
+          if (brandData.plan_id) {
+            const { data: featuresData } = await withTimeout(supabase
+              .from('plan_features')
+              .select('*')
+              .eq('plan_id', brandData.plan_id)
+              .eq('is_included', true), 10000, 'La carga de funciones del plan');
+            
+            setFeatures(featuresData || []);
           }
         }
       } else {
@@ -145,6 +144,7 @@ export const BrandProvider = ({ children }) => {
       console.error('Error resolving brand:', error);
     } finally {
       setLoadingBrand(false);
+      isResolvingRef.current = false;
     }
   }, [brand_slug, location.hash, location.pathname, location.search, navigate]);
 
