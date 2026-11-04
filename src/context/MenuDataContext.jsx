@@ -410,22 +410,27 @@ export const MenuDataProvider = ({ children }) => {
   }, [rawModifierGroups, locationModLinks, activeLocationId]);
 
   const currentBusinessHours = useMemo(() => {
-    if (!activeLocationId || activeLocationId === 'all') {
-      return businessHours.filter(h => !h.location_id);
+    let hours = [];
+    if (activeLocationId && activeLocationId !== 'all') {
+      hours = businessHours.filter(h => h.location_id === activeLocationId);
     }
-    return businessHours.filter(h => h.location_id === activeLocationId);
+    if (!hours.length) {
+      hours = businessHours.filter(h => !h.location_id);
+    }
+    if (!hours.length && businessHours.length > 0) {
+      hours = businessHours;
+    }
+    return hours;
   }, [businessHours, activeLocationId]);
 
-  // Ticker para reevaluar automáticamente si una pausa por tiempo (30m, 1h, 2h) ya expiró
+  // Ticker continuo cada 15s para reevaluar apertura/cierre automático según horario y expiración de pausas
   const [statusTick, setStatusTick] = useState(0);
   useEffect(() => {
-    const pauseUntil = brand?.config?.store_status?.pause_until;
-    if (!brand?.config?.store_status?.is_paused || !pauseUntil) return;
     const interval = setInterval(() => {
       setStatusTick(t => t + 1);
     }, 15000);
     return () => clearInterval(interval);
-  }, [brand?.config?.store_status?.is_paused, brand?.config?.store_status?.pause_until]);
+  }, []);
 
   const storeStatusInfo = useMemo(() => {
     return isRestaurantOpen(currentBusinessHours, brand?.config);

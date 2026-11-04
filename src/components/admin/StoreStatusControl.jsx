@@ -3,19 +3,12 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { useMenuData } from '../../context/MenuDataContext';
+import { getNextOpeningDateTime, formatTime12h } from '../../utils/businessHours';
 import { toast } from '../Toast';
 import { 
   Power, Clock, PauseCircle, PlayCircle, MessageSquare, 
   Tag, ShieldCheck, X, AlertTriangle, Sparkles, Check
 } from 'lucide-react';
-
-const DURATION_OPTIONS = [
-  { id: '30m', label: '30 Minutos', sub: 'Reabre sola en 30 min', minutes: 30, icon: '⏱️' },
-  { id: '1h', label: '1 Hora', sub: 'Reabre sola en 1 hora', minutes: 60, icon: '⏱️' },
-  { id: '2h', label: '2 Horas', sub: 'Reabre sola en 2 horas', minutes: 120, icon: '⏱️' },
-  { id: 'today', label: 'Por el resto del día', sub: 'Reabre mañana automáticamente', minutes: 'today', icon: '🌙' },
-  { id: 'indefinite', label: 'Apagado Indefinido', sub: 'Hasta que la enciendas manualmente', minutes: null, icon: '🔒' },
-];
 
 const QUICK_MESSAGES = [
   {
@@ -24,7 +17,7 @@ const QUICK_MESSAGES = [
   },
   {
     label: '🌙 Cerrado por hoy',
-    text: 'Cerramos cocina por el día de hoy. ¡Te esperamos mañana desde las 11:30 AM!'
+    text: 'Cerramos cocina por el día de hoy. ¡Te esperamos mañana desde la hora de apertura habitual!'
   },
   {
     label: '🛵 Pausa de domicilios',
@@ -44,7 +37,7 @@ const COUPON_PRESETS = [
 
 export default function StoreStatusControl() {
   const { activeBrand, refreshProfile } = useAuth();
-  const { brand: menuBrand, refetchMenuData } = useMenuData();
+  const { brand: menuBrand, refetchMenuData, currentBusinessHours, storeStatusInfo } = useMenuData();
 
   const currentBrand = activeBrand || menuBrand;
   const brandId = currentBrand?.id;
@@ -72,6 +65,27 @@ export default function StoreStatusControl() {
     return new Date(localStoreStatus.pause_until).getTime() > nowTick;
   }, [localStoreStatus, nowTick]);
 
+  const isScheduleClosed = !isCurrentlyPaused && storeStatusInfo && !storeStatusInfo.isOpen && storeStatusInfo.isScheduleClosed;
+
+  // Próxima apertura calculada a partir de mañana según business_hours
+  const nextOpeningTomorrow = useMemo(() => {
+    return getNextOpeningDateTime(currentBusinessHours, { targetTomorrow: true });
+  }, [currentBusinessHours]);
+
+  const durationOptions = useMemo(() => [
+    { id: '30m', label: '30 Minutos', sub: 'Reabre sola en 30 min', minutes: 30, icon: '⏱️' },
+    { id: '1h', label: '1 Hora', sub: 'Reabre sola en 1 hora', minutes: 60, icon: '⏱️' },
+    { id: '2h', label: '2 Horas', sub: 'Reabre sola en 2 horas', minutes: 120, icon: '⏱️' },
+    { 
+      id: 'today', 
+      label: 'Hasta mañana', 
+      sub: `Reabre ${nextOpeningTomorrow?.formatted || 'mañana a las 9:00 AM'} automáticamente`, 
+      minutes: 'today', 
+      icon: '🌙' 
+    },
+    { id: 'indefinite', label: 'Apagado Indefinido', sub: 'Hasta que la enciendas manualmente', minutes: null, icon: '🔒' },
+  ], [nextOpeningTomorrow]);
+
   // Form states for modal
   const [selectedDuration, setSelectedDuration] = useState('1h');
   const [customMessage, setCustomMessage] = useState(QUICK_MESSAGES[0].text);
@@ -90,12 +104,11 @@ export default function StoreStatusControl() {
 
   const calculatePauseUntil = (durationId) => {
     const now = new Date();
-    const opt = DURATION_OPTIONS.find(o => o.id === durationId);
+    const opt = durationOptions.find(o => o.id === durationId);
     if (!opt || opt.minutes === null) return null;
     if (opt.minutes === 'today') {
-      const endOfDay = new Date(now);
-      endOfDay.setHours(23, 59, 59, 999);
-      return endOfDay.toISOString();
+      const nextOpen = getNextOpeningDateTime(currentBusinessHours, { targetTomorrow: true });
+      return nextOpen.date.toISOString();
     }
     return new Date(now.getTime() + opt.minutes * 60 * 1000).toISOString();
   };
@@ -182,8 +195,15 @@ export default function StoreStatusControl() {
   };
 
   const formatPauseRemaining = () => {
-    if (!localStoreStatus?.pause_until) return 'Manual';
-    const diffMs = new Date(localStoreStatus.pause_until).getTime() - nowTick;
+    let targetDt = localStoreStatus?.pause_until ? new Date(localStoreStatus.pause_until) : null;
+    if (localStoreStatus?.pause_mode === 'today') {
+      const nextOpen = getNextOpeningDateTime(currentBusinessHours, { targetTomorrow: true });
+      if (nextOpen && (!targetDt || targetDt.getTime() < nextOpen.date.getTime())) {
+        targetDt = nextOpen.date;
+      }
+    }
+    if (!targetDt) return 'Manual';
+    const diffMs = targetDt.getTime() - nowTick;
     if (diffMs <= 0) return '';
     const mins = Math.ceil(diffMs / 60000);
     if (mins < 60) return `${mins}m`;
@@ -197,21 +217,37 @@ export default function StoreStatusControl() {
   return (
     <>
       {/* Botón en la Barra Superior del Admin */}
-      <button
-        type="button"
-        onClick={handleOpenModal}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-2xs border ${
-          isCurrentlyPaused
-            ? 'bg-rose-600 text-white border-rose-700 hover:bg-rose-700 animate-pulse'
-            : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-        }`}
-        title={isCurrentlyPaused ? 'Tienda pausada — Clic para reactivar o configurar' : 'Tienda recibiendo pedidos — Clic para pausar o cerrar temporalmente'}
-      >
-        <span className={`w-2 h-2 rounded-full ${isCurrentlyPaused ? 'bg-white' : 'bg-emerald-500 animate-pulse'}`} />
-        <span>
-          {isCurrentlyPaused ? `🔴 Tienda Pausada (${formatPauseRemaining()})` : '🟢 Tienda Abierta'}
-        </span>
-      </button>
+      {isCurrentlyPaused ? (
+        <button
+          type="button"
+          onClick={handleOpenModal}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-2xs border bg-rose-600 text-white border-rose-700 hover:bg-rose-700 animate-pulse"
+          title="Tienda pausada manualmente — Clic para reactivar o configurar"
+        >
+          <span className="w-2 h-2 rounded-full bg-white" />
+          <span>🔴 Tienda Pausada ({formatPauseRemaining()})</span>
+        </button>
+      ) : isScheduleClosed ? (
+        <button
+          type="button"
+          onClick={handleOpenModal}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-2xs border bg-amber-500 text-white border-amber-600 hover:bg-amber-600"
+          title={`Cerrado según horario de atención — Abre ${storeStatusInfo?.nextOpening?.formatted || 'pronto'}. Clic para gestionar o pausar.`}
+        >
+          <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+          <span>🌙 Fuera de Horario (Abre {storeStatusInfo?.nextOpening?.formatted || 'pronto'})</span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={handleOpenModal}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-2xs border bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
+          title="Tienda recibiendo pedidos — Clic para pausar o cerrar temporalmente"
+        >
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>🟢 Tienda Abierta</span>
+        </button>
+      )}
 
       {/* Modal de Control de Estado de Tienda */}
       {isOpenModal && typeof document !== 'undefined' && createPortal(
@@ -222,21 +258,35 @@ export default function StoreStatusControl() {
           >
             {/* Header */}
             <div className={`p-5 border-b flex items-center justify-between ${
-              isCurrentlyPaused ? 'bg-rose-50 border-rose-200' : 'bg-gray-50 border-gray-200'
+              isCurrentlyPaused 
+                ? 'bg-rose-50 border-rose-200' 
+                : isScheduleClosed
+                ? 'bg-amber-50 border-amber-200'
+                : 'bg-gray-50 border-gray-200'
             }`}>
               <div className="flex items-center gap-3">
                 <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-xs ${
-                  isCurrentlyPaused ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'
+                  isCurrentlyPaused 
+                    ? 'bg-rose-600 text-white' 
+                    : isScheduleClosed
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-emerald-600 text-white'
                 }`}>
                   <Power className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-black text-gray-900 leading-tight">
-                    {isCurrentlyPaused ? 'Tienda en Pausa / Cerrada' : 'Control Maestro de Tienda'}
+                    {isCurrentlyPaused 
+                      ? 'Tienda en Pausa Manual' 
+                      : isScheduleClosed 
+                      ? 'Tienda Fuera de Horario' 
+                      : 'Control Maestro de Tienda'}
                   </h3>
                   <p className="text-xs text-gray-500 mt-0.5">
                     {isCurrentlyPaused 
                       ? 'El menú público está en Modo Vitrina (sin recibir pedidos).' 
+                      : isScheduleClosed
+                      ? `Cerrada automáticamente. Reabre ${storeStatusInfo?.nextOpening?.formatted || 'pronto'}.`
                       : 'Pausa la recepción de pedidos temporalmente con 1 clic.'}
                   </p>
                 </div>
@@ -244,7 +294,7 @@ export default function StoreStatusControl() {
               <button
                 type="button"
                 onClick={() => setIsOpenModal(false)}
-                className="p-2 rounded-xl bg-white/80 hover:bg-white text-gray-500 hover:text-gray-800 border border-gray-200/80 transition-all"
+                className="p-2 rounded-xl bg-white/80 hover:bg-white text-gray-500 hover:text-gray-800 border border-gray-200/80 transition-all cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -252,6 +302,27 @@ export default function StoreStatusControl() {
 
             {/* Body */}
             <div className="p-5 overflow-y-auto space-y-5 custom-scrollbar">
+              {/* Información de Horario Automático Activo */}
+              {isScheduleClosed && !isCurrentlyPaused && (
+                <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200/90 flex flex-col gap-2">
+                  <div className="flex items-start gap-2.5">
+                    <Clock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-black text-amber-950 uppercase tracking-wider">
+                        Apertura y Cierre Automatizados
+                      </p>
+                      <p className="text-xs text-amber-800 mt-0.5 leading-snug">
+                        Tu tienda ya está cerrada automáticamente según el horario de atención configurado. 
+                        Se encenderá sola <strong>{storeStatusInfo?.nextOpening?.formatted || 'en la próxima apertura'}</strong> sin que tengas que tocar nada.
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-amber-700/90 border-t border-amber-200/60 pt-2 font-medium">
+                    💡 Puedes editar tus horas exactas de apertura y cierre en <strong>Configuración &gt; Horarios de Servicio</strong>.
+                  </p>
+                </div>
+              )}
+
               {/* Si ya está pausada, botón grande para reactivar de inmediato */}
               {isCurrentlyPaused && (
                 <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col gap-3">
@@ -280,7 +351,7 @@ export default function StoreStatusControl() {
                   1. ¿Por cuánto tiempo deseas pausar los pedidos?
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {DURATION_OPTIONS.map((opt) => {
+                  {durationOptions.map((opt) => {
                     const active = selectedDuration === opt.id;
                     return (
                       <button

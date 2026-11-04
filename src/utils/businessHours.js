@@ -1,47 +1,166 @@
 /**
+ * Computes the next opening Date and metadata based on business hours.
+ * 
+ * @param {Array} businessHours - Array of business hour objects from the database.
+ * @param {Object} options - { fromDate: Date, targetTomorrow: boolean }
+ * @returns {Object} - { date: Date, timeStr: string, openTime: string, dayLabel: string, formatted: string }
+ */
+export function getNextOpeningDateTime(businessHours = [], options = {}) {
+  const fromDate = options.fromDate ? new Date(options.fromDate) : new Date();
+  const targetTomorrow = Boolean(options.targetTomorrow);
+  
+  const dayNames = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+  // Si targetTomorrow es true, arrancamos a evaluar desde mañana (offset = 1)
+  // De lo contrario, evaluamos si hoy aún tiene apertura futura (offset = 0)
+  const startOffset = targetTomorrow ? 1 : 0;
+
+  for (let offset = startOffset; offset <= 7; offset++) {
+    const candidateDate = new Date(fromDate);
+    candidateDate.setDate(candidateDate.getDate() + offset);
+    const candidateDay = candidateDate.getDay();
+
+    const dayConfig = (businessHours || []).find(h => h.day_of_week === candidateDay);
+
+    // Si el día está marcado explícitamente cerrado, buscar el siguiente día
+    if (dayConfig && dayConfig.is_closed) continue;
+
+    const openTimeStr = dayConfig?.open_time || '09:00';
+    const [hStr, mStr] = openTimeStr.split(':');
+    const openH = parseInt(hStr, 10) || 0;
+    const openM = parseInt(mStr, 10) || 0;
+
+    candidateDate.setHours(openH, openM, 0, 0);
+
+    // Si estamos mirando hoy (offset === 0), la hora debe ser en el futuro
+    if (offset === 0 && candidateDate.getTime() <= fromDate.getTime()) {
+      continue;
+    }
+
+    const time12 = formatTime12h(`${openH}:${openM < 10 ? '0' : ''}${openM}`);
+    let dayLabel = 'hoy';
+    if (offset === 1) dayLabel = 'mañana';
+    else if (offset > 1) dayLabel = `el ${dayNames[candidateDay]}`;
+
+    return {
+      date: candidateDate,
+      timeStr: time12,
+      openTime: `${openH.toString().padStart(2, '0')}:${openM.toString().padStart(2, '0')}`,
+      dayLabel,
+      formatted: `${dayLabel} a las ${time12}`
+    };
+  }
+
+  // Fallback seguro: mañana a las 9:00 AM
+  const fallback = new Date(fromDate);
+  fallback.setDate(fallback.getDate() + 1);
+  fallback.setHours(9, 0, 0, 0);
+  return {
+    date: fallback,
+    timeStr: '9:00 AM',
+    openTime: '09:00',
+    dayLabel: 'mañana',
+    formatted: 'mañana a las 9:00 AM'
+  };
+}
+
+/**
  * Checks if the restaurant is currently open based on manual pause state and business hours settings.
  * 
  * @param {Array} businessHours - Array of business hour objects from the database.
  * @param {Object} brandConfig - Optional brand.config object containing store_status.
- * @returns {Object} - { isOpen: boolean, isManualPause: boolean, pauseInfo: Object|null, message: string }
+ * @param {Date} referenceDate - Optional date to evaluate (defaults to now).
+ * @returns {Object} - { isOpen: boolean, isManualPause: boolean, isScheduleClosed: boolean, pauseInfo: Object|null, nextOpening: Object|null, reopenFormatted: string|null, message: string }
  */
-export function isRestaurantOpen(businessHours, brandConfig = null) {
+export function isRestaurantOpen(businessHours, brandConfig = null, referenceDate = new Date()) {
   const storeStatus = brandConfig?.store_status;
+  const now = referenceDate instanceof Date ? referenceDate : new Date(referenceDate);
 
+  // 1. Verificación de Pausa Manual
   if (storeStatus?.is_paused) {
-    const now = new Date();
-    const pauseUntil = storeStatus.pause_until ? new Date(storeStatus.pause_until) : null;
+    let pauseUntil = storeStatus.pause_until ? new Date(storeStatus.pause_until) : null;
+
+    // Si fue pausada con modo 'today' (por el resto del día / hasta mañana),
+    // garantizar que el pause_until apunte a la apertura real de mañana según business_hours y no a medianoche (23:59)
+    if (storeStatus.pause_mode === 'today') {
+      const nextOpenTomorrow = getNextOpeningDateTime(businessHours, { fromDate: now, targetTomorrow: true });
+      if (nextOpenTomorrow && (!pauseUntil || pauseUntil.getTime() < nextOpenTomorrow.date.getTime())) {
+        pauseUntil = nextOpenTomorrow.date;
+      }
+    }
 
     // Si es pausa indefinida o aún no se cumple la hora de reapertura automática
     if (!pauseUntil || pauseUntil > now) {
+      let reopenFormatted = null;
+      if (pauseUntil) {
+        const diffMs = pauseUntil.getTime() - now.getTime();
+        const mins = Math.max(1, Math.ceil(diffMs / 60000));
+        const hrs = Math.floor(mins / 60);
+        const remMins = mins % 60;
+        const time12 = formatTime12h(
+          `${pauseUntil.getHours()}:${pauseUntil.getMinutes() < 10 ? '0' : ''}${pauseUntil.getMinutes()}`
+        );
+
+        const isTomorrow = pauseUntil.getDate() !== now.getDate();
+        const prefix = isTomorrow ? 'mañana a las ' : 'a las ';
+        const remText = hrs > 0 ? `${hrs}h ${remMins > 0 ? `${remMins}m` : ''}`.trim() : `${mins} min`;
+        reopenFormatted = `${prefix}${time12} (en ${remText})`;
+      }
+
       return {
         isOpen: false,
         isManualPause: true,
+        isScheduleClosed: false,
         pauseInfo: storeStatus,
-        message: storeStatus.custom_message || "Cocina en pausa temporalmente — En este momento no estamos recibiendo pedidos."
+        nextOpening: null,
+        reopenFormatted,
+        message: storeStatus.custom_message || (reopenFormatted ? `Cocina en pausa temporal — Reabre ${reopenFormatted}.` : "Cocina en pausa temporalmente — En este momento no estamos recibiendo pedidos.")
       };
     }
   }
 
+  // 2. Verificación de Horarios de Atención (Business Hours)
   if (!businessHours || businessHours.length === 0) {
-    // Si no hay horarios explícitos configurados en DB, asumimos ABIERTO por defecto para permitir operar de inmediato
-    return { isOpen: true, isManualPause: false, pauseInfo: null, message: "" };
+    // Si no hay horarios explícitos configurados en DB, permitimos operar
+    return { 
+      isOpen: true, 
+      isManualPause: false, 
+      isScheduleClosed: false, 
+      pauseInfo: null, 
+      nextOpening: null, 
+      reopenFormatted: null,
+      message: "" 
+    };
   }
 
-  const now = new Date();
   const dayOfWeek = now.getDay(); // 0 is Sunday, 1 is Monday...
   const currentTime = now.getHours() * 100 + now.getMinutes();
-
-  // Find the settings for today
   const todayHours = businessHours.find(h => h.day_of_week === dayOfWeek);
 
   if (!todayHours) {
-    // Si no hay restricción explícita para hoy, permitimos operar
-    return { isOpen: true, isManualPause: false, pauseInfo: null, message: "" }; 
+    return { 
+      isOpen: true, 
+      isManualPause: false, 
+      isScheduleClosed: false, 
+      pauseInfo: null, 
+      nextOpening: null, 
+      reopenFormatted: null,
+      message: "" 
+    }; 
   }
 
+  const nextOpening = getNextOpeningDateTime(businessHours, { fromDate: now, targetTomorrow: false });
+
   if (todayHours.is_closed) {
-    return { isOpen: false, isManualPause: false, pauseInfo: null, message: "Lo sentimos, hoy estamos cerrados." };
+    return { 
+      isOpen: false, 
+      isManualPause: false, 
+      isScheduleClosed: true,
+      pauseInfo: null, 
+      nextOpening,
+      reopenFormatted: nextOpening.formatted,
+      message: `Hoy estamos cerrados. Abrimos ${nextOpening.formatted}.` 
+    };
   }
 
   const [openH, openM] = (todayHours.open_time || "00:00").split(':').map(Number);
@@ -50,24 +169,39 @@ export function isRestaurantOpen(businessHours, brandConfig = null) {
   const openTimeValue = openH * 100 + openM;
   const closeTimeValue = closeH * 100 + closeM;
 
+  let isInShift = false;
   // Handle shifts that cross midnight (e.g. 18:00 to 02:00)
   if (closeTimeValue < openTimeValue) {
-    // If current time is after opening OR before closing (next day)
-    if (currentTime >= openTimeValue || currentTime < closeTimeValue) {
-      return { isOpen: true, isManualPause: false, pauseInfo: null, message: "" };
-    }
+    isInShift = (currentTime >= openTimeValue || currentTime < closeTimeValue);
   } else {
-    // Normal shift
-    if (currentTime >= openTimeValue && currentTime < closeTimeValue) {
-      return { isOpen: true, isManualPause: false, pauseInfo: null, message: "" };
-    }
+    isInShift = (currentTime >= openTimeValue && currentTime < closeTimeValue);
   }
+
+  if (isInShift) {
+    return { 
+      isOpen: true, 
+      isManualPause: false, 
+      isScheduleClosed: false, 
+      pauseInfo: null, 
+      nextOpening: null, 
+      reopenFormatted: null,
+      message: "" 
+    };
+  }
+
+  const isBeforeOpen = currentTime < openTimeValue;
+  const scheduleMsg = isBeforeOpen
+    ? `Cerrado por ahora. Abrimos hoy a las ${formatTime12h(todayHours.open_time)}.`
+    : `Cerrado por hoy. Abrimos ${nextOpening.formatted}.`;
 
   return { 
     isOpen: false, 
-    isManualPause: false,
-    pauseInfo: null,
-    message: `Estamos cerrados. Abrimos hoy de ${(todayHours.open_time || '').slice(0, 5)} a ${(todayHours.close_time || '').slice(0, 5)}.` 
+    isManualPause: false, 
+    isScheduleClosed: true,
+    pauseInfo: null, 
+    nextOpening,
+    reopenFormatted: nextOpening.formatted,
+    message: scheduleMsg 
   };
 }
 

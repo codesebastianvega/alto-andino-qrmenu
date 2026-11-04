@@ -77,15 +77,25 @@ export default function StorePausedBanner({ onOpenCart }) {
   // Caso 2: La tienda está abierta y no hay cupón pendiente
   if (!isStoreClosed) return null;
 
-  let reopenTimeStr = null;
-  if (pauseInfo?.pause_until && pauseInfo?.pause_mode !== 'today') {
-    try {
-      const dt = new Date(pauseInfo.pause_until);
-      if (dt > new Date()) {
-        reopenTimeStr = dt.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
-      }
-    } catch {}
+  const isManualPause = storeStatusInfo?.isManualPause;
+  const isScheduleClosed = storeStatusInfo?.isScheduleClosed;
+  const reopenFormatted = storeStatusInfo?.reopenFormatted;
+  const nextOpening = storeStatusInfo?.nextOpening;
+
+  let badgeText = 'Solo vitrina por ahora';
+  if (isManualPause && reopenFormatted) {
+    badgeText = `Reabre ${reopenFormatted}`;
+  } else if (isScheduleClosed && nextOpening) {
+    badgeText = `Abre ${nextOpening.formatted}`;
   }
+
+  const titleText = isScheduleClosed 
+    ? 'Fuera de horario de servicio' 
+    : 'Cocina en pausa temporal';
+
+  const bodyText = isScheduleClosed
+    ? 'Estamos fuera de nuestro horario de cocina. Puedes explorar nuestra carta, armar tu pedido y tenerlo listo para cuando abramos.'
+    : (pauseInfo?.custom_message || 'En este momento no estamos recibiendo pedidos, pero puedes ver nuestra carta.');
 
   return (
     <div
@@ -95,25 +105,19 @@ export default function StorePausedBanner({ onOpenCart }) {
       {/* Línea 1: Estado claro y completo sin cortar texto */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+          <span className={`w-2 h-2 rounded-full shrink-0 ${isScheduleClosed ? 'bg-amber-600' : 'bg-amber-500 animate-pulse'}`} />
           <span className="text-xs font-black text-amber-950">
-            Cocina en pausa temporal
+            {titleText}
           </span>
         </div>
-        {reopenTimeStr ? (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold">
-            <Clock className="w-2.5 h-2.5" />
-            Regresa {reopenTimeStr}
-          </span>
-        ) : (
-          <span className="text-[10px] font-bold text-amber-800/80 bg-amber-100/70 px-2 py-0.5 rounded-full">
-            Solo vitrina por ahora
-          </span>
-        )}
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold shrink-0">
+          <Clock className="w-2.5 h-2.5" />
+          {badgeText}
+        </span>
       </div>
 
       <p className="text-[11px] text-stone-600 font-medium leading-snug mt-1">
-        En este momento no estamos recibiendo pedidos, pero puedes ver nuestra carta.
+        {bodyText}
       </p>
 
       {/* Línea 2: Explicación clara del cupón de compensación */}

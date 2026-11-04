@@ -162,7 +162,7 @@ export default function CartModal({ open, onClose }) {
   } = cart;
 
   const { brandSlug } = useParams();
-  const { getAllProducts, hasFeature, activeBrandId, currentLocation: contextLocation, locations, businessHours, restaurantSettings: menuRestaurantSettings, freeDeliveryPromo, activePromotions, brand: menuBrand } = useMenuData();
+  const { getAllProducts, hasFeature, activeBrandId, currentLocation: contextLocation, locations, businessHours, currentBusinessHours, storeStatusInfo, restaurantSettings: menuRestaurantSettings, freeDeliveryPromo, activePromotions, brand: menuBrand } = useMenuData();
   const { paymentMethods, loading: loadingPayments } = usePaymentMethods(activeBrandId);
   const { isWithinOrderLimit } = usePlan(activeBrandId);
   
@@ -1821,15 +1821,15 @@ export default function CartModal({ open, onClose }) {
           </div>
           
           <div className="flex flex-col gap-2.5">
-            {(!isPOSMode && !isRestaurantOpen(businessHours, menuBrand?.config).isOpen) ? (
+            {(!isPOSMode && storeStatusInfo && !storeStatusInfo.isOpen) ? (
               <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2">
                 <Icon icon="solar:clock-circle-bold" className="text-amber-600 text-2xl flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-xs font-black text-amber-950 uppercase tracking-wide">
-                    🔒 Cocina en Pausa / Cerrado Temporalmente
+                    {storeStatusInfo.isScheduleClosed ? '🌙 Fuera de Horario de Atención' : '🔒 Cocina en Pausa Temporal'}
                   </p>
                   <p className="text-xs font-medium text-amber-800 mt-1 leading-snug">
-                    {isRestaurantOpen(businessHours, menuBrand?.config).message || 'En este momento no estamos recibiendo pedidos. Tus platos quedan guardados en el carrito para cuando abramos.'}
+                    {storeStatusInfo.message || 'En este momento no estamos recibiendo pedidos. Tus platos quedan guardados en el carrito para cuando abramos.'}
                   </p>
                 </div>
               </div>
@@ -1864,11 +1864,15 @@ export default function CartModal({ open, onClose }) {
                   e.stopPropagation();
                   setShowFulfillmentSelector(true);
                 }}
-                disabled={!items.length}
-                className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] active:bg-[#202c21] text-white shadow-[#2f4131]/20 sm:hover:-translate-y-0.5 sm:hover:bg-[#202c21] transition-all active:scale-[0.98] cursor-pointer touch-manipulation select-none relative z-10"
+                disabled={!items.length || (!isPOSMode && storeStatusInfo && !storeStatusInfo.isOpen)}
+                className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] active:bg-[#202c21] text-white shadow-[#2f4131]/20 sm:hover:-translate-y-0.5 sm:hover:bg-[#202c21] transition-all active:scale-[0.98] cursor-pointer touch-manipulation select-none relative z-10 disabled:opacity-50 disabled:grayscale disabled:pointer-events-none"
               >
                 <Icon icon={isDarkKitchen ? "heroicons:truck" : "heroicons:sparkles"} className="text-xl pointer-events-none" />
-                <span className="pointer-events-none">{isDarkKitchen ? "Datos de Entrega a Domicilio" : "Confirmar Pedido"}</span>
+                <span className="pointer-events-none">
+                  {(!isPOSMode && storeStatusInfo && !storeStatusInfo.isOpen)
+                    ? "Restaurante Cerrado"
+                    : (isDarkKitchen ? "Datos de Entrega a Domicilio" : "Confirmar Pedido")}
+                </span>
               </button>
             ) : !showFulfillmentSelector && (initialMesa || isPOSMode) && !isDarkKitchen ? (
               <button
