@@ -12,6 +12,7 @@ import { KitchenRecipeViewerModal } from '../components/admin/KitchenRecipeViewe
 import { MiseEnPlace86Drawer } from '../components/admin/MiseEnPlace86Drawer';
 import { useAdminRecipes } from '../hooks/useAdminRecipes';
 import { NewOrderAlertModal } from '../components/admin/NewOrderAlertModal';
+import { resolveOrderItemName } from '../utils/formatters';
 
 const playNotificationSound = () => {
   soundService.startNewOrderLoop(3500);
@@ -260,7 +261,7 @@ export default function AdminKitchen() {
         
         if (!batches[variantKey]) {
           batches[variantKey] = { 
-            name: item.products?.name, 
+            name: resolveOrderItemName(item), 
             totalQuantity: 0, 
             productId: item.product_id,
             description: item.products?.description,
@@ -553,7 +554,7 @@ export default function AdminKitchen() {
                     }`}
                     title="Toca para ver ficha técnica y gramajes"
                   >
-                    <span>{item.products?.name}</span>
+                    <span>{resolveOrderItemName(item)}</span>
                     <Icon icon="heroicons:information-circle" className="text-xs opacity-60" />
                   </p>
                   {stationFilter === 'all' && (
@@ -570,7 +571,7 @@ export default function AdminKitchen() {
                 {/* Modificadores */}
                 {item.modifiers && Object.keys(item.modifiers).length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">
-                    {Object.entries(item.modifiers).map(([group, choice]) => {
+                    {Object.entries(item.modifiers).filter(([group]) => !group.startsWith('_')).map(([group, choice]) => {
                       const formatted = Array.isArray(choice) ? choice.join(', ') : (typeof choice === 'object' && choice ? (choice.name || JSON.stringify(choice)) : choice);
                       return (
                         <span key={group} className={`text-[11px] font-semibold px-2 py-0.5 rounded border ${

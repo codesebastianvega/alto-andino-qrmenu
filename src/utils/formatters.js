@@ -49,6 +49,26 @@ export const cleanAssistantName = (name, fallback = "Boki") => {
 };
 
 /**
+ * Resolves the display name of an order item, prioritizing snapshot metadata
+ * and daily special projected aliases over raw DB fallback names.
+ */
+export const resolveOrderItemName = (item) => {
+  if (!item) return 'Producto';
+  if (item.modifiers?._item_name) return item.modifiers._item_name;
+  if (item.modifiers?.['_item_name']) return item.modifiers['_item_name'];
+
+  const pid = item.product_id || item.products?.id || item.productId;
+  if (pid === 'b0000b19-0000-4000-a000-000000000019') {
+    return 'Arroz con Pollo Criollo (Especial del Día)';
+  }
+  if (pid === 'b0000b15-0000-4000-a000-000000000005') {
+    return 'Bento Albóndigas (Especial del Día)';
+  }
+
+  return item.products?.name || item.name || 'Producto';
+};
+
+/**
  * Normalizes a Colombian / International phone number for WhatsApp links.
  * Adds Colombian country code (57) if 10 digits starting with 3.
  * 

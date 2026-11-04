@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../config/supabase';
-import { translateGroup, normalizeWhatsAppNumber } from '../utils/formatters';
+import { translateGroup, normalizeWhatsAppNumber, resolveOrderItemName } from '../utils/formatters';
 import { useMenuData } from '../context/MenuDataContext';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -719,10 +719,10 @@ export default function OrderStatus({ orderId }) {
                     {item.quantity}x
                   </div>
                   <div className="min-w-0">
-                    <h4 className="font-bold text-sm text-[#1A1A1A]">{item.product?.name || 'Producto'}</h4>
+                    <h4 className="font-bold text-sm text-[#1A1A1A]">{resolveOrderItemName({ ...item, products: item.product })}</h4>
                     {item.modifiers && Object.keys(item.modifiers).length > 0 && (
                       <div className="mt-1 space-y-0.5">
-                        {Object.entries(item.modifiers).map(([cat, val]) => {
+                        {Object.entries(item.modifiers).filter(([cat]) => !cat.startsWith('_')).map(([cat, val]) => {
                           const formattedVal = Array.isArray(val) ? val.join(', ') : (typeof val === 'object' && val ? (val.name || JSON.stringify(val)) : val);
                           return (
                             <p key={cat} className="text-[11px] font-medium text-black/60 flex items-start gap-1">

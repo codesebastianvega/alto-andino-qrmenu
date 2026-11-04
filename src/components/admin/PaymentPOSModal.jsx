@@ -4,6 +4,7 @@ import { Icon } from '@iconify-icon/react';
 import { toast } from '../Toast';
 import { useAuth } from '../../context/AuthContext';
 import { printThermalDocument } from '../../utils/thermalPrint';
+import { resolveOrderItemName } from '../../utils/formatters';
 
 /**
  * PaymentPOSModal Component
@@ -538,7 +539,7 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
                   }`}>
                     <div className="flex justify-between items-center gap-3">
                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-black text-gray-800 uppercase truncate">{item.products?.name}</p>
+                          <p className="text-sm font-black text-gray-800 uppercase truncate">{resolveOrderItemName(item)}</p>
                           <p className="text-xs font-bold text-gray-400">${item.unit_price.toLocaleString()}</p>
                        </div>
                        <div className="text-right shrink-0">
@@ -592,7 +593,7 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
                   <div className="space-y-2">
                     {order.order_items.filter(i => i.is_paid).map(i => (
                       <div key={i.id} className="flex justify-between text-xs font-bold py-2 px-4 rounded-2xl bg-gray-50 text-gray-500">
-                        <span>{i.quantity}x {i.products?.name}</span>
+                        <span>{i.quantity}x {resolveOrderItemName(i)}</span>
                         <span className="text-emerald-600 text-[10px] uppercase font-black">PAGADO</span>
                       </div>
                     ))}

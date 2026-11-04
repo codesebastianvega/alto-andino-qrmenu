@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify-icon/react';
 import soundService from '../../utils/soundService';
-import { parsePaymentMethod, getGoogleMapsUrl } from '../../utils/formatters';
+import { parsePaymentMethod, getGoogleMapsUrl, resolveOrderItemName } from '../../utils/formatters';
 
 export function NewOrderAlertModal({
   isOpen,
@@ -303,7 +303,7 @@ export function NewOrderAlertModal({
 
           <div className="space-y-2">
             {items.map((item, idx) => {
-              const productName = item.products?.name || item.name || 'Producto';
+              const productName = resolveOrderItemName(item);
               const qty = item.quantity || 1;
               const unitPrice = Number(item.unit_price || 0);
 
@@ -313,10 +313,12 @@ export function NewOrderAlertModal({
                 if (Array.isArray(item.modifiers)) {
                   modifiersList = item.modifiers.map(m => typeof m === 'string' ? m : (m.name || m.label || ''));
                 } else if (typeof item.modifiers === 'object') {
-                  modifiersList = Object.entries(item.modifiers).map(([k, v]) => {
-                    const text = Array.isArray(v) ? v.join(', ') : (typeof v === 'object' && v ? (v.name || JSON.stringify(v)) : v);
-                    return `${k}: ${text}`;
-                  });
+                  modifiersList = Object.entries(item.modifiers)
+                    .filter(([k]) => !k.startsWith('_'))
+                    .map(([k, v]) => {
+                      const text = Array.isArray(v) ? v.join(', ') : (typeof v === 'object' && v ? (v.name || JSON.stringify(v)) : v);
+                      return `${k}: ${text}`;
+                    });
                 }
               }
 

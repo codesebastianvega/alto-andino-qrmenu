@@ -1361,6 +1361,7 @@ export default function CartModal({ open, onClose }) {
 
         const dbProd = catalogProducts.find(p => p.id === validatedPid);
         const requiresKitchen = dbProd ? (dbProd.requires_kitchen ?? true) : true;
+        const itemName = it.name || it.title || dbProd?.name;
         
         return {
           order_id: orderData.id,
@@ -1368,7 +1369,10 @@ export default function CartModal({ open, onClose }) {
           brand_id: activeBrandId,
           quantity: it.qty || 1,
           unit_price: getItemUnit(it),
-          modifiers: it.options || {},
+          modifiers: {
+            ...(it.options || {}),
+            ...(itemName ? { _item_name: itemName } : {})
+          },
           notes: it.note || ''
         };
       });

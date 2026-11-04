@@ -5,7 +5,8 @@ import {
   parsePaymentMethod, 
   getGoogleMapsUrl, 
   getWazeUrl, 
-  normalizeWhatsAppNumber 
+  normalizeWhatsAppNumber,
+  resolveOrderItemName
 } from '../utils/formatters';
 import soundService from '../utils/soundService';
 
@@ -408,7 +409,7 @@ export default function DeliveryDriverView({ orderId }) {
           <div className="space-y-2">
             {items.map((it) => {
               const isChecked = Boolean(checkedItems[it.id]);
-              const name = it.products?.name || it.name || 'Producto';
+              const name = resolveOrderItemName(it);
               return (
                 <div
                   key={it.id}

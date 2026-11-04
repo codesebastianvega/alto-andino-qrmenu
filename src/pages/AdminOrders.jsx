@@ -15,7 +15,7 @@ import { printThermalDocument } from '../utils/thermalPrint';
 import soundService from '../utils/soundService';
 import OrderAdditionModal from '../components/admin/OrderAdditionModal';
 import { NewOrderAlertModal } from '../components/admin/NewOrderAlertModal';
-import { parsePaymentMethod, getGoogleMapsUrl, getWazeUrl } from '../utils/formatters';
+import { parsePaymentMethod, getGoogleMapsUrl, getWazeUrl, resolveOrderItemName, translateGroup } from '../utils/formatters';
 import { useAdminModalBack } from '../hooks/useAdminModalBack';
 
 const ORDER_STATUSES = [
@@ -725,9 +725,10 @@ export default function AdminOrders() {
     if (type === 'summary') {
       message = `*Resumen de tu pedido ${orderNum} en ${brand}*\n\n`;
       (order.order_items || []).forEach(item => {
-        message += `• *${item.quantity}x ${item.products?.name || item.name}* - ${(item.quantity * item.unit_price).toLocaleString()}\n`;
+        message += `• *${item.quantity}x ${resolveOrderItemName(item)}* - ${(item.quantity * item.unit_price).toLocaleString()}\n`;
         if (item.modifiers && Object.keys(item.modifiers).length > 0) {
           const mods = Object.entries(item.modifiers)
+            .filter(([k]) => !k.startsWith('_'))
             .map(([k, v]) => `   ↳ _${translateGroup(k)}:_ ${Array.isArray(v) ? v.join(', ') : (typeof v === 'object' && v ? (v.name || JSON.stringify(v)) : v)}`)
             .join('\n');
           message += `${mods}\n`;
@@ -1196,7 +1197,7 @@ export default function AdminOrders() {
                               </span>
                               <div className="min-w-0">
                                 <p className="font-extrabold text-gray-900 text-sm leading-snug">
-                                  {item.products?.name || item.name || 'Producto'}
+                                  {resolveOrderItemName(item)}
                                 </p>
                               </div>
                             </div>
@@ -1208,7 +1209,9 @@ export default function AdminOrders() {
                           {/* Modificadores */}
                           {item.modifiers && Object.keys(item.modifiers).length > 0 && (
                             <div className="flex flex-wrap gap-1.5 pl-8">
-                              {Object.entries(item.modifiers).map(([k, v]) => {
+                              {Object.entries(item.modifiers)
+                                .filter(([k]) => !k.startsWith('_'))
+                                .map(([k, v]) => {
                                 const displayVal = Array.isArray(v) 
                                   ? v.join(', ') 
                                   : (typeof v === 'object' && v ? (v.name || JSON.stringify(v)) : String(v));
@@ -1544,7 +1547,7 @@ export default function AdminOrders() {
                           {order.order_items?.slice(0, 2).map(item => (
                             <div key={item.id} className="text-[13px] text-gray-600 truncate flex items-center gap-2">
                               <span className="font-black text-emerald-700 bg-emerald-50 w-6 h-6 flex items-center justify-center rounded-lg text-[10px] shrink-0">{item.quantity}x</span>
-                              <span className="font-medium truncate">{item.products?.name}</span>
+                              <span className="font-medium truncate">{resolveOrderItemName(item)}</span>
                             </div>
                           ))}
                           {order.order_items?.length > 2 && (

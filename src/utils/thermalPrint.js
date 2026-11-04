@@ -1,4 +1,5 @@
 import { formatCOP } from '@/utils/money';
+import { resolveOrderItemName } from '@/utils/formatters';
 
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
@@ -11,6 +12,7 @@ const labelFulfillment = (value) => ({
 const labelPaymentStatus = (value) => ({ paid: 'Pagado', partial: 'Pago parcial', pending: 'Pendiente' }[value] || value || 'Pendiente');
 
 const modifierText = (modifiers) => Object.entries(modifiers || {})
+  .filter(([key]) => !key.startsWith('_'))
   .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
   .join(' · ');
 
@@ -41,7 +43,7 @@ export function printThermalDocument({ order, type = 'receipt', width = '80', bu
   const locationLabel = order.locations?.name;
 
   const itemRows = items.map((item) => {
-    const name = item.products?.name || item.name || 'Producto';
+    const name = resolveOrderItemName(item);
     const quantity = Number(item.quantity || 0);
     const price = Number(item.unit_price || 0);
     return `<section class="product">
