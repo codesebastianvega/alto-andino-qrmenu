@@ -24,6 +24,7 @@ import { LinkCatalogModal } from '../components/admin/LinkCatalogModal';
 import { Link as LinkIcon } from 'lucide-react';
 import { useMenuData } from '../context/MenuDataContext';
 import { Eye, EyeOff, Clock, AlertTriangle, Printer } from 'lucide-react';
+import DailySpecialModal from '../components/admin/DailySpecialModal';
 
 const STOCK_BADGE = {
   in:  { label: 'Disponible', variant: 'green' },
@@ -125,6 +126,7 @@ export default function AdminProducts() {
   const [formMode, setFormMode] = useState('quick');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [isBulkEditorOpen, setIsBulkEditorOpen] = useState(false);
+  const [isDailySpecialOpen, setIsDailySpecialOpen] = useState(false);
 
   // ─── Reorder mode state ───
   const [reorderMode, setReorderMode] = useState(false);
@@ -437,6 +439,17 @@ export default function AdminProducts() {
               {products.length} / {maxProducts} PRODS
             </span>
           </div>
+          
+          <button
+            type="button"
+            onClick={() => setIsDailySpecialOpen(true)}
+            className="flex items-center gap-1.5 py-2.5 px-3.5 sm:py-3 sm:px-4 text-xs font-bold rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 shadow-xs transition-colors shrink-0 cursor-pointer"
+            title="Configurar Almuerzos de Hoy y Menú del Día"
+          >
+            <span className="text-base">🍱</span>
+            <span className="hidden sm:inline">Almuerzos & Menú del Día</span>
+            <span className="sm:hidden">Almuerzos</span>
+          </button>
           
           <button
             type="button"
@@ -985,6 +998,12 @@ export default function AdminProducts() {
         type="product"
         locationId={activeLocationId}
         locationName={activeLocation?.name || 'Sede'}
+      />
+
+      <DailySpecialModal
+        isOpen={isDailySpecialOpen}
+        onClose={() => setIsDailySpecialOpen(false)}
+        onSaved={refetchMenuData}
       />
     </div>
   );

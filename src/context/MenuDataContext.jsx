@@ -480,6 +480,8 @@ export const MenuDataProvider = ({ children }) => {
     const specialLabel = dailySpecialConcept?.label || (isBoku ? 'El Bento del Día' : 'Plato del Día');
     const promoPrice = Number(dailySpecialConcept?.promo_price) || 0;
     const standardPrice = Number(dailySpecialConcept?.standard_price) || 0;
+    const soupName = dailySpecialConcept?.soup_name || 'Crema de verduras casera (16 oz)';
+    const drinkName = dailySpecialConcept?.drink_name || 'Bebida natural de la Casa (5 oz)';
     const defaultSchedule = {
       1: 'b0000b11-0000-4000-a000-000000000001', // Lunes
       2: 'b0000b12-0000-4000-a000-000000000002', // Martes
@@ -495,8 +497,15 @@ export const MenuDataProvider = ({ children }) => {
     
     // Si es Boku, el Bento del Día configurado es Bento Tex-Mex (o el manualOverride activo)
     const activeSpecialId = isBoku 
-      ? (manualOverride || 'b0000b12-0000-4000-a000-000000000002')
+      ? (manualOverride || specialSchedule[currentDayOfWeek] || 'b0000b12-0000-4000-a000-000000000002')
       : (manualOverride || (isSpecialEnabled ? specialSchedule[currentDayOfWeek] : null));
+
+    // Platos adicionales seleccionados para el almuerzo ("Más Opciones del Día")
+    const activeSecondaryIds = Array.isArray(dailySpecialConcept?.secondary_product_ids)
+      ? dailySpecialConcept.secondary_product_ids
+      : (dailySpecialConcept?.secondary_schedule?.[currentDayOfWeek] || (isBoku ? ['b0000b16-0000-4000-a000-000000000006'] : []));
+
+    const isTodaySpecialItem = (id) => Boolean(id && (id === activeSpecialId || activeSecondaryIds.includes(id)));
 
     (rawProducts || []).forEach(product => {
       const catSlug = product.categories?.slug || 'otros';
@@ -517,22 +526,24 @@ export const MenuDataProvider = ({ children }) => {
         return;
       }
 
-      // En Boku Bento, activar únicamente el Bento del Día activo (Tex-Mex) y ocultar Bogotano/Hawaiano inactivos
+      // Si el producto es el plato estrella o una opción del almuerzo de hoy, NO se oculta aunque esté inactivo en el catálogo general
+      const isSpecialChoiceToday = isTodaySpecialItem(product.id);
+
       if (isBoku) {
         if (product.id === 'b0000b13-0000-4000-a000-000000000003' || product.id === 'b0000b19-0000-4000-a000-000000000020') {
-          if (product.id !== activeSpecialId) return;
+          if (!isSpecialChoiceToday) return;
         }
-        if (product.is_active === false && product.id !== activeSpecialId) {
+        if (product.is_active === false && !isSpecialChoiceToday) {
           return;
         }
-      } else if (product.is_active === false) {
+      } else if (product.is_active === false && !isSpecialChoiceToday) {
         return;
       }
 
       // Apply location product status override
       if (activeLocationId && activeLocationId !== 'all' && hasLocProductConfig) {
-        // En Boku Bento, el Bento del Día activo nunca debe ser bloqueado por status anterior
-        const isActiveOverride = (isBoku && product.id === activeSpecialId) 
+        // Los platos del almuerzo de hoy nunca deben ser bloqueados por status de sede anterior
+        const isActiveOverride = isSpecialChoiceToday
           ? true 
           : statusMap.get(product.id);
 
@@ -609,7 +620,7 @@ export const MenuDataProvider = ({ children }) => {
         finalDesc = 'Tornillos fusilli al dente en salsa cremosa Alfredo casera con pechuga de pollo en cubos dorados, champiñones frescos y queso parmesano rallado.';
       }
 
-      const isBokuDailySpecial = isBoku && (product.id === activeSpecialId || product.id === 'b0000b16-0000-4000-a000-000000000006');
+      const isBokuDailySpecial = isBoku && isTodaySpecialItem(product.id);
       let finalStockStatus = isBokuDailySpecial ? 'in' : (product.stock_status || 'in');
       let finalAvailablePortions = isBokuDailySpecial
         ? 50
@@ -664,88 +675,98 @@ export const MenuDataProvider = ({ children }) => {
     if (isBoku) {
       if (!grouped['boku-bentos']) grouped['boku-bentos'] = [];
 
-      // 1. Bento Tex-Mex (Bowl Mexicano) -> Plato Principal "El Bento del Día"
+      // 1. Bento Tex-Mex o Plato Estrella Activo -> Plato Principal "El Bento del Día"
       const texMex = grouped['boku-bentos'].find(p => p.id === activeSpecialId) ||
-                     Object.values(grouped).flat().find(p => p.id === activeSpecialId);
+                     Object.values(grouped).flat().find(p => p.id === activeSpecialId) ||
+                     (rawProducts || []).find(p => p.id === activeSpecialId);
       
-      const bentoTexMexToday = texMex ? {
+      const bentoHeroToday = texMex ? {
         ...texMex,
-        name: 'Bento Tex-Mex (Bowl Mexicano)',
-        price: 19000,
-        original_price: 22000,
+        name: texMex.name || 'Bento Tex-Mex (Bowl Mexicano)',
+        price: promoPrice > 0 ? promoPrice : 19000,
+        original_price: standardPrice > 0 ? standardPrice : 22000,
         is_bento_del_dia: true,
         is_daily_special: true,
-        daily_special_label: 'El Bento del Día',
+        daily_special_label: specialLabel,
         subcategory: 'El Bento del Día',
         categorySlug: 'boku-bentos',
         categoryId: 'b0000c01-0000-4000-a000-000000000001',
-        desc: '¿Con antojo de algo diferente, fresco y lleno de sabor? Déjate tentar por nuestro Bento Tex Mex, servido sobre una base de arroz blanco aromatizado, frijoles negros, pico de gallo fresco, pimentón asado, totopos crocantes, crema agria y aguacate fresco en abanico. 🥑✨🍗 Elige tu proteína: Pollo a la plancha o Cerdo salteado. 🥣 ¡Viene en combo completo! Incluye Crema de verduras (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
-        description: '¿Con antojo de algo diferente, fresco y lleno de sabor? Déjate tentar por nuestro Bento Tex Mex, servido sobre una base de arroz blanco aromatizado, frijoles negros, pico de gallo fresco, pimentón asado, totopos crocantes, crema agria y aguacate fresco en abanico. 🥑✨🍗 Elige tu proteína: Pollo a la plancha o Cerdo salteado. 🥣 ¡Viene en combo completo! Incluye Crema de verduras (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
+        desc: texMex.description || texMex.desc || '¿Con antojo de algo diferente, fresco y lleno de sabor? Déjate tentar por nuestro Bento Tex Mex, servido sobre una base de arroz blanco aromatizado, frijoles negros, pico de gallo fresco, pimentón asado, totopos crocantes, crema agria y aguacate fresco en abanico. 🥑✨🍗 Elige tu proteína: Pollo a la plancha o Cerdo salteado. 🥣 ¡Viene en combo completo! Incluye Crema de verduras (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
+        description: texMex.description || texMex.desc || '¿Con antojo de algo diferente, fresco y lleno de sabor? Déjate tentar por nuestro Bento Tex Mex, servido sobre una base de arroz blanco aromatizado, frijoles negros, pico de gallo fresco, pimentón asado, totopos crocantes, crema agria y aguacate fresco en abanico. 🥑✨🍗 Elige tu proteína: Pollo a la plancha o Cerdo salteado. 🥣 ¡Viene en combo completo! Incluye Crema de verduras (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
         stock_status: 'in',
         available_portions: 45
       } : null;
 
-      // 2. Pasta Alfredo con Pollo y Champiñones -> Proyectada en "Más Opciones del Día" (Combo $19.000)
-      const bentoAlfredoToday = {
-        id: 'b0000b16-0000-4000-a000-000000000006',
-        name: 'Pasta Alfredo con Pollo y Champiñones (Especial del Día)',
-        price: 19000,
-        original_price: 26000,
-        is_bento_del_dia: false,
-        is_daily_special: true,
-        daily_special_label: 'Opción del Día',
-        subcategory: 'Más Opciones del Día',
-        categorySlug: 'boku-bentos',
-        categoryId: 'b0000c01-0000-4000-a000-000000000001',
-        categoryName: 'BOKU Bentos Caseros',
-        desc: 'Tornillos al dente en salsa cremosa Alfredo con pechuga, champiñones, queso parmesano y cilantro. 🥣 ¡Combo completo! Incluye Crema de verduras (16 oz) o Fruta + 🥤 Bebida de la Casa (5 oz).',
-        description: 'Tornillos al dente en salsa cremosa Alfredo con pechuga, champiñones, queso parmesano y cilantro. 🥣 ¡Combo completo! Incluye Crema de verduras (16 oz) o Fruta + 🥤 Bebida de la Casa (5 oz).',
-        image: '/img/products/boku-pasta-alfredo.jpg',
-        image_url: '/img/products/boku-pasta-alfredo.jpg',
-        recipe_id: 'ba000070-0000-4000-a000-000000000001',
-        stock_status: 'in',
-        available_portions: 50,
-        is_schedule_available: isStorePausedForPublic ? false : true,
-        schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 12:00 PM a 8:00 PM',
-        modifierGroups: [
-          {
-            id: 'mg-alfredo-soup',
-            name: '🥣 Entrada Incluida',
-            min_select: 1,
-            max_select: 1,
-            options: [
-              { id: 'opt-alfredo-crema', name: 'Crema de verduras casera (16 oz)', price: 0, is_default: true },
-              { id: 'opt-alfredo-fruta', name: 'Porción de Fruta fresca picada', price: 0 }
-            ]
-          },
-          {
-            id: 'mg-alfredo-drink',
-            name: '🥤 Bebida de la Casa Incluida',
-            min_select: 1,
-            max_select: 1,
-            options: [
-              { id: 'opt-alfredo-jugo', name: 'Bebida natural de la Casa (5 oz)', price: 0, is_default: true },
-              { id: 'opt-alfredo-nodrink', name: 'Sin bebida', price: 0 }
-            ]
-          },
-          {
-            id: 'mg-alfredo-extras',
-            name: '✨ Toppings & Adiciones Opcionales',
-            min_select: 0,
-            max_select: 3,
-            options: [
-              { id: 'opt-alfredo-extra-cheese', name: 'Extra Queso Parmesano', price: 3000 },
-              { id: 'opt-alfredo-extra-mushrooms', name: 'Extra Champiñones salteados', price: 4000 },
-              { id: 'opt-alfredo-extra-chicken', name: 'Extra Pechuga de Pollo en dados', price: 6000 }
-            ]
-          }
-        ]
-      };
+      // 2. Platos Proyectados Dinámicamente en "Más Opciones del Día" (Combo $19.000 con sopa y bebida)
+      const secondarySpecialItems = (activeSecondaryIds || []).map(secId => {
+        const secRaw = (rawProducts || []).find(p => p.id === secId) ||
+                       Object.values(grouped).flat().find(p => p.id === secId);
+        if (!secRaw) return null;
 
-      // Ensamblar la sección superior de Bentos de Hoy: exactamente Bento Tex-Mex y Pasta Alfredo
+        const isAlfredo = secId === 'b0000b16-0000-4000-a000-000000000006';
+        const secName = isAlfredo 
+          ? 'Pasta Alfredo con Pollo y Champiñones (Especial del Día)'
+          : (secRaw.name.includes('(Especial del Día)') ? secRaw.name : `${secRaw.name} (Especial del Día)`);
+        
+        const secDesc = isAlfredo
+          ? `Tornillos al dente en salsa cremosa Alfredo con pechuga, champiñones, queso parmesano y cilantro. 🥣 ¡Combo completo! Incluye ${soupName} o Fruta + 🥤 ${drinkName}.`
+          : `${secRaw.description || secRaw.desc || ''} 🥣 ¡Combo completo! Incluye ${soupName} o Fruta + 🥤 ${drinkName}.`;
+        
+        const secImage = isAlfredo ? '/img/products/boku-pasta-alfredo.jpg' : (secRaw.image_url || secRaw.image || '/img/products/boku-pasta-alfredo.jpg');
+        const secRecipe = isAlfredo ? 'ba000070-0000-4000-a000-000000000001' : secRaw.recipe_id;
+
+        return {
+          id: secRaw.id,
+          productId: secRaw.id,
+          name: secName,
+          price: promoPrice > 0 ? promoPrice : 19000,
+          original_price: secRaw.price > (promoPrice || 19000) ? secRaw.price : (standardPrice || 26000),
+          is_bento_del_dia: false,
+          is_daily_special: true,
+          daily_special_label: 'Opción del Día',
+          subcategory: 'Más Opciones del Día',
+          categorySlug: 'boku-bentos',
+          categoryId: 'b0000c01-0000-4000-a000-000000000001',
+          categoryName: 'BOKU Bentos Caseros',
+          desc: secDesc,
+          description: secDesc,
+          image: secImage,
+          image_url: secImage,
+          recipe_id: secRecipe,
+          stock_status: 'in',
+          available_portions: 50,
+          is_schedule_available: isStorePausedForPublic ? false : true,
+          schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 12:00 PM a 8:00 PM',
+          modifierGroups: [
+            {
+              id: `mg-lunch-soup-${secRaw.id}`,
+              name: '🥣 Entrada Incluida',
+              min_select: 1,
+              max_select: 1,
+              options: [
+                { id: `opt-lunch-crema-${secRaw.id}`, name: soupName, price: 0, is_default: true },
+                { id: `opt-lunch-fruta-${secRaw.id}`, name: 'Porción de Fruta fresca picada', price: 0 }
+              ]
+            },
+            {
+              id: `mg-lunch-drink-${secRaw.id}`,
+              name: '🥤 Bebida de la Casa Incluida',
+              min_select: 1,
+              max_select: 1,
+              options: [
+                { id: `opt-lunch-jugo-${secRaw.id}`, name: drinkName, price: 0, is_default: true },
+                { id: `opt-lunch-nodrink-${secRaw.id}`, name: 'Sin bebida', price: 0 }
+              ]
+            },
+            ...(Array.isArray(secRaw.modifier_groups) ? secRaw.modifier_groups : (Array.isArray(secRaw.modifierGroups) ? secRaw.modifierGroups : []))
+          ]
+        };
+      }).filter(Boolean);
+
+      // Ensamblar la sección superior de Bentos de Hoy: exactamente el Plato Estrella y las opciones secundarias
       grouped['boku-bentos'] = [
-        ...(bentoTexMexToday ? [bentoTexMexToday] : []),
-        bentoAlfredoToday
+        ...(bentoHeroToday ? [bentoHeroToday] : []),
+        ...secondarySpecialItems
       ];
 
       // Asegurar que en Pastas & Ramen esté Pasta Alfredo con su foto real y receta

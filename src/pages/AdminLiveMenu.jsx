@@ -16,6 +16,7 @@ import AAImage from '../components/ui/AAImage';
 import { toast } from '../components/Toast';
 import { supabase } from '../config/supabase';
 import { PageHeader } from '../components/admin/ui';
+import DailySpecialModal from '../components/admin/DailySpecialModal';
 
 export default function AdminLiveMenu() {
   const { activeBrand } = useAuth();
@@ -72,6 +73,7 @@ export default function AdminLiveMenu() {
 
   // Especial de Hoy: Bento Arroz con Pollo
   const [isSettingUpSpecial, setIsSettingUpSpecial] = useState(false);
+  const [isDailySpecialOpen, setIsDailySpecialOpen] = useState(false);
   const arrozConPolloProduct = useMemo(() => {
     return products.find(p => p.name.toLowerCase().includes('arroz con pollo'));
   }, [products]);
@@ -423,29 +425,15 @@ export default function AdminLiveMenu() {
         subtitle="Control táctil de disponibilidad inmediata para platos y modificadores."
       >
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Botón Especial de Hoy: Bento Arroz con Pollo */}
+          {/* Gestor de Almuerzos & Menú del Día */}
           <button
-            onClick={handleSpecialButtonClick}
-            disabled={isSettingUpSpecial}
-            className={`px-3.5 py-2.5 rounded-xl text-xs font-black shadow-xs flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 border ${
-              isArrozSpecialActive 
-                ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100' 
-                : 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-sm'
-            }`}
-            title="Activar o gestionar el Bento Arroz con Pollo (Especial de Hoy) a $19.000 con Sopita tipo Ramen y Jugo del Día"
+            onClick={() => setIsDailySpecialOpen(true)}
+            className="px-3.5 py-2.5 rounded-xl text-xs font-black shadow-xs flex items-center gap-2 transition-all active:scale-95 border bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 cursor-pointer"
+            title="Configurar Almuerzos de Hoy y Menú del Día"
           >
-            <Utensils className="w-4 h-4 shrink-0" />
-            <span>
-              {isSettingUpSpecial 
-                ? 'Configurando...' 
-                : isArrozSpecialActive 
-                  ? '🍗 Bento Arroz con Pollo (Activo Hoy)' 
-                  : '🍗 Activar Bento Arroz con Pollo (Especial Hoy)'
-              }
-            </span>
-            {isArrozSpecialActive ? (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            ) : null}
+            <span className="text-base">🍱</span>
+            <span>Almuerzos & Menú del Día</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
           </button>
           {totalOffItems > 0 && (
             <button
@@ -482,6 +470,8 @@ export default function AdminLiveMenu() {
           </button>
         </div>
       </PageHeader>
+
+      <DailySpecialModal isOpen={isDailySpecialOpen} onClose={() => setIsDailySpecialOpen(false)} onSaved={refreshProducts} />
 
       {/* ─── Control Bar: Buscador + Selector de Modos ────────────────────── */}
       <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3.5">

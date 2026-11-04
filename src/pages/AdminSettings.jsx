@@ -13,6 +13,7 @@ import { Loader2 } from 'lucide-react';
 import { BUSINESS_TYPES, getFulfillmentModes } from '../constants/businessTypes';
 import { sendTestTelegramNotification, detectTelegramChatId } from '../utils/telegramNotify';
 import { motion, AnimatePresence } from 'framer-motion';
+import DailySpecialModal from '../components/admin/DailySpecialModal';
 
 const toast = {
   success: (msg, opts) => toastFn.success(msg, { duration: 2500, ...opts }),
@@ -61,6 +62,7 @@ export default function AdminSettings() {
 
   // Daily Special / Bento del Día config state
   const [bentoProducts, setBentoProducts] = useState([]);
+  const [isDailySpecialOpen, setIsDailySpecialOpen] = useState(false);
   const [bentoConfig, setBentoConfig] = useState({
     enabled: true,
     label: 'Plato del Día',
@@ -197,7 +199,11 @@ export default function AdminSettings() {
               6: null,
               0: null
             },
-            manual_override_product_id: bentoConcept.manual_override_product_id || null
+            manual_override_product_id: bentoConcept.manual_override_product_id || null,
+            secondary_product_ids: Array.isArray(bentoConcept.secondary_product_ids) ? bentoConcept.secondary_product_ids : [],
+            secondary_schedule: bentoConcept.secondary_schedule || {},
+            soup_name: bentoConcept.soup_name || 'Crema de verduras casera (16 oz)',
+            drink_name: bentoConcept.drink_name || 'Bebida natural de la Casa (5 oz)'
           });
         } else {
           setBentoConfig(prev => ({
@@ -235,9 +241,8 @@ export default function AdminSettings() {
       if (activeBrand?.id) {
         const { data: bProds } = await supabase
           .from('products')
-          .select('id, name, price, category:categories(name)')
+          .select('id, name, price, is_active, category:categories(name)')
           .eq('brand_id', activeBrand.id)
-          .eq('is_active', true)
           .order('name');
         if (bProds) setBentoProducts(bProds);
       }
@@ -313,8 +318,12 @@ export default function AdminSettings() {
         enabled: Boolean(bentoConfig.enabled),
         promo_price: Number(bentoConfig.promo_price) || 0,
         standard_price: Number(bentoConfig.standard_price) || 0,
-        schedule: bentoConfig.schedule,
-        manual_override_product_id: bentoConfig.manual_override_product_id || null
+        schedule: bentoConfig.schedule || {},
+        secondary_schedule: bentoConfig.secondary_schedule || {},
+        manual_override_product_id: bentoConfig.manual_override_product_id || null,
+        secondary_product_ids: bentoConfig.secondary_product_ids || [],
+        soup_name: bentoConfig.soup_name || 'Crema de verduras casera (16 oz)',
+        drink_name: bentoConfig.drink_name || 'Bebida natural de la Casa (5 oz)'
       };
       
       const operationsModel = {
@@ -1089,6 +1098,14 @@ export default function AdminSettings() {
                         <div>
                           <div className="flex items-center gap-2">
                             <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">Rotación "Plato o Especial del Día"</h3>
+                            <button
+                              type="button"
+                              onClick={() => setIsDailySpecialOpen(true)}
+                              className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                            >
+                              <span>🍱</span>
+                              <span>Gestor de Almuerzos</span>
+                            </button>
                             <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
                               Motor Dinámico Universal
                             </span>
@@ -1214,7 +1231,7 @@ export default function AdminSettings() {
                           <option value="">⚙️ Automático (según el calendario del día de hoy)</option>
                           {bentoProducts.map(p => (
                             <option key={p.id} value={p.id}>
-                              🌟 Forzar hoy: {p.category?.name ? `[${p.category.name}] ` : ''}{p.name} ({Number(p.price || 0).toLocaleString('es-CO')} COP)
+                              🌟 Forzar hoy: {p.category?.name ? `[${p.category.name}] ` : ''}{p.name}{!p.is_active ? ' ⏸️ (Pausado)' : ''} ({Number(p.price || 0).toLocaleString('es-CO')} COP)
                             </option>
                           ))}
                         </select>
