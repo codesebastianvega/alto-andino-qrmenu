@@ -436,11 +436,16 @@ export const MenuDataProvider = ({ children }) => {
     return isRestaurantOpen(currentBusinessHours, brand?.config);
   }, [currentBusinessHours, brand?.config, statusTick]);
 
+  const isAdminContext = typeof window !== 'undefined' && (
+    window.location.pathname.startsWith('/admin') ||
+    window.location.hash.startsWith('#admin') ||
+    window.location.hash.includes('admin')
+  );
+  const isStorePausedForPublic = !isAdminContext && Boolean(storeStatusInfo && !storeStatusInfo.isOpen);
+
   // Compute productsByCategory reactively
   const productsByCategory = useMemo(() => {
     const grouped = {};
-    const isAdminContext = typeof window !== 'undefined' && window.location.hash.startsWith('#admin');
-    const isStorePausedForPublic = !isAdminContext && storeStatusInfo && !storeStatusInfo.isOpen;
 
     // 1. Create Maps for O(1) lookups of location overrides
     // This avoids using .find() or .filter() inside the product loop
@@ -833,7 +838,7 @@ export const MenuDataProvider = ({ children }) => {
       });
     }
     return grouped;
-  }, [rawProducts, locationPrices, locationStatus, activeLocationId, restaurantSettings, allCategories, brand, storeStatusInfo]);
+  }, [rawProducts, locationPrices, locationStatus, activeLocationId, restaurantSettings, allCategories, brand, storeStatusInfo, isStorePausedForPublic]);
 
   // Compute categories reactively (Dayparting + Has Products + Location Filter)
   const categories = useMemo(() => {
@@ -885,7 +890,7 @@ export const MenuDataProvider = ({ children }) => {
         is_schedule_restricted: isBentoCat ? !isLunchTime : scheduleInfo.isRestricted
       };
     });
-  }, [allCategories, productsByCategory, activeLocationId, locationCategories, restaurantSettings, brand]);
+  }, [allCategories, productsByCategory, activeLocationId, locationCategories, restaurantSettings, brand, isStorePausedForPublic]);
 
   // Trigger fetch when brand changes (resolved from URL slug or session)
   const lastFetchedBrandRef = React.useRef(undefined);
