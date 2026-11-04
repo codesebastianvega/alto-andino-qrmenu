@@ -283,7 +283,7 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
     const conceptConfig = (restaurantSettings?.brand_concepts || []).find(c => c && (c.id === 'featured_cta_config' || c.id === 'bento_del_dia_config' || c.id === 'daily_special_config'));
     if (conceptConfig?.button_label) return conceptConfig.button_label;
     if (homeSettings?.hero_cta_label) return homeSettings.hero_cta_label;
-    if (effectiveBrand?.slug === 'boku-bento') return 'Ver Bento del Día ($19.000)';
+    if (effectiveBrand?.slug === 'boku-bento') return 'Ver Almuerzos de Hoy ($19.000)';
     return 'Ver Especial del Día';
   }, [restaurantSettings?.brand_concepts, homeSettings?.hero_cta_label, effectiveBrand?.slug]);
 
@@ -597,7 +597,7 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
           <StorePausedBanner onOpenCart={onOpenCart} />
 
           <h1 className="mb-1 text-lg sm:text-2xl font-extrabold tracking-tight text-[#1A1A1A] leading-snug">
-            {homeSettings?.hero_h1 && !/hawaiano|frescura/i.test(homeSettings?.hero_h1 + (homeSettings?.hero_subtitle || '')) ? (
+            {homeSettings?.hero_h1 && !/hawaiano|frescura|tex-mex/i.test(homeSettings?.hero_h1 + (homeSettings?.hero_subtitle || '')) ? (
               <span dangerouslySetInnerHTML={{ __html: homeSettings.hero_h1.replace(/\n/g, '<br/>') }} />
             ) : effectiveBrand?.slug === 'boku-bento' ? (
               '🔥 ¡Almuerzos de hoy en BOKU BENTO! 🔥'
@@ -606,8 +606,8 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
             )}
           </h1>
           <p className="text-xs font-medium text-[#1A1A1A]/55 leading-relaxed md:text-sm">
-            {(effectiveBrand?.slug === 'boku-bento' && (!homeSettings?.hero_subtitle || /hawaiano/i.test(homeSettings?.hero_subtitle)))
-              ? 'Dos opciones brutales por solo $19.000 c/u: Bento Tex-Mex 🍛 o Pasta Alfredo 🍝. 🥣 Combo completo: Crema de verduras (16 oz) o Fruta + 🥤 Bebida de la Casa.'
+            {(effectiveBrand?.slug === 'boku-bento' && (!homeSettings?.hero_subtitle || /hawaiano|tex-mex/i.test(homeSettings?.hero_subtitle)))
+              ? 'Dos opciones brutales por solo $19.000 c/u: Bento Albóndigas 🍛 o Arroz con Pollo Criollo 🍚. 🥣 Combo completo: Crema de espinaca casera (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).'
               : (homeSettings?.hero_subtitle || 'Ingredientes locales, directo a tu mesa.')}
           </p>
 

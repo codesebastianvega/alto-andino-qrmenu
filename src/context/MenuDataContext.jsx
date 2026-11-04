@@ -675,98 +675,125 @@ export const MenuDataProvider = ({ children }) => {
     if (isBoku) {
       if (!grouped['boku-bentos']) grouped['boku-bentos'] = [];
 
-      // 1. Bento Tex-Mex o Plato Estrella Activo -> Plato Principal "El Bento del Día"
-      const texMex = grouped['boku-bentos'].find(p => p.id === activeSpecialId) ||
-                     Object.values(grouped).flat().find(p => p.id === activeSpecialId) ||
-                     (rawProducts || []).find(p => p.id === activeSpecialId);
+      // 1. Bento Albóndigas -> Plato Principal "El Bento del Día"
+      const albonRaw = (rawProducts || []).find(p => p.id === 'b0000b15-0000-4000-a000-000000000005') ||
+                       (rawProducts || []).find(p => p.id === activeSpecialId) ||
+                       grouped['boku-bentos']?.find(p => p.id === activeSpecialId);
       
-      const bentoHeroToday = texMex ? {
-        ...texMex,
-        name: texMex.name || 'Bento Tex-Mex (Bowl Mexicano)',
-        price: promoPrice > 0 ? promoPrice : 19000,
-        original_price: standardPrice > 0 ? standardPrice : 22000,
+      const bentoHeroToday = {
+        ...(albonRaw || {}),
+        id: 'b0000b15-0000-4000-a000-000000000005',
+        productId: 'b0000b15-0000-4000-a000-000000000005',
+        name: 'Bento Albóndigas (Especial del Día)',
+        price: 19000,
+        original_price: 22000,
         is_bento_del_dia: true,
         is_daily_special: true,
-        daily_special_label: specialLabel,
+        daily_special_label: 'El Bento del Día',
         subcategory: 'El Bento del Día',
         categorySlug: 'boku-bentos',
         categoryId: 'b0000c01-0000-4000-a000-000000000001',
-        desc: texMex.description || texMex.desc || '¿Con antojo de algo diferente, fresco y lleno de sabor? Déjate tentar por nuestro Bento Tex Mex, servido sobre una base de arroz blanco aromatizado, frijoles negros, pico de gallo fresco, pimentón asado, totopos crocantes, crema agria y aguacate fresco en abanico. 🥑✨🍗 Elige tu proteína: Pollo a la plancha o Cerdo salteado. 🥣 ¡Viene en combo completo! Incluye Crema de verduras (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
-        description: texMex.description || texMex.desc || '¿Con antojo de algo diferente, fresco y lleno de sabor? Déjate tentar por nuestro Bento Tex Mex, servido sobre una base de arroz blanco aromatizado, frijoles negros, pico de gallo fresco, pimentón asado, totopos crocantes, crema agria y aguacate fresco en abanico. 🥑✨🍗 Elige tu proteína: Pollo a la plancha o Cerdo salteado. 🥣 ¡Viene en combo completo! Incluye Crema de verduras (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
+        categoryName: 'BOKU Bentos Caseros',
+        desc: 'Albóndigas glaseadas en salsa, maíz dulce, guacamole, bastones de zanahoria, arvejas en hogao, huevo revuelto cremoso y arroz con verduras. 🥣 ¡Combo completo! Incluye Crema de espinaca casera (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
+        description: 'Albóndigas glaseadas en salsa, maíz dulce, guacamole, bastones de zanahoria, arvejas en hogao, huevo revuelto cremoso y arroz con verduras. 🥣 ¡Combo completo! Incluye Crema de espinaca casera (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
+        image: 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/8ltxvgjyx6_1792013263113.webp',
+        image_url: 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/8ltxvgjyx6_1792013263113.webp',
+        recipe_id: 'ba000040-0000-4000-a000-000000000005',
         stock_status: 'in',
-        available_portions: 45
-      } : null;
+        available_portions: 50,
+        is_schedule_available: isStorePausedForPublic ? false : true,
+        schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
+        modifierGroups: [
+          {
+            id: 'mg-albon-soup',
+            name: '🥣 Entrada Incluida',
+            min_select: 1,
+            max_select: 1,
+            options: [
+              { id: 'opt-albon-crema', name: 'Crema de espinaca casera (16 oz)', price: 0, is_default: true },
+              { id: 'opt-albon-fruta', name: 'Porción de Fruta fresca picada', price: 0 },
+              { id: 'opt-albon-nosoup', name: 'Sin sopa ni fruta', price: 0 }
+            ]
+          },
+          {
+            id: 'mg-albon-drink',
+            name: '🥤 Bebida de la Casa Incluida',
+            min_select: 1,
+            max_select: 1,
+            options: [
+              { id: 'opt-albon-jugo', name: 'Jugo del Día (5 oz)', price: 0, is_default: true },
+              { id: 'opt-albon-hatsu-caja', name: 'Cambiar por Té Hatsu en Caja (200 ml)', price: 2000 },
+              { id: 'opt-albon-hatsu-lata', name: 'Cambiar por Té Hatsu en Lata (250 ml)', price: 4000 },
+              { id: 'opt-albon-nodrink', name: 'Sin bebida', price: 0 }
+            ]
+          }
+        ]
+      };
 
-      // 2. Platos Proyectados Dinámicamente en "Más Opciones del Día" (Combo $19.000 con sopa y bebida)
-      const secondarySpecialItems = (activeSecondaryIds || []).map(secId => {
-        const secRaw = (rawProducts || []).find(p => p.id === secId) ||
-                       Object.values(grouped).flat().find(p => p.id === secId);
-        if (!secRaw) return null;
+      // 2. Arroz con Pollo Criollo -> Proyectado en "Más Opciones del Día" (Combo $19.000 con sopa y bebida)
+      const arrozConPolloToday = {
+        id: 'b0000b19-0000-4000-a000-000000000019',
+        productId: 'b0000b19-0000-4000-a000-000000000019',
+        name: 'Arroz con Pollo Criollo (Especial del Día)',
+        price: 19000,
+        original_price: 22000,
+        is_bento_del_dia: false,
+        is_daily_special: true,
+        daily_special_label: 'Opción del Día',
+        subcategory: 'Más Opciones del Día',
+        categorySlug: 'boku-bentos',
+        categoryId: 'b0000c01-0000-4000-a000-000000000001',
+        categoryName: 'BOKU Bentos Caseros',
+        desc: 'Arroz amarillo con pollo desmechado, rodajas de salchicha, verduras de la huerta, cilantro fresco y papas a la francesa crocantes. 🥣 ¡Combo completo! Incluye Crema de espinaca casera (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
+        description: 'Arroz amarillo con pollo desmechado, rodajas de salchicha, verduras de la huerta, cilantro fresco y papas a la francesa crocantes. 🥣 ¡Combo completo! Incluye Crema de espinaca casera (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
+        image: '/img/products/boku-arroz-con-pollo.jpg',
+        image_url: '/img/products/boku-arroz-con-pollo.jpg',
+        recipe_id: 'ba000040-0000-4000-a000-000000000008',
+        stock_status: 'in',
+        available_portions: 50,
+        is_schedule_available: isStorePausedForPublic ? false : true,
+        schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
+        modifierGroups: [
+          {
+            id: 'mg-arroz-soup',
+            name: '🥣 Entrada Incluida',
+            min_select: 1,
+            max_select: 1,
+            options: [
+              { id: 'opt-arroz-crema', name: 'Crema de espinaca casera (16 oz)', price: 0, is_default: true },
+              { id: 'opt-arroz-fruta', name: 'Porción de Fruta fresca picada', price: 0 },
+              { id: 'opt-arroz-nosoup', name: 'Sin sopa ni fruta', price: 0 }
+            ]
+          },
+          {
+            id: 'mg-arroz-drink',
+            name: '🥤 Bebida de la Casa Incluida',
+            min_select: 1,
+            max_select: 1,
+            options: [
+              { id: 'opt-arroz-jugo', name: 'Jugo del Día (5 oz)', price: 0, is_default: true },
+              { id: 'opt-arroz-hatsu-caja', name: 'Cambiar por Té Hatsu en Caja (200 ml)', price: 2000 },
+              { id: 'opt-arroz-hatsu-lata', name: 'Cambiar por Té Hatsu en Lata (250 ml)', price: 4000 },
+              { id: 'opt-arroz-nodrink', name: 'Sin bebida', price: 0 }
+            ]
+          },
+          {
+            id: 'mg-arroz-extras',
+            name: '🍟 Acompañamiento Opcional',
+            min_select: 0,
+            max_select: 2,
+            options: [
+              { id: 'opt-arroz-extra-papas', name: 'Extra Porción de Papas a la Francesa', price: 6000 },
+              { id: 'opt-arroz-extra-aji', name: 'Ají Casero de la Casa', price: 1500 }
+            ]
+          }
+        ]
+      };
 
-        const isAlfredo = secId === 'b0000b16-0000-4000-a000-000000000006';
-        const secName = isAlfredo 
-          ? 'Pasta Alfredo con Pollo y Champiñones (Especial del Día)'
-          : (secRaw.name.includes('(Especial del Día)') ? secRaw.name : `${secRaw.name} (Especial del Día)`);
-        
-        const secDesc = isAlfredo
-          ? `Tornillos al dente en salsa cremosa Alfredo con pechuga, champiñones, queso parmesano y cilantro. 🥣 ¡Combo completo! Incluye ${soupName} o Fruta + 🥤 ${drinkName}.`
-          : `${secRaw.description || secRaw.desc || ''} 🥣 ¡Combo completo! Incluye ${soupName} o Fruta + 🥤 ${drinkName}.`;
-        
-        const secImage = isAlfredo ? '/img/products/boku-pasta-alfredo.jpg' : (secRaw.image_url || secRaw.image || '/img/products/boku-pasta-alfredo.jpg');
-        const secRecipe = isAlfredo ? 'ba000070-0000-4000-a000-000000000001' : secRaw.recipe_id;
-
-        return {
-          id: secRaw.id,
-          productId: secRaw.id,
-          name: secName,
-          price: promoPrice > 0 ? promoPrice : 19000,
-          original_price: secRaw.price > (promoPrice || 19000) ? secRaw.price : (standardPrice || 26000),
-          is_bento_del_dia: false,
-          is_daily_special: true,
-          daily_special_label: 'Opción del Día',
-          subcategory: 'Más Opciones del Día',
-          categorySlug: 'boku-bentos',
-          categoryId: 'b0000c01-0000-4000-a000-000000000001',
-          categoryName: 'BOKU Bentos Caseros',
-          desc: secDesc,
-          description: secDesc,
-          image: secImage,
-          image_url: secImage,
-          recipe_id: secRecipe,
-          stock_status: 'in',
-          available_portions: 50,
-          is_schedule_available: isStorePausedForPublic ? false : true,
-          schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 12:00 PM a 8:00 PM',
-          modifierGroups: [
-            {
-              id: `mg-lunch-soup-${secRaw.id}`,
-              name: '🥣 Entrada Incluida',
-              min_select: 1,
-              max_select: 1,
-              options: [
-                { id: `opt-lunch-crema-${secRaw.id}`, name: soupName, price: 0, is_default: true },
-                { id: `opt-lunch-fruta-${secRaw.id}`, name: 'Porción de Fruta fresca picada', price: 0 }
-              ]
-            },
-            {
-              id: `mg-lunch-drink-${secRaw.id}`,
-              name: '🥤 Bebida de la Casa Incluida',
-              min_select: 1,
-              max_select: 1,
-              options: [
-                { id: `opt-lunch-jugo-${secRaw.id}`, name: drinkName, price: 0, is_default: true },
-                { id: `opt-lunch-nodrink-${secRaw.id}`, name: 'Sin bebida', price: 0 }
-              ]
-            },
-            ...(Array.isArray(secRaw.modifier_groups) ? secRaw.modifier_groups : (Array.isArray(secRaw.modifierGroups) ? secRaw.modifierGroups : []))
-          ]
-        };
-      }).filter(Boolean);
-
-      // Ensamblar la sección superior de Bentos de Hoy: exactamente el Plato Estrella y las opciones secundarias
+      // Ensamblar la sección superior de Bentos de Hoy: exactamente Bento Albóndigas y Arroz con Pollo Criollo
       grouped['boku-bentos'] = [
-        ...(bentoHeroToday ? [bentoHeroToday] : []),
-        ...secondarySpecialItems
+        bentoHeroToday,
+        arrozConPolloToday
       ];
 
       // Asegurar que en Pastas & Ramen esté Pasta Alfredo con su foto real y receta
@@ -846,12 +873,16 @@ export const MenuDataProvider = ({ children }) => {
       return true;
     }).map(cat => {
       const scheduleInfo = getCategoryScheduleInfo(cat, now);
+      const isBentoCat = isBokuBrand && (cat.slug === 'boku-bentos' || cat.id === 'b0000c01-0000-4000-a000-000000000001');
+      const currentHour = now.getHours() + (now.getMinutes() / 60);
+      const isLunchTime = currentHour >= 10.5 && currentHour <= 17.0;
+
       return {
         ...cat,
         schedule_info: scheduleInfo,
-        is_schedule_active: scheduleInfo.isAvailableNow,
-        schedule_label: scheduleInfo.label,
-        is_schedule_restricted: scheduleInfo.isRestricted
+        is_schedule_active: isBentoCat ? (isStorePausedForPublic ? false : isLunchTime) : scheduleInfo.isAvailableNow,
+        schedule_label: isBentoCat ? (isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM') : scheduleInfo.label,
+        is_schedule_restricted: isBentoCat ? !isLunchTime : scheduleInfo.isRestricted
       };
     });
   }, [allCategories, productsByCategory, activeLocationId, locationCategories, restaurantSettings, brand]);
