@@ -194,15 +194,37 @@ export default function StoreStatusControl() {
     }
   };
 
-  const formatPauseRemaining = () => {
-    let targetDt = localStoreStatus?.pause_until ? new Date(localStoreStatus.pause_until) : null;
-    if (localStoreStatus?.pause_mode === 'today') {
-      const nextOpen = getNextOpeningDateTime(currentBusinessHours, { targetTomorrow: true });
-      if (nextOpen && (!targetDt || targetDt.getTime() < nextOpen.date.getTime())) {
-        targetDt = nextOpen.date;
+  // Auto-limpieza en base de datos cuando la pausa por tiempo ya expiró
+  useEffect(() => {
+    if (localStoreStatus?.is_paused && localStoreStatus?.pause_until) {
+      const pauseEnd = new Date(localStoreStatus.pause_until).getTime();
+      if (pauseEnd <= nowTick && brandId) {
+        const existingConfig = currentBrand?.config || menuBrand?.config || {};
+        const cleanedStatus = {
+          ...localStoreStatus,
+          is_paused: false,
+          pause_until: null,
+          resumed_at: new Date().toISOString()
+        };
+        supabase
+          .from('brands')
+          .update({
+            config: { ...existingConfig, store_status: cleanedStatus },
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', brandId)
+          .then(() => {
+            setLocalStoreStatus(cleanedStatus);
+            refetchMenuData?.();
+          })
+          .catch(err => console.error('Error auto-clearing expired pause:', err));
       }
     }
-    if (!targetDt) return 'Manual';
+  }, [localStoreStatus, nowTick, brandId]);
+
+  const formatPauseRemaining = () => {
+    if (!localStoreStatus?.pause_until) return 'Manual';
+    const targetDt = new Date(localStoreStatus.pause_until);
     const diffMs = targetDt.getTime() - nowTick;
     if (diffMs <= 0) return '';
     const mins = Math.ceil(diffMs / 60000);

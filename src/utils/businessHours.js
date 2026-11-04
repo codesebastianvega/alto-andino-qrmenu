@@ -78,19 +78,10 @@ export function isRestaurantOpen(businessHours, brandConfig = null, referenceDat
 
   // 1. Verificación de Pausa Manual
   if (storeStatus?.is_paused) {
-    let pauseUntil = storeStatus.pause_until ? new Date(storeStatus.pause_until) : null;
+    const pauseUntil = storeStatus.pause_until ? new Date(storeStatus.pause_until) : null;
 
-    // Si fue pausada con modo 'today' (por el resto del día / hasta mañana),
-    // garantizar que el pause_until apunte a la apertura real de mañana según business_hours y no a medianoche (23:59)
-    if (storeStatus.pause_mode === 'today') {
-      const nextOpenTomorrow = getNextOpeningDateTime(businessHours, { fromDate: now, targetTomorrow: true });
-      if (nextOpenTomorrow && (!pauseUntil || pauseUntil.getTime() < nextOpenTomorrow.date.getTime())) {
-        pauseUntil = nextOpenTomorrow.date;
-      }
-    }
-
-    // Si es pausa indefinida o aún no se cumple la hora de reapertura automática
-    if (!pauseUntil || pauseUntil > now) {
+    // Si es pausa indefinida (pauseUntil === null) o si la fecha de reapertura aún no se cumple (pauseUntil > now)
+    if (!pauseUntil || pauseUntil.getTime() > now.getTime()) {
       let reopenFormatted = null;
       if (pauseUntil) {
         const diffMs = pauseUntil.getTime() - now.getTime();
@@ -117,6 +108,7 @@ export function isRestaurantOpen(businessHours, brandConfig = null, referenceDat
         message: storeStatus.custom_message || (reopenFormatted ? `Cocina en pausa temporal — Reabre ${reopenFormatted}.` : "Cocina en pausa temporalmente — En este momento no estamos recibiendo pedidos.")
       };
     }
+    // Si pauseUntil <= now, LA PAUSA EXPIRÓ. Continúa abajo para evaluar businessHours normalmente.
   }
 
   // 2. Verificación de Horarios de Atención (Business Hours)
