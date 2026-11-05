@@ -58,7 +58,11 @@ export const resolveOrderItemName = (item) => {
   if (item.modifiers?.['_item_name']) return item.modifiers['_item_name'];
 
   const pid = item.product_id || item.products?.id || item.productId;
-  if (pid === 'b0000b19-0000-4000-a000-000000000019') {
+  if (pid === 'b0000b21-0000-4000-a000-000000000021') {
+    return 'Arroz con Pollo Criollo (Especial del Día)';
+  }
+  // Nicolás Martínez historical order item safeguard
+  if (item.id === 'b4784a92-ac7c-4f46-b3ac-8748ec5f29db' || (item.order_id === '97b92f49-52e3-4bd6-b4d4-ee8dfcdc8404' && pid === 'b0000b19-0000-4000-a000-000000000019')) {
     return 'Arroz con Pollo Criollo (Especial del Día)';
   }
   if (pid === 'b0000b15-0000-4000-a000-000000000005') {

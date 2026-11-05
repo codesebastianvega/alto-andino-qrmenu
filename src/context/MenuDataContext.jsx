@@ -737,8 +737,8 @@ export const MenuDataProvider = ({ children }) => {
 
       // 2. Arroz con Pollo Criollo -> Proyectado en "Más Opciones del Día" (Combo $19.000 con sopa y bebida)
       const arrozConPolloToday = {
-        id: 'b0000b19-0000-4000-a000-000000000019',
-        productId: 'b0000b19-0000-4000-a000-000000000019',
+        id: 'b0000b21-0000-4000-a000-000000000021',
+        productId: 'b0000b21-0000-4000-a000-000000000021',
         name: 'Arroz con Pollo Criollo (Especial del Día)',
         price: 19000,
         original_price: 22000,
