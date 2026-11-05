@@ -14,7 +14,7 @@ import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import ConnectivityBanner from "./components/ConnectivityBanner.jsx";
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(console.error));
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').then(reg => reg.update().catch(() => {})).catch(console.error));
 }
 
 // Unlock screen orientation on tablets/mobile devices if supported
