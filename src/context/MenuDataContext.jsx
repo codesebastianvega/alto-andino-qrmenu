@@ -220,14 +220,7 @@ export const MenuDataProvider = ({ children }) => {
       setLocations(locsRes.data || []);
       setBanners(bnrsRes.data || []);
       const rawHomeSettings = hSettRes.data?.[0] || null;
-      const normalizedHomeSettings = (rawHomeSettings && brandId === 'a63da806-a62a-49b9-a833-07e0976785ad' && /hawaiano/i.test(rawHomeSettings.hero_subtitle || ''))
-        ? {
-            ...rawHomeSettings,
-            hero_h1: '🔥 ¡Almuerzos de hoy en BOKU BENTO! 🔥',
-            hero_subtitle: 'Dos opciones brutales por solo $19.000 c/u: Bento Tex-Mex 🍛 o Pasta Alfredo 🍝. 🥣 Combo completo: Crema de verduras (16 oz) o Fruta + 🥤 Bebida de la Casa.'
-          }
-        : rawHomeSettings;
-      setHomeSettings(normalizedHomeSettings);
+      setHomeSettings(rawHomeSettings);
 
       const allRS = rSettRes.data || [];
       const brandLevelRS = allRS.find(s => !s.location_id) || null;
