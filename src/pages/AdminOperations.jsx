@@ -13,6 +13,7 @@ import KitchenStats from '../components/admin/KitchenStats';
 import ActiveStaff from '../components/admin/ActiveStaff';
 import OpenShiftModal from '../components/admin/OpenShiftModal';
 import CloseShiftModal from '../components/admin/CloseShiftModal';
+import ManualOrderModal from '../components/admin/ManualOrderModal';
 
 export default function AdminOperations() {
   const { activeBrand, profile } = useAuth();
@@ -37,6 +38,31 @@ export default function AdminOperations() {
   const [staffList, setStaffList] = useState([]);
   const [isOpenShiftModalOpen, setIsOpenShiftModalOpen] = useState(false);
   const [isCloseShiftModalOpen, setIsCloseShiftModalOpen] = useState(false);
+  const [isManualOrderModalOpen, setIsManualOrderModalOpen] = useState(false);
+
+  // Cobro rápido de fiados directamente desde el arqueo de caja
+  const handleSettleFiado = async (orderId, paymentMethod = 'efectivo') => {
+    try {
+      const order = orders.find(o => o.id === orderId);
+      const totalAmt = Number(order?.total_amount || 0);
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          payment_status: 'paid',
+          payment_method: paymentMethod,
+          paid_amount: totalAmt,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+      toast.success(`🎉 Fiado marcado como pagado vía ${paymentMethod === 'nequi' ? 'Nequi / Bre-B' : 'Efectivo'}`);
+      await refresh();
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al registrar pago: ' + err.message);
+    }
+  };
 
   // Cargar lista de staff activo para asignar cajeros/responsables
   useEffect(() => {
@@ -120,6 +146,14 @@ export default function AdminOperations() {
 
         <div className="flex items-center gap-3">
           <button
+            onClick={() => setIsManualOrderModalOpen(true)}
+            className="p-3 bg-[#2f4131] hover:bg-[#243326] text-white rounded-2xl transition-all shadow-sm flex items-center gap-2 font-black text-xs md:text-sm active:scale-95 cursor-pointer"
+          >
+            <Icon icon="solar:user-plus-bold" className="text-base text-emerald-300" />
+            <span>+ Nuevo Pedido / Fiado</span>
+          </button>
+
+          <button
             onClick={refresh}
             disabled={loading}
             className="p-3 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 text-gray-700 transition-colors shadow-2xs flex items-center gap-2 font-bold text-xs md:text-sm disabled:opacity-50"
@@ -145,6 +179,7 @@ export default function AdminOperations() {
               onOpenShift={() => setIsOpenShiftModalOpen(true)}
               onCloseShift={() => setIsCloseShiftModalOpen(true)}
               onPrintReportX={handlePrintReportX}
+              onSettleFiado={handleSettleFiado}
             />
           </div>
 
@@ -199,6 +234,12 @@ export default function AdminOperations() {
         onConfirmClose={closeCashShift}
         business={activeBrand}
         restaurantSettings={settings}
+      />
+
+      <ManualOrderModal
+        isOpen={isManualOrderModalOpen}
+        onClose={() => setIsManualOrderModalOpen(false)}
+        onOrderCreated={refresh}
       />
     </div>
   );

@@ -172,9 +172,10 @@ export function printThermalShiftReport({ shift, metrics = {}, type = 'Z', width
       <span>VENTAS POR MEDIO</span><span></span>
     </div>
     ${row('Efectivo', formatCOP(cashSales))}
-    ${row('Tarjetas / POS', formatCOP(cardSales))}
-    ${row('Nequi / Transferencia', formatCOP(transferSales))}
+    ${cardSales > 0 ? row('Datáfono', formatCOP(cardSales)) : ''}
+    ${row('Nequi / Bre-B', formatCOP(transferSales))}
     ${otherSales > 0 ? row('Otros Medios', formatCOP(otherSales)) : ''}
+    ${metrics.totalFiados > 0 ? row('Fiados / Por Cobrar', formatCOP(metrics.totalFiados)) : ''}
   </section>`;
 
   const totalsSection = `<section class="totals">

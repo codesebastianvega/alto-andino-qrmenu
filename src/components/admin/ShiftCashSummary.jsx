@@ -24,7 +24,7 @@ function getMethodStyle(name = '', type = '') {
       text: 'text-blue-800',
     };
   }
-  if (key.includes('transfer') || key.includes('nequi') || key.includes('daviplata') || key.includes('bancolombia')) {
+  if (key.includes('transfer') || key.includes('nequi')) {
     return {
       bg: 'bg-purple-50',
       border: 'border-purple-200',
@@ -32,6 +32,16 @@ function getMethodStyle(name = '', type = '') {
       iconColor: 'text-purple-600',
       badge: 'bg-purple-500',
       text: 'text-purple-800',
+    };
+  }
+  if (key.includes('fiado')) {
+    return {
+      bg: 'bg-amber-50',
+      border: 'border-amber-200',
+      icon: 'solar:hand-stars-bold',
+      iconColor: 'text-amber-600',
+      badge: 'bg-amber-500',
+      text: 'text-amber-800',
     };
   }
   return {
@@ -89,7 +99,8 @@ export default function ShiftCashSummary({
   activeShift = null,
   onOpenShift,
   onCloseShift,
-  onPrintReportX
+  onPrintReportX,
+  onSettleFiado
 }) {
   const {
     totalRevenue    = 0,
@@ -103,6 +114,9 @@ export default function ShiftCashSummary({
     initialCash     = 0,
     expectedCash    = 0,
     totalCashSales  = 0,
+    totalTransferSales = 0,
+    fiadosList      = [],
+    totalFiados     = 0,
   } = metrics;
 
   return (
@@ -202,7 +216,7 @@ export default function ShiftCashSummary({
       )}
 
       {/* ── KPIs Financieros Principales ─────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <KPICard
           icon="solar:wallet-money-bold"
           iconBg="bg-emerald-100"
@@ -211,6 +225,23 @@ export default function ShiftCashSummary({
           value={formatCOP(expectedCash)}
           sub={`Base (${formatCOP(initialCash)}) + Ventas (${formatCOP(totalCashSales)})`}
           highlight={true}
+        />
+        <KPICard
+          icon="solar:smartphone-bold"
+          iconBg="bg-purple-100"
+          iconColor="text-purple-700"
+          label="Nequi / Bre-B"
+          value={formatCOP(totalTransferSales)}
+          sub="Dinero en banco"
+        />
+        <KPICard
+          icon="solar:hand-money-bold"
+          iconBg="bg-amber-100"
+          iconColor="text-amber-800"
+          label="Cuentas por Cobrar"
+          value={formatCOP(totalFiados)}
+          sub={`${fiadosList.length} ${fiadosList.length === 1 ? 'fiado pendiente' : 'fiados pendientes'}`}
+          highlight={fiadosList.length > 0}
         />
         <KPICard
           icon="solar:chart-2-bold"
@@ -222,19 +253,11 @@ export default function ShiftCashSummary({
         />
         <KPICard
           icon="solar:ticket-sale-bold"
-          iconBg="bg-purple-50"
-          iconColor="text-purple-600"
+          iconBg="bg-rose-50"
+          iconColor="text-rose-600"
           label="Ticket Promedio"
           value={formatCOP(avgTicket)}
           sub="Por pedido finalizado"
-        />
-        <KPICard
-          icon="solar:hand-heart-bold"
-          iconBg="bg-pink-50"
-          iconColor="text-pink-500"
-          label="Propinas"
-          value={formatCOP(totalTips)}
-          sub="Servicio voluntario"
         />
       </div>
 
@@ -242,7 +265,7 @@ export default function ShiftCashSummary({
       {byPaymentMethod.length > 0 ? (
         <div>
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
-            Desglose de Ingresos por Medio de Pago
+            Desglose de Ingresos Recibidos en este Turno
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {byPaymentMethod.map(method => (
@@ -253,9 +276,104 @@ export default function ShiftCashSummary({
       ) : (
         <div className="flex flex-col items-center justify-center py-6 text-gray-400 bg-gray-50/50 rounded-2xl border border-gray-100">
           <Icon icon="solar:bill-cross-bold" className="text-3xl mb-1 text-gray-300" />
-          <p className="text-xs font-bold text-gray-400">Sin pagos registrados en este turno</p>
+          <p className="text-xs font-bold text-gray-400">Sin pagos confirmados todavía en este turno</p>
         </div>
       )}
+
+      {/* ── Cuentas por Cobrar & Fiados del Turno ────────────────────────────── */}
+      <div className="bg-white rounded-3xl border border-gray-100 p-5 md:p-6 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-xl">
+              <Icon icon="solar:hand-money-bold" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
+                <span>Cuentas por Cobrar & Fiados</span>
+                {fiadosList.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-purple-600 text-white text-[10px] font-black">
+                    {fiadosList.length}
+                  </span>
+                )}
+              </h3>
+              <p className="text-[11px] text-gray-400 font-medium">
+                Alimentos despachados con pago pendiente. No descuadran el efectivo físico de gaveta.
+              </p>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Saldo Pendiente de Cobro</span>
+            <span className="text-base md:text-lg font-black text-purple-900">{formatCOP(totalFiados)}</span>
+          </div>
+        </div>
+
+        {fiadosList.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {fiadosList.map(order => (
+              <div 
+                key={order.id} 
+                className="p-4 rounded-2xl border border-purple-200/80 bg-gradient-to-br from-purple-50/40 via-white to-purple-50/20 flex flex-col justify-between gap-3 shadow-2xs hover:border-purple-300 transition-all"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-black text-gray-900 flex items-center gap-1.5 truncate">
+                      <Icon icon="solar:user-bold" className="text-purple-600 text-sm shrink-0" />
+                      <span className="truncate">{order.customer_name || 'Cliente sin nombre'}</span>
+                    </span>
+                    <span className="text-sm font-black text-purple-900 shrink-0">
+                      {formatCOP(order.total_amount || 0)}
+                    </span>
+                  </div>
+
+                  <div className="mt-1 flex items-center gap-2 text-[10px] text-gray-400 font-bold flex-wrap">
+                    <span>#{order.id.slice(0, 4).toUpperCase()}</span>
+                    <span>•</span>
+                    <span>{new Date(order.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span>•</span>
+                    <span className="uppercase text-amber-700 font-black">
+                      {order.status === 'delivered' ? 'Entregado' : order.status}
+                    </span>
+                  </div>
+
+                  {order.delivery_notes && (
+                    <p className="mt-2 text-[11px] font-medium text-purple-900 bg-purple-100/60 p-2 rounded-xl border border-purple-200/60 line-clamp-2">
+                      {order.delivery_notes}
+                    </p>
+                  )}
+                </div>
+
+                <div className="pt-2 border-t border-purple-100 flex items-center gap-2">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider shrink-0">Cobrar:</span>
+                  <button
+                    type="button"
+                    onClick={() => onSettleFiado && onSettleFiado(order.id, 'efectivo')}
+                    className="flex-1 py-2 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black flex items-center justify-center gap-1 shadow-2xs transition-all active:scale-95 cursor-pointer"
+                    title="Registrar pago en efectivo (se suma al esperado de gaveta)"
+                  >
+                    <Icon icon="solar:wallet-money-bold" className="text-xs" />
+                    Efectivo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSettleFiado && onSettleFiado(order.id, 'nequi')}
+                    className="flex-1 py-2 px-2.5 rounded-xl bg-[#200020] hover:bg-[#350035] text-white text-[11px] font-black flex items-center justify-center gap-1 shadow-2xs transition-all active:scale-95 cursor-pointer"
+                    title="Registrar pago recibido en Nequi / Bre-B"
+                  >
+                    <Icon icon="solar:smartphone-bold" className="text-xs text-pink-400" />
+                    Nequi
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/60 text-emerald-800 text-xs font-bold">
+            <Icon icon="solar:check-circle-bold" className="text-xl text-emerald-600 shrink-0" />
+            <span>Todo al día. No hay cuentas por cobrar ni fiados pendientes en este turno.</span>
+          </div>
+        )}
+      </div>
 
       {/* ── Alerta de Pedidos en Curso ────────────────────────────────────────── */}
       {activeCount > 0 && (

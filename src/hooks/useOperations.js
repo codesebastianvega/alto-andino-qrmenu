@@ -206,7 +206,7 @@ export function useOperations() {
         .eq('status', 'open');
 
       if (!isAllLocations && activeLocationId) {
-        query = query.eq('location_id', activeLocationId);
+        query = query.or(`location_id.eq.${activeLocationId},location_id.is.null`);
       }
 
       const { data, error } = await query
@@ -478,7 +478,7 @@ export function useOperations() {
         totalCashSales += amt;
       } else if (key.includes('tarjeta') || key.includes('card') || key.includes('débito') || key.includes('crédito') || key.includes('datafono')) {
         totalCardSales += amt;
-      } else if (key.includes('transfer') || key.includes('nequi') || key.includes('daviplata') || key.includes('bancolombia')) {
+      } else if (key.includes('transfer') || key.includes('nequi')) {
         totalTransferSales += amt;
       } else {
         totalOtherSales += amt;
@@ -487,19 +487,49 @@ export function useOperations() {
 
     if (payments.length === 0 && delivered.length > 0) {
       delivered.forEach(o => {
+        // Solo pedidos efectivamente pagados entran a los totales de caja y bancos
+        if (o.payment_status !== 'paid') return;
+
         const pm = (o.payment_method || '').toLowerCase();
         const amt = Number(o.total_amount || 0);
+        let methodName = 'Otro';
+        let methodType = 'other';
+
         if (pm.includes('efectivo') || pm.includes('cash')) {
+          methodName = 'Efectivo';
+          methodType = 'cash';
           totalCashSales += amt;
         } else if (pm.includes('tarjeta') || pm.includes('card') || pm.includes('datafono')) {
+          methodName = 'Datáfono';
+          methodType = 'card';
           totalCardSales += amt;
-        } else if (pm.includes('transfer') || pm.includes('nequi') || pm.includes('daviplata')) {
+        } else if (pm.includes('transfer') || pm.includes('nequi')) {
+          methodName = 'Nequi / Bre-B';
+          methodType = 'transfer';
           totalTransferSales += amt;
         } else {
           totalOtherSales += amt;
         }
+
+        if (!byPaymentMethod[methodName]) {
+          byPaymentMethod[methodName] = { name: methodName, type: methodType, total: 0, count: 0 };
+        }
+        byPaymentMethod[methodName].total += amt;
+        byPaymentMethod[methodName].count += 1;
       });
     }
+
+    // Cuentas por Cobrar (Fiados) del turno:
+    // Todo pedido no cancelado que esté pendiente de pago o explícitamente fiado
+    const fiadosList = orders.filter(o => 
+      o.status !== 'cancelled' && 
+      (
+        o.payment_status !== 'paid' || 
+        o.payment_method === 'fiado' || 
+        String(o.delivery_notes || '').toLowerCase().includes('fiado')
+      )
+    );
+    const totalFiados = fiadosList.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
 
     const initialCash = Number(activeShift?.initial_cash || 0);
     const expectedCash = initialCash + totalCashSales;
@@ -518,6 +548,8 @@ export function useOperations() {
       totalCardSales,
       totalTransferSales,
       totalOtherSales,
+      fiadosList,
+      totalFiados,
       initialCash,
       expectedCash,
     };

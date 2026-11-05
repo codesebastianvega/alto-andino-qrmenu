@@ -160,10 +160,23 @@ export default function CloseShiftModal({
           <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-100 text-xs">
             <span className="text-gray-500 font-medium">Otros ingresos no en efectivo:</span>
             <div className="flex items-center gap-3 font-bold text-gray-800">
-              <span>💳 Tarjetas: {formatCOP(cardSales)}</span>
-              <span>📱 Nequi/Transfer: {formatCOP(transferSales)}</span>
+              {cardSales > 0 && <span>💳 Datáfono: {formatCOP(cardSales)}</span>}
+              <span>📱 Nequi / Bre-B: {formatCOP(transferSales)}</span>
             </div>
           </div>
+
+          {/* Cuentas por Cobrar (Fiados) */}
+          {metrics.totalFiados > 0 && (
+            <div className="flex items-center justify-between px-4 py-2.5 bg-purple-50 rounded-xl border border-purple-200 text-xs text-purple-900">
+              <span className="font-bold flex items-center gap-1.5">
+                <Icon icon="solar:hand-stars-bold" className="text-purple-600 text-sm" />
+                Cuentas por Cobrar (Fiados del turno):
+              </span>
+              <span className="font-black text-purple-950">
+                {formatCOP(metrics.totalFiados)} ({metrics.fiadosList?.length || 0} pendientes)
+              </span>
+            </div>
+          )}
 
           {/* Conteo de Efectivo */}
           <div className="space-y-3">

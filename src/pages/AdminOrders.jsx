@@ -2096,6 +2096,142 @@ export default function AdminOrders() {
                       );
                     })()}
 
+                    {/* Botones de Gestión de Fiado / Cobro Rápido */}
+                    {selectedOrder.payment_status !== 'paid' && (
+                      <div className="pt-2 border-t border-slate-100 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                            Asignar o Registrar Pago
+                          </span>
+                        </div>
+
+                        {/* Botón: Asignar como Fiado */}
+                        {selectedOrder.payment_method !== 'fiado' && !String(selectedOrder.delivery_notes || '').toLowerCase().includes('fiado') ? (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const debtor = window.prompt('Nombre del deudor / persona a quien se fía:', selectedOrder.customer_name || 'Xiomara');
+                              if (debtor === null) return;
+                              const cleanName = debtor.trim() || selectedOrder.customer_name || 'Cliente';
+                              const currentNotes = selectedOrder.delivery_notes || '';
+                              const updatedNotes = currentNotes 
+                                ? `${currentNotes} | [🤝 FIADO - Cuenta por cobrar: ${cleanName}]`
+                                : `[🤝 FIADO - Cuenta por cobrar: ${cleanName}]`;
+                              
+                              const { error } = await supabase
+                                .from('orders')
+                                .update({
+                                  payment_method: 'fiado',
+                                  payment_status: 'pending',
+                                  customer_name: cleanName,
+                                  delivery_notes: updatedNotes,
+                                  updated_at: new Date().toISOString()
+                                })
+                                .eq('id', selectedOrder.id);
+                              
+                              if (error) {
+                                toast.error('Error al asignar fiado: ' + error.message);
+                              } else {
+                                toast.success(`🤝 Pedido asignado como fiado a ${cleanName}`);
+                                setSelectedOrder(prev => ({
+                                  ...prev,
+                                  payment_method: 'fiado',
+                                  payment_status: 'pending',
+                                  customer_name: cleanName,
+                                  delivery_notes: updatedNotes
+                                }));
+                                fetchOrders();
+                              }
+                            }}
+                            className="w-full py-2.5 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                            title="Marcar este pedido como fiado / cuenta por cobrar"
+                          >
+                            <Icon icon="solar:hand-stars-bold" className="text-base text-purple-600" />
+                            <span>🤝 Asignar como Fiado (Cuenta por Cobrar)</span>
+                          </button>
+                        ) : (
+                          <div className="p-2.5 rounded-xl bg-purple-100/70 border border-purple-200 text-purple-950 text-xs font-bold flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                              <Icon icon="solar:hand-stars-bold" className="text-purple-700 text-sm" />
+                              Asignado como Fiado
+                            </span>
+                            <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded bg-purple-200 text-purple-900">
+                              Por Cobrar
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Botones rápidos de pago directo (Efectivo / Nequi) */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const total = Number(selectedOrder.total_amount || 0);
+                              const { error } = await supabase
+                                .from('orders')
+                                .update({
+                                  payment_status: 'paid',
+                                  payment_method: 'efectivo',
+                                  paid_amount: total,
+                                  updated_at: new Date().toISOString()
+                                })
+                                .eq('id', selectedOrder.id);
+                              
+                              if (error) {
+                                toast.error('Error al marcar pagado: ' + error.message);
+                              } else {
+                                toast.success('🎉 Pedido marcado como Pagado en Efectivo');
+                                setSelectedOrder(prev => ({
+                                  ...prev,
+                                  payment_status: 'paid',
+                                  payment_method: 'efectivo',
+                                  paid_amount: total
+                                }));
+                                fetchOrders();
+                              }
+                            }}
+                            className="py-2 px-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <Icon icon="solar:wallet-money-bold" className="text-sm text-emerald-600" />
+                            <span>💵 Pagó Efectivo</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const total = Number(selectedOrder.total_amount || 0);
+                              const { error } = await supabase
+                                .from('orders')
+                                .update({
+                                  payment_status: 'paid',
+                                  payment_method: 'nequi',
+                                  paid_amount: total,
+                                  updated_at: new Date().toISOString()
+                                })
+                                .eq('id', selectedOrder.id);
+                              
+                              if (error) {
+                                toast.error('Error al marcar pagado: ' + error.message);
+                              } else {
+                                toast.success('🎉 Pedido marcado como Pagado por Nequi');
+                                setSelectedOrder(prev => ({
+                                  ...prev,
+                                  payment_status: 'paid',
+                                  payment_method: 'nequi',
+                                  paid_amount: total
+                                }));
+                                fetchOrders();
+                              }
+                            }}
+                            className="py-2 px-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <Icon icon="solar:smartphone-bold" className="text-sm text-pink-600" />
+                            <span>📲 Pagó Nequi</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
 
 
 
