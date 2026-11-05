@@ -5,6 +5,8 @@ import { toast } from '../Toast';
 import { formatCOP } from '../../utils/money';
 import { printThermalDocument } from '../../utils/thermalPrint';
 
+const isValidUUID = (id) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
 export default function ManualOrderModal({
   isOpen,
   onClose,
@@ -15,6 +17,8 @@ export default function ManualOrderModal({
 }) {
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [products, setProducts] = useState([]);
+  const [locationsList, setLocationsList] = useState([]);
+  const [selectedLocationId, setSelectedLocationId] = useState(() => isValidUUID(locationId) ? locationId : null);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -42,23 +46,44 @@ export default function ManualOrderModal({
   const [paymentMethod, setPaymentMethod] = useState('nequi'); // 'nequi', 'daviplata', 'efectivo', 'datafono', 'bancolombia'
   const [printKitchenTicket, setPrintKitchenTicket] = useState(true);
 
-  // Fetch catalog of products
+  // Fetch catalog of products and locations
   useEffect(() => {
     if (!isOpen || !brandId) return;
 
     let isMounted = true;
-    const fetchCatalog = async () => {
+    const fetchData = async () => {
       setLoadingCatalog(true);
       try {
-        const { data: prods, error: pErr } = await supabase
-          .from('products')
-          .select('id, name, description, price, cost, image_url, category_id, is_active, requires_kitchen, subcategory, categories:category_id(id, name, slug)')
-          .eq('brand_id', brandId)
-          .eq('is_active', true)
-          .order('name', { ascending: true });
+        const [prodsRes, locsRes] = await Promise.all([
+          supabase
+            .from('products')
+            .select('id, name, description, price, cost, image_url, category_id, is_active, requires_kitchen, subcategory, categories:category_id(id, name, slug)')
+            .eq('brand_id', brandId)
+            .eq('is_active', true)
+            .order('name', { ascending: true }),
+          supabase
+            .from('locations')
+            .select('id, name, is_main')
+            .eq('brand_id', brandId)
+            .order('is_main', { ascending: false })
+        ]);
 
-        if (pErr) throw pErr;
-        if (isMounted) setProducts(prods || []);
+        if (prodsRes.error) throw prodsRes.error;
+
+        if (isMounted) {
+          setProducts(prodsRes.data || []);
+          const fetchedLocs = locsRes.data || [];
+          setLocationsList(fetchedLocs);
+
+          if (isValidUUID(locationId)) {
+            setSelectedLocationId(locationId);
+          } else if (fetchedLocs.length > 0) {
+            const mainLoc = fetchedLocs.find(l => l.is_main) || fetchedLocs[0];
+            setSelectedLocationId(mainLoc.id);
+          } else {
+            setSelectedLocationId(null);
+          }
+        }
       } catch (err) {
         console.error('Error fetching catalog for manual order:', err);
         toast.error('Error al cargar catálogo de productos');
@@ -67,7 +92,7 @@ export default function ManualOrderModal({
       }
     };
 
-    fetchCatalog();
+    fetchData();
     setOrderItems([]);
     setCustomerName('Cliente WhatsApp');
     setCustomerPhone('');
@@ -79,7 +104,7 @@ export default function ManualOrderModal({
     setPaymentMethod('nequi');
 
     return () => { isMounted = false; };
-  }, [isOpen, brandId]);
+  }, [isOpen, brandId, locationId]);
 
   // Categories derived from products
   const categories = useMemo(() => {
@@ -340,9 +365,13 @@ export default function ManualOrderModal({
         }
       }
 
+      const effectiveLocationId = isValidUUID(selectedLocationId)
+        ? selectedLocationId
+        : (isValidUUID(locationId) ? locationId : (locationsList.find(l => l.is_main)?.id || locationsList[0]?.id || null));
+
       const orderPayload = {
         brand_id: brandId,
-        location_id: locationId || null,
+        location_id: effectiveLocationId,
         status: 'new',
         kitchen_status: 'pending',
         bar_status: 'pending',

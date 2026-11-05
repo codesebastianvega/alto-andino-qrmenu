@@ -162,8 +162,12 @@ export default function AdminOrders() {
 
   const { activeBrand, profile } = useAuth();
   const { brand: brandFromContext } = useBrand();
-  const { activeLocationId, isAllLocations } = useLocations();
+  const { activeLocationId, isAllLocations, locations } = useLocations();
   const activeBrandId = activeBrand?.id || brandFromContext?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
+
+  const defaultOrderLocationId = (!isAllLocations && activeLocationId && activeLocationId !== 'all')
+    ? activeLocationId
+    : (locations?.find(l => l.is_main)?.id || locations?.[0]?.id || null);
 
   // Filtro reactivo por búsqueda (ID #c955, cliente, mesa, teléfono, dirección, platos, notas)
   const filteredOrders = useMemo(() => {
@@ -2382,7 +2386,7 @@ export default function AdminOrders() {
             fetchOrders();
           }}
           brandId={activeBrandId}
-          locationId={activeLocationId}
+          locationId={defaultOrderLocationId}
           restaurantSettings={restaurantSettings}
         />
       )}
