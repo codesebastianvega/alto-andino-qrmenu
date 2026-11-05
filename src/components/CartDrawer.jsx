@@ -210,6 +210,7 @@ export default function CartDrawer({ open, onClose }) {
   const initialMesa = getTable();
   const flowFromStorage = localStorage.getItem("aa_fulfillment_flow");
   const [fulfillmentType, setFulfillmentType] = useState(() => {
+    if (flowFromStorage && (flowFromStorage === 'takeaway' || flowFromStorage === 'delivery')) return flowFromStorage;
     if (isDarkKitchen) return 'delivery';
     if (initialMesa && fulfillmentModes.dine_in) return 'dine_in';
     if (flowFromStorage && fulfillmentModes[flowFromStorage]) return flowFromStorage;
@@ -730,19 +731,52 @@ export default function CartDrawer({ open, onClose }) {
                     <div className="flex flex-col gap-3 animate-in slide-in-from-bottom-4 duration-300">
                       {/* Fulfillment Picker / Dark Kitchen Mode */}
                       {isDarkKitchen ? (
-                        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-950">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20 flex-shrink-0">
-                              <Icon icon="heroicons:truck" className="text-xl" />
-                            </div>
-                            <div className="text-left">
-                              <p className="text-xs font-black uppercase tracking-wider text-amber-950">Modalidad Solo Domicilios</p>
-                              <p className="text-[11px] font-medium text-amber-800/90">Despachamos directo desde nuestra cocina</p>
-                            </div>
+                        <div className="flex flex-col gap-2.5">
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFulfillmentType('delivery');
+                                localStorage.setItem('aa_fulfillment_flow', 'delivery');
+                              }}
+                              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 transition-all font-bold text-xs ${
+                                fulfillmentType !== 'takeaway'
+                                  ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-xs scale-[1.01]"
+                                  : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
+                              }`}
+                            >
+                              <Icon icon="heroicons:truck" className="text-base text-amber-600" />
+                              <span>🛵 A Domicilio</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFulfillmentType('takeaway');
+                                localStorage.setItem('aa_fulfillment_flow', 'takeaway');
+                              }}
+                              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 transition-all font-bold text-xs ${
+                                fulfillmentType === 'takeaway'
+                                  ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-xs scale-[1.01]"
+                                  : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
+                              }`}
+                            >
+                              <Icon icon="heroicons:shopping-bag" className="text-base text-amber-600" />
+                              <span>🛍️ Recoger en Local</span>
+                            </button>
                           </div>
-                          <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-950 px-2 py-0.5 rounded-md">
-                            Dark Kitchen
-                          </span>
+                          {fulfillmentType === 'takeaway' ? (
+                            <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-950 font-bold">
+                              ✓ Recoges en cocina · Sin costo de envío
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-950">
+                              <span className="text-xs font-bold">Entrega a Domicilio</span>
+                              <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-950 px-2 py-0.5 rounded-md">
+                                Dark Kitchen
+                              </span>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="grid grid-cols-2 gap-2">

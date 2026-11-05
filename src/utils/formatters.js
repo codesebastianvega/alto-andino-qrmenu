@@ -137,9 +137,9 @@ export const parsePaymentMethod = (methodStr, paymentStatus = 'pending') => {
 
   // 1. Efectivo / Cash
   if (lower.includes('efectivo') || lower.includes('cash')) {
-    const cambioMatch = raw.match(/cambio:\s*(\$?[0-9.,]+)/i);
-    const pagaConMatch = raw.match(/paga con:\s*(\$?[0-9.,]+)/i);
-    const exactMatch = lower.includes('pago exacto');
+    const cambioMatch = raw.match(/(?:cambio|vueltas):\s*(\$?[0-9.,]+)/i);
+    const pagaConMatch = raw.match(/paga(?: con)?:\s*(\$?[0-9.,]+)/i);
+    const exactMatch = lower.includes('pago exacto') || lower.includes('exacto');
 
     let detail = null;
     let shortLabel = 'Efectivo';
@@ -147,8 +147,8 @@ export const parsePaymentMethod = (methodStr, paymentStatus = 'pending') => {
     let change = cambioMatch ? cambioMatch[1] : null;
 
     if (pagaConMatch && cambioMatch) {
-      detail = `Paga con ${tendered} · Cambio: ${change}`;
-      shortLabel = `Efectivo (Cambio: ${change})`;
+      detail = `Paga con ${tendered} · Vueltas: ${change}`;
+      shortLabel = `Efectivo (Vueltas: ${change})`;
     } else if (exactMatch) {
       detail = 'Pago exacto';
       shortLabel = 'Efectivo (Exacto)';
@@ -166,6 +166,23 @@ export const parsePaymentMethod = (methodStr, paymentStatus = 'pending') => {
       text: 'text-emerald-800',
       border: 'border-emerald-200',
       type: 'cash'
+    };
+  }
+
+  // 1b. Fiado / Cuentas por cobrar
+  if (lower.includes('fiado') || lower.includes('crédito') || lower.includes('credito')) {
+    return {
+      label: '🤝 Fiado / Por Cobrar',
+      shortLabel: '🤝 Fiado',
+      fullText: raw,
+      detail: 'Cuenta por cobrar a cliente/familiar',
+      tendered: null,
+      change: null,
+      icon: 'heroicons:user-group',
+      bg: 'bg-amber-100',
+      text: 'text-amber-950 font-black',
+      border: 'border-amber-300',
+      type: 'fiado'
     };
   }
 

@@ -184,10 +184,16 @@ export default function AdminOrders() {
                          (q.startsWith('mesa') && tableNum.toLowerCase() === q.replace('mesa', '').trim());
       const addressMatch = o.delivery_address && o.delivery_address.toLowerCase().includes(q);
       const itemsMatch = o.order_items?.some(it => it.products?.name && it.products.name.toLowerCase().includes(q));
-      const notesMatch = o.notes && o.notes.toLowerCase().includes(q);
-      return idMatch || customerMatch || phoneMatch || tableMatch || addressMatch || itemsMatch || notesMatch;
+      const notesMatch = (o.notes && o.notes.toLowerCase().includes(q)) || (o.delivery_notes && o.delivery_notes.toLowerCase().includes(q));
+      const paymentMatch = (o.payment_method && o.payment_method.toLowerCase().includes(q)) || (q === 'fiado' && (o.payment_method === 'fiado' || String(o.delivery_notes).toLowerCase().includes('fiado')));
+      return idMatch || customerMatch || phoneMatch || tableMatch || addressMatch || itemsMatch || notesMatch || paymentMatch;
     });
   }, [orders, searchQuery]);
+
+  // Contador de cuentas por cobrar / fiados pendientes
+  const fiadosCount = useMemo(() => {
+    return orders.filter(o => o.payment_status !== 'paid' && (o.payment_method === 'fiado' || String(o.delivery_notes).toLowerCase().includes('fiado'))).length;
+  }, [orders]);
 
   // REINSTATED: Missing logic for staff, payments and settings
   const { staffList } = useStaff();
@@ -389,6 +395,20 @@ export default function AdminOrders() {
         if (selectedOrder?.id === payload.new.id) {
             setSelectedOrder(prev => ({ ...prev, ...payload.new }));
         }
+
+        // Si el pedido ya no está en estado 'new' (fue aceptado o despachado en otro dispositivo),
+        // retirarlo automáticamente de la cola de alerta para evitar loops o degradación accidental
+        if (payload.new.status && payload.new.status !== 'new') {
+          setIncomingOrdersQueue(prev => {
+            const remaining = prev.filter(o => o.id !== payload.new.id);
+            if (remaining.length === 0) {
+              setIsAlertModalOpen(false);
+              soundService.stopNewOrderLoop();
+              setIsSoundLoopActive(false);
+            }
+            return remaining;
+          });
+        }
       })
       .on('postgres_changes', { 
         event: '*', 
@@ -465,6 +485,21 @@ export default function AdminOrders() {
   const handleAcceptIncomingOrder = async (orderId) => {
     soundService.stopNewOrderLoop();
     setIsSoundLoopActive(false);
+
+    // Guard de seguridad: si el pedido ya fue despachado, iniciado o entregado previamente, no reiniciar tiempos ni degradar estado
+    const currentOrder = orders.find(o => o.id === orderId);
+    if (currentOrder && ['preparing', 'ready', 'delivered'].includes(currentOrder.status)) {
+      toast(`El pedido #${orderId.slice(-4).toUpperCase()} ya está en estado ${currentOrder.status === 'ready' ? 'Listo' : currentOrder.status === 'delivered' ? 'Entregado' : 'Preparación'}`);
+      setIncomingOrdersQueue(prev => {
+        const remaining = prev.filter(o => o.id !== orderId);
+        if (remaining.length === 0) {
+          setIsAlertModalOpen(false);
+          setIncomingOrderIndex(0);
+        }
+        return remaining;
+      });
+      return;
+    }
 
     await updateOrderStatus(orderId, 'preparing');
 
@@ -901,6 +936,23 @@ export default function AdminOrders() {
               <span className="text-[11px] font-bold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-xl border border-gray-200">
                 {filteredOrders.length} resultado{filteredOrders.length !== 1 ? 's' : ''}
               </span>
+            )}
+
+            {/* Botón Filtro Rápido Fiados / Cuentas por Cobrar */}
+            {fiadosCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery(searchQuery.toLowerCase() === 'fiado' ? '' : 'fiado')}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-black transition-all border shrink-0 cursor-pointer ${
+                  searchQuery.toLowerCase() === 'fiado'
+                    ? 'bg-amber-600 text-white border-amber-700 shadow-md ring-2 ring-amber-400/40'
+                    : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
+                }`}
+                title="Ver pedidos fiados pendientes de cobro"
+              >
+                <Icon icon="heroicons:user-group" className="text-base" />
+                <span>🤝 Fiados ({fiadosCount})</span>
+              </button>
             )}
 
             {/* Time Range Selector */}

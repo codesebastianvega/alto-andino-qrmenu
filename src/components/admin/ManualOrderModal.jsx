@@ -49,7 +49,9 @@ export default function ManualOrderModal({
 
   // Payment
   const [isPaid, setIsPaid] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('nequi'); // 'nequi', 'daviplata', 'efectivo', 'datafono', 'bancolombia'
+  const [pendingType, setPendingType] = useState('contra_entrega'); // 'contra_entrega' | 'fiado'
+  const [paymentMethod, setPaymentMethod] = useState('nequi'); // 'nequi', 'daviplata', 'efectivo', 'datafono'
+  const [cashTendered, setCashTendered] = useState('');
   const [printKitchenTicket, setPrintKitchenTicket] = useState(true);
 
   // Fetch catalog of products and locations
@@ -370,6 +372,23 @@ export default function ManualOrderModal({
     toast.success(`${product.name} ${editingItemIndex !== null ? 'actualizado' : 'agregado al pedido'}`);
   };
 
+  const modalDishLivePrice = useMemo(() => {
+    if (!configuringProduct) return 0;
+    const base = Number(configuringProduct.product.price) || 0;
+    let extra = 0;
+    configuringProduct.groups.forEach(g => {
+      const selected = selectedModifiers[g.name] || [];
+      const included = (g.included_count !== undefined && g.included_count !== null) ? g.included_count : (g.max === 1 ? 1 : 0);
+      selected.forEach((optName, idx) => {
+        if (idx >= included) {
+          const optObj = g.options.find(o => o.name === optName);
+          extra += (optObj?.extra || 0);
+        }
+      });
+    });
+    return base + extra;
+  }, [configuringProduct, selectedModifiers]);
+
   const handleEditItem = (index) => {
     const item = orderItems[index];
     if (!item) return;
@@ -434,10 +453,44 @@ export default function ManualOrderModal({
 
       const isAlreadyDelivered = entryFlow === 'completed';
 
+      let finalPaymentMethod = paymentMethod;
+      let finalDeliveryNotes = orderNotes.trim();
+
+      const tenderNum = Number(String(cashTendered).replace(/\D/g, '')) || 0;
+
+      if (!isPaid && !isAlreadyDelivered) {
+        if (pendingType === 'fiado') {
+          finalPaymentMethod = 'fiado';
+          const fiadoTag = `[🤝 FIADO - Cuenta por cobrar: ${customerName.trim() || 'Cliente'}]`;
+          finalDeliveryNotes = finalDeliveryNotes ? `${finalDeliveryNotes}\n${fiadoTag}` : fiadoTag;
+        } else {
+          finalPaymentMethod = 'contra_entrega';
+          const contraTag = `[🛵 PAGO CONTRA ENTREGA]`;
+          finalDeliveryNotes = finalDeliveryNotes ? `${finalDeliveryNotes}\n${contraTag}` : contraTag;
+        }
+      } else {
+        if (paymentMethod === 'efectivo') {
+          if (tenderNum > 0) {
+            if (tenderNum === grandTotal) {
+              finalPaymentMethod = 'Efectivo (Exacto)';
+            } else if (tenderNum > grandTotal) {
+              const change = tenderNum - grandTotal;
+              finalPaymentMethod = `Efectivo (Paga: ${formatCOP(tenderNum)} | Vueltas: ${formatCOP(change)})`;
+              const cashNote = `[💵 Paga en efectivo con ${formatCOP(tenderNum)} - Llevar ${formatCOP(change)} de vueltas]`;
+              finalDeliveryNotes = finalDeliveryNotes ? `${finalDeliveryNotes}\n${cashNote}` : cashNote;
+            } else {
+              finalPaymentMethod = `Efectivo (Abono: ${formatCOP(tenderNum)})`;
+            }
+          } else {
+            finalPaymentMethod = 'efectivo';
+          }
+        }
+      }
+
       const orderPayload = {
         brand_id: brandId,
         location_id: effectiveLocationId,
-        status: isAlreadyDelivered ? 'delivered' : 'new',
+        status: isAlreadyDelivered ? 'delivered' : 'preparing',
         kitchen_status: isAlreadyDelivered ? 'completed' : 'pending',
         bar_status: isAlreadyDelivered ? 'completed' : 'pending',
         delivered_at: isAlreadyDelivered ? new Date().toISOString() : null,
@@ -446,12 +499,12 @@ export default function ManualOrderModal({
         customer_name: customerName.trim() || 'Cliente Mostrador / WhatsApp',
         customer_phone: customerPhone.trim() || null,
         delivery_address: fulfillmentType === 'delivery' ? (deliveryAddress.trim() || null) : null,
-        delivery_notes: orderNotes.trim() || null,
+        delivery_notes: finalDeliveryNotes || null,
         delivery_fee: activeDeliveryFee,
         scheduled_time: parsedScheduledTime,
         total_amount: grandTotal,
         payment_status: (isAlreadyDelivered || isPaid) ? 'paid' : 'pending',
-        payment_method: (isAlreadyDelivered || isPaid) ? paymentMethod : null
+        payment_method: (isAlreadyDelivered || isPaid) ? finalPaymentMethod : (pendingType === 'fiado' ? 'fiado' : 'contra_entrega')
       };
 
       const { data: createdOrder, error: orderErr } = await supabase
@@ -942,7 +995,7 @@ export default function ManualOrderModal({
               </div>
 
               {/* Payment Status and Method */}
-              <div className="p-3 bg-white rounded-2xl border border-neutral-200 space-y-2">
+              <div className="p-3 bg-white rounded-2xl border border-neutral-200 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-black uppercase tracking-wider text-neutral-500">
                     Estado del Pago
@@ -954,7 +1007,7 @@ export default function ManualOrderModal({
                       className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all ${
                         isPaid
                           ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                          : 'bg-neutral-50 text-neutral-500 border-neutral-200'
+                          : 'bg-neutral-50 text-neutral-500 border-neutral-200 hover:bg-neutral-100'
                       }`}
                     >
                       ✓ Ya Pagado
@@ -965,7 +1018,7 @@ export default function ManualOrderModal({
                       className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all ${
                         !isPaid
                           ? 'bg-amber-500 text-neutral-950 border-amber-500 shadow-xs font-black'
-                          : 'bg-neutral-50 text-neutral-500 border-neutral-200'
+                          : 'bg-neutral-50 text-neutral-500 border-neutral-200 hover:bg-neutral-100'
                       }`}
                     >
                       Por Cobrar
@@ -973,28 +1026,167 @@ export default function ManualOrderModal({
                   </div>
                 </div>
 
-                {isPaid && (
-                  <div className="flex gap-1 overflow-x-auto pt-1">
-                    {[
-                      { id: 'nequi', label: 'Nequi' },
-                      { id: 'daviplata', label: 'Daviplata' },
-                      { id: 'efectivo', label: 'Efectivo' },
-                      { id: 'datafono', label: 'Datáfono' },
-                      { id: 'bancolombia', label: 'Bancolombia' }
-                    ].map(pm => (
+                {isPaid ? (
+                  <div className="space-y-2.5 pt-1 border-t border-neutral-100 animate-in fade-in">
+                    <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+                      {[
+                        { id: 'nequi', label: 'Nequi' },
+                        { id: 'daviplata', label: 'Daviplata' },
+                        { id: 'efectivo', label: 'Efectivo' },
+                        { id: 'datafono', label: 'Datáfono' }
+                      ].map(pm => (
+                        <button
+                          key={pm.id}
+                          type="button"
+                          onClick={() => setPaymentMethod(pm.id)}
+                          className={`text-xs font-bold px-3 py-1.5 rounded-xl border shrink-0 transition-all ${
+                            paymentMethod === pm.id
+                              ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
+                              : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100'
+                          }`}
+                        >
+                          {pm.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Calculadora de Vueltas / Cambio en Efectivo */}
+                    {paymentMethod === 'efectivo' && (
+                      <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="text-xs font-bold text-neutral-700 shrink-0">
+                            Paga con efectivo:
+                          </label>
+                          <div className="relative flex-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400">$</span>
+                            <input
+                              type="text"
+                              value={cashTendered}
+                              onChange={e => {
+                                const val = e.target.value.replace(/\D/g, '');
+                                setCashTendered(val ? Number(val).toLocaleString('es-CO') : '');
+                              }}
+                              placeholder={grandTotal.toLocaleString('es-CO')}
+                              className="w-full pl-7 pr-3 py-1.5 text-xs font-black rounded-xl border border-neutral-300 bg-white text-right focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131]"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Chips rápidos de denominación colombiana */}
+                        <div className="flex flex-wrap gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setCashTendered(grandTotal.toLocaleString('es-CO'))}
+                            className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-100"
+                          >
+                            Exacto ({formatCOP(grandTotal)})
+                          </button>
+                          {grandTotal <= 20000 && (
+                            <button
+                              type="button"
+                              onClick={() => setCashTendered((20000).toLocaleString('es-CO'))}
+                              className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-100"
+                            >
+                              $ 20.000
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setCashTendered((50000).toLocaleString('es-CO'))}
+                            className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-100"
+                          >
+                            $ 50.000
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCashTendered((100000).toLocaleString('es-CO'))}
+                            className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-100"
+                          >
+                            $ 100.000
+                          </button>
+                        </div>
+
+                        {/* Cálculo instantáneo de vueltas */}
+                        {(() => {
+                          const tenderNum = Number(String(cashTendered).replace(/\D/g, '')) || 0;
+                          if (tenderNum >= grandTotal && grandTotal > 0) {
+                            const change = tenderNum - grandTotal;
+                            return (
+                              <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-100/80 border border-emerald-300 text-emerald-950">
+                                <span className="text-xs font-bold flex items-center gap-1.5">
+                                  <Icon icon="heroicons:banknotes" className="text-base text-emerald-700" />
+                                  Cambio / Vueltas a entregar:
+                                </span>
+                                <span className="text-sm font-black text-emerald-800">{formatCOP(change)}</span>
+                              </div>
+                            );
+                          } else if (tenderNum > 0 && tenderNum < grandTotal) {
+                            return (
+                              <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-100/80 border border-amber-300 text-amber-950">
+                                <span className="text-xs font-bold flex items-center gap-1.5">
+                                  <Icon icon="heroicons:exclamation-circle" className="text-base text-amber-700" />
+                                  Falta por pagar:
+                                </span>
+                                <span className="text-sm font-black text-amber-800">{formatCOP(grandTotal - tenderNum)}</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2 pt-1 border-t border-neutral-100 animate-in fade-in">
+                    <div className="grid grid-cols-2 gap-2">
                       <button
-                        key={pm.id}
                         type="button"
-                        onClick={() => setPaymentMethod(pm.id)}
-                        className={`text-[10px] font-bold px-2 py-1 rounded-lg border shrink-0 transition-all ${
-                          paymentMethod === pm.id
-                            ? 'bg-neutral-900 text-white border-neutral-900'
-                            : 'bg-neutral-50 text-neutral-600 border-neutral-200'
+                        onClick={() => setPendingType('contra_entrega')}
+                        className={`p-2.5 rounded-xl border text-left text-xs font-bold transition-all ${
+                          pendingType === 'contra_entrega'
+                            ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
+                            : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100'
                         }`}
                       >
-                        {pm.label}
+                        <div className="flex items-center gap-1.5">
+                          <Icon icon="heroicons:truck" className="text-sm" />
+                          <span>Contra Entrega</span>
+                        </div>
+                        <p className={`text-[10px] font-normal mt-0.5 ${pendingType === 'contra_entrega' ? 'text-neutral-300' : 'text-neutral-400'}`}>
+                          Paga al recibir su pedido
+                        </p>
                       </button>
-                    ))}
+
+                      <button
+                        type="button"
+                        onClick={() => setPendingType('fiado')}
+                        className={`p-2.5 rounded-xl border text-left text-xs font-bold transition-all ${
+                          pendingType === 'fiado'
+                            ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                            : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <Icon icon="heroicons:user-group" className="text-sm" />
+                          <span>🤝 Fiado / Crédito</span>
+                        </div>
+                        <p className={`text-[10px] font-normal mt-0.5 ${pendingType === 'fiado' ? 'text-amber-100' : 'text-neutral-400'}`}>
+                          Hermana, empleado o cliente
+                        </p>
+                      </button>
+                    </div>
+
+                    {pendingType === 'fiado' && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs space-y-1">
+                        <div className="flex items-center gap-1.5 text-amber-900 font-black text-xs">
+                          <Icon icon="heroicons:information-circle" className="text-base text-amber-700" />
+                          <span>Cuenta por cobrar a: {customerName.trim() || 'Cliente'}</span>
+                        </div>
+                        <p className="text-[11px] text-amber-800 leading-tight">
+                          El pedido se creará y los ingredientes se descuentan del inventario de una vez. Quedará marcado como <strong>🤝 FIADO</strong> para que lleves el saldo exacto y puedas registrar el pago cuando te cancelen.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1103,6 +1295,40 @@ export default function ManualOrderModal({
                       <div className="grid grid-cols-1 gap-1.5">
                         {g.options.map(opt => {
                           const isSel = currentSel.includes(opt.name);
+                          const includedCount = (g.included_count !== undefined && g.included_count !== null) ? g.included_count : (g.max === 1 ? 1 : 0);
+                          
+                          let badgeEl = null;
+                          if (isSel) {
+                            const selIndex = currentSel.indexOf(opt.name);
+                            if (selIndex < includedCount) {
+                              badgeEl = (
+                                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                                  ✓ Incluido ($0)
+                                </span>
+                              );
+                            } else {
+                              badgeEl = (
+                                <span className="text-[11px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-lg">
+                                  +{formatCOP(opt.extra || 0)} (Adicional)
+                                </span>
+                              );
+                            }
+                          } else {
+                            if (currentSel.length < includedCount) {
+                              badgeEl = (
+                                <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50/70 px-2 py-0.5 rounded-lg">
+                                  Incluido ($0)
+                                </span>
+                              );
+                            } else if (opt.extra > 0) {
+                              badgeEl = (
+                                <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">
+                                  +{formatCOP(opt.extra)} (2da opción)
+                                </span>
+                              );
+                            }
+                          }
+
                           return (
                             <button
                               key={opt.id || opt.name}
@@ -1124,16 +1350,12 @@ export default function ManualOrderModal({
                               }}
                               className={`p-2.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition-all ${
                                 isSel
-                                  ? 'bg-amber-500/10 border-amber-600 text-amber-950 font-bold'
+                                  ? 'bg-amber-500/10 border-amber-600 text-amber-950 font-bold shadow-xs'
                                   : 'bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50'
                               }`}
                             >
                               <span>{opt.name}</span>
-                              {opt.extra > 0 && (
-                                <span className="text-[11px] font-bold text-amber-800">
-                                  +{formatCOP(opt.extra)}
-                                </span>
-                              )}
+                              {badgeEl}
                             </button>
                           );
                         })}
@@ -1158,21 +1380,29 @@ export default function ManualOrderModal({
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-neutral-100 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setConfiguringProduct(null)}
-                  className="flex-1 py-2.5 rounded-xl border border-neutral-200 text-xs font-bold text-neutral-600 hover:bg-neutral-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmConfiguredProduct}
-                  className="flex-1 py-2.5 rounded-xl bg-neutral-900 text-white text-xs font-bold hover:bg-neutral-800"
-                >
-                  Confirmar y Agregar
-                </button>
+              <div className="pt-3 border-t border-neutral-100 space-y-2.5">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-bold text-neutral-500">Precio total de este plato:</span>
+                  <span className="text-sm font-black text-neutral-900 bg-neutral-100 px-2.5 py-1 rounded-xl">
+                    {formatCOP(modalDishLivePrice)}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfiguringProduct(null)}
+                    className="flex-1 py-2.5 rounded-xl border border-neutral-200 text-xs font-bold text-neutral-600 hover:bg-neutral-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmConfiguredProduct}
+                    className="flex-1 py-2.5 rounded-xl bg-neutral-900 text-white text-xs font-bold hover:bg-neutral-800"
+                  >
+                    Confirmar y Agregar
+                  </button>
+                </div>
               </div>
             </div>
           </div>

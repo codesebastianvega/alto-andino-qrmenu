@@ -871,6 +871,8 @@ export default function CartModal({ open, onClose }) {
 
     if (isPOSMode && manualType) {
       setFulfillmentType(manualType);
+    } else if (flowFromStorage && (flowFromStorage === 'takeaway' || flowFromStorage === 'delivery')) {
+      setFulfillmentType(flowFromStorage);
     } else if (isDarkKitchen) {
       setFulfillmentType('delivery');
     } else if (initialMesa && fulfillmentModes.dine_in) {
@@ -1871,11 +1873,13 @@ export default function CartModal({ open, onClose }) {
                 disabled={!items.length || (!isPOSMode && storeStatusInfo && !storeStatusInfo.isOpen)}
                 className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] active:bg-[#202c21] text-white shadow-[#2f4131]/20 sm:hover:-translate-y-0.5 sm:hover:bg-[#202c21] transition-all active:scale-[0.98] cursor-pointer touch-manipulation select-none relative z-10 disabled:opacity-50 disabled:grayscale disabled:pointer-events-none"
               >
-                <Icon icon={isDarkKitchen ? "heroicons:truck" : "heroicons:sparkles"} className="text-xl pointer-events-none" />
+                <Icon icon={fulfillmentType === 'takeaway' ? "heroicons:shopping-bag" : isDarkKitchen ? "heroicons:truck" : "heroicons:sparkles"} className="text-xl pointer-events-none" />
                 <span className="pointer-events-none">
                   {(!isPOSMode && storeStatusInfo && !storeStatusInfo.isOpen)
                     ? "Restaurante Cerrado"
-                    : (isDarkKitchen ? "Datos de Entrega a Domicilio" : "Confirmar Pedido")}
+                    : (fulfillmentType === 'takeaway' 
+                        ? "🛍️ Datos para Recoger en Tienda" 
+                        : (isDarkKitchen ? "🛵 Datos de Entrega a Domicilio" : "Confirmar Pedido"))}
                 </span>
               </button>
             ) : !showFulfillmentSelector && (initialMesa || isPOSMode) && !isDarkKitchen ? (
@@ -1907,59 +1911,90 @@ export default function CartModal({ open, onClose }) {
                 {/* Fulfillment Picker / Dark Kitchen Mode */}
                 {isDarkKitchen ? (
                   <div className="flex flex-col gap-2.5">
-                    <div className="flex items-center justify-between p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-950">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20 flex-shrink-0">
-                          <Icon icon="heroicons:truck" className="text-xl" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-xs font-black uppercase tracking-wider text-amber-950">Modalidad Domicilio</p>
-                          <p className="text-[11px] font-medium text-amber-800/90">Despachamos directo desde nuestra cocina</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-950 px-2 py-0.5 rounded-md">
-                        Dark Kitchen
-                      </span>
-                    </div>
-
-                    {/* Selector de horario para Dark Kitchen */}
+                    {/* Selector Domicilio vs Recoger en Tienda */}
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => {
                           setFulfillmentType('delivery');
-                          setScheduledTime('');
+                          localStorage.setItem('aa_fulfillment_flow', 'delivery');
                         }}
                         className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 transition-all font-bold text-xs ${
-                          fulfillmentType === 'delivery' && !scheduledTime
-                            ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-xs scale-[1.02]"
+                          fulfillmentType !== 'takeaway'
+                            ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-xs scale-[1.01]"
                             : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
                         }`}
                       >
-                        <Icon icon="heroicons:bolt" className="text-base text-amber-500" />
-                        <span>Lo antes posible</span>
+                        <Icon icon="heroicons:truck" className="text-base text-amber-600" />
+                        <span>🛵 A Domicilio</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => {
-                          setFulfillmentType('scheduled');
-                          if (!scheduledTime) {
-                            const now = new Date();
-                            now.setMinutes(now.getMinutes() + 45);
-                            setScheduledTime(now.toISOString().slice(0, 16));
-                          }
+                          setFulfillmentType('takeaway');
+                          localStorage.setItem('aa_fulfillment_flow', 'takeaway');
+                          setScheduledTime('');
                         }}
                         className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 transition-all font-bold text-xs ${
-                          fulfillmentType === 'scheduled' || scheduledTime
-                            ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-xs scale-[1.02]"
+                          fulfillmentType === 'takeaway'
+                            ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-xs scale-[1.01]"
                             : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
                         }`}
                       >
-                        <Icon icon="heroicons:calendar" className="text-base text-amber-500" />
-                        <span>Programar hora</span>
+                        <Icon icon="heroicons:shopping-bag" className="text-base text-amber-600" />
+                        <span>🛍️ Recoger en Local</span>
                       </button>
                     </div>
+
+                    {fulfillmentType === 'takeaway' ? (
+                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2.5 text-xs text-emerald-950">
+                        <Icon icon="heroicons:sparkles" className="text-lg text-emerald-600 shrink-0" />
+                        <div className="leading-tight">
+                          <p className="font-black text-emerald-900">¡Recoges en nuestra cocina sin costo de envío!</p>
+                          <p className="text-[11px] text-emerald-700 mt-0.5">Te notificamos al WhatsApp cuando esté listo.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Selector de horario para Domicilio */
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFulfillmentType('delivery');
+                            setScheduledTime('');
+                          }}
+                          className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 transition-all font-bold text-xs ${
+                            fulfillmentType === 'delivery' && !scheduledTime
+                              ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-xs scale-[1.02]"
+                              : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
+                          }`}
+                        >
+                          <Icon icon="heroicons:bolt" className="text-base text-amber-500" />
+                          <span>Lo antes posible</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFulfillmentType('scheduled');
+                            if (!scheduledTime) {
+                              const now = new Date();
+                              now.setMinutes(now.getMinutes() + 45);
+                              setScheduledTime(now.toISOString().slice(0, 16));
+                            }
+                          }}
+                          className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 transition-all font-bold text-xs ${
+                            fulfillmentType === 'scheduled' || scheduledTime
+                              ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-xs scale-[1.02]"
+                              : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
+                          }`}
+                        >
+                          <Icon icon="heroicons:calendar" className="text-base text-amber-500" />
+                          <span>Programar hora</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
