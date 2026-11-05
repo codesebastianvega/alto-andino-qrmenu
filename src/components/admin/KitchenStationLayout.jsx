@@ -226,6 +226,8 @@ export function KitchenStationLayout({ onSelectIngredient = null }) {
         .from('restaurant_settings')
         .select('kitchen_stations_layout')
         .eq('brand_id', brandId)
+        .order('location_id', { ascending: true, nullsFirst: true })
+        .limit(1)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {

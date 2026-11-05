@@ -71,6 +71,8 @@ export default function AdminBusinessProfile({ isEmbedded = false }) {
         .from('restaurant_settings')
         .select('legal_name, legal_id')
         .eq('brand_id', activeBrand.id)
+        .order('location_id', { ascending: true, nullsFirst: true })
+        .limit(1)
         .maybeSingle();
 
       setProfileForm({

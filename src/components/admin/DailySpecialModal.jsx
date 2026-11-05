@@ -75,14 +75,19 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
         if (pErr) throw pErr;
         if (isMounted) setProducts(prods || []);
 
-        // 2. Fetch restaurant_settings brand_concepts
-        const { data: rsData, error: rsErr } = await supabase
+        // 2. Fetch restaurant_settings brand_concepts safely
+        const { data: rsRows, error: rsErr } = await supabase
           .from('restaurant_settings')
-          .select('id, brand_id, brand_concepts')
-          .eq('brand_id', activeBrand.id)
-          .maybeSingle();
+          .select('id, brand_id, location_id, brand_concepts')
+          .eq('brand_id', activeBrand.id);
 
-        if (rsErr && rsErr.code !== 'PGRST116') throw rsErr;
+        if (rsErr) throw rsErr;
+
+        // Prefer brand-level row (location_id is null) or first available row
+        const rsData = (rsRows || []).find(r => !r.location_id && r.brand_concepts?.length > 0)
+          || (rsRows || []).find(r => r.brand_concepts?.length > 0)
+          || (rsRows || [])[0]
+          || null;
 
         const concepts = Array.isArray(rsData?.brand_concepts) ? rsData.brand_concepts : [];
         const existingConcept = concepts.find(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config'));
@@ -97,18 +102,11 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
             manual_override_product_id: existingConcept.manual_override_product_id || null,
             secondary_product_ids: Array.isArray(existingConcept.secondary_product_ids) 
               ? existingConcept.secondary_product_ids 
-              : (activeBrand.slug === 'boku-bento' ? ['b0000b16-0000-4000-a000-000000000006'] : []),
+              : [],
             schedule: existingConcept.schedule || prev.schedule,
             secondary_schedule: existingConcept.secondary_schedule || {},
             soup_name: existingConcept.soup_name || 'Crema de verduras casera (16 oz)',
             drink_name: existingConcept.drink_name || 'Bebida natural de la Casa (5 oz)'
-          }));
-        } else if (activeBrand.slug === 'boku-bento' && isMounted) {
-          // Defaults for Boku Bento if not configured yet
-          setConfig(prev => ({
-            ...prev,
-            manual_override_product_id: 'b0000b12-0000-4000-a000-000000000002', // Tex-Mex
-            secondary_product_ids: ['b0000b16-0000-4000-a000-000000000006'], // Pasta Alfredo
           }));
         }
       } catch (err) {
@@ -192,16 +190,16 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
     if (!activeBrand?.id) return;
     setSaving(true);
     try {
-      // 1. Fetch current settings row
-      const { data: rsData, error: fetchErr } = await supabase
+      // 1. Fetch current settings rows for this brand
+      const { data: rsRows, error: fetchErr } = await supabase
         .from('restaurant_settings')
-        .select('id, brand_id, brand_concepts')
-        .eq('brand_id', activeBrand.id)
-        .maybeSingle();
+        .select('id, brand_id, location_id, brand_concepts')
+        .eq('brand_id', activeBrand.id);
 
-      if (fetchErr && fetchErr.code !== 'PGRST116') throw fetchErr;
+      if (fetchErr) throw fetchErr;
 
-      const existingConcepts = Array.isArray(rsData?.brand_concepts) ? rsData.brand_concepts : [];
+      const primaryRow = (rsRows || []).find(r => !r.location_id) || (rsRows || [])[0] || null;
+      const existingConcepts = Array.isArray(primaryRow?.brand_concepts) ? primaryRow.brand_concepts : [];
       const filteredConcepts = existingConcepts.filter(c => c && c.id !== 'bento_del_dia_config' && c.id !== 'daily_special_config');
 
       const bentoConceptToSave = {
@@ -221,12 +219,21 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
 
       const updatedConcepts = [...filteredConcepts, bentoConceptToSave];
 
-      if (rsData?.id) {
-        const { error: updErr } = await supabase
-          .from('restaurant_settings')
-          .update({ brand_concepts: updatedConcepts })
-          .eq('id', rsData.id);
-        if (updErr) throw updErr;
+      if (rsRows && rsRows.length > 0) {
+        // Update all settings rows for this brand to synchronize them without conflicts
+        await Promise.all(
+          rsRows.map(row => {
+            const rowConcepts = Array.isArray(row.brand_concepts) ? row.brand_concepts : [];
+            const rowFiltered = rowConcepts.filter(c => c && c.id !== 'bento_del_dia_config' && c.id !== 'daily_special_config');
+            return supabase
+              .from('restaurant_settings')
+              .update({
+                brand_concepts: [...rowFiltered, bentoConceptToSave],
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', row.id);
+          })
+        );
       } else {
         const { error: insErr } = await supabase
           .from('restaurant_settings')
@@ -237,12 +244,30 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
         if (insErr) throw insErr;
       }
 
+      // Also update home_settings hero banner if primary dish is selected
+      try {
+        const selectedPrimaryId = config.manual_override_product_id || config.schedule?.[todayDayNum];
+        const selectedProd = selectedPrimaryId ? productMap.get(selectedPrimaryId) : null;
+        if (selectedProd) {
+          await supabase
+            .from('home_settings')
+            .update({
+              hero_h1: `🍱 Bento del Día: ${selectedProd.name.replace(/\s*\(Especial del Día\)/i, '')} ($${(Number(config.promo_price) || 19000).toLocaleString('es-CO')})`,
+              hero_subtitle: `${selectedProd.description ? selectedProd.description.slice(0, 160) + '...' : ''} 🥣 Incluye ${config.soup_name || 'Crema'} + 🥤 ${config.drink_name || 'Jugo'}.`,
+              updated_at: new Date().toISOString()
+            })
+            .eq('brand_id', activeBrand.id);
+        }
+      } catch (homeHeroErr) {
+        console.warn('Non-blocking error updating home hero banner:', homeHeroErr);
+      }
+
       toast.success('¡Almuerzos de Hoy y Menú del Día publicados con éxito!');
       if (onSaved) onSaved();
       onClose();
     } catch (err) {
       console.error('Error saving daily special:', err);
-      toast.error('Error al guardar la configuración');
+      toast.error('Error al guardar la configuración: ' + (err.message || 'Error'));
     } finally {
       setSaving(false);
     }
