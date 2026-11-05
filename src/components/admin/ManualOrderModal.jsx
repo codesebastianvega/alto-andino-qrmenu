@@ -382,7 +382,7 @@ export default function ManualOrderModal({
         status: 'new',
         kitchen_status: 'pending',
         bar_status: 'pending',
-        origin: 'pos',
+        origin: 'whatsapp',
         fulfillment_type: fulfillmentType,
         customer_name: customerName.trim() || 'Cliente Mostrador / WhatsApp',
         customer_phone: customerPhone.trim() || null,
