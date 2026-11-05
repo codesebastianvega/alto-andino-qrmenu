@@ -44,6 +44,9 @@ export default function ManualOrderModal({
   const [timingMode, setTimingMode] = useState('immediate'); // 'immediate' | 'scheduled'
   const [scheduledTime, setScheduledTime] = useState('');
 
+  // Flow: send to kitchen vs already delivered
+  const [entryFlow, setEntryFlow] = useState('kitchen'); // 'kitchen' | 'completed'
+
   // Payment
   const [isPaid, setIsPaid] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('nequi'); // 'nequi', 'daviplata', 'efectivo', 'datafono', 'bancolombia'
@@ -429,12 +432,15 @@ export default function ManualOrderModal({
         ? selectedLocationId
         : (isValidUUID(locationId) ? locationId : (locationsList.find(l => l.is_main)?.id || locationsList[0]?.id || null));
 
+      const isAlreadyDelivered = entryFlow === 'completed';
+
       const orderPayload = {
         brand_id: brandId,
         location_id: effectiveLocationId,
-        status: 'new',
-        kitchen_status: 'pending',
-        bar_status: 'pending',
+        status: isAlreadyDelivered ? 'delivered' : 'new',
+        kitchen_status: isAlreadyDelivered ? 'completed' : 'pending',
+        bar_status: isAlreadyDelivered ? 'completed' : 'pending',
+        delivered_at: isAlreadyDelivered ? new Date().toISOString() : null,
         origin: 'whatsapp',
         fulfillment_type: fulfillmentType,
         customer_name: customerName.trim() || 'Cliente Mostrador / WhatsApp',
@@ -444,8 +450,8 @@ export default function ManualOrderModal({
         delivery_fee: activeDeliveryFee,
         scheduled_time: parsedScheduledTime,
         total_amount: grandTotal,
-        payment_status: isPaid ? 'paid' : 'pending',
-        payment_method: isPaid ? paymentMethod : null
+        payment_status: (isAlreadyDelivered || isPaid) ? 'paid' : 'pending',
+        payment_method: (isAlreadyDelivered || isPaid) ? paymentMethod : null
       };
 
       const { data: createdOrder, error: orderErr } = await supabase
@@ -476,8 +482,8 @@ export default function ManualOrderModal({
 
       if (itemsErr) throw itemsErr;
 
-      // Print kitchen thermal ticket if enabled
-      if (printKitchenTicket) {
+      // Print kitchen thermal ticket if enabled (only for new active orders)
+      if (!isAlreadyDelivered && printKitchenTicket) {
         try {
           const thermalPayload = {
             order: createdOrder,
@@ -493,7 +499,11 @@ export default function ManualOrderModal({
         }
       }
 
-      toast.success(`¡Pedido #${createdOrder.order_number || createdOrder.id.slice(0, 5)} creado y enviado a cocina!`);
+      if (isAlreadyDelivered) {
+        toast.success(`¡Pedido #${createdOrder.order_number || createdOrder.id.slice(0, 5)} registrado en ventas e inventario!`);
+      } else {
+        toast.success(`¡Pedido #${createdOrder.order_number || createdOrder.id.slice(0, 5)} creado y enviado a cocina!`);
+      }
       if (onOrderCreated) onOrderCreated();
       onClose();
     } catch (err) {
@@ -526,13 +536,51 @@ export default function ManualOrderModal({
               <p className="text-xs text-neutral-400">Registra pedidos de mostrador o WhatsApp en 15 segundos</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all cursor-pointer"
-          >
-            <Icon icon="heroicons:x-mark" className="text-xl" />
-          </button>
+          
+          <div className="flex items-center gap-3">
+            <div className="flex bg-neutral-800 p-1 rounded-xl text-xs font-bold gap-1 border border-neutral-700">
+              <button
+                type="button"
+                onClick={() => {
+                  setEntryFlow('kitchen');
+                  setPrintKitchenTicket(true);
+                }}
+                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                  entryFlow === 'kitchen'
+                    ? 'bg-amber-400 text-neutral-950 font-black shadow-xs'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                <Icon icon="heroicons:fire" />
+                <span>Mandar a Cocina</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEntryFlow('completed');
+                  setPrintKitchenTicket(false);
+                  setIsPaid(true);
+                }}
+                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                  entryFlow === 'completed'
+                    ? 'bg-emerald-500 text-white font-black shadow-xs'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+                title="Para pedidos que ya despachaste o entregaste. Suma a ventas de hoy y descuenta insumos de inventario sin sonar en cocina."
+              >
+                <Icon icon="heroicons:check-badge" />
+                <span>Ya Entregado (Histórico)</span>
+              </button>
+            </div>
+            
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all cursor-pointer"
+            >
+              <Icon icon="heroicons:x-mark" className="text-xl" />
+            </button>
+          </div>
         </div>
 
         {/* Content Body: Two columns (Left: Catalog & Selector, Right: Customer & Order Summary) */}
@@ -634,6 +682,14 @@ export default function ManualOrderModal({
           <div className="lg:col-span-5 p-4 sm:p-6 flex flex-col justify-between bg-neutral-50/50 overflow-y-auto max-h-[75vh]">
             <div className="space-y-4">
               
+              {/* Flow Explanation Banner if completed */}
+              {entryFlow === 'completed' && (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs flex items-center gap-2">
+                  <Icon icon="heroicons:check-circle" className="text-base text-emerald-600 shrink-0" />
+                  <span><strong>Modo Histórico:</strong> Este pedido ya fue entregado. Se sumará a las ventas de hoy y descontará los ingredientes del inventario sin sonar la alarma en cocina.</span>
+                </div>
+              )}
+
               {/* Customer Info Box */}
               <div className="p-3.5 bg-white rounded-2xl border border-neutral-200 shadow-xs space-y-2.5">
                 <div className="flex items-center justify-between">
@@ -986,12 +1042,21 @@ export default function ManualOrderModal({
                 type="button"
                 disabled={orderItems.length === 0 || isSubmitting}
                 onClick={handleCreateOrder}
-                className="w-full py-3.5 px-4 rounded-2xl bg-neutral-900 hover:bg-neutral-800 disabled:opacity-50 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer active:scale-98"
+                className={`w-full py-3.5 px-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer active:scale-98 disabled:opacity-50 ${
+                  entryFlow === 'completed'
+                    ? 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-emerald-700/20'
+                    : 'bg-neutral-900 hover:bg-neutral-800 text-white'
+                }`}
               >
                 {isSubmitting ? (
                   <>
                     <Icon icon="heroicons:arrow-path" className="text-lg animate-spin" />
-                    <span>Enviando a cocina...</span>
+                    <span>Guardando pedido...</span>
+                  </>
+                ) : entryFlow === 'completed' ? (
+                  <>
+                    <Icon icon="heroicons:check-badge" className="text-lg text-emerald-200" />
+                    <span>Registrar en Ventas de Hoy e Inventario</span>
                   </>
                 ) : (
                   <>
