@@ -2315,7 +2315,7 @@ export default function CartModal({ open, onClose }) {
                         <div className="flex items-center justify-between">
                           <p className="text-[11px] font-bold text-blue-900 flex items-center gap-1.5">
                             <Icon icon="heroicons:device-phone-mobile" className="text-base text-blue-600" />
-                            Transferencia Nequi, Daviplata o Llave Bre-B
+                            Transferencia Nequi o Llave Bre-B
                           </p>
                         </div>
 

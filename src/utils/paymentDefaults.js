@@ -25,14 +25,14 @@ export function buildDefaultPaymentMethods(brandId, { phone = null } = {}) {
     if (cleanPhone.length >= 7) {
       methods.push({
         brand_id: brandId,
-        name: 'Transferencia Nequi / Daviplata',
+        name: 'Transferencia Nequi / Bre-B',
         type: 'digital_wallet',
         icon: 'solar:wallet-bold',
         is_active: true,
         details: {
-          bank_name: 'Nequi / Daviplata',
+          bank_name: 'Nequi / Bre-B',
           account_number: cleanPhone,
-          instructions: `Transfiere al número ${cleanPhone} y envía el comprobante por WhatsApp.`
+          instructions: `Transfiere a Nequi o con Llave Bre-B al número ${cleanPhone} y envía el comprobante por WhatsApp.`
         }
       });
     }

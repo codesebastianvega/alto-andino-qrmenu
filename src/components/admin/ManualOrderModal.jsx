@@ -50,7 +50,12 @@ export default function ManualOrderModal({
   // Payment
   const [isPaid, setIsPaid] = useState(false);
   const [pendingType, setPendingType] = useState('contra_entrega'); // 'contra_entrega' | 'fiado'
-  const [paymentMethod, setPaymentMethod] = useState('nequi'); // 'nequi', 'daviplata', 'efectivo', 'datafono'
+  const [paymentMethod, setPaymentMethod] = useState('nequi'); // 'nequi', 'efectivo', 'datafono'
+  const [activePaymentMethods, setActivePaymentMethods] = useState([
+    { id: 'nequi', label: 'Nequi / Bre-B' },
+    { id: 'efectivo', label: 'Efectivo' },
+    { id: 'datafono', label: 'Datáfono' }
+  ]);
   const [cashTendered, setCashTendered] = useState('');
   const [printKitchenTicket, setPrintKitchenTicket] = useState(true);
 
@@ -62,7 +67,7 @@ export default function ManualOrderModal({
     const fetchData = async () => {
       setLoadingCatalog(true);
       try {
-        const [prodsRes, locsRes] = await Promise.all([
+        const [prodsRes, locsRes, pmRes] = await Promise.all([
           supabase
             .from('products')
             .select('id, name, description, price, cost, image_url, category_id, is_active, requires_kitchen, subcategory, categories:category_id(id, name, slug)')
@@ -73,7 +78,13 @@ export default function ManualOrderModal({
             .from('locations')
             .select('id, name, is_main')
             .eq('brand_id', brandId)
-            .order('is_main', { ascending: false })
+            .order('is_main', { ascending: false }),
+          supabase
+            .from('payment_methods')
+            .select('id, name, type, is_active')
+            .eq('brand_id', brandId)
+            .eq('is_active', true)
+            .order('created_at', { ascending: true })
         ]);
 
         if (prodsRes.error) throw prodsRes.error;
@@ -82,6 +93,24 @@ export default function ManualOrderModal({
           setProducts(prodsRes.data || []);
           const fetchedLocs = locsRes.data || [];
           setLocationsList(fetchedLocs);
+
+          // Cargar medios de pago configurados en base de datos; si no hay, usar los reales de Boku Bento
+          if (pmRes.data && pmRes.data.length > 0) {
+            setActivePaymentMethods(pmRes.data.map(m => {
+              const lower = (m.name || '').toLowerCase();
+              let id = 'nequi';
+              if (m.type === 'cash' || lower.includes('efectivo')) id = 'efectivo';
+              else if (m.type === 'card' || lower.includes('datafono') || lower.includes('datáfono')) id = 'datafono';
+              else id = m.id || 'nequi';
+              return { id, label: m.name };
+            }));
+          } else {
+            setActivePaymentMethods([
+              { id: 'nequi', label: 'Nequi / Bre-B' },
+              { id: 'efectivo', label: 'Efectivo' },
+              { id: 'datafono', label: 'Datáfono' }
+            ]);
+          }
 
           const defaultFee = Number(fetchedLocs[0]?.delivery_fee) || Number(restaurantSettings?.delivery_fee) || 4000;
           setDeliveryFee(defaultFee);
@@ -1029,12 +1058,7 @@ export default function ManualOrderModal({
                 {isPaid ? (
                   <div className="space-y-2.5 pt-1 border-t border-neutral-100 animate-in fade-in">
                     <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-                      {[
-                        { id: 'nequi', label: 'Nequi' },
-                        { id: 'daviplata', label: 'Daviplata' },
-                        { id: 'efectivo', label: 'Efectivo' },
-                        { id: 'datafono', label: 'Datáfono' }
-                      ].map(pm => (
+                      {activePaymentMethods.map(pm => (
                         <button
                           key={pm.id}
                           type="button"
