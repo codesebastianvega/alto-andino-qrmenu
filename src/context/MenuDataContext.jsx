@@ -706,7 +706,9 @@ export const MenuDataProvider = ({ children }) => {
             id: 'mg-mestizo-protein',
             name: '🍗 Tu Proteína',
             min_select: 1,
-            max_select: 1,
+            max_select: 2,
+            included_count: 1,
+            extra_price: 7000,
             options: [
               { id: 'opt-mestizo-pollo-curry', name: 'Pollo al curry dorado', price: 0, is_default: true },
               { id: 'opt-mestizo-cerdo-teriyaki', name: 'Cerdo teriyaki', price: 0 }
@@ -716,10 +718,27 @@ export const MenuDataProvider = ({ children }) => {
             id: 'mg-mestizo-principio',
             name: '🍲 Tu Principio Casero',
             min_select: 1,
-            max_select: 1,
+            max_select: 2,
+            included_count: 1,
+            extra_price: 4000,
             options: [
               { id: 'opt-mestizo-garbanzos', name: 'Garbanzos caseros', price: 0, is_default: true },
-              { id: 'opt-mestizo-maduritos', name: 'Maduritos melosos en panela', price: 0 }
+              { id: 'opt-mestizo-maduritos', name: 'Maduritos melosos en panela', price: 0 },
+              { id: 'opt-mestizo-mitad', name: 'Mitad garbanzos y mitad maduritos', price: 0 },
+              { id: 'opt-mestizo-sin-principio', name: '🚫 Sin principio', price: 0 }
+            ]
+          },
+          {
+            id: 'mg-mestizo-veggies',
+            name: '🥗 Ensalada & Vegetales',
+            min_select: 0,
+            max_select: 5,
+            options: [
+              { id: 'opt-mestizo-ensalada-aparte', name: 'Ensalada en recipiente aparte', price: 0 },
+              { id: 'opt-mestizo-sin-ensalada', name: '🚫 Sin ensalada cremosa', price: 0 },
+              { id: 'opt-mestizo-sin-champinones', name: '🚫 Sin champiñones al ajillo', price: 0 },
+              { id: 'opt-mestizo-sin-brocoli', name: '🚫 Sin brócoli al vapor', price: 0 },
+              { id: 'opt-mestizo-sin-tomates', name: '🚫 Sin tomates cherry', price: 0 }
             ]
           },
           {

@@ -29,6 +29,8 @@ export default function ManualOrderModal({
   // Active item configuration (when clicking a product with options)
   const [configuringProduct, setConfiguringProduct] = useState(null);
   const [selectedModifiers, setSelectedModifiers] = useState({});
+  const [itemKitchenNotes, setItemKitchenNotes] = useState('');
+  const [editingItemIndex, setEditingItemIndex] = useState(null);
 
   // Customer & Delivery Info
   const [customerName, setCustomerName] = useState('Cliente WhatsApp');
@@ -168,7 +170,18 @@ export default function ManualOrderModal({
             max: 1,
             options: [
               { id: 'opt-pimenton-si', name: 'Con pimentón salteado', extra: 0 },
-              { id: 'opt-pimenton-no', name: 'Sin pimentón', extra: 0 }
+              { id: 'opt-pimenton-no', name: '🚫 Sin pimentón', extra: 0 }
+            ]
+          },
+          {
+            name: '🌽 Toppings & Exclusiones',
+            min: 0,
+            max: 4,
+            options: [
+              { id: 'opt-sin-papita', name: '🚫 Sin papita cabello de ángel', extra: 0 },
+              { id: 'opt-sin-jamon', name: '🚫 Sin jamón', extra: 0 },
+              { id: 'opt-sin-salchicha', name: '🚫 Sin salchicha', extra: 0 },
+              { id: 'opt-sin-queso', name: '🚫 Sin queso fundido', extra: 0 }
             ]
           },
           {
@@ -201,6 +214,8 @@ export default function ManualOrderModal({
         '🥣 Entrada Incluida': ['🥣 Crema de plátano colicero (16 oz)'],
         '🥤 Bebida de la Casa Incluida': ['🥤 Jugo del Día (5 oz)']
       });
+      setItemKitchenNotes('');
+      setEditingItemIndex(null);
       return;
     }
 
@@ -211,19 +226,36 @@ export default function ManualOrderModal({
           {
             name: '🍗 Tu Proteína',
             min: 1,
-            max: 1,
+            max: 2,
+            included_count: 1,
             options: [
-              { id: 'opt-mestizo-pollo', name: 'Pollo al curry dorado', extra: 0 },
-              { id: 'opt-mestizo-cerdo', name: 'Cerdo teriyaki', extra: 0 }
+              { id: 'opt-mestizo-pollo', name: 'Pollo al curry dorado', extra: 7000 },
+              { id: 'opt-mestizo-cerdo', name: 'Cerdo teriyaki', extra: 7000 }
             ]
           },
           {
             name: '🍲 Tu Principio Casero',
             min: 1,
-            max: 1,
+            max: 2,
+            included_count: 1,
             options: [
-              { id: 'opt-mestizo-garbanzos', name: 'Garbanzos caseros', extra: 0 },
-              { id: 'opt-mestizo-maduritos', name: 'Maduritos melosos en panela', extra: 0 }
+              { id: 'opt-mestizo-garbanzos', name: 'Garbanzos caseros', extra: 4000 },
+              { id: 'opt-mestizo-maduritos', name: 'Maduritos melosos en panela', extra: 4000 },
+              { id: 'opt-mestizo-mitad', name: 'Mitad garbanzos y mitad maduritos', extra: 0 },
+              { id: 'opt-mestizo-sin-principio', name: '🚫 Sin principio', extra: 0 }
+            ]
+          },
+          {
+            name: '🥗 Ensalada & Vegetales',
+            min: 0,
+            max: 5,
+            options: [
+              { id: 'opt-ensalada-normal', name: 'Ensalada cremosa de remolacha (normal)', extra: 0 },
+              { id: 'opt-ensalada-aparte', name: 'Ensalada en recipiente aparte', extra: 0 },
+              { id: 'opt-sin-ensalada', name: '🚫 Sin ensalada de remolacha', extra: 0 },
+              { id: 'opt-sin-champinones', name: '🚫 Sin champiñones al ajillo', extra: 0 },
+              { id: 'opt-sin-brocoli', name: '🚫 Sin brócoli al vapor', extra: 0 },
+              { id: 'opt-sin-tomates', name: '🚫 Sin tomates cherry', extra: 0 }
             ]
           },
           {
@@ -255,6 +287,8 @@ export default function ManualOrderModal({
         '🥣 Entrada Incluida': ['🥣 Crema de plátano colicero (16 oz)'],
         '🥤 Bebida de la Casa Incluida': ['🥤 Jugo del Día (5 oz)']
       });
+      setItemKitchenNotes('');
+      setEditingItemIndex(null);
       return;
     }
 
@@ -312,20 +346,39 @@ export default function ManualOrderModal({
       }
     });
 
-    setOrderItems(prev => [
-      ...prev,
-      {
+    setOrderItems(prev => {
+      const newItem = {
         product,
-        qty: 1,
+        qty: editingItemIndex !== null && prev[editingItemIndex] ? prev[editingItemIndex].qty : 1,
         unitPrice,
         options: formattedOptions,
-        notes: ''
+        notes: itemKitchenNotes.trim()
+      };
+      if (editingItemIndex !== null) {
+        return prev.map((it, i) => i === editingItemIndex ? newItem : it);
       }
-    ]);
+      return [...prev, newItem];
+    });
 
     setConfiguringProduct(null);
     setSelectedModifiers({});
-    toast.success(`${product.name} agregado al pedido`);
+    setItemKitchenNotes('');
+    setEditingItemIndex(null);
+    toast.success(`${product.name} ${editingItemIndex !== null ? 'actualizado' : 'agregado al pedido'}`);
+  };
+
+  const handleEditItem = (index) => {
+    const item = orderItems[index];
+    if (!item) return;
+
+    handleSelectProduct(item.product);
+    const prefill = {};
+    Object.entries(item.options || {}).forEach(([k, v]) => {
+      prefill[k] = Array.isArray(v) ? v : [v];
+    });
+    setSelectedModifiers(prefill);
+    setItemKitchenNotes(item.notes || '');
+    setEditingItemIndex(index);
   };
 
   const handleRemoveItem = (index) => {
@@ -783,12 +836,17 @@ export default function ManualOrderModal({
                               ))}
                             </div>
                           )}
+                          {item.notes && (
+                            <p className="text-[10px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md mt-1 border border-amber-200/50">
+                              📝 {item.notes}
+                            </p>
+                          )}
                           <p className="text-xs font-black text-amber-700 mt-1">
                             {formatCOP(item.unitPrice * item.qty)}
                           </p>
                         </div>
 
-                        {/* Qty Controls */}
+                        {/* Qty Controls & Actions */}
                         <div className="flex items-center gap-1.5 shrink-0">
                           <button
                             type="button"
@@ -807,8 +865,16 @@ export default function ManualOrderModal({
                           </button>
                           <button
                             type="button"
+                            onClick={() => handleEditItem(idx)}
+                            className="w-6 h-6 rounded-md text-amber-700 hover:bg-amber-50 flex items-center justify-center ml-0.5"
+                            title="Editar modificadores"
+                          >
+                            <Icon icon="heroicons:pencil-square" className="text-sm" />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handleRemoveItem(idx)}
-                            className="w-6 h-6 rounded-md text-red-500 hover:bg-red-50 flex items-center justify-center ml-1"
+                            className="w-6 h-6 rounded-md text-red-500 hover:bg-red-50 flex items-center justify-center ml-0.5"
                           >
                             <Icon icon="heroicons:trash" className="text-sm" />
                           </button>
@@ -1010,6 +1076,21 @@ export default function ManualOrderModal({
                     </div>
                   );
                 })}
+
+                {/* Notas de Cocina por Plato */}
+                <div className="space-y-1 pt-2 border-t border-neutral-100">
+                  <label className="text-xs font-bold text-neutral-800 flex items-center gap-1.5">
+                    <Icon icon="heroicons:pencil-square" className="text-amber-600" />
+                    Instrucciones de cocina para este plato (opcional):
+                  </label>
+                  <input
+                    type="text"
+                    value={itemKitchenNotes}
+                    onChange={e => setItemKitchenNotes(e.target.value)}
+                    placeholder="Ej: Sin sal, ensalada aparte, poco arroz, bien cocido..."
+                    className="w-full px-3 py-2 rounded-xl border border-neutral-200 text-xs bg-neutral-50 focus:bg-white focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131]"
+                  />
+                </div>
               </div>
 
               <div className="pt-3 border-t border-neutral-100 flex gap-2">
