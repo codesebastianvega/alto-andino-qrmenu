@@ -142,15 +142,63 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
     });
 
     // Helper to add a group and its triggered sub-groups recursively
-    const addGroup = (groupKey) => {
-      if (addedIds.has(groupKey)) return;
+    const addGroup = (groupItem) => {
+      // Direct group object with embedded options
+      if (groupItem && typeof groupItem === 'object' && Array.isArray(groupItem.options)) {
+        const groupKey = groupItem.id || groupItem.name;
+        if (addedIds.has(groupKey)) return;
+        addedIds.add(groupKey);
+        if (groupItem.id) addedIds.add(groupItem.id);
+        if (groupItem.name) addedIds.add(groupItem.name);
+
+        const displayName = groupItem.name;
+        const config = modifierConfig[groupKey] || modifierConfig[displayName];
+        let min = groupItem?.min_select ?? (groupItem?.is_required ? 1 : 0);
+        let max = groupItem?.max_select ?? (min > 0 ? 1 : 999);
+        let isRequired = groupItem?.is_required ?? (min > 0);
+
+        if (config === 'required') { min = 1; max = 1; isRequired = true; }
+        else if (config === 'optional') { min = 0; max = 999; isRequired = false; }
+        else if (typeof config === 'object') { min = config.min || 0; max = config.max || 999; isRequired = min > 0; }
+
+        const items = groupItem.options.map(opt => ({
+          ...opt,
+          id: opt.id,
+          name: opt.name,
+          price: opt.price || 0,
+          extra_price: opt.extra_price !== undefined ? opt.extra_price : (opt.price || 0),
+          selling_price: opt.price || 0,
+          is_default: Boolean(opt.is_default),
+          is_out: opt.is_out || opt.stock_status === 'out'
+        }));
+
+        result.push({
+          key: groupKey,
+          name: displayName,
+          type: config || (isRequired ? 'required' : 'optional'),
+          min,
+          max,
+          isRequired,
+          included_count: groupItem.included_count !== undefined ? groupItem.included_count : null,
+          allow_quantity: Boolean(groupItem.allow_quantity || (!isRequired && max > 1)),
+          items,
+        });
+        return;
+      }
+
+      // String key / UUID referencing rawModifierGroups
+      const groupKey = typeof groupItem === 'string' ? groupItem : (groupItem?.id || groupItem?.name);
+      if (!groupKey || addedIds.has(groupKey)) return;
       
       const groupMeta = rawModifierGroups.find(g => g.id === groupKey || g.name === groupKey);
       if (!groupMeta) return;
 
       // If it's a submodifier, it MUST be triggered or explicitly assigned to this product
       const productGroupIds = product?.modifierGroups || product?.modifier_groups || [];
-      const isDirectlyAssigned = productGroupIds.includes(groupMeta.id) || productGroupIds.includes(groupMeta.name);
+      const isDirectlyAssigned = productGroupIds.some(pg => {
+        const id = typeof pg === 'string' ? pg : (pg?.id || pg?.name);
+        return id === groupMeta.id || id === groupMeta.name;
+      });
       const isTriggered = Object.values(triggeredMap).flat().includes(groupMeta.id);
       if (groupMeta.is_submodifier && !isTriggered && !isDirectlyAssigned) return;
 
@@ -178,6 +226,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
           min,
           max,
           isRequired,
+          included_count: groupMeta.included_count !== undefined ? groupMeta.included_count : null,
           allow_quantity: Boolean(groupMeta?.allow_quantity || (!isRequired && max > 1)),
           items,
         });
@@ -193,7 +242,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
 
     return result;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveGroups.join(","), JSON.stringify(modifierConfig), modifierGroupsData, rawModifierGroups, selections]);
+  }, [effectiveGroups.map(g => (typeof g === 'object' ? (g.id || g.name) : g)).join(","), JSON.stringify(modifierConfig), modifierGroupsData, rawModifierGroups, selections]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -215,13 +264,39 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
     prevGroupsLength.current = groups.length;
   }, [groups.length, isOpen]);
 
+  // Auto-initialize default selections for groups
+  useEffect(() => {
+    if (!isOpen || groups.length === 0) return;
+    setSelections(prev => {
+      let changed = false;
+      const next = { ...prev };
+      groups.forEach(g => {
+        if (!next[g.name] || next[g.name].length === 0) {
+          const defaults = g.items.filter(it => it.is_default && !it.is_out).map(it => it.id);
+          if (defaults.length > 0) {
+            next[g.name] = defaults.slice(0, g.max);
+            changed = true;
+          }
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [isOpen, groups]);
+
   const extraPrice = useMemo(() => {
     let total = 0;
     groups.forEach((g) => {
       const sel = selections[g.name] || [];
-      sel.forEach((selectedId) => {
+      const isIncludedGroup = g.included_count !== undefined && g.included_count !== null;
+      sel.forEach((selectedId, idx) => {
         const item = g.items.find((i) => i.id === selectedId);
-        total += item?.selling_price || item?.price || 0;
+        if (isIncludedGroup) {
+          if (idx >= g.included_count) {
+            total += (item?.extra_price !== undefined ? item.extra_price : (item?.selling_price || item?.price || 0));
+          }
+        } else {
+          total += item?.selling_price || item?.price || 0;
+        }
       });
     });
     return total;
@@ -690,7 +765,27 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                                   </div>
                                 ) : (
                                   <div className="flex items-center gap-2 shrink-0 ml-2">
-                                    {itemPrice > 0 && (
+                                    {group.included_count !== undefined && group.included_count !== null ? (
+                                      <div className="flex flex-col items-end shrink-0 leading-tight">
+                                        {isSelected && groupSel.indexOf(item.id) < group.included_count ? (
+                                          <span className="text-[11px] font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                            Incluida
+                                          </span>
+                                        ) : isSelected && groupSel.indexOf(item.id) >= group.included_count ? (
+                                          <span className="text-[12px] font-black text-brand-primary">
+                                            +{formatCOP(item.extra_price || itemPrice)}
+                                          </span>
+                                        ) : groupSel.length >= group.included_count ? (
+                                          <span className="text-[12px] font-bold text-neutral-600">
+                                            +{formatCOP(item.extra_price || itemPrice)}
+                                          </span>
+                                        ) : (
+                                          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50/80 px-2 py-0.5 rounded-full border border-emerald-200/60">
+                                            Incluida
+                                          </span>
+                                        )}
+                                      </div>
+                                    ) : itemPrice > 0 ? (
                                       <div className="flex flex-col items-end shrink-0 leading-tight">
                                         {Number(item.extra_price) > itemPrice && (
                                           <span className="text-[11px] font-medium text-neutral-400 line-through">
@@ -709,7 +804,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                                           +{formatCOP(itemPrice)}
                                         </span>
                                       </div>
-                                    )}
+                                    ) : null}
                                     {group.allow_quantity && (
                                       <div className="w-7 h-7 flex items-center justify-center rounded-lg bg-neutral-100 text-neutral-400 text-sm font-black border border-neutral-200/60 shadow-2xs">
                                         +

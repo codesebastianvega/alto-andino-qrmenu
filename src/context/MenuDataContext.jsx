@@ -776,17 +776,18 @@ export const MenuDataProvider = ({ children }) => {
             id: 'mg-mazor-protein',
             name: '🍗 Proteína a elección',
             min_select: 1,
-            max_select: 1,
+            max_select: 2,
+            included_count: 1,
             options: [
-              { id: 'opt-mazor-pollo', name: 'Pollo salteado al wok', price: 0, is_default: true },
-              { id: 'opt-mazor-cerdo', name: 'Cerdo salteado al wok', price: 0 }
+              { id: 'opt-mazor-pollo', name: 'Pollo salteado al wok', price: 0, extra_price: 7000, is_default: true },
+              { id: 'opt-mazor-cerdo', name: 'Cerdo salteado al wok', price: 0, extra_price: 7000 }
             ]
           },
           {
             id: 'mg-mazor-sauce',
             name: '🍯 Salsa a elección',
             min_select: 1,
-            max_select: 1,
+            max_select: 2,
             options: [
               { id: 'opt-mazor-bbq', name: 'Salsa BBQ de la casa', price: 0, is_default: true },
               { id: 'opt-mazor-tartara', name: 'Salsa Tártara cremosa', price: 0 }
@@ -808,9 +809,9 @@ export const MenuDataProvider = ({ children }) => {
             min_select: 1,
             max_select: 1,
             options: [
-              { id: 'opt-mazor-crema-platano', name: 'Crema de plátano colicero (16 oz)', price: 0, is_default: true },
-              { id: 'opt-mazor-fruta', name: 'Porción de Fruta fresca picada', price: 0 },
-              { id: 'opt-mazor-nosoup', name: 'Sin sopa ni fruta', price: 0 }
+              { id: 'opt-mazor-crema-platano', name: '🥣 Crema de plátano colicero (16 oz)', price: 0, is_default: true },
+              { id: 'opt-mazor-fruta', name: '🍍 Porción de Fruta fresca picada', price: 0 },
+              { id: 'opt-mazor-nosoup', name: '🚫 Sin sopa ni fruta', price: 0 }
             ]
           },
           {
@@ -819,10 +820,10 @@ export const MenuDataProvider = ({ children }) => {
             min_select: 1,
             max_select: 1,
             options: [
-              { id: 'opt-mazor-jugo', name: 'Jugo del Día (5 oz)', price: 0, is_default: true },
-              { id: 'opt-mazor-hatsu-caja', name: 'Cambiar por Té Hatsu en Caja (200 ml)', price: 2000 },
-              { id: 'opt-mazor-hatsu-lata', name: 'Cambiar por Té Hatsu en Lata (250 ml)', price: 4000 },
-              { id: 'opt-mazor-nodrink', name: 'Sin bebida', price: 0 }
+              { id: 'opt-mazor-jugo', name: '🥤 Jugo del Día (5 oz)', price: 0, is_default: true },
+              { id: 'opt-mazor-hatsu-caja', name: '🧃 Cambiar por Té Hatsu en Caja (200 ml)', price: 2000 },
+              { id: 'opt-mazor-hatsu-lata', name: '🥫 Cambiar por Té Hatsu en Lata (250 ml)', price: 4000 },
+              { id: 'opt-mazor-nodrink', name: '🚫 Sin bebida', price: 0 }
             ]
           },
           {
