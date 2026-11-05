@@ -362,7 +362,7 @@ export default function CartModal({ open, onClose }) {
   const [confirmedOrderSnapshot, setConfirmedOrderSnapshot] = useState(null);
 
   const isLeadRequired = !isPOSMode && (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' || fulfillmentType === 'scheduled');
-  const isAddressRequired = !isPOSMode && fulfillmentType === 'delivery';
+  const isAddressRequired = !isPOSMode && (fulfillmentType === 'delivery' || (isDarkKitchen && fulfillmentType === 'scheduled'));
 
   // Coupon / Promo States
   const [appliedCoupon, setAppliedCoupon] = useState(() => {
@@ -1906,19 +1906,60 @@ export default function CartModal({ open, onClose }) {
               <div className="flex flex-col gap-3 animate-in slide-in-from-bottom-4 duration-300">
                 {/* Fulfillment Picker / Dark Kitchen Mode */}
                 {isDarkKitchen ? (
-                  <div className="flex items-center justify-between p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-950">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20 flex-shrink-0">
-                        <Icon icon="heroicons:truck" className="text-xl" />
+                  <div className="flex flex-col gap-2.5">
+                    <div className="flex items-center justify-between p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-950">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20 flex-shrink-0">
+                          <Icon icon="heroicons:truck" className="text-xl" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs font-black uppercase tracking-wider text-amber-950">Modalidad Domicilio</p>
+                          <p className="text-[11px] font-medium text-amber-800/90">Despachamos directo desde nuestra cocina</p>
+                        </div>
                       </div>
-                      <div className="text-left">
-                        <p className="text-xs font-black uppercase tracking-wider text-amber-950">Modalidad Solo Domicilios</p>
-                        <p className="text-[11px] font-medium text-amber-800/90">Despachamos directo desde nuestra cocina</p>
-                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-950 px-2 py-0.5 rounded-md">
+                        Dark Kitchen
+                      </span>
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-950 px-2 py-0.5 rounded-md">
-                      Dark Kitchen
-                    </span>
+
+                    {/* Selector de horario para Dark Kitchen */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFulfillmentType('delivery');
+                          setScheduledTime('');
+                        }}
+                        className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 transition-all font-bold text-xs ${
+                          fulfillmentType === 'delivery' && !scheduledTime
+                            ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-xs scale-[1.02]"
+                            : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
+                        }`}
+                      >
+                        <Icon icon="heroicons:bolt" className="text-base text-amber-500" />
+                        <span>Lo antes posible</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFulfillmentType('scheduled');
+                          if (!scheduledTime) {
+                            const now = new Date();
+                            now.setMinutes(now.getMinutes() + 45);
+                            setScheduledTime(now.toISOString().slice(0, 16));
+                          }
+                        }}
+                        className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 transition-all font-bold text-xs ${
+                          fulfillmentType === 'scheduled' || scheduledTime
+                            ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-xs scale-[1.02]"
+                            : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
+                        }`}
+                      >
+                        <Icon icon="heroicons:calendar" className="text-base text-amber-500" />
+                        <span>Programar hora</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
@@ -1945,15 +1986,61 @@ export default function CartModal({ open, onClose }) {
                   </div>
                 )}
 
-                {fulfillmentType === 'scheduled' && (
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest px-1">Fecha y Hora</label>
-                    <input 
-                      type="datetime-local" 
-                      value={scheduledTime}
-                      onChange={e => setScheduledTime(e.target.value)}
-                      className="w-full h-11 px-4 rounded-xl border border-neutral-200 text-sm font-medium focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131] transition-all bg-white"
-                    />
+                {/* Bloque de hora programada con botones rápidos de hoy */}
+                {(fulfillmentType === 'scheduled' || Boolean(scheduledTime)) && (
+                  <div className="p-3.5 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-2.5 animate-in slide-in-from-top-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest flex items-center gap-1.5">
+                        <Icon icon="heroicons:clock" className="text-sm text-amber-600" />
+                        ¿A qué hora deseas recibirlo hoy?
+                      </label>
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                        Programado
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {['12:30', '13:00', '13:30', '14:00'].map((timeStr) => {
+                        const todayDate = new Date().toISOString().slice(0, 10);
+                        const fullIso = `${todayDate}T${timeStr}`;
+                        const isSelected = scheduledTime?.startsWith(fullIso);
+                        const displayHour = timeStr === '12:30' ? '12:30 PM' :
+                                            timeStr === '13:00' ? '1:00 PM' :
+                                            timeStr === '13:30' ? '1:30 PM' : '2:00 PM';
+                        return (
+                          <button
+                            key={timeStr}
+                            type="button"
+                            onClick={() => {
+                              setFulfillmentType('scheduled');
+                              setScheduledTime(fullIso);
+                            }}
+                            className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition-all border ${
+                              isSelected
+                                ? 'bg-[#2f4131] text-white border-[#2f4131] shadow-xs'
+                                : 'bg-white text-neutral-700 border-neutral-200 hover:border-neutral-300'
+                            }`}
+                          >
+                            {displayHour}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="pt-1">
+                      <label className="text-[10px] font-semibold text-neutral-400 block mb-1">
+                        O elige otra hora personalizada:
+                      </label>
+                      <input 
+                        type="datetime-local" 
+                        value={scheduledTime}
+                        onChange={e => {
+                          setFulfillmentType('scheduled');
+                          setScheduledTime(e.target.value);
+                        }}
+                        className="w-full h-10 px-3 rounded-xl border border-neutral-200 text-xs font-medium focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131] transition-all bg-white"
+                      />
+                    </div>
                   </div>
                 )}
 

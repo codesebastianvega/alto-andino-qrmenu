@@ -58,6 +58,12 @@ export default function OperationsIntelligence({ data, formatCurrency }) {
     const prepTimes = deliveredOrders
       .map(o => {
         if (!o.delivered_at || !o.created_at) return null;
+        if (o.scheduled_time) {
+          const schedTime = new Date(o.scheduled_time);
+          const delTime = new Date(o.delivered_at);
+          const diffFromScheduled = (delTime - schedTime) / 60000;
+          return Math.max(10, 15 + diffFromScheduled);
+        }
         return (new Date(o.delivered_at) - new Date(o.created_at)) / 60000;
       })
       .filter(t => t !== null && t > 0);

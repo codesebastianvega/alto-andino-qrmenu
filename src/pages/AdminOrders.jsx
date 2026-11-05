@@ -14,6 +14,7 @@ import { Modal } from '../components/admin/ui';
 import { printThermalDocument } from '../utils/thermalPrint';
 import soundService from '../utils/soundService';
 import OrderAdditionModal from '../components/admin/OrderAdditionModal';
+import ManualOrderModal from '../components/admin/ManualOrderModal';
 import { NewOrderAlertModal } from '../components/admin/NewOrderAlertModal';
 import { parsePaymentMethod, getGoogleMapsUrl, getWazeUrl, resolveOrderItemName, translateGroup } from '../utils/formatters';
 import { useAdminModalBack } from '../hooks/useAdminModalBack';
@@ -139,6 +140,7 @@ export default function AdminOrders() {
   const [incomingOrdersQueue, setIncomingOrdersQueue] = useState([]);
   const [incomingOrderIndex, setIncomingOrderIndex] = useState(0);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+  const [isManualOrderModalOpen, setIsManualOrderModalOpen] = useState(false);
   const [isSoundLoopActive, setIsSoundLoopActive] = useState(false);
 
   useAdminModalBack(Boolean(selectedOrder), () => setSelectedOrder(null));
@@ -147,6 +149,7 @@ export default function AdminOrders() {
   useAdminModalBack(showCancelledHistory, () => setShowCancelledHistory(false));
   useAdminModalBack(showDeliveredHistory, () => setShowDeliveredHistory(false));
   useAdminModalBack(Boolean(historyDetailOrder), () => setHistoryDetailOrder(null));
+  useAdminModalBack(isManualOrderModalOpen, () => setIsManualOrderModalOpen(false));
 
   // Escuchar eventos de la alarma continua para actualizar UI reactiva
   useEffect(() => {
@@ -917,6 +920,16 @@ export default function AdminOrders() {
                 </button>
               ))}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setIsManualOrderModalOpen(true)}
+              className="flex items-center gap-2 px-3.5 md:px-4 py-2.5 bg-[#2f4131] hover:bg-[#233125] text-white rounded-2xl text-xs font-black shadow-md shadow-[#2f4131]/20 transition-all shrink-0 cursor-pointer active:scale-95"
+              title="Crear un pedido manual rápido recibido por WhatsApp o mostrador"
+            >
+              <Icon icon="heroicons:plus-circle" className="text-base text-amber-400" />
+              <span>+ Nuevo Pedido (WhatsApp / Mostrador)</span>
+            </button>
 
             <button onClick={fetchOrders} className="p-2.5 md:p-3 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 text-gray-600 transition-colors shadow-sm flex items-center gap-2 font-bold text-xs md:text-sm">
                <Icon icon="heroicons:arrow-path" className={`text-lg md:text-xl ${loading ? 'animate-spin' : ''}`} />
@@ -2359,6 +2372,20 @@ export default function AdminOrders() {
           </Modal>
         )}
       </AnimatePresence>
+
+      {/* Modal de Pedido Manual (WhatsApp / Mostrador) */}
+      {isManualOrderModalOpen && (
+        <ManualOrderModal
+          isOpen={isManualOrderModalOpen}
+          onClose={() => setIsManualOrderModalOpen(false)}
+          onOrderCreated={() => {
+            fetchOrders();
+          }}
+          brandId={activeBrandId}
+          locationId={activeLocationId}
+          restaurantSettings={restaurantSettings}
+        />
+      )}
 
       {/* Modal MiniPOS de Adición a Comanda Existente */}
       {additionOrder && (
