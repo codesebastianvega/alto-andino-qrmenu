@@ -680,16 +680,16 @@ export const MenuDataProvider = ({ children }) => {
     if (isBoku) {
       if (!grouped['boku-bentos']) grouped['boku-bentos'] = [];
 
-      // 1. Bento Albóndigas -> Plato Principal "El Bento del Día"
-      const albonRaw = (rawProducts || []).find(p => p.id === 'b0000b15-0000-4000-a000-000000000005') ||
-                       (rawProducts || []).find(p => p.id === activeSpecialId) ||
-                       grouped['boku-bentos']?.find(p => p.id === activeSpecialId);
+      // 1. Bento Mestizo -> Plato Principal "El Bento del Día" ($19.000 con sopa y bebida)
+      const mestizoRaw = (rawProducts || []).find(p => p.id === 'b0000b14-0000-4000-a000-000000000004') ||
+                         (rawProducts || []).find(p => p.id === activeSpecialId) ||
+                         grouped['boku-bentos']?.find(p => p.id === activeSpecialId);
       
       const bentoHeroToday = {
-        ...(albonRaw || {}),
-        id: 'b0000b15-0000-4000-a000-000000000005',
-        productId: 'b0000b15-0000-4000-a000-000000000005',
-        name: 'Bento Albóndigas (Especial del Día)',
+        ...(mestizoRaw || {}),
+        id: 'b0000b14-0000-4000-a000-000000000004',
+        productId: 'b0000b14-0000-4000-a000-000000000004',
+        name: 'Bento Mestizo (Especial del Día)',
         price: 19000,
         original_price: 22000,
         is_bento_del_dia: true,
@@ -699,47 +699,67 @@ export const MenuDataProvider = ({ children }) => {
         categorySlug: 'boku-bentos',
         categoryId: 'b0000c01-0000-4000-a000-000000000001',
         categoryName: 'BOKU Bentos Caseros',
-        desc: 'Albóndigas glaseadas en salsa, maíz dulce, guacamole, bastones de zanahoria, arvejas en hogao, huevo revuelto cremoso y arroz con verduras. 🥣 ¡Combo completo! Incluye Crema de espinaca casera (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
-        description: 'Albóndigas glaseadas en salsa, maíz dulce, guacamole, bastones de zanahoria, arvejas en hogao, huevo revuelto cremoso y arroz con verduras. 🥣 ¡Combo completo! Incluye Crema de espinaca casera (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
-        image: 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/8ltxvgjyx6_1792013263113.webp',
-        image_url: 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/8ltxvgjyx6_1792013263113.webp',
-        recipe_id: 'ba000040-0000-4000-a000-000000000005',
+        desc: 'Arroz blanco, champiñones al ajillo, brócoli al vapor, tomates cherry y ensalada cremosa de remolacha y zanahoria en cubitos con mayonesa. Principio a elección (garbanzos caseros o maduritos melosos) y proteína a elección (pollo al curry dorado o cerdo teriyaki). 🥣 ¡Combo completo! Incluye Crema de plátano colicero (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
+        description: 'Arroz blanco, champiñones al ajillo, brócoli al vapor, tomates cherry y ensalada cremosa de remolacha y zanahoria en cubitos con mayonesa. Principio a elección (garbanzos caseros o maduritos melosos) y proteína a elección (pollo al curry dorado o cerdo teriyaki). 🥣 ¡Combo completo! Incluye Crema de plátano colicero (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
+        image: 'https://aluna-qrmenu.vercel.app/brand/boku-bento-mestizo.webp',
+        image_url: 'https://aluna-qrmenu.vercel.app/brand/boku-bento-mestizo.webp',
+        recipe_id: 'ba000040-0000-4000-a000-000000000004',
         stock_status: 'in',
         available_portions: 50,
         is_schedule_available: isStorePausedForPublic ? false : true,
         schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
         modifierGroups: [
           {
-            id: 'mg-albon-soup',
+            id: 'mg-mestizo-protein',
+            name: '🍗 Tu Proteína',
+            min_select: 1,
+            max_select: 1,
+            options: [
+              { id: 'opt-mestizo-pollo-curry', name: 'Pollo al curry dorado', price: 0, is_default: true },
+              { id: 'opt-mestizo-cerdo-teriyaki', name: 'Cerdo teriyaki', price: 0 }
+            ]
+          },
+          {
+            id: 'mg-mestizo-principio',
+            name: '🍲 Tu Principio Casero',
+            min_select: 1,
+            max_select: 1,
+            options: [
+              { id: 'opt-mestizo-garbanzos', name: 'Garbanzos caseros', price: 0, is_default: true },
+              { id: 'opt-mestizo-maduritos', name: 'Maduritos melosos en panela', price: 0 }
+            ]
+          },
+          {
+            id: 'mg-mestizo-soup',
             name: '🥣 Entrada Incluida',
             min_select: 1,
             max_select: 1,
             options: [
-              { id: 'opt-albon-crema', name: 'Crema de espinaca casera (16 oz)', price: 0, is_default: true },
-              { id: 'opt-albon-fruta', name: 'Porción de Fruta fresca picada', price: 0 },
-              { id: 'opt-albon-nosoup', name: 'Sin sopa ni fruta', price: 0 }
+              { id: 'opt-mestizo-crema-platano', name: 'Crema de plátano colicero (16 oz)', price: 0, is_default: true },
+              { id: 'opt-mestizo-fruta', name: 'Porción de Fruta fresca picada', price: 0 },
+              { id: 'opt-mestizo-nosoup', name: 'Sin sopa ni fruta', price: 0 }
             ]
           },
           {
-            id: 'mg-albon-drink',
+            id: 'mg-mestizo-drink',
             name: '🥤 Bebida de la Casa Incluida',
             min_select: 1,
             max_select: 1,
             options: [
-              { id: 'opt-albon-jugo', name: 'Jugo del Día (5 oz)', price: 0, is_default: true },
-              { id: 'opt-albon-hatsu-caja', name: 'Cambiar por Té Hatsu en Caja (200 ml)', price: 2000 },
-              { id: 'opt-albon-hatsu-lata', name: 'Cambiar por Té Hatsu en Lata (250 ml)', price: 4000 },
-              { id: 'opt-albon-nodrink', name: 'Sin bebida', price: 0 }
+              { id: 'opt-mestizo-jugo', name: 'Jugo del Día (5 oz)', price: 0, is_default: true },
+              { id: 'opt-mestizo-hatsu-caja', name: 'Cambiar por Té Hatsu en Caja (200 ml)', price: 2000 },
+              { id: 'opt-mestizo-hatsu-lata', name: 'Cambiar por Té Hatsu en Lata (250 ml)', price: 4000 },
+              { id: 'opt-mestizo-nodrink', name: 'Sin bebida', price: 0 }
             ]
           }
         ]
       };
 
-      // 2. Arroz con Pollo Criollo -> Proyectado en "Más Opciones del Día" (Combo $19.000 con sopa y bebida)
-      const arrozConPolloToday = {
-        id: 'b0000b21-0000-4000-a000-000000000021',
-        productId: 'b0000b21-0000-4000-a000-000000000021',
-        name: 'Arroz con Pollo Criollo (Especial del Día)',
+      // 2. Mazorcada de la Casa -> "Más Opciones del Día" ($19.000 con sopa y bebida)
+      const mazorcadaToday = {
+        id: 'b0000b22-0000-4000-a000-000000000022',
+        productId: 'b0000b22-0000-4000-a000-000000000022',
+        name: 'Mazorcada de la Casa (Especial del Día)',
         price: 19000,
         original_price: 22000,
         is_bento_del_dia: false,
@@ -749,56 +769,86 @@ export const MenuDataProvider = ({ children }) => {
         categorySlug: 'boku-bentos',
         categoryId: 'b0000c01-0000-4000-a000-000000000001',
         categoryName: 'BOKU Bentos Caseros',
-        desc: 'Arroz amarillo con pollo desmechado, rodajas de salchicha, verduras de la huerta, cilantro fresco y papas a la francesa crocantes. 🥣 ¡Combo completo! Incluye Crema de espinaca casera (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
-        description: 'Arroz amarillo con pollo desmechado, rodajas de salchicha, verduras de la huerta, cilantro fresco y papas a la francesa crocantes. 🥣 ¡Combo completo! Incluye Crema de espinaca casera (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
-        image: '/img/products/boku-arroz-con-pollo.jpg',
-        image_url: '/img/products/boku-arroz-con-pollo.jpg',
-        recipe_id: 'ba000040-0000-4000-a000-000000000008',
+        desc: 'Maíz tierno dulce con jamón, salchicha, queso fundido y papita cabello de ángel crocante. Proteína a elección (pollo o cerdo al wok), salsa a elección (BBQ o tártara) y pimentón salteado opcional. 🥣 ¡Combo completo! Incluye Crema de plátano colicero (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
+        description: 'Maíz tierno dulce con jamón, salchicha, queso fundido y papita cabello de ángel crocante. Proteína a elección (pollo o cerdo al wok), salsa a elección (BBQ o tártara) y pimentón salteado opcional. 🥣 ¡Combo completo! Incluye Crema de plátano colicero (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
+        image: '/img/products/boku-mazorcada.jpg',
+        image_url: '/img/products/boku-mazorcada.jpg',
+        recipe_id: null,
         stock_status: 'in',
         available_portions: 50,
         is_schedule_available: isStorePausedForPublic ? false : true,
         schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
         modifierGroups: [
           {
-            id: 'mg-arroz-soup',
+            id: 'mg-mazor-protein',
+            name: '🍗 Proteína a elección',
+            min_select: 1,
+            max_select: 1,
+            options: [
+              { id: 'opt-mazor-pollo', name: 'Pollo salteado al wok', price: 0, is_default: true },
+              { id: 'opt-mazor-cerdo', name: 'Cerdo salteado al wok', price: 0 }
+            ]
+          },
+          {
+            id: 'mg-mazor-sauce',
+            name: '🍯 Salsa a elección',
+            min_select: 1,
+            max_select: 1,
+            options: [
+              { id: 'opt-mazor-bbq', name: 'Salsa BBQ de la casa', price: 0, is_default: true },
+              { id: 'opt-mazor-tartara', name: 'Salsa Tártara cremosa', price: 0 }
+            ]
+          },
+          {
+            id: 'mg-mazor-pimenton',
+            name: '🫑 Toque de Pimentón',
+            min_select: 0,
+            max_select: 1,
+            options: [
+              { id: 'opt-mazor-con-pimenton', name: 'Con pimentón salteado', price: 0, is_default: true },
+              { id: 'opt-mazor-sin-pimenton', name: 'Sin pimentón', price: 0 }
+            ]
+          },
+          {
+            id: 'mg-mazor-soup',
             name: '🥣 Entrada Incluida',
             min_select: 1,
             max_select: 1,
             options: [
-              { id: 'opt-arroz-crema', name: 'Crema de espinaca casera (16 oz)', price: 0, is_default: true },
-              { id: 'opt-arroz-fruta', name: 'Porción de Fruta fresca picada', price: 0 },
-              { id: 'opt-arroz-nosoup', name: 'Sin sopa ni fruta', price: 0 }
+              { id: 'opt-mazor-crema-platano', name: 'Crema de plátano colicero (16 oz)', price: 0, is_default: true },
+              { id: 'opt-mazor-fruta', name: 'Porción de Fruta fresca picada', price: 0 },
+              { id: 'opt-mazor-nosoup', name: 'Sin sopa ni fruta', price: 0 }
             ]
           },
           {
-            id: 'mg-arroz-drink',
+            id: 'mg-mazor-drink',
             name: '🥤 Bebida de la Casa Incluida',
             min_select: 1,
             max_select: 1,
             options: [
-              { id: 'opt-arroz-jugo', name: 'Jugo del Día (5 oz)', price: 0, is_default: true },
-              { id: 'opt-arroz-hatsu-caja', name: 'Cambiar por Té Hatsu en Caja (200 ml)', price: 2000 },
-              { id: 'opt-arroz-hatsu-lata', name: 'Cambiar por Té Hatsu en Lata (250 ml)', price: 4000 },
-              { id: 'opt-arroz-nodrink', name: 'Sin bebida', price: 0 }
+              { id: 'opt-mazor-jugo', name: 'Jugo del Día (5 oz)', price: 0, is_default: true },
+              { id: 'opt-mazor-hatsu-caja', name: 'Cambiar por Té Hatsu en Caja (200 ml)', price: 2000 },
+              { id: 'opt-mazor-hatsu-lata', name: 'Cambiar por Té Hatsu en Lata (250 ml)', price: 4000 },
+              { id: 'opt-mazor-nodrink', name: 'Sin bebida', price: 0 }
             ]
           },
           {
-            id: 'mg-arroz-extras',
+            id: 'mg-mazor-extras',
             name: '🍟 Acompañamiento Opcional',
             min_select: 0,
             max_select: 2,
             options: [
-              { id: 'opt-arroz-extra-papas', name: 'Extra Porción de Papas a la Francesa', price: 6000 },
-              { id: 'opt-arroz-extra-aji', name: 'Ají Casero de la Casa', price: 1500 }
+              { id: 'opt-mazor-extra-papas', name: 'Extra Porción de Papas a la Francesa', price: 6000 },
+              { id: 'opt-mazor-extra-aji', name: 'Ají Casero de la Casa', price: 1500 }
             ]
           }
         ]
       };
 
-      // Ensamblar la sección superior de Bentos de Hoy: exactamente Bento Albóndigas y Arroz con Pollo Criollo
+      // Ensamblar la sección superior de Bentos de Hoy: Bento Mestizo y Mazorcada de la Casa
       grouped['boku-bentos'] = [
         bentoHeroToday,
-        arrozConPolloToday
+        mazorcadaToday
       ];
 
       // Asegurar que en Pastas & Ramen esté Pasta Alfredo con su foto real y receta

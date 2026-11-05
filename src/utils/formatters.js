@@ -58,6 +58,12 @@ export const resolveOrderItemName = (item) => {
   if (item.modifiers?.['_item_name']) return item.modifiers['_item_name'];
 
   const pid = item.product_id || item.products?.id || item.productId;
+  if (pid === 'b0000b22-0000-4000-a000-000000000022') {
+    return 'Mazorcada de la Casa (Especial del Día)';
+  }
+  if (pid === 'b0000b14-0000-4000-a000-000000000004') {
+    return 'Bento Mestizo (Especial del Día)';
+  }
   if (pid === 'b0000b21-0000-4000-a000-000000000021') {
     return 'Arroz con Pollo Criollo (Especial del Día)';
   }
