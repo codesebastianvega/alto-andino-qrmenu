@@ -67,7 +67,6 @@ export function useCRM() {
           )
         `)
         .eq('brand_id', brandId)
-        .not('customer_phone', 'is', null)
         .order('created_at', { ascending: false });
 
       if (ordersError) throw ordersError;
@@ -99,18 +98,27 @@ export function useCRM() {
 
     // Process orders to build customer profiles
     orders.forEach(order => {
-      const phone = order.customer_phone?.trim();
-      if (!phone) return;
+      const phone = order.customer_phone?.trim() || '';
+      const { cleanName, address, notes } = parseCustomerInfo(
+        order.customer_name, 
+        order.delivery_address, 
+        order.delivery_notes
+      );
 
-      if (!customerMap[phone]) {
-        const { cleanName, address, notes } = parseCustomerInfo(
-          order.customer_name, 
-          order.delivery_address, 
-          order.delivery_notes
-        );
+      const normName = cleanName?.trim().toLowerCase();
+      // Ignorar nombres genéricos de pruebas o placeholders si no hay teléfono
+      if (!phone && (!normName || normName === 'sin nombre' || normName === 'cliente whatsapp' || normName === 'cliente mostrador / whatsapp' || normName.startsWith('test_'))) {
+        return;
+      }
 
-        customerMap[phone] = {
-          phone,
+      // Clave única: teléfono si existe; o nombre normalizado si no tiene teléfono
+      const customerKey = phone ? phone.replace(/\D/g, '') : `name:${normName}`;
+      if (!customerKey) return;
+
+      if (!customerMap[customerKey]) {
+        customerMap[customerKey] = {
+          key: customerKey,
+          phone: phone,
           rawName: order.customer_name || 'Sin nombre',
           name: cleanName,
           address,
@@ -131,45 +139,43 @@ export function useCRM() {
         };
       }
 
-      // Update name & address if we find more detailed information
-      const { cleanName, address, notes } = parseCustomerInfo(
-        order.customer_name, 
-        order.delivery_address, 
-        order.delivery_notes
-      );
-      if ((customerMap[phone].name === 'Sin nombre' || !customerMap[phone].name) && cleanName) {
-        customerMap[phone].name = cleanName;
+      // Update name, phone & address if we find more detailed information
+      if (!customerMap[customerKey].phone && phone) {
+        customerMap[customerKey].phone = phone;
       }
-      if (!customerMap[phone].address && address) {
-        customerMap[phone].address = address;
+      if ((customerMap[customerKey].name === 'Sin nombre' || !customerMap[customerKey].name) && cleanName) {
+        customerMap[customerKey].name = cleanName;
       }
-      if (!customerMap[phone].deliveryNotes && notes) {
-        customerMap[phone].deliveryNotes = notes;
+      if (!customerMap[customerKey].address && address) {
+        customerMap[customerKey].address = address;
+      }
+      if (!customerMap[customerKey].deliveryNotes && notes) {
+        customerMap[customerKey].deliveryNotes = notes;
       }
 
       // Aggregate metrics for delivered orders
       if (order.status === 'delivered') {
-        customerMap[phone].ltv += Number(order.total_amount || 0);
-        customerMap[phone].ordersCount += 1;
+        customerMap[customerKey].ltv += Number(order.total_amount || 0);
+        customerMap[customerKey].ordersCount += 1;
       } else if (order.status === 'cancelled') {
-        customerMap[phone].cancelledCount += 1;
-        customerMap[phone].hasCancelled = true;
-        if (!customerMap[phone].lastCancellationReason && order.cancellation_reason) {
-          customerMap[phone].lastCancellationReason = order.cancellation_reason;
-          customerMap[phone].lastCancellationDate = order.cancelled_at || order.created_at;
+        customerMap[customerKey].cancelledCount += 1;
+        customerMap[customerKey].hasCancelled = true;
+        if (!customerMap[customerKey].lastCancellationReason && order.cancellation_reason) {
+          customerMap[customerKey].lastCancellationReason = order.cancellation_reason;
+          customerMap[customerKey].lastCancellationDate = order.cancelled_at || order.created_at;
         }
       }
 
       // Track visit dates
-      if (new Date(order.created_at) > new Date(customerMap[phone].lastVisit)) {
-        customerMap[phone].lastVisit = order.created_at;
-        customerMap[phone].lastOrder = order;
+      if (new Date(order.created_at) > new Date(customerMap[customerKey].lastVisit)) {
+        customerMap[customerKey].lastVisit = order.created_at;
+        customerMap[customerKey].lastOrder = order;
       }
-      if (new Date(order.created_at) < new Date(customerMap[phone].firstVisit)) {
-        customerMap[phone].firstVisit = order.created_at;
+      if (new Date(order.created_at) < new Date(customerMap[customerKey].firstVisit)) {
+        customerMap[customerKey].firstVisit = order.created_at;
       }
 
-      customerMap[phone].orderHistory.push(order);
+      customerMap[customerKey].orderHistory.push(order);
     });
 
     // Process leads (if they have a phone and aren't already in the list)

@@ -94,7 +94,7 @@ export default function CustomerDirectory() {
         (c.name?.toLowerCase() || '').includes(term) || 
         (c.address?.toLowerCase() || '').includes(term) ||
         (c.favoriteProduct?.toLowerCase() || '').includes(term) ||
-        c.phone.includes(searchTerm);
+        (c.phone || '').includes(searchTerm);
       
       let matchesFilter = true;
       if (filterSegment === 'friccion') {
@@ -128,7 +128,11 @@ export default function CustomerDirectory() {
 
   const sendDirectWhatsApp = (customer, e) => {
     if (e) e.stopPropagation();
-    const phone = customer.phone.replace(/\D/g, '');
+    const phone = (customer.phone || '').replace(/\D/g, '');
+    if (!phone) {
+      alert('Este cliente no tiene número de teléfono registrado.');
+      return;
+    }
     const firstName = customer.name?.split(' ')[0] || 'Hola';
 
     let message = '';
@@ -390,7 +394,7 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
                 
                 return (
                   <tr 
-                    key={customer.phone}
+                    key={customer.phone || customer.key || customer.name}
                     className={`group hover:bg-gray-50/80 transition-all cursor-pointer ${
                       isFriction ? 'bg-rose-50/30' : ''
                     }`}

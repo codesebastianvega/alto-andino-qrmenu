@@ -40,6 +40,11 @@ export default function ManualOrderModal({
   const [orderNotes, setOrderNotes] = useState('');
   const [fulfillmentType, setFulfillmentType] = useState('delivery');
   
+  // Autocompletado inteligente de clientes desde CRM/pedidos previos
+  const [customerSuggestions, setCustomerSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
+  
   // Timing: immediate vs scheduled
   const [timingMode, setTimingMode] = useState('immediate'); // 'immediate' | 'scheduled'
   const [scheduledTime, setScheduledTime] = useState('');
@@ -145,6 +150,79 @@ export default function ManualOrderModal({
 
     return () => { isMounted = false; };
   }, [isOpen, brandId, locationId]);
+
+  // Live autocomplete: buscar clientes recurrentes por nombre
+  useEffect(() => {
+    const qName = customerName?.trim() || '';
+    if (!qName || qName.length < 2 || qName === 'Cliente WhatsApp') {
+      setCustomerSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setIsSearchingCustomer(true);
+        const { data } = await supabase
+          .from('orders')
+          .select('customer_name, customer_phone, delivery_address, delivery_notes')
+          .eq('brand_id', brandId)
+          .ilike('customer_name', `%${qName}%`)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (data && data.length > 0) {
+          const map = new Map();
+          data.forEach(item => {
+            const raw = (item.customer_phone || item.customer_name || '').toLowerCase().trim();
+            if (raw && !map.has(raw)) {
+              map.set(raw, item);
+            }
+          });
+          setCustomerSuggestions(Array.from(map.values()));
+        } else {
+          setCustomerSuggestions([]);
+        }
+      } catch (err) {
+        console.error('Error fetching customer suggestions:', err);
+      } finally {
+        setIsSearchingCustomer(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [customerName, brandId]);
+
+  // Si escriben un número de teléfono, autocompletar nombre y dirección si ya existía
+  useEffect(() => {
+    const raw = (customerPhone || '').replace(/\D/g, '');
+    if (raw.length < 7) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await supabase
+          .from('orders')
+          .select('customer_name, delivery_address, delivery_notes')
+          .eq('brand_id', brandId)
+          .ilike('customer_phone', `%${raw}%`)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (data && data.length > 0) {
+          const prev = data[0];
+          if (prev.customer_name && (!customerName || customerName === 'Cliente WhatsApp')) {
+            setCustomerName(prev.customer_name);
+          }
+          if (prev.delivery_address && !deliveryAddress) {
+            setDeliveryAddress(prev.delivery_address);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [customerPhone, customerName, deliveryAddress, brandId]);
 
   // Categories derived from products
   const categories = useMemo(() => {
@@ -797,21 +875,82 @@ export default function ManualOrderModal({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={customerName}
-                    onChange={e => setCustomerName(e.target.value)}
-                    placeholder="Nombre (ej: Carlos M.)"
-                    className="w-full px-3 py-1.5 rounded-xl border border-neutral-200 text-xs font-medium bg-neutral-50"
-                  />
-                  <input
-                    type="tel"
-                    value={customerPhone}
-                    onChange={e => setCustomerPhone(e.target.value)}
-                    placeholder="WhatsApp (ej: 312...)"
-                    className="w-full px-3 py-1.5 rounded-xl border border-neutral-200 text-xs font-medium bg-neutral-50"
-                  />
+                <div className="relative space-y-1.5">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={customerName}
+                        onChange={e => {
+                          setCustomerName(e.target.value);
+                          setShowSuggestions(true);
+                        }}
+                        onFocus={() => setShowSuggestions(true)}
+                        placeholder="Nombre (ej: Manuela Vega)"
+                        className="w-full px-3 py-1.5 rounded-xl border border-neutral-200 text-xs font-medium bg-neutral-50 focus:bg-white focus:border-[#2f4131] outline-none"
+                      />
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        value={customerPhone}
+                        onChange={e => setCustomerPhone(e.target.value)}
+                        placeholder="WhatsApp (ej: 312...)"
+                        className="w-full px-3 py-1.5 rounded-xl border border-neutral-200 text-xs font-medium bg-neutral-50 focus:bg-white focus:border-[#2f4131] outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dropdown de sugerencias de clientes recurrentes del CRM */}
+                  {showSuggestions && customerSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-neutral-200 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-neutral-100 max-h-48 overflow-y-auto">
+                      <div className="px-3 py-1.5 bg-neutral-50 text-[10px] font-black text-neutral-400 uppercase tracking-wider flex items-center justify-between">
+                        <span>Clientes recurrentes encontrados</span>
+                        <button 
+                          type="button" 
+                          onClick={() => setShowSuggestions(false)}
+                          className="text-neutral-400 hover:text-neutral-600 text-xs cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {customerSuggestions.map((sug, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setCustomerName(sug.customer_name || customerName);
+                            if (sug.customer_phone) setCustomerPhone(sug.customer_phone);
+                            if (sug.delivery_address) setDeliveryAddress(sug.delivery_address);
+                            setShowSuggestions(false);
+                            toast.success(`Cliente cargado: ${sug.customer_name}`);
+                          }}
+                          className="w-full px-3 py-2 text-left hover:bg-emerald-50/60 transition-colors flex items-center justify-between gap-2 group cursor-pointer"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-gray-900 group-hover:text-emerald-800 truncate">
+                              {sug.customer_name}
+                            </p>
+                            <p className="text-[10px] text-gray-400 flex items-center gap-1.5 truncate">
+                              {sug.customer_phone && <span>📱 {sug.customer_phone}</span>}
+                              {sug.delivery_address && <span>📍 {sug.delivery_address}</span>}
+                            </p>
+                          </div>
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 shrink-0">
+                            Cargar
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Tip informativo de CRM para el operador */}
+                  {customerName && customerName !== 'Cliente WhatsApp' && !customerPhone && (
+                    <p className="text-[10px] text-amber-800 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200/60 flex items-center gap-1.5">
+                      <Icon icon="solar:info-circle-bold" className="shrink-0 text-amber-600 text-xs" />
+                      <span>💡 Agrega el WhatsApp para vincular a {customerName} con su historial de compras en el CRM.</span>
+                    </p>
+                  )}
                 </div>
 
                 {fulfillmentType === 'delivery' && (

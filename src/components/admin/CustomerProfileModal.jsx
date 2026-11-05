@@ -95,7 +95,11 @@ export default function CustomerProfileModal({ customer, isOpen, onClose, brandN
   });
 
   const sendWhatsApp = (type) => {
-    const phone = customer.phone.replace(/\D/g, '');
+    const phone = (customer.phone || '').replace(/\D/g, '');
+    if (!phone) {
+      alert('Este cliente no tiene número de teléfono registrado.');
+      return;
+    }
     const firstName = customer.name?.split(' ')[0] || 'Hola';
     let message = "";
 
@@ -185,13 +189,19 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
                       <span>{seg.label}</span>
                     </div>
 
-                    <a 
-                      href={`tel:${customer.phone}`}
-                      className="inline-flex items-center gap-1 text-gray-600 hover:text-emerald-700 bg-white px-2.5 py-0.5 rounded-full border border-gray-200 text-xs font-mono font-medium transition-colors"
-                    >
-                      <Phone className="w-3 h-3 text-gray-400" />
-                      <span>{customer.phone}</span>
-                    </a>
+                    {customer.phone ? (
+                      <a 
+                        href={`tel:${customer.phone}`}
+                        className="inline-flex items-center gap-1 text-gray-600 hover:text-emerald-700 bg-white px-2.5 py-0.5 rounded-full border border-gray-200 text-xs font-mono font-medium transition-colors"
+                      >
+                        <Phone className="w-3 h-3 text-gray-400" />
+                        <span>{customer.phone}</span>
+                      </a>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-gray-400 bg-gray-100 px-2.5 py-0.5 rounded-full text-[11px] font-medium">
+                        Sin WhatsApp registrado
+                      </span>
+                    )}
                   </div>
 
                   {/* Dirección de entrega */}
