@@ -34,6 +34,7 @@ export default function ManualOrderModal({
   const [customerName, setCustomerName] = useState('Cliente WhatsApp');
   const [customerPhone, setCustomerPhone] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryFee, setDeliveryFee] = useState(4000);
   const [orderNotes, setOrderNotes] = useState('');
   const [fulfillmentType, setFulfillmentType] = useState('delivery');
   
@@ -74,6 +75,9 @@ export default function ManualOrderModal({
           setProducts(prodsRes.data || []);
           const fetchedLocs = locsRes.data || [];
           setLocationsList(fetchedLocs);
+
+          const defaultFee = Number(fetchedLocs[0]?.delivery_fee) || Number(restaurantSettings?.delivery_fee) || 4000;
+          setDeliveryFee(defaultFee);
 
           if (isValidUUID(locationId)) {
             setSelectedLocationId(locationId);
@@ -339,9 +343,12 @@ export default function ManualOrderModal({
   };
 
   // Grand total calculation
-  const grandTotal = useMemo(() => {
+  const itemsSubtotal = useMemo(() => {
     return orderItems.reduce((acc, it) => acc + (it.unitPrice * it.qty), 0);
   }, [orderItems]);
+
+  const activeDeliveryFee = fulfillmentType === 'delivery' ? Number(deliveryFee || 0) : 0;
+  const grandTotal = itemsSubtotal + activeDeliveryFee;
 
   // Submit and create order
   const handleCreateOrder = async () => {
@@ -381,6 +388,7 @@ export default function ManualOrderModal({
         customer_phone: customerPhone.trim() || null,
         delivery_address: fulfillmentType === 'delivery' ? (deliveryAddress.trim() || null) : null,
         delivery_notes: orderNotes.trim() || null,
+        delivery_fee: activeDeliveryFee,
         scheduled_time: parsedScheduledTime,
         total_amount: grandTotal,
         payment_status: isPaid ? 'paid' : 'pending',
@@ -616,13 +624,48 @@ export default function ManualOrderModal({
                 </div>
 
                 {fulfillmentType === 'delivery' && (
-                  <input
-                    type="text"
-                    value={deliveryAddress}
-                    onChange={e => setDeliveryAddress(e.target.value)}
-                    placeholder="Dirección de entrega (ej: Cra 7 #3-15 Apto 402)"
-                    className="w-full px-3 py-1.5 rounded-xl border border-neutral-200 text-xs font-medium bg-neutral-50"
-                  />
+                  <div className="space-y-1.5 pt-0.5">
+                    <input
+                      type="text"
+                      value={deliveryAddress}
+                      onChange={e => setDeliveryAddress(e.target.value)}
+                      placeholder="Dirección de entrega (ej: Cra 7 #3-15 Apto 402)"
+                      className="w-full px-3 py-1.5 rounded-xl border border-neutral-200 text-xs font-medium bg-neutral-50 focus:bg-white"
+                    />
+                    <div className="flex items-center justify-between gap-2 bg-neutral-50 px-2.5 py-1.5 rounded-xl border border-neutral-200">
+                      <span className="text-[11px] font-bold text-neutral-600 flex items-center gap-1 shrink-0">
+                        <Icon icon="heroicons:truck" className="text-emerald-600" />
+                        Valor Domicilio:
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {[0, 3000, 4000, 5000].map(feeOpt => (
+                          <button
+                            key={feeOpt}
+                            type="button"
+                            onClick={() => setDeliveryFee(feeOpt)}
+                            className={`px-2 py-0.5 rounded-lg text-[10px] font-black border transition-all ${
+                              deliveryFee === feeOpt
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-100'
+                            }`}
+                          >
+                            {feeOpt === 0 ? 'Gratis' : `$${(feeOpt/1000).toFixed(0)}k`}
+                          </button>
+                        ))}
+                        <div className="relative w-20">
+                          <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-neutral-400">$</span>
+                          <input
+                            type="number"
+                            step="500"
+                            min="0"
+                            value={deliveryFee}
+                            onChange={e => setDeliveryFee(Math.max(0, Number(e.target.value) || 0))}
+                            className="w-full pl-4 pr-1 py-0.5 text-right font-black text-xs rounded-lg border border-neutral-200 bg-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -837,11 +880,28 @@ export default function ManualOrderModal({
 
             {/* Bottom Actions */}
             <div className="pt-4 border-t border-neutral-200 mt-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-neutral-500 font-medium">Total a cobrar:</span>
-                <span className="text-xl font-black text-neutral-950">
-                  {formatCOP(grandTotal)}
-                </span>
+              <div className="space-y-1 text-xs text-neutral-600 bg-neutral-50 p-2.5 rounded-xl border border-neutral-200">
+                <div className="flex justify-between items-center">
+                  <span>Subtotal productos ({orderItems.reduce((sum, i) => sum + i.qty, 0)}):</span>
+                  <span className="font-bold text-neutral-800">{formatCOP(itemsSubtotal)}</span>
+                </div>
+                {fulfillmentType === 'delivery' && (
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-1 font-medium text-emerald-800">
+                      <Icon icon="heroicons:truck" className="text-emerald-600" />
+                      Costo Domicilio:
+                    </span>
+                    <span className="font-black text-emerald-700">
+                      {activeDeliveryFee > 0 ? `+${formatCOP(activeDeliveryFee)}` : 'Gratis'}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-1.5 border-t border-neutral-200">
+                  <span className="text-xs text-neutral-600 font-black uppercase tracking-wider">Total a cobrar:</span>
+                  <span className="text-xl font-black text-neutral-950">
+                    {formatCOP(grandTotal)}
+                  </span>
+                </div>
               </div>
 
               <div className="flex items-center justify-between">
