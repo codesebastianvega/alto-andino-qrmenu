@@ -298,7 +298,7 @@ export const MenuDataProvider = ({ children }) => {
       const cachePayload = {
         categories: catsRes.data || [], products: prodsRes.data || [], modifierGroups: modsRes.data || [],
         experiences: expRes.data || [], allergens: allgsRes.data || [], locations: locsRes.data || [],
-        banners: bnrsRes.data || [], homeSettings: normalizedHomeSettings,
+        banners: bnrsRes.data || [], homeSettings: rawHomeSettings,
         restaurantSettings: bestRS, brand: brandRes.data || null,
         businessHours: hoursRes.data || [], locationPrices: cachedLocationPrices,
         locationStatus: cachedLocationStatus, locationCategories: cachedLocationCategories,

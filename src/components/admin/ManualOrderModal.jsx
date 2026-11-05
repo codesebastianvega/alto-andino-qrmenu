@@ -331,21 +331,31 @@ export default function ManualOrderModal({
 
     setIsSubmitting(true);
     try {
+      let parsedScheduledTime = null;
+      if (timingMode === 'scheduled' && scheduledTime) {
+        try {
+          parsedScheduledTime = new Date(scheduledTime).toISOString();
+        } catch (e) {
+          parsedScheduledTime = scheduledTime;
+        }
+      }
+
       const orderPayload = {
         brand_id: brandId,
         location_id: locationId || null,
         status: 'new',
+        kitchen_status: 'pending',
+        bar_status: 'pending',
         origin: 'pos',
         fulfillment_type: fulfillmentType,
         customer_name: customerName.trim() || 'Cliente Mostrador / WhatsApp',
         customer_phone: customerPhone.trim() || null,
         delivery_address: fulfillmentType === 'delivery' ? (deliveryAddress.trim() || null) : null,
-        scheduled_time: timingMode === 'scheduled' ? (new Date(scheduledTime).toISOString()) : null,
+        delivery_notes: orderNotes.trim() || null,
+        scheduled_time: parsedScheduledTime,
         total_amount: grandTotal,
         payment_status: isPaid ? 'paid' : 'pending',
-        payment_method: isPaid ? paymentMethod : null,
-        notes: orderNotes.trim() || null,
-        created_at: new Date().toISOString()
+        payment_method: isPaid ? paymentMethod : null
       };
 
       const { data: createdOrder, error: orderErr } = await supabase
