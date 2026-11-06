@@ -478,8 +478,8 @@ export const MenuDataProvider = ({ children }) => {
     const specialLabel = dailySpecialConcept?.label || (isBoku ? 'El Bento del Día' : 'Plato del Día');
     const promoPrice = Number(dailySpecialConcept?.promo_price) || 0;
     const standardPrice = Number(dailySpecialConcept?.standard_price) || 0;
-    const soupName = dailySpecialConcept?.soup_name || 'Crema de verduras casera (16 oz)';
-    const drinkName = dailySpecialConcept?.drink_name || 'Bebida natural de la Casa (5 oz)';
+    const soupName = dailySpecialConcept?.soup_name || (isBoku ? 'Sopa de apio casera (16 oz)' : 'Crema de verduras casera (16 oz)');
+    const drinkName = dailySpecialConcept?.drink_name || (isBoku ? 'Limonada Verde Antioxidante (5 oz)' : 'Bebida natural de la Casa (5 oz)');
     const defaultSchedule = {
       1: 'b0000b11-0000-4000-a000-000000000001', // Lunes
       2: 'b0000b12-0000-4000-a000-000000000002', // Martes
@@ -673,7 +673,132 @@ export const MenuDataProvider = ({ children }) => {
     if (isBoku) {
       if (!grouped['boku-bentos']) grouped['boku-bentos'] = [];
 
-      // 1. Bento Mestizo -> Plato Principal "El Bento del Día" ($19.000 con sopa y bebida)
+      // Modificadores Compartidos de Entrada y Bebida de la Casa
+      const sharedSoupGroup = {
+        id: 'b0000b20-0000-4000-a000-000000000002',
+        name: '🥣 Entrada Incluida',
+        min_select: 1,
+        max_select: 1,
+        is_required: true,
+        options: [
+          { id: 'opt-bento-sopa-apio', name: 'Sopa de apio casera (16 oz)', price: 0, is_default: true },
+          { id: 'opt-bento-fruta', name: 'Porción de Fruta fresca picada', price: 0 },
+          { id: 'opt-bento-nosoup', name: 'Sin sopa ni fruta', price: 0 }
+        ]
+      };
+
+      const sharedDrinkGroup = {
+        id: 'b0000b20-0000-4000-a000-000000000001',
+        name: '🥤 Bebida de la Casa Incluida',
+        min_select: 1,
+        max_select: 1,
+        is_required: true,
+        options: [
+          { id: 'opt-bento-limonada-antiox', name: 'Limonada Verde Antioxidante (piña, pepino y yerbabuena) (5 oz)', price: 0, is_default: true },
+          { id: 'opt-bento-hatsu-caja', name: 'Cambiar por Té Hatsu en Caja (200 ml)', price: 2000 },
+          { id: 'opt-bento-hatsu-lata', name: 'Cambiar por Té Hatsu en Lata (250 ml)', price: 4000 },
+          { id: 'opt-bento-nodrink', name: 'Sin bebida', price: 0 }
+        ]
+      };
+
+      // 1. Bento Mediterráneo (Fresco y Balanceado) 🐠 - Nuevo Especial
+      const bentoMediterraneo = {
+        id: 'b0000b18-0000-4000-a000-000000000018',
+        productId: 'b0000b18-0000-4000-a000-000000000018',
+        name: 'Bento Mediterráneo (Fresco y Balanceado)',
+        price: 19000,
+        original_price: 22000,
+        is_bento_del_dia: true,
+        is_daily_special: true,
+        daily_special_label: 'Nuevo Especial',
+        subcategory: 'Bentos Caseros',
+        categorySlug: 'boku-bentos',
+        categoryId: 'b0000c01-0000-4000-a000-000000000001',
+        categoryName: 'BOKU Bentos Caseros',
+        desc: 'Arroz blanco con perejil, hummus casero cremoso de garbanzo con aceite y páprika, champiñones al ajillo, pepino fresco, tomates cherry y rábano crocante. 👉 Proteína a elección (al limón): Filete de merluza dorada o pechuga de pollo al wok. 🥣 Combo completo: Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
+        description: 'Arroz blanco con perejil, hummus casero cremoso de garbanzo con aceite y páprika, champiñones al ajillo, pepino fresco, tomates cherry y rábano crocante. 👉 Proteína a elección (al limón): Filete de merluza dorada o pechuga de pollo al wok. 🥣 Combo completo: Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
+        image: '/bento-mediterraneo.jpg',
+        image_url: '/bento-mediterraneo.jpg',
+        recipe_id: null,
+        stock_status: 'in',
+        available_portions: 50,
+        is_schedule_available: isStorePausedForPublic ? false : true,
+        schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
+        modifierGroups: [
+          {
+            id: 'mg-medit-protein',
+            name: '🐟 Proteína al Limón',
+            min_select: 1,
+            max_select: 2,
+            included_count: 1,
+            extra_price: 8000,
+            options: [
+              { id: 'opt-medit-merluza', name: 'Filete de merluza dorada', price: 0, extra_price: 8000, is_default: true },
+              { id: 'opt-medit-pollo', name: 'Pechuga de pollo al wok', price: 0, extra_price: 7000 }
+            ]
+          },
+          sharedSoupGroup,
+          sharedDrinkGroup
+        ]
+      };
+
+      // 2. Bento Criollo Antioqueño (La Paisa) - Actualizado
+      const criolloRaw = (rawProducts || []).find(p => p.id === 'b0000b11-0000-4000-a000-000000000001');
+      const bentoCriollo = {
+        ...(criolloRaw || {}),
+        id: 'b0000b11-0000-4000-a000-000000000001',
+        productId: 'b0000b11-0000-4000-a000-000000000001',
+        name: 'Bento Criollo Antioqueño (La Paisa)',
+        price: 19000,
+        original_price: 22000,
+        is_bento_del_dia: true,
+        is_daily_special: true,
+        daily_special_label: 'Favorito de la Casa',
+        subcategory: 'Bentos Caseros',
+        categorySlug: 'boku-bentos',
+        categoryId: 'b0000c01-0000-4000-a000-000000000001',
+        categoryName: 'BOKU Bentos Caseros',
+        desc: 'La bandeja paisa de siempre, pero en el bowl de la casa: arroz blanco, fríjoles a elección (rojos o negros), carne a elección (molida, cerdo o pollo al wok), chorizo y morcilla, huevo frito, aguacate y maduritos melosos. 🥣 Combo completo: Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
+        description: 'La bandeja paisa de siempre, pero en el bowl de la casa: arroz blanco, fríjoles a elección (rojos o negros), carne a elección (molida, cerdo o pollo al wok), chorizo y morcilla, huevo frito, aguacate y maduritos melosos. 🥣 Combo completo: Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
+        image: criolloRaw?.image_url || 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/4l57b6hx21n_1792011029842.webp',
+        image_url: criolloRaw?.image_url || 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/4l57b6hx21n_1792011029842.webp',
+        recipe_id: 'ba000010-0000-4000-a000-000000000001',
+        stock_status: 'in',
+        available_portions: 50,
+        is_schedule_available: isStorePausedForPublic ? false : true,
+        schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
+        modifierGroups: [
+          {
+            id: 'mg-criollo-frijol',
+            name: '🍲 Tu Fríjol',
+            min_select: 1,
+            max_select: 2,
+            included_count: 1,
+            extra_price: 4000,
+            options: [
+              { id: 'opt-criollo-frijol-rojo', name: 'Fríjoles rojos calados', price: 0, extra_price: 4000, is_default: true },
+              { id: 'opt-criollo-frijol-negro', name: 'Fríjoles negros', price: 0, extra_price: 4000 }
+            ]
+          },
+          {
+            id: 'mg-criollo-protein',
+            name: '🥩 Tu Proteína Criolla',
+            min_select: 1,
+            max_select: 3,
+            included_count: 1,
+            extra_price: 7000,
+            options: [
+              { id: 'opt-criollo-molida', name: 'Carne molida sazonada', price: 0, extra_price: 7000, is_default: true },
+              { id: 'opt-criollo-cerdo', name: 'Cerdo al wok en cubos', price: 0, extra_price: 7000 },
+              { id: 'opt-criollo-pollo', name: 'Pollo al wok en cubos', price: 0, extra_price: 7000 }
+            ]
+          },
+          sharedSoupGroup,
+          sharedDrinkGroup
+        ]
+      };
+
+      // 3. Bento Mestizo -> Plato del Día ($19.000 con sopa y bebida)
       const mestizoRaw = (rawProducts || []).find(p => p.id === 'b0000b14-0000-4000-a000-000000000004') ||
                          (rawProducts || []).find(p => p.id === activeSpecialId) ||
                          grouped['boku-bentos']?.find(p => p.id === activeSpecialId);
@@ -688,12 +813,12 @@ export const MenuDataProvider = ({ children }) => {
         is_bento_del_dia: true,
         is_daily_special: true,
         daily_special_label: 'El Bento del Día',
-        subcategory: 'El Bento del Día',
+        subcategory: 'Bentos Caseros',
         categorySlug: 'boku-bentos',
         categoryId: 'b0000c01-0000-4000-a000-000000000001',
         categoryName: 'BOKU Bentos Caseros',
-        desc: 'Arroz blanco, champiñones al ajillo, brócoli al vapor, tomates cherry y ensalada cremosa de remolacha y zanahoria en cubitos con mayonesa. Principio a elección (garbanzos caseros o maduritos melosos) y proteína a elección (pollo al curry dorado o cerdo teriyaki). 🥣 ¡Combo completo! Incluye Crema de plátano colicero (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
-        description: 'Arroz blanco, champiñones al ajillo, brócoli al vapor, tomates cherry y ensalada cremosa de remolacha y zanahoria en cubitos con mayonesa. Principio a elección (garbanzos caseros o maduritos melosos) y proteína a elección (pollo al curry dorado o cerdo teriyaki). 🥣 ¡Combo completo! Incluye Crema de plátano colicero (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
+        desc: 'Arroz blanco, champiñones al ajillo, brócoli al vapor, tomates cherry y ensalada cremosa de remolacha y zanahoria en cubitos con mayonesa. Principio a elección (garbanzos caseros o maduritos melosos) y proteína a elección (pollo al curry dorado o cerdo teriyaki). 🥣 ¡Combo completo! Incluye Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
+        description: 'Arroz blanco, champiñones al ajillo, brócoli al vapor, tomates cherry y ensalada cremosa de remolacha y zanahoria en cubitos con mayonesa. Principio a elección (garbanzos caseros o maduritos melosos) y proteína a elección (pollo al curry dorado o cerdo teriyaki). 🥣 ¡Combo completo! Incluye Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
         image: 'https://aluna-qrmenu.vercel.app/brand/boku-bento-mestizo.webp',
         image_url: 'https://aluna-qrmenu.vercel.app/brand/boku-bento-mestizo.webp',
         recipe_id: 'ba000040-0000-4000-a000-000000000004',
@@ -741,33 +866,12 @@ export const MenuDataProvider = ({ children }) => {
               { id: 'opt-mestizo-sin-tomates', name: '🚫 Sin tomates cherry', price: 0 }
             ]
           },
-          {
-            id: 'mg-mestizo-soup',
-            name: '🥣 Entrada Incluida',
-            min_select: 1,
-            max_select: 1,
-            options: [
-              { id: 'opt-mestizo-crema-platano', name: 'Crema de plátano colicero (16 oz)', price: 0, is_default: true },
-              { id: 'opt-mestizo-fruta', name: 'Porción de Fruta fresca picada', price: 0 },
-              { id: 'opt-mestizo-nosoup', name: 'Sin sopa ni fruta', price: 0 }
-            ]
-          },
-          {
-            id: 'mg-mestizo-drink',
-            name: '🥤 Bebida de la Casa Incluida',
-            min_select: 1,
-            max_select: 1,
-            options: [
-              { id: 'opt-mestizo-jugo', name: 'Jugo del Día (5 oz)', price: 0, is_default: true },
-              { id: 'opt-mestizo-hatsu-caja', name: 'Cambiar por Té Hatsu en Caja (200 ml)', price: 2000 },
-              { id: 'opt-mestizo-hatsu-lata', name: 'Cambiar por Té Hatsu en Lata (250 ml)', price: 4000 },
-              { id: 'opt-mestizo-nodrink', name: 'Sin bebida', price: 0 }
-            ]
-          }
+          sharedSoupGroup,
+          sharedDrinkGroup
         ]
       };
 
-      // 2. Mazorcada de la Casa -> "Más Opciones del Día" ($19.000 con sopa y bebida)
+      // 4. Mazorcada de la Casa -> "Más Opciones del Día" ($19.000 con sopa y bebida)
       const mazorcadaToday = {
         id: 'b0000b22-0000-4000-a000-000000000022',
         productId: 'b0000b22-0000-4000-a000-000000000022',
@@ -781,8 +885,8 @@ export const MenuDataProvider = ({ children }) => {
         categorySlug: 'boku-bentos',
         categoryId: 'b0000c01-0000-4000-a000-000000000001',
         categoryName: 'BOKU Bentos Caseros',
-        desc: 'Maíz tierno dulce con jamón, salchicha, queso fundido y papita cabello de ángel crocante. Proteína a elección (pollo o cerdo al wok), salsa a elección (BBQ o tártara) y pimentón salteado opcional. 🥣 ¡Combo completo! Incluye Crema de plátano colicero (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
-        description: 'Maíz tierno dulce con jamón, salchicha, queso fundido y papita cabello de ángel crocante. Proteína a elección (pollo o cerdo al wok), salsa a elección (BBQ o tártara) y pimentón salteado opcional. 🥣 ¡Combo completo! Incluye Crema de plátano colicero (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
+        desc: 'Maíz tierno dulce con jamón, salchicha, queso fundido y papita cabello de ángel crocante. Proteína a elección (pollo o cerdo al wok), salsa a elección (BBQ o tártara) y pimentón salteado opcional. 🥣 ¡Combo completo! Incluye Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
+        description: 'Maíz tierno dulce con jamón, salchicha, queso fundido y papita cabello de ángel crocante. Proteína a elección (pollo o cerdo al wok), salsa a elección (BBQ o tártara) y pimentón salteado opcional. 🥣 ¡Combo completo! Incluye Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
         image: '/img/products/boku-mazorcada.jpg',
         image_url: '/img/products/boku-mazorcada.jpg',
         recipe_id: null,
@@ -822,29 +926,8 @@ export const MenuDataProvider = ({ children }) => {
               { id: 'opt-mazor-sin-pimenton', name: 'Sin pimentón', price: 0 }
             ]
           },
-          {
-            id: 'mg-mazor-soup',
-            name: '🥣 Entrada Incluida',
-            min_select: 1,
-            max_select: 1,
-            options: [
-              { id: 'opt-mazor-crema-platano', name: '🥣 Crema de plátano colicero (16 oz)', price: 0, is_default: true },
-              { id: 'opt-mazor-fruta', name: '🍍 Porción de Fruta fresca picada', price: 0 },
-              { id: 'opt-mazor-nosoup', name: '🚫 Sin sopa ni fruta', price: 0 }
-            ]
-          },
-          {
-            id: 'mg-mazor-drink',
-            name: '🥤 Bebida de la Casa Incluida',
-            min_select: 1,
-            max_select: 1,
-            options: [
-              { id: 'opt-mazor-jugo', name: '🥤 Jugo del Día (5 oz)', price: 0, is_default: true },
-              { id: 'opt-mazor-hatsu-caja', name: '🧃 Cambiar por Té Hatsu en Caja (200 ml)', price: 2000 },
-              { id: 'opt-mazor-hatsu-lata', name: '🥫 Cambiar por Té Hatsu en Lata (250 ml)', price: 4000 },
-              { id: 'opt-mazor-nodrink', name: '🚫 Sin bebida', price: 0 }
-            ]
-          },
+          sharedSoupGroup,
+          sharedDrinkGroup,
           {
             id: 'mg-mazor-extras',
             name: '🍟 Acompañamiento Opcional',
@@ -858,8 +941,10 @@ export const MenuDataProvider = ({ children }) => {
         ]
       };
 
-      // Ensamblar la sección superior de Bentos de Hoy: Bento Mestizo y Mazorcada de la Casa
+      // Ensamblar la sección superior de Bentos de Hoy: Bento Mediterráneo, Bento Criollo, Bento Mestizo y Mazorcada de la Casa
       grouped['boku-bentos'] = [
+        bentoMediterraneo,
+        bentoCriollo,
         bentoHeroToday,
         mazorcadaToday
       ];

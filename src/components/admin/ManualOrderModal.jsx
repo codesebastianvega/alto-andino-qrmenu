@@ -95,7 +95,89 @@ export default function ManualOrderModal({
         if (prodsRes.error) throw prodsRes.error;
 
         if (isMounted) {
-          setProducts(prodsRes.data || []);
+          const rawProds = [...(prodsRes.data || [])];
+
+          // Asegurar presencia inmediata de Bento Mediterráneo
+          const hasMedit = rawProds.some(p => p.id === 'b0000b18-0000-4000-a000-000000000018' || /mediterr[aá]neo/i.test(p.name));
+          if (!hasMedit) {
+            rawProds.unshift({
+              id: 'b0000b18-0000-4000-a000-000000000018',
+              name: 'Bento Mediterráneo (Fresco y Balanceado)',
+              description: 'Arroz blanco con perejil, hummus casero cremoso de garbanzo con aceite y páprika, champiñones al ajillo, pepino fresco, tomates cherry y rábano crocante. 👉 Proteína a elección (al limón): Filete de merluza dorada o pechuga de pollo al wok.',
+              price: 19000,
+              cost: 7500,
+              image_url: '/bento-mediterraneo.jpg',
+              category_id: 'b0000c01-0000-4000-a000-000000000001',
+              is_active: true,
+              requires_kitchen: true,
+              subcategory: 'Bentos Caseros',
+              categories: { id: 'b0000c01-0000-4000-a000-000000000001', name: 'BOKU Bentos Caseros', slug: 'boku-bentos' }
+            });
+          }
+
+          // Asegurar presencia y actualización de Bento Criollo Antioqueño (La Paisa)
+          const criolloIndex = rawProds.findIndex(p => p.id === 'b0000b11-0000-4000-a000-000000000001' || /criollo/i.test(p.name));
+          if (criolloIndex >= 0) {
+            rawProds[criolloIndex] = {
+              ...rawProds[criolloIndex],
+              name: 'Bento Criollo Antioqueño (La Paisa)',
+              description: 'La bandeja paisa de siempre, pero en el bowl de la casa: arroz blanco, fríjoles a elección (rojos o negros), carne a elección (molida, cerdo o pollo al wok), chorizo y morcilla, huevo frito, aguacate y maduritos melosos.',
+              price: 19000
+            };
+          } else {
+            rawProds.unshift({
+              id: 'b0000b11-0000-4000-a000-000000000001',
+              name: 'Bento Criollo Antioqueño (La Paisa)',
+              description: 'La bandeja paisa de siempre, pero en el bowl de la casa: arroz blanco, fríjoles a elección (rojos o negros), carne a elección (molida, cerdo o pollo al wok), chorizo y morcilla, huevo frito, aguacate y maduritos melosos.',
+              price: 19000,
+              cost: 7500,
+              image_url: 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/4l57b6hx21n_1792011029842.webp',
+              category_id: 'b0000c01-0000-4000-a000-000000000001',
+              is_active: true,
+              requires_kitchen: true,
+              subcategory: 'Bentos Caseros',
+              categories: { id: 'b0000c01-0000-4000-a000-000000000001', name: 'BOKU Bentos Caseros', slug: 'boku-bentos' }
+            });
+          }
+
+          // Auto-sincronizar silenciosamente a Supabase si el usuario tiene sesión activa de admin
+          supabase.auth.getSession().then(({ data: sessData }) => {
+            if (sessData?.session?.user && brandId) {
+              supabase.from('products').upsert([
+                {
+                  id: 'b0000b18-0000-4000-a000-000000000018',
+                  brand_id: brandId,
+                  name: 'Bento Mediterráneo (Fresco y Balanceado)',
+                  description: 'Arroz blanco con perejil, hummus casero cremoso de garbanzo con aceite y páprika, champiñones al ajillo, pepino fresco, tomates cherry y rábano crocante. 👉 Proteína a elección (al limón): Filete de merluza dorada o pechuga de pollo al wok.',
+                  price: 19000,
+                  cost: 7500,
+                  margin: 60.5,
+                  category_id: 'b0000c01-0000-4000-a000-000000000001',
+                  image_url: '/bento-mediterraneo.jpg',
+                  is_active: true,
+                  stock_status: 'in',
+                  requires_kitchen: true,
+                  station: 'kitchen',
+                  subcategory: 'Bentos Caseros'
+                },
+                {
+                  id: 'b0000b11-0000-4000-a000-000000000001',
+                  brand_id: brandId,
+                  name: 'Bento Criollo Antioqueño (La Paisa)',
+                  description: 'La bandeja paisa de siempre, pero en el bowl de la casa: arroz blanco, fríjoles a elección (rojos o negros), carne a elección (molida, cerdo o pollo al wok), chorizo y morcilla, huevo frito, aguacate y maduritos melosos.',
+                  price: 19000,
+                  cost: 7500,
+                  category_id: 'b0000c01-0000-4000-a000-000000000001',
+                  is_active: true,
+                  requires_kitchen: true
+                }
+              ], { onConflict: 'id' }).then(({ error: upsertErr }) => {
+                if (upsertErr) console.warn('Background sync products note:', upsertErr.message);
+              });
+            }
+          }).catch(() => {});
+
+          setProducts(rawProds);
           const fetchedLocs = locsRes.data || [];
           setLocationsList(fetchedLocs);
 
@@ -249,9 +331,103 @@ export default function ManualOrderModal({
 
   // Open product modifier configuration
   const handleSelectProduct = (product) => {
+    // Grupos compartidos de Entrada y Bebida de la Casa
+    const sharedSoupGroup = {
+      name: '🥣 Entrada Incluida',
+      min: 1,
+      max: 1,
+      options: [
+        { id: 'opt-bento-sopa-apio', name: '🥣 Sopa de apio casera (16 oz)', extra: 0 },
+        { id: 'opt-bento-fruta', name: '🍍 Porción de Fruta fresca picada', extra: 0 },
+        { id: 'opt-bento-nosoup', name: '🚫 Sin sopa ni fruta', extra: 0 }
+      ]
+    };
+
+    const sharedDrinkGroup = {
+      name: '🥤 Bebida de la Casa Incluida',
+      min: 1,
+      max: 1,
+      options: [
+        { id: 'opt-bento-limonada-antiox', name: '🥤 Limonada Verde Antioxidante (5 oz)', extra: 0 },
+        { id: 'opt-bento-hatsu-caja', name: '🧃 Té Hatsu en Caja (200 ml)', extra: 2000 },
+        { id: 'opt-bento-hatsu-lata', name: '🥫 Té Hatsu en Lata (250 ml)', extra: 4000 },
+        { id: 'opt-bento-nodrink', name: '🚫 Sin bebida', extra: 0 }
+      ]
+    };
+
     // Determine modifier groups for special dishes
+    const isMediterraneo = product.id === 'b0000b18-0000-4000-a000-000000000018' || /mediterr[aá]neo/i.test(product.name);
+    const isCriollo = product.id === 'b0000b11-0000-4000-a000-000000000001' || /criollo|la paisa/i.test(product.name);
     const isMestizo = product.id === 'b0000b14-0000-4000-a000-000000000004' || /mestizo/i.test(product.name);
     const isMazorcada = product.id === 'b0000b22-0000-4000-a000-000000000022' || /mazorcada/i.test(product.name);
+
+    if (isMediterraneo) {
+      setConfiguringProduct({
+        product,
+        groups: [
+          {
+            name: '🐟 Proteína al Limón',
+            min: 1,
+            max: 2,
+            included_count: 1,
+            options: [
+              { id: 'opt-medit-merluza', name: 'Filete de merluza dorada', extra: 8000 },
+              { id: 'opt-medit-pollo', name: 'Pechuga de pollo al wok', extra: 7000 }
+            ]
+          },
+          sharedSoupGroup,
+          sharedDrinkGroup
+        ]
+      });
+      setSelectedModifiers({
+        '🐟 Proteína al Limón': ['Filete de merluza dorada'],
+        '🥣 Entrada Incluida': ['🥣 Sopa de apio casera (16 oz)'],
+        '🥤 Bebida de la Casa Incluida': ['🥤 Limonada Verde Antioxidante (5 oz)']
+      });
+      setItemKitchenNotes('');
+      setEditingItemIndex(null);
+      return;
+    }
+
+    if (isCriollo) {
+      setConfiguringProduct({
+        product,
+        groups: [
+          {
+            name: '🍲 Tu Fríjol',
+            min: 1,
+            max: 2,
+            included_count: 1,
+            options: [
+              { id: 'opt-criollo-frijol-rojo', name: 'Fríjoles rojos calados', extra: 4000 },
+              { id: 'opt-criollo-frijol-negro', name: 'Fríjoles negros', extra: 4000 }
+            ]
+          },
+          {
+            name: '🥩 Tu Proteína Criolla',
+            min: 1,
+            max: 3,
+            included_count: 1,
+            options: [
+              { id: 'opt-criollo-molida', name: 'Carne molida sazonada', extra: 7000 },
+              { id: 'opt-criollo-cerdo', name: 'Cerdo al wok en cubos', extra: 7000 },
+              { id: 'opt-criollo-pollo', name: 'Pollo al wok en cubos', extra: 7000 }
+            ]
+          },
+          sharedSoupGroup,
+          sharedDrinkGroup
+        ]
+      });
+      setSelectedModifiers({
+        '🍲 Tu Fríjol': ['Fríjoles rojos calados'],
+        '🥩 Tu Proteína Criolla': ['Carne molida sazonada'],
+        '🥣 Entrada Incluida': ['🥣 Sopa de apio casera (16 oz)'],
+        '🥤 Bebida de la Casa Incluida': ['🥤 Limonada Verde Antioxidante (5 oz)']
+      });
+      setItemKitchenNotes('');
+      setEditingItemIndex(null);
+      return;
+    }
 
     if (isMazorcada) {
       setConfiguringProduct({
@@ -296,35 +472,16 @@ export default function ManualOrderModal({
               { id: 'opt-sin-queso', name: '🚫 Sin queso fundido', extra: 0 }
             ]
           },
-          {
-            name: '🥣 Entrada Incluida',
-            min: 1,
-            max: 1,
-            options: [
-              { id: 'opt-crema-platano', name: '🥣 Crema de plátano colicero (16 oz)', extra: 0 },
-              { id: 'opt-fruta-fresca', name: '🍍 Porción de Fruta fresca picada', extra: 0 },
-              { id: 'opt-sin-sopa', name: '🚫 Sin sopa ni fruta', extra: 0 }
-            ]
-          },
-          {
-            name: '🥤 Bebida de la Casa Incluida',
-            min: 1,
-            max: 1,
-            options: [
-              { id: 'opt-jugo-dia', name: '🥤 Jugo del Día (5 oz)', extra: 0 },
-              { id: 'opt-hatsu-caja', name: '🧃 Té Hatsu en Caja (200 ml)', extra: 2000 },
-              { id: 'opt-hatsu-lata', name: '🥫 Té Hatsu en Lata (250 ml)', extra: 4000 },
-              { id: 'opt-sin-bebida', name: '🚫 Sin bebida', extra: 0 }
-            ]
-          }
+          sharedSoupGroup,
+          sharedDrinkGroup
         ]
       });
       setSelectedModifiers({
         '🍗 Proteína a elección': ['Pollo salteado al wok'],
         '🍯 Salsa a elección': ['Salsa BBQ de la casa'],
         '🫑 Toque de Pimentón': ['Con pimentón salteado'],
-        '🥣 Entrada Incluida': ['🥣 Crema de plátano colicero (16 oz)'],
-        '🥤 Bebida de la Casa Incluida': ['🥤 Jugo del Día (5 oz)']
+        '🥣 Entrada Incluida': ['🥣 Sopa de apio casera (16 oz)'],
+        '🥤 Bebida de la Casa Incluida': ['🥤 Limonada Verde Antioxidante (5 oz)']
       });
       setItemKitchenNotes('');
       setEditingItemIndex(null);
@@ -370,34 +527,15 @@ export default function ManualOrderModal({
               { id: 'opt-sin-tomates', name: '🚫 Sin tomates cherry', extra: 0 }
             ]
           },
-          {
-            name: '🥣 Entrada Incluida',
-            min: 1,
-            max: 1,
-            options: [
-              { id: 'opt-crema-platano', name: '🥣 Crema de plátano colicero (16 oz)', extra: 0 },
-              { id: 'opt-fruta-fresca', name: '🍍 Porción de Fruta fresca picada', extra: 0 },
-              { id: 'opt-sin-sopa', name: '🚫 Sin sopa ni fruta', extra: 0 }
-            ]
-          },
-          {
-            name: '🥤 Bebida de la Casa Incluida',
-            min: 1,
-            max: 1,
-            options: [
-              { id: 'opt-jugo-dia', name: '🥤 Jugo del Día (5 oz)', extra: 0 },
-              { id: 'opt-hatsu-caja', name: '🧃 Té Hatsu en Caja (200 ml)', extra: 2000 },
-              { id: 'opt-hatsu-lata', name: '🥫 Té Hatsu en Lata (250 ml)', extra: 4000 },
-              { id: 'opt-sin-bebida', name: '🚫 Sin bebida', extra: 0 }
-            ]
-          }
+          sharedSoupGroup,
+          sharedDrinkGroup
         ]
       });
       setSelectedModifiers({
         '🍗 Tu Proteína': ['Pollo al curry dorado'],
         '🍲 Tu Principio Casero': ['Garbanzos caseros'],
-        '🥣 Entrada Incluida': ['🥣 Crema de plátano colicero (16 oz)'],
-        '🥤 Bebida de la Casa Incluida': ['🥤 Jugo del Día (5 oz)']
+        '🥣 Entrada Incluida': ['🥣 Sopa de apio casera (16 oz)'],
+        '🥤 Bebida de la Casa Incluida': ['🥤 Limonada Verde Antioxidante (5 oz)']
       });
       setItemKitchenNotes('');
       setEditingItemIndex(null);

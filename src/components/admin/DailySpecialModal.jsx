@@ -45,8 +45,8 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
       0: null
     },
     secondary_schedule: {},
-    soup_name: 'Crema de verduras casera (16 oz)',
-    drink_name: 'Bebida natural de la Casa (5 oz)'
+    soup_name: 'Sopa de apio casera (16 oz)',
+    drink_name: 'Limonada Verde Antioxidante (5 oz)'
   });
 
   // Search states for selectors
