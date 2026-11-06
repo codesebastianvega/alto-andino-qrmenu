@@ -63,6 +63,49 @@ export function useCRM() {
   const [orders, setOrders] = useState([]);
   const [leads, setLeads] = useState([]);
 
+  const fetchData = useCallback(async () => {
+    if (!brandId) return;
+    setLoading(true);
+
+    try {
+      // 1. Fetch orders with customer info, status, payment details, cancellation reasons, and items
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select(`
+          id, customer_phone, customer_name, total_amount, created_at, status,
+          payment_status, payment_method, paid_amount,
+          cancellation_reason, cancelled_at, delivery_address, delivery_notes, origin, fulfillment_type,
+          order_items (
+            id, quantity, 
+            products ( name )
+          )
+        `)
+        .eq('brand_id', brandId)
+        .order('created_at', { ascending: false });
+
+      if (ordersError) throw ordersError;
+
+      // 2. Fetch leads (potential customers)
+      const { data: leadsData, error: leadsError } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('brand_id', brandId);
+
+      if (leadsError) throw leadsError;
+
+      setOrders(ordersData || []);
+      setLeads(leadsData || []);
+    } catch (error) {
+      console.error('[useCRM] Error fetching CRM data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [brandId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   const [stageOverrides, setStageOverrides] = useState(() => {
     if (!brandId) return {};
     try {
@@ -126,49 +169,6 @@ export function useCRM() {
       throw err;
     }
   }, [orders, fetchData]);
-
-  const fetchData = useCallback(async () => {
-    if (!brandId) return;
-    setLoading(true);
-
-    try {
-      // 1. Fetch orders with customer info, status, payment details, cancellation reasons, and items
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select(`
-          id, customer_phone, customer_name, total_amount, created_at, status,
-          payment_status, payment_method, paid_amount,
-          cancellation_reason, cancelled_at, delivery_address, delivery_notes, origin, fulfillment_type,
-          order_items (
-            id, quantity, 
-            products ( name )
-          )
-        `)
-        .eq('brand_id', brandId)
-        .order('created_at', { ascending: false });
-
-      if (ordersError) throw ordersError;
-
-      // 2. Fetch leads (potential customers)
-      const { data: leadsData, error: leadsError } = await supabase
-        .from('leads')
-        .select('*')
-        .eq('brand_id', brandId);
-
-      if (leadsError) throw leadsError;
-
-      setOrders(ordersData || []);
-      setLeads(leadsData || []);
-    } catch (error) {
-      console.error('[useCRM] Error fetching CRM data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [brandId]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   // Transform data into a customer-centric list
   const customers = useMemo(() => {

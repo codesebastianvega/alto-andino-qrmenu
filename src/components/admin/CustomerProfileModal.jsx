@@ -3,7 +3,7 @@ import {
   X, Phone, ShoppingBag, Calendar, DollarSign, 
   TrendingUp, Star, MessageSquare, ExternalLink,
   ChevronRight, Clock, MapPin, Hash, Users, Zap, Ghost, MinusCircle,
-  AlertTriangle, Tag, CheckCircle2, Trash2, Check, CreditCard, Wallet, Banknote, HandCoins
+  AlertTriangle, Tag, CheckCircle2, Trash2, Check, CreditCard, Wallet, Banknote, HandCoins, Smartphone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -76,20 +76,11 @@ const SEGMENT_CONFIG = {
 
 const PAYMENT_METHODS = [
   { id: 'efectivo', label: 'Efectivo (Gaveta física)', icon: Wallet, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
-  { id: 'nequi', label: 'Nequi / Bre-B', icon: SmartphoneIcon, color: 'text-purple-700 bg-purple-50 border-purple-200' },
-  { id: 'daviplata', label: 'Daviplata', icon: SmartphoneIcon, color: 'text-rose-700 bg-rose-50 border-rose-200' },
+  { id: 'nequi', label: 'Nequi / Bre-B', icon: Smartphone, color: 'text-purple-700 bg-purple-50 border-purple-200' },
+  { id: 'daviplata', label: 'Daviplata', icon: Smartphone, color: 'text-rose-700 bg-rose-50 border-rose-200' },
   { id: 'bancolombia', label: 'Bancolombia QR / Transferencia', icon: CreditCard, color: 'text-amber-800 bg-amber-50 border-amber-200' },
   { id: 'datafono', label: 'Datáfono / Bold', icon: CreditCard, color: 'text-blue-700 bg-blue-50 border-blue-200' },
 ];
-
-function SmartphoneIcon(props) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" {...props}>
-      <rect width="14" height="20" x="5" y="2" rx="2" ry="2" />
-      <path d="M12 18h.01" />
-    </svg>
-  );
-}
 
 export default function CustomerProfileModal({ 
   customer, 
