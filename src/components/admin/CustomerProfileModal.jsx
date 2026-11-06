@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   X, Phone, ShoppingBag, Calendar, DollarSign, 
   TrendingUp, Star, MessageSquare, ExternalLink,
   ChevronRight, Clock, MapPin, Hash, Users, Zap, Ghost, MinusCircle,
-  AlertTriangle, Tag, CheckCircle2
+  AlertTriangle, Tag, CheckCircle2, Trash2, Check, CreditCard, Wallet, Banknote, HandCoins
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -74,11 +74,44 @@ const SEGMENT_CONFIG = {
   },
 };
 
-export default function CustomerProfileModal({ customer, isOpen, onClose, brandName = 'Boku Bento', onNavigateToPromotions }) {
+const PAYMENT_METHODS = [
+  { id: 'efectivo', label: 'Efectivo (Gaveta física)', icon: Wallet, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+  { id: 'nequi', label: 'Nequi / Bre-B', icon: SmartphoneIcon, color: 'text-purple-700 bg-purple-50 border-purple-200' },
+  { id: 'daviplata', label: 'Daviplata', icon: SmartphoneIcon, color: 'text-rose-700 bg-rose-50 border-rose-200' },
+  { id: 'bancolombia', label: 'Bancolombia QR / Transferencia', icon: CreditCard, color: 'text-amber-800 bg-amber-50 border-amber-200' },
+  { id: 'datafono', label: 'Datáfono / Bold', icon: CreditCard, color: 'text-blue-700 bg-blue-50 border-blue-200' },
+];
+
+function SmartphoneIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" {...props}>
+      <rect width="14" height="20" x="5" y="2" rx="2" ry="2" />
+      <path d="M12 18h.01" />
+    </svg>
+  );
+}
+
+export default function CustomerProfileModal({ 
+  customer, 
+  isOpen, 
+  onClose, 
+  brandName = 'Boku Bento', 
+  onNavigateToPromotions,
+  onSettleOrder,
+  onUpdateStage,
+  onArchiveCustomer
+}) {
   if (!customer) return null;
 
-  const seg = SEGMENT_CONFIG[customer.segment] || SEGMENT_CONFIG.ocasional;
-  const isFriction = customer.segment === 'friccion' || customer.hasCancelled;
+  const [settlingOrder, setSettlingOrder] = useState(null); // specific order object or 'all'
+  const [selectedPayMethod, setSelectedPayMethod] = useState('efectivo');
+  const [isSubmittingSettle, setIsSubmittingSettle] = useState(false);
+  const [showStageSelector, setShowStageSelector] = useState(false);
+
+  const currentSegment = customer.segment || 'ocasional';
+  const seg = SEGMENT_CONFIG[currentSegment] || SEGMENT_CONFIG.ocasional;
+  const isFriction = currentSegment === 'friccion' || customer.hasCancelled;
+  const totalOwed = Number(customer.totalOwed || 0);
   
   const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { 
     style: 'currency', 
@@ -129,6 +162,53 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
     window.open(url, '_blank');
   };
 
+  const sendFiadoReminder = (specificOrder = null) => {
+    const phone = (customer.phone || '').replace(/\D/g, '');
+    if (!phone) {
+      alert('Este cliente no tiene número de teléfono registrado.');
+      return;
+    }
+    const firstName = customer.name?.split(' ')[0] || 'Hola';
+    const amountStr = formatCurrency(specificOrder ? specificOrder.total_amount : totalOwed);
+    const orderInfo = specificOrder 
+      ? ` de tu pedido #${specificOrder.id?.slice(-4).toUpperCase()}` 
+      : (customer.pendingOrders?.length > 1 ? ` de ${customer.pendingOrders.length} pedidos pendientes` : '');
+
+    const message = `Hola ${firstName}! 👋 Te saludamos con mucho cariño del equipo de ${brandName}.
+
+Te recordamos cordialmente tu saldo pendiente de ${amountStr}${orderInfo}. 
+
+Puedes cancelar tu saldo en efectivo en tu próxima visita o transferirnos por:
+🟣 Nequi / Bre-B
+🔴 Daviplata
+🟡 Bancolombia
+
+¡Muchísimas gracias por tu confianza y apoyo de siempre! 🍱🤝`;
+
+    const url = `https://wa.me/57${phone.slice(-10)}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
+  const handleSettleConfirm = async () => {
+    if (!onSettleOrder) return;
+    setIsSubmittingSettle(true);
+    try {
+      if (settlingOrder === 'all') {
+        const ordersToSettle = customer.pendingOrders || [];
+        for (const ord of ordersToSettle) {
+          await onSettleOrder(ord.id, selectedPayMethod);
+        }
+      } else if (settlingOrder?.id) {
+        await onSettleOrder(settlingOrder.id, selectedPayMethod);
+      }
+      setSettlingOrder(null);
+    } catch (err) {
+      console.error('Error al registrar pago:', err);
+    } finally {
+      setIsSubmittingSettle(false);
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -160,19 +240,19 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
                     </span>
                   </div>
                   {customer.isWhale && (
-                    <div className="absolute -top-1 -right-1 bg-amber-400 text-black rounded-full p-1 border-2 border-white shadow-xs">
+                    <div className="absolute -top-1 -right-1 bg-amber-400 text-black rounded-full p-1 border-2 border-white shadow-xs" title="Cliente Whale / Alto Valor">
                       <Star className="w-3 h-3 fill-current" />
                     </div>
                   )}
                   {isFriction && (
-                    <div className="absolute -top-1 -right-1 bg-rose-600 text-white rounded-full p-1 border-2 border-white shadow-xs">
+                    <div className="absolute -top-1 -right-1 bg-rose-600 text-white rounded-full p-1 border-2 border-white shadow-xs" title="Fricción / Cancelación">
                       <AlertTriangle className="w-3 h-3" />
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <h2 className="text-xl font-black text-gray-900 tracking-tight">
                       {customer.name}
                     </h2>
@@ -184,9 +264,47 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
                   </div>
 
                   <div className="flex flex-wrap gap-2 items-center">
-                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${seg.badgeBg}`}>
-                      <seg.icon className="w-3 h-3" />
-                      <span>{seg.label}</span>
+                    {/* Selector interactivo de etapa de ciclo de vida */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowStageSelector(!showStageSelector)}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${seg.badgeBg} hover:opacity-90 transition-all cursor-pointer shadow-2xs`}
+                        title="Clic para cambiar etapa del cliente"
+                      >
+                        <seg.icon className="w-3 h-3" />
+                        <span>{seg.label}</span>
+                        <ChevronRight className={`w-3 h-3 transition-transform ${showStageSelector ? 'rotate-90' : ''}`} />
+                      </button>
+
+                      {showStageSelector && (
+                        <div className="absolute top-full left-0 mt-1.5 w-52 bg-white rounded-2xl border border-gray-200 shadow-xl p-1.5 z-50 space-y-1">
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider px-2 py-1">Cambiar Etapa:</p>
+                          {Object.entries(SEGMENT_CONFIG).map(([key, cfg]) => {
+                            const IconComponent = cfg.icon;
+                            return (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => {
+                                  if (onUpdateStage) onUpdateStage(customer.key, key);
+                                  customer.segment = key;
+                                  setShowStageSelector(false);
+                                }}
+                                className={`w-full px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center justify-between text-left transition-colors cursor-pointer ${
+                                  key === currentSegment ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50 text-gray-700'
+                                }`}
+                              >
+                                <span className="flex items-center gap-2">
+                                  <IconComponent className="w-3.5 h-3.5" />
+                                  <span>{cfg.label}</span>
+                                </span>
+                                {key === currentSegment && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
 
                     {customer.phone ? (
@@ -202,15 +320,32 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
                         Sin WhatsApp registrado
                       </span>
                     )}
+
+                    {/* Botón de archivar cliente de prueba */}
+                    {onArchiveCustomer && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`¿Deseas archivar a ${customer.name}? No aparecerá en el directorio activo del CRM.`)) {
+                            onArchiveCustomer(customer.key);
+                            onClose();
+                          }
+                        }}
+                        className="p-1 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        title="Archivar este cliente de prueba"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
 
-                  {/* Dirección de entrega */}
+                  {/* Dirección de entrega limpia */}
                   {customer.address && (
                     <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-600">
                       <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                      <span className="font-medium">{customer.address}</span>
+                      <span className="font-semibold text-gray-800">{customer.address}</span>
                       {customer.deliveryNotes && (
-                        <span className="text-gray-400">({customer.deliveryNotes})</span>
+                        <span className="text-gray-500">({customer.deliveryNotes})</span>
                       )}
                     </div>
                   )}
@@ -219,7 +354,7 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
 
               <button 
                 onClick={onClose}
-                className="p-2 rounded-xl bg-gray-100 text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-all"
+                className="p-2 rounded-xl bg-gray-100 text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-all cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -228,7 +363,57 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
             {/* Scrollable Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-gray-50/30">
               
-              {/* Alerta de Pedido Cancelado (Fricción) con botón de recuperación */}
+              {/* ── CARD DE CARTERA / CUENTAS POR COBRAR (FIADOS) ── */}
+              {totalOwed > 0 && (
+                <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/15 via-white to-amber-500/5 border-2 border-amber-300 space-y-3.5 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-2xl bg-amber-500 text-white flex items-center justify-center text-xl shadow-xs shrink-0">
+                        <HandCoins className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-900 block">
+                          Cuentas por Cobrar (Fiado Activo)
+                        </span>
+                        <div className="flex items-baseline gap-2">
+                          <p className="text-2xl font-black text-amber-950">
+                            {formatCurrency(totalOwed)}
+                          </p>
+                          <span className="text-xs font-bold text-amber-800">
+                            ({customer.pendingOrders?.length || 1} {customer.pendingOrders?.length === 1 ? 'pedido' : 'pedidos'})
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-amber-900/90 font-medium">
+                    Alimentos entregados pendientes de pago. Registrar el cobro sumará la plata al bolsillo exacto (gaveta o banco) y liberará su saldo de cartera.
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row items-stretch gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setSettlingOrder('all')}
+                      className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+                    >
+                      <DollarSign className="w-4 h-4" />
+                      <span>Registrar Pago ({formatCurrency(totalOwed)})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => sendFiadoReminder(null)}
+                      className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Recordar por WhatsApp</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Alerta de Pedido Cancelado (Fricción) */}
               {isFriction && (
                 <div className="p-5 rounded-2xl bg-rose-50 border border-rose-200 space-y-3 shadow-xs">
                   <div className="flex items-start gap-3">
@@ -272,8 +457,8 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
                 </div>
               )}
 
-              {/* Botones Rápidos de Contacto si no tiene fricción */}
-              {!isFriction && (
+              {/* Botones Rápidos de Contacto */}
+              {!isFriction && totalOwed === 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button 
                     onClick={() => sendWhatsApp('feedback')}
@@ -325,7 +510,7 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
                 </div>
               </div>
 
-              {/* Preferencia de Plato / Gustos */}
+              {/* Preferencia de Plato */}
               <div className="bg-white p-5 rounded-2xl border border-gray-200/90 shadow-xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -362,17 +547,26 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
                   {customer.orderHistory?.map((order, idx) => {
                     const isOrdCancelled = order.status === 'cancelled';
                     const isOrdDelivered = order.status === 'delivered';
+                    const isUnpaid = !isOrdCancelled && (
+                      order.payment_status === 'pending' || 
+                      order.payment_method === 'fiado' ||
+                      String(order.delivery_notes || '').toLowerCase().includes('fiado')
+                    );
 
                     return (
                       <div 
                         key={order.id || idx}
                         className={`p-4 rounded-2xl bg-white border transition-all ${
-                          isOrdCancelled ? 'border-rose-200 bg-rose-50/20' : 'border-gray-200/80 shadow-xs'
+                          isUnpaid
+                            ? 'border-amber-300 bg-amber-50/20 shadow-xs'
+                            : isOrdCancelled 
+                            ? 'border-rose-200 bg-rose-50/20' 
+                            : 'border-gray-200/80 shadow-xs'
                         }`}
                       >
-                        <div className="flex items-start justify-between mb-2.5">
+                        <div className="flex items-start justify-between mb-2.5 gap-2">
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-mono text-xs font-black text-gray-900">
                                 #{order.id?.slice(-4).toUpperCase() || '---'}
                               </span>
@@ -385,17 +579,27 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
                               }`}>
                                 {isOrdDelivered ? 'Entregado' : isOrdCancelled ? 'Cancelado' : order.status}
                               </span>
+
+                              {isUnpaid ? (
+                                <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider">
+                                  🤝 Fiado / Por Cobrar
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-wider">
+                                  ✓ Pagado ({order.payment_method || 'Confirmado'})
+                                </span>
+                              )}
                             </div>
                             <p className="text-[11px] text-gray-400 mt-0.5">
                               {formatDate(order.created_at)}
                             </p>
                           </div>
 
-                          <div className="text-right">
+                          <div className="text-right shrink-0">
                             <p className="text-sm font-black text-gray-900">{formatCurrency(order.total_amount)}</p>
                             {order.fulfillment_type && (
                               <span className="text-[10px] text-gray-500 font-medium uppercase">
-                                {order.fulfillment_type === 'delivery' ? '🛵 Domicilio' : '🥡 Para Llevar'}
+                                {order.fulfillment_type === 'delivery' ? '🛵 Domicilio' : '🛍️ Para Llevar'}
                               </span>
                             )}
                           </div>
@@ -416,6 +620,31 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
                             </span>
                           ))}
                         </div>
+
+                        {/* Acciones si está pendiente / fiado */}
+                        {isUnpaid && (
+                          <div className="mt-3 pt-2.5 border-t border-amber-200/60 flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-bold text-amber-800">
+                              Pendiente: {formatCurrency(order.total_amount)}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => sendFiadoReminder(order)}
+                                className="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition-all"
+                              >
+                                📱 Recordar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSettlingOrder(order)}
+                                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-2xs transition-all cursor-pointer"
+                              >
+                                💰 Cobrar
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -430,11 +659,88 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
 
             </div>
 
+            {/* Modal de confirmación de pago / Selección de bolsillo */}
+            {settlingOrder && (
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-gray-200 shadow-2xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg">
+                        💰
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-gray-900 uppercase tracking-tight">
+                          Registrar Cobro
+                        </h4>
+                        <p className="text-xs font-bold text-emerald-700">
+                          {formatCurrency(settlingOrder === 'all' ? totalOwed : settlingOrder.total_amount)}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSettlingOrder(null)}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-2">
+                      ¿A qué bolsillo entró el dinero?
+                    </label>
+                    <div className="space-y-1.5">
+                      {PAYMENT_METHODS.map(m => {
+                        const IconC = m.icon;
+                        const isSel = selectedPayMethod === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setSelectedPayMethod(m.id)}
+                            className={`w-full p-2.5 rounded-xl border text-left text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
+                              isSel ? 'border-gray-900 bg-gray-900 text-white shadow-xs' : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-800'
+                            }`}
+                          >
+                            <span className="flex items-center gap-2">
+                              <IconC className="w-4 h-4 shrink-0" />
+                              <span>{m.label}</span>
+                            </span>
+                            {isSel && <Check className="w-4 h-4 text-emerald-400" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setSettlingOrder(null)}
+                      className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-50"
+                      disabled={isSubmittingSettle}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSettleConfirm}
+                      disabled={isSubmittingSettle}
+                      className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                    >
+                      {isSubmittingSettle ? 'Guardando...' : 'Confirmar Cobro'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Footer */}
             <div className="p-4 border-t border-gray-200 bg-white flex items-center justify-end">
               <button 
                 onClick={onClose}
-                className="px-6 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-black uppercase tracking-wider transition-all"
+                className="px-6 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
               >
                 Cerrar
               </button>

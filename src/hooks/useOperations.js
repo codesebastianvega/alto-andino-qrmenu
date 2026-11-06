@@ -459,29 +459,47 @@ export function useOperations() {
 
     const byPaymentMethod = {};
     let totalCashSales = 0;
+    let totalNequiSales = 0;
+    let totalDaviplataSales = 0;
+    let totalBancolombiaSales = 0;
     let totalCardSales = 0;
-    let totalTransferSales = 0;
     let totalOtherSales = 0;
 
-    payments.forEach(p => {
-      const name = p.payment_methods?.name || 'Otro';
-      const type = p.payment_methods?.type || 'other';
+    const recordMethod = (name, type, amt) => {
       if (!byPaymentMethod[name]) {
         byPaymentMethod[name] = { name, type, total: 0, count: 0 };
       }
-      const amt = Number(p.amount || 0);
       byPaymentMethod[name].total += amt;
       byPaymentMethod[name].count += 1;
+    };
 
-      const key = (name + type).toLowerCase();
+    payments.forEach(p => {
+      const rawName = p.payment_methods?.name || 'Otro';
+      const type = p.payment_methods?.type || 'other';
+      const amt = Number(p.amount || 0);
+      const key = (rawName + type).toLowerCase();
+
       if (key.includes('efectivo') || key.includes('cash')) {
         totalCashSales += amt;
-      } else if (key.includes('tarjeta') || key.includes('card') || key.includes('débito') || key.includes('crédito') || key.includes('datafono')) {
+        recordMethod('Efectivo', 'cash', amt);
+      } else if (key.includes('nequi') || key.includes('bre-b') || key.includes('breb')) {
+        totalNequiSales += amt;
+        recordMethod('Nequi / Bre-B', 'transfer', amt);
+      } else if (key.includes('daviplata')) {
+        totalDaviplataSales += amt;
+        recordMethod('Daviplata', 'transfer', amt);
+      } else if (key.includes('bancolombia')) {
+        totalBancolombiaSales += amt;
+        recordMethod('Bancolombia QR', 'transfer', amt);
+      } else if (key.includes('tarjeta') || key.includes('card') || key.includes('débito') || key.includes('crédito') || key.includes('datafono') || key.includes('bold')) {
         totalCardSales += amt;
-      } else if (key.includes('transfer') || key.includes('nequi')) {
-        totalTransferSales += amt;
+        recordMethod('Datáfono / Bold', 'card', amt);
+      } else if (key.includes('transfer')) {
+        totalBancolombiaSales += amt;
+        recordMethod('Transferencia Bancaria', 'transfer', amt);
       } else {
         totalOtherSales += amt;
+        recordMethod(rawName, type, amt);
       }
     });
 
@@ -492,30 +510,29 @@ export function useOperations() {
 
         const pm = (o.payment_method || '').toLowerCase();
         const amt = Number(o.total_amount || 0);
-        let methodName = 'Otro';
-        let methodType = 'other';
 
         if (pm.includes('efectivo') || pm.includes('cash')) {
-          methodName = 'Efectivo';
-          methodType = 'cash';
           totalCashSales += amt;
-        } else if (pm.includes('tarjeta') || pm.includes('card') || pm.includes('datafono')) {
-          methodName = 'Datáfono';
-          methodType = 'card';
+          recordMethod('Efectivo', 'cash', amt);
+        } else if (pm.includes('nequi') || pm.includes('bre-b') || pm.includes('breb')) {
+          totalNequiSales += amt;
+          recordMethod('Nequi / Bre-B', 'transfer', amt);
+        } else if (pm.includes('daviplata')) {
+          totalDaviplataSales += amt;
+          recordMethod('Daviplata', 'transfer', amt);
+        } else if (pm.includes('bancolombia')) {
+          totalBancolombiaSales += amt;
+          recordMethod('Bancolombia QR', 'transfer', amt);
+        } else if (pm.includes('tarjeta') || pm.includes('card') || pm.includes('datafono') || pm.includes('bold')) {
           totalCardSales += amt;
-        } else if (pm.includes('transfer') || pm.includes('nequi')) {
-          methodName = 'Nequi / Bre-B';
-          methodType = 'transfer';
-          totalTransferSales += amt;
+          recordMethod('Datáfono / Bold', 'card', amt);
+        } else if (pm.includes('transfer')) {
+          totalBancolombiaSales += amt;
+          recordMethod('Transferencia Bancaria', 'transfer', amt);
         } else {
           totalOtherSales += amt;
+          recordMethod('Otro Medio', 'other', amt);
         }
-
-        if (!byPaymentMethod[methodName]) {
-          byPaymentMethod[methodName] = { name: methodName, type: methodType, total: 0, count: 0 };
-        }
-        byPaymentMethod[methodName].total += amt;
-        byPaymentMethod[methodName].count += 1;
       });
     }
 
@@ -533,9 +550,12 @@ export function useOperations() {
 
     const initialCash = Number(activeShift?.initial_cash || 0);
     const expectedCash = initialCash + totalCashSales;
+    const totalDigitalSales = totalNequiSales + totalDaviplataSales + totalBancolombiaSales + totalCardSales + totalOtherSales;
+    const totalCollected = totalCashSales + totalDigitalSales;
 
     return {
       totalRevenue,
+      totalCollected,
       totalTips,
       totalDiscounts,
       avgTicket,
@@ -545,9 +565,13 @@ export function useOperations() {
       activeCount: active.length,
       byPaymentMethod: Object.values(byPaymentMethod),
       totalCashSales,
+      totalDigitalSales,
+      totalNequiSales,
+      totalDaviplataSales,
+      totalBancolombiaSales,
       totalCardSales,
-      totalTransferSales,
       totalOtherSales,
+      totalTransferSales: totalNequiSales + totalDaviplataSales + totalBancolombiaSales,
       fiadosList,
       totalFiados,
       initialCash,

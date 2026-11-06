@@ -12,20 +12,33 @@ export function parseCustomerInfo(rawName = '', deliveryAddress = '', deliveryNo
   let address = (deliveryAddress || '').trim();
   let notes = (deliveryNotes || '').trim();
 
-  const dirMatch = cleanName.match(/^(.*?)\s*\[(?:Dir|Dirección|Direccion):\s*(.*?)\]$/i);
+  // Strip fiado tags from name, address, and notes
+  cleanName = cleanName.replace(/\[\s*🤝?\s*FIADO[^\]]*\]/gi, '').trim();
+  notes = notes.replace(/\[\s*🤝?\s*FIADO[^\]]*\]/gi, '').trim();
+  address = address.replace(/\[\s*🤝?\s*FIADO[^\]]*\]/gi, '').trim();
+
+  // Match [Dir: ...] inside cleanName or notes
+  const dirMatch = cleanName.match(/\[(?:Dir|Direcci[oó]n):\s*([^\]]+)\]/i) 
+                || notes.match(/\[(?:Dir|Direcci[oó]n):\s*([^\]]+)\]/i);
   if (dirMatch) {
-    cleanName = dirMatch[1].trim();
     if (!address) {
-      address = dirMatch[2].trim();
+      address = dirMatch[1].trim();
     }
+    cleanName = cleanName.replace(/\[(?:Dir|Direcci[oó]n):\s*[^\]]+\]/gi, '').trim();
+    notes = notes.replace(/\[(?:Dir|Direcci[oó]n):\s*[^\]]+\]/gi, '').trim();
   }
 
-  // Clean address from common suffixes like "- Puerta a la derecha"
-  if (address && !notes && address.includes('-')) {
-    const parts = address.split('-');
+  // Remove dangling parentheses or brackets like "()" or "([])"
+  cleanName = cleanName.replace(/^[\(\[\s]+|[\)\]\s]+$/g, '').trim();
+  notes = notes.replace(/^[\(\[\s]+|[\)\]\s]+$/g, '').trim();
+  address = address.replace(/^[\(\[\s]+|[\)\]\s]+$/g, '').trim();
+
+  // Clean address from common suffixes like "- Casa segundo piso"
+  if (address && !notes && address.includes(' - ')) {
+    const parts = address.split(' - ');
     if (parts.length > 1) {
       address = parts[0].trim();
-      notes = parts.slice(1).join('-').trim();
+      notes = parts.slice(1).join(' - ').trim();
     }
   }
 
@@ -50,16 +63,81 @@ export function useCRM() {
   const [orders, setOrders] = useState([]);
   const [leads, setLeads] = useState([]);
 
+  const [stageOverrides, setStageOverrides] = useState(() => {
+    if (!brandId) return {};
+    try {
+      return JSON.parse(localStorage.getItem(`aa_crm_stages_${brandId}`) || '{}');
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const [archivedKeys, setArchivedKeys] = useState(() => {
+    if (!brandId) return [];
+    try {
+      return JSON.parse(localStorage.getItem(`aa_crm_archived_${brandId}`) || '[]');
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const updateCustomerStage = useCallback((customerKey, newStage) => {
+    setStageOverrides(prev => {
+      const next = { ...prev, [customerKey]: newStage };
+      if (brandId) {
+        localStorage.setItem(`aa_crm_stages_${brandId}`, JSON.stringify(next));
+      }
+      return next;
+    });
+  }, [brandId]);
+
+  const toggleArchiveCustomer = useCallback((customerKey) => {
+    setArchivedKeys(prev => {
+      const isArchived = prev.includes(customerKey);
+      const next = isArchived ? prev.filter(k => k !== customerKey) : [...prev, customerKey];
+      if (brandId) {
+        localStorage.setItem(`aa_crm_archived_${brandId}`, JSON.stringify(next));
+      }
+      return next;
+    });
+  }, [brandId]);
+
+  const settleCustomerOrder = useCallback(async (orderId, paymentMethod = 'efectivo') => {
+    try {
+      const order = orders.find(o => o.id === orderId);
+      const cleanNotes = (order?.delivery_notes || '').replace(/\[🤝.*?\]/g, '').trim();
+
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          payment_status: 'paid',
+          payment_method: paymentMethod,
+          delivery_notes: cleanNotes || null,
+          paid_amount: order?.total_amount || 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+      await fetchData();
+      return { success: true };
+    } catch (err) {
+      console.error('Error settling customer order in CRM:', err);
+      throw err;
+    }
+  }, [orders, fetchData]);
+
   const fetchData = useCallback(async () => {
     if (!brandId) return;
     setLoading(true);
 
     try {
-      // 1. Fetch orders with customer info, status, cancellation reasons, and items
+      // 1. Fetch orders with customer info, status, payment details, cancellation reasons, and items
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select(`
           id, customer_phone, customer_name, total_amount, created_at, status,
+          payment_status, payment_method, paid_amount,
           cancellation_reason, cancelled_at, delivery_address, delivery_notes, origin, fulfillment_type,
           order_items (
             id, quantity, 
@@ -125,6 +203,8 @@ export function useCRM() {
           deliveryNotes: notes,
           ltv: 0,
           ordersCount: 0, // delivered orders count
+          totalOwed: 0,   // cuentas por cobrar / saldo fiado
+          pendingOrders: [],
           cancelledCount: 0,
           hasCancelled: false,
           lastCancellationReason: null,
@@ -164,6 +244,17 @@ export function useCRM() {
           customerMap[customerKey].lastCancellationReason = order.cancellation_reason;
           customerMap[customerKey].lastCancellationDate = order.cancelled_at || order.created_at;
         }
+      }
+
+      // Check for unpaid fiado or pending balance
+      const isUnpaid = order.status !== 'cancelled' && (
+        order.payment_status === 'pending' || 
+        order.payment_method === 'fiado' ||
+        String(order.delivery_notes || '').toLowerCase().includes('fiado')
+      );
+      if (isUnpaid) {
+        customerMap[customerKey].totalOwed += Number(order.total_amount || 0);
+        customerMap[customerKey].pendingOrders.push(order);
       }
 
       // Track visit dates
@@ -327,34 +418,53 @@ export function useCRM() {
       
       // Top 20% by Monetary with at least 1 order are Whales
       customer.isWhale = customer.ordersCount > 0 && mIndex < Math.max(1, totalCount * 0.2);
+
+      // Apply manual stage overrides if configured
+      if (stageOverrides[customer.key]) {
+        customer.segment = stageOverrides[customer.key];
+      }
+      customer.isArchived = archivedKeys.includes(customer.key);
     });
 
     return processedCustomers;
-  }, [orders, leads]);
+  }, [orders, leads, stageOverrides, archivedKeys]);
+
+  const activeCustomers = useMemo(() => {
+    return customers.filter(c => !c.isArchived);
+  }, [customers]);
+
+  const archivedCustomers = useMemo(() => {
+    return customers.filter(c => c.isArchived);
+  }, [customers]);
 
   const stats = useMemo(() => {
-    const totalCustomers = customers.length;
-    const frictionCustomers = customers.filter(c => c.segment === 'friccion' || c.hasCancelled).length;
-    const activeCustomers = customers.filter(c => ['vip', 'frecuente', 'nuevo'].includes(c.segment)).length;
-    const dormantCustomers = customers.filter(c => c.segment === 'dormido').length;
-    const lostCustomers = customers.filter(c => c.segment === 'perdido').length;
-    const totalLTV = customers.reduce((sum, c) => sum + c.ltv, 0);
+    const totalCustomers = activeCustomers.length;
+    const frictionCustomers = activeCustomers.filter(c => c.segment === 'friccion' || c.hasCancelled).length;
+    const activeClients = activeCustomers.filter(c => ['vip', 'frecuente', 'nuevo'].includes(c.segment)).length;
+    const dormantCustomers = activeCustomers.filter(c => c.segment === 'dormido').length;
+    const lostCustomers = activeCustomers.filter(c => c.segment === 'perdido').length;
+    const totalLTV = activeCustomers.reduce((sum, c) => sum + c.ltv, 0);
 
     return {
       totalCustomers,
       frictionCustomers,
-      activeCustomers,
+      activeCustomers: activeClients,
       dormantCustomers,
       lostCustomers,
       totalLTV,
       avgLTV: totalCustomers > 0 ? totalLTV / totalCustomers : 0
     };
-  }, [customers]);
+  }, [activeCustomers]);
 
   return {
-    customers,
+    customers: activeCustomers,
+    allCustomers: customers,
+    archivedCustomers,
     stats,
     loading,
-    refresh: fetchData
+    refresh: fetchData,
+    updateCustomerStage,
+    toggleArchiveCustomer,
+    settleCustomerOrder
   };
 }

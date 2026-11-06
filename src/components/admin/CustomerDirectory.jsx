@@ -79,7 +79,15 @@ const SEGMENT_CONFIG = {
 };
 
 export default function CustomerDirectory() {
-  const { customers, stats, loading, refresh } = useCRM();
+  const { 
+    customers, 
+    stats, 
+    loading, 
+    refresh,
+    updateCustomerStage,
+    toggleArchiveCustomer,
+    settleCustomerOrder
+  } = useCRM();
   const { activeBrand } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSegment, setFilterSegment] = useState('all');
@@ -588,6 +596,30 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
         onClose={() => setSelectedCustomer(null)}
         brandName={brandName}
         onNavigateToPromotions={navigateToPromotions}
+        onSettleOrder={async (orderId, method) => {
+          await settleCustomerOrder(orderId, method);
+          await refresh();
+          // Also update selectedCustomer in state so modal refreshes immediately
+          setSelectedCustomer(prev => {
+            if (!prev) return null;
+            const updatedPending = (prev.pendingOrders || []).filter(o => o.id !== orderId);
+            const settledAmt = prev.pendingOrders?.find(o => o.id === orderId)?.total_amount || 0;
+            return {
+              ...prev,
+              pendingOrders: updatedPending,
+              totalOwed: Math.max(0, (prev.totalOwed || 0) - Number(settledAmt)),
+              orderHistory: (prev.orderHistory || []).map(o => o.id === orderId ? { ...o, payment_status: 'paid', payment_method: method } : o)
+            };
+          });
+        }}
+        onUpdateStage={(custKey, newStg) => {
+          updateCustomerStage(custKey, newStg);
+          setSelectedCustomer(prev => prev ? { ...prev, segment: newStg } : null);
+        }}
+        onArchiveCustomer={(custKey) => {
+          toggleArchiveCustomer(custKey);
+          setSelectedCustomer(null);
+        }}
       />
     </div>
   );

@@ -30,7 +30,7 @@ const playNotificationSound = () => {
     soundService.startNewOrderLoop(3500);
 };
 
-const DailyStats = ({ orders, range, onCancelledClick, onDeliveredClick }) => {
+const DailyStats = ({ orders, range, onCancelledClick, onDeliveredClick, onFiadosClick, fiadosCount = 0, totalCartera = 0 }) => {
   const rangeLabels = {
     today: 'Hoy',
     '7d': '7 Días',
@@ -40,18 +40,42 @@ const DailyStats = ({ orders, range, onCancelledClick, onDeliveredClick }) => {
 
   const delivered = orders.filter(o => o.status === 'delivered');
   const revenue = delivered.reduce((sum, o) => sum + Number(o.total_amount), 0);
+  const paidOrders = orders.filter(o => o.status !== 'cancelled' && o.payment_status === 'paid');
+  const totalPaidRevenue = paidOrders.reduce((sum, o) => sum + Number(o.paid_amount || o.total_amount || 0), 0);
   const cancelled = orders.filter(o => o.status === 'cancelled');
   
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-4 md:mb-8">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 mb-4 md:mb-8">
       <div className="bg-white p-2.5 md:p-4 rounded-xl md:rounded-2xl border border-gray-100 shadow-sm transition-transform active:scale-95 cursor-default">
         <p className="text-[9px] md:text-xs text-gray-500 font-black uppercase tracking-wider mb-0.5 md:mb-1">Ventas {rangeLabels[range]}</p>
         <p className="text-lg md:text-2xl font-black text-[#2f4131] leading-none">${revenue.toLocaleString()}</p>
+        <span className="text-[9px] font-bold text-gray-400 mt-1 block">Total Facturado</span>
       </div>
+
       <div className="bg-white p-2.5 md:p-4 rounded-xl md:rounded-2xl border border-gray-100 shadow-sm transition-transform active:scale-95 cursor-default">
-        <p className="text-[9px] md:text-xs text-gray-500 font-black uppercase tracking-wider mb-0.5 md:mb-1">Pedidos {rangeLabels[range]}</p>
-        <p className="text-lg md:text-2xl font-black text-gray-800 leading-none">{orders.length}</p>
+        <p className="text-[9px] md:text-xs text-gray-500 font-black uppercase tracking-wider mb-0.5 md:mb-1">Recaudado en Caja/Bancos</p>
+        <p className="text-lg md:text-2xl font-black text-emerald-700 leading-none">${totalPaidRevenue.toLocaleString()}</p>
+        <span className="text-[9px] font-bold text-emerald-600 mt-1 block">Dinero en mano/banco</span>
       </div>
+
+      <button
+        type="button"
+        onClick={onFiadosClick}
+        className={`p-2.5 md:p-4 rounded-xl md:rounded-2xl border transition-all text-left shadow-sm active:scale-95 cursor-pointer ${
+          fiadosCount > 0 ? 'bg-amber-50/70 border-amber-300 hover:bg-amber-100/70' : 'bg-white border-gray-100'
+        }`}
+      >
+        <p className={`text-[9px] md:text-xs font-black uppercase tracking-wider mb-0.5 md:mb-1 ${fiadosCount > 0 ? 'text-amber-800' : 'text-gray-500'}`}>
+          Cartera / Fiados
+        </p>
+        <p className={`text-lg md:text-2xl font-black leading-none ${fiadosCount > 0 ? 'text-amber-900' : 'text-gray-800'}`}>
+          ${totalCartera.toLocaleString()}
+        </p>
+        <span className={`text-[9px] font-bold mt-1 block ${fiadosCount > 0 ? 'text-amber-700 font-black' : 'text-gray-400'}`}>
+          {fiadosCount} por cobrar • Ver cartera
+        </span>
+      </button>
+
       <button 
         onClick={onDeliveredClick}
         className="bg-white p-2.5 md:p-4 rounded-xl md:rounded-2xl border border-gray-100 shadow-sm transition-all active:scale-95 hover:bg-emerald-50 hover:border-emerald-100 group text-left w-full relative overflow-hidden"
@@ -142,6 +166,9 @@ export default function AdminOrders() {
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const [isManualOrderModalOpen, setIsManualOrderModalOpen] = useState(false);
   const [isSoundLoopActive, setIsSoundLoopActive] = useState(false);
+  const [isFiadosDrawerOpen, setIsFiadosDrawerOpen] = useState(false);
+  const [settlingFiadoOrder, setSettlingFiadoOrder] = useState(null);
+  const [fiadoPaymentMethod, setFiadoPaymentMethod] = useState('efectivo');
 
   useAdminModalBack(Boolean(selectedOrder), () => setSelectedOrder(null));
   useAdminModalBack(isPOSModalOpen, () => setIsPOSModalOpen(false));
@@ -150,6 +177,7 @@ export default function AdminOrders() {
   useAdminModalBack(showDeliveredHistory, () => setShowDeliveredHistory(false));
   useAdminModalBack(Boolean(historyDetailOrder), () => setHistoryDetailOrder(null));
   useAdminModalBack(isManualOrderModalOpen, () => setIsManualOrderModalOpen(false));
+  useAdminModalBack(isFiadosDrawerOpen, () => setIsFiadosDrawerOpen(false));
 
   // Escuchar eventos de la alarma continua para actualizar UI reactiva
   useEffect(() => {
@@ -190,10 +218,90 @@ export default function AdminOrders() {
     });
   }, [orders, searchQuery]);
 
-  // Contador de cuentas por cobrar / fiados pendientes
-  const fiadosCount = useMemo(() => {
-    return orders.filter(o => o.payment_status !== 'paid' && (o.payment_method === 'fiado' || String(o.delivery_notes).toLowerCase().includes('fiado'))).length;
+  // Lista y métricas de cuentas por cobrar / fiados pendientes
+  const pendingFiadosList = useMemo(() => {
+    return orders.filter(o => 
+      o.status !== 'cancelled' && 
+      (
+        o.payment_status !== 'paid' || 
+        o.payment_method === 'fiado' || 
+        String(o.delivery_notes || '').toLowerCase().includes('fiado')
+      )
+    );
   }, [orders]);
+
+  const fiadosCount = pendingFiadosList.length;
+
+  const totalCarteraAmount = useMemo(() => {
+    return pendingFiadosList.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+  }, [pendingFiadosList]);
+
+  const handleSettleFiadoOrder = async (orderId, paymentMethod = 'efectivo') => {
+    try {
+      const targetOrder = orders.find(o => o.id === orderId);
+      const cleanNotes = (targetOrder?.delivery_notes || '').replace(/\[\s*🤝?\s*FIADO[^\]]*\]/gi, '').trim();
+
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          payment_status: 'paid',
+          payment_method: paymentMethod,
+          paid_amount: targetOrder?.total_amount || 0,
+          delivery_notes: cleanNotes || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast.success(`🤝 Pago registrado vía ${paymentMethod.toUpperCase()}`);
+      setOrders(prev => prev.map(o => o.id === orderId ? {
+        ...o,
+        payment_status: 'paid',
+        payment_method: paymentMethod,
+        paid_amount: o.total_amount,
+        delivery_notes: cleanNotes || null
+      } : o));
+
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder(prev => ({
+          ...prev,
+          payment_status: 'paid',
+          payment_method: paymentMethod,
+          paid_amount: prev.total_amount,
+          delivery_notes: cleanNotes || null
+        }));
+      }
+    } catch (err) {
+      console.error('Error al liquidar fiado:', err);
+      toast.error('Error al registrar cobro: ' + err.message);
+    }
+  };
+
+  const handleSendWhatsAppCobro = (order) => {
+    const phone = (order.customer_phone || '').replace(/\D/g, '');
+    if (!phone) {
+      toast.error('Este pedido no tiene teléfono registrado.');
+      return;
+    }
+    const cleanName = (order.customer_name || '').replace(/\[.*?\]/gi, '').trim().split(' ')[0] || 'Hola';
+    const amountStr = `$${Number(order.total_amount || 0).toLocaleString()}`;
+    const orderRef = `#${order.id.slice(-4).toUpperCase()}`;
+
+    const message = `Hola ${cleanName}! 👋 Te saludamos con mucho cariño de ${activeBrand?.name || 'Boku Bento'}.
+
+Te recordamos cordialmente tu saldo pendiente de ${amountStr} de tu pedido ${orderRef}.
+
+Puedes realizar tu pago en efectivo en tu próxima visita o transferirnos por:
+🟣 Nequi / Bre-B
+🔴 Daviplata
+🟡 Bancolombia
+
+¡Muchísimas gracias por tu apoyo y preferencia siempre! 🍱🤝`;
+
+    const url = `https://wa.me/57${phone.slice(-10)}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
 
   // REINSTATED: Missing logic for staff, payments and settings
   const { staffList } = useStaff();
@@ -942,16 +1050,12 @@ export default function AdminOrders() {
             {fiadosCount > 0 && (
               <button
                 type="button"
-                onClick={() => setSearchQuery(searchQuery.toLowerCase() === 'fiado' ? '' : 'fiado')}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-black transition-all border shrink-0 cursor-pointer ${
-                  searchQuery.toLowerCase() === 'fiado'
-                    ? 'bg-amber-600 text-white border-amber-700 shadow-md ring-2 ring-amber-400/40'
-                    : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
-                }`}
-                title="Ver pedidos fiados pendientes de cobro"
+                onClick={() => setIsFiadosDrawerOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-black transition-all border shrink-0 cursor-pointer bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200 text-amber-950 border-amber-300 shadow-xs active:scale-95"
+                title="Abrir cartera de fiados y cuentas por cobrar"
               >
-                <Icon icon="heroicons:user-group" className="text-base" />
-                <span>🤝 Fiados ({fiadosCount})</span>
+                <Icon icon="heroicons:user-group" className="text-base text-amber-700" />
+                <span>🤝 Fiados ({fiadosCount}) • ${totalCarteraAmount.toLocaleString()}</span>
               </button>
             )}
 
@@ -999,6 +1103,9 @@ export default function AdminOrders() {
          range={dateRange} 
          onCancelledClick={() => setShowCancelledHistory(true)} 
          onDeliveredClick={() => setShowDeliveredHistory(true)}
+         onFiadosClick={() => setIsFiadosDrawerOpen(true)}
+         fiadosCount={fiadosCount}
+         totalCartera={totalCarteraAmount}
        />
 
        {/* Modal de Historial de Entregados */}
@@ -1155,7 +1262,219 @@ export default function AdminOrders() {
          </div>
        )}
 
-       
+       {/* Modal / Drawer de Cartera de Fiados & Cuentas por Cobrar */}
+       {isFiadosDrawerOpen && (
+         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
+           <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-md" onClick={() => setIsFiadosDrawerOpen(false)} />
+           <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden relative flex flex-col max-h-[88vh] border border-gray-100 z-10">
+             <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-amber-50/50 sticky top-0 z-10">
+               <div className="flex items-center gap-3">
+                 <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center text-xl shadow-xs">
+                   🤝
+                 </div>
+                 <div>
+                   <h3 className="text-base font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
+                     <span>Cartera de Fiados & Cuentas por Cobrar</span>
+                     <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-xs font-black">
+                       {pendingFiadosList.length}
+                     </span>
+                   </h3>
+                   <p className="text-xs text-amber-900 font-medium">
+                     Total por cobrar en la calle: <strong className="text-amber-950 font-black">${totalCarteraAmount.toLocaleString()}</strong>
+                   </p>
+                 </div>
+               </div>
+               <button
+                 type="button"
+                 onClick={() => setIsFiadosDrawerOpen(false)}
+                 className="w-8 h-8 rounded-full bg-white hover:bg-gray-100 text-gray-400 hover:text-gray-700 flex items-center justify-center border border-gray-200 transition-all cursor-pointer"
+               >
+                 ✕
+               </button>
+             </div>
+
+             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 custom-scrollbar bg-gray-50/40">
+               {pendingFiadosList.length === 0 ? (
+                 <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
+                   <p className="text-sm font-bold text-gray-400">¡Al día! No hay cuentas por cobrar ni fiados pendientes.</p>
+                 </div>
+               ) : (
+                 pendingFiadosList.map(order => {
+                   const cleanCustName = (order.customer_name || 'Cliente').replace(/\[\s*🤝?\s*FIADO[^\]]*\]/gi, '').trim();
+                   const cleanNotes = (order.delivery_notes || '').replace(/\[\s*🤝?\s*FIADO[^\]]*\]/gi, '').trim();
+                   return (
+                     <div 
+                       key={order.id}
+                       className="p-4 rounded-2xl bg-white border border-amber-200/80 shadow-xs hover:border-amber-400 transition-all space-y-3"
+                     >
+                       <div className="flex items-start justify-between gap-2">
+                         <div>
+                           <div className="flex items-center gap-2 flex-wrap">
+                             <span className="font-mono text-xs font-black text-gray-900">
+                               #{order.id.slice(-4).toUpperCase()}
+                             </span>
+                             <span className="font-black text-sm text-gray-900">
+                               {cleanCustName}
+                             </span>
+                             <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase tracking-wider">
+                               {order.status === 'delivered' ? 'Entregado' : order.status}
+                             </span>
+                           </div>
+                           <p className="text-[11px] text-gray-400 mt-0.5">
+                             {new Date(order.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} • {order.fulfillment_type === 'delivery' ? '🛵 Domicilio' : '🛍️ Para Llevar / Mostrador'}
+                             {order.customer_phone && ` • 📱 ${order.customer_phone}`}
+                           </p>
+                           {order.delivery_address && (
+                             <p className="text-xs text-gray-600 mt-1 font-medium">
+                               📍 {order.delivery_address}
+                             </p>
+                           )}
+                           {cleanNotes && (
+                             <p className="text-xs text-gray-500 italic mt-0.5">
+                               📝 {cleanNotes}
+                             </p>
+                           )}
+                         </div>
+
+                         <div className="text-right shrink-0">
+                           <span className="text-base font-black text-amber-950">
+                             ${Number(order.total_amount || 0).toLocaleString()}
+                           </span>
+                           <span className="text-[10px] font-bold text-amber-700 block uppercase tracking-wider">
+                             Por Cobrar
+                           </span>
+                         </div>
+                       </div>
+
+                       {/* Items */}
+                       <div className="flex flex-wrap gap-1.5 pt-2 border-t border-gray-100">
+                         {order.order_items?.map((it, idx) => (
+                           <span key={idx} className="text-[11px] font-medium bg-gray-50 text-gray-700 px-2 py-0.5 rounded-lg border border-gray-200">
+                             {it.quantity}x {it.products?.name}
+                           </span>
+                         ))}
+                       </div>
+
+                       {/* Botones de acción rápida */}
+                       <div className="pt-2 border-t border-amber-100 flex items-center justify-between gap-2 flex-wrap">
+                         <button
+                           type="button"
+                           onClick={() => {
+                             setSelectedOrder(order);
+                             setIsFiadosDrawerOpen(false);
+                           }}
+                           className="px-2.5 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-bold transition-all cursor-pointer"
+                         >
+                           👁️ Ver Comanda
+                         </button>
+
+                         <div className="flex items-center gap-1.5 flex-wrap">
+                           <button
+                             type="button"
+                             onClick={() => handleSendWhatsAppCobro(order)}
+                             className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                           >
+                             📱 WhatsApp
+                           </button>
+
+                           <button
+                             type="button"
+                             onClick={() => setSettlingFiadoOrder(order)}
+                             className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                           >
+                             💰 Cobrar
+                           </button>
+                         </div>
+                       </div>
+                     </div>
+                   );
+                 })
+               )}
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* Modal de selección de bolsillo de pago para Fiados */}
+       {settlingFiadoOrder && (
+         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+           <div className="fixed inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setSettlingFiadoOrder(null)} />
+           <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-gray-200 shadow-2xl relative z-10 space-y-4">
+             <div className="flex items-center justify-between">
+               <div className="flex items-center gap-2.5">
+                 <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg">
+                   💰
+                 </div>
+                 <div>
+                   <h4 className="text-sm font-black text-gray-900 uppercase tracking-tight">
+                     Registrar Cobro
+                   </h4>
+                   <p className="text-xs font-bold text-emerald-700">
+                     ${Number(settlingFiadoOrder.total_amount || 0).toLocaleString()}
+                   </p>
+                 </div>
+               </div>
+               <button
+                 type="button"
+                 onClick={() => setSettlingFiadoOrder(null)}
+                 className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 cursor-pointer"
+               >
+                 ✕
+               </button>
+             </div>
+
+             <div>
+               <label className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-2">
+                 ¿A qué bolsillo ingresa el dinero?
+               </label>
+               <div className="space-y-1.5">
+                 {[
+                   { id: 'efectivo', label: 'Efectivo (Gaveta física)' },
+                   { id: 'nequi', label: 'Nequi / Bre-B' },
+                   { id: 'daviplata', label: 'Daviplata' },
+                   { id: 'bancolombia', label: 'Bancolombia QR / Transf.' },
+                   { id: 'datafono', label: 'Datáfono / Bold' }
+                 ].map(m => {
+                   const isSel = fiadoPaymentMethod === m.id;
+                   return (
+                     <button
+                       key={m.id}
+                       type="button"
+                       onClick={() => setFiadoPaymentMethod(m.id)}
+                       className={`w-full p-2.5 rounded-xl border text-left text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
+                         isSel ? 'border-gray-900 bg-gray-900 text-white shadow-xs' : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-800'
+                       }`}
+                     >
+                       <span>{m.label}</span>
+                       {isSel && <span className="text-emerald-400 font-black">✓</span>}
+                     </button>
+                   );
+                 })}
+               </div>
+             </div>
+
+             <div className="flex items-center gap-2 pt-2">
+               <button
+                 type="button"
+                 onClick={() => setSettlingFiadoOrder(null)}
+                 className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-50 cursor-pointer"
+               >
+                 Cancelar
+               </button>
+               <button
+                 type="button"
+                 onClick={async () => {
+                   await handleSettleFiadoOrder(settlingFiadoOrder.id, fiadoPaymentMethod);
+                   setSettlingFiadoOrder(null);
+                 }}
+                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs cursor-pointer"
+               >
+                 Confirmar Cobro
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
 
         {/* Modal Extra Optimizado para Ver el Detalle del Pedido del Historial */}
         {historyDetailOrder && (

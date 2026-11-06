@@ -14,7 +14,27 @@ function getMethodStyle(name = '', type = '') {
       text: 'text-emerald-800',
     };
   }
-  if (key.includes('tarjeta') || key.includes('card') || key.includes('débito') || key.includes('crédito') || key.includes('datafono')) {
+  if (key.includes('daviplata')) {
+    return {
+      bg: 'bg-rose-50',
+      border: 'border-rose-200',
+      icon: 'solar:smartphone-transfer-bold',
+      iconColor: 'text-rose-600',
+      badge: 'bg-rose-500',
+      text: 'text-rose-800',
+    };
+  }
+  if (key.includes('bancolombia')) {
+    return {
+      bg: 'bg-amber-50',
+      border: 'border-amber-200',
+      icon: 'solar:card-bold',
+      iconColor: 'text-amber-700',
+      badge: 'bg-amber-600',
+      text: 'text-amber-900',
+    };
+  }
+  if (key.includes('tarjeta') || key.includes('card') || key.includes('débito') || key.includes('crédito') || key.includes('datafono') || key.includes('bold')) {
     return {
       bg: 'bg-blue-50',
       border: 'border-blue-200',
@@ -104,6 +124,7 @@ export default function ShiftCashSummary({
 }) {
   const {
     totalRevenue    = 0,
+    totalCollected  = 0,
     totalTips       = 0,
     avgTicket       = 0,
     cancelledAmount = 0,
@@ -114,6 +135,7 @@ export default function ShiftCashSummary({
     initialCash     = 0,
     expectedCash    = 0,
     totalCashSales  = 0,
+    totalDigitalSales = 0,
     totalTransferSales = 0,
     fiadosList      = [],
     totalFiados     = 0,
@@ -230,9 +252,9 @@ export default function ShiftCashSummary({
           icon="solar:smartphone-bold"
           iconBg="bg-purple-100"
           iconColor="text-purple-700"
-          label="Nequi / Bre-B"
-          value={formatCOP(totalTransferSales)}
-          sub="Dinero en banco"
+          label="Bancos & Digital"
+          value={formatCOP(totalDigitalSales || totalTransferSales)}
+          sub="Nequi, Daviplata, Datáfono"
         />
         <KPICard
           icon="solar:hand-money-bold"
@@ -249,7 +271,7 @@ export default function ShiftCashSummary({
           iconColor="text-blue-600"
           label="Total Facturado"
           value={formatCOP(totalRevenue)}
-          sub={`${deliveredCount} pedidos entregados`}
+          sub="Cobrado + Por Cobrar"
         />
         <KPICard
           icon="solar:ticket-sale-bold"
@@ -257,7 +279,7 @@ export default function ShiftCashSummary({
           iconColor="text-rose-600"
           label="Ticket Promedio"
           value={formatCOP(avgTicket)}
-          sub="Por pedido finalizado"
+          sub="Por pedido despachado"
         />
       </div>
 
@@ -343,13 +365,13 @@ export default function ShiftCashSummary({
                   )}
                 </div>
 
-                <div className="pt-2 border-t border-purple-100 flex items-center gap-2">
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider shrink-0">Cobrar:</span>
+                <div className="pt-2 border-t border-purple-100 flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider shrink-0 w-full sm:w-auto">Cobrar a:</span>
                   <button
                     type="button"
                     onClick={() => onSettleFiado && onSettleFiado(order.id, 'efectivo')}
-                    className="flex-1 py-2 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black flex items-center justify-center gap-1 shadow-2xs transition-all active:scale-95 cursor-pointer"
-                    title="Registrar pago en efectivo (se suma al esperado de gaveta)"
+                    className="flex-1 min-w-[70px] py-1.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black flex items-center justify-center gap-1 shadow-2xs transition-all active:scale-95 cursor-pointer"
+                    title="Cobrado en efectivo (suma a la gaveta)"
                   >
                     <Icon icon="solar:wallet-money-bold" className="text-xs" />
                     Efectivo
@@ -357,11 +379,29 @@ export default function ShiftCashSummary({
                   <button
                     type="button"
                     onClick={() => onSettleFiado && onSettleFiado(order.id, 'nequi')}
-                    className="flex-1 py-2 px-2.5 rounded-xl bg-[#200020] hover:bg-[#350035] text-white text-[11px] font-black flex items-center justify-center gap-1 shadow-2xs transition-all active:scale-95 cursor-pointer"
-                    title="Registrar pago recibido en Nequi / Bre-B"
+                    className="flex-1 min-w-[70px] py-1.5 px-2 rounded-xl bg-[#200020] hover:bg-[#350035] text-white text-[10px] font-black flex items-center justify-center gap-1 shadow-2xs transition-all active:scale-95 cursor-pointer"
+                    title="Cobrado por Nequi / Bre-B"
                   >
                     <Icon icon="solar:smartphone-bold" className="text-xs text-pink-400" />
                     Nequi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSettleFiado && onSettleFiado(order.id, 'daviplata')}
+                    className="flex-1 min-w-[70px] py-1.5 px-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-black flex items-center justify-center gap-1 shadow-2xs transition-all active:scale-95 cursor-pointer"
+                    title="Cobrado por Daviplata"
+                  >
+                    <Icon icon="solar:smartphone-bold" className="text-xs text-white" />
+                    Daviplata
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSettleFiado && onSettleFiado(order.id, 'datafono')}
+                    className="flex-1 min-w-[70px] py-1.5 px-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black flex items-center justify-center gap-1 shadow-2xs transition-all active:scale-95 cursor-pointer"
+                    title="Cobrado con Datáfono / Bold"
+                  >
+                    <Icon icon="solar:card-bold" className="text-xs text-white" />
+                    Datáfono
                   </button>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import { Icon } from '@iconify-icon/react';
 import { toast } from '../Toast';
 import { formatCOP } from '../../utils/money';
 import { printThermalDocument } from '../../utils/thermalPrint';
+import { parseCustomerInfo } from '../../hooks/useCRM';
 
 const isValidUUID = (id) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
@@ -703,15 +704,11 @@ export default function ManualOrderModal({
 
       const tenderNum = Number(String(cashTendered).replace(/\D/g, '')) || 0;
 
-      if (!isPaid && !isAlreadyDelivered) {
+      if (!isPaid) {
         if (pendingType === 'fiado') {
           finalPaymentMethod = 'fiado';
-          const fiadoTag = `[🤝 FIADO - Cuenta por cobrar: ${customerName.trim() || 'Cliente'}]`;
-          finalDeliveryNotes = finalDeliveryNotes ? `${finalDeliveryNotes}\n${fiadoTag}` : fiadoTag;
         } else {
           finalPaymentMethod = 'contra_entrega';
-          const contraTag = `[🛵 PAGO CONTRA ENTREGA]`;
-          finalDeliveryNotes = finalDeliveryNotes ? `${finalDeliveryNotes}\n${contraTag}` : contraTag;
         }
       } else {
         if (paymentMethod === 'efectivo') {
@@ -732,6 +729,9 @@ export default function ManualOrderModal({
         }
       }
 
+      const finalPaymentStatus = isPaid ? 'paid' : 'pending';
+      const finalPaymentMethodResolved = isPaid ? finalPaymentMethod : (pendingType === 'fiado' ? 'fiado' : 'contra_entrega');
+
       const orderPayload = {
         brand_id: brandId,
         location_id: effectiveLocationId,
@@ -748,8 +748,8 @@ export default function ManualOrderModal({
         delivery_fee: activeDeliveryFee,
         scheduled_time: parsedScheduledTime,
         total_amount: grandTotal,
-        payment_status: (isAlreadyDelivered || isPaid) ? 'paid' : 'pending',
-        payment_method: (isAlreadyDelivered || isPaid) ? finalPaymentMethod : (pendingType === 'fiado' ? 'fiado' : 'contra_entrega')
+        payment_status: finalPaymentStatus,
+        payment_method: finalPaymentMethodResolved
       };
 
       const { data: createdOrder, error: orderErr } = await supabase
@@ -1057,11 +1057,13 @@ export default function ManualOrderModal({
                           key={idx}
                           type="button"
                           onClick={() => {
-                            setCustomerName(sug.customer_name || customerName);
+                            const parsed = parseCustomerInfo(sug.customer_name, sug.delivery_address, sug.delivery_notes);
+                            setCustomerName(parsed.cleanName || sug.customer_name || customerName);
                             if (sug.customer_phone) setCustomerPhone(sug.customer_phone);
-                            if (sug.delivery_address) setDeliveryAddress(sug.delivery_address);
+                            if (parsed.address || sug.delivery_address) setDeliveryAddress(parsed.address || sug.delivery_address);
+                            if (parsed.notes && !orderNotes) setOrderNotes(parsed.notes);
                             setShowSuggestions(false);
-                            toast.success(`Cliente cargado: ${sug.customer_name}`);
+                            toast.success(`Cliente cargado: ${parsed.cleanName || sug.customer_name}`);
                           }}
                           className="w-full px-3 py-2 text-left hover:bg-emerald-50/60 transition-colors flex items-center justify-between gap-2 group cursor-pointer"
                         >
