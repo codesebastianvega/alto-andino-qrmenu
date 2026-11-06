@@ -6,7 +6,7 @@ import {
   ChevronRight, Calendar, DollarSign, TrendingUp,
   Star, Clock, Zap, Ghost, MinusCircle, ExternalLink,
   ArrowUpRight, AlertCircle, ShoppingBag, MapPin,
-  AlertTriangle, Tag, Sparkles
+  AlertTriangle, Tag, Sparkles, Trash2, Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomerProfileModal from './CustomerProfileModal';
