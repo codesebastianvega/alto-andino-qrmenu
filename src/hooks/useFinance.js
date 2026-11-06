@@ -3,6 +3,11 @@ import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useLocation } from '../context/LocationContext';
 import { toast } from '../components/Toast';
+import {
+  DEFAULT_DISCARDED_TEST_IDS,
+  parseCustomerInfo,
+  backfillUnlinkedOrders,
+} from '../utils/customerSync';
 
 const DEFAULT_ACCOUNTS = [
   { id: 'acc_cash_main', name: 'Gaveta Física (Efectivo)', type: 'cash', balance: 0, is_default: true },
@@ -18,12 +23,6 @@ export const EXPENSE_CATEGORIES = [
   { id: 'maintenance', label: 'Mantenimiento y Equipos', icon: 'solar:wrench-bold', color: 'slate' },
   { id: 'marketing', label: 'Publicidad y Redes', icon: 'solar:megaphone-bold', color: 'pink' },
   { id: 'other', label: 'Otros Gastos Menores', icon: 'solar:bill-list-bold', color: 'gray' },
-];
-
-const DEFAULT_DISCARDED_TEST_IDS = [
-  '022afa44-0294-4396-af36-dfe47e53e409', // Sebas test $37.400
-  '3f3a1096-9b2a-4267-8533-484f1a765584', // Juan Vefa test $24.200
-  '91bd48a0-6baf-467b-8dd3-e170f63e4b11', // Empty test $44.000
 ];
 
 export function useFinance() {
@@ -43,7 +42,7 @@ export function useFinance() {
       let query = supabase
         .from('orders')
         .select(`
-          id, status, total_amount, paid_amount, payment_status, payment_method,
+          id, customer_id, status, total_amount, paid_amount, payment_status, payment_method,
           customer_name, customer_phone, delivery_address, delivery_notes,
           created_at, delivered_at, location_id,
           order_items ( id, quantity, unit_price, products ( id, name ) ),
@@ -61,7 +60,9 @@ export function useFinance() {
         console.error('[useFinance] orders error:', error);
         return;
       }
-      setOrders(data || []);
+      const fetched = data || [];
+      setOrders(fetched);
+      backfillUnlinkedOrders(brandId, fetched, new Set(DEFAULT_DISCARDED_TEST_IDS));
     } catch (err) {
       console.error('[useFinance] fetchFinancialOrders error:', err);
     }
@@ -196,11 +197,9 @@ export function useFinance() {
       const remaining = Math.max(0, total - paid);
 
       if (isUnpaid && remaining > 0) {
-        let name = order.customer_name || 'Cliente sin nombre';
-        if (order.delivery_notes && order.delivery_notes.includes('FIADO - Cuenta por cobrar:')) {
-          const match = order.delivery_notes.match(/FIADO - Cuenta por cobrar:\s*([^\[]+)/);
-          if (match && match[1]) name = match[1].trim();
-        }
+        const parsed = parseCustomerInfo(order.customer_name, order.delivery_address, order.delivery_notes);
+        const name = parsed.cleanName !== 'Sin nombre' ? parsed.cleanName : (order.customer_name || 'Cliente sin nombre');
+        const address = parsed.address || order.delivery_address || '';
 
         const createdAt = new Date(order.created_at);
         const ageDays = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
@@ -214,9 +213,10 @@ export function useFinance() {
         all.push({
           id: order.id,
           orderId: order.id,
+          customerId: order.customer_id || null,
           customerName: name,
           customerPhone: order.customer_phone || '',
-          address: order.delivery_address || '',
+          address,
           totalAmount: total,
           paidAmount: paid,
           balanceDue: remaining,

@@ -185,17 +185,45 @@ export default function ShiftCashSummary({
     totalFiados        = 0,
   } = metrics;
 
-  // Cargar medios de pago configurados en base de datos para no mostrar medios inexistentes (como Bancolombia)
+  // Cargar medios de pago configurados en base de datos y bolsillos de Finanzas
   const { paymentMethods: brandMethods = [] } = usePaymentMethods(business?.id);
+
+  const customFinanceAccounts = useMemo(() => {
+    const fromBrand = business?.config?.financials?.accounts;
+    if (Array.isArray(fromBrand) && fromBrand.length > 0) return fromBrand;
+    if (business?.id && typeof window !== 'undefined') {
+      try {
+        const cached = JSON.parse(localStorage.getItem(`aa_financials_${business.id}`) || '{}');
+        if (Array.isArray(cached.accounts)) return cached.accounts;
+      } catch {
+        // ignore
+      }
+    }
+    return [];
+  }, [business]);
 
   const hasBrandMethod = (needle) => {
     const term = needle.toLowerCase();
-    return brandMethods.some(m => m.is_active !== false && ((m.name || '').toLowerCase().includes(term) || (m.type || '').toLowerCase().includes(term)));
+    const inPaymentMethods = brandMethods.some(m => m.is_active !== false && ((m.name || '').toLowerCase().includes(term) || (m.type || '').toLowerCase().includes(term)));
+    const inFinanceAccounts = customFinanceAccounts.some(a => (a.name || '').toLowerCase().includes(term));
+    return inPaymentMethods || inFinanceAccounts;
   };
 
   const showBancolombia = hasBrandMethod('bancolombia') || orders.some(o => (o.payment_method || '').toLowerCase().includes('bancolombia'));
   const showDaviplata = hasBrandMethod('daviplata') || orders.some(o => (o.payment_method || '').toLowerCase().includes('daviplata'));
   const showDatafono = hasBrandMethod('datafono') || hasBrandMethod('bold') || hasBrandMethod('card') || hasBrandMethod('tarjeta') || orders.some(o => (o.payment_method || '').toLowerCase().includes('datafono') || (o.payment_method || '').toLowerCase().includes('bold'));
+
+  // Bolsillos personalizados adicionales creados en Finanzas & Contabilidad
+  const extraCustomPockets = useMemo(() => {
+    return customFinanceAccounts.filter(acc => {
+      if (acc.type === 'cash') return false;
+      const lower = (acc.name || '').toLowerCase();
+      if (lower.includes('nequi') || lower.includes('bre-b') || lower.includes('daviplata') || lower.includes('bancolombia') || lower.includes('datafono') || lower.includes('datáfono') || lower.includes('bold') || lower.includes('efectivo') || lower.includes('gaveta')) {
+        return false;
+      }
+      return true;
+    });
+  }, [customFinanceAccounts]);
 
   // Estados de Modales
   const [isDigitalModalOpen, setIsDigitalModalOpen] = useState(false);
@@ -260,11 +288,24 @@ export default function ShiftCashSummary({
       };
     }
 
+    extraCustomPockets.forEach(acc => {
+      pockets[acc.id] = {
+        id: acc.id,
+        name: acc.name,
+        icon: 'solar:wallet-2-bold',
+        color: 'indigo',
+        badgeClass: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+        total: 0,
+        orders: []
+      };
+    });
+
     orders.forEach(order => {
       if (order.status === 'cancelled') return;
       if (order.payment_status !== 'paid' && Number(order.paid_amount || 0) <= 0) return;
 
       const pm = (order.payment_method || '').toLowerCase();
+      if (pm.includes('ajuste histórico')) return;
       const amt = Number(order.paid_amount > 0 ? order.paid_amount : (order.total_amount || 0));
 
       let targetKey = null;
@@ -276,6 +317,9 @@ export default function ShiftCashSummary({
         targetKey = 'bancolombia';
       } else if (pm.includes('tarjeta') || pm.includes('card') || pm.includes('datafono') || pm.includes('bold')) {
         targetKey = 'datafono';
+      } else {
+        const matchedCustom = extraCustomPockets.find(a => pm.includes((a.name || '').toLowerCase()) || pm === a.id.toLowerCase());
+        if (matchedCustom) targetKey = matchedCustom.id;
       }
 
       if (targetKey && pockets[targetKey]) {
@@ -293,7 +337,7 @@ export default function ShiftCashSummary({
     });
 
     return pockets;
-  }, [orders]);
+  }, [orders, showDaviplata, showBancolombia, showDatafono, extraCustomPockets]);
 
   // ─── Agrupación de Fiados por Cliente ──────────────────────────────────────
   const fiadosByCustomer = useMemo(() => {
@@ -558,7 +602,7 @@ export default function ShiftCashSummary({
           iconColor="text-purple-700"
           label="Bancos & Digital"
           value={formatCOP(totalDigitalSales || totalTransferSales)}
-          sub="Nequi, Daviplata, Bold"
+          sub={Object.values(digitalPockets).map(p => p.name).join(', ') || 'Nequi / Bre-B'}
           onClick={() => setIsDigitalModalOpen(true)}
           actionHint="Ver detalle"
         />
@@ -1173,6 +1217,22 @@ export default function ShiftCashSummary({
                       <span>Datáfono / Bold</span>
                     </button>
                   )}
+
+                  {extraCustomPockets.map(acc => (
+                    <button
+                      key={acc.id}
+                      type="button"
+                      onClick={() => setSelectedPocket(acc.name)}
+                      className={`p-2.5 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                        selectedPocket === acc.name
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Icon icon="solar:wallet-2-bold" className="text-base" />
+                      <span className="truncate">{acc.name}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
 

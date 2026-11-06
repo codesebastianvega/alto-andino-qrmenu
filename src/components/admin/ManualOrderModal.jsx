@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../config/supabase';
+import { useAuth } from '../../context/AuthContext';
 import { Icon } from '@iconify-icon/react';
 import { toast } from '../Toast';
 import { formatCOP } from '../../utils/money';
 import { printThermalDocument } from '../../utils/thermalPrint';
 import { parseCustomerInfo } from '../../hooks/useCRM';
+import { resolveOrCreateCustomer, syncCollectionToFinancials } from '../../utils/customerSync';
 
 const isValidUUID = (id) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
@@ -12,10 +14,12 @@ export default function ManualOrderModal({
   isOpen,
   onClose,
   onOrderCreated,
-  brandId,
+  brandId: propBrandId,
   locationId,
   restaurantSettings
 }) {
+  const { activeBrand, profile } = useAuth();
+  const brandId = propBrandId || activeBrand?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [products, setProducts] = useState([]);
   const [locationsList, setLocationsList] = useState([]);
@@ -732,9 +736,19 @@ export default function ManualOrderModal({
       const finalPaymentStatus = isPaid ? 'paid' : 'pending';
       const finalPaymentMethodResolved = isPaid ? finalPaymentMethod : (pendingType === 'fiado' ? 'fiado' : 'contra_entrega');
 
+      // Vincular o crear el cliente en public.customers para integridad relacional estricta
+      const resolvedCustomerId = await resolveOrCreateCustomer({
+        brandId,
+        phone: customerPhone.trim(),
+        name: customerName.trim(),
+        address: fulfillmentType === 'delivery' ? deliveryAddress.trim() : '',
+        notes: finalDeliveryNotes
+      });
+
       const orderPayload = {
         brand_id: brandId,
         location_id: effectiveLocationId,
+        customer_id: resolvedCustomerId,
         status: isAlreadyDelivered ? 'delivered' : 'preparing',
         kitchen_status: isAlreadyDelivered ? 'completed' : 'pending',
         bar_status: isAlreadyDelivered ? 'completed' : 'pending',
@@ -748,6 +762,7 @@ export default function ManualOrderModal({
         delivery_fee: activeDeliveryFee,
         scheduled_time: parsedScheduledTime,
         total_amount: grandTotal,
+        paid_amount: isPaid ? grandTotal : 0,
         payment_status: finalPaymentStatus,
         payment_method: finalPaymentMethodResolved
       };
@@ -759,6 +774,18 @@ export default function ManualOrderModal({
         .single();
 
       if (orderErr) throw orderErr;
+
+      // Si el pedido ya fue pagado al crearse, sincronizar ingreso al bolsillo correspondiente en Finanzas
+      if (isPaid && grandTotal > 0) {
+        syncCollectionToFinancials({
+          brandId,
+          customerName: customerName.trim() || 'Cliente WhatsApp',
+          amount: grandTotal,
+          paymentMethod: finalPaymentMethodResolved,
+          isHistorical: false,
+          notes: `Venta directa #${String(createdOrder.id).slice(0, 4).toUpperCase()}`
+        });
+      }
 
       // Insert order items
       const itemsPayload = orderItems.map(it => ({

@@ -6,6 +6,7 @@ import { useLocation } from '../context/LocationContext';
 import { supabase } from '../config/supabase';
 import { toast } from '../components/Toast';
 import { printThermalShiftReport } from '../utils/thermalPrint';
+import { syncCollectionToFinancials, parseCustomerInfo } from '../utils/customerSync';
 
 import ShiftCashSummary from '../components/admin/ShiftCashSummary';
 import TableMap from '../components/admin/TableMap';
@@ -88,6 +89,19 @@ export default function AdminOperations() {
         .eq('id', orderId);
 
       if (error) throw error;
+
+      // Sincronizar recaudo con el Libro Mayor y Bolsillo en Finanzas & Contabilidad
+      if (paymentAmount > 0) {
+        const { cleanName } = parseCustomerInfo(order.customer_name, order.delivery_address, order.delivery_notes);
+        await syncCollectionToFinancials({
+          brandId,
+          customerName: cleanName || 'Cliente',
+          amount: paymentAmount,
+          paymentMethod,
+          isHistorical: false,
+          notes: `Cobro en Turno & Caja (#${String(orderId).slice(0, 4).toUpperCase()})`
+        });
+      }
 
       if (isFullyPaid) {
         toast.success(`🎉 Fiado pagado completamente ($${paymentAmount.toLocaleString('es-CO')} vía ${paymentMethod.toUpperCase()})`);
@@ -280,6 +294,9 @@ export default function AdminOperations() {
         isOpen={isManualOrderModalOpen}
         onClose={() => setIsManualOrderModalOpen(false)}
         onOrderCreated={refresh}
+        brandId={brandId}
+        locationId={activeLocationId}
+        restaurantSettings={settings}
       />
     </div>
   );

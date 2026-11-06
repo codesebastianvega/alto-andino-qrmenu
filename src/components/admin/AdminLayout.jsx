@@ -35,7 +35,6 @@ import ContextBreadcrumb from './ContextBreadcrumb';
 import { Badge } from './ui';
 import LockOverlay from './LockOverlay';
 import UpgradeModal from './UpgradeModal';
-import UniversalCheckout from '../../pages/checkout/UniversalCheckout';
 import { useMenuData } from '../../context/MenuDataContext';
 import { useBrand } from '../../context/BrandContext';
 import { usePlan } from '../../hooks/usePlan';

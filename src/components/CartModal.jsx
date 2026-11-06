@@ -13,6 +13,7 @@ import { Icon } from "@iconify-icon/react";
 import { QRCode } from "react-qr-code";
 import { supabase } from "@/config/supabase";
 import { translateGroup, normalizeWhatsAppNumber } from "@/utils/formatters";
+import { resolveOrCreateCustomer } from "@/utils/customerSync";
 import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { useLocationPayments } from "@/hooks/useLocationPayments";
@@ -1275,6 +1276,14 @@ export default function CartModal({ open, onClose }) {
 
       // If no existing order was found (or not applicable), create a new one
       if (!orderData) {
+        const finalCustomerId = customerId || await resolveOrCreateCustomer({
+          brandId: activeBrandId,
+          phone: customerPhone,
+          name: fullCustomerName || customerName,
+          address: fulfillmentType === 'delivery' ? (deliveryAddress || '') : '',
+          notes: fulfillmentType === 'delivery' ? (deliveryNotes || '') : ''
+        });
+
         const { data: newOrder, error: orderError } = await supabase.from('orders')
           .insert([{
             status: orderStatus,
@@ -1291,7 +1300,7 @@ export default function CartModal({ open, onClose }) {
             service_fee: serviceFeeAmount,
             customer_name: fullCustomerName || customerName,
             customer_phone: customerPhone,
-            customer_id: customerId,
+            customer_id: finalCustomerId,
             scheduled_time: scheduledTime || null,
             payment_status: isPOSMode && isPaid ? 'paid' : 'pending',
             payment_method: isPOSMode ? (isPaid ? paymentMethod : null) : paymentMethodSummary,

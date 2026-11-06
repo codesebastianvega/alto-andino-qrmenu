@@ -3,6 +3,7 @@ import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useLocation } from '../context/LocationContext';
 import { toast } from '../components/Toast';
+import { getDiscardedOrderIdsSet } from '../utils/customerSync';
 
 /**
  * Devuelve el inicio del día actual en UTC considerando la zona horaria
@@ -447,10 +448,13 @@ export function useOperations() {
 
   // ─── Métricas Derivadas ───────────────────────────────────────────────────
 
+  const discardedSet = getDiscardedOrderIdsSet(activeBrand, brandId);
+  const validOrders = orders.filter(o => !discardedSet.has(o.id));
+
   const metrics = (() => {
-    const delivered = orders.filter(o => o.status === 'delivered');
-    const cancelled = orders.filter(o => o.status === 'cancelled');
-    const active    = orders.filter(o => ['new', 'preparing', 'ready', 'on_table', 'waiting_payment'].includes(o.status));
+    const delivered = validOrders.filter(o => o.status === 'delivered');
+    const cancelled = validOrders.filter(o => o.status === 'cancelled');
+    const active    = validOrders.filter(o => ['new', 'preparing', 'ready', 'on_table', 'waiting_payment'].includes(o.status));
 
     const totalRevenue    = delivered.reduce((s, o) => s + Number(o.total_amount  || 0), 0);
     const totalTips       = delivered.reduce((s, o) => s + Number(o.service_fee   || 0), 0);
@@ -506,13 +510,16 @@ export function useOperations() {
 
     if (payments.length === 0 && delivered.length > 0) {
       delivered.forEach(o => {
-        // Solo pedidos efectivamente pagados entran a los totales de caja y bancos
-        if (o.payment_status !== 'paid') return;
-
         const pm = (o.payment_method || '').toLowerCase();
-        const amt = Number(o.total_amount || 0);
+        // No sumar ajustes históricos al arqueo de caja del turno de hoy
+        if (pm.includes('ajuste histórico')) return;
 
-        if (pm.includes('efectivo') || pm.includes('cash')) {
+        const paidAmt = Number(o.paid_amount || 0);
+        if (o.payment_status !== 'paid' && paidAmt <= 0) return;
+
+        const amt = paidAmt > 0 ? paidAmt : Number(o.total_amount || 0);
+
+        if (pm.includes('efectivo') || pm.includes('cash') || pm.includes('gaveta')) {
           totalCashSales += amt;
           recordMethod('Efectivo', 'cash', amt);
         } else if (pm.includes('nequi') || pm.includes('bre-b') || pm.includes('breb')) {
@@ -532,21 +539,22 @@ export function useOperations() {
           recordMethod('Transferencia Bancaria', 'transfer', amt);
         } else {
           totalOtherSales += amt;
-          recordMethod('Otro Medio', 'other', amt);
+          recordMethod(o.payment_method || 'Otro Medio', 'other', amt);
         }
       });
     }
 
     // Cuentas por Cobrar (Fiados) del turno:
-    // Todo pedido no cancelado que esté pendiente de pago o explícitamente fiado
-    const fiadosList = orders.filter(o => 
-      o.status !== 'cancelled' && 
-      (
-        o.payment_status !== 'paid' || 
-        o.payment_method === 'fiado' || 
-        String(o.delivery_notes || '').toLowerCase().includes('fiado')
-      )
-    );
+    // Todo pedido no cancelado con saldo pendiente mayor a 0
+    const fiadosList = validOrders.filter(o => {
+      if (o.status === 'cancelled') return false;
+      const isPendingOrFiado =
+        o.payment_status !== 'paid' ||
+        o.payment_method === 'fiado' ||
+        String(o.delivery_notes || '').toLowerCase().includes('fiado');
+      const remaining = Math.max(0, Number(o.total_amount || 0) - Number(o.paid_amount || 0));
+      return isPendingOrFiado && remaining > 0;
+    });
     const totalFiados = fiadosList.reduce((sum, o) => sum + Math.max(0, Number(o.total_amount || 0) - Number(o.paid_amount || 0)), 0);
 
     const initialCash = Number(activeShift?.initial_cash || 0);

@@ -1,58 +1,22 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuth } from '../context/AuthContext';
+import {
+  parseCustomerInfo,
+  getDiscardedOrderIdsSet,
+  backfillUnlinkedOrders,
+  syncCollectionToFinancials,
+  displayCustomerPhone,
+  isAnonymousCustomerName,
+  normalizePhone,
+} from '../utils/customerSync';
 
-/**
- * Parses customer name and address from raw strings.
- * Often restaurant orders have names like:
- * "Dania Katheryn Rodriguez Duarte [Dir: Carrera 2 #23-11 Coclies - Puerta a la derecha]"
- */
-export function parseCustomerInfo(rawName = '', deliveryAddress = '', deliveryNotes = '') {
-  let cleanName = (rawName || '').trim();
-  let address = (deliveryAddress || '').trim();
-  let notes = (deliveryNotes || '').trim();
-
-  // Strip fiado tags from name, address, and notes
-  cleanName = cleanName.replace(/\[\s*🤝?\s*FIADO[^\]]*\]/gi, '').trim();
-  notes = notes.replace(/\[\s*🤝?\s*FIADO[^\]]*\]/gi, '').trim();
-  address = address.replace(/\[\s*🤝?\s*FIADO[^\]]*\]/gi, '').trim();
-
-  // Match [Dir: ...] inside cleanName or notes
-  const dirMatch = cleanName.match(/\[(?:Dir|Direcci[oó]n):\s*([^\]]+)\]/i) 
-                || notes.match(/\[(?:Dir|Direcci[oó]n):\s*([^\]]+)\]/i);
-  if (dirMatch) {
-    if (!address) {
-      address = dirMatch[1].trim();
-    }
-    cleanName = cleanName.replace(/\[(?:Dir|Direcci[oó]n):\s*[^\]]+\]/gi, '').trim();
-    notes = notes.replace(/\[(?:Dir|Direcci[oó]n):\s*[^\]]+\]/gi, '').trim();
-  }
-
-  // Remove dangling parentheses or brackets like "()" or "([])"
-  cleanName = cleanName.replace(/^[\(\[\s]+|[\)\]\s]+$/g, '').trim();
-  notes = notes.replace(/^[\(\[\s]+|[\)\]\s]+$/g, '').trim();
-  address = address.replace(/^[\(\[\s]+|[\)\]\s]+$/g, '').trim();
-
-  // Clean address from common suffixes like "- Casa segundo piso"
-  if (address && !notes && address.includes(' - ')) {
-    const parts = address.split(' - ');
-    if (parts.length > 1) {
-      address = parts[0].trim();
-      notes = parts.slice(1).join(' - ').trim();
-    }
-  }
-
-  return {
-    cleanName: cleanName || 'Sin nombre',
-    address: address || '',
-    notes: notes || ''
-  };
-}
+export { parseCustomerInfo };
 
 /**
  * useCRM Hook
- * Manages customer data derived from orders and leads.
- * Deduplicates customers by phone number, calculates LTV, frequency,
+ * Manages customer data derived from public.customers, public.orders, and public.leads.
+ * Deduplicates customers by customer_id / phone number, calculates LTV, frequency,
  * detects cancellations/friction, and provides actionable recovery states.
  */
 export function useCRM() {
@@ -61,46 +25,59 @@ export function useCRM() {
   
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState([]);
+  const [dbCustomers, setDbCustomers] = useState([]);
   const [leads, setLeads] = useState([]);
+
+  const discardedSet = useMemo(
+    () => getDiscardedOrderIdsSet(activeBrand, brandId),
+    [activeBrand, brandId]
+  );
 
   const fetchData = useCallback(async () => {
     if (!brandId) return;
     setLoading(true);
 
     try {
-      // 1. Fetch orders with customer info, status, payment details, cancellation reasons, and items
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select(`
-          id, customer_phone, customer_name, total_amount, created_at, status,
-          payment_status, payment_method, paid_amount,
-          cancellation_reason, cancelled_at, delivery_address, delivery_notes, origin, fulfillment_type,
-          order_items (
-            id, quantity, 
-            products ( name )
-          )
-        `)
-        .eq('brand_id', brandId)
-        .order('created_at', { ascending: false });
+      const [ordersRes, custRes, leadsRes] = await Promise.all([
+        supabase
+          .from('orders')
+          .select(`
+            id, customer_id, customer_phone, customer_name, total_amount, created_at, status,
+            payment_status, payment_method, paid_amount,
+            cancellation_reason, cancelled_at, delivery_address, delivery_notes, origin, fulfillment_type,
+            order_items (
+              id, quantity, 
+              products ( name )
+            )
+          `)
+          .eq('brand_id', brandId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('customers')
+          .select('id, name, phone, email, notes, tags, created_at')
+          .eq('brand_id', brandId),
+        supabase
+          .from('leads')
+          .select('*')
+          .eq('brand_id', brandId)
+      ]);
 
-      if (ordersError) throw ordersError;
+      if (ordersRes.error) throw ordersRes.error;
+      if (leadsRes.error) throw leadsRes.error;
 
-      // 2. Fetch leads (potential customers)
-      const { data: leadsData, error: leadsError } = await supabase
-        .from('leads')
-        .select('*')
-        .eq('brand_id', brandId);
+      const fetchedOrders = ordersRes.data || [];
+      setOrders(fetchedOrders);
+      setDbCustomers(custRes.data || []);
+      setLeads(leadsRes.data || []);
 
-      if (leadsError) throw leadsError;
-
-      setOrders(ordersData || []);
-      setLeads(leadsData || []);
+      // Trigger non-blocking relational backfill for historical orders without customer_id
+      backfillUnlinkedOrders(brandId, fetchedOrders, discardedSet);
     } catch (error) {
       console.error('[useCRM] Error fetching CRM data:', error);
     } finally {
       setLoading(false);
     }
-  }, [brandId]);
+  }, [brandId, discardedSet]);
 
   useEffect(() => {
     fetchData();
@@ -133,7 +110,6 @@ export function useCRM() {
       const next = { ...prev, [customerKey]: newStage };
       if (brandId) {
         localStorage.setItem(`aa_crm_stages_${brandId}`, JSON.stringify(next));
-        // Sincronizar en segundo plano a Supabase brands.config
         supabase.from('brands').select('config').eq('id', brandId).single().then(({ data }) => {
           const currentConfig = data?.config || {};
           supabase.from('brands').update({
@@ -154,7 +130,6 @@ export function useCRM() {
       const next = isArchived ? prev.filter(k => k !== customerKey) : [...prev, customerKey];
       if (brandId) {
         localStorage.setItem(`aa_crm_archived_${brandId}`, JSON.stringify(next));
-        // Sincronizar en segundo plano a Supabase brands.config
         supabase.from('brands').select('config').eq('id', brandId).single().then(({ data }) => {
           const currentConfig = data?.config || {};
           supabase.from('brands').update({
@@ -172,6 +147,10 @@ export function useCRM() {
   const settleCustomerOrder = useCallback(async (orderId, paymentMethod = 'efectivo', { isHistorical = false } = {}) => {
     try {
       const order = orders.find(o => o.id === orderId);
+      const total = Number(order?.total_amount || 0);
+      const prevPaid = Number(order?.paid_amount || 0);
+      const remaining = Math.max(0, total - prevPaid);
+
       const cleanNotes = (order?.delivery_notes || '').replace(/\[\s*🤝?\s*FIADO[^\]]*\]/gi, '').trim();
       const finalNotes = isHistorical ? `${cleanNotes} [Ajuste Histórico Regularizado]`.trim() : cleanNotes;
       const finalMethod = isHistorical ? `${paymentMethod} (Ajuste Histórico)` : paymentMethod;
@@ -182,48 +161,73 @@ export function useCRM() {
           payment_status: 'paid',
           payment_method: finalMethod,
           delivery_notes: finalNotes || null,
-          paid_amount: order?.total_amount || 0,
+          paid_amount: total,
           updated_at: new Date().toISOString()
         })
         .eq('id', orderId);
 
       if (error) throw error;
+
+      // Sync to Financial Ledger & Pocket Balance when it's a real collection today
+      if (!isHistorical && remaining > 0) {
+        const { cleanName } = parseCustomerInfo(order?.customer_name, order?.delivery_address, order?.delivery_notes);
+        await syncCollectionToFinancials({
+          brandId,
+          customerName: cleanName || 'Cliente',
+          amount: remaining,
+          paymentMethod,
+          isHistorical: false,
+          notes: `Cobro desde CRM (#${String(orderId).slice(0, 4).toUpperCase()})`
+        });
+      }
+
       await fetchData();
       return { success: true };
     } catch (err) {
       console.error('Error settling customer order in CRM:', err);
       throw err;
     }
-  }, [orders, fetchData]);
+  }, [orders, brandId, fetchData]);
 
   // Transform data into a customer-centric list
   const customers = useMemo(() => {
     const customerMap = {};
+    const dbCustById = new Map();
+    (dbCustomers || []).forEach(dc => {
+      if (dc.id) dbCustById.set(dc.id, dc);
+    });
 
-    // Process orders to build customer profiles
+    // Process orders to build customer profiles (excluding discarded test orders)
     orders.forEach(order => {
-      const phone = order.customer_phone?.trim() || '';
+      if (discardedSet.has(order.id)) return;
+
+      const linkedCust = order.customer_id ? dbCustById.get(order.customer_id) : null;
+      const rawPhone = order.customer_phone || linkedCust?.phone || '';
+      const phone = displayCustomerPhone(rawPhone);
+      const normPhone = normalizePhone(rawPhone);
+
       const { cleanName, address, notes } = parseCustomerInfo(
-        order.customer_name, 
+        order.customer_name || linkedCust?.name, 
         order.delivery_address, 
-        order.delivery_notes
+        order.delivery_notes || linkedCust?.notes
       );
 
       const normName = cleanName?.trim().toLowerCase();
       // Ignorar nombres genéricos de pruebas o placeholders si no hay teléfono
-      if (!phone && (!normName || normName === 'sin nombre' || normName === 'cliente whatsapp' || normName === 'cliente mostrador / whatsapp' || normName.startsWith('test_'))) {
+      if (!normPhone && isAnonymousCustomerName(cleanName)) {
         return;
       }
 
-      // Clave única: teléfono si existe; o nombre normalizado si no tiene teléfono
-      const customerKey = phone ? phone.replace(/\D/g, '') : `name:${normName}`;
+      // Clave única: teléfono normalizado si existe; o nombre normalizado si no tiene teléfono
+      const customerKey = normPhone ? normPhone : `name:${normName}`;
       if (!customerKey) return;
 
       if (!customerMap[customerKey]) {
         customerMap[customerKey] = {
           key: customerKey,
+          customerId: order.customer_id || linkedCust?.id || null,
           phone: phone,
-          rawName: order.customer_name || 'Sin nombre',
+          rawName: order.customer_name || linkedCust?.name || 'Sin nombre',
           name: cleanName,
           address,
           deliveryNotes: notes,
@@ -245,11 +249,13 @@ export function useCRM() {
         };
       }
 
-      // Update name, phone & address if we find more detailed information
+      if (!customerMap[customerKey].customerId && (order.customer_id || linkedCust?.id)) {
+        customerMap[customerKey].customerId = order.customer_id || linkedCust?.id;
+      }
       if (!customerMap[customerKey].phone && phone) {
         customerMap[customerKey].phone = phone;
       }
-      if ((customerMap[customerKey].name === 'Sin nombre' || !customerMap[customerKey].name) && cleanName) {
+      if (isAnonymousCustomerName(customerMap[customerKey].name) && !isAnonymousCustomerName(cleanName)) {
         customerMap[customerKey].name = cleanName;
       }
       if (!customerMap[customerKey].address && address) {
@@ -272,14 +278,15 @@ export function useCRM() {
         }
       }
 
-      // Check for unpaid fiado or pending balance
+      // Check for unpaid fiado or pending balance (accounting for partial payments)
       const isUnpaid = order.status !== 'cancelled' && (
         order.payment_status === 'pending' || 
         order.payment_method === 'fiado' ||
         String(order.delivery_notes || '').toLowerCase().includes('fiado')
       );
-      if (isUnpaid) {
-        customerMap[customerKey].totalOwed += Number(order.total_amount || 0);
+      const remainingOrderDebt = Math.max(0, Number(order.total_amount || 0) - Number(order.paid_amount || 0));
+      if (isUnpaid && remainingOrderDebt > 0) {
+        customerMap[customerKey].totalOwed += remainingOrderDebt;
         customerMap[customerKey].pendingOrders.push(order);
       }
 
@@ -293,6 +300,44 @@ export function useCRM() {
       }
 
       customerMap[customerKey].orderHistory.push(order);
+    });
+
+    // Also include registered customers in public.customers who haven't placed an order yet
+    (dbCustomers || []).forEach(dc => {
+      const phone = displayCustomerPhone(dc.phone);
+      const normPhone = normalizePhone(dc.phone);
+      const { cleanName, address, notes } = parseCustomerInfo(dc.name, '', dc.notes);
+      if (!normPhone && isAnonymousCustomerName(cleanName)) return;
+
+      const customerKey = normPhone ? normPhone : `name:${cleanName.toLowerCase()}`;
+      if (!customerMap[customerKey]) {
+        customerMap[customerKey] = {
+          key: customerKey,
+          customerId: dc.id,
+          phone,
+          rawName: dc.name || 'Cliente',
+          name: cleanName,
+          address,
+          deliveryNotes: notes,
+          ltv: 0,
+          ordersCount: 0,
+          totalOwed: 0,
+          pendingOrders: [],
+          cancelledCount: 0,
+          hasCancelled: false,
+          lastCancellationReason: null,
+          lastCancellationDate: null,
+          lastVisit: dc.created_at || new Date().toISOString(),
+          firstVisit: dc.created_at || new Date().toISOString(),
+          lastOrder: null,
+          avgTicket: 0,
+          status: 'nuevo',
+          orderHistory: [],
+          source: 'directory'
+        };
+      } else if (!customerMap[customerKey].customerId) {
+        customerMap[customerKey].customerId = dc.id;
+      }
     });
 
     // Process leads (if they have a phone and aren't already in the list)
@@ -474,7 +519,7 @@ export function useCRM() {
     });
 
     return processedCustomers;
-  }, [orders, leads, stageOverrides, archivedKeys]);
+  }, [orders, dbCustomers, leads, stageOverrides, archivedKeys, discardedSet]);
 
   const activeCustomers = useMemo(() => {
     return customers.filter(c => !c.isArchived);

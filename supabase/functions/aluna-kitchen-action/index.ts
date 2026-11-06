@@ -547,7 +547,6 @@ serve(async (req: Request) => {
       for (const ingredientId of [...created.ingredientIds].reverse()) {
         const referenceChecks = await Promise.all([
           admin.from('recipe_ingredients').select('id', { count: 'exact', head: true }).eq('ingredient_id', ingredientId),
-          admin.from('product_ingredients').select('id', { count: 'exact', head: true }).eq('ingredient_id', ingredientId),
           admin.from('modifier_options').select('id', { count: 'exact', head: true }).eq('ingredient_id', ingredientId),
         ]);
         const referenceError = referenceChecks.find((result) => result.error)?.error;

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePaymentMethods } from '../../hooks/usePaymentMethods';
+import { useAuth } from '../../context/AuthContext';
 
 const SEGMENT_CONFIG = {
   friccion: { 
@@ -88,30 +89,49 @@ export default function CustomerProfileModal({
   if (!customer) return null;
 
   const { paymentMethods: brandMethods } = usePaymentMethods();
+  const { activeBrand } = useAuth();
 
   const availablePaymentMethods = useMemo(() => {
+    const mapStyle = (name = '', type = '') => {
+      const lower = (name + ' ' + type).toLowerCase();
+      let icon = Wallet;
+      let color = 'text-emerald-700 bg-emerald-50 border-emerald-200';
+      if (lower.includes('nequi') || lower.includes('bre-b') || lower.includes('breb')) {
+        icon = Smartphone;
+        color = 'text-purple-700 bg-purple-50 border-purple-200';
+      } else if (lower.includes('daviplata')) {
+        icon = Smartphone;
+        color = 'text-rose-700 bg-rose-50 border-rose-200';
+      } else if (lower.includes('tarjeta') || lower.includes('card') || lower.includes('datafono') || lower.includes('bold')) {
+        icon = CreditCard;
+        color = 'text-blue-700 bg-blue-50 border-blue-200';
+      } else if (lower.includes('bancolombia')) {
+        icon = CreditCard;
+        color = 'text-amber-800 bg-amber-50 border-amber-200';
+      }
+      return { icon, color };
+    };
+
+    const financeAccounts = activeBrand?.config?.financials?.accounts || [];
+    if (financeAccounts.length > 0) {
+      return financeAccounts.map(acc => {
+        const { icon, color } = mapStyle(acc.name, acc.type);
+        return {
+          id: acc.name,
+          label: acc.name,
+          icon,
+          color
+        };
+      });
+    }
+
     if (brandMethods && brandMethods.length > 0) {
       return brandMethods
         .filter(m => m.is_active !== false)
         .map(m => {
-          const lower = (m.name || '').toLowerCase();
-          let icon = Wallet;
-          let color = 'text-emerald-700 bg-emerald-50 border-emerald-200';
-          if (lower.includes('nequi') || lower.includes('bre-b') || lower.includes('breb')) {
-            icon = Smartphone;
-            color = 'text-purple-700 bg-purple-50 border-purple-200';
-          } else if (lower.includes('daviplata')) {
-            icon = Smartphone;
-            color = 'text-rose-700 bg-rose-50 border-rose-200';
-          } else if (lower.includes('tarjeta') || lower.includes('card') || lower.includes('datafono') || lower.includes('bold')) {
-            icon = CreditCard;
-            color = 'text-blue-700 bg-blue-50 border-blue-200';
-          } else if (lower.includes('bancolombia')) {
-            icon = CreditCard;
-            color = 'text-amber-800 bg-amber-50 border-amber-200';
-          }
+          const { icon, color } = mapStyle(m.name, m.type);
           return {
-            id: m.id || m.type || 'efectivo',
+            id: m.name || m.type || 'efectivo',
             label: m.name,
             icon,
             color
@@ -123,7 +143,7 @@ export default function CustomerProfileModal({
       { id: 'efectivo', label: 'Efectivo (Gaveta física)', icon: Wallet, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
       { id: 'nequi', label: 'Nequi / Bre-B', icon: Smartphone, color: 'text-purple-700 bg-purple-50 border-purple-200' }
     ];
-  }, [brandMethods]);
+  }, [brandMethods, activeBrand]);
 
   const [settlingOrder, setSettlingOrder] = useState(null); // specific order object or 'all'
   const [settleMode, setSettleMode] = useState('historical'); // 'historical' | 'today'
