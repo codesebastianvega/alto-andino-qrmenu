@@ -53,7 +53,74 @@ export const useAdminProducts = () => {
       if (error) throw error;
 
       // If a product exists in the brand, it's visible in the admin list.
-      const fetchedProducts = data || [];
+      let fetchedProducts = [...(data || [])];
+
+      // Auto-provisioning y sincronización de Bentos para BOKU BENTO
+      if (activeBrandId === 'a63da806-a62a-49b9-a833-07e0976785ad') {
+        const hasMedit = fetchedProducts.some(p => p.id === 'b0000b18-0000-4000-a000-000000000018' || /mediterr[aá]neo/i.test(p.name));
+        if (!hasMedit) {
+          const newBentoObj = {
+            id: 'b0000b18-0000-4000-a000-000000000018',
+            brand_id: activeBrandId,
+            name: 'Bento Mediterráneo (Fresco y Balanceado)',
+            description: 'Arroz blanco con perejil, hummus casero cremoso de garbanzo con aceite y páprika, champiñones al ajillo, pepino fresco, tomates cherry y rábano crocante. 👉 Proteína a elección (al limón): Filete de merluza dorada o pechuga de pollo al wok. 🥣 Combo completo: Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
+            price: 19000,
+            cost: 7500,
+            margin: 60.53,
+            category_id: 'b0000c01-0000-4000-a000-000000000001',
+            image_url: '/bento-mediterraneo.jpg',
+            is_active: true,
+            stock_status: 'in',
+            requires_kitchen: true,
+            station: 'kitchen',
+            subcategory: 'Bentos Caseros',
+            category: { name: 'BOKU Bentos Caseros', slug: 'boku-bentos' },
+            location_product_status: [],
+            location_product_prices: []
+          };
+          fetchedProducts.unshift(newBentoObj);
+
+          // Inserción en base de datos con las credenciales autenticadas del administrador
+          supabase.from('products').upsert([{
+            id: newBentoObj.id,
+            brand_id: activeBrandId,
+            name: newBentoObj.name,
+            description: newBentoObj.description,
+            price: newBentoObj.price,
+            cost: newBentoObj.cost,
+            margin: newBentoObj.margin,
+            category_id: newBentoObj.category_id,
+            image_url: newBentoObj.image_url,
+            is_active: true,
+            stock_status: 'in',
+            requires_kitchen: true,
+            station: 'kitchen',
+            subcategory: 'Bentos Caseros',
+            modifier_groups: ['b0000b20-0000-4000-a000-000000000002', 'b0000b20-0000-4000-a000-000000000001']
+          }], { onConflict: 'id' }).then(({ error: upErr }) => {
+            if (upErr) console.warn('Bento Mediterraneo DB auto-insert notice:', upErr.message);
+          });
+        }
+
+        // Sincronizar Bento Criollo con su nuevo nombre y subcategoría
+        const criolloIndex = fetchedProducts.findIndex(p => p.id === 'b0000b11-0000-4000-a000-000000000001' || /criollo/i.test(p.name));
+        if (criolloIndex >= 0) {
+          const criolloProd = fetchedProducts[criolloIndex];
+          if (criolloProd.name.includes('Mini Paisa Bowl') || criolloProd.subcategory !== 'Bentos Caseros') {
+            fetchedProducts[criolloIndex] = {
+              ...criolloProd,
+              name: 'Bento Criollo Antioqueño (La Paisa)',
+              subcategory: 'Bentos Caseros'
+            };
+            supabase.from('products').update({
+              name: 'Bento Criollo Antioqueño (La Paisa)',
+              description: 'La bandeja paisa de siempre, pero en el bowl de la casa: arroz blanco, fríjoles a elección (rojos o negros), carne a elección (molida, cerdo o pollo al wok), chorizo y morcilla, huevo frito, aguacate y maduritos melosos. 🥣 Combo completo: Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
+              subcategory: 'Bentos Caseros'
+            }).eq('id', criolloProd.id).then(() => {});
+          }
+        }
+      }
+
       setProducts(fetchedProducts);
     } catch (err) {
       if (signal?.aborted || err?.name === 'AbortError') return;

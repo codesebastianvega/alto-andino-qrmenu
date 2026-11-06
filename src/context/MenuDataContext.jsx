@@ -941,13 +941,29 @@ export const MenuDataProvider = ({ children }) => {
         ]
       };
 
-      // Ensamblar la sección superior de Bentos de Hoy: Bento Mediterráneo, Bento Criollo, Bento Mestizo y Mazorcada de la Casa
-      grouped['boku-bentos'] = [
+      // Ensamblar la sección superior de Bentos de Hoy respetando fielmente el estado de la administración
+      const candidateBentos = [
         bentoMediterraneo,
         bentoCriollo,
         bentoHeroToday,
         mazorcadaToday
       ];
+
+      const visibleBentos = candidateBentos.filter(b => {
+        const raw = (rawProducts || []).find(p => p.id === b.id);
+        // Si existe en base de datos, respetar fielmente su estado de Activo / Oculto y Stock
+        if (raw) {
+          if (raw.is_active === false) return false;
+          if (raw.stock_status === 'out') return false;
+          const locActive = statusMap.get(b.id);
+          if (locActive === false) return false;
+          const locStock = stockStatusMap.get(b.id);
+          if (locStock === 'out') return false;
+        }
+        return b.is_active !== false && b.stock_status !== 'out';
+      });
+
+      grouped['boku-bentos'] = visibleBentos.length > 0 ? visibleBentos : [bentoMediterraneo];
 
       // Asegurar que en Pastas & Ramen esté Pasta Alfredo con su foto real y receta
       if (!grouped['boku-pastas-ramen']) grouped['boku-pastas-ramen'] = [];

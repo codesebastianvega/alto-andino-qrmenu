@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'aluna-shell-v9';
+const CACHE_VERSION = 'aluna-shell-v10';
 const SHELL_ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/favicon.png'];
 
 self.addEventListener('install', (event) => {
