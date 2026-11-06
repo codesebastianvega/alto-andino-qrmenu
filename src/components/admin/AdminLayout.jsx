@@ -21,6 +21,7 @@ import AdminKitchen from '../../pages/AdminKitchen';
 import AdminBar from '../../pages/AdminBar';
 import AdminDashboard from '../../pages/AdminDashboard';
 import AdminAnalytics from '../../pages/AdminAnalytics';
+import AdminFinance from '../../pages/AdminFinance';
 import AdminPromotions from '../../pages/AdminPromotions';
 import AdminWaiter from '../../pages/AdminWaiter';
 import AdminStaff from '../../pages/AdminStaff';
@@ -185,6 +186,13 @@ const Icons = {
       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/>
     </svg>
   ),
+  Finance: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <line x1="2" y1="10" x2="22" y2="10" />
+      <path d="M6 15h2M10 15h4" />
+    </svg>
+  ),
   Cash: () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="18" cy="6" r="3" fill="currentColor" opacity="0.3"/>
@@ -210,6 +218,7 @@ const ADMIN_ROLES = ['admin', 'owner', 'superadmin', 'encargado'];
 
 const ESTRATEGIA_ITEMS = [
   { id: 'analytics', label: 'Inteligencia', Icon: Icons.Strategy, roles: ADMIN_ROLES, feature: 'advanced_analytics' },
+  { id: 'finance', label: 'Finanzas & Contabilidad', Icon: Icons.Finance, roles: ADMIN_ROLES },
   { id: 'live_menu', label: 'Carta & Opciones', Icon: Icons.LiveMenu, roles: ADMIN_ROLES },
   { id: 'promotions', label: 'Campañas & Descuentos', Icon: Icons.Promotions, roles: ADMIN_ROLES }
 ];
@@ -757,6 +766,33 @@ export default function AdminLayout() {
                     )}
                   </div>
                 </motion.button>
+
+                
+                {/* Finanzas & Contabilidad Card (Nuevo Módulo Add-On) */}
+                <button 
+                  onClick={() => handleSelectPage('finance', 'Finanzas & Contabilidad')}
+                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-10' : 'h-11'} rounded-xl border border-white/5 flex items-center ${
+                    currentPage === 'finance' 
+                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 shadow-md shadow-emerald-950/20' 
+                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10 text-white/60 hover:text-white'
+                  }`}
+                >
+                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${currentPage === 'finance' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
+                      <Icons.Finance />
+                    </div>
+                    {!isCollapsed && (
+                      <div className="text-left flex-1 flex items-center justify-between">
+                        <p className={`text-[12px] font-bold leading-none ${currentPage === 'finance' ? 'text-white' : 'text-white/60'}`}>
+                          Finanzas
+                        </p>
+                        <span className="text-[9px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          PRO
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </button>
 
                 {/* Carta & Opciones Card (Operación en Vivo / Disponibilidad Rápida) */}
                 <button 
@@ -1315,6 +1351,7 @@ export default function AdminLayout() {
           { currentPage === 'sedes'       && <AdminSedes /> }
           { currentPage === 'dashboard'   && <AdminDashboard /> }
           { currentPage === 'analytics'   && <AdminAnalytics /> }
+            { currentPage === 'finance'     && <AdminFinance /> }
           { currentPage === 'promotions'  && <AdminPromotions /> }
           { currentPage === 'waiter'      && <AdminWaiter /> }
           { currentPage === 'operations'  && <AdminOperations /> }
