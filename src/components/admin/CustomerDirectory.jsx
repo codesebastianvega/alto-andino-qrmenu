@@ -81,6 +81,7 @@ const SEGMENT_CONFIG = {
 export default function CustomerDirectory() {
   const { 
     customers, 
+    archivedCustomers = [],
     stats, 
     loading, 
     refresh,
@@ -92,11 +93,15 @@ export default function CustomerDirectory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSegment, setFilterSegment] = useState('all');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [viewMode, setViewMode] = useState('active'); // 'active' | 'archived'
+  const [openStageMenuKey, setOpenStageMenuKey] = useState(null);
 
   const brandName = activeBrand?.name || 'Boku Bento';
 
+  const sourceList = viewMode === 'archived' ? archivedCustomers : customers;
+
   const filteredCustomers = useMemo(() => {
-    return customers.filter(c => {
+    return sourceList.filter(c => {
       const term = searchTerm.toLowerCase();
       const matchesSearch = 
         (c.name?.toLowerCase() || '').includes(term) || 
@@ -106,7 +111,7 @@ export default function CustomerDirectory() {
       
       let matchesFilter = true;
       if (filterSegment === 'friccion') {
-        matchesFilter = c.segment === 'friccion' || c.hasCancelled;
+        matchesFilter = c.segment === 'friccion';
       } else if (filterSegment === 'whales' || filterSegment === 'vip') {
         matchesFilter = c.isWhale || c.segment === 'vip';
       } else if (filterSegment === 'frecuente') {
@@ -119,14 +124,13 @@ export default function CustomerDirectory() {
       
       return matchesSearch && matchesFilter;
     }).sort((a, b) => {
-      // Prioritize customers with cancelled orders / friction if viewing all or friction
       if (filterSegment === 'all' || filterSegment === 'friccion') {
         if (a.hasCancelled && !b.hasCancelled) return -1;
         if (!a.hasCancelled && b.hasCancelled) return 1;
       }
       return new Date(b.lastVisit) - new Date(a.lastVisit);
     });
-  }, [customers, searchTerm, filterSegment]);
+  }, [sourceList, searchTerm, filterSegment]);
 
   const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { 
     style: 'currency', 
@@ -377,6 +381,24 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
             <Users className="w-3.5 h-3.5" />
             Prospectos
           </button>
+
+          {archivedCustomers.length > 0 && (
+            <button 
+              type="button"
+              onClick={() => {
+                setViewMode(viewMode === 'archived' ? 'active' : 'archived');
+                setFilterSegment('all');
+              }}
+              className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                viewMode === 'archived' 
+                  ? 'bg-rose-900 text-white shadow-xs' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{viewMode === 'archived' ? '← Volver a Clientes Activos' : `Archivados / Pruebas (${archivedCustomers.length})`}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -398,7 +420,7 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
             <tbody className="divide-y divide-gray-100">
               {filteredCustomers.map((customer) => {
                 const seg = SEGMENT_CONFIG[customer.segment] || SEGMENT_CONFIG.ocasional;
-                const isFriction = customer.segment === 'friccion' || customer.hasCancelled;
+                const isFriction = customer.segment === 'friccion';
                 
                 return (
                   <tr 
@@ -490,25 +512,67 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
                       </div>
                     </td>
 
-                    {/* Estado & Salud */}
+                    {/* Estado & Salud (con selector interactivo directo en tabla) */}
                     <td className="px-5 py-4">
-                      <div className="flex flex-col items-start gap-1">
-                        {isFriction ? (
-                          <>
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 border border-rose-300 animate-pulse">
-                              <AlertTriangle className="w-3 h-3" /> Pedido Cancelado
-                            </span>
-                            {customer.lastCancellationReason && (
-                              <span className="text-[10px] text-rose-700 font-medium italic truncate max-w-[180px]" title={`Motivo: ${customer.lastCancellationReason}`}>
-                                "{customer.lastCancellationReason}"
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black border ${seg.badgeBg}`}>
-                            <seg.icon className="w-3 h-3" />
-                            {seg.label}
+                      <div className="flex flex-col items-start gap-1 relative" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => setOpenStageMenuKey(openStageMenuKey === customer.key ? null : customer.key)}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black border transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 ${
+                            isFriction ? 'bg-rose-100 text-rose-800 border-rose-300' : seg.badgeBg
+                          }`}
+                          title="Clic para cambiar estado en el CRM"
+                        >
+                          {isFriction ? <AlertTriangle className="w-3 h-3 text-rose-600" /> : <seg.icon className="w-3 h-3" />}
+                          <span>{isFriction ? 'Cancelado' : seg.label}</span>
+                          <ChevronRight className={`w-3 h-3 transition-transform ${openStageMenuKey === customer.key ? 'rotate-90' : ''}`} />
+                        </button>
+
+                        {customer.lastCancellationReason && isFriction && (
+                          <span className="text-[10px] text-rose-700 font-medium italic truncate max-w-[180px]" title={`Motivo: ${customer.lastCancellationReason}`}>
+                            "{customer.lastCancellationReason}"
                           </span>
+                        )}
+
+                        {openStageMenuKey === customer.key && (
+                          <div className="absolute left-0 top-full mt-1.5 w-48 bg-white rounded-2xl border border-gray-200 shadow-xl p-1.5 z-50 space-y-0.5">
+                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-wider px-2 py-1">Cambiar Estado:</p>
+                            {Object.entries(SEGMENT_CONFIG).map(([stgKey, cfg]) => {
+                              const IconComponent = cfg.icon;
+                              return (
+                                <button
+                                  key={stgKey}
+                                  type="button"
+                                  onClick={() => {
+                                    updateCustomerStage(customer.key, stgKey);
+                                    setOpenStageMenuKey(null);
+                                  }}
+                                  className={`w-full px-2 py-1.5 rounded-xl text-xs font-bold flex items-center justify-between text-left transition-colors cursor-pointer ${
+                                    stgKey === customer.segment ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50 text-gray-700'
+                                  }`}
+                                >
+                                  <span className="flex items-center gap-1.5">
+                                    <IconComponent className="w-3 h-3" />
+                                    <span>{cfg.label}</span>
+                                  </span>
+                                  {stgKey === customer.segment && <Check className="w-3 h-3 text-emerald-600" />}
+                                </button>
+                              );
+                            })}
+                            <div className="pt-1 border-t border-gray-100">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  toggleArchiveCustomer(customer.key);
+                                  setOpenStageMenuKey(null);
+                                }}
+                                className="w-full px-2 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 text-rose-600 hover:bg-rose-50 text-left transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                <span>{customer.isArchived ? 'Restaurar al CRM' : 'Descartar / Archivar'}</span>
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
                     </td>
@@ -543,31 +607,51 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
                     {/* Acción Rápida (WhatsApp / Recuperar) */}
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        {isFriction ? (
-                          <button 
-                            onClick={(e) => sendDirectWhatsApp(customer, e)}
-                            className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black flex items-center gap-1.5 shadow-xs transition-all hover:scale-105"
-                            title="Enviar disculpa y cupón de compensación por WhatsApp"
+                        {viewMode === 'archived' ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleArchiveCustomer(customer.key)}
+                            className="px-3 py-1.5 rounded-xl bg-gray-900 text-white text-xs font-bold hover:bg-gray-800 transition-all cursor-pointer"
                           >
-                            <MessageSquare className="w-3.5 h-3.5" />
-                            Recuperar
+                            Restaurar
                           </button>
                         ) : (
-                          <button 
-                            onClick={(e) => sendDirectWhatsApp(customer, e)}
-                            className="p-2 rounded-xl bg-gray-100 hover:bg-emerald-50 text-gray-600 hover:text-emerald-700 border border-gray-200 transition-all"
-                            title="Escribir por WhatsApp"
-                          >
-                            <MessageSquare className="w-4 h-4" />
-                          </button>
+                          <>
+                            {isFriction ? (
+                              <button 
+                                onClick={(e) => sendDirectWhatsApp(customer, e)}
+                                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black flex items-center gap-1.5 shadow-xs transition-all hover:scale-105"
+                                title="Enviar disculpa y cupón de compensación por WhatsApp"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                Recuperar
+                              </button>
+                            ) : (
+                              <button 
+                                onClick={(e) => sendDirectWhatsApp(customer, e)}
+                                className="p-2 rounded-xl bg-gray-100 hover:bg-emerald-50 text-gray-600 hover:text-emerald-700 border border-gray-200 transition-all"
+                                title="Escribir por WhatsApp"
+                              >
+                                <MessageSquare className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button 
+                              type="button"
+                              onClick={() => toggleArchiveCustomer(customer.key)}
+                              className="p-2 rounded-xl bg-gray-50 hover:bg-rose-50 text-gray-400 hover:text-rose-600 transition-all"
+                              title="Descartar / Archivar cliente de prueba"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => setSelectedCustomer(customer)}
+                              className="p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-all"
+                              title="Ver detalle del cliente"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
-                        <button 
-                          onClick={() => setSelectedCustomer(customer)}
-                          className="p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-all"
-                          title="Ver detalle del cliente"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -596,8 +680,8 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
         onClose={() => setSelectedCustomer(null)}
         brandName={brandName}
         onNavigateToPromotions={navigateToPromotions}
-        onSettleOrder={async (orderId, method) => {
-          await settleCustomerOrder(orderId, method);
+        onSettleOrder={async (orderId, method, options = {}) => {
+          await settleCustomerOrder(orderId, method, options);
           await refresh();
           // Also update selectedCustomer in state so modal refreshes immediately
           setSelectedCustomer(prev => {
@@ -608,7 +692,7 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
               ...prev,
               pendingOrders: updatedPending,
               totalOwed: Math.max(0, (prev.totalOwed || 0) - Number(settledAmt)),
-              orderHistory: (prev.orderHistory || []).map(o => o.id === orderId ? { ...o, payment_status: 'paid', payment_method: method } : o)
+              orderHistory: (prev.orderHistory || []).map(o => o.id === orderId ? { ...o, payment_status: 'paid', payment_method: options.isHistorical ? `${method} (Ajuste Histórico)` : method } : o)
             };
           });
         }}

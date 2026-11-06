@@ -5,6 +5,7 @@ import { parseCustomerInfo } from '../../hooks/useCRM';
 import { printThermalDocument, printThermalCustomerAccountStatement } from '@/utils/thermalPrint';
 import { resolveOrderItemName } from '@/utils/formatters';
 import { toast } from '../Toast';
+import { usePaymentMethods } from '../../hooks/usePaymentMethods';
 
 function getMethodStyle(name = '', type = '') {
   const key = (name + type).toLowerCase();
@@ -184,6 +185,18 @@ export default function ShiftCashSummary({
     totalFiados        = 0,
   } = metrics;
 
+  // Cargar medios de pago configurados en base de datos para no mostrar medios inexistentes (como Bancolombia)
+  const { paymentMethods: brandMethods = [] } = usePaymentMethods(business?.id);
+
+  const hasBrandMethod = (needle) => {
+    const term = needle.toLowerCase();
+    return brandMethods.some(m => m.is_active !== false && ((m.name || '').toLowerCase().includes(term) || (m.type || '').toLowerCase().includes(term)));
+  };
+
+  const showBancolombia = hasBrandMethod('bancolombia') || orders.some(o => (o.payment_method || '').toLowerCase().includes('bancolombia'));
+  const showDaviplata = hasBrandMethod('daviplata') || orders.some(o => (o.payment_method || '').toLowerCase().includes('daviplata'));
+  const showDatafono = hasBrandMethod('datafono') || hasBrandMethod('bold') || hasBrandMethod('card') || hasBrandMethod('tarjeta') || orders.some(o => (o.payment_method || '').toLowerCase().includes('datafono') || (o.payment_method || '').toLowerCase().includes('bold'));
+
   // Estados de Modales
   const [isDigitalModalOpen, setIsDigitalModalOpen] = useState(false);
   const [settlingOrder, setSettlingOrder] = useState(null);
@@ -194,10 +207,10 @@ export default function ShiftCashSummary({
   const [applyDiscount, setApplyDiscount] = useState(false);
   const [discountAmount, setDiscountAmount] = useState('');
   const [discountReason, setDiscountReason] = useState('cortesia');
-  const [selectedPocket, setSelectedPocket] = useState('efectivo'); // 'efectivo' | 'nequi' | 'daviplata' | 'bancolombia' | 'datafono'
+  const [selectedPocket, setSelectedPocket] = useState('efectivo'); // 'efectivo' | 'nequi' | 'daviplata' | 'datafono'
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ─── Desglose de Bolsillos Digitales ──────────────────────────────────────
+  // ─── Desglose Dinámico de Bolsillos Digitales ─────────────────────────────
   const digitalPockets = useMemo(() => {
     const pockets = {
       nequi: {
@@ -208,8 +221,11 @@ export default function ShiftCashSummary({
         badgeClass: 'bg-purple-100 text-purple-700 border-purple-200',
         total: 0,
         orders: []
-      },
-      daviplata: {
+      }
+    };
+
+    if (showDaviplata) {
+      pockets.daviplata = {
         id: 'daviplata',
         name: 'Daviplata',
         icon: 'solar:smartphone-transfer-bold',
@@ -217,8 +233,11 @@ export default function ShiftCashSummary({
         badgeClass: 'bg-rose-100 text-rose-700 border-rose-200',
         total: 0,
         orders: []
-      },
-      bancolombia: {
+      };
+    }
+
+    if (showBancolombia) {
+      pockets.bancolombia = {
         id: 'bancolombia',
         name: 'Bancolombia QR / Transf.',
         icon: 'solar:card-bold',
@@ -226,8 +245,11 @@ export default function ShiftCashSummary({
         badgeClass: 'bg-amber-100 text-amber-800 border-amber-200',
         total: 0,
         orders: []
-      },
-      datafono: {
+      };
+    }
+
+    if (showDatafono) {
+      pockets.datafono = {
         id: 'datafono',
         name: 'Datáfono / Bold',
         icon: 'solar:card-bold',
@@ -235,8 +257,8 @@ export default function ShiftCashSummary({
         badgeClass: 'bg-blue-100 text-blue-700 border-blue-200',
         total: 0,
         orders: []
-      }
-    };
+      };
+    }
 
     orders.forEach(order => {
       if (order.status === 'cancelled') return;
@@ -1107,44 +1129,50 @@ export default function ShiftCashSummary({
                     <span>Nequi / Bre-B</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPocket('daviplata')}
-                    className={`p-2.5 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-                      selectedPocket === 'daviplata'
-                        ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <Icon icon="solar:smartphone-bold" className="text-base" />
-                    <span>Daviplata</span>
-                  </button>
+                  {showDaviplata && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPocket('daviplata')}
+                      className={`p-2.5 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                        selectedPocket === 'daviplata'
+                          ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Icon icon="solar:smartphone-bold" className="text-base" />
+                      <span>Daviplata</span>
+                    </button>
+                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPocket('bancolombia')}
-                    className={`p-2.5 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-                      selectedPocket === 'bancolombia'
-                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <Icon icon="solar:card-bold" className="text-base" />
-                    <span>Bancolombia QR</span>
-                  </button>
+                  {showBancolombia && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPocket('bancolombia')}
+                      className={`p-2.5 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                        selectedPocket === 'bancolombia'
+                          ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Icon icon="solar:card-bold" className="text-base" />
+                      <span>Bancolombia QR</span>
+                    </button>
+                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPocket('datafono')}
-                    className={`p-2.5 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-                      selectedPocket === 'datafono'
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <Icon icon="solar:card-bold" className="text-base" />
-                    <span>Datáfono / Bold</span>
-                  </button>
+                  {showDatafono && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPocket('datafono')}
+                      className={`p-2.5 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                        selectedPocket === 'datafono'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Icon icon="solar:card-bold" className="text-base" />
+                      <span>Datáfono / Bold</span>
+                    </button>
+                  )}
                 </div>
               </div>
 

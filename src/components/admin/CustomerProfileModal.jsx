@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   X, Phone, ShoppingBag, Calendar, DollarSign, 
   TrendingUp, Star, MessageSquare, ExternalLink,
@@ -6,6 +6,7 @@ import {
   AlertTriangle, Tag, CheckCircle2, Trash2, Check, CreditCard, Wallet, Banknote, HandCoins, Smartphone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePaymentMethods } from '../../hooks/usePaymentMethods';
 
 const SEGMENT_CONFIG = {
   friccion: { 
@@ -74,14 +75,6 @@ const SEGMENT_CONFIG = {
   },
 };
 
-const PAYMENT_METHODS = [
-  { id: 'efectivo', label: 'Efectivo (Gaveta física)', icon: Wallet, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
-  { id: 'nequi', label: 'Nequi / Bre-B', icon: Smartphone, color: 'text-purple-700 bg-purple-50 border-purple-200' },
-  { id: 'daviplata', label: 'Daviplata', icon: Smartphone, color: 'text-rose-700 bg-rose-50 border-rose-200' },
-  { id: 'bancolombia', label: 'Bancolombia QR / Transferencia', icon: CreditCard, color: 'text-amber-800 bg-amber-50 border-amber-200' },
-  { id: 'datafono', label: 'Datáfono / Bold', icon: CreditCard, color: 'text-blue-700 bg-blue-50 border-blue-200' },
-];
-
 export default function CustomerProfileModal({ 
   customer, 
   isOpen, 
@@ -94,14 +87,53 @@ export default function CustomerProfileModal({
 }) {
   if (!customer) return null;
 
+  const { paymentMethods: brandMethods } = usePaymentMethods();
+
+  const availablePaymentMethods = useMemo(() => {
+    if (brandMethods && brandMethods.length > 0) {
+      return brandMethods
+        .filter(m => m.is_active !== false)
+        .map(m => {
+          const lower = (m.name || '').toLowerCase();
+          let icon = Wallet;
+          let color = 'text-emerald-700 bg-emerald-50 border-emerald-200';
+          if (lower.includes('nequi') || lower.includes('bre-b') || lower.includes('breb')) {
+            icon = Smartphone;
+            color = 'text-purple-700 bg-purple-50 border-purple-200';
+          } else if (lower.includes('daviplata')) {
+            icon = Smartphone;
+            color = 'text-rose-700 bg-rose-50 border-rose-200';
+          } else if (lower.includes('tarjeta') || lower.includes('card') || lower.includes('datafono') || lower.includes('bold')) {
+            icon = CreditCard;
+            color = 'text-blue-700 bg-blue-50 border-blue-200';
+          } else if (lower.includes('bancolombia')) {
+            icon = CreditCard;
+            color = 'text-amber-800 bg-amber-50 border-amber-200';
+          }
+          return {
+            id: m.id || m.type || 'efectivo',
+            label: m.name,
+            icon,
+            color
+          };
+        });
+    }
+    // Canales reales por defecto para Boku Bento (SIN Bancolombia)
+    return [
+      { id: 'efectivo', label: 'Efectivo (Gaveta física)', icon: Wallet, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+      { id: 'nequi', label: 'Nequi / Bre-B', icon: Smartphone, color: 'text-purple-700 bg-purple-50 border-purple-200' }
+    ];
+  }, [brandMethods]);
+
   const [settlingOrder, setSettlingOrder] = useState(null); // specific order object or 'all'
+  const [settleMode, setSettleMode] = useState('historical'); // 'historical' | 'today'
   const [selectedPayMethod, setSelectedPayMethod] = useState('efectivo');
   const [isSubmittingSettle, setIsSubmittingSettle] = useState(false);
   const [showStageSelector, setShowStageSelector] = useState(false);
 
   const currentSegment = customer.segment || 'ocasional';
   const seg = SEGMENT_CONFIG[currentSegment] || SEGMENT_CONFIG.ocasional;
-  const isFriction = currentSegment === 'friccion' || customer.hasCancelled;
+  const isFriction = currentSegment === 'friccion';
   const totalOwed = Number(customer.totalOwed || 0);
   
   const formatCurrency = (val) => new Intl.NumberFormat('es-CO', { 
@@ -165,14 +197,18 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
       ? ` de tu pedido #${specificOrder.id?.slice(-4).toUpperCase()}` 
       : (customer.pendingOrders?.length > 1 ? ` de ${customer.pendingOrders.length} pedidos pendientes` : '');
 
+    const digitalChannels = availablePaymentMethods
+      .filter(m => !m.label.toLowerCase().includes('efectivo'))
+      .map(m => `• ${m.label}`)
+      .join('\n');
+
+    const paymentText = digitalChannels 
+      ? `\n\nPuedes cancelar tu saldo en efectivo o transferirnos por:\n${digitalChannels}`
+      : '\n\nPuedes cancelar tu saldo en efectivo o transferencia Nequi.';
+
     const message = `Hola ${firstName}! 👋 Te saludamos con mucho cariño del equipo de ${brandName}.
 
-Te recordamos cordialmente tu saldo pendiente de ${amountStr}${orderInfo}. 
-
-Puedes cancelar tu saldo en efectivo en tu próxima visita o transferirnos por:
-🟣 Nequi / Bre-B
-🔴 Daviplata
-🟡 Bancolombia
+Te recordamos cordialmente tu saldo pendiente de ${amountStr}${orderInfo}.${paymentText}
 
 ¡Muchísimas gracias por tu confianza y apoyo de siempre! 🍱🤝`;
 
@@ -187,10 +223,10 @@ Puedes cancelar tu saldo en efectivo en tu próxima visita o transferirnos por:
       if (settlingOrder === 'all') {
         const ordersToSettle = customer.pendingOrders || [];
         for (const ord of ordersToSettle) {
-          await onSettleOrder(ord.id, selectedPayMethod);
+          await onSettleOrder(ord.id, selectedPayMethod, { isHistorical: settleMode === 'historical' });
         }
       } else if (settlingOrder?.id) {
-        await onSettleOrder(settlingOrder.id, selectedPayMethod);
+        await onSettleOrder(settlingOrder.id, selectedPayMethod, { isHistorical: settleMode === 'historical' });
       }
       setSettlingOrder(null);
     } catch (err) {
@@ -677,12 +713,54 @@ Puedes cancelar tu saldo en efectivo en tu próxima visita o transferirnos por:
                     </button>
                   </div>
 
+                  {/* Selector de Modo: Regularización Histórica vs Cobro Hoy */}
+                  {(() => {
+                    const orderDate = settlingOrder?.created_at ? new Date(settlingOrder.created_at) : null;
+                    const isPast = orderDate && orderDate.toDateString() !== new Date().toDateString();
+
+                    return (
+                      <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-2xl text-xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-amber-950 uppercase tracking-wider text-[10px]">
+                            {isPast ? `📅 Pedido de fecha anterior (${formatDate(orderDate)})` : '⚡ Pedido de Hoy'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setSettleMode('historical')}
+                            className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                              settleMode === 'historical'
+                                ? 'bg-amber-600 text-white border-amber-600 shadow-2xs font-black'
+                                : 'bg-white text-gray-700 border-gray-200 font-bold hover:bg-gray-50'
+                            }`}
+                          >
+                            <span className="text-[11px] block">📜 Ajuste Histórico</span>
+                            <span className="text-[9px] block opacity-90 font-medium">No altera caja hoy</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSettleMode('today')}
+                            className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                              settleMode === 'today'
+                                ? 'bg-emerald-700 text-white border-emerald-700 shadow-2xs font-black'
+                                : 'bg-white text-gray-700 border-gray-200 font-bold hover:bg-gray-50'
+                            }`}
+                          >
+                            <span className="text-[11px] block">💵 Cobrado HOY</span>
+                            <span className="text-[9px] block opacity-90 font-medium">Suma a gaveta de hoy</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-2">
-                      ¿A qué bolsillo entró el dinero?
+                      ¿A qué bolsillo {settleMode === 'historical' ? 'entró en su momento' : 'ingresa hoy'}?
                     </label>
                     <div className="space-y-1.5">
-                      {PAYMENT_METHODS.map(m => {
+                      {availablePaymentMethods.map(m => {
                         const IconC = m.icon;
                         const isSel = selectedPayMethod === m.id;
                         return (

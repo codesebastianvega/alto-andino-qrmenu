@@ -109,6 +109,8 @@ export function useCRM() {
   const [stageOverrides, setStageOverrides] = useState(() => {
     if (!brandId) return {};
     try {
+      const fromBrand = activeBrand?.config?.crm_stages;
+      if (fromBrand && typeof fromBrand === 'object') return fromBrand;
       return JSON.parse(localStorage.getItem(`aa_crm_stages_${brandId}`) || '{}');
     } catch (e) {
       return {};
@@ -118,6 +120,8 @@ export function useCRM() {
   const [archivedKeys, setArchivedKeys] = useState(() => {
     if (!brandId) return [];
     try {
+      const fromBrand = activeBrand?.config?.crm_archived;
+      if (Array.isArray(fromBrand)) return fromBrand;
       return JSON.parse(localStorage.getItem(`aa_crm_archived_${brandId}`) || '[]');
     } catch (e) {
       return [];
@@ -129,6 +133,16 @@ export function useCRM() {
       const next = { ...prev, [customerKey]: newStage };
       if (brandId) {
         localStorage.setItem(`aa_crm_stages_${brandId}`, JSON.stringify(next));
+        // Sincronizar en segundo plano a Supabase brands.config
+        supabase.from('brands').select('config').eq('id', brandId).single().then(({ data }) => {
+          const currentConfig = data?.config || {};
+          supabase.from('brands').update({
+            config: {
+              ...currentConfig,
+              crm_stages: next
+            }
+          }).eq('id', brandId).then(() => {});
+        }).catch(err => console.warn('Sync crm_stages error:', err));
       }
       return next;
     });
@@ -140,22 +154,34 @@ export function useCRM() {
       const next = isArchived ? prev.filter(k => k !== customerKey) : [...prev, customerKey];
       if (brandId) {
         localStorage.setItem(`aa_crm_archived_${brandId}`, JSON.stringify(next));
+        // Sincronizar en segundo plano a Supabase brands.config
+        supabase.from('brands').select('config').eq('id', brandId).single().then(({ data }) => {
+          const currentConfig = data?.config || {};
+          supabase.from('brands').update({
+            config: {
+              ...currentConfig,
+              crm_archived: next
+            }
+          }).eq('id', brandId).then(() => {});
+        }).catch(err => console.warn('Sync crm_archived error:', err));
       }
       return next;
     });
   }, [brandId]);
 
-  const settleCustomerOrder = useCallback(async (orderId, paymentMethod = 'efectivo') => {
+  const settleCustomerOrder = useCallback(async (orderId, paymentMethod = 'efectivo', { isHistorical = false } = {}) => {
     try {
       const order = orders.find(o => o.id === orderId);
-      const cleanNotes = (order?.delivery_notes || '').replace(/\[🤝.*?\]/g, '').trim();
+      const cleanNotes = (order?.delivery_notes || '').replace(/\[\s*🤝?\s*FIADO[^\]]*\]/gi, '').trim();
+      const finalNotes = isHistorical ? `${cleanNotes} [Ajuste Histórico Regularizado]`.trim() : cleanNotes;
+      const finalMethod = isHistorical ? `${paymentMethod} (Ajuste Histórico)` : paymentMethod;
 
       const { error } = await supabase
         .from('orders')
         .update({
           payment_status: 'paid',
-          payment_method: paymentMethod,
-          delivery_notes: cleanNotes || null,
+          payment_method: finalMethod,
+          delivery_notes: finalNotes || null,
           paid_amount: order?.total_amount || 0,
           updated_at: new Date().toISOString()
         })
@@ -277,6 +303,7 @@ export function useCRM() {
       if (!customerMap[phone]) {
         const { cleanName, address } = parseCustomerInfo(lead.name || lead.customer_name);
         customerMap[phone] = {
+          key: phone.replace(/\D/g, ''),
           phone,
           rawName: lead.name || lead.customer_name || 'Prospecto',
           name: cleanName || 'Prospecto',
@@ -419,9 +446,29 @@ export function useCRM() {
       // Top 20% by Monetary with at least 1 order are Whales
       customer.isWhale = customer.ordersCount > 0 && mIndex < Math.max(1, totalCount * 0.2);
 
-      // Apply manual stage overrides if configured
+      // Apply manual stage overrides if configured (la clasificación manual del usuario prevalece sobre cálculos automáticos)
       if (stageOverrides[customer.key]) {
-        customer.segment = stageOverrides[customer.key];
+        const manualStage = stageOverrides[customer.key];
+        customer.segment = manualStage;
+        customer.isManualStage = true;
+
+        const stageLabels = {
+          vip: '💎 VIP',
+          frecuente: '🟢 Frecuente',
+          nuevo: '🌱 Nuevo',
+          dormido: '💤 Inactivo (+21d)',
+          perdido: '❄️ Perdido (+45d)',
+          ocasional: 'Comensal Ocasional',
+          friccion: '🚨 Pedido Cancelado',
+          prospecto: '✨ Prospecto'
+        };
+        customer.healthStatus = manualStage === 'friccion' ? 'friccion' : (manualStage === 'perdido' ? 'riesgo' : (manualStage === 'dormido' ? 'alerta' : 'saludable'));
+        customer.healthLabel = stageLabels[manualStage] || manualStage;
+
+        // Si el usuario decide reclasificarlo fuera de fricción, se respeta su decisión
+        if (manualStage !== 'friccion') {
+          customer.hasCancelled = false;
+        }
       }
       customer.isArchived = archivedKeys.includes(customer.key);
     });
@@ -439,7 +486,7 @@ export function useCRM() {
 
   const stats = useMemo(() => {
     const totalCustomers = activeCustomers.length;
-    const frictionCustomers = activeCustomers.filter(c => c.segment === 'friccion' || c.hasCancelled).length;
+    const frictionCustomers = activeCustomers.filter(c => c.segment === 'friccion').length;
     const activeClients = activeCustomers.filter(c => ['vip', 'frecuente', 'nuevo'].includes(c.segment)).length;
     const dormantCustomers = activeCustomers.filter(c => c.segment === 'dormido').length;
     const lostCustomers = activeCustomers.filter(c => c.segment === 'perdido').length;
