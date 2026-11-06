@@ -4,7 +4,7 @@ import {
   Wallet, DollarSign, TrendingUp, TrendingDown, Users, 
   ArrowUpRight, ArrowDownRight, ArrowRightLeft, Plus, 
   Calendar, Check, Clock, AlertTriangle, ShieldCheck, 
-  Tag, Download, FileText, Smartphone, Banknote, RefreshCw
+  Tag, Download, FileText, Smartphone, Banknote, RefreshCw, Trash2
 } from 'lucide-react';
 import { useFinance, EXPENSE_CATEGORIES } from '../hooks/useFinance';
 import OpeningBalanceModal from '../components/admin/finance/OpeningBalanceModal';
@@ -18,6 +18,9 @@ export default function AdminFinance() {
     saving,
     accounts,
     receivables,
+    activeReceivables,
+    discardedReceivables,
+    allReceivables,
     expenses,
     ledger,
     metrics,
@@ -26,10 +29,13 @@ export default function AdminFinance() {
     recordExpense,
     transferBetweenAccounts,
     settleReceivable,
+    discardReceivable,
+    restoreReceivable,
     createAccount
   } = useFinance();
 
   const [activeTab, setActiveTab] = useState('receivables'); // 'receivables' | 'expenses' | 'pnl' | 'ledger'
+  const [receivableView, setReceivableView] = useState('active'); // 'active' | 'discarded'
   const [showOpeningModal, setShowOpeningModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -43,6 +49,8 @@ export default function AdminFinance() {
       </div>
     );
   }
+
+  const currentReceivablesList = receivableView === 'active' ? activeReceivables : discardedReceivables;
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 pb-24">
@@ -226,7 +234,7 @@ export default function AdminFinance() {
           }`}
         >
           <Users size={15} /> Cuentas por Cobrar (Cartera)
-          <span className="px-2 py-0.2 rounded-full bg-white/20 text-[10px]">{receivables.length}</span>
+          <span className="px-2 py-0.2 rounded-full bg-white/20 text-[10px]">{activeReceivables.length}</span>
         </button>
 
         <button
@@ -268,21 +276,57 @@ export default function AdminFinance() {
       {/* ─── TAB 1: CUENTAS POR COBRAR (CARTERA / FIADOS) ───────────────────── */}
       {activeTab === 'receivables' && (
         <div className="space-y-4">
-          {/* Semáforo de Antigüedad (Aging) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200">
-              <span className="text-[10px] font-black text-emerald-800 uppercase block">🟢 Al Día (0 a 7 días)</span>
-              <span className="text-lg font-black text-emerald-900">$ {metrics.agingBreakdown.current.toLocaleString('es-CO')}</span>
+          {/* Sub-filtro: Cartera Activa vs Pruebas Descartadas */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-gray-200 shadow-xs">
+            <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setReceivableView('active')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
+                  receivableView === 'active'
+                    ? 'bg-white text-gray-900 shadow-xs'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                Cartera Activa ({activeReceivables.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setReceivableView('discarded')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
+                  receivableView === 'discarded'
+                    ? 'bg-white text-gray-900 shadow-xs'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                Pruebas Descartadas ({discardedReceivables.length})
+              </button>
             </div>
-            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200">
-              <span className="text-[10px] font-black text-amber-800 uppercase block">🟡 Advertencia (8 a 14 días)</span>
-              <span className="text-lg font-black text-amber-900">$ {metrics.agingBreakdown.warning.toLocaleString('es-CO')}</span>
-            </div>
-            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200">
-              <span className="text-[10px] font-black text-rose-800 uppercase block">🔴 En Riesgo (+15 días)</span>
-              <span className="text-lg font-black text-rose-900">$ {metrics.agingBreakdown.danger.toLocaleString('es-CO')}</span>
-            </div>
+
+            <span className="text-[11px] text-gray-500">
+              {receivableView === 'active' 
+                ? 'Deudas activas que suman a tu cartera real.' 
+                : 'Pedidos de prueba excluidos de la cartera y de los totales.'}
+            </span>
           </div>
+
+          {/* Semáforo de Antigüedad (Aging - Solo para Cartera Activa) */}
+          {receivableView === 'active' && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200">
+                <span className="text-[10px] font-black text-emerald-800 uppercase block">🟢 Al Día (0 a 7 días)</span>
+                <span className="text-lg font-black text-emerald-900">$ {metrics.agingBreakdown.current.toLocaleString('es-CO')}</span>
+              </div>
+              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200">
+                <span className="text-[10px] font-black text-amber-800 uppercase block">🟡 Advertencia (8 a 14 días)</span>
+                <span className="text-lg font-black text-amber-900">$ {metrics.agingBreakdown.warning.toLocaleString('es-CO')}</span>
+              </div>
+              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200">
+                <span className="text-[10px] font-black text-rose-800 uppercase block">🔴 En Riesgo (+15 días)</span>
+                <span className="text-lg font-black text-rose-900">$ {metrics.agingBreakdown.danger.toLocaleString('es-CO')}</span>
+              </div>
+            </div>
+          )}
 
           {/* Tabla de Cartera */}
           <div className="bg-white rounded-3xl border border-gray-200/80 shadow-xs overflow-hidden">
@@ -299,14 +343,16 @@ export default function AdminFinance() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {receivables.length === 0 ? (
+                  {currentReceivablesList.length === 0 ? (
                     <tr>
                       <td colSpan="6" className="px-5 py-12 text-center text-gray-400 text-xs">
-                        No hay cartera activa. Todos tus clientes están al día 🎉
+                        {receivableView === 'active' 
+                          ? 'No hay cartera activa pendiente 🎉' 
+                          : 'No tienes pedidos de prueba descartados.'}
                       </td>
                     </tr>
                   ) : (
-                    receivables.map(rec => (
+                    currentReceivablesList.map(rec => (
                       <tr key={rec.id} className="hover:bg-gray-50/60 transition-colors">
                         <td className="px-5 py-3.5">
                           <span className="font-bold text-gray-900 text-xs block">{rec.customerName}</span>
@@ -335,12 +381,36 @@ export default function AdminFinance() {
                           </span>
                         </td>
                         <td className="px-5 py-3.5 text-right">
-                          <button
-                            onClick={() => setSelectedReceivable(rec)}
-                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs transition-colors"
-                          >
-                            Cobrar
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            {receivableView === 'active' ? (
+                              <>
+                                <button
+                                  onClick={() => setSelectedReceivable(rec)}
+                                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs transition-colors"
+                                >
+                                  Cobrar
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm(`¿Descartar el pedido de "${rec.customerName}" como prueba?\n\nDejará de sumar a las cuentas por cobrar y no afectará tus métricas de caja.`)) {
+                                      discardReceivable(rec.id);
+                                    }
+                                  }}
+                                  title="Descartar pedido de prueba"
+                                  className="p-1.5 rounded-xl text-gray-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => restoreReceivable(rec.id)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs border border-gray-200 transition-colors"
+                              >
+                                <RefreshCw size={13} /> Restaurar
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))

@@ -22,6 +22,12 @@ export const EXPENSE_CATEGORIES = [
   { id: 'other', label: 'Otros Gastos Menores', icon: 'solar:bill-list-bold', color: 'gray' },
 ];
 
+const DEFAULT_DISCARDED_TEST_IDS = [
+  '022afa44-0294-4396-af36-dfe47e53e409', // Sebas test $37.400
+  '3f3a1096-9b2a-4267-8533-484f1a765584', // Juan Vefa test $24.200
+  '91bd48a0-6baf-467b-8dd3-e170f63e4b11', // Empty test $44.000
+];
+
 export function useFinance() {
   const { activeBrand, profile } = useAuth();
   const { activeLocationId, isAllLocations } = useLocation();
@@ -80,7 +86,14 @@ export function useFinance() {
 
       const existingFin = data?.config?.financials || null;
       if (existingFin) {
-        setFinancialConfig(existingFin);
+        // Ensure discarded_order_ids exists and includes defaults
+        const existingDiscarded = Array.isArray(existingFin.discarded_order_ids)
+          ? existingFin.discarded_order_ids
+          : DEFAULT_DISCARDED_TEST_IDS;
+        setFinancialConfig({
+          ...existingFin,
+          discarded_order_ids: Array.from(new Set([...existingDiscarded, ...DEFAULT_DISCARDED_TEST_IDS]))
+        });
       } else {
         // Fallback or uninitialized state
         const initialTemplate = {
@@ -90,7 +103,8 @@ export function useFinance() {
           expenses: [],
           ledger: [],
           custom_receivables: [],
-          payables: []
+          payables: [],
+          discarded_order_ids: DEFAULT_DISCARDED_TEST_IDS
         };
         setFinancialConfig(initialTemplate);
       }
@@ -150,9 +164,16 @@ export function useFinance() {
     return financialConfig?.accounts || DEFAULT_ACCOUNTS;
   }, [financialConfig]);
 
+  // Set of discarded order IDs
+  const discardedSet = useMemo(() => {
+    const list = financialConfig?.discarded_order_ids || DEFAULT_DISCARDED_TEST_IDS;
+    return new Set(list);
+  }, [financialConfig]);
+
   // 5. Compute Receivables (Fiados) merging orders + initial opening receivables
-  const receivables = useMemo(() => {
-    const list = [];
+  const { activeReceivables, discardedReceivables, allReceivables } = useMemo(() => {
+    const all = [];
+
     // From orders
     (orders || []).forEach(order => {
       if (order.status === 'cancelled') return;
@@ -179,7 +200,9 @@ export function useFinance() {
         if (ageDays > 14) agingCategory = 'danger'; // 15+ days
         else if (ageDays > 7) agingCategory = 'warning'; // 8-14 days
 
-        list.push({
+        const isDiscarded = discardedSet.has(order.id);
+
+        all.push({
           id: order.id,
           orderId: order.id,
           customerName: name,
@@ -192,7 +215,8 @@ export function useFinance() {
           ageDays,
           agingCategory,
           type: 'order_receivable',
-          status: 'pending'
+          status: 'pending',
+          isDiscarded
         });
       }
     });
@@ -201,15 +225,26 @@ export function useFinance() {
     const customRecs = financialConfig?.custom_receivables || [];
     customRecs.forEach(c => {
       if (c.balanceDue > 0) {
-        list.push({
+        const isDiscarded = discardedSet.has(c.id);
+        all.push({
           ...c,
-          type: 'opening_receivable'
+          type: 'opening_receivable',
+          isDiscarded
         });
       }
     });
 
-    return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }, [orders, financialConfig]);
+    all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    return {
+      allReceivables: all,
+      activeReceivables: all.filter(r => !r.isDiscarded),
+      discardedReceivables: all.filter(r => r.isDiscarded)
+    };
+  }, [orders, financialConfig, discardedSet]);
+
+  // Backward compatibility alias: receivables defaults to activeReceivables
+  const receivables = activeReceivables;
 
   // 6. Expenses list
   const expenses = useMemo(() => {
@@ -226,14 +261,14 @@ export function useFinance() {
     // Total cash on hand (sum of all account balances)
     const cashOnHand = accounts.reduce((acc, a) => acc + Number(a.balance || 0), 0);
 
-    // Total receivables (money in the street)
-    const totalReceivables = receivables.reduce((acc, r) => acc + Number(r.balanceDue || 0), 0);
+    // Total receivables (money in the street - ONLY active)
+    const totalReceivables = activeReceivables.reduce((acc, r) => acc + Number(r.balanceDue || 0), 0);
 
-    // Aging breakdown
+    // Aging breakdown (ONLY active)
     const agingBreakdown = {
-      current: receivables.filter(r => r.agingCategory === 'current').reduce((s, r) => s + r.balanceDue, 0),
-      warning: receivables.filter(r => r.agingCategory === 'warning').reduce((s, r) => s + r.balanceDue, 0),
-      danger: receivables.filter(r => r.agingCategory === 'danger').reduce((s, r) => s + r.balanceDue, 0),
+      current: activeReceivables.filter(r => r.agingCategory === 'current').reduce((s, r) => s + r.balanceDue, 0),
+      warning: activeReceivables.filter(r => r.agingCategory === 'warning').reduce((s, r) => s + r.balanceDue, 0),
+      danger: activeReceivables.filter(r => r.agingCategory === 'danger').reduce((s, r) => s + r.balanceDue, 0),
     };
 
     // Total payables (debts to suppliers)
@@ -266,7 +301,8 @@ export function useFinance() {
     return {
       cashOnHand,
       totalReceivables,
-      receivablesCount: receivables.length,
+      receivablesCount: activeReceivables.length,
+      discardedCount: discardedReceivables.length,
       agingBreakdown,
       totalPayables,
       grossSalesMonth,
@@ -275,7 +311,7 @@ export function useFinance() {
       netProfitMonth,
       isInitialized: Boolean(financialConfig?.is_initialized)
     };
-  }, [accounts, receivables, expenses, orders, financialConfig]);
+  }, [accounts, activeReceivables, discardedReceivables, expenses, orders, financialConfig]);
 
   // ─── ACTIONS ───────────────────────────────────────────────────────────────
 
@@ -284,9 +320,9 @@ export function useFinance() {
    */
   const setInitialBalance = useCallback(async ({
     openingDate = new Date().toISOString(),
-    accountsBalances = {}, // { acc_cash_main: 100000, acc_nequi_main: 350000, ... }
-    initialReceivables = [], // [ { customerName, phone, amount, notes } ]
-    initialPayables = [], // [ { supplierName, amount, notes } ]
+    accountsBalances = {},
+    initialReceivables = [],
+    initialPayables = [],
   }) => {
     if (!financialConfig) return;
 
@@ -302,7 +338,6 @@ export function useFinance() {
     const newLedgerEntries = [];
     const timestamp = openingDate || new Date().toISOString();
 
-    // Create opening ledger entry for each funded account
     updatedAccounts.forEach(acc => {
       if (acc.balance > 0) {
         newLedgerEntries.push({
@@ -330,7 +365,8 @@ export function useFinance() {
       createdAt: timestamp,
       ageDays: 30,
       agingCategory: 'warning',
-      status: 'pending'
+      status: 'pending',
+      isDiscarded: false
     }));
 
     const formattedPayables = (initialPayables || []).map((p, idx) => ({
@@ -508,7 +544,7 @@ export function useFinance() {
     isHistorical = false
   }) => {
     if (!financialConfig) return;
-    const targetReceivable = receivables.find(r => r.id === receivableId);
+    const targetReceivable = allReceivables.find(r => r.id === receivableId);
     if (!targetReceivable) {
       toast.error('Fiado / Cartera no encontrado');
       return;
@@ -584,7 +620,73 @@ export function useFinance() {
     await persistConfig(newFinConfig);
     await fetchFinancialOrders();
     toast.success(`Cobro de $${payAmount.toLocaleString('es-CO')} registrado con éxito`);
-  }, [financialConfig, receivables, accounts, persistConfig, fetchFinancialOrders]);
+  }, [financialConfig, allReceivables, accounts, persistConfig, fetchFinancialOrders]);
+
+  /**
+   * Discards a test receivable from active cartera
+   */
+  const discardReceivable = useCallback(async (receivableId) => {
+    if (!receivableId || !financialConfig) return;
+    try {
+      const currentDiscarded = financialConfig.discarded_order_ids || [];
+      const updatedDiscarded = Array.from(new Set([...currentDiscarded, receivableId]));
+
+      // Also attempt to update the order in Supabase
+      supabase
+        .from('orders')
+        .update({
+          status: 'cancelled',
+          cancellation_reason: 'Pedido de prueba descartado',
+          payment_status: 'cancelled',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', receivableId)
+        .then(() => fetchFinancialOrders());
+
+      const newFinConfig = {
+        ...financialConfig,
+        discarded_order_ids: updatedDiscarded
+      };
+
+      await persistConfig(newFinConfig);
+      toast.success('Pedido de prueba descartado de la cartera');
+    } catch (err) {
+      console.error('[useFinance] discardReceivable error:', err);
+      toast.error('Error al descartar prueba: ' + err.message);
+    }
+  }, [financialConfig, persistConfig, fetchFinancialOrders]);
+
+  /**
+   * Restores a previously discarded receivable back to active cartera
+   */
+  const restoreReceivable = useCallback(async (receivableId) => {
+    if (!receivableId || !financialConfig) return;
+    try {
+      const currentDiscarded = financialConfig.discarded_order_ids || [];
+      const updatedDiscarded = currentDiscarded.filter(id => id !== receivableId);
+
+      supabase
+        .from('orders')
+        .update({
+          status: 'delivered',
+          payment_status: 'pending',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', receivableId)
+        .then(() => fetchFinancialOrders());
+
+      const newFinConfig = {
+        ...financialConfig,
+        discarded_order_ids: updatedDiscarded
+      };
+
+      await persistConfig(newFinConfig);
+      toast.success('Pedido restaurado a la cartera activa');
+    } catch (err) {
+      console.error('[useFinance] restoreReceivable error:', err);
+      toast.error('Error al restaurar: ' + err.message);
+    }
+  }, [financialConfig, persistConfig, fetchFinancialOrders]);
 
   /**
    * Adds a new custom financial account/pocket
@@ -635,6 +737,9 @@ export function useFinance() {
     saving,
     accounts,
     receivables,
+    activeReceivables,
+    discardedReceivables,
+    allReceivables,
     expenses,
     ledger,
     metrics,
@@ -643,6 +748,8 @@ export function useFinance() {
     recordExpense,
     transferBetweenAccounts,
     settleReceivable,
+    discardReceivable,
+    restoreReceivable,
     createAccount
   };
 }
