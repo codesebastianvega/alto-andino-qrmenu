@@ -291,42 +291,20 @@ export default function App() {
   }, []);
 
 
-  // ✅ Welcome Experience State — solo 1 vez cada 24h por marca
-  const WELCOME_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 horas
-
-  const [showWelcome, setShowWelcome] = useState(() => {
-    // Check on mount if we should show welcome
-    const key = `aluna_welcome_${brand_slug}`;
-    const lastSeen = localStorage.getItem(key);
-    if (lastSeen && Date.now() - Number(lastSeen) < 24 * 60 * 60 * 1000) {
-      return false; // Seen within last 24h
-    }
-    return false; // Default false, useEffect will decide
-  });
+  // ✅ Welcome Experience State - Entrada directa sin bloqueo
+  const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
+    setShowWelcome(false);
     const isPublicMenu = !isNewAdminPanel && !isOnboardingView && !orderTrackingId && !driverOrderId && !isQr;
-    
-    // Solo mostrar bienvenida si hay una marca activa Y estamos en su ruta específica (brand_slug presente)
     if (isPublicMenu && activeBrand && !loadingBrand && brand_slug) {
-      const key = `aluna_welcome_${activeBrand.slug || brand_slug}`;
-      const lastSeen = localStorage.getItem(key);
-      const seenRecently = lastSeen && (Date.now() - Number(lastSeen) < WELCOME_COOLDOWN_MS);
-      
-      if (!seenRecently) {
-        setShowWelcome(true);
-      } else {
-        setShowWelcome(false);
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('include_me') === 'true' || urlParams.get('test_visitor') === 'true') {
+        try {
+          localStorage.removeItem('aa_is_staff_device');
+          localStorage.removeItem('aa_current_staff');
+        } catch {}
       }
-
-      // --- ANALYTICS TRACKING ---
-          const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('include_me') === 'true' || urlParams.get('test_visitor') === 'true') {
-      try {
-        localStorage.removeItem('aa_is_staff_device');
-        localStorage.removeItem('aa_current_staff');
-      } catch {}
-    }
 
       const searchParams = new URLSearchParams(window.location.search);
       const urlSource = searchParams.get('src') || searchParams.get('source') || searchParams.get('utm_source');
@@ -336,7 +314,6 @@ export default function App() {
         recordCrmRecoveryVisit(activeBrand.id);
       }
 
-      // Clave de sesión: si viene con campaña/fuente específica, rastrear esa campaña por sesión
       const sessionTrackKey = urlSource 
         ? `aluna_visit_${urlSource}_${urlCamp || 'direct'}` 
         : 'aluna_session_menu_visit';
@@ -365,8 +342,6 @@ export default function App() {
           sessionStorage.setItem(`aluna_tracked_qr_${urlMesa}`, 'true');
         }
       }
-    } else {
-      setShowWelcome(false);
     }
   }, [brand_slug, isNewAdminPanel, isOnboardingView, orderTrackingId, driverOrderId, activeBrand, loadingBrand, isQr]);
 

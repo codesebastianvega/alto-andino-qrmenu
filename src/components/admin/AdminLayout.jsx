@@ -1,36 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Beaker, MapPin, Shield, Star, Globe } from 'lucide-react';
+import { useState, useEffect, lazy, Suspense } from 'react';
+import { MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { safeSessionStorage as sessionStorage } from '../../utils/safeStorage';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { useLocations } from '../../context/LocationContext';
-import AdminLiveMenu from '../../pages/AdminLiveMenu';
-import AdminProducts from '../../pages/AdminProducts';
-import AdminCategories from '../../pages/AdminCategories';
-import AdminModifiers from '../../pages/AdminModifiers';
-import AdminExperiences from '../../pages/AdminExperiences';
-import AdminRecipes from '../../pages/AdminRecipes';
-import AdminSettings from '../../pages/AdminSettings';
-import AdminModifierGroups from '../../pages/AdminModifierGroups';
-import AdminTables from '../../pages/AdminTables';
-import AdminDeliveryDrivers from '../../pages/AdminDeliveryDrivers';
-import AdminOrders from '../../pages/AdminOrders';
-import AdminOperations from '../../pages/AdminOperations';
-import AdminKitchen from '../../pages/AdminKitchen';
-import AdminBar from '../../pages/AdminBar';
-import AdminDashboard from '../../pages/AdminDashboard';
-import AdminAnalytics from '../../pages/AdminAnalytics';
-import AdminFinance from '../../pages/AdminFinance';
-import AdminPromotions from '../../pages/AdminPromotions';
-import AdminWaiter from '../../pages/AdminWaiter';
-import AdminStaff from '../../pages/AdminStaff';
-import AdminSedes from '../../pages/AdminSedes';
 import AdminPinLogin from './AdminPinLogin';
-import AdminWebContent from '../../pages/AdminWebContent';
-import AdminMenuPrint from '../../pages/AdminMenuPrint';
-import AdminBusinessProfile from '../../pages/AdminBusinessProfile';
-import AdminProfile from '../../pages/AdminProfile';
 import ContextBreadcrumb from './ContextBreadcrumb';
 import { Badge } from './ui';
 import LockOverlay from './LockOverlay';
@@ -38,243 +13,68 @@ import UpgradeModal from './UpgradeModal';
 import { useMenuData } from '../../context/MenuDataContext';
 import { useBrand } from '../../context/BrandContext';
 import { usePlan } from '../../hooks/usePlan';
-import Toast from '../Toast';
+import Toast, { toast as toastAlert } from '../Toast';
 import AccountSuspendedOverlay from './AccountSuspendedOverlay';
 import AlunaCopilot from './AlunaCopilot';
-import AlunaLab from '../../pages/AlunaLab';
 import StoreStatusControl from './StoreStatusControl';
 import soundService from '../../utils/soundService';
-import { toast as toastAlert } from '../Toast';
 import { useAdminModalBack } from '../../hooks/useAdminModalBack';
+import { ALL_NAV_ITEMS } from './layout/AdminNavConfig';
+import AdminSidebar from './layout/AdminSidebar';
+import AdminMobileNavigation from './layout/AdminMobileNavigation';
 
-// ─── SVG Icon set (no emojis in nav) ─────────────────────────────────────────
-const Icons = {
-  Products: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-      <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-    </svg>
-  ),
-  Categories: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 6h18M3 12h18M3 18h18"/>
-    </svg>
-  ),
-  Modifiers: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-    </svg>
-  ),
-  Recipes: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
-      <rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>
-    </svg>
-  ),
-  Experiences: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-    </svg>
-  ),
-  Branding: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
-      <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
-      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
-    </svg>
-  ),
-  Orders: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
-      <path d="M16 10a4 4 0 0 1-8 0"/>
-    </svg>
-  ),
-  Dashboard: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/>
-    </svg>
-  ),
-  Kitchen: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.5 4 6.5 2 2 3 5.5 3 5.5s.5 2 0 3.5c-.5 1.5-2 3-4.5 3.5s-4.5-.5-5.5-1.5c-1-1-1.5-2.5-1.5-3.5 0-1 0-2 .5-3Z"/>
-    </svg>
-  ),
-  Bar: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8 22h8M12 11v11M19 3l-7 8-7-8h14z" />
-    </svg>
-  ),
-  Settings: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-    </svg>
-  ),
-  Staff: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  ),
-  Allergens: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
-      <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
-    </svg>
-  ),
-  Delivery: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="5.5" cy="17.5" r="3.5"/>
-      <circle cx="18.5" cy="17.5" r="3.5"/>
-      <path d="M15 6h4l3 6v5.5M5 17.5h10M9 6v11.5M12 6H5a2 2 0 0 0-2 2v9.5"/>
-    </svg>
-  ),
-  Tables: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="4" y="3" width="16" height="4" rx="1"/>
-      <path d="M6 7v14M18 7v14M12 7v14M4 14h16"/>
-    </svg>
-  ),
-  Print: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="6 9 6 2 18 2 18 9"/>
-      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-      <rect x="6" y="14" width="12" height="8"/>
-    </svg>
-  ),
-  ChevronLeft: () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="15 18 9 12 15 6"/>
-    </svg>
-  ),
-  ChevronRight: () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="9 18 15 12 9 6"/>
-    </svg>
-  ),
-  Home: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-    </svg>
-  ),
-  Web: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-      <circle cx="12" cy="12" r="10" />
-    </svg>
-  ),
-  Waiter: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 13.8V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-2.2"/><path d="M2 13h4"/><path d="M2 18h4"/><path d="M2 8h4"/><path d="M18 13h4"/><path d="M18 18h4"/><path d="M18 8h4"/>
-    </svg>
-  ),
-  Strategy: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
-    </svg>
-  ),
-  Profile: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-    </svg>
-  ),
-  Business: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/>
-    </svg>
-  ),
-  Finance: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="4" width="20" height="16" rx="2" />
-      <line x1="2" y1="10" x2="22" y2="10" />
-      <path d="M6 15h2M10 15h4" />
-    </svg>
-  ),
-  Cash: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="18" cy="6" r="3" fill="currentColor" opacity="0.3"/>
-    </svg>
-  ),
-  Promotions: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21.5 12 12 21.5 2.5 12l9.5-9.5h9.5v9.5z"/>
-      <circle cx="16.5" cy="7.5" r="1.5" fill="currentColor"/>
-    </svg>
-  ),
-  LiveMenu: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 6h16M4 12h16M4 18h16"/>
-      <circle cx="8" cy="6" r="2" fill="currentColor"/>
-      <circle cx="16" cy="12" r="2" fill="currentColor"/>
-      <circle cx="10" cy="18" r="2" fill="currentColor"/>
-    </svg>
-  ),
-};
+const AdminLiveMenu = lazy(() => import('../../pages/AdminLiveMenu'));
+const AdminProducts = lazy(() => import('../../pages/AdminProducts'));
+const AdminCategories = lazy(() => import('../../pages/AdminCategories'));
+const AdminModifiers = lazy(() => import('../../pages/AdminModifiers'));
+const AdminExperiences = lazy(() => import('../../pages/AdminExperiences'));
+const AdminRecipes = lazy(() => import('../../pages/AdminRecipes'));
+const AdminSettings = lazy(() => import('../../pages/AdminSettings'));
+const AdminModifierGroups = lazy(() => import('../../pages/AdminModifierGroups'));
+const AdminTables = lazy(() => import('../../pages/AdminTables'));
+const AdminDeliveryDrivers = lazy(() => import('../../pages/AdminDeliveryDrivers'));
+const AdminOrders = lazy(() => import('../../pages/AdminOrders'));
+const AdminOperations = lazy(() => import('../../pages/AdminOperations'));
+const AdminKitchen = lazy(() => import('../../pages/AdminKitchen'));
+const AdminBar = lazy(() => import('../../pages/AdminBar'));
+const AdminDashboard = lazy(() => import('../../pages/AdminDashboard'));
+const AdminAnalytics = lazy(() => import('../../pages/AdminAnalytics'));
+const AdminFinance = lazy(() => import('../../pages/AdminFinance'));
+const AdminPromotions = lazy(() => import('../../pages/AdminPromotions'));
+const AdminWaiter = lazy(() => import('../../pages/AdminWaiter'));
+const AdminStaff = lazy(() => import('../../pages/AdminStaff'));
+const AdminSedes = lazy(() => import('../../pages/AdminSedes'));
+const AdminWebContent = lazy(() => import('../../pages/AdminWebContent'));
+const AdminMenuPrint = lazy(() => import('../../pages/AdminMenuPrint'));
+const AdminBusinessProfile = lazy(() => import('../../pages/AdminBusinessProfile'));
+const AdminProfile = lazy(() => import('../../pages/AdminProfile'));
+const AlunaLab = lazy(() => import('../../pages/AlunaLab'));
 
-const ADMIN_ROLES = ['admin', 'owner', 'superadmin', 'encargado'];
-
-const ESTRATEGIA_ITEMS = [
-  { id: 'analytics', label: 'Inteligencia', Icon: Icons.Strategy, roles: ADMIN_ROLES, feature: 'advanced_analytics' },
-  { id: 'finance', label: 'Finanzas & Contabilidad', Icon: Icons.Finance, roles: ADMIN_ROLES },
-  { id: 'live_menu', label: 'Carta & Opciones', Icon: Icons.LiveMenu, roles: ADMIN_ROLES },
-  { id: 'promotions', label: 'Campañas & Descuentos', Icon: Icons.Promotions, roles: ADMIN_ROLES }
-];
-
-const OPERACION_ITEMS = [
-  { id: 'orders',     label: 'Pedidos',         Icon: Icons.Orders, roles: [...ADMIN_ROLES, 'waiter', 'cashier'] },
-  { id: 'kitchen',    label: 'Cocina (KDS)',    Icon: Icons.Kitchen, roles: [...ADMIN_ROLES, 'kitchen'], feature: 'kitchen_display' },
-  { id: 'bar',        label: 'Barra (BDS)',     Icon: Icons.Bar, roles: [...ADMIN_ROLES, 'kitchen', 'waiter', 'bar'], feature: 'bar_display' },
-  { id: 'waiter',     label: 'Toma de Pedidos', Icon: Icons.Waiter, roles: [...ADMIN_ROLES, 'waiter', 'cashier'] },
-  { id: 'operations', label: 'Turno & Caja',    Icon: Icons.Cash, roles: [...ADMIN_ROLES, 'cashier'] },
-];
-
-const CARTA_ITEMS = [
-  { id: 'products',        label: 'Carta Principal',   Icon: Icons.Products, roles: ADMIN_ROLES },
-  { id: 'categories',      label: 'Categorías',         Icon: Icons.Categories, roles: ADMIN_ROLES },
-  { id: 'modifier_groups', label: 'Extras y Opciones', Icon: Icons.Modifiers, roles: ADMIN_ROLES },
-  { id: 'menu_print',      label: 'Imprimir Carta',    Icon: Icons.Print, roles: ADMIN_ROLES },
-  // { id: 'experiences',     label: 'Experiencias',      Icon: Icons.Experiences, roles: ADMIN_ROLES, feature: 'experiences' },
-  { id: 'tables',          label: 'Mesas y QRs',       Icon: Icons.Tables, roles: ADMIN_ROLES, feature: 'table_management' },
-  { id: 'delivery_drivers', label: 'Domiciliarios',    Icon: Icons.Delivery, roles: ADMIN_ROLES },
-];
-
-const PROD_ITEMS = [
-  { id: 'recipes',   label: 'Recetas',      Icon: Icons.Recipes, roles: [...ADMIN_ROLES, 'kitchen'], feature: 'inventory' },
-  { id: 'inventory', label: 'Inventario',   Icon: Icons.Modifiers, roles: [...ADMIN_ROLES, 'kitchen'], feature: 'inventory' },
-];
-
-const ADMIN_ITEMS = [
-  { id: 'settings',   label: 'Ajustes de Operación', Icon: Icons.Settings, roles: ADMIN_ROLES },
-  { id: 'business_profile', label: 'Perfil Comercial', Icon: Icons.Business, roles: ADMIN_ROLES },
-  // { id: 'profile',    label: 'Mi Perfil Admin', Icon: Icons.Profile, roles: ADMIN_ROLES },
-];
-
-const WEB_ITEMS = [
-  { id: 'web', label: 'Páginas y Web', Icon: Icons.Web, roles: ADMIN_ROLES, feature: 'landing_page' },
-];
+function TabLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[55vh] w-full">
+      <div className="w-8 h-8 rounded-full border-2 border-emerald-500/20 border-t-emerald-600 animate-spin" />
+    </div>
+  );
+}
 
 export default function AdminLayout() {
-  // Read page from URL or default to orders
   const getInitialPage = () => {
     const params = new URLSearchParams(window.location.search);
     const adminPageParam = params.get('admin_page');
     if (adminPageParam) return adminPageParam;
-    
     if (window.location.pathname.includes('/checkout')) return 'checkout';
-    
     return 'orders';
   };
 
   const { user: authUser, profile, loading: authLoading, activeBrand, activePlan } = useAuth();
   const { brand: brandFromContext } = useBrand();
   const effectiveBrand = activeBrand || brandFromContext;
-  const { can, loading: planLoading, isTrialActive, trialEndsAt, startTrial, trialAlreadyUsed } = usePlan();
+  const { can, loading: planLoading, isTrialActive, startTrial, trialAlreadyUsed } = usePlan();
   const { activeLocationId, activeLocation, isAllLocations } = useLocations();
   const [user, setUser] = useState(null);
   const activeBrandId = effectiveBrand?.id || profile?.brand_id || user?.brand_id || localStorage.getItem('aa_active_brand_id');
-  const [currentPage, setCurrentPage] = useState(getInitialPage); 
+  const [currentPage, setCurrentPage] = useState(getInitialPage);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [newOrdersCount, setNewOrdersCount] = useState(0);
   const [preparingOrdersCount, setPreparingOrdersCount] = useState(0);
@@ -287,15 +87,12 @@ export default function AdminLayout() {
   useAdminModalBack(isMobileDrawerOpen, () => setIsMobileDrawerOpen(false));
   useAdminModalBack(showUpgradeModal, () => setShowUpgradeModal(false));
   useAdminModalBack(showPlanSelector, () => setShowPlanSelector(false));
-  
+
   const { restaurantSettings } = useMenuData();
 
   useEffect(() => {
-    // Check if current page is locked on load (Wait for plan loading)
     if (planLoading) return;
-
-    const allItems = [...ESTRATEGIA_ITEMS, ...OPERACION_ITEMS, ...CARTA_ITEMS, ...PROD_ITEMS, ...ADMIN_ITEMS, ...WEB_ITEMS];
-    const currentItem = allItems.find(item => item.id === currentPage);
+    const currentItem = ALL_NAV_ITEMS.find(item => item.id === currentPage);
     if (currentItem?.feature && !can(currentItem.feature)) {
       setLockedFeatureName(currentItem.label);
       setShowUpgradeModal(true);
@@ -303,15 +100,14 @@ export default function AdminLayout() {
   }, [currentPage, can, planLoading]);
 
   const handleSelectPage = (pageId, label, featureKey) => {
-    if (planLoading) return; // Prevent navigation while checking permissions
-
+    if (planLoading) return;
     if (featureKey && !can(featureKey)) {
       setLockedFeatureName(label);
       setShowUpgradeModal(true);
       return;
     }
     setShowUpgradeModal(false);
-    setShowPlanSelector(false); // Close plan selector if it was open
+    setShowPlanSelector(false);
     if (pageId !== currentPage) {
       const params = new URLSearchParams(window.location.search);
       params.set('admin_page', pageId);
@@ -321,28 +117,21 @@ export default function AdminLayout() {
     }
   };
 
-  // Listener para botón Atrás del navegador entre pestañas del Admin
   useEffect(() => {
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search);
       const pageInUrl = params.get('admin_page') || 'orders';
-      if (pageInUrl !== currentPage) {
-        setCurrentPage(pageInUrl);
-      }
+      if (pageInUrl !== currentPage) setCurrentPage(pageInUrl);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [currentPage]);
 
-  // ─── Aluna Copilot: listener para navegación y atajos asistidos (Camino 3) ───
   useEffect(() => {
     const handleAlunaAction = (e) => {
       const pageId = e.detail?.target || e.detail?.pageId;
-      if (pageId) {
-        handleSelectPage(pageId);
-      }
+      if (pageId) handleSelectPage(pageId);
     };
-
     window.addEventListener('aluna:navigate', handleAlunaAction);
     window.addEventListener('aluna:prefill', handleAlunaAction);
     window.addEventListener('aluna:open-modal', handleAlunaAction);
@@ -353,39 +142,29 @@ export default function AdminLayout() {
     };
   }, [can, planLoading]);
 
-  const logoUrl = effectiveBrand?.logo_url || restaurantSettings?.logo_url || "/favicon.png";
-  const restaurantName = effectiveBrand?.name || restaurantSettings?.business_name || "Mi Negocio";
+  const logoUrl = effectiveBrand?.logo_url || restaurantSettings?.logo_url || '/favicon.png';
+  const restaurantName = effectiveBrand?.name || restaurantSettings?.business_name || 'Mi Negocio';
 
-  // ─── Phase 1.5: Auth Robustness ──────────────────────────────────────────
   useEffect(() => {
     if (authLoading) return;
-
     if (authUser && profile) {
       const isAdminRole = ['admin', 'owner', 'superadmin', 'encargado'].includes(profile.role);
-      
       if (isAdminRole) {
-        // Auto-login Owner/Admin
         setUser({
           id: authUser.id,
           name: profile.full_name || authUser.email || 'Admin',
           role: profile.role,
-          auth_session: true, 
+          auth_session: true,
         });
       } else {
-        // Authenticated user exists but doesn't have an admin role
-        // This could happen if a customer accidentally goes to #admin
-        // or a staff member tries to use email login
-        // For now, we clear the user state to let AdminPinLogin handle it
         setUser(null);
       }
     } else if (!authUser) {
-      // PIN-based staff login (no Supabase session)
       const savedSession = sessionStorage.getItem('aa_admin_session');
       if (savedSession) {
         try {
-          const savedUser = JSON.parse(savedSession);
-          setUser(savedUser);
-        } catch (e) {
+          setUser(JSON.parse(savedSession));
+        } catch {
           sessionStorage.removeItem('aa_admin_session');
         }
       }
@@ -395,12 +174,10 @@ export default function AdminLayout() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     let changed = false;
-
     if (params.get('admin_page') !== currentPage) {
       params.set('admin_page', currentPage);
       changed = true;
     }
-
     if (!isAllLocations && activeLocationId && params.get('location_id') !== activeLocationId) {
       params.set('location_id', activeLocationId);
       changed = true;
@@ -409,37 +186,23 @@ export default function AdminLayout() {
       params.delete('sede_id');
       changed = true;
     }
-
     if (changed) {
       const targetPath = effectiveBrand?.slug ? `/${effectiveBrand.slug}/` : window.location.pathname;
       window.history.replaceState(null, '', `${targetPath}?${params.toString()}${window.location.hash}`);
     }
   }, [currentPage, effectiveBrand, activeLocationId, isAllLocations]);
 
-  // Control estricto de acceso a páginas según rol
   useEffect(() => {
     if (!user) return;
-
-    if (user.role === 'kitchen') {
-      if (!['kitchen', 'bar', 'recipes', 'inventory'].includes(currentPage)) setCurrentPage('kitchen');
-    } else if (user.role === 'bar') {
-      if (!['bar', 'kitchen', 'recipes'].includes(currentPage)) setCurrentPage('bar');
-    } else if (user.role === 'waiter') {
-      if (!['waiter', 'orders', 'bar'].includes(currentPage)) setCurrentPage('waiter');
-    } else if (user.role === 'cashier') {
-      if (!['operations', 'orders', 'waiter'].includes(currentPage)) setCurrentPage('operations');
-    } else if (user.role === 'promoter') {
-      if (!['orders'].includes(currentPage)) setCurrentPage('orders');
-    } else if (['admin', 'owner', 'superadmin', 'encargado'].includes(user.role)) {
-      // Roles con acceso administrativo completo
-    }
+    if (user.role === 'kitchen' && !['kitchen', 'bar', 'recipes', 'inventory'].includes(currentPage)) setCurrentPage('kitchen');
+    else if (user.role === 'bar' && !['bar', 'kitchen', 'recipes'].includes(currentPage)) setCurrentPage('bar');
+    else if (user.role === 'waiter' && !['waiter', 'orders', 'bar'].includes(currentPage)) setCurrentPage('waiter');
+    else if (user.role === 'cashier' && !['operations', 'orders', 'waiter'].includes(currentPage)) setCurrentPage('operations');
+    else if (user.role === 'promoter' && !['orders'].includes(currentPage)) setCurrentPage('orders');
   }, [user, currentPage]);
 
   useEffect(() => {
-    if (!activeBrandId) return;
-    
-    // Safety: Don't subscribe yet if we need a specific location but don't have it
-    if (!isAllLocations && !activeLocationId) return;
+    if (!activeBrandId || (!isAllLocations && !activeLocationId)) return;
 
     const fetchPendingCount = async () => {
       let query = supabase
@@ -447,10 +210,8 @@ export default function AdminLayout() {
         .select('status', { count: 'exact' })
         .eq('brand_id', activeBrandId)
         .in('status', ['new', 'preparing']);
-      
-      if (!isAllLocations && activeLocationId) {
-        query = query.eq('location_id', activeLocationId);
-      }
+
+      if (!isAllLocations && activeLocationId) query = query.eq('location_id', activeLocationId);
 
       const { data, error } = await query;
       if (!error && data) {
@@ -458,7 +219,6 @@ export default function AdminLayout() {
           acc[order.status] = (acc[order.status] || 0) + 1;
           return acc;
         }, { new: 0, preparing: 0 });
-        
         setNewOrdersCount(counts.new);
         setPreparingOrdersCount(counts.preparing);
       }
@@ -466,15 +226,13 @@ export default function AdminLayout() {
 
     fetchPendingCount();
 
-    // Listener para cambios en tiempo real (Un solo filtro para cumplimiento de Supabase)
     const channel = supabase.channel(`layout_orders-${activeBrandId}-${activeLocationId || 'all'}`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
         table: 'orders',
         filter: `brand_id=eq.${activeBrandId}`
       }, (payload) => {
-        console.log('AdminLayout: Realtime change detected', payload.eventType);
         if (payload.eventType === 'INSERT' && payload.new) {
           soundService.startNewOrderLoop(3500);
           setGlobalIncomingOrder(payload.new);
@@ -486,24 +244,12 @@ export default function AdminLayout() {
                 body: `${payload.new.customer_name || 'Cliente'} - $${Number(payload.new.total_amount || 0).toLocaleString()}`,
                 icon: '/boku-icon-192.png'
               });
-            } catch (e) {}
+            } catch {}
           }
         }
-        // Al recibir cualquier cambio en la marca, re-consultamos el conteo 
-        // Añadimos un pequeño delay para asegurar que la DB haya terminado la escritura
-        setTimeout(() => {
-          fetchPendingCount();
-        }, 800);
+        setTimeout(() => fetchPendingCount(), 800);
       })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('AdminLayout: Realtime subscribed for brand', activeBrandId);
-        } else if (status === 'CLOSED') {
-          console.log('AdminLayout: Realtime connection closed');
-        } else {
-          console.warn('AdminLayout: Realtime subscription status:', status);
-        }
-      });
+      .subscribe();
 
     return () => supabase.removeChannel(channel);
   }, [activeBrandId, activeLocationId, isAllLocations]);
@@ -514,95 +260,17 @@ export default function AdminLayout() {
     settings: !restaurantSettings?.whatsapp_number_orders
   };
 
-  // Render helper for navigation sections
-  const NavSection = ({ title, items, current, onSelect, collapsed }) => {
-    // If the user has a full admin role, they should see all items in these sections
-    const allowed = items.filter(item => {
-      if (!item.roles) return true;
-      const roleMatch = item.roles.includes(user.role);
-      if (!roleMatch) return false;
+  const currentItemLabel = ALL_NAV_ITEMS.find(i => i.id === currentPage)?.label || 'Panel';
 
-      // Feature Gating: Modules are always visible for upselling (Teasers)
-      // We block navigation in handleSelectPage instead of filtering here
-
-
-      return true;
-    });
-    if (allowed.length === 0) return null;
-
-    return (
-      <div className="py-2">
-        {!collapsed ? (
-          <span className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-4 mb-2 block">
-            {title}
-          </span>
-        ) : (
-          <div className="h-px bg-white/5 mx-2 my-4" />
-        )}
-        <div className="space-y-0.5 px-2">
-          {allowed.map((item) => {
-            const Icon = Icons[item.id.charAt(0).toUpperCase() + item.id.slice(1)] || item.Icon;
-            const isActive = current === item.id;
-            const isLocked = !planLoading && item.feature && !can(item.feature);
-            const hasAlert = missingAlerts[item.id] && !isActive; // Hide alert dot if we are already viewing the tab
-            
-            return (
-              <button
-                key={item.id}
-                onClick={() => onSelect(item.id, item.label, item.feature)}
-                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 relative ${
-                  collapsed ? 'justify-center px-0' : ''
-                } ${
-                  isActive
-                    ? 'bg-white/10 text-white shadow-sm shadow-black/20'
-                    : 'text-white/40 hover:text-white/80 hover:bg-white/5'
-                } ${isLocked ? 'opacity-60 grayscale-[0.5]' : ''}`}
-              >
-                <div className="relative">
-                  <span className={`shrink-0 ${isActive ? 'text-brand-secondary' : ''}`}>
-                    <Icon />
-                  </span>
-                  {collapsed && hasAlert && (
-                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600 border border-[#0F170F]"></span>
-                    </span>
-                  )}
-                </div>
-                {!collapsed && (
-                  <span className="flex-1 flex items-center justify-between min-w-0">
-                    <span className="flex items-center gap-2 truncate whitespace-nowrap">
-                      {item.label}
-                      {hasAlert && (
-                        <span className="flex h-2 w-2 relative">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                        </span>
-                      )}
-                    </span>
-                    {isLocked && (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-amber-500/80">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                      </svg>
-                    )}
-                  </span>
-                )}
-                {collapsed && isLocked && (
-                    <div className="absolute top-1 right-1">
-                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                      </svg>
-                    </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
+  const handleSignOut = async () => {
+    sessionStorage.removeItem('aa_admin_session');
+    if (user?.auth_session) {
+      try { await supabase.auth.signOut(); } catch {}
+      window.location.href = '/';
+    } else {
+      setUser(null);
+    }
   };
-
-  const currentItemLabel = [...WEB_ITEMS, ...CARTA_ITEMS, ...PROD_ITEMS, ...ADMIN_ITEMS, ...OPERACION_ITEMS, ...ESTRATEGIA_ITEMS].find(i => i.id === currentPage)?.label || 'Panel';
 
   if (authLoading || (authUser && !profile)) {
     return (
@@ -616,687 +284,90 @@ export default function AdminLayout() {
     );
   }
 
-  if (!user) {
-    // 💡 Logic: If authUser exists but its role wasn't whitelisted above (user is null),
-    // we should probably NOT show PIN login to an owner who just needs to pick a brand.
-    // But for now, if no email user is found, default to staff PIN.
-    return <AdminPinLogin onLogin={setUser} />;
-  }
-
-  console.log('DEBUG ACTIVE BRAND:', activeBrand);
+  if (!user) return <AdminPinLogin onLogin={setUser} />;
 
   if (currentPage === 'aluna_lab') {
-    return <AlunaLab brand={activeBrand || (activeBrandId ? { id: activeBrandId, name: restaurantName } : null)} onBack={() => handleSelectPage('products')} />;
+    return (
+      <Suspense fallback={<TabLoader />}>
+        <AlunaLab brand={activeBrand || (activeBrandId ? { id: activeBrandId, name: restaurantName } : null)} onBack={() => handleSelectPage('products')} />
+      </Suspense>
+    );
   }
 
   return (
     <div className="flex min-h-screen bg-[#F4F4F2]" style={{ fontFamily: "'Inter', sans-serif" }}>
-      {/* ── Sidebar ────────────────────────────────────────────────────── */}
-      <aside
-        className={`hidden lg:flex fixed left-0 top-0 bottom-0 bg-[#0F170F] border-r border-white/5 flex-col z-50 transition-all duration-300 ${
-          isCollapsed ? 'w-20' : 'w-[240px]'
-        }`}
-      >
-        <div className="flex flex-col h-full">
-          {/* Logo Section (Only when collapsed to avoid gap) */}
-          {isCollapsed && (
-            <div className="flex items-center h-20 justify-center shrink-0">
-               <div className="w-10 h-10 flex items-center justify-center shrink-0 drop-shadow-md">
-                 <img src={logoUrl} alt="Logo" className="w-full h-full object-contain filter brightness-0 invert" />
-               </div>
-            </div>
-          )}
+      <AdminSidebar
+        isCollapsed={isCollapsed}
+        setIsCollapsed={setIsCollapsed}
+        logoUrl={logoUrl}
+        user={user}
+        currentPage={currentPage}
+        handleSelectPage={handleSelectPage}
+        planLoading={planLoading}
+        can={can}
+        newOrdersCount={newOrdersCount}
+        preparingOrdersCount={preparingOrdersCount}
+        missingAlerts={missingAlerts}
+        activeBrand={activeBrand}
+        isTrialActive={isTrialActive}
+        activePlan={activePlan}
+        trialAlreadyUsed={trialAlreadyUsed}
+        startTrial={startTrial}
+        setShowPlanSelector={setShowPlanSelector}
+      />
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar pt-5 px-4 space-y-6">
-              {/* 1. SECCION ESTRATEGIA (Aura Insight Glass Card) */}
-              {ADMIN_ROLES.includes(user.role) && (
-              <div className="space-y-3">
-                <motion.button 
-                  whileHover={{ scale: 1.01, y: -1 }}
-                  whileTap={{ scale: 0.99 }}
-                  onClick={() => handleSelectPage('analytics', 'Centro de Inteligencia', 'advanced_analytics')}
-                  className={`w-full group relative overflow-hidden transition-all duration-500 ${isCollapsed ? 'h-14' : 'h-[92px]'} rounded-2xl flex items-center ${
-                    currentPage === 'analytics' 
-                    ? 'bg-white/[0.08] shadow-lg shadow-brand-primary/5' 
-                    : 'bg-white/[0.02] hover:bg-white/[0.04]'
-                  } ${!planLoading && !can('advanced_analytics') && !isCollapsed ? 'opacity-70 grayscale-[0.4]' : ''}`}
-                >
-                  {/* --- PREMIUM GLASS NEURO ENVELOPE --- */}
-                  <div className="absolute inset-0 backdrop-blur-xl pointer-events-none" />
-                  
-                  {/* Internal Glow Border (The one the user wants clean) */}
-                  <div className={`absolute inset-0 rounded-2xl border transition-all duration-500 ${
-                    currentPage === 'analytics' 
-                    ? 'border-brand-primary/30' 
-                    : 'border-white/[0.05] group-hover:border-white/10'
-                  }`} />
-                  
-                  {/* 1. Interactive Aura Base */}
-                  <div className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity duration-700 pointer-events-none">
-                    <motion.div 
-                      animate={{ 
-                        opacity: [0.03, 0.08, 0.03],
-                        scale: [1, 1.1, 1],
-                      }}
-                      transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-                      className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] bg-[radial-gradient(circle_at_center,_var(--color-brand-primary)_0%,_transparent_60%)] opacity-[0.05]"
-                    />
-                  </div>
-
-                  {/* 2. Glass Shimmer Effect */}
-                  <motion.div 
-                    initial={{ x: '-100%' }}
-                    animate={{ x: '200%' }}
-                    transition={{ duration: 6, repeat: Infinity, repeatDelay: 5, ease: "easeInOut" }}
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent skew-x-[-25deg] pointer-events-none"
-                  />
-
-                  {/* 3. Dynamic Sparkline (Takes Brand Color) */}
-                  <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.08] group-hover:opacity-[0.14] transition-opacity duration-500">
-                    <svg width="100%" height="100%" viewBox="0 0 120 40" preserveAspectRatio="none">
-                      <motion.path
-                        d="M0 30 Q 15 35, 30 20 T 60 25 T 90 15 T 120 22"
-                        fill="none"
-                        stroke="var(--color-brand-primary)"
-                        strokeWidth="1.2"
-                        initial={{ pathLength: 0 }}
-                        animate={{ pathLength: 1 }}
-                        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                      />
-                    </svg>
-                  </div>
-
-                  {/* CONTENT */}
-                  <div className={`relative z-10 flex items-center w-full ${isCollapsed ? 'justify-center' : 'px-5 gap-4'}`}>
-                    <div className="relative group/icon flex shrink-0 items-center justify-center">
-                      <div className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center transition-all duration-500 relative ${
-                        currentPage === 'analytics' 
-                        ? 'bg-brand-primary/20 text-brand-primary' 
-                        : 'bg-white/5 text-white/40 group-hover:text-white/80 group-hover:bg-white/10'
-                      }`}
-                      style={currentPage === 'analytics' ? { 
-                        boxShadow: '0 0 20px -5px var(--color-brand-primary)'
-                      } : {}}
-                      >
-                         {/* Subtle Circular Glass Stroke */}
-                        <div className={`absolute inset-0 rounded-full border transition-colors duration-500 ${
-                          currentPage === 'analytics' ? 'border-brand-primary/40' : 'border-white/[0.08]'
-                        }`} />
-                        <Icons.Strategy />
-                      </div>
-                      
-                      {/* Alert Dot (Dynamic Color) */}
-                      <div className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary opacity-60"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-primary shadow-[0_0_10px_var(--color-brand-primary)] border border-[#0d0d0d]"></span>
-                      </div>
-                    </div>
-
-                    {!isCollapsed && (
-                      <div className="text-left flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className={`text-[14px] font-bold leading-none tracking-tight transition-colors duration-300 ${
-                            currentPage === 'analytics' ? 'text-white' : 'text-white/60 group-hover:text-white'
-                          }`}>
-                            Inteligencia
-                          </p>
-                          {!planLoading && !can('advanced_analytics') && (
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500/60 shrink-0">
-                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                            </svg>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-2.5">
-                           {/* Status line (DYNAMIC BRAND COLOR) */}
-                          <div className={`h-[2px] w-8 rounded-full overflow-hidden bg-white/10 relative`}>
-                             <motion.div 
-                               animate={{ x: ['-100%', '100%'] }}
-                               transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                               className="absolute inset-0 w-1/2 bg-brand-primary/80"
-                             />
-                          </div>
-                          <p className={`text-[9px] font-medium uppercase tracking-[0.2em] transition-colors duration-300 truncate ${
-                            currentPage === 'analytics' ? 'text-white/80' : 'text-white/30 group-hover:text-white/50'
-                          }`}>
-                            Análisis
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </motion.button>
-
-                
-                {/* Finanzas & Contabilidad Card (Nuevo Módulo Add-On) */}
-                <button 
-                  onClick={() => handleSelectPage('finance', 'Finanzas & Contabilidad')}
-                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-10' : 'h-11'} rounded-xl border border-white/5 flex items-center ${
-                    currentPage === 'finance' 
-                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 shadow-md shadow-emerald-950/20' 
-                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10 text-white/60 hover:text-white'
-                  }`}
-                >
-                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${currentPage === 'finance' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
-                      <Icons.Finance />
-                    </div>
-                    {!isCollapsed && (
-                      <div className="text-left flex-1 flex items-center justify-between">
-                        <p className={`text-[12px] font-bold leading-none ${currentPage === 'finance' ? 'text-white' : 'text-white/60'}`}>
-                          Finanzas
-                        </p>
-                        <span className="text-[9px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                          PRO
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </button>
-
-                {/* Carta & Opciones Card (Operación en Vivo / Disponibilidad Rápida) */}
-                <button 
-                  onClick={() => handleSelectPage('live_menu', 'Carta & Opciones')}
-                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-10' : 'h-11'} rounded-xl border border-white/5 flex items-center ${
-                    currentPage === 'live_menu' 
-                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 shadow-md shadow-emerald-950/20' 
-                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10 text-white/60 hover:text-white'
-                  }`}
-                >
-                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${currentPage === 'live_menu' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
-                      <Icons.LiveMenu />
-                    </div>
-                    {!isCollapsed && (
-                      <div className="text-left flex-1">
-                        <p className={`text-[12px] font-bold leading-none ${currentPage === 'live_menu' ? 'text-white' : 'text-white/60'}`}>Carta & Opciones</p>
-                      </div>
-                    )}
-                  </div>
-                </button>
-
-                {/* Campañas & Descuentos Card (Sincronizado con versión Mobile) */}
-                <button 
-                  onClick={() => handleSelectPage('promotions', 'Campañas & Descuentos')}
-                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-10' : 'h-11'} rounded-xl border border-white/5 flex items-center ${
-                    currentPage === 'promotions' 
-                    ? 'bg-rose-500/15 border-rose-500/30 text-rose-300 shadow-md shadow-rose-950/20' 
-                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10 text-white/60 hover:text-white'
-                  }`}
-                >
-                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${currentPage === 'promotions' ? 'bg-rose-500/20 text-rose-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
-                      <Icons.Promotions />
-                    </div>
-                    {!isCollapsed && (
-                      <div className="text-left flex-1">
-                        <p className={`text-[12px] font-bold leading-none ${currentPage === 'promotions' ? 'text-white' : 'text-white/60'}`}>Campañas & Descuentos</p>
-                      </div>
-                    )}
-                  </div>
-                </button>
-              </div>
-              )}
-
-            {/* 2. SECCION OPERACION (Operation Cards) */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                {!isCollapsed && <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Operación</span>}
-                <div className="h-px flex-1 bg-white/5 ml-3" />
-              </div>
-
-              <div className="grid grid-cols-1 gap-2">
-                {/* Pedidos Card */}
-                {user.role !== 'kitchen' && (
-                <button 
-                  onClick={() => handleSelectPage('orders', 'Pedidos')}
-                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
-                    currentPage === 'orders' 
-                    ? 'bg-gradient-to-r from-blue-900/40 to-blue-950/40 border-blue-500/20 ring-1 ring-blue-500/20 shadow-lg shadow-blue-950/40' 
-                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                  }`}
-                >
-                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'orders' ? 'bg-blue-400/20 text-blue-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
-                      <Icons.Orders />
-                    </div>
-                    {!isCollapsed && (
-                      <div className="text-left flex-1">
-                        <p className={`text-[13px] font-bold leading-none ${currentPage === 'orders' ? 'text-white' : 'text-white/60'}`}>Pedidos</p>
-                        <p className="text-[9px] text-white/30 font-medium mt-1">Gestión en Vivo</p>
-                      </div>
-                    )}
-                  </div>
-                </button>
+      <main className={`flex-1 flex flex-col min-w-0 w-full transition-all duration-300 ${isCollapsed ? 'lg:ml-20' : 'lg:ml-[240px]'} pb-[72px] lg:pb-0`}>
+        <header className="h-16 bg-white border-b border-gray-200/60 sticky top-0 z-40 flex items-center justify-between px-4 lg:px-8 shadow-sm shadow-black/[0.02]">
+          <div className="flex items-center gap-3 lg:gap-6">
+            <div className="hidden lg:block"><ContextBreadcrumb onNavigate={handleSelectPage} /></div>
+            <div className="h-6 w-px bg-gray-200 hidden lg:block" />
+            <div className="flex items-center gap-3">
+              <h2 className="text-base lg:text-lg font-bold text-gray-900 tracking-tight">{currentItemLabel}</h2>
+              <AnimatePresence mode="wait">
+                {!isAllLocations && activeLocation && (
+                  <motion.div key={activeLocation.id} initial={{ opacity: 0, x: -10, scale: 0.9 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="flex items-center">
+                    <Badge variant="indigo">
+                      <div className="flex items-center gap-1"><MapPin size={10} className="text-indigo-400" /><span>{activeLocation.name}</span></div>
+                    </Badge>
+                  </motion.div>
                 )}
-
-                {/* Cocina Card */}
-                {user.role !== 'waiter' && (
-                <button 
-                  onClick={() => handleSelectPage('kitchen', 'Cocina', 'kitchen_display')}
-                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
-                    currentPage === 'kitchen' 
-                    ? 'bg-gradient-to-r from-orange-900/40 to-orange-950/40 border-orange-500/20 ring-1 ring-orange-500/20 shadow-lg shadow-orange-950/40' 
-                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                  } ${!planLoading && !can('kitchen_display') ? 'opacity-70 grayscale-[0.4]' : ''}`}
-                >
-                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'kitchen' ? 'bg-orange-400/20 text-orange-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
-                      <div className="relative">
-                        <Icons.Kitchen />
-                        {!planLoading && can('kitchen_display') && (newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-ping" />}
-                      </div>
-                    </div>
-                    {!isCollapsed && (
-                      <div className="text-left flex-1 flex justify-between items-center pr-1">
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <p className={`text-[13px] font-bold leading-none ${currentPage === 'kitchen' ? 'text-white' : 'text-white/60'}`}>Cocina</p>
-                            {!planLoading && !can('kitchen_display') && (
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                              </svg>
-                            )}
-                          </div>
-                          <p className="text-[9px] text-white/30 font-medium mt-1">Pantalla de Producción</p>
-                        </div>
-                        {!planLoading && can('kitchen_display') && (newOrdersCount > 0 || preparingOrdersCount > 0) && (
-                          <div className="flex items-center gap-1">
-                            {newOrdersCount > 0 && (
-                              <motion.span 
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="bg-blue-500 text-white text-[10px] font-black h-4 px-1.5 flex items-center justify-center rounded-sm shadow-sm"
-                                title="Pedidos nuevos"
-                              >
-                                {newOrdersCount}
-                              </motion.span>
-                            )}
-                            {preparingOrdersCount > 0 && (
-                              <motion.span 
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="bg-orange-500 text-white text-[10px] font-black h-4 px-1.5 flex items-center justify-center rounded-sm shadow-sm"
-                                title="En preparación"
-                              >
-                                {preparingOrdersCount}
-                              </motion.span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </button>
-                )}
-
-                {/* Barra (BDS) Card */}
-                {user.role !== 'waiter' && (
-                <button 
-                  onClick={() => handleSelectPage('bar', 'Barra (BDS)', 'bar_display')}
-                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
-                    currentPage === 'bar' 
-                    ? 'bg-gradient-to-r from-cyan-900/40 to-cyan-950/40 border-cyan-500/20 ring-1 ring-cyan-500/20 shadow-lg shadow-cyan-950/40' 
-                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                  } ${!planLoading && !can('bar_display') ? 'opacity-70 grayscale-[0.4]' : ''}`}
-                >
-                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'bar' ? 'bg-cyan-400/20 text-cyan-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
-                      <div className="relative">
-                        <Icons.Bar />
-                        {!planLoading && can('bar_display') && (newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full animate-ping" />}
-                      </div>
-                    </div>
-                    {!isCollapsed && (
-                      <div className="text-left flex-1 flex justify-between items-center pr-1">
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <p className={`text-[13px] font-bold leading-none ${currentPage === 'bar' ? 'text-white' : 'text-white/60'}`}>Barra (BDS)</p>
-                            {!planLoading && !can('bar_display') && (
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-amber-500">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                              </svg>
-                            )}
-                          </div>
-                          <p className="text-[9px] text-white/30 font-medium mt-1">Coctelería & Bebidas</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </button>
-                )}
-
-                {/* Toma de Pedidos Card */}
-                {user.role !== 'kitchen' && (
-                <button 
-                  onClick={() => handleSelectPage('waiter', 'Toma de Pedidos')}
-                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
-                    currentPage === 'waiter' 
-                    ? 'bg-gradient-to-r from-emerald-900/40 to-emerald-950/40 border-emerald-500/20 ring-1 ring-emerald-500/20 shadow-lg shadow-emerald-950/40' 
-                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                  }`}
-                >
-                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'waiter' ? 'bg-emerald-400/20 text-emerald-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
-                      <Icons.Waiter />
-                    </div>
-                    {!isCollapsed && (
-                      <div className="text-left flex-1">
-                        <p className={`text-[13px] font-bold leading-none ${currentPage === 'waiter' ? 'text-white' : 'text-white/60'}`}>Toma de Pedidos</p>
-                        <p className="text-[9px] text-white/30 font-medium mt-1">POS / Modo Mesero</p>
-                      </div>
-                    )}
-                  </div>
-                </button>
-                )}
-
-                {/* Turno & Caja Card */}
-                {(ADMIN_ROLES.includes(user.role) || user.role === 'cashier') && (
-                <button 
-                  onClick={() => handleSelectPage('operations', 'Turno & Caja')}
-                  className={`w-full group relative overflow-hidden transition-all duration-300 ${isCollapsed ? 'h-12' : 'h-14'} rounded-xl border border-white/5 flex items-center ${
-                    currentPage === 'operations' 
-                    ? 'bg-gradient-to-r from-violet-900/40 to-violet-950/40 border-violet-500/20 ring-1 ring-violet-500/20 shadow-lg shadow-violet-950/40' 
-                    : 'bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10'
-                  }`}
-                >
-                  <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'px-4 gap-3'}`}>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${currentPage === 'operations' ? 'bg-violet-400/20 text-violet-400' : 'bg-white/5 text-white/40 group-hover:text-white'}`}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="18" cy="6" r="3" fill="currentColor" opacity="0.3"/>
-                      </svg>
-                    </div>
-                    {!isCollapsed && (
-                      <div className="text-left flex-1">
-                        <p className={`text-[13px] font-bold leading-none ${currentPage === 'operations' ? 'text-white' : 'text-white/60'}`}>Turno & Caja</p>
-                        <p className="text-[9px] text-white/30 font-medium mt-1">Caja & Turno en Vivo</p>
-                      </div>
-                    )}
-                  </div>
-                </button>
-                )}
-              </div>
+              </AnimatePresence>
             </div>
 
-            {ADMIN_ROLES.includes(user.role) && (
-              <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
-            )}
-            {(ADMIN_ROLES.includes(user.role) || user.role === 'kitchen') && (
-              <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
-            )}
-            {ADMIN_ROLES.includes(user.role) && (
-              <>
-                <NavSection title="Administración de Staff & Locales" items={ADMIN_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
-                <NavSection title="Presencia Web" items={WEB_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} />
-              </>
-            )}
-
-            {/* ── SECCIÓN: CUENTA Y EXTRAS ── */}
-            <div className="pt-2 pb-6">
-              {!isCollapsed ? (
-                <span className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-3 px-4 block">
-                  Cuenta & Extras
-                </span>
-              ) : (
-                <div className="h-px bg-white/5 my-4 mx-4" />
-              )}
-              <div className="space-y-1.5 px-2">
-                {ADMIN_ROLES.includes(user.role) && (
-                  <button
-                    type="button"
-                    onClick={() => handleSelectPage('aluna_lab')}
-                    className={`group relative mb-3 flex w-full items-center gap-3 overflow-hidden rounded-2xl border px-3 py-3 text-left transition-all duration-300 ${currentPage === 'aluna_lab' ? 'border-emerald-300/50 bg-emerald-400/15' : 'border-emerald-300/20 bg-white/[0.04] hover:border-emerald-300/50 hover:bg-white/[0.08]'} shadow-[0_0_26px_rgba(52,211,153,0.08)]`}
-                  >
-                    <span className="absolute inset-0 bg-gradient-to-r from-emerald-400/10 via-cyan-300/5 to-violet-400/10 opacity-70" />
-                    <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-300/10 text-emerald-200 shadow-[0_0_18px_rgba(52,211,153,0.18)]"><Beaker size={17} /></span>
-                    {!isCollapsed ? <span className="relative min-w-0"><span className="flex items-center gap-2 text-[13px] font-black text-white">Aluna Lab <span className="rounded-full bg-violet-400/15 px-1.5 py-0.5 text-[8px] uppercase tracking-wider text-violet-200">Beta</span></span><span className="mt-0.5 block text-[9px] font-medium text-white/35">Canvas gastronómico</span></span> : null}
-                  </button>
-                )}
-                {/* Superadmin access */}
-                {user?.role === 'superadmin' && (
-                  <a
-                    href="/superadmin"
-                    className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-300 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 overflow-hidden ${isCollapsed ? 'justify-center px-0' : ''}`}
-                  >
-                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <Shield className="shrink-0 w-[15px] h-[15px] text-white/40 group-hover:text-white transition-colors" />
-                    {!isCollapsed && <span>Panel Superadmin</span>}
-                  </a>
-                )}
-
-                {/* Mi Plan / Upgrade */}
-                <button
-                  onClick={() => setShowPlanSelector(true)}
-                  className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-300 text-white/60 hover:text-amber-100 bg-white/5 hover:bg-white/10 border border-white/5 overflow-hidden ${isCollapsed ? 'justify-center px-0' : ''}`}
-                >
-                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <Star className="shrink-0 w-[15px] h-[15px] text-amber-500/50 group-hover:text-amber-400 transition-colors" />
-                  {!isCollapsed && <span>Mi Plan / Upgrade</span>}
-                </button>
-
-                {/* Ver Menú Público */}
-                <a
-                  href={activeBrand?.slug ? `/${activeBrand.slug}/` : "/"}
-                  className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-300 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 overflow-hidden ${isCollapsed ? 'justify-center px-0' : ''}`}
-                >
-                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <Globe className="shrink-0 w-[15px] h-[15px] text-white/40 group-hover:text-white transition-colors" />
-                  {!isCollapsed && <span>Ver Menú Público</span>}
-                </a>
-              </div>
-            </div>
-          </div>
-          
-
-          {/* Bottom: Plan / Trial / Collapse */}
-          <div className="mt-auto border-t border-white/5 bg-black/10">
-
-            {/* Trial compact row */}
-            {!planLoading && activeBrand && (() => {
+            {activeBrand && (() => {
               const daysLeft = activeBrand.trial_end_date ? Math.max(0, Math.ceil((new Date(activeBrand.trial_end_date) - new Date()) / (1000 * 60 * 60 * 24))) : 0;
               const isPaid = activeBrand?.payment_verified === true || activeBrand?.payment_verified === 'true';
-              
-              if (isPaid) {
-                return isCollapsed ? (
-                  <div className="flex justify-center py-4 border-b border-white/5">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500" title="Cuenta Activa" />
-                  </div>
-                ) : (
-                  <div className="px-4 py-3 border-b border-white/5 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider">Cuenta Activa</span>
-                  </div>
-                );
-              }
-
-              if (daysLeft > 0) {
-                return isCollapsed ? (
-                  <div className="flex justify-center py-4 border-b border-white/5">
-                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" title={`Prueba: ${daysLeft} días`} />
-                  </div>
-                ) : (
-                  <div className="px-4 py-3 border-b border-white/5 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                    <span className="text-[11px] font-bold text-amber-500 uppercase tracking-wider">Prueba Activa: {daysLeft} días</span>
-                  </div>
-                );
-              }
-
-              return isCollapsed ? (
-                <div className="flex justify-center py-4 border-b border-white/5">
-                  <div className="w-2 h-2 rounded-full bg-red-500" title="Pago Pendiente" />
-                </div>
-              ) : (
-                <div className="px-4 py-3 border-b border-white/5 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-red-500" />
-                  <span className="text-[11px] font-bold text-red-500 uppercase tracking-wider">Pago Pendiente</span>
-                </div>
-              );
+              if (isPaid) return <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /><span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Cuenta Activa</span></div>;
+              if (daysLeft > 0) return <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full"><div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" /><span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Prueba Activa: {daysLeft} días</span></div>;
+              return <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 bg-red-500/10 border border-red-500/20 rounded-full"><div className="w-1.5 h-1.5 rounded-full bg-red-500" /><span className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Pago Pendiente</span></div>;
             })()}
-
-            {/* Upgrade Plan CTA if trial already used */}
-            {!planLoading && !isTrialActive && !activePlan && !isCollapsed && trialAlreadyUsed && (
-              <button
-                onClick={() => setShowPlanSelector(true)}
-                className="w-full px-4 py-2.5 text-left group"
-              >
-                <div className="rounded-xl bg-gradient-to-r from-emerald-500/20 to-blue-500/10 border border-emerald-500/30 px-3 py-2 flex items-center gap-2 hover:from-emerald-500/30 transition-all">
-                  <span className="text-base">⭐</span>
-                  <div>
-                    <p className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.18em]">Suscripción</p>
-                    <p className="text-[11px] font-semibold text-white/80">Elegir o Activar Plan</p>
-                  </div>
-                </div>
-              </button>
-            )}
-
-            {/* Trial start CTA (no plan, no active trial, not used yet) */}
-            {!planLoading && !isTrialActive && !activePlan && !isCollapsed && !trialAlreadyUsed && (
-              <button
-                onClick={async () => {
-                  const { error } = await startTrial();
-                  if (error) alert('Error al iniciar prueba: ' + error.message);
-                }}
-                className="w-full px-4 py-2.5 text-left group"
-              >
-                <div className="rounded-xl bg-gradient-to-r from-brand-primary/20 to-brand-secondary/10 border border-brand-primary/20 px-3 py-2 flex items-center gap-2 hover:from-brand-primary/30 transition-all">
-                  <span className="text-base">🚀</span>
-                  <div>
-                    <p className="text-[9px] font-black text-brand-primary uppercase tracking-[0.18em]">Acceso Total Gratis</p>
-                    <p className="text-[11px] font-semibold text-white/70">Iniciar prueba 21 días</p>
-                  </div>
-                </div>
-              </button>
-            )}
-
-            {/* Collapse toggle */}
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="w-full h-12 flex items-center px-5 gap-3 text-white/30 hover:text-white/60 transition-colors border-t border-white/5"
-            >
-              <span className="shrink-0">
-                {isCollapsed ? <Icons.ChevronRight /> : <Icons.ChevronLeft />}
-              </span>
-              {!isCollapsed && <span className="text-[11px] font-bold uppercase tracking-widest">Colapsar Sidebar</span>}
-            </button>
           </div>
-        </div>
-      </aside>
 
-      {/* ── Main Content ────────────────────────────────────────────────── */}
-      <main
-        className={`flex-1 flex flex-col min-w-0 w-full transition-all duration-300 ${
-          isCollapsed ? 'lg:ml-20' : 'lg:ml-[240px]'
-        } pb-[72px] lg:pb-0`}
-      >
-        <header className="h-16 bg-white border-b border-gray-200/60 sticky top-0 z-40 flex items-center justify-between px-4 lg:px-8 shadow-sm shadow-black/[0.02]">
-            <div className="flex items-center gap-3 lg:gap-6">
-              {/* Context Breadcrumb - Visible ONLY on Desktop here */}
-              <div className="hidden lg:block">
-                <ContextBreadcrumb onNavigate={handleSelectPage} />
-              </div>
-              
-              <div className="h-6 w-px bg-gray-200 hidden lg:block" />
-
-              {/* Title - Visible on BOTH Mobile and Desktop for consistency */}
-              <div className="flex items-center gap-3">
-                <h2 className="text-base lg:text-lg font-bold text-gray-900 tracking-tight">{currentItemLabel}</h2>
-               <AnimatePresence mode="wait">
-                 {!isAllLocations && activeLocation && (
-                   <motion.div
-                     key={activeLocation.id}
-                     initial={{ opacity: 0, x: -10, scale: 0.9 }}
-                     animate={{ opacity: 1, x: 0, scale: 1 }}
-                     exit={{ opacity: 0, scale: 0.9 }}
-                     className="flex items-center"
-                   >
-                     <Badge variant="indigo">
-                       <div className="flex items-center gap-1">
-                         <MapPin size={10} className="text-indigo-400" />
-                         <span>{activeLocation.name}</span>
-                       </div>
-                     </Badge>
-                   </motion.div>
-                 )}
-               </AnimatePresence>
-             </div>
-
-             {activeBrand && (() => {
-               const daysLeft = activeBrand.trial_end_date ? Math.max(0, Math.ceil((new Date(activeBrand.trial_end_date) - new Date()) / (1000 * 60 * 60 * 24))) : 0;
-               const isPaid = activeBrand?.payment_verified === true || activeBrand?.payment_verified === 'true';
-               if (isPaid) {
-                 return (
-                   <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Cuenta Activa</span>
-                   </div>
-                 );
-               }
-               if (daysLeft > 0) {
-                 return (
-                   <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full">
-                      <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                      <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Prueba Activa: {daysLeft} días</span>
-                   </div>
-                 );
-               }
-               return (
-                 <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 bg-red-500/10 border border-red-500/20 rounded-full">
-                    <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                    <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Pago Pendiente</span>
-                 </div>
-               );
-             })()}
-          </div>
           <div className="flex items-center gap-3">
             <StoreStatusControl />
             <div className="hidden lg:flex items-center gap-3">
-            <div 
-              className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => setCurrentPage('profile')}
-            >
-              <div className="text-right hidden sm:block">
-                <div className="text-[13px] font-semibold text-gray-800 leading-tight">{profile?.full_name || user.email}</div>
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">{profile?.role || 'Propietario'}</div>
+              <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setCurrentPage('profile')}>
+                <div className="text-right hidden sm:block">
+                  <div className="text-[13px] font-semibold text-gray-800 leading-tight">{profile?.full_name || user.email}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">{profile?.role || 'Propietario'}</div>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center overflow-hidden">
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-[11px] font-bold text-brand-primary">{(profile?.full_name || user.email)?.[0].toUpperCase()}</span>
+                  )}
+                </div>
               </div>
-              <div className="w-8 h-8 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center overflow-hidden">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-[11px] font-bold text-brand-primary">
-                    {(profile?.full_name || user.email)?.[0].toUpperCase()}
-                  </span>
-                )}
-              </div>
+              <button onClick={handleSignOut} className="w-8 h-8 rounded-full bg-[#1C2B1E] flex items-center justify-center hover:bg-red-600 transition-colors cursor-pointer" title="Cerrar sesión">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+              </button>
             </div>
-            <button 
-              onClick={async () => {
-                sessionStorage.removeItem('aa_admin_session');
-                if (user?.auth_session) {
-                  try {
-                    await supabase.auth.signOut();
-                  } catch (err) {
-                    console.warn('AdminLayout signOut error:', err);
-                  }
-                  // Redirect to landing to avoid falling back to the current brand's menu
-                  window.location.href = '/'; 
-                } else {
-                  setUser(null);
-                }
-              }}
-              className="w-8 h-8 rounded-full bg-[#1C2B1E] flex items-center justify-center hover:bg-red-600 transition-colors cursor-pointer"
-              title="Cerrar sesión"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" y1="12" x2="9" y2="12"></line>
-              </svg>
-            </button>
           </div>
-            </div>
         </header>
 
-        {/* Content */}
         {globalIncomingOrder && currentPage !== 'orders' && (
           <div className="bg-red-600 text-white px-4 py-3 flex flex-wrap items-center justify-between gap-3 shadow-lg z-40 animate-pulse">
             <div className="flex items-center gap-2.5">
@@ -1306,79 +377,60 @@ export default function AdminLayout() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  soundService.stopNewOrderLoop();
-                  setGlobalIncomingOrder(null);
-                  handleSelectPage('orders', 'Pedidos');
-                }}
-                className="px-3.5 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-xs shadow-sm cursor-pointer"
-              >
+              <button type="button" onClick={() => { soundService.stopNewOrderLoop(); setGlobalIncomingOrder(null); handleSelectPage('orders', 'Pedidos'); }} className="px-3.5 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-xs shadow-sm cursor-pointer">
                 Ir a Pedidos Ahora →
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  soundService.stopNewOrderLoop();
-                  setGlobalIncomingOrder(null);
-                }}
-                className="px-2.5 py-1.5 rounded-xl bg-red-800 hover:bg-red-900 text-white font-bold text-xs cursor-pointer"
-              >
+              <button type="button" onClick={() => { soundService.stopNewOrderLoop(); setGlobalIncomingOrder(null); }} className="px-2.5 py-1.5 rounded-xl bg-red-800 hover:bg-red-900 text-white font-bold text-xs cursor-pointer">
                 Silenciar
               </button>
             </div>
           </div>
         )}
-        <div className="flex-1 relative w-full max-w-full overflow-x-hidden pb-[calc(env(safe-area-inset-bottom,0px)+84px)] lg:pb-0">
-          {currentPage === 'web'         && <AdminWebContent />}
-          {currentPage === 'live_menu'   && <AdminLiveMenu />}
-          {currentPage === 'products'    && <AdminProducts />}
-          {currentPage === 'categories'  && <AdminCategories />}
-          { currentPage === 'experiences' && <AdminExperiences /> }
-          { currentPage === 'recipes'     && <AdminRecipes /> }
-          { currentPage === 'modifier_groups' && <AdminModifierGroups /> }
-          { currentPage === 'menu_print' && <AdminMenuPrint /> }
-          { currentPage === 'inventory'   && <AdminModifiers /> }
-          { currentPage === 'tables'      && <AdminTables /> }
-          { currentPage === 'delivery_drivers' && <AdminDeliveryDrivers /> }
-          { currentPage === 'orders'      && <AdminOrders /> }
-          { currentPage === 'kitchen'     && <AdminKitchen /> }
-          { currentPage === 'bar'         && <AdminBar /> }
-          { currentPage === 'settings'    && <AdminSettings /> }
-          { currentPage === 'staff'       && <AdminStaff /> }
-          { currentPage === 'sedes'       && <AdminSedes /> }
-          { currentPage === 'dashboard'   && <AdminDashboard /> }
-          { currentPage === 'analytics'   && <AdminAnalytics /> }
-            { currentPage === 'finance'     && <AdminFinance /> }
-          { currentPage === 'promotions'  && <AdminPromotions /> }
-          { currentPage === 'waiter'      && <AdminWaiter /> }
-          { currentPage === 'operations'  && <AdminOperations /> }
-          { currentPage === 'business_profile' && <AdminBusinessProfile /> }
-          { currentPage === 'profile'     && <AdminProfile /> }
 
-          {/* Feature Lock Overlay */}
-          <LockOverlay 
+        <div className="flex-1 relative w-full max-w-full overflow-x-hidden pb-[calc(env(safe-area-inset-bottom,0px)+84px)] lg:pb-0">
+          <Suspense fallback={<TabLoader />}>
+            {currentPage === 'web' && <AdminWebContent />}
+            {currentPage === 'live_menu' && <AdminLiveMenu />}
+            {currentPage === 'products' && <AdminProducts />}
+            {currentPage === 'categories' && <AdminCategories />}
+            {currentPage === 'experiences' && <AdminExperiences />}
+            {currentPage === 'recipes' && <AdminRecipes />}
+            {currentPage === 'modifier_groups' && <AdminModifierGroups />}
+            {currentPage === 'menu_print' && <AdminMenuPrint />}
+            {currentPage === 'inventory' && <AdminModifiers />}
+            {currentPage === 'tables' && <AdminTables />}
+            {currentPage === 'delivery_drivers' && <AdminDeliveryDrivers />}
+            {currentPage === 'orders' && <AdminOrders />}
+            {currentPage === 'kitchen' && <AdminKitchen />}
+            {currentPage === 'bar' && <AdminBar />}
+            {currentPage === 'settings' && <AdminSettings />}
+            {currentPage === 'staff' && <AdminStaff />}
+            {currentPage === 'sedes' && <AdminSedes />}
+            {currentPage === 'dashboard' && <AdminDashboard />}
+            {currentPage === 'analytics' && <AdminAnalytics />}
+            {currentPage === 'finance' && <AdminFinance />}
+            {currentPage === 'promotions' && <AdminPromotions />}
+            {currentPage === 'waiter' && <AdminWaiter />}
+            {currentPage === 'operations' && <AdminOperations />}
+            {currentPage === 'business_profile' && <AdminBusinessProfile />}
+            {currentPage === 'profile' && <AdminProfile />}
+          </Suspense>
+
+          <LockOverlay
             isVisible={showUpgradeModal}
             onClose={() => setShowUpgradeModal(false)}
-            onUpgrade={() => {
-              setShowUpgradeModal(false);
-              setShowPlanSelector(true);
-            }}
+            onUpgrade={() => { setShowUpgradeModal(false); setShowPlanSelector(true); }}
             featureName={lockedFeatureName}
             planNeeded={
-              lockedFeatureName === 'Identidad Visual' ? 'Emprendedor' : 
-              (lockedFeatureName === 'Gestión Web' || lockedFeatureName === 'Dashboard' || lockedFeatureName === 'Personal / Staff') ? 'Esencial' : 
-              lockedFeatureName === 'Experiencias' ? 'Profesional' :
-              'Profesional'
+              lockedFeatureName === 'Identidad Visual' ? 'Emprendedor' :
+              (lockedFeatureName === 'Gestión Web' || lockedFeatureName === 'Dashboard' || lockedFeatureName === 'Personal / Staff') ? 'Esencial' : 'Profesional'
             }
             brandName={restaurantName}
           />
 
-          {/* New Premium Upgrade Modal */}
-          <UpgradeModal 
-            isOpen={showPlanSelector} 
-            onClose={() => setShowPlanSelector(false)} 
+          <UpgradeModal
+            isOpen={showPlanSelector}
+            onClose={() => setShowPlanSelector(false)}
             currentPlanSlug={activePlan?.slug}
             onSelectPage={handleSelectPage}
             startTrial={startTrial}
@@ -1388,348 +440,29 @@ export default function AdminLayout() {
         </div>
       </main>
 
-      {/* ── Mobile Drawer ────────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {isMobileDrawerOpen && (
-          <>
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              className="fixed inset-0 bg-black/60 z-[60] lg:hidden"
-              onClick={() => setIsMobileDrawerOpen(false)}
-            />
-            <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 left-0 bottom-0 w-[320px] bg-[#0F170F] z-[70] flex flex-col lg:hidden overflow-hidden shadow-2xl"
-            >
-              <div className="flex items-center justify-between h-16 px-5 border-b border-white/10 shrink-0">
-                <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 flex items-center justify-center shrink-0 drop-shadow-md">
-                     <img src={logoUrl} alt="Logo" className="w-full h-full object-contain filter brightness-0 invert" />
-                   </div>
-                   <div className="flex flex-col">
-                     <span className="text-white font-bold text-[14px] truncate">{restaurantName}</span>
-                     {activePlan && (
-                       <div className="flex items-center gap-1">
-                         <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
-                         <span className="text-[10px] text-brand-primary font-bold uppercase tracking-wider">Plan {activePlan.name}</span>
-                       </div>
-                     )}
-                   </div>
-                </div>
-                <button 
-                  onClick={() => setIsMobileDrawerOpen(false)}
-                  className="p-2 -mr-2 text-white/50 hover:text-white rounded-lg"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto custom-scrollbar pt-4 px-4 pb-20 space-y-5">
-                {/* Brand/Location Selectors for Mobile - Simplified without extra wrap */}
-                <div className="mb-8">
-                  <ContextBreadcrumb onNavigate={handleSelectPage} />
-                </div>
-
-                {ADMIN_ROLES.includes(user.role) && (
-                  <NavSection title="Estrategia" items={ESTRATEGIA_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
-                )}
-                
-                <NavSection title="Operación" items={OPERACION_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
-                
-                {ADMIN_ROLES.includes(user.role) && (
-                  <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
-                )}
-                {(ADMIN_ROLES.includes(user.role) || user.role === 'kitchen') && (
-                  <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
-                )}
-                {ADMIN_ROLES.includes(user.role) && (
-                  <>
-                    <NavSection title="Administración de Staff & Locales" items={ADMIN_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
-                    <NavSection title="Presencia Web" items={WEB_ITEMS} current={currentPage} onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }} collapsed={false} />
-                  </>
-                )}
-
-                {/* ── SECCIÓN: CUENTA Y EXTRAS ── */}
-                <div className="pt-2 pb-6">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/20 px-2 mb-3 block">
-                    Cuenta & Extras
-                  </span>
-                  <div className="space-y-1.5 px-1">
-                    {/* Superadmin access */}
-                    {user?.role === 'superadmin' && (
-                      <a
-                        href="/superadmin"
-                        className="group relative w-full flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-medium transition-all duration-300 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 overflow-hidden"
-                      >
-                        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        <Shield className="shrink-0 w-[16px] h-[16px] text-white/40 group-hover:text-white transition-colors" />
-                        <span>Panel Superadmin</span>
-                      </a>
-                    )}
-
-                    {/* Mi Plan / Upgrade */}
-                    <button
-                      onClick={() => {
-                        setShowPlanSelector(true);
-                        setIsMobileDrawerOpen(false);
-                      }}
-                      className="group relative w-full flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-medium transition-all duration-300 text-white/60 hover:text-amber-100 bg-white/5 hover:bg-white/10 border border-white/5 overflow-hidden"
-                    >
-                      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <Star className="shrink-0 w-[16px] h-[16px] text-amber-500/50 group-hover:text-amber-400 transition-colors" />
-                      <span>Mi Plan / Upgrade</span>
-                    </button>
-
-                    {/* Ver Menú Público */}
-                    <a
-                      href={activeBrand?.slug ? `/${activeBrand.slug}/` : "/"}
-                      className="group relative w-full flex items-center gap-3 px-3 py-3 rounded-xl text-[13px] font-medium transition-all duration-300 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 overflow-hidden"
-                    >
-                      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <Globe className="shrink-0 w-[16px] h-[16px] text-white/40 group-hover:text-white transition-colors" />
-                      <span>Ver Menú Público</span>
-                    </a>
-                  </div>
-                </div>
-              </div>
-
-              {/* Mobile Drawer Plan Info / Billing / CTA */}
-              <div className="mt-auto border-t border-gray-100/20 p-4 bg-black/10 shrink-0 space-y-3">
-                {/* Trial compact row */}
-                {!planLoading && activeBrand && (() => {
-                  const daysLeft = activeBrand.trial_end_date ? Math.max(0, Math.ceil((new Date(activeBrand.trial_end_date) - new Date()) / (1000 * 60 * 60 * 24))) : 0;
-                  const isPaid = activeBrand?.payment_verified === true || activeBrand?.payment_verified === 'true';
-                  
-                  if (isPaid) {
-                    return (
-                      <div className="flex items-center gap-2 px-1">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                        <span className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider">Cuenta Activa</span>
-                      </div>
-                    );
-                  }
-
-                  if (daysLeft > 0) {
-                    return (
-                      <div className="flex items-center gap-2 px-1">
-                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                        <span className="text-[11px] font-bold text-amber-500 uppercase tracking-wider">Prueba Activa: {daysLeft} días</span>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div className="flex items-center gap-2 px-1">
-                      <div className="w-2 h-2 rounded-full bg-red-500" />
-                      <span className="text-[11px] font-bold text-red-500 uppercase tracking-wider">Pago Pendiente</span>
-                    </div>
-                  );
-                })()}
-
-                {/* Upgrade Plan CTA if trial already used (Mobile) */}
-                {!planLoading && !isTrialActive && !activePlan && trialAlreadyUsed && (
-                  <button
-                    onClick={() => {
-                      setIsMobileDrawerOpen(false);
-                      setShowPlanSelector(true);
-                    }}
-                    className="w-full group text-left"
-                  >
-                    <div className="rounded-xl bg-gradient-to-r from-emerald-500/20 to-blue-500/10 border border-emerald-500/30 px-3 py-2 flex items-center gap-2 hover:from-emerald-500/30 transition-all">
-                      <span className="text-base">⭐</span>
-                      <div>
-                        <p className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.18em]">Suscripción</p>
-                        <p className="text-[11px] font-semibold text-white/80">Elegir o Activar Plan</p>
-                      </div>
-                    </div>
-                  </button>
-                )}
-
-                {/* Trial start CTA (no plan, no active trial, not used yet) (Mobile) */}
-                {!planLoading && !isTrialActive && !activePlan && !trialAlreadyUsed && (
-                  <button
-                    onClick={async () => {
-                      const { error } = await startTrial();
-                      if (error) alert('Error al iniciar prueba: ' + error.message);
-                    }}
-                    className="w-full group text-left"
-                  >
-                    <div className="rounded-xl bg-gradient-to-r from-brand-primary/20 to-brand-secondary/10 border border-brand-primary/20 px-3 py-2 flex items-center gap-2 hover:from-brand-primary/30 transition-all">
-                      <span className="text-base">🚀</span>
-                      <div>
-                        <p className="text-[9px] font-black text-brand-primary uppercase tracking-[0.18em]">Acceso Total Gratis</p>
-                        <p className="text-[11px] font-semibold text-white/70">Iniciar prueba 21 días</p>
-                      </div>
-                    </div>
-                  </button>
-                )}
-
-              </div>
-
-              {/* Mobile Drawer User Profile & Logout */}
-              <div className="p-4 border-t border-white/10 bg-[#0A0A0A] shrink-0">
-                <div className="flex items-center justify-between">
-                  <div 
-                    className="flex items-center gap-3 cursor-pointer"
-                    onClick={() => {
-                      setCurrentPage('profile');
-                      setIsMobileDrawerOpen(false);
-                    }}
-                  >
-                    <div className="w-10 h-10 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center overflow-hidden shrink-0">
-                      {profile?.avatar_url ? (
-                        <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-[13px] font-bold text-brand-primary">
-                          {(profile?.full_name || user.email)?.[0].toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[14px] font-medium text-white truncate max-w-[150px]">
-                        {profile?.full_name || user.email}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] text-brand-primary font-medium">Ver perfil</span>
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-brand-primary">
-                          <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={async () => {
-                      sessionStorage.removeItem('aa_admin_session');
-                      if (user?.auth_session) {
-                        try {
-                          await supabase.auth.signOut();
-                        } catch (err) {
-                          console.warn('AdminLayout signOut error:', err);
-                        }
-                        // Redirect to landing to avoid falling back to the current brand's menu
-                        window.location.href = '/'; 
-                      } else {
-                        setUser(null);
-                      }
-                    }}
-                    className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-red-500/20 hover:text-red-500 transition-colors cursor-pointer text-white/70 shrink-0"
-                    title="Cerrar sesión"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                      <polyline points="16 17 21 12 16 7"></polyline>
-                      <line x1="21" y1="12" x2="9" y2="12"></line>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* ── Mobile Bottom Navigation ─────────────────────────────────────── */}
-      <div data-aa-admin-bottombar className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[45] lg:hidden pb-[calc(env(safe-area-inset-bottom,0px))]">
-        <div className="flex items-center justify-around h-[72px] px-2">
-          {/* Turno & Caja */}
-          {(ADMIN_ROLES.includes(user.role) || user.role === 'cashier') && (
-            <button 
-              onClick={() => handleSelectPage('operations', 'Turno & Caja')}
-              className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'operations' ? 'text-brand-primary' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              <div className="pointer-events-none flex items-center justify-center">
-                <Icons.Cash />
-              </div>
-              <span className="text-[10px] font-medium pointer-events-none">Caja</span>
-            </button>
-          )}
-
-          {/* POS / Waiter */}
-          {user.role !== 'kitchen' && (
-            <button 
-              onClick={() => handleSelectPage('waiter', 'Toma de Pedidos')}
-              className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'waiter' ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              <div className="pointer-events-none flex items-center justify-center">
-                <Icons.Waiter />
-              </div>
-              <span className="text-[10px] font-medium pointer-events-none">POS</span>
-            </button>
-          )}
-
-          {/* Orders */}
-          {user.role !== 'kitchen' && (
-            <button 
-              onClick={() => handleSelectPage('orders', 'Pedidos')}
-              className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'orders' ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              <div className="relative pointer-events-none">
-                <Icons.Orders />
-              </div>
-              <span className="text-[10px] font-medium pointer-events-none">Pedidos</span>
-            </button>
-          )}
-
-          {/* Kitchen or Bar */}
-          {user.role === 'bar' ? (
-            <button 
-              onClick={() => handleSelectPage('bar', 'Barra (BDS)', 'bar_display')}
-              className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'bar' ? 'text-cyan-400' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              <div className="relative pointer-events-none">
-                <Icons.Bar />
-              </div>
-              <span className="text-[10px] font-medium pointer-events-none">Barra</span>
-            </button>
-          ) : user.role !== 'waiter' && (
-            can('kitchen_display') ? (
-              <button 
-                onClick={() => handleSelectPage('kitchen', 'Cocina', 'kitchen_display')}
-                className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'kitchen' ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'}`}
-              >
-                <div className="relative pointer-events-none">
-                  <Icons.Kitchen />
-                  {!planLoading && (newOrdersCount + preparingOrdersCount) > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white pointer-events-none" />}
-                </div>
-                <span className="text-[10px] font-medium pointer-events-none">Cocina</span>
-              </button>
-            ) : (
-              <button 
-                onClick={() => handleSelectPage('live_menu', 'Carta & Opciones')}
-                className={`flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer ${currentPage === 'live_menu' || currentPage === 'products' ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600'}`}
-              >
-                <div className="relative pointer-events-none">
-                  <Icons.LiveMenu />
-                </div>
-                <span className="text-[10px] font-medium pointer-events-none">Carta</span>
-              </button>
-            )
-          )}
-
-          {/* More Menu (Opens Drawer) */}
-          <button 
-            onClick={() => setIsMobileDrawerOpen(true)}
-            className="flex flex-col items-center justify-center w-full h-full gap-1 text-gray-400 hover:text-gray-600 cursor-pointer"
-          >
-            <div className="pointer-events-none flex items-center justify-center">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="1"></circle>
-                <circle cx="19" cy="12" r="1"></circle>
-                <circle cx="5" cy="12" r="1"></circle>
-              </svg>
-            </div>
-            <span className="text-[10px] font-medium pointer-events-none">Menú</span>
-          </button>
-        </div>
-      </div>
+      <AdminMobileNavigation
+        isMobileDrawerOpen={isMobileDrawerOpen}
+        setIsMobileDrawerOpen={setIsMobileDrawerOpen}
+        logoUrl={logoUrl}
+        restaurantName={restaurantName}
+        activePlan={activePlan}
+        user={user}
+        profile={profile}
+        currentPage={currentPage}
+        handleSelectPage={handleSelectPage}
+        setCurrentPage={setCurrentPage}
+        planLoading={planLoading}
+        can={can}
+        missingAlerts={missingAlerts}
+        activeBrand={activeBrand}
+        isTrialActive={isTrialActive}
+        trialAlreadyUsed={trialAlreadyUsed}
+        startTrial={startTrial}
+        setShowPlanSelector={setShowPlanSelector}
+        newOrdersCount={newOrdersCount}
+        preparingOrdersCount={preparingOrdersCount}
+        onSignOut={handleSignOut}
+      />
 
       <Toast />
 
@@ -1743,9 +476,7 @@ export default function AdminLayout() {
         />
       ) : null}
 
-      {activeBrand?.is_active === false && (
-        <AccountSuspendedOverlay brandName={restaurantName} />
-      )}
+      {activeBrand?.is_active === false && <AccountSuspendedOverlay brandName={restaurantName} />}
     </div>
   );
 }

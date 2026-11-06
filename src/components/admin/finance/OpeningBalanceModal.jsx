@@ -7,32 +7,30 @@ export default function OpeningBalanceModal({ isOpen, onClose, accounts = [], on
   const [accountBalances, setAccountBalances] = useState(() => {
     const map = {};
     accounts.forEach(a => {
-      map[a.id] = a.balance || 0;
+      // Si el balance es 0, dejarlo vacío para que el placeholder muestre 0 y no se concatene al escribir
+      map[a.id] = (a.balance && a.balance > 0) ? a.balance : '';
     });
     return map;
   });
 
-  const [initialReceivables, setInitialReceivables] = useState([
-    // { customerName: '', phone: '', amount: '', notes: '' }
-  ]);
-
-  const [initialPayables, setInitialPayables] = useState([
-    // { supplierName: '', amount: '', notes: '' }
-  ]);
-
+  const [initialReceivables, setInitialReceivables] = useState([]);
+  const [initialPayables, setInitialPayables] = useState([]);
   const [saving, setSaving] = useState(false);
 
   if (!isOpen) return null;
 
   const handleAccountChange = (id, val) => {
-    const num = Number(val.replace(/\D/g, '') || 0);
-    setAccountBalances(prev => ({ ...prev, [id]: num }));
+    const digitsOnly = val.replace(/\D/g, '');
+    setAccountBalances(prev => ({
+      ...prev,
+      [id]: digitsOnly === '' ? '' : Number(digitsOnly)
+    }));
   };
 
   const addReceivable = () => {
     setInitialReceivables(prev => [
       ...prev,
-      { customerName: '', phone: '', amount: 0, notes: '' }
+      { customerName: '', phone: '', amount: '', notes: '' }
     ]);
   };
 
@@ -51,7 +49,7 @@ export default function OpeningBalanceModal({ isOpen, onClose, accounts = [], on
   const addPayable = () => {
     setInitialPayables(prev => [
       ...prev,
-      { supplierName: '', amount: 0, notes: '' }
+      { supplierName: '', amount: '', notes: '' }
     ]);
   };
 
@@ -75,10 +73,25 @@ export default function OpeningBalanceModal({ isOpen, onClose, accounts = [], on
   const handleComplete = async () => {
     setSaving(true);
     try {
+      const sanitizedBalances = {};
+      Object.keys(accountBalances).forEach(k => {
+        sanitizedBalances[k] = Number(accountBalances[k] || 0);
+      });
+
+      const sanitizedReceivables = initialReceivables.map(r => ({
+        ...r,
+        amount: Number(r.amount || 0)
+      }));
+
+      const sanitizedPayables = initialPayables.map(p => ({
+        ...p,
+        amount: Number(p.amount || 0)
+      }));
+
       await onSave({
-        accountsBalances: accountBalances,
-        initialReceivables,
-        initialPayables,
+        accountsBalances: sanitizedBalances,
+        initialReceivables: sanitizedReceivables,
+        initialPayables: sanitizedPayables,
         openingDate: new Date().toISOString()
       });
       onClose();
@@ -140,25 +153,32 @@ export default function OpeningBalanceModal({ isOpen, onClose, accounts = [], on
                 </div>
 
                 <div className="space-y-3">
-                  {accounts.map(acc => (
-                    <div key={acc.id} className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <span className="text-xs font-black text-gray-900">{acc.name}</span>
-                        <p className="text-[11px] text-gray-500 uppercase">{acc.type}</p>
+                  {accounts.map(acc => {
+                    const rawVal = accountBalances[acc.id];
+                    const displayVal = (rawVal === '' || rawVal === undefined || rawVal === null)
+                      ? ''
+                      : Number(rawVal).toLocaleString('es-CO');
+
+                    return (
+                      <div key={acc.id} className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <span className="text-xs font-black text-gray-900">{acc.name}</span>
+                          <p className="text-[11px] text-gray-500 uppercase">{acc.type}</p>
+                        </div>
+                        <div className="relative w-full sm:w-56">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={displayVal}
+                            onChange={(e) => handleAccountChange(acc.id, e.target.value)}
+                            className="w-full pl-8 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl text-right font-black text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 text-sm"
+                            placeholder="0"
+                          />
+                        </div>
                       </div>
-                      <div className="relative w-full sm:w-56">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={Number(accountBalances[acc.id] || 0).toLocaleString('es-CO')}
-                          onChange={(e) => handleAccountChange(acc.id, e.target.value)}
-                          className="w-full pl-8 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl text-right font-black text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 text-sm"
-                          placeholder="0"
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="p-4 rounded-2xl bg-gray-900 text-white flex items-center justify-between">
@@ -193,41 +213,54 @@ export default function OpeningBalanceModal({ isOpen, onClose, accounts = [], on
                     </div>
                   ) : (
                     <>
-                      {initialReceivables.map((rec, idx) => (
-                        <div key={idx} className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            <input
-                              type="text"
-                              placeholder="Nombre del Cliente"
-                              value={rec.customerName}
-                              onChange={(e) => updateReceivable(idx, 'customerName', e.target.value)}
-                              className="px-3 py-2 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-900"
-                            />
-                            <input
-                              type="text"
-                              placeholder="Teléfono / WhatsApp"
-                              value={rec.phone}
-                              onChange={(e) => updateReceivable(idx, 'phone', e.target.value)}
-                              className="px-3 py-2 bg-white border border-gray-300 rounded-xl text-xs font-mono text-gray-900"
-                            />
-                            <div className="flex items-center gap-2">
+                      {initialReceivables.map((rec, idx) => {
+                        const recDisplay = (rec.amount === '' || rec.amount === undefined || rec.amount === null)
+                          ? ''
+                          : Number(rec.amount).toLocaleString('es-CO');
+
+                        return (
+                          <div key={idx} className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                               <input
-                                type="number"
-                                placeholder="Monto ($)"
-                                value={rec.amount || ''}
-                                onChange={(e) => updateReceivable(idx, 'amount', Number(e.target.value))}
-                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl text-xs font-black text-gray-900"
+                                type="text"
+                                placeholder="Nombre del Cliente"
+                                value={rec.customerName}
+                                onChange={(e) => updateReceivable(idx, 'customerName', e.target.value)}
+                                className="px-3 py-2 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-900"
                               />
-                              <button
-                                onClick={() => removeReceivable(idx)}
-                                className="p-2 text-red-500 hover:bg-red-50 rounded-xl"
-                              >
-                                <Trash2 size={16} />
-                              </button>
+                              <input
+                                type="text"
+                                placeholder="Teléfono / WhatsApp"
+                                value={rec.phone}
+                                onChange={(e) => updateReceivable(idx, 'phone', e.target.value)}
+                                className="px-3 py-2 bg-white border border-gray-300 rounded-xl text-xs font-mono text-gray-900"
+                              />
+                              <div className="flex items-center gap-2">
+                                <div className="relative w-full">
+                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">$</span>
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    placeholder="0"
+                                    value={recDisplay}
+                                    onChange={(e) => {
+                                      const digits = e.target.value.replace(/\D/g, '');
+                                      updateReceivable(idx, 'amount', digits === '' ? '' : Number(digits));
+                                    }}
+                                    className="w-full pl-6 pr-3 py-2 bg-white border border-gray-300 rounded-xl text-xs font-black text-gray-900 text-right"
+                                  />
+                                </div>
+                                <button
+                                  onClick={() => removeReceivable(idx)}
+                                  className="p-2 text-red-500 hover:bg-red-50 rounded-xl"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                       <button
                         onClick={addReceivable}
                         className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition-colors"
@@ -270,30 +303,43 @@ export default function OpeningBalanceModal({ isOpen, onClose, accounts = [], on
                     </div>
                   ) : (
                     <>
-                      {initialPayables.map((pay, idx) => (
-                        <div key={idx} className="p-3 bg-gray-50 rounded-2xl border border-gray-200 flex items-center gap-2">
-                          <input
-                            type="text"
-                            placeholder="Nombre del Proveedor (Ej: Distribuidora Avícola)"
-                            value={pay.supplierName}
-                            onChange={(e) => updatePayable(idx, 'supplierName', e.target.value)}
-                            className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-900"
-                          />
-                          <input
-                            type="number"
-                            placeholder="Monto ($)"
-                            value={pay.amount || ''}
-                            onChange={(e) => updatePayable(idx, 'amount', Number(e.target.value))}
-                            className="w-36 px-3 py-2 bg-white border border-gray-300 rounded-xl text-xs font-black text-gray-900"
-                          />
-                          <button
-                            onClick={() => removePayable(idx)}
-                            className="p-2 text-red-500 hover:bg-red-50 rounded-xl"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ))}
+                      {initialPayables.map((pay, idx) => {
+                        const payDisplay = (pay.amount === '' || pay.amount === undefined || pay.amount === null)
+                          ? ''
+                          : Number(pay.amount).toLocaleString('es-CO');
+
+                        return (
+                          <div key={idx} className="p-3 bg-gray-50 rounded-2xl border border-gray-200 flex items-center gap-2">
+                            <input
+                              type="text"
+                              placeholder="Nombre del Proveedor (Ej: Distribuidora Avícola)"
+                              value={pay.supplierName}
+                              onChange={(e) => updatePayable(idx, 'supplierName', e.target.value)}
+                              className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-900"
+                            />
+                            <div className="relative w-36">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">$</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="0"
+                                value={payDisplay}
+                                onChange={(e) => {
+                                  const digits = e.target.value.replace(/\D/g, '');
+                                  updatePayable(idx, 'amount', digits === '' ? '' : Number(digits));
+                                }}
+                                className="w-full pl-6 pr-3 py-2 bg-white border border-gray-300 rounded-xl text-xs font-black text-gray-900 text-right"
+                              />
+                            </div>
+                            <button
+                              onClick={() => removePayable(idx)}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-xl"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        );
+                      })}
                       <button
                         onClick={addPayable}
                         className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition-colors"
@@ -321,22 +367,21 @@ export default function OpeningBalanceModal({ isOpen, onClose, accounts = [], on
                       <span className="text-xs font-black text-rose-400">$ {totalPays.toLocaleString('es-CO')}</span>
                     </div>
                   </div>
-                  <div className="pt-3 border-t border-gray-800 flex items-center justify-between">
-                    <span className="text-xs font-black text-gray-300">Patrimonio Neto de Apertura:</span>
-                    <span className="text-lg font-black text-emerald-400">$ {netWorth.toLocaleString('es-CO')}</span>
+                  <div className="pt-2 border-t border-gray-800 flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-300">Patrimonio Neto Real (Capital Inicial):</span>
+                    <span className="text-base font-black text-white">$ {netWorth.toLocaleString('es-CO')}</span>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Footer Navigation */}
-          <div className="p-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+          {/* Footer Actions */}
+          <div className="p-5 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
             {step > 1 ? (
               <button
-                type="button"
                 onClick={() => setStep(s => s - 1)}
-                className="px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-bold text-xs hover:bg-gray-100"
+                className="px-4 py-2.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 font-bold text-xs transition-colors"
               >
                 Atrás
               </button>
@@ -344,20 +389,18 @@ export default function OpeningBalanceModal({ isOpen, onClose, accounts = [], on
 
             {step < 3 ? (
               <button
-                type="button"
                 onClick={() => setStep(s => s + 1)}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md shadow-emerald-950/20 transition-all cursor-pointer"
               >
-                Siguiente <ArrowRight size={14} />
+                Siguiente Paso <ArrowRight size={14} />
               </button>
             ) : (
               <button
-                type="button"
-                disabled={saving}
                 onClick={handleComplete}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-lg transition-all"
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-lg shadow-emerald-950/30 transition-all cursor-pointer"
               >
-                {saving ? 'Guardando...' : <>Confirmar & Iniciar Finanzas <Check size={16} /></>}
+                {saving ? 'Cargando Asiento...' : <><Check size={16} /> Confirmar Asiento de Apertura</>}
               </button>
             )}
           </div>
