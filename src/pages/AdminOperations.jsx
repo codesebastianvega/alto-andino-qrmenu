@@ -40,23 +40,61 @@ export default function AdminOperations() {
   const [isCloseShiftModalOpen, setIsCloseShiftModalOpen] = useState(false);
   const [isManualOrderModalOpen, setIsManualOrderModalOpen] = useState(false);
 
-  // Cobro rápido de fiados directamente desde el arqueo de caja
-  const handleSettleFiado = async (orderId, paymentMethod = 'efectivo') => {
+  // Cobro y abonos de fiados directamente desde el arqueo de caja (con soporte para abonos parciales y descuentos/cortesías)
+  const handleSettleFiado = async (orderId, paymentMethod = 'efectivo', { amount = null, discount = 0, discountReason = '' } = {}) => {
     try {
       const order = orders.find(o => o.id === orderId);
-      const totalAmt = Number(order?.total_amount || 0);
+      if (!order) throw new Error('Pedido no encontrado');
+
+      const originalTotal = Number(order.total_amount || 0);
+      const prevPaid = Number(order.paid_amount || 0);
+      const discountVal = Math.max(0, Number(discount || 0));
+
+      // Si hay descuento, el nuevo total del pedido se reduce
+      const newTotal = Math.max(0, originalTotal - discountVal);
+      const remainingBeforePayment = Math.max(0, newTotal - prevPaid);
+
+      // Si amount viene nulo o no definido, se cobra el saldo restante completo
+      const paymentAmount = amount !== null ? Math.min(Number(amount), remainingBeforePayment) : remainingBeforePayment;
+      const newPaidTotal = prevPaid + paymentAmount;
+      const isFullyPaid = newPaidTotal >= newTotal;
+
+      let cleanNotes = order.delivery_notes || '';
+      if (isFullyPaid) {
+        cleanNotes = cleanNotes.replace(/\[\s*🤝?\s*FIADO[^\]]*\]/gi, '').trim();
+      } else {
+        const abonoStamp = `[Abono $${paymentAmount.toLocaleString('es-CO')} vía ${paymentMethod} (${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })})]`;
+        cleanNotes = `${cleanNotes} ${abonoStamp}`.trim();
+      }
+
+      if (discountVal > 0 && discountReason) {
+        const discountStamp = `[Descuento $${discountVal.toLocaleString('es-CO')} (${discountReason})]`;
+        cleanNotes = `${cleanNotes} ${discountStamp}`.trim();
+      }
+
+      const updatePayload = {
+        payment_status: isFullyPaid ? 'paid' : 'pending',
+        payment_method: paymentMethod,
+        paid_amount: newPaidTotal,
+        discount_amount: (Number(order.discount_amount || 0) + discountVal) || 0,
+        total_amount: newTotal,
+        delivery_notes: cleanNotes || null,
+        updated_at: new Date().toISOString()
+      };
+
       const { error } = await supabase
         .from('orders')
-        .update({
-          payment_status: 'paid',
-          payment_method: paymentMethod,
-          paid_amount: totalAmt,
-          updated_at: new Date().toISOString()
-        })
+        .update(updatePayload)
         .eq('id', orderId);
 
       if (error) throw error;
-      toast.success(`🎉 Fiado marcado como pagado vía ${paymentMethod === 'nequi' ? 'Nequi / Bre-B' : 'Efectivo'}`);
+
+      if (isFullyPaid) {
+        toast.success(`🎉 Fiado pagado completamente ($${paymentAmount.toLocaleString('es-CO')} vía ${paymentMethod.toUpperCase()})`);
+      } else {
+        toast.success(`💰 Abono de $${paymentAmount.toLocaleString('es-CO')} registrado. Saldo pendiente: $${(newTotal - newPaidTotal).toLocaleString('es-CO')}`);
+      }
+
       await refresh();
     } catch (err) {
       console.error(err);
@@ -176,6 +214,8 @@ export default function AdminOperations() {
               metrics={metrics}
               orders={orders}
               activeShift={activeShift}
+              business={activeBrand}
+              settings={settings}
               onOpenShift={() => setIsOpenShiftModalOpen(true)}
               onCloseShift={() => setIsCloseShiftModalOpen(true)}
               onPrintReportX={handlePrintReportX}

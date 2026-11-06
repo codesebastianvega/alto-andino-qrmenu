@@ -209,3 +209,118 @@ export function printThermalShiftReport({ shift, metrics = {}, type = 'Z', width
   </style></head><body>${businessHeader}${metaSection}${cashAuditSection}${paymentsSection}${totalsSection}${footer}<script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();};</script></body></html>`);
   target.document.close();
 }
+
+export function printThermalCustomerAccountStatement({
+  customerName = 'Cliente',
+  customerPhone = '',
+  customerAddress = '',
+  orders = [],
+  totalDebt = 0,
+  width = '80',
+  businessName = 'Aluna',
+  business = {}
+}) {
+  const pageWidth = width === '80' ? '80mm' : '50mm';
+  const compact = width !== '80';
+  const title = 'ESTADO DE CUENTA — FIADOS';
+  const businessLabel = business.name || businessName;
+  const taxId = business.nit || business.tax_id || business.document_number;
+  const locationLabel = business.address || '';
+
+  const businessHeader = `<header class="center">
+    <div class="brand">${escapeHtml(businessLabel)}</div>
+    ${taxId ? `<div>NIT ${escapeHtml(taxId)}</div>` : ''}
+    ${locationLabel ? `<div>${escapeHtml(locationLabel)}</div>` : ''}
+    ${business.phone ? `<div>Tel. ${escapeHtml(business.phone)}</div>` : ''}
+    <div class="document-title">${title}</div>
+  </header>`;
+
+  const customerMeta = `<section class="meta">
+    ${row('Cliente', customerName, 'strong')}
+    ${customerPhone ? row('Teléfono', customerPhone) : ''}
+    ${customerAddress ? row('Dirección', customerAddress) : ''}
+    ${row('Fecha Emisión', new Date().toLocaleString('es-CO'))}
+    ${row('Cant. Pedidos', String(orders.length))}
+  </section>`;
+
+  let totalConsumed = 0;
+  let totalDiscounts = 0;
+  let totalAbonos = 0;
+
+  const ordersListHtml = orders.map((order) => {
+    const shortId = order.id?.slice(0, 8)?.toUpperCase() || '';
+    const dateStr = new Date(order.created_at).toLocaleString('es-CO', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const items = order.order_items || [];
+    const orderTotal = Number(order.total_amount || 0);
+    const paid = Number(order.paid_amount || 0);
+    const discount = Number(order.discount_amount || 0);
+    const balance = Math.max(0, orderTotal - paid);
+
+    totalConsumed += (orderTotal + discount);
+    totalDiscounts += discount;
+    totalAbonos += paid;
+
+    const itemsSummary = items.map(item => {
+      const name = resolveOrderItemName(item);
+      const qty = Number(item.quantity || 1);
+      const price = Number(item.unit_price || 0);
+      return `<div class="item" style="font-size: 0.9em;">
+        <span>${qty} × ${escapeHtml(name)}</span>
+        <span>${formatCOP(qty * price)}</span>
+      </div>`;
+    }).join('');
+
+    return `<section class="product" style="padding: 6px 0; border-top: 1px dashed #777;">
+      <div class="pair strong">
+        <span>Pedido #${shortId}</span>
+        <span>${dateStr}</span>
+      </div>
+      ${itemsSummary}
+      ${discount > 0 ? `<div class="pair" style="font-size: 0.85em; color: #555;"><span>Descuento aplicado</span><span>-${formatCOP(discount)}</span></div>` : ''}
+      ${paid > 0 ? `<div class="pair" style="font-size: 0.85em; color: #166534;"><span>Abono registrado</span><span>-${formatCOP(paid)}</span></div>` : ''}
+      <div class="pair" style="font-weight: bold; margin-top: 3px;">
+        <span>Saldo este pedido:</span>
+        <span>${formatCOP(balance)}</span>
+      </div>
+    </section>`;
+  }).join('');
+
+  const summarySection = `<section class="totals">
+    <div class="pair strong" style="border-bottom: 1px dotted #000; padding-bottom: 3px; margin-bottom: 5px;">
+      <span>RESUMEN DE CUENTA</span><span></span>
+    </div>
+    ${row('Total Consumido', formatCOP(totalConsumed))}
+    ${totalDiscounts > 0 ? row('Total Descuentos (-)', formatCOP(totalDiscounts)) : ''}
+    ${totalAbonos > 0 ? row('Total Abonos Recibidos (-)', formatCOP(totalAbonos)) : ''}
+    ${row('SALDO TOTAL PENDIENTE', formatCOP(totalDebt || (totalConsumed - totalDiscounts - totalAbonos)), 'grand-total')}
+  </section>`;
+
+  const paymentMethodsFooter = `<section class="totals" style="font-size: 0.9em; text-align: center; margin-top: 8px;">
+    <div style="font-weight: bold; margin-bottom: 4px;">MEDIOS DE PAGO DISPONIBLES:</div>
+    <div>🟣 Nequi / Bre-B • 🔴 Daviplata • 💳 Datáfono • 💵 Efectivo</div>
+  </section>`;
+
+  const footer = `<footer class="center" style="margin-top: 12px;">
+    <div>Comprobante informativo de consumo y estado de cuenta.</div>
+    <div class="legal" style="margin-top: 4px;">¡Muchas gracias por su preferencia!</div>
+  </footer>`;
+
+  const target = window.open('', '_blank', 'width=480,height=720');
+  if (!target) throw new Error('El navegador bloqueó la ventana de impresión');
+  target.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title} - ${escapeHtml(customerName)}</title><style>
+    @page{size:${pageWidth} auto;margin:0}
+    *{box-sizing:border-box}
+    html,body{width:${pageWidth};max-width:${pageWidth};margin:0;padding:0;background:#fff;color:#000}
+    body{padding:${compact ? '2.5mm' : '4mm'};font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:${compact ? '9.5px' : '11.5px'};line-height:1.3}
+    .center{text-align:center}.brand{font-size:1.35em;font-weight:900;text-transform:uppercase}.document-title{font-weight:900;margin-top:5px;letter-spacing:.08em}
+    .meta,.totals,footer{border-top:1px dashed #000;margin-top:8px;padding-top:7px}.pair,.item{display:flex;justify-content:space-between;align-items:flex-start;gap:7px;margin:3px 0}.pair span:last-child,.item span{text-align:right}.strong{font-weight:900}
+    .grand-total{border-top:2px solid #000;border-bottom:2px solid #000;padding:6px 0;margin:6px 0;font-size:1.25em;font-weight:900}.legal{font-size:.85em;margin-top:7px}
+    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  </style></head><body>${businessHeader}${customerMeta}<main>${ordersListHtml}</main>${summarySection}${paymentMethodsFooter}${footer}<script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();};</script></body></html>`);
+  target.document.close();
+}

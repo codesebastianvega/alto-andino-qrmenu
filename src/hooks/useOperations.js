@@ -58,6 +58,7 @@ export function useOperations() {
       .from('orders')
       .select(`
         id, status, total_amount, paid_amount, service_fee,
+        customer_name, customer_phone, delivery_address, delivery_notes,
         fulfillment_type, payment_status, created_at, delivered_at,
         cancelled_at, discount_amount, waiter_id, table_id,
         cancellation_reason, location_id, payment_method,
@@ -546,7 +547,7 @@ export function useOperations() {
         String(o.delivery_notes || '').toLowerCase().includes('fiado')
       )
     );
-    const totalFiados = fiadosList.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+    const totalFiados = fiadosList.reduce((sum, o) => sum + Math.max(0, Number(o.total_amount || 0) - Number(o.paid_amount || 0)), 0);
 
     const initialCash = Number(activeShift?.initial_cash || 0);
     const expectedCash = initialCash + totalCashSales;
