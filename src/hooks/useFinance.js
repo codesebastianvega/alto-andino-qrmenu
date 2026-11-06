@@ -6,9 +6,7 @@ import { toast } from '../components/Toast';
 
 const DEFAULT_ACCOUNTS = [
   { id: 'acc_cash_main', name: 'Gaveta Física (Efectivo)', type: 'cash', balance: 0, is_default: true },
-  { id: 'acc_nequi_main', name: 'Nequi Negocio', type: 'digital_wallet', balance: 0, is_default: true },
-  { id: 'acc_daviplata_main', name: 'Daviplata', type: 'digital_wallet', balance: 0, is_default: true },
-  { id: 'acc_bold_main', name: 'Datáfono / Bold', type: 'bank', balance: 0, is_default: false },
+  { id: 'acc_nequi_main', name: 'Nequi / Bre-B', type: 'digital_wallet', balance: 0, is_default: false },
 ];
 
 export const EXPENSE_CATEGORIES = [
@@ -86,12 +84,26 @@ export function useFinance() {
 
       const existingFin = data?.config?.financials || null;
       if (existingFin) {
-        // Ensure discarded_order_ids exists and includes defaults
         const existingDiscarded = Array.isArray(existingFin.discarded_order_ids)
           ? existingFin.discarded_order_ids
           : DEFAULT_DISCARDED_TEST_IDS;
+
+        // Clean out legacy accounts if they have 0 balance and were not added manually
+        let cleanAccounts = existingFin.accounts || DEFAULT_ACCOUNTS;
+        cleanAccounts = cleanAccounts.filter(a => {
+          if ((a.id === 'acc_daviplata_main' || a.id === 'acc_bold_main') && Number(a.balance || 0) === 0 && !a.manually_added) {
+            return false;
+          }
+          return true;
+        });
+
+        if (cleanAccounts.length === 0) {
+          cleanAccounts = DEFAULT_ACCOUNTS;
+        }
+
         setFinancialConfig({
           ...existingFin,
+          accounts: cleanAccounts,
           discarded_order_ids: Array.from(new Set([...existingDiscarded, ...DEFAULT_DISCARDED_TEST_IDS]))
         });
       } else {
@@ -129,10 +141,8 @@ export function useFinance() {
     setSaving(true);
     try {
       setFinancialConfig(newFinConfig);
-      // LocalStorage backup for instant local reads
       localStorage.setItem(`aa_financials_${brandId}`, JSON.stringify(newFinConfig));
 
-      // Fetch fresh brand config and patch financials
       const { data: brandData } = await supabase
         .from('brands')
         .select('config')
@@ -186,7 +196,6 @@ export function useFinance() {
       const remaining = Math.max(0, total - paid);
 
       if (isUnpaid && remaining > 0) {
-        // Extract customer name
         let name = order.customer_name || 'Cliente sin nombre';
         if (order.delivery_notes && order.delivery_notes.includes('FIADO - Cuenta por cobrar:')) {
           const match = order.delivery_notes.match(/FIADO - Cuenta por cobrar:\s*([^\[]+)/);
@@ -243,7 +252,6 @@ export function useFinance() {
     };
   }, [orders, financialConfig, discardedSet]);
 
-  // Backward compatibility alias: receivables defaults to activeReceivables
   const receivables = activeReceivables;
 
   // 6. Expenses list
@@ -258,24 +266,18 @@ export function useFinance() {
 
   // 8. Financial KPIs & Aggregates
   const metrics = useMemo(() => {
-    // Total cash on hand (sum of all account balances)
     const cashOnHand = accounts.reduce((acc, a) => acc + Number(a.balance || 0), 0);
-
-    // Total receivables (money in the street - ONLY active)
     const totalReceivables = activeReceivables.reduce((acc, r) => acc + Number(r.balanceDue || 0), 0);
 
-    // Aging breakdown (ONLY active)
     const agingBreakdown = {
       current: activeReceivables.filter(r => r.agingCategory === 'current').reduce((s, r) => s + r.balanceDue, 0),
       warning: activeReceivables.filter(r => r.agingCategory === 'warning').reduce((s, r) => s + r.balanceDue, 0),
       danger: activeReceivables.filter(r => r.agingCategory === 'danger').reduce((s, r) => s + r.balanceDue, 0),
     };
 
-    // Total payables (debts to suppliers)
     const payables = financialConfig?.payables || [];
     const totalPayables = payables.reduce((acc, p) => acc + Number(p.balanceDue || p.amount || 0), 0);
 
-    // Expenses in current month
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
@@ -286,7 +288,6 @@ export function useFinance() {
     });
     const totalExpensesMonth = currentMonthExpenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
 
-    // Delivered order sales in current month
     const currentMonthOrders = orders.filter(o => {
       if (o.status !== 'delivered') return false;
       const d = new Date(o.created_at);
@@ -295,7 +296,6 @@ export function useFinance() {
     const grossSalesMonth = currentMonthOrders.reduce((acc, o) => acc + Number(o.total_amount || 0), 0);
     const collectedSalesMonth = currentMonthOrders.reduce((acc, o) => acc + Number(o.paid_amount || 0), 0);
 
-    // Estimated net profit
     const netProfitMonth = collectedSalesMonth - totalExpensesMonth;
 
     return {
@@ -316,7 +316,7 @@ export function useFinance() {
   // ─── ACTIONS ───────────────────────────────────────────────────────────────
 
   /**
-   * Completes the Opening Balance Wizard (Asiento de Apertura)
+   * Completes the Opening Balance Wizard
    */
   const setInitialBalance = useCallback(async ({
     openingDate = new Date().toISOString(),
@@ -462,7 +462,7 @@ export function useFinance() {
   }, [financialConfig, accounts, persistConfig]);
 
   /**
-   * Transfers funds between pockets (e.g. cash deposit to Nequi)
+   * Transfers funds between pockets
    */
   const transferBetweenAccounts = useCallback(async ({
     fromAccountId,
@@ -553,7 +553,6 @@ export function useFinance() {
     const payAmount = Number(amountToPay || targetReceivable.balanceDue);
     const targetAccount = accounts.find(a => a.id === accountId) || accounts[0];
 
-    // If it's an order receivable, update the order in Supabase
     if (targetReceivable.orderId) {
       const newPaid = Number(targetReceivable.paidAmount || 0) + payAmount;
       const isFullyPaid = newPaid >= Number(targetReceivable.totalAmount);
@@ -568,7 +567,6 @@ export function useFinance() {
         .eq('id', targetReceivable.orderId);
     }
 
-    // If it's a custom opening receivable, update custom_receivables
     let updatedCustomRecs = financialConfig?.custom_receivables || [];
     if (targetReceivable.type === 'opening_receivable') {
       updatedCustomRecs = updatedCustomRecs.map(cr => {
@@ -585,7 +583,6 @@ export function useFinance() {
       });
     }
 
-    // If it is NOT a historical adjustment, add money to the account and write to the ledger
     let updatedAccounts = accounts;
     let newLedgerEntries = financialConfig?.ledger || [];
 
@@ -631,7 +628,6 @@ export function useFinance() {
       const currentDiscarded = financialConfig.discarded_order_ids || [];
       const updatedDiscarded = Array.from(new Set([...currentDiscarded, receivableId]));
 
-      // Also attempt to update the order in Supabase
       supabase
         .from('orders')
         .update({
@@ -702,7 +698,8 @@ export function useFinance() {
       type,
       balance: initBal,
       initial_balance: initBal,
-      is_default: false
+      is_default: false,
+      manually_added: true
     };
 
     const updatedAccounts = [...accounts, newAcc];
@@ -729,7 +726,52 @@ export function useFinance() {
     };
 
     await persistConfig(newFinConfig);
-    toast.success(`Cuenta "${name}" agregada exitosamente`);
+    toast.success(`Bolsillo "${name}" creado exitosamente`);
+  }, [financialConfig, accounts, persistConfig]);
+
+  /**
+   * Edits an existing account
+   */
+  const editAccount = useCallback(async ({ id, name, type }) => {
+    if (!financialConfig || !id) return;
+    const updatedAccounts = accounts.map(a => {
+      if (a.id === id) {
+        return { ...a, name, type, manually_added: true };
+      }
+      return a;
+    });
+
+    const newFinConfig = {
+      ...financialConfig,
+      accounts: updatedAccounts
+    };
+
+    await persistConfig(newFinConfig);
+    toast.success(`Bolsillo "${name}" actualizado`);
+  }, [financialConfig, accounts, persistConfig]);
+
+  /**
+   * Deletes an account/pocket
+   */
+  const deleteAccount = useCallback(async (accountId) => {
+    if (!financialConfig || !accountId) return;
+    const target = accounts.find(a => a.id === accountId);
+    if (!target) return;
+
+    if (accounts.length <= 1) {
+      toast.error('Debes mantener al menos una cuenta activa');
+      return;
+    }
+
+    const updatedAccounts = accounts.filter(a => a.id !== accountId);
+
+    const newFinConfig = {
+      ...financialConfig,
+      accounts: updatedAccounts
+    };
+
+    await persistConfig(newFinConfig);
+    toast.success(`Bolsillo "${target.name}" eliminado`);
   }, [financialConfig, accounts, persistConfig]);
 
   return {
@@ -750,6 +792,8 @@ export function useFinance() {
     settleReceivable,
     discardReceivable,
     restoreReceivable,
-    createAccount
+    createAccount,
+    editAccount,
+    deleteAccount
   };
 }

@@ -4,13 +4,14 @@ import {
   Wallet, DollarSign, TrendingUp, TrendingDown, Users, 
   ArrowUpRight, ArrowDownRight, ArrowRightLeft, Plus, 
   Calendar, Check, Clock, AlertTriangle, ShieldCheck, 
-  Tag, Download, FileText, Smartphone, Banknote, RefreshCw, Trash2
+  Tag, Download, FileText, Smartphone, Banknote, RefreshCw, Trash2, Edit2
 } from 'lucide-react';
 import { useFinance, EXPENSE_CATEGORIES } from '../hooks/useFinance';
 import OpeningBalanceModal from '../components/admin/finance/OpeningBalanceModal';
 import RecordExpenseModal from '../components/admin/finance/RecordExpenseModal';
 import TransferFundsModal from '../components/admin/finance/TransferFundsModal';
 import SettleReceivableModal from '../components/admin/finance/SettleReceivableModal';
+import AccountModal from '../components/admin/finance/AccountModal';
 
 export default function AdminFinance() {
   const {
@@ -31,7 +32,9 @@ export default function AdminFinance() {
     settleReceivable,
     discardReceivable,
     restoreReceivable,
-    createAccount
+    createAccount,
+    editAccount,
+    deleteAccount
   } = useFinance();
 
   const [activeTab, setActiveTab] = useState('receivables'); // 'receivables' | 'expenses' | 'pnl' | 'ledger'
@@ -39,6 +42,8 @@ export default function AdminFinance() {
   const [showOpeningModal, setShowOpeningModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [accountToEdit, setAccountToEdit] = useState(null);
   const [selectedReceivable, setSelectedReceivable] = useState(null);
 
   if (loading) {
@@ -51,6 +56,14 @@ export default function AdminFinance() {
   }
 
   const currentReceivablesList = receivableView === 'active' ? activeReceivables : discardedReceivables;
+
+  const handleSaveAccount = async (accountData) => {
+    if (accountData.id) {
+      await editAccount(accountData);
+    } else {
+      await createAccount(accountData);
+    }
+  };
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 pb-24">
@@ -175,8 +188,19 @@ export default function AdminFinance() {
       {/* ─── ROW 2: BOLSILLOS & CUENTAS EN TIEMPO REAL ──────────────────────── */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-black uppercase text-gray-800 tracking-wider">Balances por Bolsillo & Cuentas</h2>
-          <span className="text-xs text-gray-500 font-medium">Suma real disponible: $ {metrics.cashOnHand.toLocaleString('es-CO')}</span>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-black uppercase text-gray-800 tracking-wider">Balances por Bolsillo & Cuentas</h2>
+            <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{accounts.length} cuentas</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-500 font-medium hidden sm:inline">Suma real disponible: $ {metrics.cashOnHand.toLocaleString('es-CO')}</span>
+            <button
+              onClick={() => { setAccountToEdit(null); setShowAccountModal(true); }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-black text-xs shadow-xs transition-colors"
+            >
+              <Plus size={14} /> Nuevo Bolsillo
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -187,29 +211,48 @@ export default function AdminFinance() {
 
             let cardBg = 'bg-white';
             let badgeBg = 'bg-gray-100 text-gray-700';
-            let iconColor = 'text-gray-600';
 
             if (isCash) {
               cardBg = 'bg-emerald-50/50 border-emerald-200/80';
               badgeBg = 'bg-emerald-100 text-emerald-800 border border-emerald-300';
-              iconColor = 'text-emerald-600';
             } else if (isNequi) {
               cardBg = 'bg-purple-50/50 border-purple-200/80';
               badgeBg = 'bg-purple-100 text-purple-800 border border-purple-300';
-              iconColor = 'text-purple-600';
             } else if (isDaviplata) {
               cardBg = 'bg-rose-50/50 border-rose-200/80';
               badgeBg = 'bg-rose-100 text-rose-800 border border-rose-300';
-              iconColor = 'text-rose-600';
             }
 
             return (
               <div key={acc.id} className={`p-5 rounded-3xl border shadow-xs flex flex-col justify-between ${cardBg}`}>
                 <div className="flex items-center justify-between mb-3">
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${badgeBg}`}>
-                    {acc.type === 'cash' ? 'Efectivo' : 'Digital'}
+                    {acc.type === 'cash' ? 'Efectivo' : acc.type === 'bank' ? 'Banco / Datáfono' : 'Billetera Digital'}
                   </span>
-                  <Banknote className={`w-5 h-5 ${iconColor}`} />
+                  
+                  {/* Controles de Cuenta (Editar / Eliminar) */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => { setAccountToEdit(acc); setShowAccountModal(true); }}
+                      title="Editar cuenta"
+                      className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/80 transition-colors"
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                    {accounts.length > 1 && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`¿Deseas eliminar el bolsillo "${acc.name}"?`)) {
+                            deleteAccount(acc.id);
+                          }
+                        }}
+                        title="Eliminar bolsillo"
+                        className="p-1 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <h3 className="text-xs font-black text-gray-800">{acc.name}</h3>
@@ -604,6 +647,13 @@ export default function AdminFinance() {
         onClose={() => setShowTransferModal(false)}
         accounts={accounts}
         onSave={transferBetweenAccounts}
+      />
+
+      <AccountModal
+        isOpen={showAccountModal}
+        onClose={() => { setShowAccountModal(false); setAccountToEdit(null); }}
+        onSave={handleSaveAccount}
+        accountToEdit={accountToEdit}
       />
 
       {selectedReceivable && (
