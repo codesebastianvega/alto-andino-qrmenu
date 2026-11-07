@@ -4,6 +4,23 @@ const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL |
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
+async function parseBody(req) {
+  if (req.body) {
+    if (typeof req.body === 'string') {
+      try { return JSON.parse(req.body); } catch (_) { return {}; }
+    }
+    return req.body;
+  }
+  return new Promise(resolve => {
+    let data = '';
+    req.on('data', chunk => { data += chunk; });
+    req.on('end', () => {
+      try { resolve(JSON.parse(data)); } catch (_) { resolve({}); }
+    });
+    req.on('error', () => resolve({}));
+  });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -15,12 +32,9 @@ export default async function handler(req, res) {
 
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY);
-    let reqBody = req.body;
-    if (typeof reqBody === 'string') {
-      try { reqBody = JSON.parse(reqBody); } catch (_) {}
-    }
+    const reqBody = await parseBody(req);
     const brandId = reqBody?.brandId || req.query?.brandId || 'a63da806-a62a-49b9-a833-07e0976785ad';
-    const action = reqBody?.action || null;
+    const action = reqBody?.action || req.query?.action || null;
     const financials = reqBody?.financials || null;
 
     // ── ACCIÓN ESPECIAL: ACTUALIZAR ORDEN / CLIENTE FIADO ──
@@ -57,7 +71,7 @@ export default async function handler(req, res) {
     }
 
     // ── ACCIÓN ESPECIAL: SINCRONIZAR CONFIGURACIÓN MAESTRA DE PLATOS Y MEDIOS DE PAGO ──
-    if (req.method === 'POST' && action === 'sync_brand_setup') {
+    if ((req.method === 'POST' || req.method === 'GET') && action === 'sync_brand_setup') {
       const targetBrandId = brandId || 'a63da806-a62a-49b9-a833-07e0976785ad';
 
       // 1. Sincronizar restaurant_settings para los platos del día de hoy
