@@ -33,8 +33,12 @@ export default async function handler(req, res) {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY);
     const reqBody = await parseBody(req);
-    const brandId = reqBody?.brandId || req.query?.brandId || 'a63da806-a62a-49b9-a833-07e0976785ad';
-    const action = reqBody?.action || req.query?.action || null;
+    const parsedUrl = new URL(req.url, `https://${req.headers.host || 'localhost'}`);
+    const urlAction = parsedUrl.searchParams.get('action');
+    const urlBrandId = parsedUrl.searchParams.get('brandId');
+
+    const brandId = reqBody?.brandId || urlBrandId || req.query?.brandId || 'a63da806-a62a-49b9-a833-07e0976785ad';
+    const action = reqBody?.action || urlAction || req.query?.action || null;
     const financials = reqBody?.financials || null;
 
     // ── ACCIÓN ESPECIAL: ACTUALIZAR ORDEN / CLIENTE FIADO ──
@@ -71,7 +75,7 @@ export default async function handler(req, res) {
     }
 
     // ── ACCIÓN ESPECIAL: SINCRONIZAR CONFIGURACIÓN MAESTRA DE PLATOS Y MEDIOS DE PAGO ──
-    if ((req.method === 'POST' || req.method === 'GET') && action === 'sync_brand_setup') {
+    if (action === 'sync_brand_setup') {
       const targetBrandId = brandId || 'a63da806-a62a-49b9-a833-07e0976785ad';
 
       // 1. Sincronizar restaurant_settings para los platos del día de hoy
