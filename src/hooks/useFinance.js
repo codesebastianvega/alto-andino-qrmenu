@@ -401,6 +401,7 @@ export function useFinance() {
     allReceivables,
     expenses,
     ledger,
+    orders,
     metrics,
     refreshAll,
     ...actions

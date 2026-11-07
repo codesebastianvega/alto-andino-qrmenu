@@ -169,7 +169,7 @@ export function FinanceReceivablesTab({
   );
 }
 
-export function FinanceExpensesTab({ expenses = [], onOpenExpenseModal }) {
+export function FinanceExpensesTab({ expenses = [], onOpenExpenseModal, periodLabel = 'este período' }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -198,7 +198,7 @@ export function FinanceExpensesTab({ expenses = [], onOpenExpenseModal }) {
               {expenses.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="px-5 py-12 text-center text-gray-400 text-xs">
-                    No hay gastos registrados este mes. Haz clic en "Registrar Gasto" para asentar compras menores o pagos.
+                    No hay gastos registrados en este período (${periodLabel}). Haz clic en "Registrar Gasto" para asentar compras menores o pagos.
                   </td>
                 </tr>
               ) : (
@@ -233,7 +233,7 @@ export function FinanceExpensesTab({ expenses = [], onOpenExpenseModal }) {
   );
 }
 
-export function FinanceProfitLossTab({ metrics }) {
+export function FinanceProfitLossTab({ metrics, periodLabel = 'Este Mes' }) {
   return (
     <div className="bg-white p-6 rounded-3xl border border-gray-200/80 shadow-xs space-y-6 max-w-3xl mx-auto">
       <div>
@@ -244,7 +244,7 @@ export function FinanceProfitLossTab({ metrics }) {
 
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-2xl">
-          <span className="text-xs font-bold text-gray-700">(+) Ventas Brutas Totales (Mes)</span>
+          <span className="text-xs font-bold text-gray-700">(+) Ventas Brutas Totales (${periodLabel})</span>
           <span className="text-sm font-black text-gray-900">$ {metrics.grossSalesMonth.toLocaleString('es-CO')}</span>
         </div>
 
@@ -254,7 +254,7 @@ export function FinanceProfitLossTab({ metrics }) {
         </div>
 
         <div className="flex items-center justify-between p-3.5 bg-rose-50/50 rounded-2xl border border-rose-100">
-          <span className="text-xs font-bold text-rose-900">(-) Gastos Operativos Totales (Mes)</span>
+          <span className="text-xs font-bold text-rose-900">(-) Gastos Operativos Totales (${periodLabel})</span>
           <span className="text-sm font-black text-rose-600">- $ {metrics.totalExpensesMonth.toLocaleString('es-CO')}</span>
         </div>
 

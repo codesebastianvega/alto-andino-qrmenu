@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Wallet, TrendingUp, Users, ArrowDownRight, ArrowRightLeft, Plus, 
-  FileText, RefreshCw
+  FileText, RefreshCw, Calendar
 } from 'lucide-react';
 import { useFinance } from '../hooks/useFinance';
 import OpeningBalanceModal from '../components/admin/finance/OpeningBalanceModal';
@@ -28,6 +28,7 @@ export default function AdminFinance() {
     discardedReceivables,
     expenses,
     ledger,
+    orders,
     metrics,
     setInitialBalance,
     recordExpense,
@@ -52,6 +53,83 @@ export default function AdminFinance() {
   const [accountToEdit, setAccountToEdit] = useState(null);
   const [selectedReceivable, setSelectedReceivable] = useState(null);
   const [selectedEditReceivable, setSelectedEditReceivable] = useState(null);
+
+  const [periodFilter, setPeriodFilter] = useState('month'); // 'today' | '7days' | '15days' | 'month' | 'custom'
+  const [customStartDate, setCustomStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().split('T')[0];
+  });
+  const [customEndDate, setCustomEndDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    let start;
+    let label = 'Este Mes';
+
+    if (periodFilter === 'today') {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      label = 'Hoy';
+    } else if (periodFilter === '7days') {
+      start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      start.setHours(0, 0, 0, 0);
+      label = 'Últimos 7 Días';
+    } else if (periodFilter === '15days') {
+      start = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
+      start.setHours(0, 0, 0, 0);
+      label = 'Últimos 15 Días';
+    } else if (periodFilter === 'custom') {
+      start = customStartDate ? new Date(customStartDate + 'T00:00:00') : new Date(0);
+      const customEnd = customEndDate ? new Date(customEndDate + 'T23:59:59') : end;
+      return { start, end: customEnd, label: `${customStartDate || ''} a ${customEndDate || ''}` };
+    } else {
+      start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      label = 'Este Mes';
+    }
+
+    return { start, end, label };
+  }, [periodFilter, customStartDate, customEndDate]);
+
+  const periodFilteredData = useMemo(() => {
+    const { start, end } = dateRange;
+
+    // Filter expenses
+    const filteredExpenses = (expenses || []).filter(e => {
+      const d = new Date(e.date || e.created_at);
+      return d >= start && d <= end;
+    });
+    const totalExpenses = filteredExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+
+    // Filter delivered orders for revenue
+    const filteredOrders = (orders || []).filter(o => {
+      const d = new Date(o.created_at);
+      return d >= start && d <= end;
+    });
+    const deliveredOrders = filteredOrders.filter(o => o.status === 'delivered');
+    const grossSales = deliveredOrders.reduce((s, o) => s + Number(o.total_amount || 0), 0);
+    const collectedSales = deliveredOrders.reduce((s, o) => s + Number(o.paid_amount || 0), 0);
+    const netProfit = collectedSales - totalExpenses;
+
+    // Filter ledger entries
+    const filteredLedger = (ledger || []).filter(l => {
+      const d = new Date(l.timestamp);
+      return d >= start && d <= end;
+    });
+
+    return {
+      filteredExpenses,
+      totalExpenses,
+      filteredOrders,
+      deliveredOrders,
+      grossSales,
+      collectedSales,
+      netProfit,
+      filteredLedger
+    };
+  }, [expenses, orders, ledger, dateRange]);
 
   if (loading) {
     return (
@@ -157,6 +235,59 @@ export default function AdminFinance() {
           </button>
         </div>
       )}
+
+      {/* ─── FILTRO TEMPORAL / RANGO DE FECHAS ────────────────────────────── */}
+      <div className="bg-white p-4 rounded-3xl border border-gray-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-700">
+            <Calendar size={16} />
+          </div>
+          <div>
+            <span className="text-[11px] font-black uppercase tracking-wider text-gray-900 block leading-tight">Período de Análisis</span>
+            <span className="text-[10px] text-gray-400 font-semibold">{dateRange.label}</span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5 bg-gray-100 p-1.5 rounded-2xl w-full sm:w-auto">
+          {[
+            { id: 'today', label: 'Hoy' },
+            { id: '7days', label: '7 Días' },
+            { id: '15days', label: '15 Días' },
+            { id: 'month', label: 'Este Mes' },
+            { id: 'custom', label: 'Personalizado' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setPeriodFilter(tab.id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                periodFilter === tab.id
+                  ? 'bg-white text-gray-950 shadow-xs'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {periodFilter === 'custom' && (
+          <div className="flex items-center gap-2 w-full sm:w-auto bg-gray-50 p-1.5 rounded-2xl border border-gray-200">
+            <input
+              type="date"
+              value={customStartDate}
+              onChange={(e) => setCustomStartDate(e.target.value)}
+              className="px-2.5 py-1 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-800 focus:outline-hidden"
+            />
+            <span className="text-gray-400 text-xs font-bold">a</span>
+            <input
+              type="date"
+              value={customEndDate}
+              onChange={(e) => setCustomEndDate(e.target.value)}
+              className="px-2.5 py-1 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-800 focus:outline-hidden"
+            />
+          </div>
+        )}
+      </div>
 
       {/* ─── ROW 1: KPIS EJECUTIVOS ─────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -295,11 +426,20 @@ export default function AdminFinance() {
       )}
 
       {activeTab === 'pnl' && (
-        <FinanceProfitLossTab metrics={metrics} />
+        <FinanceProfitLossTab
+          metrics={{
+            ...metrics,
+            grossSalesMonth: periodFilteredData.grossSales,
+            collectedSalesMonth: periodFilteredData.collectedSales,
+            totalExpensesMonth: periodFilteredData.totalExpenses,
+            netProfitMonth: periodFilteredData.netProfit
+          }}
+          periodLabel={dateRange.label}
+        />
       )}
 
       {activeTab === 'ledger' && (
-        <FinanceLedgerTab ledger={ledger} />
+        <FinanceLedgerTab ledger={periodFilteredData.filteredLedger} />
       )}
 
       {/* ─── MODALES ────────────────────────────────────────────────────────── */}
