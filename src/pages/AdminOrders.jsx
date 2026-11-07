@@ -1,2846 +1,357 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { supabase } from '../config/supabase';
+import React from 'react';
+import { DragDropContext, Droppable } from '@hello-pangea/dnd';
 import { Icon } from '@iconify-icon/react';
 import { toast } from '../components/Toast';
-import { useAuth } from '../context/AuthContext';
-import { useBrand } from '../context/BrandContext';
-import { useLocations } from '../context/LocationContext';
-import { useStaff } from '../hooks/useStaff';
-import { usePaymentMethods } from '../hooks/usePaymentMethods';
+
+import { useAdminOrders } from '../hooks/orders/useAdminOrders';
+import DailyStats from '../components/admin/orders/DailyStats';
+import OrdersSearchBar from '../components/admin/orders/OrdersSearchBar';
+import OrderKanbanCard from '../components/admin/orders/OrderKanbanCard';
+import DeliveredHistoryModal from '../components/admin/orders/DeliveredHistoryModal';
+import CancelledHistoryModal from '../components/admin/orders/CancelledHistoryModal';
+import FiadosCarteraModal from '../components/admin/orders/FiadosCarteraModal';
+import OrderHistoryDetailModal from '../components/admin/orders/OrderHistoryDetailModal';
+import OrderDetailModal from '../components/admin/orders/OrderDetailModal';
+import OrderMergeConfirmModal from '../components/admin/orders/OrderMergeConfirmModal';
 import PaymentPOSModal from '../components/admin/PaymentPOSModal';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { AnimatePresence, motion } from 'framer-motion';
-import { Modal } from '../components/admin/ui';
-import { printThermalDocument } from '../utils/thermalPrint';
-import soundService from '../utils/soundService';
 import OrderAdditionModal from '../components/admin/OrderAdditionModal';
 import ManualOrderModal from '../components/admin/ManualOrderModal';
 import { NewOrderAlertModal } from '../components/admin/NewOrderAlertModal';
-import { parsePaymentMethod, getGoogleMapsUrl, getWazeUrl, resolveOrderItemName, translateGroup } from '../utils/formatters';
-import { useAdminModalBack } from '../hooks/useAdminModalBack';
 
-const ORDER_STATUSES = [
+export const ORDER_STATUSES = [
   { id: 'new', label: 'Nuevos', color: 'text-blue-600', icon: 'heroicons:star' },
   { id: 'preparing', label: 'En Cocina', color: 'text-yellow-600', icon: 'heroicons:fire' },
   { id: 'ready', label: 'Listos', color: 'text-emerald-600', icon: 'heroicons:check-badge' },
   { id: 'on_table', label: 'En Mesa / En Camino', color: 'text-purple-600', icon: 'heroicons:home' },
 ];
 
-const playNotificationSound = () => {
-    soundService.startNewOrderLoop(3500);
-};
-
-const DailyStats = ({ orders, range, onCancelledClick, onDeliveredClick, onFiadosClick, fiadosCount = 0, totalCartera = 0 }) => {
-  const rangeLabels = {
-    today: 'Hoy',
-    '7d': '7 Días',
-    '30d': '30 Días',
-    all: 'Total Histórico'
-  };
-
-  const delivered = orders.filter(o => o.status === 'delivered');
-  const revenue = delivered.reduce((sum, o) => sum + Number(o.total_amount), 0);
-  const paidOrders = orders.filter(o => o.status !== 'cancelled' && o.payment_status === 'paid');
-  const totalPaidRevenue = paidOrders.reduce((sum, o) => sum + Number(o.paid_amount || o.total_amount || 0), 0);
-  const cancelled = orders.filter(o => o.status === 'cancelled');
-  
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 mb-4 md:mb-8">
-      <div className="bg-white p-2.5 md:p-4 rounded-xl md:rounded-2xl border border-gray-100 shadow-sm transition-transform active:scale-95 cursor-default">
-        <p className="text-[9px] md:text-xs text-gray-500 font-black uppercase tracking-wider mb-0.5 md:mb-1">Ventas {rangeLabels[range]}</p>
-        <p className="text-lg md:text-2xl font-black text-[#2f4131] leading-none">${revenue.toLocaleString()}</p>
-        <span className="text-[9px] font-bold text-gray-400 mt-1 block">Total Facturado</span>
-      </div>
-
-      <div className="bg-white p-2.5 md:p-4 rounded-xl md:rounded-2xl border border-gray-100 shadow-sm transition-transform active:scale-95 cursor-default">
-        <p className="text-[9px] md:text-xs text-gray-500 font-black uppercase tracking-wider mb-0.5 md:mb-1">Recaudado en Caja/Bancos</p>
-        <p className="text-lg md:text-2xl font-black text-emerald-700 leading-none">${totalPaidRevenue.toLocaleString()}</p>
-        <span className="text-[9px] font-bold text-emerald-600 mt-1 block">Dinero en mano/banco</span>
-      </div>
-
-      <button
-        type="button"
-        onClick={onFiadosClick}
-        className={`p-2.5 md:p-4 rounded-xl md:rounded-2xl border transition-all text-left shadow-sm active:scale-95 cursor-pointer ${
-          fiadosCount > 0 ? 'bg-amber-50/70 border-amber-300 hover:bg-amber-100/70' : 'bg-white border-gray-100'
-        }`}
-      >
-        <p className={`text-[9px] md:text-xs font-black uppercase tracking-wider mb-0.5 md:mb-1 ${fiadosCount > 0 ? 'text-amber-800' : 'text-gray-500'}`}>
-          Cartera / Fiados
-        </p>
-        <p className={`text-lg md:text-2xl font-black leading-none ${fiadosCount > 0 ? 'text-amber-900' : 'text-gray-800'}`}>
-          ${totalCartera.toLocaleString()}
-        </p>
-        <span className={`text-[9px] font-bold mt-1 block ${fiadosCount > 0 ? 'text-amber-700 font-black' : 'text-gray-400'}`}>
-          {fiadosCount} por cobrar • Ver cartera
-        </span>
-      </button>
-
-      <button 
-        onClick={onDeliveredClick}
-        className="bg-white p-2.5 md:p-4 rounded-xl md:rounded-2xl border border-gray-100 shadow-sm transition-all active:scale-95 hover:bg-emerald-50 hover:border-emerald-100 group text-left w-full relative overflow-hidden"
-      >
-        <p className="text-[9px] md:text-xs text-gray-500 font-black uppercase tracking-wider mb-0.5 md:mb-1 group-hover:text-emerald-600 transition-colors">Finalizados</p>
-        <div className="flex items-center justify-between gap-1">
-          <p className="text-lg md:text-2xl font-black text-emerald-600 leading-none">{delivered.length}</p>
-          <span className="text-[8px] md:text-[9px] font-black bg-emerald-50 text-emerald-600 px-1.5 md:px-2 py-0.5 md:py-1 rounded-lg border border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white transition-all whitespace-nowrap">
-            VER TODO
-          </span>
-        </div>
-      </button>
-
-      <button 
-        onClick={onCancelledClick}
-        className="bg-white p-2.5 md:p-4 rounded-xl md:rounded-2xl border border-gray-100 shadow-sm transition-all active:scale-95 hover:bg-red-50 hover:border-red-100 group text-left w-full relative overflow-hidden"
-      >
-        <p className="text-[9px] md:text-xs text-gray-500 font-black uppercase tracking-wider mb-0.5 md:mb-1 group-hover:text-red-600 transition-colors">Cancelados</p>
-        <div className="flex items-center justify-between gap-1">
-          <p className="text-lg md:text-2xl font-black text-red-600 leading-none">{cancelled.length}</p>
-          <span className="text-[8px] md:text-[9px] font-black bg-red-50 text-red-600 px-1.5 md:px-2 py-0.5 md:py-1 rounded-lg border border-red-100 group-hover:bg-red-600 group-hover:text-white transition-all whitespace-nowrap">
-            VER TODO
-          </span>
-        </div>
-      </button>
-    </div>
-  );
-};
-
-// Función para calcular colores del semáforo:
-function getTimerColor(createdAt) {
-  const diffMinutes = Math.floor((new Date() - new Date(createdAt)) / 60000);
-  if (diffMinutes >= 20) return 'bg-red-500 text-white'; // Peligro (+20 min)
-  if (diffMinutes >= 10) return 'bg-yellow-500 text-white'; // Advertencia (10-20 min)
-  return 'bg-emerald-500 text-white'; // Normal (0-10 min)
-}
-
-function OrderTimer({ createdAt, status }) {
-  const [mins, setMins] = useState(0);
-
-  useEffect(() => {
-    if (status === 'delivered' || status === 'cancelled') return;
-    
-    const updateTimer = () => {
-      setMins(Math.floor((new Date() - new Date(createdAt)) / 60000));
-    };
-    
-    updateTimer();
-    const interval = setInterval(updateTimer, 60000);
-    return () => clearInterval(interval);
-  }, [createdAt, status]);
-
-  if (status === 'delivered' || status === 'cancelled') return null;
-
-  const colorClass = getTimerColor(createdAt);
-  
-  return (
-    <div className={`px-2 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1 shadow-sm ${colorClass}`}>
-      <Icon icon="heroicons:clock" className="text-[14px]" />
-      {mins} min
-    </div>
-  );
-}
-
 export default function AdminOrders() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState('today'); // Default: Today
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [updatingStatus, setUpdatingStatus] = useState(null);
-  const [isCancelling, setIsCancelling] = useState(false);
-  const [cancellationReason, setCancellationReason] = useState("");
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null); // Para marcar como pagado
-  const [restaurantSettings, setRestaurantSettings] = useState(null);
-  const [isPOSModalOpen, setIsPOSModalOpen] = useState(false);
-  const [isMerging, setIsMerging] = useState(false);
-  const [mergeSourceOrder, setMergeSourceOrder] = useState(null);
-  const [mergeTargetOrder, setMergeTargetOrder] = useState(null);
-  const [isMergeConfirmOpen, setIsMergeConfirmOpen] = useState(false);
-  const [showCancelledHistory, setShowCancelledHistory] = useState(false);
-  const [showDeliveredHistory, setShowDeliveredHistory] = useState(false);
-  const [historyDetailOrder, setHistoryDetailOrder] = useState(null);
-  const [mobileActiveStatus, setMobileActiveStatus] = useState('new');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [additionOrder, setAdditionOrder] = useState(null);
-  const [incomingOrdersQueue, setIncomingOrdersQueue] = useState([]);
-  const [incomingOrderIndex, setIncomingOrderIndex] = useState(0);
-  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
-  const [isManualOrderModalOpen, setIsManualOrderModalOpen] = useState(false);
-  const [isSoundLoopActive, setIsSoundLoopActive] = useState(false);
-  const [isFiadosDrawerOpen, setIsFiadosDrawerOpen] = useState(false);
-  const [settlingFiadoOrder, setSettlingFiadoOrder] = useState(null);
-  const [fiadoPaymentMethod, setFiadoPaymentMethod] = useState('efectivo');
-
-  useAdminModalBack(Boolean(selectedOrder), () => setSelectedOrder(null));
-  useAdminModalBack(isPOSModalOpen, () => setIsPOSModalOpen(false));
-  useAdminModalBack(Boolean(additionOrder), () => setAdditionOrder(null));
-  useAdminModalBack(showCancelledHistory, () => setShowCancelledHistory(false));
-  useAdminModalBack(showDeliveredHistory, () => setShowDeliveredHistory(false));
-  useAdminModalBack(Boolean(historyDetailOrder), () => setHistoryDetailOrder(null));
-  useAdminModalBack(isManualOrderModalOpen, () => setIsManualOrderModalOpen(false));
-  useAdminModalBack(isFiadosDrawerOpen, () => setIsFiadosDrawerOpen(false));
-
-  // Escuchar eventos de la alarma continua para actualizar UI reactiva
-  useEffect(() => {
-    const handleLoopChange = (e) => {
-      setIsSoundLoopActive(Boolean(e.detail?.active));
-    };
-    window.addEventListener('aluna:sound-loop-changed', handleLoopChange);
-    return () => window.removeEventListener('aluna:sound-loop-changed', handleLoopChange);
-  }, []);
-
-  const { activeBrand, profile } = useAuth();
-  const { brand: brandFromContext } = useBrand();
-  const { activeLocationId, isAllLocations, locations } = useLocations();
-  const activeBrandId = activeBrand?.id || brandFromContext?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
-
-  const defaultOrderLocationId = (!isAllLocations && activeLocationId && activeLocationId !== 'all')
-    ? activeLocationId
-    : (locations?.find(l => l.is_main)?.id || locations?.[0]?.id || null);
-
-  // Filtro reactivo por búsqueda (ID #c955, cliente, mesa, teléfono, dirección, platos, notas)
-  const filteredOrders = useMemo(() => {
-    if (!searchQuery.trim()) return orders;
-    const q = searchQuery.trim().toLowerCase().replace(/^#/, '');
-    return orders.filter(o => {
-      const idMatch = (o.id && o.id.toLowerCase().includes(q)) || 
-                      (o.id && o.id.slice(-4).toLowerCase().includes(q)) ||
-                      (o.id && o.id.slice(0, 4).toLowerCase().includes(q));
-      const customerMatch = o.customer_name && o.customer_name.toLowerCase().includes(q);
-      const phoneMatch = o.customer_phone && o.customer_phone.includes(q);
-      const tableNum = String(o.restaurant_tables?.table_number || o.table_number || o.mesa || '');
-      const tableMatch = (tableNum && tableNum.toLowerCase().includes(q)) ||
-                         (q.startsWith('mesa') && tableNum.toLowerCase() === q.replace('mesa', '').trim());
-      const addressMatch = o.delivery_address && o.delivery_address.toLowerCase().includes(q);
-      const itemsMatch = o.order_items?.some(it => it.products?.name && it.products.name.toLowerCase().includes(q));
-      const notesMatch = (o.notes && o.notes.toLowerCase().includes(q)) || (o.delivery_notes && o.delivery_notes.toLowerCase().includes(q));
-      const paymentMatch = (o.payment_method && o.payment_method.toLowerCase().includes(q)) || (q === 'fiado' && (o.payment_method === 'fiado' || String(o.delivery_notes).toLowerCase().includes('fiado')));
-      return idMatch || customerMatch || phoneMatch || tableMatch || addressMatch || itemsMatch || notesMatch || paymentMatch;
-    });
-  }, [orders, searchQuery]);
-
-  // Lista y métricas de cuentas por cobrar / fiados pendientes
-  const pendingFiadosList = useMemo(() => {
-    return orders.filter(o => 
-      o.status !== 'cancelled' && 
-      (
-        o.payment_status !== 'paid' || 
-        o.payment_method === 'fiado' || 
-        String(o.delivery_notes || '').toLowerCase().includes('fiado')
-      )
-    );
-  }, [orders]);
-
-  const fiadosCount = pendingFiadosList.length;
-
-  const totalCarteraAmount = useMemo(() => {
-    return pendingFiadosList.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
-  }, [pendingFiadosList]);
-
-  const handleSettleFiadoOrder = async (orderId, paymentMethod = 'efectivo') => {
-    try {
-      const targetOrder = orders.find(o => o.id === orderId);
-      const cleanNotes = (targetOrder?.delivery_notes || '').replace(/\[\s*🤝?\s*FIADO[^\]]*\]/gi, '').trim();
-
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          payment_status: 'paid',
-          payment_method: paymentMethod,
-          paid_amount: targetOrder?.total_amount || 0,
-          delivery_notes: cleanNotes || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
-
-      if (error) throw error;
-
-      toast.success(`🤝 Pago registrado vía ${paymentMethod.toUpperCase()}`);
-      setOrders(prev => prev.map(o => o.id === orderId ? {
-        ...o,
-        payment_status: 'paid',
-        payment_method: paymentMethod,
-        paid_amount: o.total_amount,
-        delivery_notes: cleanNotes || null
-      } : o));
-
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder(prev => ({
-          ...prev,
-          payment_status: 'paid',
-          payment_method: paymentMethod,
-          paid_amount: prev.total_amount,
-          delivery_notes: cleanNotes || null
-        }));
-      }
-    } catch (err) {
-      console.error('Error al liquidar fiado:', err);
-      toast.error('Error al registrar cobro: ' + err.message);
-    }
-  };
-
-  const handleSendWhatsAppCobro = (order) => {
-    const phone = (order.customer_phone || '').replace(/\D/g, '');
-    if (!phone) {
-      toast.error('Este pedido no tiene teléfono registrado.');
-      return;
-    }
-    const cleanName = (order.customer_name || '').replace(/\[.*?\]/gi, '').trim().split(' ')[0] || 'Hola';
-    const amountStr = `$${Number(order.total_amount || 0).toLocaleString()}`;
-    const orderRef = `#${order.id.slice(-4).toUpperCase()}`;
-
-    const message = `Hola ${cleanName}! 👋 Te saludamos con mucho cariño de ${activeBrand?.name || 'Boku Bento'}.
-
-Te recordamos cordialmente tu saldo pendiente de ${amountStr} de tu pedido ${orderRef}.
-
-Puedes realizar tu pago en efectivo en tu próxima visita o transferirnos por:
-🟣 Nequi / Bre-B
-🔴 Daviplata
-🟡 Bancolombia
-
-¡Muchísimas gracias por tu apoyo y preferencia siempre! 🍱🤝`;
-
-    const url = `https://wa.me/57${phone.slice(-10)}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-  };
-
-  // REINSTATED: Missing logic for staff, payments and settings
-  const { staffList } = useStaff();
-  const waiters = useMemo(() => staffList.filter(s => s.role === 'waiter' || s.role === 'admin'), [staffList]);
-
-  const { paymentMethods, loading: loadingPayments } = usePaymentMethods(activeBrandId);
-  const activeMethods = useMemo(() => paymentMethods.filter(m => m.is_active), [paymentMethods]);
-
-  // Set default payment method when methods are loaded
-  useEffect(() => {
-    if (activeMethods.length > 0) {
-      const currentExists = activeMethods.find(m => m.id === selectedPaymentMethod);
-      if (!selectedPaymentMethod || !currentExists) {
-        setSelectedPaymentMethod(activeMethods[0].id);
-      }
-    }
-  }, [activeMethods, selectedPaymentMethod]);
-
-  // Fetch Restaurant Settings
-  useEffect(() => {
-    const fetchSettings = async () => {
-      if (!activeBrandId) return;
-      const { data, error } = await supabase
-        .from('restaurant_settings')
-        .select('*')
-        .eq('brand_id', activeBrandId)
-        .order('location_id', { ascending: true, nullsFirst: true })
-        .limit(1)
-        .maybeSingle();
-      if (!error && data) setRestaurantSettings(data);
-    };
-    fetchSettings();
-  }, [activeBrandId]);
-
-  const assignWaiter = async (orderId, waiterId) => {
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ waiter_id: waiterId || null })
-        .eq('id', orderId);
-      if (error) throw error;
-      toast('Mesero asignado', { icon: '🧑‍🍳' });
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, waiter_id: waiterId || null } : o));
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder(prev => ({ ...prev, waiter_id: waiterId || null }));
-      }
-    } catch (err) {
-      toast.error('Error al asignar');
-    }
-  };
-
-  // Helper for date filtering (Colombia UTC-5)
-  const getFilterDate = useCallback(() => {
-    if (dateRange === 'all') return null;
-    const now = new Date();
-    const offsetMs = 5 * 60 * 60 * 1000;
-    
-    if (dateRange === 'today') {
-      const localMs = now.getTime() - offsetMs;
-      const localDate = new Date(localMs);
-      const startLocal = new Date(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate(), 0, 0, 0, 0);
-      return new Date(startLocal.getTime() + offsetMs).toISOString();
-    }
-    
-    const days = dateRange === '7d' ? 7 : 30;
-    const date = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
-    const startOfRange = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
-    return new Date(startOfRange.getTime() + offsetMs).toISOString();
-  }, [dateRange]);
-
-  const fetchOrders = useCallback(async () => {
-    if (!activeBrandId) {
-      setLoading(false);
-      return;
-    }
-    
-    const filterDate = getFilterDate();
-    try {
-      setLoading(true);
-
-      let query = supabase
-        .from('orders')
-        .select(`
-          *,
-          locations ( name ),
-          restaurant_tables ( id, table_number ),
-          order_items (
-            id, quantity, unit_price, modifiers, notes, is_paid,
-            products ( id, name, category_id )
-          ),
-          order_payments (*)
-        `);
-
-      if (activeBrandId) {
-        query = query.eq('brand_id', activeBrandId);
-      }
-
-      if (filterDate) {
-        // Mostrar pedidos de hoy O pedidos pendientes de días anteriores
-        query = query.or(`created_at.gte.${filterDate},status.not.in.(delivered,cancelled)`);
-      }
-
-      if (!isAllLocations && activeLocationId) {
-        query = query.or(`location_id.eq.${activeLocationId},location_id.is.null`);
-      }
-
-      const { data, error } = await query
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setOrders(data || []);
-    } catch (err) {
-      console.error('Error fetching orders:', err);
-      toast('Error al cargar pedidos');
-    } finally {
-      setLoading(false);
-    }
-  }, [activeBrandId, isAllLocations, activeLocationId, getFilterDate, dateRange]);
-
-  useEffect(() => {
-    // Safety: don't subscribe if missing brand identifier
-    if (!activeBrandId) {
-      setLoading(false);
-      return;
-    }
-
-    // Initial load
-    fetchOrders();
-
-    const channelName = `admin-orders-${activeBrandId}-${isAllLocations ? 'all' : activeLocationId}`;
-    const orderFilter = `brand_id=eq.${activeBrandId}`;
-
-    const channel = supabase
-      .channel(channelName)
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'orders',
-        filter: orderFilter
-      }, (payload) => {
-        // Double check location client-side (match location or allow global orders)
-        if (!isAllLocations && activeLocationId && payload.new.location_id && payload.new.location_id !== activeLocationId) return;
-
-        setOrders(prev => [payload.new, ...prev]);
-
-        // Si es un pedido nuevo, activar alarma continua e invocar pop-up de atención inmediata
-        if (payload.new.status === 'new') {
-          soundService.startNewOrderLoop(3500);
-          setIsSoundLoopActive(true);
-
-          setTimeout(async () => {
-            try {
-              const { data: fullOrder } = await supabase
-                .from('orders')
-                .select(`
-                  *,
-                  locations ( name ),
-                  restaurant_tables ( id, table_number ),
-                  order_items (
-                    id, quantity, unit_price, modifiers, notes, is_paid,
-                    products ( id, name, category_id )
-                  ),
-                  order_payments (*)
-                `)
-                .eq('id', payload.new.id)
-                .single();
-
-              if (fullOrder) {
-                setIncomingOrdersQueue(prev => {
-                  const exists = prev.some(o => o.id === fullOrder.id);
-                  return exists ? prev : [...prev, fullOrder];
-                });
-                setIsAlertModalOpen(true);
-              }
-            } catch (err) {
-              console.error('Error cargando detalles del nuevo pedido:', err);
-            }
-          }, 450);
-        } else {
-          soundService.playNewOrder();
-        }
-
-        toast('Nuevo pedido recibido!', { icon: '🔔' });
-        fetchOrders(); // Full fetch to get associations
-      })
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'orders',
-        filter: orderFilter
-      }, (payload) => {
-        // Filter by location client-side if needed
-        if (!isAllLocations && activeLocationId && payload.new.location_id && payload.new.location_id !== activeLocationId) {
-          setOrders(prev => prev.filter(o => o.id !== payload.new.id));
-          return;
-        }
-
-        setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o));
-        if (selectedOrder?.id === payload.new.id) {
-            setSelectedOrder(prev => ({ ...prev, ...payload.new }));
-        }
-
-        // Si el pedido ya no está en estado 'new' (fue aceptado o despachado en otro dispositivo),
-        // retirarlo automáticamente de la cola de alerta para evitar loops o degradación accidental
-        if (payload.new.status && payload.new.status !== 'new') {
-          setIncomingOrdersQueue(prev => {
-            const remaining = prev.filter(o => o.id !== payload.new.id);
-            if (remaining.length === 0) {
-              setIsAlertModalOpen(false);
-              soundService.stopNewOrderLoop();
-              setIsSoundLoopActive(false);
-            }
-            return remaining;
-          });
-        }
-      })
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'order_items',
-        filter: `brand_id=eq.${activeBrandId}`
-      }, () => {
-        fetchOrders();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [activeBrandId, fetchOrders, activeLocationId, isAllLocations, selectedOrder?.id]); 
-
-  // NEW: Sync selectedOrder with the latest data from the orders list
-  useEffect(() => {
-    if (selectedOrder) {
-      const latest = orders.find(o => o.id === selectedOrder.id);
-      // Only update if there are changes to avoid unnecessary re-renders
-      if (latest && JSON.stringify(latest) !== JSON.stringify(selectedOrder)) {
-        setSelectedOrder(latest);
-      }
-    }
-  }, [orders, selectedOrder?.id]);
-
-  const updateOrderStatus = async (orderId, newStatus, extraPayload = {}) => {
-    try {
-      const order = orders.find(o => o.id === orderId);
-      if (!order) return;
-
-      // Bloqueo de seguridad: Validar requerimientos de pago según configuración
-      // Esto protege tanto los clics en botones como el Drag & Drop del Kanban
-      if (newStatus === 'preparing' && restaurantSettings?.payment_requirement_stage === 'pre_preparation' && order.payment_status !== 'paid') {
-        toast.error('⚠️ Se requiere el pago total para enviar a cocina');
-        return;
-      }
-      
-      if (newStatus === 'delivered' && restaurantSettings?.payment_requirement_stage === 'pre_delivery' && order.payment_status !== 'paid') {
-        toast.error('⚠️ El pedido debe estar pagado para marcar como entregado');
-        return;
-      }
-
-      setUpdatingStatus(orderId);
-      const payload = { status: newStatus, ...extraPayload };
-      if (newStatus === 'ready') payload.ready_at = new Date().toISOString();
-      if (newStatus === 'delivered') payload.delivered_at = new Date().toISOString();
-      if (newStatus === 'cancelled') payload.cancelled_at = new Date().toISOString();
-
-      const { error } = await supabase
-        .from('orders')
-        .update(payload)
-        .eq('id', orderId);
-
-      if (error) throw error;
-      toast('Estado actualizado');
-      
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...payload } : o));
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder(prev => ({ ...prev, ...payload }));
-      }
-      
-      if (newStatus === 'delivered' || newStatus === 'cancelled') setSelectedOrder(null);
-    } catch (err) {
-      console.error('Error actualizando pedido', err);
-      toast('Error al actualizar');
-    } finally {
-      setUpdatingStatus(null);
-    }
-  };
-
-  // Manejadores para el Modal de Alerta de Nuevo Pedido Entrante
-  const handleAcceptIncomingOrder = async (orderId) => {
-    soundService.stopNewOrderLoop();
-    setIsSoundLoopActive(false);
-
-    // Guard de seguridad: si el pedido ya fue despachado, iniciado o entregado previamente, no reiniciar tiempos ni degradar estado
-    const currentOrder = orders.find(o => o.id === orderId);
-    if (currentOrder && ['preparing', 'ready', 'delivered'].includes(currentOrder.status)) {
-      toast(`El pedido #${orderId.slice(-4).toUpperCase()} ya está en estado ${currentOrder.status === 'ready' ? 'Listo' : currentOrder.status === 'delivered' ? 'Entregado' : 'Preparación'}`);
-      setIncomingOrdersQueue(prev => {
-        const remaining = prev.filter(o => o.id !== orderId);
-        if (remaining.length === 0) {
-          setIsAlertModalOpen(false);
-          setIncomingOrderIndex(0);
-        }
-        return remaining;
-      });
-      return;
-    }
-
-    await updateOrderStatus(orderId, 'preparing');
-
-    // Imprimir ticket de comanda automáticamente si la configuración lo tiene habilitado
-    if (restaurantSettings?.auto_print_orders) {
-      try {
-        const orderToPrint = orders.find(o => o.id === orderId) || incomingOrdersQueue.find(o => o.id === orderId);
-        if (orderToPrint) {
-          printThermalDocument({
-            type: 'comanda',
-            order: orderToPrint,
-            brand: activeBrand,
-            settings: restaurantSettings
-          });
-        }
-      } catch (printErr) {
-        console.warn('Auto print failed:', printErr);
-      }
-    }
-
-    setIncomingOrdersQueue(prev => {
-      const remaining = prev.filter(o => o.id !== orderId);
-      if (remaining.length === 0) {
-        setIsAlertModalOpen(false);
-        setIncomingOrderIndex(0);
-      } else if (incomingOrderIndex >= remaining.length) {
-        setIncomingOrderIndex(remaining.length - 1);
-      }
-      return remaining;
-    });
-
-    toast('¡Pedido aceptado y enviado a cocina! 🍳', { icon: '✅' });
-  };
-
-  const handleReviewIncomingOrder = (order) => {
-    soundService.stopNewOrderLoop();
-    setIsSoundLoopActive(false);
-    setIsAlertModalOpen(false);
-    setSelectedOrder(order);
-  };
-
-  const sendCancellationApologyWhatsApp = (targetOrder, reasonText) => {
-    if (!targetOrder?.customer_phone) return;
-    const rawDigits = String(targetOrder.customer_phone).replace(/\D/g, '');
-    if (!rawDigits) return;
-    const cleanPhone = rawDigits.startsWith('57') ? rawDigits : `57${rawDigits}`;
-    const cleanName = (targetOrder.customer_name || 'Cliente').replace(/\s*\[Dir:.*$/i, '').trim();
-    const shortNum = `#${targetOrder.id.slice(0, 4).toUpperCase()}`;
-    const brandSlug = activeBrand?.slug || brandFromContext?.slug || 'boku-bento';
-    const brandName = activeBrand?.name || brandFromContext?.name || 'Boku Bento';
-    const recoveryUrl = `${window.location.origin}/${brandSlug}/?src=recuperacion`;
-    const msg = `Hola ${cleanName} 🙏, te escribimos de *${brandName}* respecto a tu pedido *${shortNum}*.\n\nLamentablemente tuvimos que cancelarlo por el siguiente motivo: *${reasonText || targetOrder.cancellation_reason || 'Inconveniente en cocina'}*.\n\nTe pedimos mil disculpas por la molestia 😔. Para compensarte, te habilitamos el cupón *DISCULPABOKU* con un *15% DE DESCUENTO* para que elijas otro plato hoy o en tu próxima compra entrando aquí:\n👉 ${recoveryUrl}`;
-    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
-  };
-
-  const handleCancelIncomingOrder = async (orderId, reason) => {
-    soundService.stopNewOrderLoop();
-    setIsSoundLoopActive(false);
-    const targetOrder = orders.find(o => o.id === orderId) || incomingOrdersQueue.find(o => o.id === orderId);
-    await updateOrderStatus(orderId, 'cancelled', {
-      cancelled_by: 'restaurant',
-      cancellation_reason: reason
-    });
-    setIncomingOrdersQueue(prev => {
-      const remaining = prev.filter(o => o.id !== orderId);
-      if (remaining.length === 0) {
-        setIsAlertModalOpen(false);
-        setIncomingOrderIndex(0);
-      } else if (incomingOrderIndex >= remaining.length) {
-        setIncomingOrderIndex(remaining.length - 1);
-      }
-      return remaining;
-    });
-    toast('Pedido cancelado', { icon: '❌' });
-    if (targetOrder?.customer_phone && window.confirm('¿Deseas avisar al cliente por WhatsApp con el motivo y enviarle el cupón de disculpas DISCULPABOKU (15% OFF)?')) {
-      sendCancellationApologyWhatsApp(targetOrder, reason);
-    }
-  };
-
-  const applyDiscount = async (orderId, percentage) => {
-    try {
-      setUpdatingStatus(orderId);
-      
-      // Calculate based on items total (before service fee or with current total?)
-      // Usually discount applies to the food.
-      const itemsTotal = selectedOrder.order_items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-      const discountAmount = Math.round(itemsTotal * (percentage / 100));
-      const newTotal = Math.max(0, (itemsTotal + (Number(selectedOrder.service_fee) || 0)) - discountAmount);
-
-      const { error } = await supabase
-        .from('orders')
-        .update({ 
-          discount_amount: discountAmount,
-          discount_reason: percentage === 100 ? 'Amigo VIP' : `Descuento ${percentage}%`,
-          total_amount: newTotal 
-        })
-        .eq('id', orderId);
-
-      if (error) throw error;
-      toast('Descuento aplicado ✨');
-      
-      const updates = { discount_amount: discountAmount, total_amount: newTotal, discount_reason: percentage === 100 ? 'Amigo VIP' : `Descuento ${percentage}%` };
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o));
-      setSelectedOrder(prev => ({ ...prev, ...updates }));
-    } catch (err) {
-      toast.error('Error al aplicar descuento');
-    } finally {
-      setUpdatingStatus(null);
-    }
-  };
-
-  const cancelOrder = (orderId) => {
-    if (!cancellationReason.trim()) {
-      toast.error("Por favor ingresa un motivo");
-      return;
-    }
-    const targetOrder = orders.find(o => o.id === orderId) || selectedOrder;
-    const reasonText = cancellationReason.trim();
-    updateOrderStatus(orderId, 'cancelled', { cancelled_by: 'restaurant', cancellation_reason: reasonText });
-    setIsCancelling(false);
-    setCancellationReason("");
-    if (targetOrder?.customer_phone && window.confirm('¿Deseas avisar al cliente por WhatsApp con el motivo y enviarle el cupón de disculpas DISCULPABOKU (15% OFF)?')) {
-      sendCancellationApologyWhatsApp(targetOrder, reasonText);
-    }
-  };
-
-  const handleMergeOrders = async (sourceOrder, targetOrder) => {
-    if (sourceOrder.id === targetOrder.id) {
-      toast.error("No puedes fusionar un pedido consigo mismo");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      
-      // 1. Move items from source to target
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .update({ order_id: targetOrder.id })
-        .eq('order_id', sourceOrder.id);
-
-      if (itemsError) throw itemsError;
-
-      // 2. Update target order totals
-      const newTotal = Number(targetOrder.total_amount || 0) + Number(sourceOrder.total_amount || 0);
-      const newServiceFee = Number(targetOrder.service_fee || 0) + Number(sourceOrder.service_fee || 0);
-      const newPaidAmount = Number(targetOrder.paid_amount || 0) + Number(sourceOrder.paid_amount || 0);
-      const newDiscountAmount = Number(targetOrder.discount_amount || 0) + Number(sourceOrder.discount_amount || 0);
-
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({
-          total_amount: newTotal,
-          service_fee: newServiceFee,
-          paid_amount: newPaidAmount,
-          discount_amount: newDiscountAmount,
-          // If the target was ready/delivered but we added items, reset to 'new' 
-          // so the kitchen gets notified of the additions.
-          status: (targetOrder.status === 'ready' || targetOrder.status === 'delivered') ? 'new' : targetOrder.status
-        })
-        .eq('id', targetOrder.id);
-
-      if (updateError) throw updateError;
-
-      // 3. Delete source order
-      const { error: deleteError } = await supabase
-        .from('orders')
-        .delete()
-        .eq('id', sourceOrder.id);
-
-      if (deleteError) throw deleteError;
-
-      toast.success("Pedidos consolidados con éxito ✨");
-      setIsMergeConfirmOpen(false);
-      setMergeSourceOrder(null);
-      setMergeTargetOrder(null);
-      fetchOrders();
-    } catch (err) {
-      console.error('Error merging orders:', err);
-      toast.error("Error al consolidar los pedidos");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onDragEnd = (result) => {
-    const { source, destination, combine, draggableId } = result;
-
-    // Handle Merging (Combine)
-    if (combine) {
-      const sourceOrder = orders.find(o => o.id === draggableId);
-      const targetOrder = orders.find(o => o.id === combine.draggableId);
-      if (sourceOrder && targetOrder) {
-        setMergeSourceOrder(sourceOrder);
-        setMergeTargetOrder(targetOrder);
-        setIsMergeConfirmOpen(true);
-      }
-      return;
-    }
-
-    // Handle Status Change
-    if (!destination) return;
-    if (source.droppableId !== destination.droppableId) {
-      const orderId = draggableId;
-      let newStatus = destination.droppableId;
-      const order = orders.find(o => o.id === orderId);
-
-      // Protección contra cancelaciones accidentales
-      if (newStatus === 'cancelled') {
-        if (order) {
-          setSelectedOrder(order);
-          setIsCancelling(true);
-          toast("Ingresa el motivo de cancelación para continuar", { icon: '📝' });
-        }
-        return; // Detenemos aquí, el usuario deberá confirmar en el panel de detalles
-      }
-
-      // Columna 4 dinámica: en_mesa para dine_in, en_camino para delivery/takeaway
-      if (newStatus === 'on_table' && order) {
-        if (order.fulfillment_type === 'delivery' || order.fulfillment_type === 'takeaway') {
-          newStatus = 'on_the_way';
-        }
-      }
-
-      updateOrderStatus(orderId, newStatus);
-    }
-  };
-
-  const getFulfillmentLabel = (type) => {
-    switch (type) {
-      case 'dine_in': return { text: 'EN MESA', icon: 'heroicons:hand-raised', color: 'bg-emerald-100 text-emerald-700' };
-      case 'takeaway': return { text: 'PARA LLEVAR', icon: 'heroicons:shopping-bag', color: 'bg-blue-100 text-blue-700' };
-      case 'delivery': return { text: 'DOMICILIO', icon: 'heroicons:truck', color: 'bg-purple-100 text-purple-700' };
-      default: return { text: type, icon: 'heroicons:question-mark-circle', color: 'bg-gray-100 text-gray-700' };
-    }
-  };
-
-  const translateGroup = (group) => {
-    const keys = {
-      'Proteína': 'Proteína',
-      'Termino de Carne': 'Término',
-      'Salsas': 'Salsas',
-      'Bebida': 'Bebida',
-      'Adiciones': 'Adiciones',
-      'extras': 'Extras',
-      'options': 'Opciones',
-      'milk_type': 'Leche',
-      'sweetener': 'Endulzante'
-    };
-    return keys[group] || group;
-  };
-
-  const shareToWhatsApp = (order, type) => {
-    const rawPhone = order.customer_phone?.replace(/\D/g, '');
-    if (!rawPhone) {
-        toast.error('No hay teléfono registrado');
-        return;
-    }
-    const phone = rawPhone.startsWith('57') ? rawPhone : `57${rawPhone}`;
-    const orderNum = `#${order.id.slice(0,4).toUpperCase()}`;
-    const brand = activeBrand?.name || 'Boku Bento';
-    const trackingUrl = typeof window !== 'undefined' ? `${window.location.origin}/#order-status?orderId=${order.id}` : '';
-
-    let message = '';
-    if (type === 'summary') {
-      message = `*Resumen de tu pedido ${orderNum} en ${brand}*\n\n`;
-      (order.order_items || []).forEach(item => {
-        message += `• *${item.quantity}x ${resolveOrderItemName(item)}* - ${(item.quantity * item.unit_price).toLocaleString()}\n`;
-        if (item.modifiers && Object.keys(item.modifiers).length > 0) {
-          const mods = Object.entries(item.modifiers)
-            .filter(([k]) => !k.startsWith('_'))
-            .map(([k, v]) => `   ↳ _${translateGroup(k)}:_ ${Array.isArray(v) ? v.join(', ') : (typeof v === 'object' && v ? (v.name || JSON.stringify(v)) : v)}`)
-            .join('\n');
-          message += `${mods}\n`;
-        }
-        if (item.notes) {
-          message += `   ↳ 📝 _Nota:_ ${item.notes}\n`;
-        }
-      });
-      if (order.service_fee > 0) {
-        message += `\n*Servicio: $${order.service_fee.toLocaleString()}*`;
-      }
-      message += `\n*Total: $${Number(order.total_amount || 0).toLocaleString()}*`;
-      if (trackingUrl) {
-        message += `\n\nSeguimiento en vivo:\n${trackingUrl}`;
-      }
-    } else if (type === 'status') {
-      let statusText = '';
-      if (order.status === 'preparing') {
-        statusText = `🍳 *¡Tu pedido ya está en preparación en cocina!* Estamos alistando tus platos con los ingredientes más frescos.`;
-      } else if (order.status === 'on_table') {
-        statusText = order.fulfillment_type === 'delivery'
-          ? `🛵 *¡Tu pedido ya va en camino hacia tu dirección!* El repartidor va hacia ti.`
-          : `🍽️ *¡Tu pedido va camino a tu mesa!*`;
-      } else if (order.status === 'ready') {
-        statusText = `🎉 *¡Tu pedido ya está listo!* ${order.fulfillment_type === 'takeaway' ? 'Ya puedes pasar a recogerlo al mostrador.' : 'En instantes te lo entregamos.'}`;
-      } else if (order.status === 'delivered') {
-        statusText = `✅ *¡Tu pedido ha sido entregado con éxito!* ¡Esperamos que lo disfrutes mucho!`;
-      } else {
-        statusText = `Confirmamos que recibimos tu pedido con éxito.`;
-      }
-
-      message = `¡Hola ${order.customer_name || ''}! 👋 Te saludamos de *${brand}*.\n\n${statusText}\n\nPuedes consultar el seguimiento en tiempo real aquí:\n${trackingUrl}`;
-    } else {
-      message = `¡Hola ${order.customer_name || ''}! 👋\n\nTu pedido ${orderNum} de ${brand} está listo. 🍽️\n\n${order.fulfillment_type === 'takeaway' ? 'Ya puedes pasar por él.' : 'Te lo llevaremos en un momento.'}\n\nSeguimiento en vivo:\n${trackingUrl}`;
-    }
-
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-  };
-  
-  const exportLeads = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('customer_name, customer_phone')
-        .eq('brand_id', activeBrandId)
-        .not('customer_phone', 'is', null);
-
-      if (error) throw error;
-
-      // Remove duplicates
-      const uniqueLeads = Array.from(new Set(data.map(o => JSON.stringify({
-        Nombre: o.customer_name?.trim() || 'Desconocido',
-        Celular: o.customer_phone?.replace(/\D/g, '') || ''
-      })))).map(s => JSON.parse(s)).filter(l => l.Celular);
-
-      if (uniqueLeads.length === 0) {
-        toast.error('No hay leads para exportar');
-        return;
-      }
-
-      // Create CSV
-      const headers = ['Nombre', 'Celular'];
-      const csvContent = [
-        headers.join(','),
-        ...uniqueLeads.map(l => `${l.Nombre},${l.Celular}`)
-      ].join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", `clientes_${activeBrand?.name || 'leads'}_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast('Exportación completada! ✨', { icon: '📊' });
-    } catch (err) {
-      toast.error('Error al exportar');
-    }
-  };
+  const {
+    orders,
+    loading,
+    dateRange,
+    setDateRange,
+    selectedOrder,
+    setSelectedOrder,
+    updatingStatus,
+    isCancelling,
+    setIsCancelling,
+    cancellationReason,
+    setCancellationReason,
+    selectedPaymentMethod,
+    restaurantSettings,
+    isPOSModalOpen,
+    setIsPOSModalOpen,
+    isMerging,
+    setIsMerging,
+    mergeSourceOrder,
+    setMergeSourceOrder,
+    mergeTargetOrder,
+    isMergeConfirmOpen,
+    setIsMergeConfirmOpen,
+    showCancelledHistory,
+    setShowCancelledHistory,
+    showDeliveredHistory,
+    setShowDeliveredHistory,
+    historyDetailOrder,
+    setHistoryDetailOrder,
+    mobileActiveStatus,
+    setMobileActiveStatus,
+    searchQuery,
+    setSearchQuery,
+    additionOrder,
+    setAdditionOrder,
+    incomingOrdersQueue,
+    incomingOrderIndex,
+    setIncomingOrderIndex,
+    isAlertModalOpen,
+    setIsAlertModalOpen,
+    isManualOrderModalOpen,
+    setIsManualOrderModalOpen,
+    isSoundLoopActive,
+    setIsSoundLoopActive,
+    isFiadosDrawerOpen,
+    setIsFiadosDrawerOpen,
+    activeBrand,
+    activeBrandId,
+    defaultOrderLocationId,
+    filteredOrders,
+    pendingFiadosList,
+    fiadosCount,
+    totalCarteraAmount,
+    waiters,
+    activeMethods,
+    fetchOrders,
+    updateOrderStatus,
+    assignWaiter,
+    applyDiscount,
+    cancelOrder,
+    handleMergeOrders,
+    onDragEnd,
+    handleAcceptIncomingOrder,
+    handleReviewIncomingOrder,
+    handleCancelIncomingOrder,
+    handleSettleFiadoOrder,
+    handleSendWhatsAppCobro,
+    shareToWhatsApp,
+    sendCancellationApologyWhatsApp
+  } = useAdminOrders();
 
   return (
-    <div className="p-4 md:p-8 max-w-[1700px] mx-auto min-h-screen">
-       {/* Merging Notification Bar */}
-       {isMerging && (
-         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] bg-[#2f4131] text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 border border-white/10 animate-bounce">
+    <div className="p-3 md:p-6 max-w-[1600px] mx-auto min-h-screen flex flex-col justify-between">
+      <div>
+        {/* Merging Notification Bar */}
+        {isMerging && (
+          <div className="mb-4 p-4 bg-emerald-600 text-white rounded-2xl flex items-center justify-between shadow-lg animate-pulse">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center">
-                <Icon icon="heroicons:arrows-right-left" className="text-xl" />
-              </div>
+              <Icon icon="solar:round-transfer-horizontal-bold" className="text-2xl" />
               <div>
-                <p className="text-sm font-black uppercase tracking-widest leading-none mb-1">Modo Consolidación</p>
-                <p className="text-xs opacity-80 font-medium">Selecciona el pedido destino para fusionar con #{mergeSourceOrder?.id?.slice(0,4)}</p>
+                <p className="font-black text-sm">MODO FUSIÓN ACTIVO</p>
+                <p className="text-xs text-emerald-100">Haz clic en el pedido de destino para unirlos, o cancela.</p>
               </div>
             </div>
             <button 
               onClick={() => { setIsMerging(false); setMergeSourceOrder(null); }}
-              className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-xs font-black transition-all border border-white/10"
+              className="px-4 py-2 bg-white text-emerald-800 rounded-xl font-bold text-xs hover:bg-emerald-50 transition-all shadow-sm"
             >
-              CANCELAR
+              Cancelar Fusión
             </button>
-         </div>
-       )}
-       {/* Actions Bar & Quick Search */}
-       <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mb-6 gap-3">
-          {/* Quick Order Search Input */}
-          <div className="relative flex-1 max-w-md">
-            <Icon 
-              icon="solar:magnifer-linear" 
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-base" 
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por #ID (ej: c955), mesa, cliente o teléfono..."
-              className="w-full pl-10 pr-9 py-2.5 text-xs font-semibold rounded-2xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131] shadow-sm transition-all"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm"
-              >
-                <Icon icon="heroicons:x-mark" />
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2.5 justify-end shrink-0 flex-wrap">
-            {/* Botón Silenciar Alarma Continua si está sonando */}
-            {isSoundLoopActive && (
-              <button
-                type="button"
-                onClick={() => {
-                  soundService.stopNewOrderLoop();
-                  setIsSoundLoopActive(false);
-                }}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-yellow-400 hover:bg-yellow-500 text-slate-900 rounded-2xl text-xs font-black shadow-md animate-pulse border border-yellow-500 transition-all shrink-0 cursor-pointer"
-                title="Silenciar sonido de la alarma continua"
-              >
-                <Icon icon="heroicons:speaker-wave" className="text-base animate-bounce" />
-                <span className="hidden sm:inline">Silenciar Alarma</span>
-              </button>
-            )}
-
-            {/* Botón Acceso Rápido a Pedidos Nuevos Pendientes */}
-            {incomingOrdersQueue.length > 0 && !isAlertModalOpen && (
-              <button
-                type="button"
-                onClick={() => setIsAlertModalOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-2xl text-xs font-black shadow-md animate-bounce border border-red-700 transition-all shrink-0 cursor-pointer"
-                title="Abrir ventana para revisar y aceptar pedidos entrantes"
-              >
-                <Icon icon="heroicons:bell-alert" className="text-base" />
-                <span>{incomingOrdersQueue.length} Nuevo{incomingOrdersQueue.length > 1 ? 's' : ''} por atender</span>
-              </button>
-            )}
-
-            {searchQuery && (
-              <span className="text-[11px] font-bold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-xl border border-gray-200">
-                {filteredOrders.length} resultado{filteredOrders.length !== 1 ? 's' : ''}
-              </span>
-            )}
-
-            {/* Botón Filtro Rápido Fiados / Cuentas por Cobrar */}
-            {fiadosCount > 0 && (
-              <button
-                type="button"
-                onClick={() => setIsFiadosDrawerOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-black transition-all border shrink-0 cursor-pointer bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200 text-amber-950 border-amber-300 shadow-xs active:scale-95"
-                title="Abrir cartera de fiados y cuentas por cobrar"
-              >
-                <Icon icon="heroicons:user-group" className="text-base text-amber-700" />
-                <span>🤝 Fiados ({fiadosCount}) • ${totalCarteraAmount.toLocaleString()}</span>
-              </button>
-            )}
-
-            {/* Time Range Selector */}
-            <div className="flex bg-white border border-gray-100 p-1 rounded-2xl shadow-sm overflow-hidden">
-              {[
-                { id: 'today', label: 'Hoy' },
-                { id: '7d', label: '7 Días' },
-                { id: '30d', label: '30 Días' },
-                { id: 'all', label: 'Total' }
-              ].map((range) => (
-                <button
-                  key={range.id}
-                  onClick={() => setDateRange(range.id)}
-                  className={`px-3 md:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                    dateRange === range.id 
-                      ? 'bg-[#2f4131] text-white shadow-md shadow-[#2f4131]/20' 
-                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  {range.label}
-                </button>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsManualOrderModalOpen(true)}
-              className="flex items-center gap-2 px-3.5 md:px-4 py-2.5 bg-[#2f4131] hover:bg-[#233125] text-white rounded-2xl text-xs font-black shadow-md shadow-[#2f4131]/20 transition-all shrink-0 cursor-pointer active:scale-95"
-              title="Crear un pedido manual rápido recibido por WhatsApp o mostrador"
-            >
-              <Icon icon="heroicons:plus-circle" className="text-base text-amber-400" />
-              <span>+ Nuevo Pedido (WhatsApp / Mostrador)</span>
-            </button>
-
-            <button onClick={fetchOrders} className="p-2.5 md:p-3 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 text-gray-600 transition-colors shadow-sm flex items-center gap-2 font-bold text-xs md:text-sm">
-               <Icon icon="heroicons:arrow-path" className={`text-lg md:text-xl ${loading ? 'animate-spin' : ''}`} />
-               <span className="hidden sm:inline">Actualizar</span>
-            </button>
-          </div>
-       </div>
-       
-       <DailyStats 
-         orders={orders} 
-         range={dateRange} 
-         onCancelledClick={() => setShowCancelledHistory(true)} 
-         onDeliveredClick={() => setShowDeliveredHistory(true)}
-         onFiadosClick={() => setIsFiadosDrawerOpen(true)}
-         fiadosCount={fiadosCount}
-         totalCartera={totalCarteraAmount}
-       />
-
-       {/* Modal de Historial de Entregados */}
-       {showDeliveredHistory && (
-         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-           <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-md" onClick={() => setShowDeliveredHistory(false)}></div>
-           <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden relative flex flex-col max-h-[85vh] border border-gray-100">
-             <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
-               <div>
-                 <h3 className="text-xl font-black text-gray-900 tracking-tight">Historial de Entregados</h3>
-                 <div className="flex items-center gap-2 mt-1">
-                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                   <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">{orders.filter(o => o.status === 'delivered').length} Pedidos Hoy</p>
-                 </div>
-               </div>
-               <button onClick={() => setShowDeliveredHistory(false)} className="p-2.5 hover:bg-gray-50 rounded-xl transition-all border border-gray-100 shadow-sm text-gray-400 hover:text-gray-600">
-                 <Icon icon="heroicons:x-mark" className="text-xl" />
-               </button>
-             </div>
-             
-             <div className="overflow-y-auto px-2 scrollbar-hide">
-               <div className="divide-y divide-gray-50">
-                 {orders.filter(o => o.status === 'delivered').length > 0 ? (
-                   orders.filter(o => o.status === 'delivered').map(order => (
-                      <div 
-                        key={order.id} 
-                        onClick={() => setHistoryDetailOrder(order)}
-                        className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-gray-50/90 transition-all group cursor-pointer border-b border-gray-100/70 last:border-b-0"
-                        title="Haz clic para ver el detalle del pedido"
-                      >
-                        <div className="flex items-center gap-4 min-w-0">
-                          <div className="w-11 h-11 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0 group-hover:scale-105 transition-transform">
-                            <Icon icon="heroicons:truck" className="text-xl" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <p className="font-black text-gray-900 text-sm truncate">
-                                {order.customer_name || 'Sin nombre'}
-                              </p>
-                              <span className="text-[9px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200/50 shrink-0">
-                                #{order.id.slice(0,4).toUpperCase()}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2.5 text-xs text-gray-500">
-                               <span className="font-extrabold text-gray-900">${Number(order.total_amount).toLocaleString()}</span>
-                               <span className="text-gray-300">•</span>
-                               <span className="font-medium text-gray-700">{order.order_items?.length || 0} {order.order_items?.length === 1 ? 'producto' : 'productos'}</span>
-                               <span className="text-gray-300">•</span>
-                               <span className="capitalize">{order.fulfillment_type?.replace('_', ' ')}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-[10px] font-bold text-gray-400 bg-white px-2 py-1 rounded shadow-2xs border border-gray-100">
-                            {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <div className="w-8 h-8 rounded-xl bg-gray-100 group-hover:bg-[#2f4131] text-gray-400 group-hover:text-white flex items-center justify-center transition-all shadow-2xs">
-                            <Icon icon="heroicons:chevron-right" className="text-sm font-bold" />
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="py-24 text-center">
-                     <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                        <Icon icon="heroicons:archive-box" className="text-4xl text-gray-200" />
-                     </div>
-                     <p className="font-black uppercase tracking-[0.2em] text-[10px] text-gray-300">Archivo vacío</p>
-                   </div>
-                 )}
-               </div>
-             </div>
-             <div className="p-6 bg-gray-50/50 border-t border-gray-100 mt-auto text-center">
-                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Fin del historial diario</p>
-             </div>
-           </div>
-         </div>
-       )}
-
-       {/* Modal de Historial de Cancelados */}
-       {showCancelledHistory && (
-         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-           <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-md" onClick={() => setShowCancelledHistory(false)}></div>
-           <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden relative flex flex-col max-h-[85vh] border border-gray-100">
-             <div className="px-8 py-6 border-b border-rose-50 flex justify-between items-center bg-white sticky top-0 z-10">
-               <div>
-                 <h3 className="text-xl font-black text-gray-900 tracking-tight">Historial de Cancelados</h3>
-                 <div className="flex items-center gap-2 mt-1">
-                   <div className="w-2 h-2 rounded-full bg-rose-500" />
-                   <p className="text-[10px] text-rose-400 font-black uppercase tracking-[0.2em]">{orders.filter(o => o.status === 'cancelled').length} Incidencias Hoy</p>
-                 </div>
-               </div>
-               <button onClick={() => setShowCancelledHistory(false)} className="p-2.5 hover:bg-gray-50 rounded-xl transition-all border border-gray-100 shadow-sm text-gray-400 hover:text-gray-600">
-                 <Icon icon="heroicons:x-mark" className="text-xl" />
-               </button>
-             </div>
-             
-             <div className="overflow-y-auto px-2 scrollbar-hide">
-               <div className="divide-y divide-gray-50">
-                 {orders.filter(o => o.status === 'cancelled').length > 0 ? (
-                   orders.filter(o => o.status === 'cancelled').map(order => (
-                      <div 
-                        key={order.id} 
-                        onClick={() => setHistoryDetailOrder(order)}
-                        className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-rose-50/40 transition-all group cursor-pointer border-b border-rose-100/50 last:border-b-0"
-                        title="Haz clic para ver el detalle de la cancelación"
-                      >
-                        <div className="flex items-center gap-4 min-w-0">
-                          <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 flex-shrink-0 group-hover:scale-105 transition-transform">
-                            <Icon icon="heroicons:x-circle" className="text-xl" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <p className="font-black text-gray-900 text-sm truncate">
-                                {order.customer_name || 'Sin nombre'}
-                              </p>
-                              <span className="text-[9px] font-mono text-rose-400 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 shrink-0">
-                                #{order.id.slice(0,4).toUpperCase()}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2.5 text-xs text-gray-500">
-                               <span className="font-extrabold text-gray-900">${Number(order.total_amount).toLocaleString()}</span>
-                               <span className="text-gray-300">•</span>
-                               <span className="text-rose-600 font-bold truncate">Motivo: {order.cancellation_reason || 'Sin especificar'}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-[10px] font-black text-gray-400 bg-white px-2 py-1 rounded shadow-2xs border border-gray-100">
-                            {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <div className="w-8 h-8 rounded-xl bg-gray-100 group-hover:bg-rose-600 text-gray-400 group-hover:text-white flex items-center justify-center transition-all shadow-2xs">
-                            <Icon icon="heroicons:chevron-right" className="text-sm font-bold" />
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="py-24 text-center">
-                     <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                        <Icon icon="heroicons:archive-box-x-mark" className="text-4xl text-gray-200" />
-                     </div>
-                     <p className="font-black uppercase tracking-[0.2em] text-[10px] text-gray-300">Sin cancelaciones</p>
-                   </div>
-                 )}
-               </div>
-             </div>
-             <div className="p-6 bg-gray-50/50 border-t border-gray-100 mt-auto text-center">
-                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Resumen de perdidas y cancelaciones</p>
-             </div>
-           </div>
-         </div>
-       )}
-
-       {/* Modal / Drawer de Cartera de Fiados & Cuentas por Cobrar */}
-       {isFiadosDrawerOpen && (
-         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
-           <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-md" onClick={() => setIsFiadosDrawerOpen(false)} />
-           <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden relative flex flex-col max-h-[88vh] border border-gray-100 z-10">
-             <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-amber-50/50 sticky top-0 z-10">
-               <div className="flex items-center gap-3">
-                 <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center text-xl shadow-xs">
-                   🤝
-                 </div>
-                 <div>
-                   <h3 className="text-base font-black text-gray-900 uppercase tracking-tight flex items-center gap-2">
-                     <span>Cartera de Fiados & Cuentas por Cobrar</span>
-                     <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-xs font-black">
-                       {pendingFiadosList.length}
-                     </span>
-                   </h3>
-                   <p className="text-xs text-amber-900 font-medium">
-                     Total por cobrar en la calle: <strong className="text-amber-950 font-black">${totalCarteraAmount.toLocaleString()}</strong>
-                   </p>
-                 </div>
-               </div>
-               <button
-                 type="button"
-                 onClick={() => setIsFiadosDrawerOpen(false)}
-                 className="w-8 h-8 rounded-full bg-white hover:bg-gray-100 text-gray-400 hover:text-gray-700 flex items-center justify-center border border-gray-200 transition-all cursor-pointer"
-               >
-                 ✕
-               </button>
-             </div>
-
-             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 custom-scrollbar bg-gray-50/40">
-               {pendingFiadosList.length === 0 ? (
-                 <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
-                   <p className="text-sm font-bold text-gray-400">¡Al día! No hay cuentas por cobrar ni fiados pendientes.</p>
-                 </div>
-               ) : (
-                 pendingFiadosList.map(order => {
-                   const cleanCustName = (order.customer_name || 'Cliente').replace(/\[\s*🤝?\s*FIADO[^\]]*\]/gi, '').trim();
-                   const cleanNotes = (order.delivery_notes || '').replace(/\[\s*🤝?\s*FIADO[^\]]*\]/gi, '').trim();
-                   return (
-                     <div 
-                       key={order.id}
-                       className="p-4 rounded-2xl bg-white border border-amber-200/80 shadow-xs hover:border-amber-400 transition-all space-y-3"
-                     >
-                       <div className="flex items-start justify-between gap-2">
-                         <div>
-                           <div className="flex items-center gap-2 flex-wrap">
-                             <span className="font-mono text-xs font-black text-gray-900">
-                               #{order.id.slice(-4).toUpperCase()}
-                             </span>
-                             <span className="font-black text-sm text-gray-900">
-                               {cleanCustName}
-                             </span>
-                             <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase tracking-wider">
-                               {order.status === 'delivered' ? 'Entregado' : order.status}
-                             </span>
-                           </div>
-                           <p className="text-[11px] text-gray-400 mt-0.5">
-                             {new Date(order.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} • {order.fulfillment_type === 'delivery' ? '🛵 Domicilio' : '🛍️ Para Llevar / Mostrador'}
-                             {order.customer_phone && ` • 📱 ${order.customer_phone}`}
-                           </p>
-                           {order.delivery_address && (
-                             <p className="text-xs text-gray-600 mt-1 font-medium">
-                               📍 {order.delivery_address}
-                             </p>
-                           )}
-                           {cleanNotes && (
-                             <p className="text-xs text-gray-500 italic mt-0.5">
-                               📝 {cleanNotes}
-                             </p>
-                           )}
-                         </div>
-
-                         <div className="text-right shrink-0">
-                           <span className="text-base font-black text-amber-950">
-                             ${Number(order.total_amount || 0).toLocaleString()}
-                           </span>
-                           <span className="text-[10px] font-bold text-amber-700 block uppercase tracking-wider">
-                             Por Cobrar
-                           </span>
-                         </div>
-                       </div>
-
-                       {/* Items */}
-                       <div className="flex flex-wrap gap-1.5 pt-2 border-t border-gray-100">
-                         {order.order_items?.map((it, idx) => (
-                           <span key={idx} className="text-[11px] font-medium bg-gray-50 text-gray-700 px-2 py-0.5 rounded-lg border border-gray-200">
-                             {it.quantity}x {it.products?.name}
-                           </span>
-                         ))}
-                       </div>
-
-                       {/* Botones de acción rápida */}
-                       <div className="pt-2 border-t border-amber-100 flex items-center justify-between gap-2 flex-wrap">
-                         <button
-                           type="button"
-                           onClick={() => {
-                             setSelectedOrder(order);
-                             setIsFiadosDrawerOpen(false);
-                           }}
-                           className="px-2.5 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-bold transition-all cursor-pointer"
-                         >
-                           👁️ Ver Comanda
-                         </button>
-
-                         <div className="flex items-center gap-1.5 flex-wrap">
-                           <button
-                             type="button"
-                             onClick={() => handleSendWhatsAppCobro(order)}
-                             className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
-                           >
-                             📱 WhatsApp
-                           </button>
-
-                           <button
-                             type="button"
-                             onClick={() => setSettlingFiadoOrder(order)}
-                             className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
-                           >
-                             💰 Cobrar
-                           </button>
-                         </div>
-                       </div>
-                     </div>
-                   );
-                 })
-               )}
-             </div>
-           </div>
-         </div>
-       )}
-
-       {/* Modal de selección de bolsillo de pago para Fiados */}
-       {settlingFiadoOrder && (
-         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-           <div className="fixed inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setSettlingFiadoOrder(null)} />
-           <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-gray-200 shadow-2xl relative z-10 space-y-4">
-             <div className="flex items-center justify-between">
-               <div className="flex items-center gap-2.5">
-                 <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg">
-                   💰
-                 </div>
-                 <div>
-                   <h4 className="text-sm font-black text-gray-900 uppercase tracking-tight">
-                     Registrar Cobro
-                   </h4>
-                   <p className="text-xs font-bold text-emerald-700">
-                     ${Number(settlingFiadoOrder.total_amount || 0).toLocaleString()}
-                   </p>
-                 </div>
-               </div>
-               <button
-                 type="button"
-                 onClick={() => setSettlingFiadoOrder(null)}
-                 className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 cursor-pointer"
-               >
-                 ✕
-               </button>
-             </div>
-
-             <div>
-               <label className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-2">
-                 ¿A qué bolsillo ingresa el dinero?
-               </label>
-               <div className="space-y-1.5">
-                 {[
-                   { id: 'efectivo', label: 'Efectivo (Gaveta física)' },
-                   { id: 'nequi', label: 'Nequi / Bre-B' },
-                   { id: 'daviplata', label: 'Daviplata' },
-                   { id: 'bancolombia', label: 'Bancolombia QR / Transf.' },
-                   { id: 'datafono', label: 'Datáfono / Bold' }
-                 ].map(m => {
-                   const isSel = fiadoPaymentMethod === m.id;
-                   return (
-                     <button
-                       key={m.id}
-                       type="button"
-                       onClick={() => setFiadoPaymentMethod(m.id)}
-                       className={`w-full p-2.5 rounded-xl border text-left text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
-                         isSel ? 'border-gray-900 bg-gray-900 text-white shadow-xs' : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-800'
-                       }`}
-                     >
-                       <span>{m.label}</span>
-                       {isSel && <span className="text-emerald-400 font-black">✓</span>}
-                     </button>
-                   );
-                 })}
-               </div>
-             </div>
-
-             <div className="flex items-center gap-2 pt-2">
-               <button
-                 type="button"
-                 onClick={() => setSettlingFiadoOrder(null)}
-                 className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-50 cursor-pointer"
-               >
-                 Cancelar
-               </button>
-               <button
-                 type="button"
-                 onClick={async () => {
-                   await handleSettleFiadoOrder(settlingFiadoOrder.id, fiadoPaymentMethod);
-                   setSettlingFiadoOrder(null);
-                 }}
-                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs cursor-pointer"
-               >
-                 Confirmar Cobro
-               </button>
-             </div>
-           </div>
-         </div>
-       )}
-
-        {/* Modal Extra Optimizado para Ver el Detalle del Pedido del Historial */}
-        {historyDetailOrder && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-            <div 
-              className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" 
-              onClick={() => setHistoryDetailOrder(null)} 
-            />
-            <div className="bg-white w-full max-w-xl rounded-[2rem] shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh] border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
-              
-              {/* Header */}
-              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
-                <div className="flex items-center gap-3">
-                  <button 
-                    onClick={() => setHistoryDetailOrder(null)}
-                    className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-1.5 text-xs font-bold cursor-pointer"
-                    title="Volver al historial"
-                  >
-                    <Icon icon="heroicons:arrow-left" className="text-base" />
-                    <span>Volver</span>
-                  </button>
-                  <div className="w-px h-5 bg-gray-200" />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base font-black text-gray-900 tracking-tight">
-                        Pedido #{historyDetailOrder.id.slice(0,4).toUpperCase()}
-                      </h3>
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                        historyDetailOrder.status === 'delivered' 
-                          ? 'bg-emerald-100 text-emerald-800' 
-                          : 'bg-rose-100 text-rose-800'
-                      }`}>
-                        {historyDetailOrder.status === 'delivered' ? '✓ Entregado' : '✕ Cancelado'}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-gray-400 font-medium">
-                      {new Date(historyDetailOrder.created_at).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })} • {new Date(historyDetailOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={() => setHistoryDetailOrder(null)} 
-                  className="p-2 hover:bg-gray-100 rounded-xl transition-all text-gray-400 hover:text-gray-700 cursor-pointer"
-                >
-                  <Icon icon="heroicons:x-mark" className="text-xl" />
-                </button>
-              </div>
-
-              {/* Body */}
-              <div className="overflow-y-auto p-6 space-y-5 scrollbar-thin">
-                
-                {/* Cliente & Entrega */}
-                <div className="p-4 bg-gray-50/80 rounded-2xl border border-gray-100 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Datos de Entrega</span>
-                    <span className="text-xs font-bold text-gray-600 capitalize bg-white px-2 py-0.5 rounded-lg border border-gray-200">
-                      {historyDetailOrder.fulfillment_type?.replace('_', ' ') || 'Delivery'}
-                    </span>
-                  </div>
-                  <p className="font-black text-gray-900 text-sm">{historyDetailOrder.customer_name || 'Sin nombre'}</p>
-                  {historyDetailOrder.delivery_address && (
-                    <p className="text-xs text-gray-600 flex items-start gap-1.5 font-medium">
-                      <span className="text-emerald-700 font-bold shrink-0">📍</span>
-                      <span>{historyDetailOrder.delivery_address}</span>
-                    </p>
-                  )}
-                  {historyDetailOrder.customer_phone && (
-                    <p className="text-xs text-gray-600 flex items-center gap-1.5 font-medium">
-                      <span className="text-emerald-700 font-bold">📞</span>
-                      <span>{historyDetailOrder.customer_phone}</span>
-                    </p>
-                  )}
-                  {historyDetailOrder.status === 'cancelled' && historyDetailOrder.cancellation_reason && (
-                    <div className="mt-2 p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-bold flex items-center justify-between gap-2 flex-wrap">
-                      <span>Motivo de cancelación: {historyDetailOrder.cancellation_reason}</span>
-                      {historyDetailOrder.customer_phone && (
-                        <button
-                          type="button"
-                          onClick={() => sendCancellationApologyWhatsApp(historyDetailOrder, historyDetailOrder.cancellation_reason)}
-                          className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-neutral-950 font-black text-[11px] flex items-center gap-1 cursor-pointer"
-                        >
-                          <Icon icon="logos:whatsapp-icon" className="text-xs" />
-                          <span>Enviar Disculpas + Cupón 15% OFF</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Desglose de Productos */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between pb-1 border-b border-gray-100">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-gray-500">
-                      Productos Ordenados ({historyDetailOrder.order_items?.length || 0})
-                    </h4>
-                    <span className="text-xs font-bold text-gray-400">Total ítems: {historyDetailOrder.order_items?.reduce((acc, it) => acc + (it.quantity || 1), 0) || 0}</span>
-                  </div>
-
-                  <div className="divide-y divide-gray-100 space-y-3">
-                    {historyDetailOrder.order_items && historyDetailOrder.order_items.length > 0 ? (
-                      historyDetailOrder.order_items.map((item, idx) => (
-                        <div key={item.id || idx} className="pt-3 first:pt-0 space-y-2">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-start gap-2.5 min-w-0">
-                              <span className="font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-lg text-xs shrink-0 border border-emerald-200">
-                                {item.quantity}x
-                              </span>
-                              <div className="min-w-0">
-                                <p className="font-extrabold text-gray-900 text-sm leading-snug">
-                                  {resolveOrderItemName(item)}
-                                </p>
-                              </div>
-                            </div>
-                            <span className="font-black text-gray-900 text-sm shrink-0">
-                              ${(Number(item.unit_price || 0) * (item.quantity || 1)).toLocaleString()}
-                            </span>
-                          </div>
-
-                          {/* Modificadores */}
-                          {item.modifiers && Object.keys(item.modifiers).length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 pl-8">
-                              {Object.entries(item.modifiers)
-                                .filter(([k]) => !k.startsWith('_'))
-                                .map(([k, v]) => {
-                                const displayVal = Array.isArray(v) 
-                                  ? v.join(', ') 
-                                  : (typeof v === 'object' && v ? (v.name || JSON.stringify(v)) : String(v));
-                                return (
-                                  <span key={k} className="text-[11px] bg-gray-50 text-gray-700 px-2.5 py-1 rounded-lg font-medium border border-gray-200">
-                                    <strong className="text-gray-900 font-bold">{translateGroup(k)}:</strong> {displayVal}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          )}
-
-                          {/* Notas */}
-                          {item.notes && (
-                            <div className="ml-8 text-xs text-amber-900 bg-amber-50/90 border border-amber-200/70 px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5">
-                              <span>📝</span>
-                              <span>"{item.notes}"</span>
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-xs text-gray-400 italic py-4 text-center">Sin detalle de productos</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Resumen Financiero */}
-                <div className="p-4 bg-gray-50/80 rounded-2xl border border-gray-100 space-y-2">
-                  <div className="flex justify-between items-center text-xs text-gray-500 font-semibold">
-                    <span>Subtotal consumo:</span>
-                    <span>${historyDetailOrder.order_items?.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toLocaleString() || Number(historyDetailOrder.total_amount).toLocaleString()}</span>
-                  </div>
-                  {Number(historyDetailOrder.delivery_fee) > 0 && (
-                    <div className="flex justify-between items-center text-xs text-gray-500 font-semibold">
-                      <span>Costo de envío:</span>
-                      <span>+${Number(historyDetailOrder.delivery_fee).toLocaleString()}</span>
-                    </div>
-                  )}
-                  {historyDetailOrder.payment_method && (
-                    <div className="flex justify-between items-center text-xs text-gray-500 font-semibold">
-                      <span>Método de pago:</span>
-                      <span className="font-bold text-gray-800">{historyDetailOrder.payment_method}</span>
-                    </div>
-                  )}
-                  <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
-                    <span className="text-sm font-black text-gray-900 uppercase tracking-tight">Total Facturado</span>
-                    <span className="text-xl font-black text-emerald-800 tracking-tight">
-                      ${Number(historyDetailOrder.total_amount).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Footer */}
-              <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const ord = historyDetailOrder;
-                    setHistoryDetailOrder(null);
-                    setShowDeliveredHistory(false);
-                    setShowCancelledHistory(false);
-                    setSelectedOrder(ord);
-                  }}
-                  className="px-4 py-2 text-xs font-bold text-[#2f4131] hover:bg-[#2f4131]/10 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Icon icon="heroicons:printer" className="text-base" />
-                  <span>Abrir Comanda Completa</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setHistoryDetailOrder(null)}
-                  className="px-5 py-2.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
-                >
-                  Cerrar
-                </button>
-              </div>
-
-            </div>
           </div>
         )}
-{loading && orders.length === 0 ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]"></div>
-        </div>
-      ) : (
-        <DragDropContext onDragEnd={onDragEnd}>
-          <div className="pb-8 h-auto md:h-[calc(100vh-280px)] min-h-[600px]">
-            {/* Selector de Pestañas en Móvil */}
-            <div className="flex md:hidden items-center gap-1.5 p-1 bg-white border border-gray-100 rounded-2xl shadow-sm mb-4 overflow-x-auto no-scrollbar">
-              {ORDER_STATUSES.map(sc => {
-                const count = sc.id === 'new'
-                  ? filteredOrders.filter(o => o.status === 'new' || o.status === 'waiting_payment').length
-                  : sc.id === 'on_table'
-                    ? filteredOrders.filter(o => o.status === 'on_table' || o.status === 'on_the_way').length
-                    : filteredOrders.filter(o => o.status === sc.id).length;
-                const isSelected = mobileActiveStatus === sc.id;
-                return (
-                  <button
-                    key={sc.id}
-                    onClick={() => setMobileActiveStatus(sc.id)}
-                    className={`flex-1 py-2 px-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all flex items-center justify-center gap-1.5 ${
-                      isSelected
-                        ? 'bg-[#2f4131] text-white shadow-md'
-                        : 'text-gray-400 hover:text-gray-600'
-                    }`}
-                  >
-                    <span>{sc.label.split(' ')[0]}</span>
-                    <span className={`text-[9px] px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
 
-            <div className="flex flex-row overflow-x-auto gap-4 h-auto md:h-[calc(100vh-280px)] min-h-[500px] md:min-h-[600px] items-stretch pb-6 snap-x custom-scrollbar">
-              {ORDER_STATUSES.map((statusCol, index) => {
-                const fTypeWeights = { 'dine_in': 1, 'takeaway': 2, 'delivery': 3 };
-                
-                const sortOrders = (a, b, ascending = true) => {
-                  const weightA = fTypeWeights[a.fulfillment_type] || 99;
-                  const weightB = fTypeWeights[b.fulfillment_type] || 99;
-                  if (weightA !== weightB) return weightA - weightB;
-                  const dateA = new Date(a.created_at);
-                  const dateB = new Date(b.created_at);
-                  return ascending ? dateA - dateB : dateB - dateA;
-                };
+        {/* Actions Bar & Quick Search */}
+        <OrdersSearchBar
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          filteredOrdersCount={filteredOrders.length}
+          isSoundLoopActive={isSoundLoopActive}
+          setIsSoundLoopActive={setIsSoundLoopActive}
+          incomingOrdersQueue={incomingOrdersQueue}
+          isAlertModalOpen={isAlertModalOpen}
+          setIsAlertModalOpen={setIsAlertModalOpen}
+          fiadosCount={fiadosCount}
+          totalCarteraAmount={totalCarteraAmount}
+          setIsFiadosDrawerOpen={setIsFiadosDrawerOpen}
+          dateRange={dateRange}
+          setDateRange={setDateRange}
+          setIsManualOrderModalOpen={setIsManualOrderModalOpen}
+          fetchOrders={fetchOrders}
+          loading={loading}
+        />
 
-                const colOrders = statusCol.id === 'new'
-                    ? filteredOrders.filter(o => o.status === 'new' || o.status === 'waiting_payment').sort((a,b) => sortOrders(a, b, true))
-                    : statusCol.id === 'on_table'
-                      ? filteredOrders.filter(o => o.status === 'on_table' || o.status === 'on_the_way').sort((a,b) => sortOrders(a, b, true))
-                      : filteredOrders.filter(o => o.status === statusCol.id).sort((a,b) => sortOrders(a, b, true));
+        <DailyStats 
+          orders={orders} 
+          range={dateRange} 
+          onCancelledClick={() => setShowCancelledHistory(true)} 
+          onDeliveredClick={() => setShowDeliveredHistory(true)}
+          onFiadosClick={() => setIsFiadosDrawerOpen(true)}
+          fiadosCount={fiadosCount}
+          totalCartera={totalCarteraAmount}
+        />
 
-                // Color themes per column (SaaS standard with top accent border)
-                const themes = {
-                  new: 'border-t-blue-500 bg-slate-50/70',
-                  preparing: 'border-t-amber-500 bg-slate-50/70',
-                  ready: 'border-t-emerald-500 bg-slate-50/70',
-                  on_table: 'border-t-purple-500 bg-slate-50/70'
-                };
+        {/* Modal de Historial de Entregados */}
+        <DeliveredHistoryModal
+          isOpen={showDeliveredHistory}
+          onClose={() => setShowDeliveredHistory(false)}
+          orders={orders}
+          onSelectOrderDetail={setHistoryDetailOrder}
+        />
 
-                return (
-                  <Droppable key={`status-column-${statusCol.id}-${index}`} droppableId={statusCol.id} isCombineEnabled>
-                  {(provided, snapshot) => (
-                    <div 
-                      className={`${mobileActiveStatus === statusCol.id ? 'flex' : 'hidden md:flex'} w-full sm:w-[320px] md:w-[320px] lg:w-[330px] xl:flex-1 shrink-0 snap-start flex-col rounded-2xl p-3.5 md:p-4 border border-slate-200/90 shadow-sm transition-all duration-300 border-t-4 ${
-                        snapshot.isDraggingOver 
-                          ? 'bg-emerald-50/60 border-emerald-300 shadow-lg' 
-                          : `${themes[statusCol.id]}`
-                      } h-full`}
-                    >
-                      <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-200/60">
-                        <div className="flex items-center gap-2.5">
-                          <div className={`p-2 rounded-xl bg-white shadow-2xs border border-gray-100 ${statusCol.color.replace('text-', 'text-opacity-80')}`}>
-                             <Icon icon={statusCol.icon} className="text-lg" />
-                          </div>
-                          <h3 className="font-extrabold text-gray-800 text-base tracking-tight">{statusCol.label}</h3>
-                        </div>
-                        <span className={`text-xs font-black px-3 py-1 rounded-xl shadow-2xs border border-gray-100 bg-white ${statusCol.color}`}>
-                          {colOrders.length}
-                        </span>
-                      </div>
-                      
-                      <div 
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className="flex-1 overflow-y-auto pr-1.5 custom-scrollbar flex flex-col gap-3.5"
-                      >
-                        {colOrders.map((order, index) => {
-                          const fl = getFulfillmentLabel(order.fulfillment_type);
-                          return (
-                            <Draggable key={order.id} draggableId={order.id} index={index}>
-                              {(provided, snapshot) => (
-                                <div 
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  onClick={() => { 
-                                    if (isMerging) {
-                                      handleMergeOrders(mergeSourceOrder, order);
-                                    } else {
-                                      setSelectedOrder(order); 
-                                      setIsCancelling(false); 
-                                    }
-                                  }}
-                                  className={`bg-white p-4 rounded-xl shadow-xs border transition-all cursor-pointer group relative overflow-hidden flex flex-col gap-3.5 ${
-                                    snapshot.isDragging ? 'shadow-2xl ring-4 ring-emerald-500/20 scale-102 rotate-1 z-50' : 'active:scale-[0.98]'
-                                  } ${
-                                    order?.fulfillment_type === 'dine_in' 
-                                    ? 'border-emerald-200/70 hover:border-emerald-400' 
-                                    : 'border-slate-200/80 hover:border-emerald-300'
-                                  } ${
-                                    snapshot.isCombiningWith ? 'bg-emerald-50 border-emerald-500 border-2' : ''
-                                  }`}
-                                >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1 min-w-0">
-                             <div className="flex flex-col">
-                                <span className={`text-xl font-black leading-tight truncate group-hover:text-emerald-800 transition-colors ${
-                                  order?.fulfillment_type === 'dine_in' ? 'text-emerald-900' : 'text-gray-900'
-                                }`}>
-                                  {order?.fulfillment_type === 'dine_in' 
-                                    ? (order?.restaurant_tables?.table_number ? `Mesa ${order.restaurant_tables.table_number}` : 'Mesa ?')
-                                    : (order?.customer_name || 'Sin nombre')}
-                                </span>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-[10px] font-bold text-gray-400 font-mono tracking-widest bg-gray-50 px-1.5 py-0.5 rounded">#{order?.id?.slice(0, 4).toUpperCase()}</span>
-                                  {order?.fulfillment_type === 'dine_in' && order?.customer_name && (
-                                    <span className="text-[10px] text-gray-400 font-medium truncate">• {order?.customer_name}</span>
-                                  )}
-                                </div>
-                             </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-2">
-                            <OrderTimer createdAt={order.created_at} status={order.status} />
-                            {order.fulfillment_type === 'dine_in' && (
-                              <span className="text-[8px] font-black bg-emerald-500 text-white px-2 py-0.5 rounded-full uppercase tracking-tighter">MESA</span>
-                            )}
-                            {order.status === 'on_the_way' && (
-                              <span className="text-[8px] font-black bg-indigo-500 text-white px-2 py-0.5 rounded-full uppercase tracking-tighter animate-pulse">EN CAMINO</span>
-                            )}
-                          </div>
-                        </div>
+        {/* Modal de Historial de Cancelados */}
+        <CancelledHistoryModal
+          isOpen={showCancelledHistory}
+          onClose={() => setShowCancelledHistory(false)}
+          orders={orders}
+          onSelectOrderDetail={setHistoryDetailOrder}
+        />
 
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className={`text-[10px] font-black px-2 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs border border-black/5 ${fl.color}`}>
-                            <Icon icon={fl.icon} />
-                            {fl.text}
-                          </span>
-                          <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
-                            {order?.order_items?.length || 0} ítems
-                          </span>
-                          {order.bar_status === 'ready' && (
-                            <span className="text-[9px] font-black text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                              🍸 Bebidas listas
-                            </span>
-                          )}
-                          {order.kitchen_status === 'ready' && (
-                            <span className="text-[9px] font-black text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                              🍳 Cocina lista
-                            </span>
-                          )}
-                        </div>
-                        
-                        {/* Chip Método de Pago */}
-                        {(() => {
-                          const pm = parsePaymentMethod(order.payment_method, order.payment_status);
-                          return (
-                            <div className={`mt-2 flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-black ${pm.bg} ${pm.text} ${pm.border}`}>
-                              <div className="flex items-center gap-1.5 min-w-0 truncate">
-                                <Icon icon={pm.icon} className="text-sm shrink-0" />
-                                <span className="truncate" title={pm.fullText || pm.label}>{pm.label}</span>
-                              </div>
-                              {order.payment_status === 'paid' ? (
-                                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-600 text-white shrink-0">
-                                  Pagado
-                                </span>
-                              ) : (
-                                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-900 border border-amber-300/60 shrink-0">
-                                  Cobrar
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })()}
+        {/* Modal / Drawer de Cartera de Fiados & Cuentas por Cobrar */}
+        <FiadosCarteraModal
+          isOpen={isFiadosDrawerOpen}
+          onClose={() => setIsFiadosDrawerOpen(false)}
+          pendingFiadosList={pendingFiadosList}
+          totalCarteraAmount={totalCarteraAmount}
+          onSelectOrder={setSelectedOrder}
+          onSendWhatsAppCobro={handleSendWhatsAppCobro}
+          onSettleFiadoOrder={handleSettleFiadoOrder}
+        />
 
-                        {/* Dirección de Entrega y Botón Maps */}
-                        {order.delivery_address && (
-                          <div 
-                            className="mt-1.5 flex items-center justify-between gap-1.5 px-2.5 py-1 bg-rose-50/70 border border-rose-100 rounded-lg text-[11px]"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="flex items-center gap-1.5 min-w-0 truncate">
-                              <Icon icon="heroicons:map-pin" className="text-rose-500 text-xs shrink-0" />
-                              <span className="truncate font-semibold text-gray-800" title={order.delivery_address}>
-                                {order.delivery_address}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              {order.customer_phone && (
-                                <a
-                                  href={`tel:${order.customer_phone.replace(/\D/g, '')}`}
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white hover:bg-emerald-100 text-emerald-700 font-bold border border-emerald-200 text-[10px] transition-colors shadow-2xs cursor-pointer"
-                                  title="Llamar al cliente"
-                                >
-                                  <Icon icon="heroicons:phone" className="text-xs text-emerald-600" />
-                                  <span>Llamar</span>
-                                </a>
-                              )}
-                              <a
-                                href={getGoogleMapsUrl(order.delivery_address)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white hover:bg-rose-100 text-rose-700 font-bold border border-rose-200 text-[10px] transition-colors shadow-2xs cursor-pointer"
-                                title="Abrir dirección en Google Maps"
-                              >
-                                <Icon icon="solar:map-point-bold" className="text-xs text-rose-600" />
-                                <span>Maps</span>
-                              </a>
-                            </div>
-                          </div>
-                        )}
+        {/* Modal Extra Optimizado para Ver el Detalle del Pedido del Historial */}
+        <OrderHistoryDetailModal
+          historyDetailOrder={historyDetailOrder}
+          onClose={() => setHistoryDetailOrder(null)}
+          onOpenFullOrder={(ord) => {
+            setHistoryDetailOrder(null);
+            setShowDeliveredHistory(false);
+            setShowCancelledHistory(false);
+            setSelectedOrder(ord);
+          }}
+          sendCancellationApologyWhatsApp={sendCancellationApologyWhatsApp}
+        />
 
-                        {/* Indicador de Pago / Saldo */}
-                        {order?.payment_status !== 'paid' && order?.status !== 'cancelled' && (
-                          <div className={`flex flex-col gap-1.5 px-3 py-2 rounded-lg border transition-colors ${
-                            (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && order?.status === 'new') ||
-                            (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && order?.status === 'ready')
-                              ? 'bg-rose-50 border-rose-200 text-rose-700 animate-pulse'
-                              : 'bg-rose-50/40 border-rose-100 text-rose-600'
-                          }`}>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1.5">
-                                <Icon icon="heroicons:banknotes" className="text-sm" />
-                                <span className="text-[10px] font-black uppercase tracking-wider">
-                                  {order?.paid_amount > 0 ? 'Falta Saldo' : 'Pago Pendiente'}
-                                </span>
-                              </div>
-                              <span className="text-xs font-black">
-                                {order?.paid_amount > 0 
-                                  ? `$${(order.total_amount - order.paid_amount).toLocaleString()}` 
-                                  : `$${Number(order?.total_amount || 0).toLocaleString()}`}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                        
-                        <div className="space-y-2 mt-1">
-                          {order.order_items?.slice(0, 2).map(item => (
-                            <div key={item.id} className="text-[13px] text-gray-600 truncate flex items-center gap-2">
-                              <span className="font-black text-emerald-700 bg-emerald-50 w-6 h-6 flex items-center justify-center rounded-lg text-[10px] shrink-0">{item.quantity}x</span>
-                              <span className="font-medium truncate">{resolveOrderItemName(item)}</span>
-                            </div>
-                          ))}
-                          {order.order_items?.length > 2 && (
-                            <div className="text-[10px] text-gray-400 font-bold pl-8">+{order.order_items.length - 2} productos más...</div>
-                          )}
-                        </div>
-
-                        {/* Pie de Tarjeta: Total y Botón + Adición */}
-                        <div className="pt-2.5 mt-2 border-t border-gray-100 flex items-center justify-between">
-                          <span className="text-xs font-black text-gray-900">
-                            ${Number(order?.total_amount || 0).toLocaleString()}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setAdditionOrder(order);
-                            }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 text-[11px] font-bold border border-amber-200/80 transition-colors cursor-pointer shadow-2xs"
-                            title="Agregar producto o adición a este pedido"
-                          >
-                            <Icon icon="solar:cart-plus-bold" className="text-xs text-amber-700" />
-                            <span>+ Adición</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </Draggable>
-                          );
-                        })}
-                        {provided.placeholder}
-                        {colOrders.length === 0 && (
-                          <div className="flex flex-col items-center justify-center py-12 opacity-20">
-                            <Icon icon={statusCol.icon} className="text-4xl mb-2" />
-                            <span className="text-xs font-bold uppercase tracking-widest">Sin pedidos</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </Droppable>
-              );
-            })}
+        {loading && orders.length === 0 ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2f4131]" />
           </div>
-        </div>
-      </DragDropContext>
-      )}
-
-      {/* Modal Detalle Pedido Rediseñado */}
-      {selectedOrder && (
-        <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-4">
-          <div 
-            className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
-            onClick={() => setSelectedOrder(null)}
-          ></div>
-          <div className="relative z-10 bg-slate-50 w-full max-w-6xl h-[94vh] md:h-[88vh] max-h-[920px] rounded-t-[2rem] rounded-b-none md:rounded-b-[2rem] shadow-2xl overflow-hidden flex flex-col mt-auto md:mt-0 border border-slate-200/80 animate-in slide-in-from-bottom-4 md:zoom-in duration-300">
-            
-            {/* Header Modal (shrink-0) */}
-            <div className="shrink-0 px-6 py-4 md:px-8 md:py-5 border-b border-gray-200 bg-white flex justify-between items-center z-10 shadow-sm">
-              <div className="flex items-center gap-3.5">
-                <div className="h-11 w-11 bg-slate-100 rounded-2xl flex items-center justify-center border border-slate-200 text-[#2f4131]">
-                  <Icon icon="heroicons:clipboard-document-list" className="text-2xl" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <h2 className="text-xl md:text-2xl font-black text-gray-900 leading-none">
-                      PEDIDO #{selectedOrder.id.slice(0,4).toUpperCase()}
-                    </h2>
-                    <span className={`text-[10px] md:text-xs font-black px-2.5 py-0.5 rounded-lg border ${getFulfillmentLabel(selectedOrder.fulfillment_type).color}`}>
-                      {getFulfillmentLabel(selectedOrder.fulfillment_type).text}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-400">
-                    <Icon icon="solar:clock-circle-bold" className="text-sm" />
-                    <span>Recibido a las {new Date(selectedOrder.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    {selectedOrder.scheduled_time && (
-                      <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md font-bold text-[10px]">
-                        📅 Programado: {new Date(selectedOrder.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        ) : (
+          <DragDropContext onDragEnd={onDragEnd}>
+            <div className="pb-8 h-auto md:h-[calc(100vh-280px)] min-h-[600px]">
+              {/* Selector de Pestañas en Móvil */}
+              <div className="flex md:hidden items-center gap-1.5 p-1 bg-white border border-gray-100 rounded-2xl shadow-sm mb-4 overflow-x-auto no-scrollbar">
+                {ORDER_STATUSES.map(sc => {
+                  const count = sc.id === 'new'
+                    ? filteredOrders.filter(o => o.status === 'new' || o.status === 'waiting_payment').length
+                    : sc.id === 'on_table'
+                      ? filteredOrders.filter(o => o.status === 'on_table' || o.status === 'on_the_way').length
+                      : filteredOrders.filter(o => o.status === sc.id).length;
+                  const isSelected = mobileActiveStatus === sc.id;
+                  return (
+                    <button
+                      key={sc.id}
+                      onClick={() => setMobileActiveStatus(sc.id)}
+                      className={`flex-1 py-2 px-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all flex items-center justify-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-[#2f4131] text-white shadow-md'
+                          : 'text-gray-400 hover:text-gray-600'
+                      }`}
+                    >
+                      <span>{sc.label.split(' ')[0]}</span>
+                      <span className={`text-[9px] px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                        {count}
                       </span>
-                    )}
-                  </div>
-                </div>
+                    </button>
+                  );
+                })}
               </div>
 
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => { setSelectedOrder(null); setIsCancelling(false); }}
-                  className="h-9 w-9 md:h-10 md:w-10 bg-gray-100 hover:bg-red-50 hover:text-red-500 rounded-full flex items-center justify-center transition-all text-gray-400 border border-gray-200"
-                  title="Cerrar modal"
-                >
-                  <Icon icon="heroicons:x-mark" className="text-xl" />
-                </button>
-              </div>
-            </div>
+              <div className="flex flex-row overflow-x-auto gap-4 h-auto md:h-[calc(100vh-280px)] min-h-[500px] md:min-h-[600px] items-stretch pb-6 snap-x custom-scrollbar">
+                {ORDER_STATUSES.map((statusCol, index) => {
+                  const fTypeWeights = { 'dine_in': 1, 'takeaway': 2, 'delivery': 3 };
+                  
+                  const sortOrders = (a, b, ascending = true) => {
+                    const weightA = fTypeWeights[a.fulfillment_type] || 99;
+                    const weightB = fTypeWeights[b.fulfillment_type] || 99;
+                    if (weightA !== weightB) return weightA - weightB;
+                    const dateA = new Date(a.created_at);
+                    const dateB = new Date(b.created_at);
+                    return ascending ? dateA - dateB : dateB - dateA;
+                  };
 
-            {/* Scrollable Body: flex-1 min-h-0 overflow-y-auto */}
-            <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 lg:p-7 custom-scrollbar bg-slate-50">
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr,360px] gap-6 items-start">
-                
-                {/* Columna Izquierda: Detalle de Platos, Notas y Totales */}
-                <div className="space-y-4">
-                  {/* Alertas de Estado (Delivered / Cancelled) */}
-                  {(selectedOrder.status === 'delivered' || selectedOrder.status === 'cancelled') && (
-                    <div className="flex flex-col gap-2">
-                      {selectedOrder.status === 'delivered' && (
-                        <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl font-bold text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-sm">
-                          <Icon icon="heroicons:check-circle" className="text-lg text-emerald-600 shrink-0" />
-                          <span>Pedido Finalizado a las {new Date(selectedOrder.delivered_at || selectedOrder.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
-                      )}
-                      {selectedOrder.status === 'cancelled' && (
-                        <div className="flex flex-col gap-1 px-4 py-3 rounded-2xl font-bold text-xs bg-red-50 text-red-800 border border-red-200 shadow-sm">
-                          <div className="flex items-center gap-2 font-black uppercase text-xs text-red-700">
-                            <Icon icon="heroicons:x-circle" className="text-lg text-red-600 shrink-0" />
-                            Pedido Cancelado
-                          </div>
-                          {selectedOrder.cancellation_reason && (
-                            <p className="text-xs font-medium text-red-600/90 pl-6">Motivo: {selectedOrder.cancellation_reason}</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  const colOrders = statusCol.id === 'new'
+                      ? filteredOrders.filter(o => o.status === 'new' || o.status === 'waiting_payment').sort((a, b) => sortOrders(a, b, true))
+                      : statusCol.id === 'on_table'
+                        ? filteredOrders.filter(o => o.status === 'on_table' || o.status === 'on_the_way').sort((a, b) => sortOrders(a, b, true))
+                        : filteredOrders.filter(o => o.status === statusCol.id).sort((a, b) => sortOrders(a, b, true));
 
-                  {/* Tarjeta: Lista de Productos */}
-                  <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                      <h3 className="font-black text-slate-400 uppercase tracking-widest text-[10px] flex items-center gap-2">
-                        <Icon icon="heroicons:shopping-cart" className="text-base text-slate-400" />
-                        Detalle del Consumo ({selectedOrder.order_items?.length || 0} {selectedOrder.order_items?.length === 1 ? 'ítem' : 'ítems'})
-                      </h3>
-                      <span className="text-[11px] font-bold text-slate-500">
-                        Total items: {selectedOrder.order_items?.reduce((acc, it) => acc + (it.quantity || 1), 0) || 0}
-                      </span>
-                    </div>
+                  const themes = {
+                    new: 'border-t-blue-500 bg-slate-50/70',
+                    preparing: 'border-t-amber-500 bg-slate-50/70',
+                    ready: 'border-t-emerald-500 bg-slate-50/70',
+                    on_table: 'border-t-purple-500 bg-slate-50/70'
+                  };
 
-                    <div className="divide-y divide-slate-100">
-                      {selectedOrder.order_items?.map(item => (
-                        <div key={item.id} className="py-3 first:pt-0 last:pb-0 flex items-start gap-3.5 group">
-                          <span className="font-black text-sm md:text-base text-[#2f4131] bg-slate-100 px-2.5 py-1 rounded-xl shrink-0 h-fit border border-slate-200">
-                            {item.quantity}x
-                          </span>
-                          <div className="flex flex-col flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-gray-900 group-hover:text-emerald-700 transition-colors uppercase text-sm tracking-tight">
-                                {item.products?.name}
-                              </span>
-                              {item.is_paid && (
-                                <span className="bg-emerald-100 text-emerald-700 text-[8px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                                  <Icon icon="heroicons:check-circle-16-solid" />
-                                  PAGADO
-                                </span>
-                              )}
-                            </div>
-
-                            {item.modifiers && Object.keys(item.modifiers).length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1.5">
-                                {Object.entries(item.modifiers).map(([k, v]) => (
-                                  <span key={k} className="text-[10px] bg-slate-50 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-lg font-bold">
-                                    {translateGroup(k)}: {Array.isArray(v) ? v.join(", ") : v}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-
-                            {item.notes && (
-                              <div className="mt-1.5 text-[11px] text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg italic font-medium border border-amber-200 flex items-center gap-1.5">
-                                <Icon icon="heroicons:chat-bubble-bottom-center-text" className="text-amber-500 shrink-0" />
-                                <span>"{item.notes}"</span>
-                              </div>
-                            )}
-                          </div>
-
-                          <span className="font-black text-sm text-gray-900 shrink-0 whitespace-nowrap pt-1">
-                            ${(item.quantity * item.unit_price).toLocaleString()}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Botón de Adición Rápida en el Modal */}
-                    <div className="pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setAdditionOrder(selectedOrder)}
-                        className="w-full py-2.5 px-3 rounded-xl border border-dashed border-amber-300 bg-amber-50/70 hover:bg-amber-100 text-amber-900 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
-                      >
-                        <Icon icon="solar:cart-plus-bold" className="text-base text-amber-700" />
-                        <span>+ Agregar Producto / Adición a esta Comanda</span>
-                      </button>
-                    </div>
-
-                    {/* Desglose de Totales */}
-                    <div className="pt-4 border-t border-slate-100 space-y-2">
-                      <div className="flex justify-between items-center text-xs font-semibold text-slate-500">
-                        <span>Subtotal consumo</span>
-                        <span>${selectedOrder.order_items?.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toLocaleString()}</span>
-                      </div>
-                      
-                      {selectedOrder.service_fee > 0 && (
-                        <div className="flex justify-between items-center text-xs font-semibold text-emerald-600">
-                          <span className="flex items-center gap-1">
-                            <Icon icon="heroicons:heart" />
-                            Servicio Voluntario
-                          </span>
-                          <span>${selectedOrder.service_fee.toLocaleString()}</span>
-                        </div>
-                      )}
-
-                      {selectedOrder.discount_amount > 0 && (
-                        <div className="flex justify-between items-center text-xs font-bold text-red-600">
-                          <span className="flex items-center gap-1">
-                            <Icon icon="heroicons:tag" />
-                            Descuento ({selectedOrder.discount_reason})
-                          </span>
-                          <span>-${selectedOrder.discount_amount.toLocaleString()}</span>
-                        </div>
-                      )}
-
-                      <div className="flex justify-between items-center pt-2.5 border-t border-slate-200">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-black text-gray-900">TOTAL A PAGAR</span>
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                            selectedOrder.payment_status === 'paid' 
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                              : 'bg-orange-100 text-orange-800 border border-orange-200'
-                          }`}>
-                            {selectedOrder.payment_status === 'paid' ? 'PAGADO' : 'PENDIENTE DE PAGO'}
-                          </span>
-                        </div>
-                        <span className="text-2xl md:text-3xl font-black text-[#2f4131] tracking-tight">
-                          ${selectedOrder.total_amount?.toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Columna Derecha: Sidebar Admin */}
-                <div className="space-y-4">
-                  {/* Tarjeta: Información de Cliente & Ubicación */}
-                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Información General</p>
-                      <span className={`px-2.5 py-0.5 rounded-lg text-xs font-black ${
-                        selectedOrder.fulfillment_type === 'dine_in' 
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                          : 'bg-blue-100 text-blue-800 border border-blue-200'
-                      }`}>
-                        {selectedOrder.fulfillment_type === 'dine_in' 
-                          ? `🪑 MESA ${selectedOrder.restaurant_tables?.table_number || '?'}`
-                          : getFulfillmentLabel(selectedOrder.fulfillment_type).text}
-                      </span>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 border border-slate-200 mt-0.5">
-                        <Icon icon="heroicons:user" className="text-lg" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">Cliente</p>
-                        <p className="font-bold text-gray-900 text-sm leading-snug break-words">
-                          {selectedOrder.customer_name || 'Sin nombre'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {selectedOrder.customer_phone && (
-                      <div className="pt-2 border-t border-slate-50 space-y-2">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 border border-slate-200">
-                              <Icon icon="heroicons:phone" className="text-lg" />
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">Celular</p>
-                              <p className="font-bold text-gray-900 text-sm leading-none">{selectedOrder.customer_phone}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <a 
-                              href={`https://wa.me/${(selectedOrder.customer_phone.replace(/\D/g, '').startsWith('57') ? selectedOrder.customer_phone.replace(/\D/g, '') : `57${selectedOrder.customer_phone.replace(/\D/g, '')}`)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors border border-emerald-200"
-                              title="Chat por WhatsApp"
-                            >
-                              <Icon icon="logos:whatsapp-icon" className="text-base" />
-                            </a>
-                            <a 
-                              href={`tel:${selectedOrder.customer_phone.replace(/\D/g, '')}`}
-                              className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors border border-slate-200"
-                              title="Llamar directamente"
-                            >
-                              <Icon icon="heroicons:phone" className="text-base" />
-                            </a>
-                          </div>
-                        </div>
-
-                        {/* Botón Rápido de Notificación al Cliente por WhatsApp */}
-                        <button
-                          type="button"
-                          onClick={() => shareToWhatsApp(selectedOrder, 'status')}
-                          className="w-full py-2 px-3 rounded-xl bg-[#25D366]/15 hover:bg-[#25D366]/25 text-emerald-800 border border-emerald-300/80 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
-                          title="Notificar actualización de estado al cliente por WhatsApp"
+                  return (
+                    <Droppable key={`status-column-${statusCol.id}-${index}`} droppableId={statusCol.id} isCombineEnabled>
+                      {(provided, snapshot) => (
+                        <div 
+                          className={`${mobileActiveStatus === statusCol.id ? 'flex' : 'hidden md:flex'} w-full sm:w-[320px] md:w-[320px] lg:w-[330px] xl:flex-1 shrink-0 snap-start flex-col rounded-2xl p-3.5 md:p-4 border border-slate-200/90 shadow-sm transition-all duration-300 border-t-4 ${
+                            snapshot.isDraggingOver 
+                              ? 'bg-emerald-50/60 border-emerald-300 shadow-lg' 
+                              : `${themes[statusCol.id]}`
+                          } h-full`}
                         >
-                          <Icon icon="logos:whatsapp-icon" className="text-sm" />
-                          <span>📲 Avisar Estado Actual por WhatsApp</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Tarjeta: Dirección de Entrega & Mapas (Domicilio) */}
-                  {(selectedOrder.delivery_address || selectedOrder.fulfillment_type === 'delivery') && (
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3.5">
-  
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                          <Icon icon="heroicons:map-pin" className="text-rose-500 text-sm" />
-                          Dirección de Entrega
-                        </p>
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-purple-100 text-purple-700 border border-purple-200 uppercase">
-                          Domicilio
-                        </span>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <p className="text-sm font-bold text-gray-900 leading-snug break-words">
-                          {selectedOrder.delivery_address || 'Sin dirección registrada'}
-                        </p>
-                        {selectedOrder.delivery_notes && (
-                          <div className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200/80 mt-1">
-                            📝 <strong>Nota de Entrega:</strong> {selectedOrder.delivery_notes}
+                          <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-200/60">
+                            <div className="flex items-center gap-2.5">
+                              <div className={`p-2 rounded-xl bg-white shadow-2xs border border-gray-100 ${statusCol.color.replace('text-', 'text-opacity-80')}`}>
+                                <Icon icon={statusCol.icon} className="text-lg" />
+                              </div>
+                              <h3 className="font-extrabold text-gray-800 text-base tracking-tight">{statusCol.label}</h3>
+                            </div>
+                            <span className={`text-xs font-black px-3 py-1 rounded-xl shadow-2xs border border-gray-100 bg-white ${statusCol.color}`}>
+                              {colOrders.length}
+                            </span>
                           </div>
-                        )}
-                      </div>
-
-                      {selectedOrder.delivery_address && (
-                        <>
-                        <div className="grid grid-cols-2 gap-2 pt-1">
-                          <a
-                            href={getGoogleMapsUrl(selectedOrder.delivery_address)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                            title="Abrir ubicación en Google Maps"
+                          
+                          <div 
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className="flex-1 overflow-y-auto pr-1.5 custom-scrollbar flex flex-col gap-3.5"
                           >
-                            <Icon icon="logos:google-maps" className="text-base" />
-                            <span>Google Maps</span>
-                          </a>
-                          <a
-                            href={getWazeUrl(selectedOrder.delivery_address)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                            title="Navegar en Waze"
-                          >
-                            <Icon icon="solar:routing-2-bold" className="text-base text-cyan-600" />
-                            <span>Waze</span>
-                          </a>
-                        </div>
-
-                        {/* Contacto Directo: Llamada y Aviso de Llegada */}
-                        {selectedOrder.customer_phone && (
-                          <div className="grid grid-cols-2 gap-2 pt-1">
-                            <a
-                              href={`tel:${selectedOrder.customer_phone.replace(/\D/g, '')}`}
-                              className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                              title="Llamada telefónica inmediata al cliente"
-                            >
-                              <Icon icon="heroicons:phone" className="text-base text-emerald-600" />
-                              <span>Llamar Cliente</span>
-                            </a>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const cleanP = selectedOrder.customer_phone.replace(/\D/g, '');
-                                const phone = cleanP.startsWith('57') ? cleanP : `57${cleanP}`;
-                                const shortNum = `#${selectedOrder.id.slice(0, 4).toUpperCase()}`;
-                                const brand = activeBrand?.name || 'Boku Bento';
-                                const msg = `🛵 ¡Hola ${selectedOrder.customer_name || ''}! Ya nos encontramos afuera de tu dirección (*${selectedOrder.delivery_address || ''}*) con tu pedido ${shortNum} caliente y listo de ${brand}.\n\n¿Podrías salir a recibirlo, por favor? ¡Muchas gracias! 🙌`;
-                                window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-                              }}
-                              className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                              title="Avisar que ya llegó el domiciliario por WhatsApp"
-                            >
-                              <Icon icon="solar:bell-bing-bold" className="text-base text-amber-600" />
-                              <span>🔔 ¡Ya Llegué!</span>
-                            </button>
+                            {colOrders.map((order, orderIdx) => (
+                              <OrderKanbanCard
+                                key={order.id}
+                                order={order}
+                                index={orderIdx}
+                                isMerging={isMerging}
+                                mergeSourceOrder={mergeSourceOrder}
+                                handleMergeOrders={handleMergeOrders}
+                                onSelectOrder={(ord) => {
+                                  setSelectedOrder(ord);
+                                  setIsCancelling(false);
+                                }}
+                                onOpenAddition={setAdditionOrder}
+                                restaurantSettings={restaurantSettings}
+                              />
+                            ))}
+                            {provided.placeholder}
+                            {colOrders.length === 0 && (
+                              <div className="flex flex-col items-center justify-center py-12 opacity-20">
+                                <Icon icon={statusCol.icon} className="text-4xl mb-2" />
+                                <span className="text-xs font-bold uppercase tracking-widest">Sin pedidos</span>
+                              </div>
+                            )}
                           </div>
-                        )}
-
-                        {/* Asignar y Enviar al Domiciliario */}
-                        <div className="pt-2 border-t border-slate-100">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const driverUrl = `${window.location.origin}/domi/${selectedOrder.id}`;
-                              const shortNum = `#${selectedOrder.id.slice(0, 4).toUpperCase()}`;
-                              const brand = activeBrand?.name || 'Boku Bento';
-                              const msg = `🛵 *DOMICILIO ASIGNADO - ${brand}*\n📦 *Pedido ${shortNum}*\n👤 *Cliente:* ${selectedOrder.customer_name || 'Sin nombre'}\n📞 *Teléfono:* ${selectedOrder.customer_phone || ''}\n📍 *Dirección:* ${selectedOrder.delivery_address || ''}\n${selectedOrder.delivery_notes ? `📝 *Nota:* ${selectedOrder.delivery_notes}\n` : ''}💰 *Cobro:* ${selectedOrder.payment_status === 'paid' ? 'YA PAGADO (No cobrar dinero)' : `$${Number(selectedOrder.total_amount || 0).toLocaleString()} (${selectedOrder.payment_method || 'Cobro contra entrega'})`}\n\n📲 *Abre la app de entrega aquí (Mapa y llamada rápida):*\n${driverUrl}`;
-                              
-                              if (navigator.clipboard) {
-                                navigator.clipboard.writeText(driverUrl);
-                              }
-                              toast.success('¡Enlace de entrega copiado! Abriendo WhatsApp...');
-                              window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-                            }}
-                            className="w-full py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
-                            title="Enviar comanda completa y enlace de entrega al domiciliario por WhatsApp"
-                          >
-                            <Icon icon="solar:scooter-bold-duotone" className="text-base text-emerald-400" />
-                            <span>📲 Enviar a Domiciliario (App de Entrega)</span>
-                          </button>
                         </div>
-                        </>
                       )}
-                    </div>
-                  )}
-
-                  {/* Tarjeta: Mesero Asignado */}
-                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2.5">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                      <Icon icon="solar:user-hand-up-bold" className="text-emerald-600 text-sm" />
-                      Mesero Asignado
-                    </p>
-                    <select 
-                      value={selectedOrder.waiter_id || ''}
-                      onChange={(e) => assignWaiter(selectedOrder.id, e.target.value)}
-                      className="w-full p-3 rounded-xl border border-slate-200 text-xs font-bold text-gray-800 bg-slate-50 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all cursor-pointer"
-                    >
-                      <option value="">No asignado</option>
-                      {waiters.map(w => (
-                        <option key={w.id} value={w.id}>{w.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Tarjeta: Resumen Financiero y Pagos */}
-                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3.5">
-
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado Financiero</p>
-                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                        selectedOrder.payment_status === 'paid' 
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                          : 'bg-rose-100 text-rose-800 border border-rose-200'
-                      }`}>
-                        {selectedOrder.payment_status === 'paid' ? 'PAGADO' : 'PENDIENTE DE PAGO'}
-                      </span>
-                    </div>
-
-                    {/* Chip Destacado de Medio de Pago y Detalle de Cambio */}
-                    {(() => {
-                      const pm = parsePaymentMethod(selectedOrder.payment_method, selectedOrder.payment_status);
-                      return (
-                        <div className={`p-3 rounded-xl border ${pm.bg} ${pm.border} space-y-1.5`}>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Método de Pago</span>
-                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${pm.bg} ${pm.text} border ${pm.border} flex items-center gap-1`}>
-                              <Icon icon={pm.icon} />
-                              {pm.shortLabel}
-                            </span>
-                          </div>
-                          <p className="text-xs font-bold text-gray-900 break-words">
-                            {selectedOrder.payment_method || 'Por acordar con el cliente'}
-                          </p>
-                          {pm.detail && pm.type === 'cash' && (
-                            <div className="mt-2 pt-2 border-t border-emerald-200/60 flex items-center justify-between text-xs font-black text-emerald-900">
-                              {pm.tendered && <span>💵 Recibe: {pm.tendered}</span>}
-                              {pm.change && <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-md shadow-2xs">Dar vuelto: {pm.change}</span>}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {/* Botones de Gestión de Fiado / Cobro Rápido */}
-                    {selectedOrder.payment_status !== 'paid' && (
-                      <div className="pt-2 border-t border-slate-100 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                            Asignar o Registrar Pago
-                          </span>
-                        </div>
-
-                        {/* Botón: Asignar como Fiado */}
-                        {selectedOrder.payment_method !== 'fiado' && !String(selectedOrder.delivery_notes || '').toLowerCase().includes('fiado') ? (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              const debtor = window.prompt('Nombre del deudor / persona a quien se fía:', selectedOrder.customer_name || 'Xiomara');
-                              if (debtor === null) return;
-                              const cleanName = debtor.trim() || selectedOrder.customer_name || 'Cliente';
-                              const currentNotes = selectedOrder.delivery_notes || '';
-                              const updatedNotes = currentNotes 
-                                ? `${currentNotes} | [🤝 FIADO - Cuenta por cobrar: ${cleanName}]`
-                                : `[🤝 FIADO - Cuenta por cobrar: ${cleanName}]`;
-                              
-                              const { error } = await supabase
-                                .from('orders')
-                                .update({
-                                  payment_method: 'fiado',
-                                  payment_status: 'pending',
-                                  customer_name: cleanName,
-                                  delivery_notes: updatedNotes,
-                                  updated_at: new Date().toISOString()
-                                })
-                                .eq('id', selectedOrder.id);
-                              
-                              if (error) {
-                                toast.error('Error al asignar fiado: ' + error.message);
-                              } else {
-                                toast.success(`🤝 Pedido asignado como fiado a ${cleanName}`);
-                                setSelectedOrder(prev => ({
-                                  ...prev,
-                                  payment_method: 'fiado',
-                                  payment_status: 'pending',
-                                  customer_name: cleanName,
-                                  delivery_notes: updatedNotes
-                                }));
-                                fetchOrders();
-                              }
-                            }}
-                            className="w-full py-2.5 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
-                            title="Marcar este pedido como fiado / cuenta por cobrar"
-                          >
-                            <Icon icon="solar:hand-stars-bold" className="text-base text-purple-600" />
-                            <span>🤝 Asignar como Fiado (Cuenta por Cobrar)</span>
-                          </button>
-                        ) : (
-                          <div className="p-2.5 rounded-xl bg-purple-100/70 border border-purple-200 text-purple-950 text-xs font-bold flex items-center justify-between">
-                            <span className="flex items-center gap-1.5">
-                              <Icon icon="solar:hand-stars-bold" className="text-purple-700 text-sm" />
-                              Asignado como Fiado
-                            </span>
-                            <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded bg-purple-200 text-purple-900">
-                              Por Cobrar
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Botones rápidos de pago directo (Efectivo / Nequi) */}
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              const total = Number(selectedOrder.total_amount || 0);
-                              const { error } = await supabase
-                                .from('orders')
-                                .update({
-                                  payment_status: 'paid',
-                                  payment_method: 'efectivo',
-                                  paid_amount: total,
-                                  updated_at: new Date().toISOString()
-                                })
-                                .eq('id', selectedOrder.id);
-                              
-                              if (error) {
-                                toast.error('Error al marcar pagado: ' + error.message);
-                              } else {
-                                toast.success('🎉 Pedido marcado como Pagado en Efectivo');
-                                setSelectedOrder(prev => ({
-                                  ...prev,
-                                  payment_status: 'paid',
-                                  payment_method: 'efectivo',
-                                  paid_amount: total
-                                }));
-                                fetchOrders();
-                              }
-                            }}
-                            className="py-2 px-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-                          >
-                            <Icon icon="solar:wallet-money-bold" className="text-sm text-emerald-600" />
-                            <span>💵 Pagó Efectivo</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              const total = Number(selectedOrder.total_amount || 0);
-                              const { error } = await supabase
-                                .from('orders')
-                                .update({
-                                  payment_status: 'paid',
-                                  payment_method: 'nequi',
-                                  paid_amount: total,
-                                  updated_at: new Date().toISOString()
-                                })
-                                .eq('id', selectedOrder.id);
-                              
-                              if (error) {
-                                toast.error('Error al marcar pagado: ' + error.message);
-                              } else {
-                                toast.success('🎉 Pedido marcado como Pagado por Nequi');
-                                setSelectedOrder(prev => ({
-                                  ...prev,
-                                  payment_status: 'paid',
-                                  payment_method: 'nequi',
-                                  paid_amount: total
-                                }));
-                                fetchOrders();
-                              }
-                            }}
-                            className="py-2 px-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-                          >
-                            <Icon icon="solar:smartphone-bold" className="text-sm text-pink-600" />
-                            <span>📲 Pagó Nequi</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-
-
-
-
-
-
-
-                    
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-semibold text-slate-500">Monto Total</span>
-                      <span className="font-black text-slate-900">${selectedOrder.total_amount?.toLocaleString()}</span>
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-semibold text-slate-500">Pagado</span>
-                      <span className="font-black text-emerald-600">${(selectedOrder.paid_amount || 0).toLocaleString()}</span>
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
-                      <span className="text-xs font-black text-slate-900">PENDIENTE</span>
-                      <span className={`text-base font-black ${selectedOrder.payment_status === 'paid' ? 'text-emerald-600' : 'text-orange-600'}`}>
-                        ${Math.max(0, (selectedOrder.total_amount || 0) - (selectedOrder.paid_amount || 0)).toLocaleString()}
-                      </span>
-                    </div>
-
-                    {selectedOrder.payment_status === 'paid' && (
-                      <div className="flex items-center gap-1.5 justify-center py-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200 text-[10px] font-black uppercase">
-                        <Icon icon="heroicons:check-circle" className="text-sm" />
-                        Completamente Pagado
-                      </div>
-                    )}
-
-                    {/* Historial de Pagos si hay pagos registrados */}
-                    {selectedOrder.order_payments?.length > 0 && (
-                      <div className="pt-3 border-t border-slate-100 space-y-2">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                          <Icon icon="heroicons:clipboard-document-check" className="text-xs" />
-                          Abonos Realizados
-                        </p>
-                        <div className="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
-                          {selectedOrder.order_payments.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).map(pay => (
-                            <div key={pay.id} className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-xs">
-                              <div>
-                                <span className="text-[10px] font-black text-slate-800 uppercase block">{pay.payment_method_name || 'Desconocido'}</span>
-                                <span className="text-[8px] font-bold text-slate-400">{new Date(pay.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                              </div>
-                              <div className="text-right">
-                                <span className="text-[11px] font-black text-emerald-600 block">${pay.amount.toLocaleString()}</span>
-                                {pay.change_amount > 0 && (
-                                  <span className="text-[8px] font-bold text-slate-400 block">Cambio: ${pay.change_amount.toLocaleString()}</span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Tarjeta: Descuentos VIP */}
-                  {selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
-                    <div className="bg-slate-900 p-5 rounded-2xl shadow-sm text-white space-y-3">
-                      <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
-                        <Icon icon="heroicons:sparkles" />
-                        Cortesía / Descuento Rápido
-                      </p>
-                      <div className="grid grid-cols-4 gap-2">
-                        {[10, 20, 50, 100].map(pct => (
-                          <button
-                            key={pct}
-                            onClick={async () => {
-                              await applyDiscount(selectedOrder.id, pct);
-                              if (selectedOrder.status === 'waiting_payment') {
-                                await updateOrderStatus(selectedOrder.id, "new", { 
-                                  payment_status: "paid", 
-                                  payment_method: selectedPaymentMethod 
-                                });
-                              }
-                            }}
-                            disabled={updatingStatus === selectedOrder.id}
-                            className="py-2.5 bg-slate-800 hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-all border border-slate-700 active:scale-95 disabled:opacity-50"
-                          >
-                            {pct}%
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                    </Droppable>
+                  );
+                })}
               </div>
             </div>
+          </DragDropContext>
+        )}
+      </div>
 
-            {/* Footer Fijo Estructural (shrink-0): NUNCA tapa contenido */}
-            <div className="shrink-0 border-t border-slate-200 bg-white p-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] md:px-8 md:py-4 z-20 flex flex-col gap-3 shadow-[0_-4px_25px_rgba(0,0,0,0.06)]">
-              {/* Fila 1: Botones Secundarios Compactos */}
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <button 
-                    onClick={() => shareToWhatsApp(selectedOrder, 'summary')}
-                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 border border-slate-200"
-                  >
-                    <Icon icon="logos:whatsapp-icon" className="text-sm" />
-                    <span>WhatsApp</span>
-                  </button>
-
-                  <button 
-                    onClick={() => { 
-                      setIsMerging(true); 
-                      setMergeSourceOrder(selectedOrder); 
-                      setSelectedOrder(null); 
-                      toast("Ahora selecciona el pedido destino", { icon: '🎯' });
-                    }}
-                    className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 border border-emerald-200"
-                  >
-                    <Icon icon="heroicons:arrows-right-left" className="text-sm" />
-                    <span>Consolidar</span>
-                  </button>
-
-                  {restaurantSettings?.kitchen_print_enabled && (
-                    <button 
-                      onClick={() => printThermalDocument({ order: selectedOrder, type: 'kitchen', width: restaurantSettings?.thermal_paper_width || '80', businessName: activeBrand?.name, business: activeBrand })} 
-                      className="px-3 py-2 rounded-xl border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
-                    >
-                      <Icon icon="solar:printer-bold" className="text-sm" />
-                      <span>Comanda</span>
-                    </button>
-                  )}
-
-                  {restaurantSettings?.receipt_print_enabled !== false && (
-                    <button 
-                      onClick={() => printThermalDocument({ order: selectedOrder, type: 'receipt', width: restaurantSettings?.thermal_paper_width || '80', businessName: activeBrand?.name, business: activeBrand })} 
-                      className="px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
-                    >
-                      <Icon icon="solar:bill-check-bold" className="text-sm" />
-                      <span>Recibo</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* Cancelación */}
-                <div>
-                  {!isCancelling ? (
-                    <button 
-                      onClick={() => setIsCancelling(true)}
-                      className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 border border-red-200"
-                    >
-                      <Icon icon="heroicons:trash" className="text-sm" />
-                      <span>Cancelar</span>
-                    </button>
-                  ) : (
-                    <div className="flex gap-1.5 items-center bg-red-50 p-1.5 rounded-xl border border-red-200 animate-in fade-in">
-                      <input 
-                        type="text" 
-                        placeholder="Motivo de cancelación..."
-                        value={cancellationReason}
-                        onChange={(e) => setCancellationReason(e.target.value)}
-                        className="bg-white border border-red-200 text-base sm:text-xs font-medium p-1.5 px-2.5 rounded-lg focus:ring-1 focus:ring-red-400 w-full sm:w-48"
-                      />
-                      <button onClick={() => cancelOrder(selectedOrder.id)} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-black">
-                        Confirmar
-                      </button>
-                      <button onClick={() => setIsCancelling(false)} className="p-1 text-slate-400 hover:text-slate-600">
-                        <Icon icon="heroicons:x-mark" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Fila 2: Acciones Operativas Primarias (Grandes y Elegantes) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {/* Botón: Cobrar / POS Modal */}
-                {selectedOrder.payment_status !== 'paid' && (
-                  <button 
-                    onClick={() => setIsPOSModalOpen(true)}
-                    disabled={updatingStatus === selectedOrder.id}
-                    className={`py-3 px-4 rounded-xl font-black text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 border ${
-                      (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.status === 'new') || 
-                      (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.status === 'ready')
-                        ? 'bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200/50'
-                        : 'bg-white border-emerald-600 text-emerald-700 hover:bg-emerald-50'
-                    }`}
-                  >
-                    <Icon icon="solar:round-transfer-horizontal-bold" className="text-xl" />
-                    <span>COBRAR / REGISTRAR PAGO</span>
-                  </button>
-                )}
-
-                {/* Botones de Estado */}
-                {selectedOrder.status === 'new' && (
-                  <button 
-                    onClick={() => updateOrderStatus(selectedOrder.id, 'preparing')}
-                    disabled={
-                      updatingStatus === selectedOrder.id || 
-                      (restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid')
-                    }
-                    className={`py-3 px-4 rounded-xl font-black text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 ${
-                      restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid'
-                        ? 'bg-neutral-200 text-neutral-400 border border-neutral-300 cursor-not-allowed grayscale'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200/50'
-                    } ${selectedOrder.payment_status === 'paid' ? 'sm:col-span-2' : ''}`}
-                  >
-                    <Icon icon="solar:fire-bold" className="text-xl" />
-                    <span>
-                      {restaurantSettings?.payment_requirement_stage === 'pre_preparation' && selectedOrder.payment_status !== 'paid' 
-                        ? 'PAGO REQUERIDO PARA COCINA' 
-                        : 'ENVIAR A COCINA'}
-                    </span>
-                  </button>
-                )}
-
-                {selectedOrder.status === 'preparing' && (
-                  <button 
-                    onClick={() => updateOrderStatus(selectedOrder.id, 'ready')}
-                    disabled={updatingStatus === selectedOrder.id}
-                    className={`py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-sm shadow-md shadow-amber-200/50 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 ${
-                      selectedOrder.payment_status === 'paid' ? 'sm:col-span-2' : ''
-                    }`}
-                  >
-                    <Icon icon="solar:check-circle-bold" className="text-xl" />
-                    <span>LISTO PARA ENTREGA</span>
-                  </button>
-                )}
-
-                {selectedOrder.status === 'ready' && (
-                  <>
-                    {selectedOrder.fulfillment_type === 'dine_in' ? (
-                      <button 
-                        onClick={() => updateOrderStatus(selectedOrder.id, 'on_table')}
-                        disabled={updatingStatus === selectedOrder.id}
-                        className={`py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black text-sm shadow-md shadow-purple-200/50 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 ${
-                          selectedOrder.payment_status === 'paid' ? 'sm:col-span-2' : ''
-                        }`}
-                      >
-                        <Icon icon="solar:shop-2-bold" className="text-xl" />
-                        <span>SERVIR EN MESA</span>
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={() => updateOrderStatus(selectedOrder.id, 'on_the_way')}
-                        disabled={updatingStatus === selectedOrder.id}
-                        className={`py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black text-sm shadow-md shadow-purple-200/50 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 ${
-                          selectedOrder.payment_status === 'paid' ? 'sm:col-span-2' : ''
-                        }`}
-                      >
-                        <Icon icon="solar:delivery-bold" className="text-xl" />
-                        <span>{selectedOrder.fulfillment_type === 'delivery' ? 'ENVIAR DOMICILIO' : 'LISTO PARA RECOGER'}</span>
-                      </button>
-                    )}
-                  </>
-                )}
-
-                {(selectedOrder.status === 'on_table' || selectedOrder.status === 'on_the_way') && (
-                  <button 
-                    onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
-                    disabled={
-                      updatingStatus === selectedOrder.id || 
-                      (restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid')
-                    }
-                    className={`py-3 px-4 rounded-xl font-black text-sm shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 ${
-                      restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
-                        ? 'bg-neutral-200 text-neutral-400 border border-neutral-300 cursor-not-allowed grayscale'
-                        : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200/50'
-                    } ${selectedOrder.payment_status === 'paid' ? 'sm:col-span-2' : ''}`}
-                  >
-                    <Icon icon="solar:check-read-bold" className="text-xl" />
-                    <span>
-                      {restaurantSettings?.payment_requirement_stage === 'pre_delivery' && selectedOrder.payment_status !== 'paid'
-                        ? 'PAGO REQUERIDO PARA FINALIZAR'
-                        : selectedOrder.status === 'on_the_way' ? 'PEDIDO ENTREGADO' : 'FINALIZAR PEDIDO'}
-                    </span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal Detalle Pedido */}
+      <OrderDetailModal
+        selectedOrder={selectedOrder}
+        onClose={() => {
+          setSelectedOrder(null);
+          setIsCancelling(false);
+        }}
+        restaurantSettings={restaurantSettings}
+        activeBrand={activeBrand}
+        waiters={waiters}
+        assignWaiter={assignWaiter}
+        updateOrderStatus={updateOrderStatus}
+        applyDiscount={applyDiscount}
+        cancelOrder={cancelOrder}
+        isCancelling={isCancelling}
+        setIsCancelling={setIsCancelling}
+        cancellationReason={cancellationReason}
+        setCancellationReason={setCancellationReason}
+        updatingStatus={updatingStatus}
+        setIsPOSModalOpen={setIsPOSModalOpen}
+        setIsMerging={setIsMerging}
+        setMergeSourceOrder={setMergeSourceOrder}
+        setAdditionOrder={setAdditionOrder}
+        setSelectedOrder={setSelectedOrder}
+        fetchOrders={fetchOrders}
+        shareToWhatsApp={shareToWhatsApp}
+        selectedPaymentMethod={selectedPaymentMethod}
+      />
 
       {/* POS Payment Modal */}
       {isPOSModalOpen && selectedOrder && (
         <PaymentPOSModal 
           order={selectedOrder}
-          paymentMethods={activeMethods}
+          paymentMethods={activeMethods || []}
           restaurantSettings={restaurantSettings}
           onClose={() => setIsPOSModalOpen(false)}
           onSuccess={async ({ autoFinalized } = {}) => {
             if (autoFinalized) {
               setSelectedOrder(null);
-              toast.success(`🎉 Pedido #${selectedOrder.id.slice(0,4).toUpperCase()} finalizado con éxito`);
+              toast.success(`🎉 Pedido #${selectedOrder.id.slice(0, 4).toUpperCase()} finalizado con éxito`);
             }
             await fetchOrders();
           }}
@@ -2848,50 +359,20 @@ Puedes realizar tu pago en efectivo en tu próxima visita o transferirnos por:
       )}
 
       {/* MERGE CONFIRMATION MODAL */}
-      <AnimatePresence>
-        {isMergeConfirmOpen && mergeSourceOrder && mergeTargetOrder && (
-          <Modal onClose={() => setIsMergeConfirmOpen(false)}>
-            <div className="p-8 text-center">
-              <div className="w-20 h-20 bg-brand-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Icon icon="solar:globus-bold-duotone" className="text-4xl text-brand-primary animate-pulse" />
-              </div>
-              <h3 className="text-2xl font-black text-gray-900 mb-2">¿Consolidar Pedidos?</h3>
-              <p className="text-gray-500 font-medium leading-relaxed mb-8">
-                Estás a punto de fusionar el pedido de <span className="text-gray-900 font-bold">{mergeSourceOrder.customer_name || 'Mesa ' + mergeSourceOrder.restaurant_tables?.table_number}</span> dentro de <span className="text-gray-900 font-bold">{mergeTargetOrder.customer_name || 'Mesa ' + mergeTargetOrder.restaurant_tables?.table_number}</span>.
-                <br /><br />
-                Los items del primer pedido se sumarán a la cuenta del segundo y el primer pedido será eliminado.
-              </p>
-
-              <div className="flex flex-col gap-3">
-                <button 
-                  onClick={() => {
-                    handleMergeOrders(mergeSourceOrder, mergeTargetOrder);
-                    setIsMergeConfirmOpen(false);
-                  }}
-                  className="w-full py-4 bg-brand-primary text-white rounded-2xl font-black shadow-xl shadow-brand-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
-                >
-                  SÍ, CONSOLIDAR CUENTAS
-                </button>
-                <button 
-                  onClick={() => setIsMergeConfirmOpen(false)}
-                  className="w-full py-4 bg-gray-50 text-gray-400 rounded-2xl font-bold hover:bg-gray-100 transition-all"
-                >
-                  CANCELAR
-                </button>
-              </div>
-            </div>
-          </Modal>
-        )}
-      </AnimatePresence>
+      <OrderMergeConfirmModal
+        isOpen={isMergeConfirmOpen}
+        onClose={() => setIsMergeConfirmOpen(false)}
+        mergeSourceOrder={mergeSourceOrder}
+        mergeTargetOrder={mergeTargetOrder}
+        onConfirmMerge={handleMergeOrders}
+      />
 
       {/* Modal de Pedido Manual (WhatsApp / Mostrador) */}
       {isManualOrderModalOpen && (
         <ManualOrderModal
           isOpen={isManualOrderModalOpen}
           onClose={() => setIsManualOrderModalOpen(false)}
-          onOrderCreated={() => {
-            fetchOrders();
-          }}
+          onOrderCreated={() => fetchOrders()}
           brandId={activeBrandId}
           locationId={defaultOrderLocationId}
           restaurantSettings={restaurantSettings}
@@ -2904,15 +385,13 @@ Puedes realizar tu pago en efectivo en tu próxima visita o transferirnos por:
           order={additionOrder}
           isOpen={Boolean(additionOrder)}
           onClose={() => setAdditionOrder(null)}
-          onOrderUpdated={() => {
-            fetchOrders();
-          }}
+          onOrderUpdated={() => fetchOrders()}
           brandId={activeBrandId}
           restaurantSettings={restaurantSettings}
         />
       )}
 
-      {/* Modal de Alerta de Nuevo Pedido Entrante (Loop de Sonido + Atención Inmediata) */}
+      {/* Modal de Alerta de Nuevo Pedido Entrante */}
       {isAlertModalOpen && incomingOrdersQueue.length > 0 && (
         <NewOrderAlertModal
           isOpen={isAlertModalOpen}
