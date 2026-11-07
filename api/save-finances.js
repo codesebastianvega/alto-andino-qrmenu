@@ -93,12 +93,12 @@ export default async function handler(req, res) {
             id: 'bento_del_dia_config',
             label: 'El Bento del Día',
             updated_at: new Date().toISOString(),
-            manual_override_product_id: 'b0000b21-0000-4000-a000-000000000021', // Arroz con Pollo Criollo (Especial del Día)
-            secondary_product_ids: ['d07007ec-761b-4f40-bad5-799c1154b9ab'], // Salmón Fresh ($22.000)
+            manual_override_product_id: 'b0000b25-0000-4000-a000-000000000025', // Poke Tori Katsu (Pechuga Crocante - $22.000)
+            secondary_product_ids: ['d07007ec-761b-4f40-bad5-799c1154b9ab'], // Poke Salmón Fresh ($22.000)
             soup_name: '🥣 Crema de plátano colicero (16 oz)',
             drink_name: '🥤 Jugo del Día (5 oz)',
-            promo_price: 19000,
-            standard_price: 22000
+            promo_price: 22000,
+            standard_price: 28000
           };
 
           if (bentoIdx >= 0) {
@@ -119,15 +119,21 @@ export default async function handler(req, res) {
         }
       }
 
-      // 2. Sincronizar catálogo de productos en Supabase (garantizar que ambos platos estén activos y con sus precios genuinos)
+      // 2. Sincronizar catálogo de productos en Supabase (desactivar Arroz con Pollo, activar Poke Tori Katsu y Poke Salmón Fresh)
+      await supabase
+        .from('products')
+        .update({
+          is_active: false
+        })
+        .eq('id', 'b0000b21-0000-4000-a000-000000000021');
+
       await supabase
         .from('products')
         .update({
           is_active: true,
-          price: 19000,
-          subcategory: 'El Bento del Día'
+          price: 22000
         })
-        .eq('id', 'b0000b21-0000-4000-a000-000000000021');
+        .eq('id', 'b0000b25-0000-4000-a000-000000000025');
 
       await supabase
         .from('products')
