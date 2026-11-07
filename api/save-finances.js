@@ -20,7 +20,41 @@ export default async function handler(req, res) {
       try { reqBody = JSON.parse(reqBody); } catch (_) {}
     }
     const brandId = reqBody?.brandId || req.query?.brandId || 'a63da806-a62a-49b9-a833-07e0976785ad';
+    const action = reqBody?.action || null;
     const financials = reqBody?.financials || null;
+
+    // ── ACCIÓN ESPECIAL: ACTUALIZAR ORDEN / CLIENTE FIADO ──
+    if (req.method === 'POST' && action === 'update_order') {
+      const { orderId, updates } = reqBody;
+      if (!orderId || !updates) {
+        return res.status(400).json({ error: 'Missing orderId or updates' });
+      }
+      const { data: updatedOrder, error: updErr } = await supabase
+        .from('orders')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', orderId)
+        .select();
+
+      if (updErr) return res.status(500).json({ error: updErr.message });
+      return res.status(200).json({ success: true, updatedOrder });
+    }
+
+    // ── ACCIÓN ESPECIAL: CREAR ORDEN FIADO DIRECTAMENTE ──
+    if (req.method === 'POST' && action === 'create_receivable') {
+      const { orderData } = reqBody;
+      if (!orderData) return res.status(400).json({ error: 'Missing orderData' });
+      const { data: newOrder, error: insErr } = await supabase
+        .from('orders')
+        .insert([{
+          brand_id: brandId,
+          ...orderData,
+          created_at: new Date().toISOString()
+        }])
+        .select();
+
+      if (insErr) return res.status(500).json({ error: insErr.message });
+      return res.status(200).json({ success: true, newOrder });
+    }
 
     if (!financials && req.method === 'POST') {
       return res.status(400).json({ error: 'Missing financials payload' });
@@ -107,7 +141,7 @@ export default async function handler(req, res) {
           },
           updated_at: new Date().toISOString()
         })
-        .eq('id', brand.id);
+        .eq('id', brandId);
     }
 
     return res.status(200).json({
@@ -115,8 +149,9 @@ export default async function handler(req, res) {
       hasServiceKey: Boolean(SUPABASE_SERVICE_KEY),
       message: 'Finanzas persistidas con éxito en Postgres (restaurant_settings y brands.config)'
     });
+
   } catch (err) {
-    console.error('Error saving financials:', err);
+    console.error('Error in save-finances API:', err);
     return res.status(500).json({ error: err.message });
   }
 }

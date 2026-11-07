@@ -8,6 +8,9 @@ import OpeningBalanceModal from '../components/admin/finance/OpeningBalanceModal
 import RecordExpenseModal from '../components/admin/finance/RecordExpenseModal';
 import TransferFundsModal from '../components/admin/finance/TransferFundsModal';
 import SettleReceivableModal from '../components/admin/finance/SettleReceivableModal';
+import EditReceivableModal from '../components/admin/finance/EditReceivableModal';
+import { useAuth } from '../context/AuthContext';
+import { toast } from '../components/Toast';
 import AccountModal from '../components/admin/finance/AccountModal';
 import FinancePocketsGrid from '../components/admin/finance/FinancePocketsGrid';
 import {
@@ -34,8 +37,11 @@ export default function AdminFinance() {
     restoreReceivable,
     createAccount,
     editAccount,
-    deleteAccount
+    deleteAccount,
+    refreshAll
   } = useFinance();
+  const { activeBrand } = useAuth();
+  const brandId = activeBrand?.id || localStorage.getItem('aa_active_brand_id');
 
   const [activeTab, setActiveTab] = useState('receivables'); // 'receivables' | 'expenses' | 'pnl' | 'ledger'
   const [receivableView, setReceivableView] = useState('active'); // 'active' | 'discarded'
@@ -45,6 +51,7 @@ export default function AdminFinance() {
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [accountToEdit, setAccountToEdit] = useState(null);
   const [selectedReceivable, setSelectedReceivable] = useState(null);
+  const [selectedEditReceivable, setSelectedEditReceivable] = useState(null);
 
   if (loading) {
     return (
@@ -54,6 +61,33 @@ export default function AdminFinance() {
       </div>
     );
   }
+
+  const handleSaveReceivable = async (updatedData) => {
+    try {
+      const response = await fetch('/api/save-finances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brandId,
+          action: 'update_order',
+          orderId: updatedData.orderId,
+          updates: {
+            customer_name: updatedData.customerName,
+            customer_phone: updatedData.customerPhone,
+            delivery_address: updatedData.address,
+            total_amount: updatedData.totalAmount,
+            delivery_notes: updatedData.notes ? `[🤝 FIADO - Cuenta por cobrar: ${updatedData.customerName}] ${updatedData.notes}` : `[🤝 FIADO - Cuenta por cobrar: ${updatedData.customerName}]`
+          }
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error al actualizar');
+      toast.success('Cliente y fiado actualizados con éxito');
+      await refreshAll();
+    } catch (err) {
+      toast.error('Error al actualizar fiado: ' + err.message);
+    }
+  };
 
   const handleSaveAccount = async (accountData) => {
     if (accountData.id) {
@@ -249,6 +283,7 @@ export default function AdminFinance() {
           onSelectReceivable={setSelectedReceivable}
           onDiscardReceivable={discardReceivable}
           onRestoreReceivable={restoreReceivable}
+          onEditReceivable={setSelectedEditReceivable}
         />
       )}
 
@@ -295,6 +330,16 @@ export default function AdminFinance() {
         onSave={handleSaveAccount}
         accountToEdit={accountToEdit}
       />
+
+
+      {selectedEditReceivable && (
+        <EditReceivableModal
+          isOpen={Boolean(selectedEditReceivable)}
+          onClose={() => setSelectedEditReceivable(null)}
+          receivable={selectedEditReceivable}
+          onSave={handleSaveReceivable}
+        />
+      )}
 
       {selectedReceivable && (
         <SettleReceivableModal

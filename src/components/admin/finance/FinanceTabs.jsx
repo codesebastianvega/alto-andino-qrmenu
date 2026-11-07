@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, RefreshCw, Trash2, Pencil } from 'lucide-react';
 
 export function FinanceReceivablesTab({
   receivableView,
@@ -10,6 +10,7 @@ export function FinanceReceivablesTab({
   onSelectReceivable,
   onDiscardReceivable,
   onRestoreReceivable,
+  onEditReceivable,
 }) {
   const currentReceivablesList = receivableView === 'active' ? activeReceivables : discardedReceivables;
 
@@ -126,6 +127,15 @@ export function FinanceReceivablesTab({
                             >
                               Cobrar
                             </button>
+                            {onEditReceivable && (
+                              <button
+                                onClick={() => onEditReceivable(rec)}
+                                title="Editar cliente, teléfono, dirección o monto"
+                                className="p-1.5 rounded-xl text-gray-400 hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-colors"
+                              >
+                                <Pencil size={15} />
+                              </button>
+                            )}
                             <button
                               onClick={() => {
                                 if (window.confirm(`¿Descartar el pedido de "${rec.customerName}" como prueba?\n\nDejará de sumar a las cuentas por cobrar y no afectará tus métricas de caja.`)) {
