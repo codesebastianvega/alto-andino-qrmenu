@@ -114,43 +114,44 @@ export default async function handler(req, res) {
         updated_at: new Date().toISOString()
       }, { onConflict: 'location_id,product_id' });
 
-    // 5. Configurar restaurant_settings para los Pokes del Día
-    const { data: currentSettings } = await supabase
+    // 5. Configurar restaurant_settings para los Pokes del Día (en todas las filas de la marca)
+    const { data: allSettings } = await supabase
       .from('restaurant_settings')
       .select('id, brand_concepts')
-      .eq('brand_id', brandId)
-      .single();
+      .eq('brand_id', brandId);
 
-    if (currentSettings) {
-      let concepts = Array.isArray(currentSettings.brand_concepts) ? [...currentSettings.brand_concepts] : [];
-      let bentoIdx = concepts.findIndex(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config'));
-      
-      const bentoConfig = {
-        id: 'bento_del_dia_config',
-        label: '🔥 Línea Poke Premium del Día',
-        enabled: true,
-        promo_price: 22000,
-        standard_price: 28000,
-        soup_name: '🥣 Sopita del Día casera o Fruta',
-        drink_name: '🥤 Jugo del Día (5 oz)',
-        manual_override_product_id: toriKatsuId,
-        secondary_product_ids: [salmonFreshId],
-        updated_at: new Date().toISOString()
-      };
+    const bentoConfig = {
+      id: 'bento_del_dia_config',
+      label: '🔥 Línea Poke Premium del Día',
+      enabled: true,
+      promo_price: 22000,
+      standard_price: 28000,
+      soup_name: '🥣 Sopita del Día casera o Fruta',
+      drink_name: '🥤 Jugo del Día (5 oz)',
+      manual_override_product_id: toriKatsuId,
+      secondary_product_ids: [salmonFreshId],
+      updated_at: new Date().toISOString()
+    };
 
-      if (bentoIdx >= 0) {
-        concepts[bentoIdx] = { ...concepts[bentoIdx], ...bentoConfig };
-      } else {
-        concepts.push(bentoConfig);
-      }
-
-      await supabase
-        .from('restaurant_settings')
-        .update({
-          brand_concepts: concepts,
-          updated_at: new Date().toISOString()
+    if (Array.isArray(allSettings) && allSettings.length > 0) {
+      await Promise.all(
+        allSettings.map(settingRow => {
+          let concepts = Array.isArray(settingRow.brand_concepts) ? [...settingRow.brand_concepts] : [];
+          let bentoIdx = concepts.findIndex(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config'));
+          if (bentoIdx >= 0) {
+            concepts[bentoIdx] = { ...concepts[bentoIdx], ...bentoConfig };
+          } else {
+            concepts.push(bentoConfig);
+          }
+          return supabase
+            .from('restaurant_settings')
+            .update({
+              brand_concepts: concepts,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', settingRow.id);
         })
-        .eq('id', currentSettings.id);
+      );
     }
 
     return res.status(200).json({

@@ -190,7 +190,9 @@ export function useOperations() {
       .from('restaurant_settings')
       .select('*')
       .eq('brand_id', brandId)
-      .single();
+      .order('location_id', { ascending: true, nullsFirst: true })
+      .limit(1)
+      .maybeSingle();
     if (error && error.code !== 'PGRST116') {
       console.error('[useOperations] fetchSettings error:', error);
       return;

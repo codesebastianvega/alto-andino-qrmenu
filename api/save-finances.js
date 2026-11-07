@@ -15,8 +15,12 @@ export default async function handler(req, res) {
 
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY);
-    const brandId = req.body?.brandId || req.query?.brandId || 'a63da806-a62a-49b9-a833-07e0976785ad';
-    const financials = req.body?.financials || null;
+    let reqBody = req.body;
+    if (typeof reqBody === 'string') {
+      try { reqBody = JSON.parse(reqBody); } catch (_) {}
+    }
+    const brandId = reqBody?.brandId || req.query?.brandId || 'a63da806-a62a-49b9-a833-07e0976785ad';
+    const financials = reqBody?.financials || null;
 
     if (!financials && req.method === 'POST') {
       return res.status(400).json({ error: 'Missing financials payload' });
@@ -24,14 +28,14 @@ export default async function handler(req, res) {
 
     // 1. GET: Retornar configuración financiera persistida
     if (req.method === 'GET' && !financials) {
-      // Buscar primero en restaurant_settings
-      const { data: settings } = await supabase
+      // Buscar primero en restaurant_settings (soporta multi-registro / location_id)
+      const { data: setRows } = await supabase
         .from('restaurant_settings')
-        .select('brand_concepts')
-        .eq('brand_id', brandId)
-        .single();
+        .select('id, location_id, brand_concepts')
+        .eq('brand_id', brandId);
 
-      const concepts = Array.isArray(settings?.brand_concepts) ? settings.brand_concepts : [];
+      const primaryRow = (setRows || []).find(r => !r.location_id) || (setRows || [])[0] || null;
+      const concepts = Array.isArray(primaryRow?.brand_concepts) ? primaryRow.brand_concepts : [];
       const finConcept = concepts.find(c => c && c.id === 'financials_config');
       if (finConcept?.data) {
         return res.status(200).json({ success: true, source: 'restaurant_settings', financials: finConcept.data });
@@ -52,35 +56,38 @@ export default async function handler(req, res) {
     }
 
     // 2. POST: Persistir con SERVICE ROLE en ambas tablas
-    // A) En restaurant_settings.brand_concepts
-    const { data: settings } = await supabase
+    // A) En restaurant_settings.brand_concepts (todas las filas de la marca)
+    const { data: setRows } = await supabase
       .from('restaurant_settings')
       .select('id, brand_concepts')
-      .eq('brand_id', brandId)
-      .single();
+      .eq('brand_id', brandId);
 
-    if (settings) {
-      let concepts = Array.isArray(settings.brand_concepts) ? [...settings.brand_concepts] : [];
-      const idx = concepts.findIndex(c => c && c.id === 'financials_config');
-      const finConcept = {
-        id: 'financials_config',
-        updated_at: new Date().toISOString(),
-        data: financials
-      };
+    if (Array.isArray(setRows) && setRows.length > 0) {
+      await Promise.all(
+        setRows.map(row => {
+          let concepts = Array.isArray(row.brand_concepts) ? [...row.brand_concepts] : [];
+          const idx = concepts.findIndex(c => c && c.id === 'financials_config');
+          const finConcept = {
+            id: 'financials_config',
+            updated_at: new Date().toISOString(),
+            data: financials
+          };
 
-      if (idx >= 0) {
-        concepts[idx] = finConcept;
-      } else {
-        concepts.push(finConcept);
-      }
+          if (idx >= 0) {
+            concepts[idx] = finConcept;
+          } else {
+            concepts.push(finConcept);
+          }
 
-      await supabase
-        .from('restaurant_settings')
-        .update({
-          brand_concepts: concepts,
-          updated_at: new Date().toISOString()
+          return supabase
+            .from('restaurant_settings')
+            .update({
+              brand_concepts: concepts,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', row.id);
         })
-        .eq('id', settings.id);
+      );
     }
 
     // B) En brands.config.financials

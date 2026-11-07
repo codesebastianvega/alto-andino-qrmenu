@@ -75,12 +75,12 @@ export function useFinance() {
 
       // 1. Capa A: restaurant_settings (concept 'financials_config')
       try {
-        const { data: setRow } = await supabase
+        const { data: setRows } = await supabase
           .from('restaurant_settings')
-          .select('brand_concepts')
-          .eq('brand_id', brandId)
-          .single();
-        const concepts = Array.isArray(setRow?.brand_concepts) ? setRow.brand_concepts : [];
+          .select('id, location_id, brand_concepts')
+          .eq('brand_id', brandId);
+        const primaryRow = (setRows || []).find(r => !r.location_id) || (setRows || [])[0] || null;
+        const concepts = Array.isArray(primaryRow?.brand_concepts) ? primaryRow.brand_concepts : [];
         const finConcept = concepts.find(c => c && c.id === 'financials_config');
         if (finConcept?.data) {
           existingFin = finConcept.data;
@@ -196,29 +196,32 @@ export function useFinance() {
       setFinancialConfig(newFinConfig);
       localStorage.setItem(`aa_financials_${brandId}`, JSON.stringify(newFinConfig));
 
-      // 2. Persistir en restaurant_settings (donde los administradores y gerentes tienen acceso RLS garantizado)
+      // 2. Persistir en restaurant_settings (actualiza todas las filas asociadas a la marca para sincronía total)
       try {
-        const { data: setRow } = await supabase
+        const { data: setRows } = await supabase
           .from('restaurant_settings')
           .select('id, brand_concepts')
-          .eq('brand_id', brandId)
-          .single();
+          .eq('brand_id', brandId);
 
-        if (setRow) {
-          let concepts = Array.isArray(setRow.brand_concepts) ? [...setRow.brand_concepts] : [];
-          const idx = concepts.findIndex(c => c && c.id === 'financials_config');
-          const finConcept = {
-            id: 'financials_config',
-            updated_at: new Date().toISOString(),
-            data: newFinConfig
-          };
-          if (idx >= 0) concepts[idx] = finConcept;
-          else concepts.push(finConcept);
+        if (Array.isArray(setRows) && setRows.length > 0) {
+          await Promise.all(
+            setRows.map(row => {
+              let concepts = Array.isArray(row.brand_concepts) ? [...row.brand_concepts] : [];
+              const idx = concepts.findIndex(c => c && c.id === 'financials_config');
+              const finConcept = {
+                id: 'financials_config',
+                updated_at: new Date().toISOString(),
+                data: newFinConfig
+              };
+              if (idx >= 0) concepts[idx] = finConcept;
+              else concepts.push(finConcept);
 
-          await supabase
-            .from('restaurant_settings')
-            .update({ brand_concepts: concepts, updated_at: new Date().toISOString() })
-            .eq('id', setRow.id);
+              return supabase
+                .from('restaurant_settings')
+                .update({ brand_concepts: concepts, updated_at: new Date().toISOString() })
+                .eq('id', row.id);
+            })
+          );
         }
       } catch (errRS) {
         console.warn('[useFinance] persist restaurant_settings notice:', errRS);
