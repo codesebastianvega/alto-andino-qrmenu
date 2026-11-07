@@ -510,15 +510,19 @@ export const MenuDataProvider = ({ children }) => {
     
     // Si es Boku, el Bento del Día configurado es Bento Tex-Mex (o el manualOverride activo)
     const activeSpecialId = isBoku 
-      ? (manualOverride || specialSchedule[currentDayOfWeek] || 'b0000b12-0000-4000-a000-000000000002')
+      ? (manualOverride || specialSchedule[currentDayOfWeek] || 'b0000b25-0000-4000-a000-000000000025')
       : (manualOverride || (isSpecialEnabled ? specialSchedule[currentDayOfWeek] : null));
 
     // Platos adicionales seleccionados para el almuerzo ("Más Opciones del Día")
     const activeSecondaryIds = Array.isArray(dailySpecialConcept?.secondary_product_ids)
       ? dailySpecialConcept.secondary_product_ids
-      : (dailySpecialConcept?.secondary_schedule?.[currentDayOfWeek] || (isBoku ? ['b0000b16-0000-4000-a000-000000000006'] : []));
+      : (dailySpecialConcept?.secondary_schedule?.[currentDayOfWeek] || (isBoku ? ['d07007ec-761b-4f40-bad5-799c1154b9ab', 'b0000b16-0000-4000-a000-000000000006'] : []));
 
-    const isTodaySpecialItem = (id) => Boolean(id && (id === activeSpecialId || activeSecondaryIds.includes(id)));
+    const isTodaySpecialItem = (id) => Boolean(id && (
+      id === activeSpecialId ||
+      activeSecondaryIds.includes(id) ||
+      (isBoku && (id === 'b0000b25-0000-4000-a000-000000000025' || id === 'd07007ec-761b-4f40-bad5-799c1154b9ab'))
+    ));
 
     (rawProducts || []).forEach(product => {
       const catSlug = product.categories?.slug || 'otros';
@@ -633,6 +637,23 @@ export const MenuDataProvider = ({ children }) => {
         finalDesc = 'Tornillos fusilli al dente en salsa cremosa Alfredo casera con pechuga de pollo en cubos dorados, champiñones frescos y queso parmesano rallado.';
       }
 
+      if (isBoku && product.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab') {
+        finalPrice = 22000;
+        originalPrice = 34000;
+        productSubcategory = 'Bowls Poke Fresco';
+        finalName = 'Poke Salmón Fresh (Fresco o Salteado)';
+        finalDesc = 'Cubos de salmón fresco magro (100g), arroz, láminas de rábano al limón, mango dulce, pepino, ajonjolí, semillas de girasol y ponzu cítrico. 👉 Término a elección: Fresco estilo Poke o Salteado al Wok. 🥣 Incluye: Sopita del día o Fruta + 🥤 Jugo del día.';
+      }
+
+      if (isBoku && product.id === 'b0000b25-0000-4000-a000-000000000025') {
+        finalPrice = 22000;
+        originalPrice = 28000;
+        productSubcategory = 'Bowls Poke Fresco';
+        finalName = 'Poke Tori Katsu (Pechuga Crocante)';
+        finalDesc = 'Pechuga apanada crocante en tiras con salsa tonkatsu, arroz, maíz sofrito, repollo morado, queso en cubos, tomates cherry, alga nori y verde del cebollín. 🥣 Incluye: Sopita del día o Fruta + 🥤 Jugo del día.';
+        finalImage = '/img/products/boku-tori-katsu.webp';
+      }
+
       const isBokuDailySpecial = isBoku && isTodaySpecialItem(product.id);
       let finalStockStatus = isBokuDailySpecial ? 'in' : (product.stock_status || 'in');
       let finalAvailablePortions = isBokuDailySpecial
@@ -696,7 +717,7 @@ export const MenuDataProvider = ({ children }) => {
         max_select: 1,
         is_required: true,
         options: [
-          { id: 'opt-bento-sopa-apio', name: 'Sopa de apio casera (16 oz)', price: 0, is_default: true },
+          { id: 'opt-bento-sopa-dia', name: 'Sopita del día casera (16 oz)', price: 0, is_default: true },
           { id: 'opt-bento-fruta', name: 'Porción de Fruta fresca picada', price: 0 },
           { id: 'opt-bento-nosoup', name: 'Sin sopa ni fruta', price: 0 }
         ]
@@ -704,15 +725,103 @@ export const MenuDataProvider = ({ children }) => {
 
       const sharedDrinkGroup = {
         id: 'b0000b20-0000-4000-a000-000000000001',
-        name: '🥤 Bebida de la Casa Incluida',
+        name: '🥤 Bebida del Día Incluida',
         min_select: 1,
         max_select: 1,
         is_required: true,
         options: [
-          { id: 'opt-bento-limonada-antiox', name: 'Limonada Verde Antioxidante (piña, pepino y yerbabuena) (5 oz)', price: 0, is_default: true },
+          { id: 'opt-bento-jugo-dia', name: 'Jugo del día refrescante (5 oz)', price: 0, is_default: true },
           { id: 'opt-bento-hatsu-caja', name: 'Cambiar por Té Hatsu en Caja (200 ml)', price: 2000 },
           { id: 'opt-bento-hatsu-lata', name: 'Cambiar por Té Hatsu en Lata (250 ml)', price: 4000 },
           { id: 'opt-bento-nodrink', name: 'Sin bebida', price: 0 }
+        ]
+      };
+
+      // Modificador de Preparación de Salmón (Fresco vs Salteado)
+      const salmonPrepGroup = {
+        id: 'mg-salmon-prep',
+        name: '🍣 Término del Salmón',
+        min_select: 1,
+        max_select: 1,
+        is_required: true,
+        options: [
+          { id: 'opt-salmon-fresco', name: 'Salmón Fresco (Estilo Poke Crudo Marinado)', price: 0, is_default: true },
+          { id: 'opt-salmon-salteado', name: 'Salmón Salteado al Wok (Sellado Caliente)', price: 0 }
+        ]
+      };
+
+      // Modificador de Salsa Tonkatsu para Tori Katsu
+      const toriSauceGroup = {
+        id: 'mg-tori-sauce',
+        name: '🥢 Salsa Tonkatsu',
+        min_select: 1,
+        max_select: 1,
+        is_required: true,
+        options: [
+          { id: 'opt-tori-sauce-on', name: 'Tonkatsu bañada sobre la pechuga crocante', price: 0, is_default: true },
+          { id: 'opt-tori-sauce-side', name: 'Tonkatsu en envase aparte', price: 0 }
+        ]
+      };
+
+      // 0A. Poke Tori Katsu (Pechuga Crocante) - Nueva Línea Poke Premium
+      const pokeToriKatsu = {
+        id: 'b0000b25-0000-4000-a000-000000000025',
+        productId: 'b0000b25-0000-4000-a000-000000000025',
+        name: 'Poke Tori Katsu (Pechuga Crocante)',
+        price: 22000,
+        original_price: 28000,
+        is_bento_del_dia: true,
+        is_daily_special: true,
+        daily_special_label: '🔥 Línea Poke Premium ($22.000)',
+        subcategory: 'Línea Poke Premium',
+        categorySlug: 'boku-bentos',
+        categoryId: 'b0000c01-0000-4000-a000-000000000001',
+        categoryName: 'BOKU Bentos Caseros',
+        desc: 'Pechuga apanada crocante en tiras con salsa tonkatsu, arroz, maíz sofrito, repollo morado, queso en cubos, tomates cherry, alga nori y verde de cebollín. 🥣 ¡Combo completo! Incluye: Sopita del día o Fruta + 🥤 Jugo del día (5 oz).',
+        description: 'Pechuga apanada crocante en tiras con salsa tonkatsu, arroz, maíz sofrito, repollo morado, queso en cubos, tomates cherry, alga nori y verde de cebollín. 🥣 ¡Combo completo! Incluye: Sopita del día o Fruta + 🥤 Jugo del día (5 oz).',
+        image: '/img/products/boku-tori-katsu.webp',
+        image_url: '/img/products/boku-tori-katsu.webp',
+        recipe_id: null,
+        stock_status: 'in',
+        available_portions: 50,
+        is_schedule_available: isStorePausedForPublic ? false : true,
+        schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
+        modifierGroups: [
+          toriSauceGroup,
+          sharedSoupGroup,
+          sharedDrinkGroup
+        ]
+      };
+
+      // 0B. Poke Salmón Fresh (Fresco o Salteado) - Nueva Línea Poke Premium
+      const salmonRaw = (rawProducts || []).find(p => p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab');
+      const pokeSalmonFresh = {
+        ...(salmonRaw || {}),
+        id: 'd07007ec-761b-4f40-bad5-799c1154b9ab',
+        productId: 'd07007ec-761b-4f40-bad5-799c1154b9ab',
+        name: 'Poke Salmón Fresh (Fresco o Salteado)',
+        price: 22000,
+        original_price: 34000,
+        is_bento_del_dia: true,
+        is_daily_special: true,
+        daily_special_label: '🔥 Línea Poke Premium ($22.000)',
+        subcategory: 'Línea Poke Premium',
+        categorySlug: 'boku-bentos',
+        categoryId: 'b0000c01-0000-4000-a000-000000000001',
+        categoryName: 'BOKU Bentos Caseros',
+        desc: 'Cubos de salmón fresco magro (100g), arroz, láminas de rábano al limón, mango dulce, pepino, ajonjolí, semillas de girasol y ponzu cítrico. 👉 Término a elección: Fresco estilo Poke o Salteado al Wok. 🥣 ¡Combo completo! Incluye: Sopita del día o Fruta + 🥤 Jugo del día (5 oz).',
+        description: 'Cubos de salmón fresco magro (100g), arroz, láminas de rábano al limón, mango dulce, pepino, ajonjolí, semillas de girasol y ponzu cítrico. 👉 Término a elección: Fresco estilo Poke o Salteado al Wok. 🥣 ¡Combo completo! Incluye: Sopita del día o Fruta + 🥤 Jugo del día (5 oz).',
+        image: salmonRaw?.image_url || 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/5nby4hb4t2_1791998655434.webp',
+        image_url: salmonRaw?.image_url || 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/5nby4hb4t2_1791998655434.webp',
+        recipe_id: salmonRaw?.recipe_id || 'ba000012-0000-4000-a000-000000000001',
+        stock_status: 'in',
+        available_portions: 50,
+        is_schedule_available: isStorePausedForPublic ? false : true,
+        schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
+        modifierGroups: [
+          salmonPrepGroup,
+          sharedSoupGroup,
+          sharedDrinkGroup
         ]
       };
 
@@ -958,6 +1067,8 @@ export const MenuDataProvider = ({ children }) => {
 
       // Ensamblar la sección superior de Bentos de Hoy respetando fielmente el estado de la administración
       const candidateBentos = [
+        pokeToriKatsu,
+        pokeSalmonFresh,
         bentoMediterraneo,
         bentoCriollo,
         bentoHeroToday,
@@ -966,19 +1077,42 @@ export const MenuDataProvider = ({ children }) => {
 
       const visibleBentos = candidateBentos.filter(b => {
         const raw = (rawProducts || []).find(p => p.id === b.id);
+        const isPokeSpecial = b.id === 'b0000b25-0000-4000-a000-000000000025' || b.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab';
         // Si existe en base de datos, respetar fielmente su estado de Activo / Oculto y Stock
         if (raw) {
           if (raw.is_active === false) return false;
-          if (raw.stock_status === 'out') return false;
+          if (!isPokeSpecial && raw.stock_status === 'out') return false;
           const locActive = statusMap.get(b.id);
           if (locActive === false) return false;
           const locStock = stockStatusMap.get(b.id);
-          if (locStock === 'out') return false;
+          if (!isPokeSpecial && locStock === 'out') return false;
         }
-        return b.is_active !== false && b.stock_status !== 'out';
+        return b.is_active !== false && (isPokeSpecial || b.stock_status !== 'out');
       });
 
-      grouped['boku-bentos'] = visibleBentos.length > 0 ? visibleBentos : [bentoMediterraneo];
+      grouped['boku-bentos'] = visibleBentos.length > 0 ? visibleBentos : [pokeToriKatsu, pokeSalmonFresh];
+
+      // ── PRESENCIA DE TORI KATSU Y SALMÓN EN BOKU BOWLS ──
+      if (!grouped['boku-bowls']) grouped['boku-bowls'] = [];
+      const hasToriKatsuInBowls = grouped['boku-bowls'].some(p => p.id === 'b0000b25-0000-4000-a000-000000000025');
+      if (!hasToriKatsuInBowls) {
+        grouped['boku-bowls'].unshift({
+          ...pokeToriKatsu,
+          categorySlug: 'boku-bowls',
+          categoryId: '6316a6dc-8a4c-4cc1-874b-4f3d362ed635',
+          categoryName: 'BOKU Bowls',
+          subcategory: 'Bowls Poke Fresco'
+        });
+      }
+      const salmonInBowls = grouped['boku-bowls'].find(p => p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab');
+      if (salmonInBowls) {
+        salmonInBowls.price = 22000;
+        salmonInBowls.original_price = 34000;
+        salmonInBowls.stock_status = 'in';
+        salmonInBowls.available_portions = 50;
+        salmonInBowls.out_reason = null;
+        salmonInBowls.modifierGroups = [salmonPrepGroup, sharedSoupGroup, sharedDrinkGroup];
+      }
 
       // Asegurar que en Pastas & Ramen esté Pasta Alfredo con su foto real y receta
       if (!grouped['boku-pastas-ramen']) grouped['boku-pastas-ramen'] = [];
