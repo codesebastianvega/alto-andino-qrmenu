@@ -69,6 +69,21 @@ export default function ManualOrderModal({
   const [cashTendered, setCashTendered] = useState('');
   const [printKitchenTicket, setPrintKitchenTicket] = useState(true);
 
+  // Daily Special Dynamic Data
+  const [dailySpecialData, setDailySpecialData] = useState({
+    activeSpecialId: null,
+    activeSecondaryIds: [],
+    soupName: '🥣 Crema de plátano colicero (16 oz)',
+    drinkName: '🥤 Jugo del Día (5 oz)',
+    promoPrice: 19000,
+    label: 'El Bento del Día'
+  });
+
+  // Split Payment (Pago Mixto)
+  const [splitCashAmount, setSplitCashAmount] = useState('');
+  const [splitDigitalAmount, setSplitDigitalAmount] = useState('');
+  const [splitDigitalMethod, setSplitDigitalMethod] = useState('nequi');
+
   // Fetch catalog of products and locations
   useEffect(() => {
     if (!isOpen || !brandId) return;
@@ -77,12 +92,11 @@ export default function ManualOrderModal({
     const fetchData = async () => {
       setLoadingCatalog(true);
       try {
-        const [prodsRes, locsRes, pmRes] = await Promise.all([
+        const [prodsRes, locsRes, pmRes, rsRes] = await Promise.all([
           supabase
             .from('products')
             .select('id, name, description, price, cost, image_url, category_id, is_active, requires_kitchen, subcategory, categories:category_id(id, name, slug)')
             .eq('brand_id', brandId)
-            .eq('is_active', true)
             .order('name', { ascending: true }),
           supabase
             .from('locations')
@@ -94,13 +108,54 @@ export default function ManualOrderModal({
             .select('id, name, type, is_active')
             .eq('brand_id', brandId)
             .eq('is_active', true)
-            .order('created_at', { ascending: true })
+            .order('created_at', { ascending: true }),
+          supabase
+            .from('restaurant_settings')
+            .select('id, brand_id, location_id, brand_concepts')
+            .eq('brand_id', brandId)
         ]);
+
+        // Extraer configuración dinámica del Bento del Día
+        const rsRows = rsRes.data || [];
+        const primaryRow = rsRows.find(r => !r.location_id) || rsRows[0] || null;
+        const concepts = Array.isArray(primaryRow?.brand_concepts) ? primaryRow.brand_concepts : [];
+        const bentoConcept = concepts.find(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config'));
+
+        const todayNum = new Date().getDay();
+        const activeSpecialId = bentoConcept?.manual_override_product_id || bentoConcept?.schedule?.[todayNum] || null;
+        const activeSecondaryIds = Array.isArray(bentoConcept?.secondary_product_ids)
+          ? bentoConcept.secondary_product_ids
+          : (bentoConcept?.secondary_schedule?.[todayNum] || []);
+
+        const extractedSoup = bentoConcept?.soup_name?.trim() || '🥣 Crema de plátano colicero (16 oz)';
+        const extractedDrink = bentoConcept?.drink_name?.trim() || '🥤 Jugo del Día (5 oz)';
+        const extractedPromoPrice = Number(bentoConcept?.promo_price) || 19000;
+
+        setDailySpecialData({
+          activeSpecialId,
+          activeSecondaryIds,
+          soupName: extractedSoup,
+          drinkName: extractedDrink,
+          promoPrice: extractedPromoPrice,
+          label: bentoConcept?.label || 'El Bento del Día'
+        });
 
         if (prodsRes.error) throw prodsRes.error;
 
         if (isMounted) {
-          const rawProds = [...(prodsRes.data || [])];
+          const allFetched = prodsRes.data || [];
+          // Incluir platos activos Y TAMBIÉN platos del día / bentos rotativos aunque estén inactivos en catálogo general
+          const rawProds = allFetched.filter(p => {
+            if (p.is_active) return true;
+            if (p.id === activeSpecialId || activeSecondaryIds.includes(p.id)) return true;
+            if (/bento/i.test(p.subcategory || '') || /bento/i.test(p.name) || p.category_id === 'b0000c01-0000-4000-a000-000000000001') return true;
+            return false;
+          }).map(p => {
+            if (p.id === activeSpecialId || activeSecondaryIds.includes(p.id)) {
+              return { ...p, price: extractedPromoPrice || p.price };
+            }
+            return p;
+          });
 
           // Asegurar presencia inmediata de Bento Mediterráneo
           const hasMedit = rawProds.some(p => p.id === 'b0000b18-0000-4000-a000-000000000018' || /mediterr[aá]neo/i.test(p.name));
@@ -187,20 +242,23 @@ export default function ManualOrderModal({
           setLocationsList(fetchedLocs);
 
           // Cargar medios de pago configurados en base de datos; si no hay, usar los reales de Boku Bento
+          const splitOption = { id: 'split', label: '⚡ Pago Dividido (Nequi + Efectivo)' };
           if (pmRes.data && pmRes.data.length > 0) {
-            setActivePaymentMethods(pmRes.data.map(m => {
+            const mapped = pmRes.data.map(m => {
               const lower = (m.name || '').toLowerCase();
               let id = 'nequi';
               if (m.type === 'cash' || lower.includes('efectivo')) id = 'efectivo';
               else if (m.type === 'card' || lower.includes('datafono') || lower.includes('datáfono')) id = 'datafono';
               else id = m.id || 'nequi';
               return { id, label: m.name };
-            }));
+            });
+            setActivePaymentMethods([...mapped, splitOption]);
           } else {
             setActivePaymentMethods([
               { id: 'nequi', label: 'Nequi / Bre-B' },
               { id: 'efectivo', label: 'Efectivo' },
-              { id: 'datafono', label: 'Datáfono' }
+              { id: 'datafono', label: 'Datáfono' },
+              splitOption
             ]);
           }
 
@@ -311,9 +369,15 @@ export default function ManualOrderModal({
     return () => clearTimeout(timer);
   }, [customerPhone, customerName, deliveryAddress, brandId]);
 
-  // Categories derived from products
+  // Categories derived from products con categoría prioritaria ⭐ Del Día
   const categories = useMemo(() => {
     const map = new Map();
+    // Pestaña especial destacada de Almuerzos y Bentos del día
+    map.set('daily_specials', {
+      id: 'daily_specials',
+      name: '⭐ Del Día / Almuerzos',
+      slug: 'del-dia'
+    });
     products.forEach(p => {
       const cat = p.categories;
       if (cat?.id && !map.has(cat.id)) {
@@ -326,23 +390,43 @@ export default function ManualOrderModal({
   // Filtered products list
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
-      const matchesCategory = selectedCategory === 'all' || p.category_id === selectedCategory;
+      let matchesCategory = true;
+      if (selectedCategory === 'daily_specials') {
+        matchesCategory = Boolean(
+          p.id === dailySpecialData.activeSpecialId ||
+          dailySpecialData.activeSecondaryIds.includes(p.id) ||
+          /bento|almuerzo|especial del d[ií]a/i.test(p.name) ||
+          /bento/i.test(p.subcategory || '') ||
+          p.category_id === 'b0000c01-0000-4000-a000-000000000001'
+        );
+      } else if (selectedCategory !== 'all') {
+        matchesCategory = p.category_id === selectedCategory;
+      }
+
       const matchesSearch = !searchTerm.trim() || 
         p.name.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||
         (p.subcategory && p.subcategory.toLowerCase().includes(searchTerm.toLowerCase().trim()));
       return matchesCategory && matchesSearch;
+    }).sort((a, b) => {
+      // Priorizar el plato del día y las opciones de hoy arriba
+      const aScore = a.id === dailySpecialData.activeSpecialId ? 2 : (dailySpecialData.activeSecondaryIds.includes(a.id) ? 1 : 0);
+      const bScore = b.id === dailySpecialData.activeSpecialId ? 2 : (dailySpecialData.activeSecondaryIds.includes(b.id) ? 1 : 0);
+      return bScore - aScore;
     });
-  }, [products, selectedCategory, searchTerm]);
+  }, [products, selectedCategory, searchTerm, dailySpecialData]);
 
   // Open product modifier configuration
   const handleSelectProduct = (product) => {
-    // Grupos compartidos de Entrada y Bebida de la Casa
+    // Grupos compartidos de Entrada y Bebida con los nombres DINÁMICOS de hoy
+    const currentSoupName = dailySpecialData.soupName || '🥣 Crema de plátano colicero (16 oz)';
+    const currentDrinkName = dailySpecialData.drinkName || '🥤 Jugo del Día (5 oz)';
+
     const sharedSoupGroup = {
       name: '🥣 Entrada Incluida',
       min: 1,
       max: 1,
       options: [
-        { id: 'opt-bento-sopa-apio', name: '🥣 Sopa de apio casera (16 oz)', extra: 0 },
+        { id: 'opt-bento-soup-today', name: currentSoupName, extra: 0 },
         { id: 'opt-bento-fruta', name: '🍍 Porción de Fruta fresca picada', extra: 0 },
         { id: 'opt-bento-nosoup', name: '🚫 Sin sopa ni fruta', extra: 0 }
       ]
@@ -353,7 +437,7 @@ export default function ManualOrderModal({
       min: 1,
       max: 1,
       options: [
-        { id: 'opt-bento-limonada-antiox', name: '🥤 Limonada Verde Antioxidante (5 oz)', extra: 0 },
+        { id: 'opt-bento-drink-today', name: currentDrinkName, extra: 0 },
         { id: 'opt-bento-hatsu-caja', name: '🧃 Té Hatsu en Caja (200 ml)', extra: 2000 },
         { id: 'opt-bento-hatsu-lata', name: '🥫 Té Hatsu en Lata (250 ml)', extra: 4000 },
         { id: 'opt-bento-nodrink', name: '🚫 Sin bebida', extra: 0 }
@@ -386,8 +470,8 @@ export default function ManualOrderModal({
       });
       setSelectedModifiers({
         '🐟 Proteína al Limón': ['Filete de merluza dorada'],
-        '🥣 Entrada Incluida': ['🥣 Sopa de apio casera (16 oz)'],
-        '🥤 Bebida de la Casa Incluida': ['🥤 Limonada Verde Antioxidante (5 oz)']
+        '🥣 Entrada Incluida': [currentSoupName],
+        '🥤 Bebida de la Casa Incluida': [currentDrinkName]
       });
       setItemKitchenNotes('');
       setEditingItemIndex(null);
@@ -426,8 +510,8 @@ export default function ManualOrderModal({
       setSelectedModifiers({
         '🍲 Tu Fríjol': ['Fríjoles rojos calados'],
         '🥩 Tu Proteína Criolla': ['Carne molida sazonada'],
-        '🥣 Entrada Incluida': ['🥣 Sopa de apio casera (16 oz)'],
-        '🥤 Bebida de la Casa Incluida': ['🥤 Limonada Verde Antioxidante (5 oz)']
+        '🥣 Entrada Incluida': [currentSoupName],
+        '🥤 Bebida de la Casa Incluida': [currentDrinkName]
       });
       setItemKitchenNotes('');
       setEditingItemIndex(null);
@@ -485,8 +569,8 @@ export default function ManualOrderModal({
         '🍗 Proteína a elección': ['Pollo salteado al wok'],
         '🍯 Salsa a elección': ['Salsa BBQ de la casa'],
         '🫑 Toque de Pimentón': ['Con pimentón salteado'],
-        '🥣 Entrada Incluida': ['🥣 Sopa de apio casera (16 oz)'],
-        '🥤 Bebida de la Casa Incluida': ['🥤 Limonada Verde Antioxidante (5 oz)']
+        '🥣 Entrada Incluida': [currentSoupName],
+        '🥤 Bebida de la Casa Incluida': [currentDrinkName]
       });
       setItemKitchenNotes('');
       setEditingItemIndex(null);
@@ -539,8 +623,34 @@ export default function ManualOrderModal({
       setSelectedModifiers({
         '🍗 Tu Proteína': ['Pollo al curry dorado'],
         '🍲 Tu Principio Casero': ['Garbanzos caseros'],
-        '🥣 Entrada Incluida': ['🥣 Sopa de apio casera (16 oz)'],
-        '🥤 Bebida de la Casa Incluida': ['🥤 Limonada Verde Antioxidante (5 oz)']
+        '🥣 Entrada Incluida': [currentSoupName],
+        '🥤 Bebida de la Casa Incluida': [currentDrinkName]
+      });
+      setItemKitchenNotes('');
+      setEditingItemIndex(null);
+      return;
+    }
+
+    // Si es cualquier otro Bento o Especial del Día, abrir selector dinámico de sopa y bebida
+    const isGenericBentoOrSpecial = Boolean(
+      product.id === dailySpecialData.activeSpecialId ||
+      dailySpecialData.activeSecondaryIds.includes(product.id) ||
+      /bento|almuerzo|especial/i.test(product.name) ||
+      /bento/i.test(product.subcategory || '') ||
+      product.category_id === 'b0000c01-0000-4000-a000-000000000001'
+    );
+
+    if (isGenericBentoOrSpecial) {
+      setConfiguringProduct({
+        product,
+        groups: [
+          sharedSoupGroup,
+          sharedDrinkGroup
+        ]
+      });
+      setSelectedModifiers({
+        '🥣 Entrada Incluida': [currentSoupName],
+        '🥤 Bebida de la Casa Incluida': [currentDrinkName]
       });
       setItemKitchenNotes('');
       setEditingItemIndex(null);
@@ -715,7 +825,14 @@ export default function ManualOrderModal({
           finalPaymentMethod = 'contra_entrega';
         }
       } else {
-        if (paymentMethod === 'efectivo') {
+        if (paymentMethod === 'split') {
+          const cashVal = Number(String(splitCashAmount).replace(/\D/g, '')) || 0;
+          const digVal = Number(String(splitDigitalAmount).replace(/\D/g, '')) || 0;
+          const digLabel = splitDigitalMethod === 'datafono' ? 'Datáfono' : 'Nequi';
+          finalPaymentMethod = `Pago Dividido (Efectivo: ${formatCOP(cashVal)} + ${digLabel}: ${formatCOP(digVal)})`;
+          const splitNote = `[⚡ Pago Mixto: ${formatCOP(cashVal)} Efectivo + ${formatCOP(digVal)} ${digLabel}]`;
+          finalDeliveryNotes = finalDeliveryNotes ? `${finalDeliveryNotes}\n${splitNote}` : splitNote;
+        } else if (paymentMethod === 'efectivo') {
           if (tenderNum > 0) {
             if (tenderNum === grandTotal) {
               finalPaymentMethod = 'Efectivo (Exacto)';
@@ -777,14 +894,31 @@ export default function ManualOrderModal({
 
       // Si el pedido ya fue pagado al crearse, sincronizar ingreso al bolsillo correspondiente en Finanzas
       if (isPaid && grandTotal > 0) {
-        syncCollectionToFinancials({
-          brandId,
-          customerName: customerName.trim() || 'Cliente WhatsApp',
-          amount: grandTotal,
-          paymentMethod: finalPaymentMethodResolved,
-          isHistorical: false,
-          notes: `Venta directa #${String(createdOrder.id).slice(0, 4).toUpperCase()}`
-        });
+        if (paymentMethod === 'split') {
+          const cashVal = Number(String(splitCashAmount).replace(/\D/g, '')) || 0;
+          const digVal = Number(String(splitDigitalAmount).replace(/\D/g, '')) || 0;
+          syncCollectionToFinancials({
+            brandId,
+            customerName: customerName.trim() || 'Cliente WhatsApp',
+            amount: grandTotal,
+            paymentMethod: 'Pago Dividido',
+            splitPayments: [
+              { method: 'efectivo', amount: cashVal },
+              { method: splitDigitalMethod, amount: digVal }
+            ],
+            isHistorical: false,
+            notes: `Venta directa #${String(createdOrder.id).slice(0, 4).toUpperCase()}`
+          });
+        } else {
+          syncCollectionToFinancials({
+            brandId,
+            customerName: customerName.trim() || 'Cliente WhatsApp',
+            amount: grandTotal,
+            paymentMethod: finalPaymentMethodResolved,
+            isHistorical: false,
+            notes: `Venta directa #${String(createdOrder.id).slice(0, 4).toUpperCase()}`
+          });
+        }
       }
 
       // Insert order items
@@ -956,6 +1090,35 @@ export default function ManualOrderModal({
               </div>
             </div>
 
+            {/* Daily Special Banner Header */}
+            {dailySpecialData.activeSpecialId && (
+              <div className="mb-3 p-3 rounded-2xl bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100/60 border border-amber-200/80 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl">🍱</span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500 text-neutral-950 px-1.5 py-0.5 rounded-md">
+                        Almuerzo Estrella de Hoy
+                      </span>
+                      <span className="text-xs font-black text-neutral-900">
+                        {products.find(p => p.id === dailySpecialData.activeSpecialId)?.name || 'Bento del Día'} ({formatCOP(dailySpecialData.promoPrice)})
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-neutral-600 mt-0.5">
+                      Entrada: <strong>{dailySpecialData.soupName}</strong> • Bebida: <strong>{dailySpecialData.drinkName}</strong>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('daily_specials')}
+                  className="text-xs font-black px-3 py-1.5 rounded-xl bg-amber-500 text-neutral-950 hover:bg-amber-400 transition-all shadow-xs shrink-0 cursor-pointer"
+                >
+                  Ver del Día ⭐
+                </button>
+              </div>
+            )}
+
             {/* Products Grid */}
             {loadingCatalog ? (
               <div className="py-12 flex flex-col items-center justify-center text-neutral-400 gap-2">
@@ -969,7 +1132,9 @@ export default function ManualOrderModal({
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5">
                 {filteredProducts.map(p => {
-                  const isSpecial = /especial del d[ií]a|bento del d[ií]a/i.test(p.subcategory || '') || /especial del d[ií]a/i.test(p.name);
+                  const isPrimarySpecial = p.id === dailySpecialData.activeSpecialId;
+                  const isSecondarySpecial = dailySpecialData.activeSecondaryIds.includes(p.id);
+                  const isSpecial = isPrimarySpecial || isSecondarySpecial || /especial del d[ií]a|bento del d[ií]a/i.test(p.subcategory || '') || /especial del d[ií]a/i.test(p.name);
                   return (
                     <button
                       key={p.id}
@@ -977,11 +1142,19 @@ export default function ManualOrderModal({
                       onClick={() => handleSelectProduct(p)}
                       className="flex flex-col p-3 rounded-2xl border border-neutral-200 bg-white hover:border-amber-500/80 hover:shadow-md transition-all text-left group cursor-pointer relative overflow-hidden"
                     >
-                      {isSpecial && (
-                        <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wider bg-amber-500 text-neutral-950 px-1.5 py-0.5 rounded-md">
-                          ⭐ Hoy
+                      {isPrimarySpecial ? (
+                        <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wider bg-amber-500 text-neutral-950 px-1.5 py-0.5 rounded-md shadow-2xs">
+                          ⭐ Plato del Día
                         </span>
-                      )}
+                      ) : isSecondarySpecial ? (
+                        <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wider bg-emerald-600 text-white px-1.5 py-0.5 rounded-md shadow-2xs">
+                          ⭐ Opción Hoy
+                        </span>
+                      ) : isSpecial ? (
+                        <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wider bg-amber-400 text-neutral-950 px-1.5 py-0.5 rounded-md">
+                          ⭐ Combo Hoy
+                        </span>
+                      ) : null}
                       <p className="font-bold text-xs text-neutral-900 group-hover:text-amber-800 line-clamp-1 pr-8">
                         {p.name.replace(/\s*\(Especial del Día\)/i, '')}
                       </p>
@@ -1462,6 +1635,142 @@ export default function ManualOrderModal({
                             );
                           }
                           return null;
+                        })()}
+                      </div>
+                    )}
+
+                    {/* ─── PAGO MIXTO / DIVIDIDO (Efectivo + Nequi/Transferencia) ─── */}
+                    {paymentMethod === 'split' && (
+                      <div className="p-3.5 bg-gradient-to-br from-amber-50/70 via-purple-50/40 to-neutral-50 rounded-2xl border border-purple-200/80 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-base">⚡</span>
+                            <span className="text-xs font-black text-neutral-900 uppercase tracking-tight">
+                              Pago Dividido (Mixto)
+                            </span>
+                          </div>
+                          <span className="text-xs font-black text-neutral-900 bg-white px-2 py-0.5 rounded-lg border border-neutral-200 shadow-2xs">
+                            Total: {formatCOP(grandTotal)}
+                          </span>
+                        </div>
+
+                        {/* Inputs de Efectivo y Nequi con balance automático */}
+                        <div className="grid grid-cols-2 gap-2">
+                          {/* Parte 1: Efectivo */}
+                          <div className="bg-white p-2.5 rounded-xl border border-neutral-200 shadow-2xs space-y-1">
+                            <label className="text-[10px] font-black uppercase text-neutral-600 tracking-wider flex items-center gap-1">
+                              <span>💵 Efectivo</span>
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400">$</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={splitCashAmount}
+                                onChange={e => {
+                                  const num = Number(e.target.value.replace(/\D/g, '') || 0);
+                                  setSplitCashAmount(e.target.value ? num.toLocaleString('es-CO') : '');
+                                  const remaining = Math.max(0, grandTotal - num);
+                                  setSplitDigitalAmount(remaining > 0 ? remaining.toLocaleString('es-CO') : '0');
+                                }}
+                                placeholder="0"
+                                className="w-full pl-6 pr-2 py-1.5 text-xs font-black text-neutral-900 rounded-lg border border-neutral-200 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Parte 2: Nequi / Digital */}
+                          <div className="bg-white p-2.5 rounded-xl border border-neutral-200 shadow-2xs space-y-1">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[10px] font-black uppercase text-purple-700 tracking-wider flex items-center gap-1">
+                                <span>🟣 {splitDigitalMethod === 'datafono' ? 'Datáfono' : 'Nequi'}</span>
+                              </label>
+                              <select
+                                value={splitDigitalMethod}
+                                onChange={e => setSplitDigitalMethod(e.target.value)}
+                                className="text-[9px] font-black bg-neutral-100 border border-neutral-200 rounded px-1 py-0.5 text-neutral-700"
+                              >
+                                <option value="nequi">Nequi</option>
+                                <option value="datafono">Datáfono</option>
+                              </select>
+                            </div>
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400">$</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={splitDigitalAmount}
+                                onChange={e => {
+                                  const num = Number(e.target.value.replace(/\D/g, '') || 0);
+                                  setSplitDigitalAmount(e.target.value ? num.toLocaleString('es-CO') : '');
+                                  const remaining = Math.max(0, grandTotal - num);
+                                  setSplitCashAmount(remaining > 0 ? remaining.toLocaleString('es-CO') : '0');
+                                }}
+                                placeholder="0"
+                                className="w-full pl-6 pr-2 py-1.5 text-xs font-black text-purple-950 rounded-lg border border-purple-200 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Chips de ajuste rápido */}
+                        <div className="flex items-center justify-between gap-1 text-[10px]">
+                          <span className="text-neutral-500 font-bold">Atajos:</span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const half = Math.round(grandTotal / 2);
+                                setSplitCashAmount(half.toLocaleString('es-CO'));
+                                setSplitDigitalAmount((grandTotal - half).toLocaleString('es-CO'));
+                              }}
+                              className="px-2 py-0.5 rounded-md bg-white border border-neutral-200 text-neutral-700 font-bold hover:bg-neutral-100 cursor-pointer"
+                            >
+                              50% / 50%
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const roundCash = Math.floor(grandTotal / 10000) * 10000;
+                                setSplitCashAmount(roundCash.toLocaleString('es-CO'));
+                                setSplitDigitalAmount(Math.max(0, grandTotal - roundCash).toLocaleString('es-CO'));
+                              }}
+                              className="px-2 py-0.5 rounded-md bg-white border border-neutral-200 text-neutral-700 font-bold hover:bg-neutral-100 cursor-pointer"
+                            >
+                              Redondear Efectivo
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Verificación de Suma Total */}
+                        {(() => {
+                          const cashVal = Number(String(splitCashAmount).replace(/\D/g, '')) || 0;
+                          const digVal = Number(String(splitDigitalAmount).replace(/\D/g, '')) || 0;
+                          const totalSum = cashVal + digVal;
+                          const diff = grandTotal - totalSum;
+
+                          if (diff === 0 && grandTotal > 0) {
+                            return (
+                              <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold flex items-center justify-between">
+                                <span>✅ Total exacto cubierto</span>
+                                <span>{formatCOP(cashVal)} EFECTIVO + {formatCOP(digVal)} {splitDigitalMethod === 'datafono' ? 'DATÁFONO' : 'NEQUI'}</span>
+                              </div>
+                            );
+                          } else if (diff > 0) {
+                            return (
+                              <div className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold flex items-center justify-between">
+                                <span>⚠️ Faltan {formatCOP(diff)} por distribuir</span>
+                                <span>Suma: {formatCOP(totalSum)}</span>
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <div className="p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-[11px] font-bold flex items-center justify-between">
+                                <span>⚠️ Supera por {formatCOP(Math.abs(diff))}</span>
+                                <span>Suma: {formatCOP(totalSum)}</span>
+                              </div>
+                            );
+                          }
                         })()}
                       </div>
                     )}

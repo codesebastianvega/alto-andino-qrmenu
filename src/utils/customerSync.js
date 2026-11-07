@@ -330,7 +330,8 @@ export async function syncCollectionToFinancials({
   amount = 0,
   paymentMethod = 'efectivo',
   isHistorical = false,
-  notes = ''
+  notes = '',
+  splitPayments = null
 }) {
   if (!brandId || isHistorical || Number(amount) <= 0) return;
 
@@ -358,56 +359,79 @@ export async function syncCollectionToFinancials({
       discarded_order_ids: DEFAULT_DISCARDED_TEST_IDS
     };
 
-    const accounts = Array.isArray(existingFin.accounts) && existingFin.accounts.length > 0
-      ? existingFin.accounts
+    let accounts = Array.isArray(existingFin.accounts) && existingFin.accounts.length > 0
+      ? [...existingFin.accounts]
       : [
           { id: 'acc_cash_main', name: 'Gaveta Física (Efectivo)', type: 'cash', balance: 0, is_default: true },
           { id: 'acc_nequi_main', name: 'Nequi / Bre-B', type: 'digital_wallet', balance: 0, is_default: false },
         ];
 
-    const methodNorm = String(paymentMethod || '').toLowerCase().trim();
-
-    // Find matching pocket by ID, exact name, or keyword
-    let targetAccount = accounts.find(a =>
-      a.id === paymentMethod ||
-      String(a.name || '').toLowerCase() === methodNorm
-    );
-
-    if (!targetAccount) {
-      if (methodNorm.includes('efectivo') || methodNorm.includes('cash') || methodNorm.includes('gaveta')) {
-        targetAccount = accounts.find(a => a.type === 'cash' || String(a.name).toLowerCase().includes('efectivo'));
-      } else if (methodNorm.includes('nequi') || methodNorm.includes('bre-b') || methodNorm.includes('breb')) {
-        targetAccount = accounts.find(a => String(a.name).toLowerCase().includes('nequi') || String(a.name).toLowerCase().includes('bre'));
-      } else {
-        targetAccount = accounts.find(a => String(a.name).toLowerCase().includes(methodNorm));
+    const findTargetAccount = (methodStr) => {
+      const methodNorm = String(methodStr || '').toLowerCase().trim();
+      let target = accounts.find(a =>
+        a.id === methodStr ||
+        String(a.name || '').toLowerCase() === methodNorm
+      );
+      if (!target) {
+        if (methodNorm.includes('efectivo') || methodNorm.includes('cash') || methodNorm.includes('gaveta')) {
+          target = accounts.find(a => a.type === 'cash' || String(a.name).toLowerCase().includes('efectivo'));
+        } else if (methodNorm.includes('nequi') || methodNorm.includes('bre-b') || methodNorm.includes('breb')) {
+          target = accounts.find(a => String(a.name).toLowerCase().includes('nequi') || String(a.name).toLowerCase().includes('bre'));
+        } else if (methodNorm.includes('datafono') || methodNorm.includes('datáfono') || methodNorm.includes('tarjeta')) {
+          target = accounts.find(a => a.type === 'bank' || String(a.name).toLowerCase().includes('datafono') || String(a.name).toLowerCase().includes('datáfono'));
+        } else {
+          target = accounts.find(a => String(a.name).toLowerCase().includes(methodNorm));
+        }
       }
-    }
-
-    if (!targetAccount) {
-      targetAccount = accounts[0];
-    }
-
-    const newBalance = Number(targetAccount.balance || 0) + payAmount;
-    const updatedAccounts = accounts.map(a =>
-      a.id === targetAccount.id ? { ...a, balance: newBalance } : a
-    );
-
-    const ledgerEntry = {
-      id: `leg_rec_${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      type: 'credit',
-      amount: payAmount,
-      accountId: targetAccount.id,
-      accountName: targetAccount.name,
-      category: 'Cobro de Cartera',
-      concept: `Recaudo fiado de ${customerName}${notes ? ` (${notes})` : ''}`,
-      balanceAfter: newBalance
+      return target || accounts[0];
     };
+
+    const newLedgerEntries = [];
+
+    if (Array.isArray(splitPayments) && splitPayments.length > 0) {
+      splitPayments.forEach((part, pIdx) => {
+        const partAmount = Number(part.amount || 0);
+        if (partAmount <= 0) return;
+        const targetAccount = findTargetAccount(part.method || part.accountId);
+        const newBalance = Number(targetAccount.balance || 0) + partAmount;
+        accounts = accounts.map(a =>
+          a.id === targetAccount.id ? { ...a, balance: newBalance } : a
+        );
+        newLedgerEntries.push({
+          id: `leg_rec_${Date.now()}_${pIdx}`,
+          timestamp: new Date().toISOString(),
+          type: 'credit',
+          amount: partAmount,
+          accountId: targetAccount.id,
+          accountName: targetAccount.name,
+          category: 'Venta / Recaudo',
+          concept: `Pago mixto ${part.method || 'dividido'} de ${customerName}${notes ? ` (${notes})` : ''}`,
+          balanceAfter: newBalance
+        });
+      });
+    } else {
+      const targetAccount = findTargetAccount(paymentMethod);
+      const newBalance = Number(targetAccount.balance || 0) + payAmount;
+      accounts = accounts.map(a =>
+        a.id === targetAccount.id ? { ...a, balance: newBalance } : a
+      );
+      newLedgerEntries.push({
+        id: `leg_rec_${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        type: 'credit',
+        amount: payAmount,
+        accountId: targetAccount.id,
+        accountName: targetAccount.name,
+        category: 'Venta / Recaudo',
+        concept: `Recaudo de ${customerName}${notes ? ` (${notes})` : ''}`,
+        balanceAfter: newBalance
+      });
+    }
 
     const updatedFin = {
       ...existingFin,
-      accounts: updatedAccounts,
-      ledger: [ledgerEntry, ...(existingFin.ledger || [])]
+      accounts,
+      ledger: [...newLedgerEntries, ...(existingFin.ledger || [])]
     };
 
     if (typeof window !== 'undefined') {
