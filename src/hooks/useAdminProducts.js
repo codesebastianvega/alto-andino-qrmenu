@@ -57,6 +57,54 @@ export const useAdminProducts = () => {
 
       // Auto-provisioning y sincronización de Bentos para BOKU BENTO
       if (activeBrandId === 'a63da806-a62a-49b9-a833-07e0976785ad') {
+        // Auto-provisioning Poke Tori Katsu
+        const hasToriKatsu = fetchedProducts.some(p => p.id === 'b0000b25-0000-4000-a000-000000000025' || /tori\s*katsu/i.test(p.name));
+        if (!hasToriKatsu) {
+          const newToriKatsuObj = {
+            id: 'b0000b25-0000-4000-a000-000000000025',
+            brand_id: activeBrandId,
+            name: 'Poke Tori Katsu (Pechuga Crocante)',
+            description: 'Pechuga apanada crocante en tiras con salsa tonkatsu, arroz, maíz sofrito, repollo morado, queso en cubos, tomates cherry, alga nori y verde de cebollín. 🥣 ¡Combo completo! Incluye: Sopita del día o Fruta + 🥤 Jugo del día (5 oz).',
+            price: 22000,
+            cost: 8500,
+            margin: 61.36,
+            category_id: '6316a6dc-8a4c-4cc1-874b-4f3d362ed635',
+            image_url: '/img/products/boku-tori-katsu.webp',
+            is_active: true,
+            stock_status: 'in',
+            available_portions: 50,
+            requires_kitchen: true,
+            station: 'kitchen',
+            subcategory: 'Bowls Poke Fresco',
+            category: { name: 'BOKU Bowls', slug: 'boku-bowls' },
+            location_product_status: [],
+            location_product_prices: [],
+            modifier_groups: ['b0000b20-0000-4000-a000-000000000002', 'b0000b20-0000-4000-a000-000000000001']
+          };
+          fetchedProducts.unshift(newToriKatsuObj);
+
+          supabase.from('products').upsert([{
+            id: newToriKatsuObj.id,
+            brand_id: activeBrandId,
+            name: newToriKatsuObj.name,
+            description: newToriKatsuObj.description,
+            price: newToriKatsuObj.price,
+            cost: newToriKatsuObj.cost,
+            margin: newToriKatsuObj.margin,
+            category_id: newToriKatsuObj.category_id,
+            image_url: newToriKatsuObj.image_url,
+            is_active: true,
+            stock_status: 'in',
+            available_portions: 50,
+            requires_kitchen: true,
+            station: 'kitchen',
+            subcategory: 'Bowls Poke Fresco',
+            modifier_groups: ['b0000b20-0000-4000-a000-000000000002', 'b0000b20-0000-4000-a000-000000000001']
+          }], { onConflict: 'id' }).then(({ error: upErr }) => {
+            if (upErr) console.warn('Poke Tori Katsu DB auto-insert notice:', upErr.message);
+          });
+        }
+
         const hasMedit = fetchedProducts.some(p => p.id === 'b0000b18-0000-4000-a000-000000000018' || /mediterr[aá]neo/i.test(p.name));
         if (!hasMedit) {
           const newBentoObj = {

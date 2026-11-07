@@ -516,7 +516,7 @@ export const MenuDataProvider = ({ children }) => {
     // Platos adicionales seleccionados para el almuerzo ("Más Opciones del Día")
     const activeSecondaryIds = Array.isArray(dailySpecialConcept?.secondary_product_ids)
       ? dailySpecialConcept.secondary_product_ids
-      : (dailySpecialConcept?.secondary_schedule?.[currentDayOfWeek] || (isBoku ? ['d07007ec-761b-4f40-bad5-799c1154b9ab', 'b0000b16-0000-4000-a000-000000000006'] : []));
+      : (dailySpecialConcept?.secondary_schedule?.[currentDayOfWeek] || (isBoku ? ['d07007ec-761b-4f40-bad5-799c1154b9ab'] : []));
 
     const isTodaySpecialItem = (id) => Boolean(id && (
       id === activeSpecialId ||
@@ -1112,30 +1112,6 @@ export const MenuDataProvider = ({ children }) => {
         salmonInBowls.available_portions = 50;
         salmonInBowls.out_reason = null;
         salmonInBowls.modifierGroups = [salmonPrepGroup, sharedSoupGroup, sharedDrinkGroup];
-      }
-
-      // Asegurar que en Pastas & Ramen esté Pasta Alfredo con su foto real y receta
-      if (!grouped['boku-pastas-ramen']) grouped['boku-pastas-ramen'] = [];
-      const hasAlfredoInPastas = grouped['boku-pastas-ramen'].some(p => p.id === 'b0000b16-0000-4000-a000-000000000006');
-      if (!hasAlfredoInPastas) {
-        grouped['boku-pastas-ramen'].unshift({
-          id: 'b0000b16-0000-4000-a000-000000000006',
-          name: 'Pasta Alfredo con Pollo y Champiñones',
-          price: 26000,
-          original_price: null,
-          categorySlug: 'boku-pastas-ramen',
-          categoryId: 'b0000c03-0000-4000-a000-000000000003',
-          categoryName: 'BOKU Pastas & Ramen',
-          subcategory: 'Pastas Clásicas & Fusión',
-          desc: 'Tornillos fusilli al dente en salsa cremosa Alfredo casera con pechuga de pollo en cubos dorados, champiñones frescos y queso parmesano rallado.',
-          description: 'Tornillos fusilli al dente en salsa cremosa Alfredo casera con pechuga de pollo en cubos dorados, champiñones frescos y queso parmesano rallado.',
-          image: '/img/products/boku-pasta-alfredo.jpg',
-          image_url: '/img/products/boku-pasta-alfredo.jpg',
-          recipe_id: 'ba000070-0000-4000-a000-000000000001',
-          stock_status: 'in',
-          available_portions: 50,
-          is_active: true
-        });
       }
 
       // ── ELIMINACIÓN TOTAL Y DEFINITIVA DE LA BOLOÑESA DE TODAS LAS CATEGORÍAS ──
