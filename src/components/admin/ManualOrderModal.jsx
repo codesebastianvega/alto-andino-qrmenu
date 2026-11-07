@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
+import { useMenuData } from '../../context/MenuDataContext';
 import { Icon } from '@iconify-icon/react';
 import { toast } from '../Toast';
 import { formatCOP } from '../../utils/money';
@@ -16,15 +17,28 @@ export default function ManualOrderModal({
   onOrderCreated,
   brandId: propBrandId,
   locationId,
-  restaurantSettings
+  restaurantSettings: propRestaurantSettings
 }) {
   const { activeBrand, profile } = useAuth();
   const brandId = propBrandId || activeBrand?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
+
+  // Single Source of Truth: Menú oficial y canónico compartido con la tienda pública
+  const menuData = useMenuData();
+  const {
+    categories: menuCategories = [],
+    productsByCategory = {},
+    getAllProducts,
+    getModifiers,
+    restaurantSettings: menuSettings,
+    locations: menuLocations = [],
+    loading: menuDataLoading
+  } = menuData || {};
+
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [products, setProducts] = useState([]);
   const [locationsList, setLocationsList] = useState([]);
   const [selectedLocationId, setSelectedLocationId] = useState(() => isValidUUID(locationId) ? locationId : null);
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('daily_specials');
   const [searchTerm, setSearchTerm] = useState('');
 
   // Cart of items being built: [{ product, qty, unitPrice, options, notes }]
@@ -323,48 +337,107 @@ export default function ManualOrderModal({
     return () => clearTimeout(timer);
   }, [customerPhone, customerName, deliveryAddress, brandId]);
 
-  // Categories derived from products con categoría prioritaria ⭐ Del Día
-  const categories = useMemo(() => {
+  // Canonical all products list: single source of truth from MenuDataContext
+  const catalogProducts = useMemo(() => {
+    let list = [];
+    if (typeof getAllProducts === 'function') {
+      try {
+        list = getAllProducts();
+      } catch (e) {
+        console.warn('Error calling getAllProducts in ManualOrderModal:', e);
+      }
+    }
+    if ((!list || list.length === 0) && productsByCategory && typeof productsByCategory === 'object') {
+      list = Object.values(productsByCategory).flat();
+    }
+    if ((!list || list.length === 0) && products.length > 0) {
+      list = products;
+    }
+    // Deduplicate by ID
     const map = new Map();
-    // Pestaña especial destacada de Almuerzos y Bentos del día
-    map.set('daily_specials', {
-      id: 'daily_specials',
-      name: '⭐ Del Día / Almuerzos',
-      slug: 'del-dia'
-    });
-    products.forEach(p => {
-      const cat = p.categories;
-      if (cat?.id && !map.has(cat.id)) {
-        map.set(cat.id, cat);
+    (list || []).forEach(p => {
+      if (p && p.id && !map.has(p.id)) {
+        map.set(p.id, p);
       }
     });
     return Array.from(map.values());
-  }, [products]);
+  }, [getAllProducts, productsByCategory, products]);
+
+  // Categories derived canonically: Del Día first, then real public store categories
+  const categories = useMemo(() => {
+    const list = [
+      {
+        id: 'daily_specials',
+        name: '⭐ Del Día / Almuerzos',
+        slug: 'daily_specials'
+      }
+    ];
+
+    if (Array.isArray(menuCategories) && menuCategories.length > 0) {
+      menuCategories.forEach(cat => {
+        if (!cat || cat.is_active === false) return;
+        // Don't duplicate if it represents the bentos category already represented by 'daily_specials'
+        if (cat.slug === 'boku-bentos' || cat.id === 'b0000c01-0000-4000-a000-000000000001') {
+          return;
+        }
+        list.push(cat);
+      });
+    } else {
+      const map = new Map();
+      catalogProducts.forEach(p => {
+        const cat = p.categories;
+        if (cat?.id && !map.has(cat.id)) {
+          map.set(cat.id, cat);
+        }
+      });
+      map.forEach(c => list.push(c));
+    }
+    return list;
+  }, [menuCategories, catalogProducts]);
 
   // Filtered products list
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
+    return catalogProducts.filter(p => {
       let matchesCategory = true;
-      if (selectedCategory === 'daily_specials') {
+      if (selectedCategory === 'daily_specials' || selectedCategory === 'boku-bentos') {
         matchesCategory = Boolean(
+          p.categorySlug === 'boku-bentos' ||
+          p.categoryId === 'b0000c01-0000-4000-a000-000000000001' ||
+          p.is_daily_special ||
+          p.is_bento_del_dia ||
           p.id === dailySpecialData.activeSpecialId ||
-          dailySpecialData.activeSecondaryIds.includes(p.id)
+          (Array.isArray(dailySpecialData.activeSecondaryIds) && dailySpecialData.activeSecondaryIds.includes(p.id)) ||
+          p.id === 'b0000b21-0000-4000-a000-000000000021' ||
+          p.id === 'b0000b25-0000-4000-a000-000000000025' ||
+          p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab'
         );
       } else if (selectedCategory !== 'all') {
-        matchesCategory = p.category_id === selectedCategory;
+        const cat = categories.find(c => c.id === selectedCategory || c.slug === selectedCategory);
+        matchesCategory = Boolean(
+          p.category_id === selectedCategory ||
+          p.categoryId === selectedCategory ||
+          p.categorySlug === selectedCategory ||
+          (cat && (p.category_id === cat.id || p.categoryId === cat.id || p.categorySlug === cat.slug))
+        );
       }
 
-      const matchesSearch = !searchTerm.trim() || 
-        p.name.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||
-        (p.subcategory && p.subcategory.toLowerCase().includes(searchTerm.toLowerCase().trim()));
+      const q = searchTerm.toLowerCase().trim();
+      const matchesSearch = !q || 
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.subcategory && p.subcategory.toLowerCase().includes(q)) ||
+        (p.description && p.description.toLowerCase().includes(q)) ||
+        (p.desc && p.desc.toLowerCase().includes(q));
+
       return matchesCategory && matchesSearch;
     }).sort((a, b) => {
       // Priorizar el plato del día y las opciones de hoy arriba
-      const aScore = a.id === dailySpecialData.activeSpecialId ? 2 : (dailySpecialData.activeSecondaryIds.includes(a.id) ? 1 : 0);
-      const bScore = b.id === dailySpecialData.activeSpecialId ? 2 : (dailySpecialData.activeSecondaryIds.includes(b.id) ? 1 : 0);
+      const aScore = (a.id === dailySpecialData.activeSpecialId || a.id === 'b0000b21-0000-4000-a000-000000000021') ? 3 :
+        ((dailySpecialData.activeSecondaryIds && dailySpecialData.activeSecondaryIds.includes(a.id)) || a.id === 'b0000b25-0000-4000-a000-000000000025' || a.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab') ? 2 : 0;
+      const bScore = (b.id === dailySpecialData.activeSpecialId || b.id === 'b0000b21-0000-4000-a000-000000000021') ? 3 :
+        ((dailySpecialData.activeSecondaryIds && dailySpecialData.activeSecondaryIds.includes(b.id)) || b.id === 'b0000b25-0000-4000-a000-000000000025' || b.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab') ? 2 : 0;
       return bScore - aScore;
     });
-  }, [products, selectedCategory, searchTerm, dailySpecialData]);
+  }, [catalogProducts, selectedCategory, searchTerm, dailySpecialData, categories]);
 
   // Open product modifier configuration
   const handleSelectProduct = (product) => {
@@ -377,7 +450,7 @@ export default function ManualOrderModal({
       min: 1,
       max: 1,
       options: [
-        { id: 'opt-bento-soup-today', name: currentSoupName, extra: 0 },
+        { id: 'opt-bento-soup-today', name: currentSoupName, extra: 0, is_default: true },
         { id: 'opt-bento-fruta', name: '🍍 Porción de Fruta fresca picada', extra: 0 },
         { id: 'opt-bento-nosoup', name: '🚫 Sin sopa ni fruta', extra: 0 }
       ]
@@ -388,12 +461,58 @@ export default function ManualOrderModal({
       min: 1,
       max: 1,
       options: [
-        { id: 'opt-bento-drink-today', name: currentDrinkName, extra: 0 },
+        { id: 'opt-bento-drink-today', name: currentDrinkName, extra: 0, is_default: true },
         { id: 'opt-bento-hatsu-caja', name: '🧃 Té Hatsu en Caja (200 ml)', extra: 2000 },
         { id: 'opt-bento-hatsu-lata', name: '🥫 Té Hatsu en Lata (250 ml)', extra: 4000 },
         { id: 'opt-bento-nodrink', name: '🚫 Sin bebida', extra: 0 }
       ]
     };
+
+    // 1. Si el producto ya tiene modifierGroups en MenuDataContext o getModifiers, usarlos canónicamente
+    let rawGroups = product.modifierGroups;
+    if ((!rawGroups || rawGroups.length === 0) && typeof getModifiers === 'function') {
+      try {
+        rawGroups = getModifiers(product.id);
+      } catch (e) {
+        console.warn('Error fetching modifiers:', e);
+      }
+    }
+
+    if (rawGroups && Array.isArray(rawGroups) && rawGroups.length > 0) {
+      const normalizedGroups = rawGroups.map(g => ({
+        name: g.name,
+        min: g.min_select !== undefined ? g.min_select : (g.min || 0),
+        max: g.max_select !== undefined ? g.max_select : (g.max || 1),
+        included_count: g.included_count !== undefined ? g.included_count : (g.max_select === 1 || g.max === 1 ? 1 : 0),
+        options: (g.options || []).map(opt => ({
+          id: opt.id || opt.name,
+          name: opt.name,
+          extra: opt.extra !== undefined ? opt.extra : (opt.extra_price !== undefined ? opt.extra_price : (opt.price || 0)),
+          is_default: Boolean(opt.is_default)
+        }))
+      }));
+
+      const initialModifiers = {};
+      normalizedGroups.forEach(g => {
+        const defaultOpts = g.options.filter(o => o.is_default).map(o => o.name);
+        if (defaultOpts.length > 0) {
+          initialModifiers[g.name] = defaultOpts.slice(0, g.max);
+        } else if (g.min > 0 && g.options.length > 0) {
+          initialModifiers[g.name] = [g.options[0].name];
+        } else {
+          initialModifiers[g.name] = [];
+        }
+      });
+
+      setConfiguringProduct({
+        product,
+        groups: normalizedGroups
+      });
+      setSelectedModifiers(initialModifiers);
+      setItemKitchenNotes('');
+      setEditingItemIndex(null);
+      return;
+    }
 
     // Determine modifier groups for special dishes
     const isMediterraneo = product.id === 'b0000b18-0000-4000-a000-000000000018' || /mediterr[aá]neo/i.test(product.name);
@@ -1029,11 +1148,11 @@ export default function ManualOrderModal({
                 </button>
                 {categories.map(c => (
                   <button
-                    key={c.id}
+                    key={c.id || c.slug}
                     type="button"
-                    onClick={() => setSelectedCategory(c.id)}
+                    onClick={() => setSelectedCategory(c.id || c.slug)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all ${
-                      selectedCategory === c.id
+                      selectedCategory === (c.id || c.slug) || (c.id === 'daily_specials' && selectedCategory === 'daily_specials')
                         ? 'bg-neutral-900 text-white shadow-xs'
                         : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
                     }`}
@@ -1045,44 +1164,38 @@ export default function ManualOrderModal({
             </div>
 
             {/* Daily Special Banner Header */}
-            {dailySpecialData.activeSpecialId && (
-              <div className="mb-3 p-3 rounded-2xl bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100/60 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                <div className="flex items-start gap-2.5">
-                  <span className="text-xl shrink-0">🍱</span>
-                  <div className="space-y-0.5">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500 text-neutral-950 px-1.5 py-0.5 rounded-md">
-                        Almuerzo Estrella de Hoy
-                      </span>
-                      <span className="text-xs font-black text-neutral-900">
-                        {products.find(p => p.id === dailySpecialData.activeSpecialId)?.name?.replace(/\s*\(Especial del Día\)/i, '') || 'Arroz con Pollo Criollo'} ({formatCOP(dailySpecialData.promoPrice)})
-                      </span>
-                      {dailySpecialData.activeSecondaryIds.length > 0 && (
-                        <>
-                          <span className="text-neutral-300">•</span>
-                          <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white px-1.5 py-0.5 rounded-md">
-                            Opción de Hoy
-                          </span>
-                          <span className="text-xs font-bold text-neutral-800">
-                            {products.find(p => dailySpecialData.activeSecondaryIds.includes(p.id))?.name || 'Salmón Fresh'} ({formatCOP(products.find(p => dailySpecialData.activeSecondaryIds.includes(p.id))?.price || 22000)})
-                          </span>
-                        </>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-neutral-600">
-                      Entrada: <strong>{dailySpecialData.soupName}</strong> • Bebida: <strong>{dailySpecialData.drinkName}</strong>
-                    </p>
+            <div className="mb-3 p-3 rounded-2xl bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100/60 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex items-start gap-2.5">
+                <span className="text-xl shrink-0">🍱</span>
+                <div className="space-y-0.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500 text-neutral-950 px-1.5 py-0.5 rounded-md">
+                      Almuerzo Estrella de Hoy
+                    </span>
+                    <span className="text-xs font-black text-neutral-900">
+                      {catalogProducts.find(p => p.id === dailySpecialData.activeSpecialId || p.id === 'b0000b21-0000-4000-a000-000000000021')?.name?.replace(/\s*\(Especial del Día\)/i, '') || 'Arroz con Pollo Criollo'} ({formatCOP(dailySpecialData.promoPrice || 19000)})
+                    </span>
+                    <span className="text-neutral-300">•</span>
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white px-1.5 py-0.5 rounded-md">
+                      Línea Poke Premium ({formatCOP(22000)})
+                    </span>
+                    <span className="text-xs font-bold text-neutral-800">
+                      Poke Tori Katsu • Salmón Fresh
+                    </span>
                   </div>
+                  <p className="text-[11px] text-neutral-600">
+                    Entrada: <strong>{dailySpecialData.soupName}</strong> • Bebida: <strong>{dailySpecialData.drinkName}</strong>
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory('daily_specials')}
-                  className="text-xs font-black px-3 py-1.5 rounded-xl bg-amber-500 text-neutral-950 hover:bg-amber-400 transition-all shadow-xs shrink-0 cursor-pointer self-start sm:self-auto"
-                >
-                  Ver del Día ⭐
-                </button>
               </div>
-            )}
+              <button
+                type="button"
+                onClick={() => setSelectedCategory('daily_specials')}
+                className="text-xs font-black px-3 py-1.5 rounded-xl bg-amber-500 text-neutral-950 hover:bg-amber-400 transition-all shadow-xs shrink-0 cursor-pointer self-start sm:self-auto"
+              >
+                Ver del Día ⭐
+              </button>
+            </div>
 
             {/* Products Grid */}
             {loadingCatalog ? (
@@ -1097,8 +1210,8 @@ export default function ManualOrderModal({
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5">
                 {filteredProducts.map(p => {
-                  const isPrimarySpecial = p.id === dailySpecialData.activeSpecialId;
-                  const isSecondarySpecial = dailySpecialData.activeSecondaryIds.includes(p.id);
+                  const isPrimarySpecial = p.id === dailySpecialData.activeSpecialId || p.id === 'b0000b21-0000-4000-a000-000000000021';
+                  const isSecondarySpecial = (dailySpecialData.activeSecondaryIds && dailySpecialData.activeSecondaryIds.includes(p.id)) || p.id === 'b0000b25-0000-4000-a000-000000000025' || p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab';
                   return (
                     <button
                       key={p.id}
@@ -1112,14 +1225,14 @@ export default function ManualOrderModal({
                         </span>
                       ) : isSecondarySpecial ? (
                         <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wider bg-emerald-600 text-white px-1.5 py-0.5 rounded-md shadow-2xs">
-                          ⭐ Opción de Hoy
+                          🔥 Poke Premium
                         </span>
                       ) : null}
                       <p className="font-bold text-xs text-neutral-900 group-hover:text-amber-800 line-clamp-1 pr-8">
                         {p.name.replace(/\s*\(Especial del Día\)/i, '')}
                       </p>
                       <p className="text-[11px] text-neutral-400 line-clamp-2 mt-0.5 leading-tight">
-                        {p.description || p.subcategory || 'Plato BOKU'}
+                        {p.description || p.desc || p.subcategory || 'Plato BOKU'}
                       </p>
                       <div className="mt-3 flex items-center justify-between pt-2 border-t border-neutral-100">
                         <span className="text-xs font-black text-neutral-900">

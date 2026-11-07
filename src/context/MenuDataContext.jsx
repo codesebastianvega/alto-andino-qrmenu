@@ -922,78 +922,40 @@ export const MenuDataProvider = ({ children }) => {
         ]
       };
 
-      // 3. Bento Mestizo -> Plato del Día ($19.000 con sopa y bebida)
-      const mestizoRaw = (rawProducts || []).find(p => p.id === 'b0000b14-0000-4000-a000-000000000004') ||
-                         (rawProducts || []).find(p => p.id === activeSpecialId) ||
-                         grouped['boku-bentos']?.find(p => p.id === activeSpecialId);
-      
-      const bentoHeroToday = {
-        ...(mestizoRaw || {}),
-        id: 'b0000b14-0000-4000-a000-000000000004',
-        productId: 'b0000b14-0000-4000-a000-000000000004',
-        name: 'Bento Mestizo (Especial del Día)',
-        price: 19000,
-        original_price: 22000,
+      // 3. Bento Estrella del Día Dinámico (Arroz con Pollo Criollo u otro configurado)
+      const starRaw = (rawProducts || []).find(p => p.id === activeSpecialId) ||
+                      (rawProducts || []).find(p => p.id === 'b0000b21-0000-4000-a000-000000000021');
+
+      const isRealArrozPollo = starRaw?.id === 'b0000b21-0000-4000-a000-000000000021' || /arroz con pollo/i.test(starRaw?.name || '');
+
+      const bentoHeroToday = starRaw ? {
+        ...starRaw,
+        id: starRaw.id,
+        productId: starRaw.id,
+        name: starRaw.name,
+        price: promoPrice > 0 ? promoPrice : (Number(starRaw.price) || 19000),
+        original_price: standardPrice > 0 ? standardPrice : 22000,
         is_bento_del_dia: true,
         is_daily_special: true,
-        daily_special_label: 'El Bento del Día',
+        daily_special_label: specialLabel || 'El Bento del Día',
         subcategory: 'Bentos Caseros',
         categorySlug: 'boku-bentos',
         categoryId: 'b0000c01-0000-4000-a000-000000000001',
         categoryName: 'BOKU Bentos Caseros',
-        desc: 'Arroz blanco, champiñones al ajillo, brócoli al vapor, tomates cherry y ensalada cremosa de remolacha y zanahoria en cubitos con mayonesa. Principio a elección (garbanzos caseros o maduritos melosos) y proteína a elección (pollo al curry dorado o cerdo teriyaki). 🥣 ¡Combo completo! Incluye Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
-        description: 'Arroz blanco, champiñones al ajillo, brócoli al vapor, tomates cherry y ensalada cremosa de remolacha y zanahoria en cubitos con mayonesa. Principio a elección (garbanzos caseros o maduritos melosos) y proteína a elección (pollo al curry dorado o cerdo teriyaki). 🥣 ¡Combo completo! Incluye Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
-        image: 'https://aluna-qrmenu.vercel.app/brand/boku-bento-mestizo.webp',
-        image_url: 'https://aluna-qrmenu.vercel.app/brand/boku-bento-mestizo.webp',
-        recipe_id: 'ba000040-0000-4000-a000-000000000004',
+        desc: starRaw.description || 'Arroz con pollo campesino sazonado con verduras frescas, maíz tierno, maduritos en cubos y cilantro. 🥣 Combo completo: Entrada casera + 🥤 Bebida de la casa.',
+        description: starRaw.description || 'Arroz con pollo campesino sazonado con verduras frescas, maíz tierno, maduritos en cubos y cilantro. 🥣 Combo completo: Entrada casera + 🥤 Bebida de la casa.',
+        image: starRaw.image_url || 'https://aluna-qrmenu.vercel.app/brand/boku-bento-mestizo.webp',
+        image_url: starRaw.image_url || 'https://aluna-qrmenu.vercel.app/brand/boku-bento-mestizo.webp',
+        recipe_id: starRaw.recipe_id || null,
         stock_status: 'in',
         available_portions: 50,
         is_schedule_available: isStorePausedForPublic ? false : true,
         schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
         modifierGroups: [
-          {
-            id: 'mg-mestizo-protein',
-            name: '🍗 Tu Proteína',
-            min_select: 1,
-            max_select: 2,
-            included_count: 1,
-            extra_price: 7000,
-            options: [
-              { id: 'opt-mestizo-pollo-curry', name: 'Pollo al curry dorado', price: 0, is_default: true },
-              { id: 'opt-mestizo-cerdo-teriyaki', name: 'Cerdo teriyaki', price: 0 }
-            ]
-          },
-          {
-            id: 'mg-mestizo-principio',
-            name: '🍲 Tu Principio Casero',
-            min_select: 1,
-            max_select: 2,
-            included_count: 1,
-            extra_price: 4000,
-            options: [
-              { id: 'opt-mestizo-garbanzos', name: 'Garbanzos caseros', price: 0, is_default: true },
-              { id: 'opt-mestizo-maduritos', name: 'Maduritos melosos en panela', price: 0 },
-              { id: 'opt-mestizo-mitad', name: 'Mitad garbanzos y mitad maduritos', price: 0 },
-              { id: 'opt-mestizo-sin-principio', name: '🚫 Sin principio', price: 0 }
-            ]
-          },
-          {
-            id: 'mg-mestizo-veggies',
-            name: '🥗 Ensalada & Vegetales',
-            min_select: 0,
-            max_select: 5,
-            options: [
-              { id: 'opt-mestizo-ensalada-aparte', name: 'Ensalada en recipiente aparte', price: 0 },
-              { id: 'opt-mestizo-sin-ensalada', name: '🚫 Sin ensalada cremosa', price: 0 },
-              { id: 'opt-mestizo-sin-champinones', name: '🚫 Sin champiñones al ajillo', price: 0 },
-              { id: 'opt-mestizo-sin-brocoli', name: '🚫 Sin brócoli al vapor', price: 0 },
-              { id: 'opt-mestizo-sin-tomates', name: '🚫 Sin tomates cherry', price: 0 }
-            ]
-          },
           sharedSoupGroup,
           sharedDrinkGroup
         ]
-      };
+      } : null;
 
       // 4. Mazorcada de la Casa -> "Más Opciones del Día" ($19.000 con sopa y bebida)
       const mazorcadaToday = {
@@ -1067,30 +1029,34 @@ export const MenuDataProvider = ({ children }) => {
 
       // Ensamblar la sección superior de Bentos de Hoy respetando fielmente el estado de la administración
       const candidateBentos = [
+        ...(bentoHeroToday ? [bentoHeroToday] : []),
         pokeToriKatsu,
         pokeSalmonFresh,
         bentoMediterraneo,
         bentoCriollo,
-        bentoHeroToday,
         mazorcadaToday
       ];
 
       const visibleBentos = candidateBentos.filter(b => {
         const raw = (rawProducts || []).find(p => p.id === b.id);
-        const isPokeSpecial = b.id === 'b0000b25-0000-4000-a000-000000000025' || b.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab';
+        const isAlwaysVisible = b.id === 'b0000b25-0000-4000-a000-000000000025' || 
+                                b.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab' ||
+                                (bentoHeroToday && b.id === bentoHeroToday.id);
         // Si existe en base de datos, respetar fielmente su estado de Activo / Oculto y Stock
         if (raw) {
-          if (raw.is_active === false) return false;
-          if (!isPokeSpecial && raw.stock_status === 'out') return false;
+          if (raw.is_active === false && !isAlwaysVisible) return false;
+          if (!isAlwaysVisible && raw.stock_status === 'out') return false;
           const locActive = statusMap.get(b.id);
-          if (locActive === false) return false;
+          if (locActive === false && !isAlwaysVisible) return false;
           const locStock = stockStatusMap.get(b.id);
-          if (!isPokeSpecial && locStock === 'out') return false;
+          if (!isAlwaysVisible && locStock === 'out') return false;
         }
-        return b.is_active !== false && (isPokeSpecial || b.stock_status !== 'out');
+        return b.is_active !== false && (isAlwaysVisible || b.stock_status !== 'out');
       });
 
-      grouped['boku-bentos'] = visibleBentos.length > 0 ? visibleBentos : [pokeToriKatsu, pokeSalmonFresh];
+      // Preservar cualquier plato activo ya categorizado y añadir los bentos visibles de hoy
+      const existingDbBentos = (grouped['boku-bentos'] || []).filter(p => !candidateBentos.some(c => c.id === p.id));
+      grouped['boku-bentos'] = [...existingDbBentos, ...visibleBentos];
 
       // ── PRESENCIA DE TORI KATSU Y SALMÓN EN BOKU BOWLS ──
       if (!grouped['boku-bowls']) grouped['boku-bowls'] = [];
