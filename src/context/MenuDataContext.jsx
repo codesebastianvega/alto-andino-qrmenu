@@ -922,126 +922,93 @@ export const MenuDataProvider = ({ children }) => {
         ]
       };
 
-      // 3. Bento Estrella del Día Dinámico (Arroz con Pollo Criollo u otro configurado)
-      const starRaw = (rawProducts || []).find(p => p.id === activeSpecialId) ||
-                      (rawProducts || []).find(p => p.id === 'b0000b21-0000-4000-a000-000000000021');
+      // 3. Bento Estrella del Día Dinámico (según configuración de la administración)
+      const starRaw = (rawProducts || []).find(p => p.id === activeSpecialId);
 
-      const isRealArrozPollo = starRaw?.id === 'b0000b21-0000-4000-a000-000000000021' || /arroz con pollo/i.test(starRaw?.name || '');
+      let bentoHeroToday = null;
+      if (starRaw) {
+        if (starRaw.id === 'b0000b25-0000-4000-a000-000000000025') {
+          bentoHeroToday = {
+            ...pokeToriKatsu,
+            price: promoPrice > 0 ? promoPrice : 22000,
+            original_price: standardPrice > 0 ? standardPrice : 28000,
+            is_bento_del_dia: true,
+            is_daily_special: true,
+            daily_special_label: specialLabel || 'Almuerzo Estrella de Hoy'
+          };
+        } else if (starRaw.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab') {
+          bentoHeroToday = {
+            ...pokeSalmonFresh,
+            price: promoPrice > 0 ? promoPrice : 22000,
+            original_price: standardPrice > 0 ? standardPrice : 34000,
+            is_bento_del_dia: true,
+            is_daily_special: true,
+            daily_special_label: specialLabel || 'Almuerzo Estrella de Hoy'
+          };
+        } else {
+          bentoHeroToday = {
+            ...starRaw,
+            id: starRaw.id,
+            productId: starRaw.id,
+            name: starRaw.name,
+            price: promoPrice > 0 ? promoPrice : (Number(starRaw.price) || 19000),
+            original_price: standardPrice > 0 ? standardPrice : 22000,
+            is_bento_del_dia: true,
+            is_daily_special: true,
+            daily_special_label: specialLabel || 'El Bento del Día',
+            subcategory: 'Bentos Caseros',
+            categorySlug: 'boku-bentos',
+            categoryId: 'b0000c01-0000-4000-a000-000000000001',
+            categoryName: 'BOKU Bentos Caseros',
+            desc: starRaw.description || 'Almuerzo completo de la casa. 🥣 Combo completo: Entrada casera + 🥤 Bebida de la casa.',
+            description: starRaw.description || 'Almuerzo completo de la casa. 🥣 Combo completo: Entrada casera + 🥤 Bebida de la casa.',
+            image: starRaw.image_url || 'https://aluna-qrmenu.vercel.app/brand/boku-bento-mestizo.webp',
+            image_url: starRaw.image_url || 'https://aluna-qrmenu.vercel.app/brand/boku-bento-mestizo.webp',
+            recipe_id: starRaw.recipe_id || null,
+            stock_status: 'in',
+            available_portions: 50,
+            is_schedule_available: isStorePausedForPublic ? false : true,
+            schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
+            modifierGroups: starRaw.modifierGroups || [
+              sharedSoupGroup,
+              sharedDrinkGroup
+            ]
+          };
+        }
+      }
 
-      const bentoHeroToday = starRaw ? {
-        ...starRaw,
-        id: starRaw.id,
-        productId: starRaw.id,
-        name: starRaw.name,
-        price: promoPrice > 0 ? promoPrice : (Number(starRaw.price) || 19000),
-        original_price: standardPrice > 0 ? standardPrice : 22000,
-        is_bento_del_dia: true,
-        is_daily_special: true,
-        daily_special_label: specialLabel || 'El Bento del Día',
-        subcategory: 'Bentos Caseros',
-        categorySlug: 'boku-bentos',
-        categoryId: 'b0000c01-0000-4000-a000-000000000001',
-        categoryName: 'BOKU Bentos Caseros',
-        desc: starRaw.description || 'Arroz con pollo campesino sazonado con verduras frescas, maíz tierno, maduritos en cubos y cilantro. 🥣 Combo completo: Entrada casera + 🥤 Bebida de la casa.',
-        description: starRaw.description || 'Arroz con pollo campesino sazonado con verduras frescas, maíz tierno, maduritos en cubos y cilantro. 🥣 Combo completo: Entrada casera + 🥤 Bebida de la casa.',
-        image: starRaw.image_url || 'https://aluna-qrmenu.vercel.app/brand/boku-bento-mestizo.webp',
-        image_url: starRaw.image_url || 'https://aluna-qrmenu.vercel.app/brand/boku-bento-mestizo.webp',
-        recipe_id: starRaw.recipe_id || null,
-        stock_status: 'in',
-        available_portions: 50,
-        is_schedule_available: isStorePausedForPublic ? false : true,
-        schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
-        modifierGroups: [
-          sharedSoupGroup,
-          sharedDrinkGroup
-        ]
-      } : null;
+      // 4. Platos Secundarios de Almuerzo configurados en la administración
+      const secondaryBentoList = (activeSecondaryIds || []).map(secId => {
+        if (secId === 'd07007ec-761b-4f40-bad5-799c1154b9ab') return pokeSalmonFresh;
+        if (secId === 'b0000b25-0000-4000-a000-000000000025') return pokeToriKatsu;
+        const rawSec = (rawProducts || []).find(p => p.id === secId);
+        if (!rawSec) return null;
+        return {
+          ...rawSec,
+          is_daily_special: true,
+          daily_special_label: 'Opción del Día',
+          categorySlug: 'boku-bentos',
+          categoryId: 'b0000c01-0000-4000-a000-000000000001',
+          categoryName: 'BOKU Bentos Caseros',
+          modifierGroups: rawSec.modifierGroups || [sharedSoupGroup, sharedDrinkGroup]
+        };
+      }).filter(Boolean);
 
-      // 4. Mazorcada de la Casa -> "Más Opciones del Día" ($19.000 con sopa y bebida)
-      const mazorcadaToday = {
-        id: 'b0000b22-0000-4000-a000-000000000022',
-        productId: 'b0000b22-0000-4000-a000-000000000022',
-        name: 'Mazorcada de la Casa (Especial del Día)',
-        price: 19000,
-        original_price: 22000,
-        is_bento_del_dia: false,
-        is_daily_special: true,
-        daily_special_label: 'Opción del Día',
-        subcategory: 'Más Opciones del Día',
-        categorySlug: 'boku-bentos',
-        categoryId: 'b0000c01-0000-4000-a000-000000000001',
-        categoryName: 'BOKU Bentos Caseros',
-        desc: 'Maíz tierno dulce con jamón, salchicha, queso fundido y papita cabello de ángel crocante. Proteína a elección (pollo o cerdo al wok), salsa a elección (BBQ o tártara) y pimentón salteado opcional. 🥣 ¡Combo completo! Incluye Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
-        description: 'Maíz tierno dulce con jamón, salchicha, queso fundido y papita cabello de ángel crocante. Proteína a elección (pollo o cerdo al wok), salsa a elección (BBQ o tártara) y pimentón salteado opcional. 🥣 ¡Combo completo! Incluye Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
-        image: '/img/products/boku-mazorcada.jpg',
-        image_url: '/img/products/boku-mazorcada.jpg',
-        recipe_id: null,
-        stock_status: 'in',
-        available_portions: 50,
-        is_schedule_available: isStorePausedForPublic ? false : true,
-        schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
-        modifierGroups: [
-          {
-            id: 'mg-mazor-protein',
-            name: '🍗 Proteína a elección',
-            min_select: 1,
-            max_select: 2,
-            included_count: 1,
-            options: [
-              { id: 'opt-mazor-pollo', name: 'Pollo salteado al wok', price: 0, extra_price: 7000, is_default: true },
-              { id: 'opt-mazor-cerdo', name: 'Cerdo salteado al wok', price: 0, extra_price: 7000 }
-            ]
-          },
-          {
-            id: 'mg-mazor-sauce',
-            name: '🍯 Salsa a elección',
-            min_select: 1,
-            max_select: 2,
-            options: [
-              { id: 'opt-mazor-bbq', name: 'Salsa BBQ de la casa', price: 0, is_default: true },
-              { id: 'opt-mazor-tartara', name: 'Salsa Tártara cremosa', price: 0 }
-            ]
-          },
-          {
-            id: 'mg-mazor-pimenton',
-            name: '🫑 Toque de Pimentón',
-            min_select: 0,
-            max_select: 1,
-            options: [
-              { id: 'opt-mazor-con-pimenton', name: 'Con pimentón salteado', price: 0, is_default: true },
-              { id: 'opt-mazor-sin-pimenton', name: 'Sin pimentón', price: 0 }
-            ]
-          },
-          sharedSoupGroup,
-          sharedDrinkGroup,
-          {
-            id: 'mg-mazor-extras',
-            name: '🍟 Acompañamiento Opcional',
-            min_select: 0,
-            max_select: 2,
-            options: [
-              { id: 'opt-mazor-extra-papas', name: 'Extra Porción de Papas a la Francesa', price: 6000 },
-              { id: 'opt-mazor-extra-aji', name: 'Ají Casero de la Casa', price: 1500 }
-            ]
-          }
-        ]
-      };
+      // Ensamblar la sección superior de Bentos de Hoy: Bento Estrella + Opciones Secundarias (Deduplicados)
+      const dailyMap = new Map();
+      if (bentoHeroToday) dailyMap.set(bentoHeroToday.id, bentoHeroToday);
+      secondaryBentoList.forEach(item => {
+        if (!dailyMap.has(item.id)) dailyMap.set(item.id, item);
+      });
 
-      // Ensamblar la sección superior de Bentos de Hoy respetando fielmente el estado de la administración
-      const candidateBentos = [
-        ...(bentoHeroToday ? [bentoHeroToday] : []),
-        pokeToriKatsu,
-        pokeSalmonFresh,
-        bentoMediterraneo,
-        bentoCriollo,
-        mazorcadaToday
-      ];
+      const candidateBentos = Array.from(dailyMap.values());
 
       const visibleBentos = candidateBentos.filter(b => {
         const raw = (rawProducts || []).find(p => p.id === b.id);
-        const isAlwaysVisible = b.id === 'b0000b25-0000-4000-a000-000000000025' || 
-                                b.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab' ||
-                                (bentoHeroToday && b.id === bentoHeroToday.id);
+        const isAlwaysVisible = Boolean(
+          (bentoHeroToday && b.id === bentoHeroToday.id) ||
+          (activeSecondaryIds && activeSecondaryIds.includes(b.id))
+        );
         // Si existe en base de datos, respetar fielmente su estado de Activo / Oculto y Stock
         if (raw) {
           if (raw.is_active === false && !isAlwaysVisible) return false;
@@ -1056,7 +1023,7 @@ export const MenuDataProvider = ({ children }) => {
 
       // Preservar cualquier plato activo ya categorizado y añadir los bentos visibles de hoy
       const existingDbBentos = (grouped['boku-bentos'] || []).filter(p => !candidateBentos.some(c => c.id === p.id));
-      grouped['boku-bentos'] = [...existingDbBentos, ...visibleBentos];
+      grouped['boku-bentos'] = [...visibleBentos, ...existingDbBentos];
 
       // ── PRESENCIA DE TORI KATSU Y SALMÓN EN BOKU BOWLS ──
       if (!grouped['boku-bowls']) grouped['boku-bowls'] = [];

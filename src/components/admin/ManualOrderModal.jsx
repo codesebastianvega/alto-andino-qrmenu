@@ -406,10 +406,7 @@ export default function ManualOrderModal({
           p.is_daily_special ||
           p.is_bento_del_dia ||
           p.id === dailySpecialData.activeSpecialId ||
-          (Array.isArray(dailySpecialData.activeSecondaryIds) && dailySpecialData.activeSecondaryIds.includes(p.id)) ||
-          p.id === 'b0000b21-0000-4000-a000-000000000021' ||
-          p.id === 'b0000b25-0000-4000-a000-000000000025' ||
-          p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab'
+          (Array.isArray(dailySpecialData.activeSecondaryIds) && dailySpecialData.activeSecondaryIds.includes(p.id))
         );
       } else if (selectedCategory !== 'all') {
         const cat = categories.find(c => c.id === selectedCategory || c.slug === selectedCategory);
@@ -431,10 +428,10 @@ export default function ManualOrderModal({
       return matchesCategory && matchesSearch;
     }).sort((a, b) => {
       // Priorizar el plato del día y las opciones de hoy arriba
-      const aScore = (a.id === dailySpecialData.activeSpecialId || a.id === 'b0000b21-0000-4000-a000-000000000021') ? 3 :
-        ((dailySpecialData.activeSecondaryIds && dailySpecialData.activeSecondaryIds.includes(a.id)) || a.id === 'b0000b25-0000-4000-a000-000000000025' || a.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab') ? 2 : 0;
-      const bScore = (b.id === dailySpecialData.activeSpecialId || b.id === 'b0000b21-0000-4000-a000-000000000021') ? 3 :
-        ((dailySpecialData.activeSecondaryIds && dailySpecialData.activeSecondaryIds.includes(b.id)) || b.id === 'b0000b25-0000-4000-a000-000000000025' || b.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab') ? 2 : 0;
+      const aScore = a.id === dailySpecialData.activeSpecialId ? 3 :
+        ((dailySpecialData.activeSecondaryIds && dailySpecialData.activeSecondaryIds.includes(a.id)) ? 2 : 0);
+      const bScore = b.id === dailySpecialData.activeSpecialId ? 3 :
+        ((dailySpecialData.activeSecondaryIds && dailySpecialData.activeSecondaryIds.includes(b.id)) ? 2 : 0);
       return bScore - aScore;
     });
   }, [catalogProducts, selectedCategory, searchTerm, dailySpecialData, categories]);
@@ -1173,15 +1170,19 @@ export default function ManualOrderModal({
                       Almuerzo Estrella de Hoy
                     </span>
                     <span className="text-xs font-black text-neutral-900">
-                      {catalogProducts.find(p => p.id === dailySpecialData.activeSpecialId || p.id === 'b0000b21-0000-4000-a000-000000000021')?.name?.replace(/\s*\(Especial del Día\)/i, '') || 'Arroz con Pollo Criollo'} ({formatCOP(dailySpecialData.promoPrice || 19000)})
+                      {catalogProducts.find(p => p.id === dailySpecialData.activeSpecialId)?.name?.replace(/\s*\(Especial del Día\)/i, '') || 'Poke Tori Katsu'} ({formatCOP(catalogProducts.find(p => p.id === dailySpecialData.activeSpecialId)?.price || dailySpecialData.promoPrice || 22000)})
                     </span>
-                    <span className="text-neutral-300">•</span>
-                    <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white px-1.5 py-0.5 rounded-md">
-                      Línea Poke Premium ({formatCOP(22000)})
-                    </span>
-                    <span className="text-xs font-bold text-neutral-800">
-                      Poke Tori Katsu • Salmón Fresh
-                    </span>
+                    {dailySpecialData.activeSecondaryIds && dailySpecialData.activeSecondaryIds.length > 0 && (
+                      <>
+                        <span className="text-neutral-300">•</span>
+                        <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white px-1.5 py-0.5 rounded-md">
+                          Opción del Día
+                        </span>
+                        <span className="text-xs font-bold text-neutral-800">
+                          {catalogProducts.find(p => dailySpecialData.activeSecondaryIds.includes(p.id))?.name?.replace(/\s*\(Especial del Día\)/i, '') || 'Salmón Fresh'} ({formatCOP(catalogProducts.find(p => dailySpecialData.activeSecondaryIds.includes(p.id))?.price || 22000)})
+                        </span>
+                      </>
+                    )}
                   </div>
                   <p className="text-[11px] text-neutral-600">
                     Entrada: <strong>{dailySpecialData.soupName}</strong> • Bebida: <strong>{dailySpecialData.drinkName}</strong>
@@ -1210,8 +1211,8 @@ export default function ManualOrderModal({
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5">
                 {filteredProducts.map(p => {
-                  const isPrimarySpecial = p.id === dailySpecialData.activeSpecialId || p.id === 'b0000b21-0000-4000-a000-000000000021';
-                  const isSecondarySpecial = (dailySpecialData.activeSecondaryIds && dailySpecialData.activeSecondaryIds.includes(p.id)) || p.id === 'b0000b25-0000-4000-a000-000000000025' || p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab';
+                  const isPrimarySpecial = p.id === dailySpecialData.activeSpecialId;
+                  const isSecondarySpecial = dailySpecialData.activeSecondaryIds && dailySpecialData.activeSecondaryIds.includes(p.id);
                   return (
                     <button
                       key={p.id}
