@@ -32,20 +32,17 @@ class ErrorBoundary extends React.Component {
 
     if (isChunkError) {
       try {
-        const reloadCountStr = sessionStorage.getItem("aa_chunk_reload_count") || "0";
-        const reloadCount = parseInt(reloadCountStr, 10);
-        
-        if (reloadCount < 1) {
-          // Record the auto-reload to avoid an infinite refresh loop
-          sessionStorage.setItem("aa_chunk_reload_count", String(reloadCount + 1));
+        const lastReload = Number(sessionStorage.getItem("aa_last_chunk_reload") || 0);
+        // If last reload was more than 8 seconds ago, auto-reload to fetch new deployment chunks
+        if (Date.now() - lastReload > 8000) {
+          sessionStorage.setItem("aa_last_chunk_reload", String(Date.now()));
           this.setState({ isAutoReloading: true });
           
           console.warn("ErrorBoundary: ChunkLoadError detected. Attempting automatic clean reload...");
           
-          // Small delay before reload for smooth visual feedback
           setTimeout(() => {
-            window.location.reload(true);
-          }, 800);
+            window.location.reload();
+          }, 300);
           return;
         }
       } catch (e) {
@@ -69,13 +66,16 @@ class ErrorBoundary extends React.Component {
 
   handleWipeAndReload = () => {
     try {
-      localStorage.clear();
       sessionStorage.clear();
+      if ('caches' in window) {
+        caches.keys().then((names) => {
+          names.forEach((name) => caches.delete(name));
+        });
+      }
     } catch (e) {
       console.error("ErrorBoundary failed to clear storage:", e);
     }
-    // Force bypass-cache reload
-    window.location.reload(true);
+    window.location.reload();
   };
 
   handleCopyDetails = () => {

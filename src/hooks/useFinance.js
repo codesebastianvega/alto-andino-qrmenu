@@ -131,30 +131,6 @@ export function useFinance() {
 
         if (cleanAccounts.length === 0) cleanAccounts = DEFAULT_ACCOUNTS;
 
-        // Auto-sincronizar bolsillos existentes hacia payment_methods
-        if (brandId && cleanAccounts.length > 0) {
-          supabase
-            .from('payment_methods')
-            .select('name')
-            .eq('brand_id', brandId)
-            .then(({ data: existingPMs }) => {
-              const existingNames = new Set((existingPMs || []).map(p => (p.name || '').toLowerCase().trim()));
-              cleanAccounts.forEach(async (acc) => {
-                const accName = acc.name?.trim();
-                if (accName && !existingNames.has(accName.toLowerCase())) {
-                  const methodType = acc.type === 'cash' ? 'cash' : (acc.type === 'bank' || acc.type === 'card' ? 'card' : 'transfer');
-                  await supabase.from('payment_methods').insert([{
-                    brand_id: brandId,
-                    name: accName,
-                    type: methodType,
-                    is_active: true,
-                    instructions: `Pago vía ${accName}`
-                  }]);
-                }
-              });
-            })
-            .catch(err => console.warn('[useFinance] sync payment_methods error:', err));
-        }
 
         setFinancialConfig({
           ...existingFin,

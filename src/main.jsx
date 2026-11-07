@@ -1,3 +1,13 @@
+// Auto-recover from dynamic import failures after new production deployments
+window.addEventListener('vite:preloadError', (event) => {
+  event.preventDefault();
+  const lastReload = Number(sessionStorage.getItem('aa_last_vite_reload') || 0);
+  if (Date.now() - lastReload > 8000) {
+    sessionStorage.setItem('aa_last_vite_reload', String(Date.now()));
+    window.location.reload();
+  }
+});
+
 // src/main.jsx
 import React from "react";
 import ReactDOM from "react-dom/client";
