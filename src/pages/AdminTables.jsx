@@ -1,560 +1,75 @@
-import { useState, useEffect } from 'react';
-import { QRCode } from "react-qr-code";
-import { supabase } from '../config/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useBrand } from '../context/BrandContext';
-import { useLocations } from '../context/LocationContext';
-import { useAdminModalBack } from '../hooks/useAdminModalBack';
-import { toast as toastFn } from '../components/Toast';
-import {
-  PageHeader, PrimaryButton, SecondaryButton, Badge,
-  TableContainer, Th, Modal, ModalHeader, FormField, TextInput, SelectInput
-} from '../components/admin/ui';
-
-import { 
-  Plus, LayoutGrid, MapPin, QrCode, Edit3, Trash2, Sparkles, Loader2, Printer, 
-  ChevronRight, Layers, Table, ExternalLink, TrendingUp, Smartphone, ShoppingBag, DollarSign,
-  Download, Copy
-} from 'lucide-react';
-import { isBotUserAgent } from '../utils/botDetection';
-
-const toast = {
-  success: (msg, opts) => toastFn.success(msg, { duration: 2500, ...opts }),
-  error: (msg, opts) => toastFn.error(msg, { duration: 4000, ...opts }),
-};
+import React from 'react';
+import { PrimaryButton, SecondaryButton } from '../components/admin/ui';
+import { Table, QrCode, Layers, Plus, Printer } from 'lucide-react';
+import { useAdminTablesData } from '../hooks/tables/useAdminTablesData';
+import TablesMetricsCards from '../components/admin/tables/TablesMetricsCards';
+import TablesListTable from '../components/admin/tables/TablesListTable';
+import MarketingCampaignQrsTab from '../components/admin/tables/MarketingCampaignQrsTab';
+import TableFormModal from '../components/admin/tables/TableFormModal';
+import AreasManagerModal from '../components/admin/tables/AreasManagerModal';
+import CampaignQrModal from '../components/admin/tables/CampaignQrModal';
+import PrintSheetModal from '../components/admin/tables/PrintSheetModal';
 
 export default function AdminTables({ isEmbedded = false }) {
-  const { profile, activeBrand } = useAuth();
-  const { brand: brandFromContext } = useBrand();
-  const { activeLocationId, isAllLocations, locations } = useLocations();
-  const brandId = activeBrand?.id || brandFromContext?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
-  const [tables, setTables] = useState([]);
-  const [loadingTables, setLoadingTables] = useState(false);
-  const [tableMetrics, setTableMetrics] = useState({});
-  const [loadingMetrics, setLoadingMetrics] = useState(false);
-  const [activeTab, setActiveTab] = useState('tables'); // 'tables' | 'marketing'
-  const [marketingMetrics, setMarketingMetrics] = useState({});
-  
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingTable, setEditingTable] = useState(null);
-  const [tableForm, setTableForm] = useState({ table_number: '', area_id: '' });
-  const [isSubmittingTable, setIsSubmittingTable] = useState(false);
-  const [modalTab, setModalTab] = useState('datos');
+  const {
+    activeBrand,
+    locations,
+    isAllLocations,
+    tables,
+    loadingTables,
+    tableMetrics,
+    activeTab,
+    setActiveTab,
+    marketingMetrics,
+    areas,
+    isFormOpen,
+    setIsFormOpen,
+    editingTable,
+    tableForm,
+    setTableForm,
+    isSubmittingTable,
+    modalTab,
+    setModalTab,
+    isAreaModalOpen,
+    setIsAreaModalOpen,
+    newAreaName,
+    setNewAreaName,
+    isSubmittingArea,
+    isBulkCreating,
+    isPrintSheetOpen,
+    setIsPrintSheetOpen,
+    isCampaignQrModalOpen,
+    setIsCampaignQrModalOpen,
+    campaignChannel,
+    setCampaignChannel,
+    campaignCustomName,
+    setCampaignCustomName,
+    handleBulkCreateTables,
+    handleCreateArea,
+    handleDeleteArea,
+    openCreate,
+    openEdit,
+    openQr,
+    handleSaveTable,
+    handleDeleteTable,
+    toggleTableActive,
+    getTableUrl,
+    handleCopyUrl,
+    handleDownloadQr,
+    handleDownloadAnyQr
+  } = useAdminTablesData();
 
-  // Areas Management
-  const [areas, setAreas] = useState([]);
-  const [loadingAreas, setLoadingAreas] = useState(false);
-  const [isAreaModalOpen, setIsAreaModalOpen] = useState(false);
-
-  const [newAreaName, setNewAreaName] = useState('');
-  const [isSubmittingArea, setIsSubmittingArea] = useState(false);
-  const [isBulkCreating, setIsBulkCreating] = useState(false);
-  const [isPrintSheetOpen, setIsPrintSheetOpen] = useState(false);
-  const [isCampaignQrModalOpen, setIsCampaignQrModalOpen] = useState(false);
-  const [campaignChannel, setCampaignChannel] = useState('volante_calle');
-  const [campaignCustomName, setCampaignCustomName] = useState('');
-
-  useAdminModalBack(isFormOpen, () => setIsFormOpen(false));
-  useAdminModalBack(isAreaModalOpen, () => setIsAreaModalOpen(false));
-  useAdminModalBack(isPrintSheetOpen, () => setIsPrintSheetOpen(false));
-  useAdminModalBack(isCampaignQrModalOpen, () => setIsCampaignQrModalOpen(false));
-
-  const handleBulkCreateTables = async (customCount) => {
-    const inputCount = customCount || parseInt(document.getElementById('bulk-table-count')?.value || '6', 10);
-    const count = Math.min(Math.max(1, isNaN(inputCount) ? 6 : inputCount), 50);
-
-    setIsBulkCreating(true);
-    try {
-      let targetLocId = (!isAllLocations && activeLocationId && activeLocationId !== 'all')
-        ? activeLocationId
-        : (locations?.find(l => l.is_main)?.id || locations?.[0]?.id);
-
-      if (!targetLocId) {
-        const { data: dbLocs } = await supabase.from('locations').select('id').eq('brand_id', brandId).limit(1);
-        if (dbLocs && dbLocs.length > 0) {
-          targetLocId = dbLocs[0].id;
-        } else {
-          const { data: newLoc } = await supabase.from('locations').insert([{
-            brand_id: brandId,
-            name: 'Sede Principal',
-            is_main: true,
-            is_active: true,
-            operational_modes: ['dine_in', 'takeaway', 'delivery']
-          }]).select().single();
-          targetLocId = newLoc?.id;
-        }
-      }
-
-      if (!targetLocId) {
-        toast.error('No se pudo determinar la sede para las mesas');
-        return;
-      }
-
-      const existingNumbers = new Set(tables.map(t => t.table_number.toLowerCase().trim()));
-      const newRows = [];
-      let num = 1;
-      while (newRows.length < count && num <= 100) {
-        const name = `Mesa ${num}`;
-        if (!existingNumbers.has(name.toLowerCase())) {
-          newRows.push({
-            table_number: name,
-            brand_id: brandId,
-            location_id: targetLocId,
-            is_active: true
-          });
-        }
-        num++;
-      }
-
-      if (newRows.length === 0) {
-        toast.error('Ya existen mesas con esos identificadores');
-        return;
-      }
-
-      const { error } = await supabase.from('restaurant_tables').insert(newRows);
-      if (error) throw error;
-
-      toast.success(`¡${newRows.length} mesas creadas al instante!`);
-      fetchTables();
-    } catch (err) {
-      console.error('Error in bulk table creation:', err);
-      toast.error('Error al generar mesas en lote');
-    } finally {
-      setIsBulkCreating(false);
-    }
-  };
-
-  useEffect(() => {
-    if (brandId) {
-      fetchTables();
-      fetchAreas();
-    }
-  }, [brandId, activeLocationId, isAllLocations]);
-
-  const fetchAreas = async () => {
-    setLoadingAreas(true);
-    try {
-      let query = supabase
-        .from('table_areas')
-        .select('*, locations(name)')
-        .eq('brand_id', brandId)
-        .order('sort_order', { ascending: true });
-
-      if (!isAllLocations && activeLocationId) {
-        query = query.or(`location_id.eq.${activeLocationId},location_id.is.null`);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      setAreas(data || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingAreas(false);
-    }
-  };
-
-  const fetchTables = async () => {
-    setLoadingTables(true);
-    setLoadingMetrics(true);
-    try {
-      let query = supabase
-        .from('restaurant_tables')
-        .select('*, table_areas(name), locations(name)')
-        .eq('brand_id', brandId)
-        .order('table_number');
-      
-      if (!isAllLocations && activeLocationId) {
-        query = query.or(`location_id.eq.${activeLocationId},location_id.is.null`);
-      }
-
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      setTables(data || []);
-
-      // Cargar métricas en vivo para cada mesa/activo
-      try {
-        const [eventsRes, ordersRes] = await Promise.allSettled([
-          supabase
-            .from('analytics_events')
-            .select('session_id, metadata, table_id')
-            .eq('brand_id', brandId),
-          supabase
-            .from('orders')
-            .select('id, total_amount, table_id, status')
-            .eq('brand_id', brandId)
-        ]);
-
-        const eventsData = eventsRes.status === 'fulfilled' ? (eventsRes.value.data || []) : [];
-        const ordersData = ordersRes.status === 'fulfilled' ? (ordersRes.value.data || []) : [];
-
-        const sessionsPerTable = new Map();
-        eventsData.forEach(ev => {
-          const tId = ev.table_id || ev.metadata?.mesa;
-          if (tId && ev.session_id) {
-            const key = String(tId).toLowerCase().trim();
-            if (!sessionsPerTable.has(key)) sessionsPerTable.set(key, new Set());
-            sessionsPerTable.get(key).add(ev.session_id);
-          }
-        });
-
-        const metricsMap = {};
-        (data || []).forEach(table => {
-          const idKey = String(table.id).toLowerCase().trim();
-          const numKey = String(table.table_number).toLowerCase().trim();
-
-          const scansSet = new Set();
-          if (sessionsPerTable.has(idKey)) {
-            sessionsPerTable.get(idKey).forEach(s => scansSet.add(s));
-          }
-          if (sessionsPerTable.has(numKey)) {
-            sessionsPerTable.get(numKey).forEach(s => scansSet.add(s));
-          }
-          const scans = scansSet.size;
-
-          const tableOrders = ordersData.filter(o => {
-            const oTable = String(o.table_id || '').toLowerCase().trim();
-            return oTable === idKey || oTable === numKey;
-          });
-          const completedOrders = tableOrders.filter(o => o.status !== 'cancelled');
-          const ordersCount = completedOrders.length;
-          const revenue = completedOrders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
-          const conversionRate = scans > 0 ? Math.round((ordersCount / scans) * 100) : (ordersCount > 0 ? 100 : 0);
-
-          metricsMap[table.id] = {
-            scans,
-            orders: ordersCount,
-            revenue,
-            conversionRate
-          };
-        });
-
-        setTableMetrics(metricsMap);
-
-        // Calcular métricas de canales de marketing/redes
-        const mSources = {};
-        eventsData.forEach(ev => {
-          if (isBotUserAgent(ev.user_agent)) return;
-          let rawSrc = (ev.metadata?.source || (ev.metadata?.mesa ? 'qr_mesa' : 'direct')).toLowerCase().trim();
-          const ALIASES = { ig: 'instagram_bio', instagram: 'instagram_bio', insta: 'instagram_bio', wsp: 'whatsapp', wa: 'whatsapp', ws: 'whatsapp', fb: 'facebook', face: 'facebook', tt: 'tiktok', web: 'direct' };
-          rawSrc = ALIASES[rawSrc] || rawSrc;
-          if (ev.session_id) {
-            if (!mSources[rawSrc]) mSources[rawSrc] = { sessions: new Set(), orders: 0, revenue: 0 };
-            mSources[rawSrc].sessions.add(ev.session_id);
-          }
-        });
-        ordersData.forEach(ord => {
-          if (ord.status === 'cancelled') return;
-          let rawSrc = (ord.metadata?.source || (ord.table_id ? 'qr_mesa' : 'direct')).toLowerCase().trim();
-          const ALIASES = { ig: 'instagram_bio', instagram: 'instagram_bio', insta: 'instagram_bio', wsp: 'whatsapp', wa: 'whatsapp', ws: 'whatsapp', fb: 'facebook', face: 'facebook', tt: 'tiktok', web: 'direct' };
-          rawSrc = ALIASES[rawSrc] || rawSrc;
-          if (!mSources[rawSrc]) mSources[rawSrc] = { sessions: new Set(), orders: 0, revenue: 0 };
-          mSources[rawSrc].orders++;
-          mSources[rawSrc].revenue += Number(ord.total_amount || 0);
-        });
-
-        const formattedMarketing = {};
-        Object.keys(mSources).forEach(k => {
-          const item = mSources[k];
-          const scans = item.sessions.size;
-          formattedMarketing[k] = {
-            scans,
-            orders: item.orders,
-            revenue: item.revenue,
-            conversionRate: scans > 0 ? Math.round((item.orders / scans) * 100) : (item.orders > 0 ? 100 : 0)
-          };
-        });
-        setMarketingMetrics(formattedMarketing);
-      } catch (metricsErr) {
-        console.warn('Error calculando métricas de mesas:', metricsErr);
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error('Error al cargar mesas');
-    } finally {
-      setLoadingTables(false);
-      setLoadingMetrics(false);
-    }
-  };
-
-  const handleCreateArea = async (e) => {
-    e.preventDefault();
-    if (!newAreaName.trim()) return;
-
-    let targetLocationId = (!isAllLocations && activeLocationId && activeLocationId !== 'all')
-      ? activeLocationId
-      : (tableForm.location_id || locations?.find(l => l.is_main)?.id || locations?.[0]?.id);
-
-    if (!targetLocationId) {
-      try {
-        const { data: dbLocs } = await supabase.from('locations').select('id').eq('brand_id', brandId).limit(1);
-        if (dbLocs && dbLocs.length > 0) {
-          targetLocationId = dbLocs[0].id;
-        } else {
-          const { data: newLoc } = await supabase.from('locations').insert([{
-            brand_id: brandId,
-            name: 'Sede Principal',
-            is_main: true,
-            is_active: true,
-            operational_modes: ['dine_in', 'takeaway', 'delivery']
-          }]).select().single();
-          targetLocationId = newLoc?.id;
-        }
-      } catch (errLoc) {
-        console.error('Error auto-creating location for area:', errLoc);
-      }
-    }
-
-    if (!targetLocationId) {
-      return toast.error('Por favor crea primero una sede en la sección de Sedes');
-    }
-
-    setIsSubmittingArea(true);
-    try {
-      const { error } = await supabase.from('table_areas').insert([{
-        name: newAreaName.trim(),
-        brand_id: brandId,
-        location_id: targetLocationId,
-        sort_order: areas.length
-      }]);
-      if (error) throw error;
-      setNewAreaName('');
-      fetchAreas();
-      toast.success('Área creada');
-    } catch (err) {
-      console.error(err);
-      toast.error('Error al crear área');
-    } finally {
-      setIsSubmittingArea(false);
-    }
-  };
-
-  const handleDeleteArea = async (id) => {
-    if (!window.confirm('¿Seguro? Se desvincularán las mesas de este salón.')) return;
-    try {
-      const { error } = await supabase.from('table_areas').delete().eq('id', id);
-      if (error) throw error;
-      fetchAreas();
-      fetchTables();
-      toast.success('Área eliminada');
-    } catch (err) {
-      console.error(err);
-      toast.error('Error al eliminar área');
-    }
-  };
-
-  const openCreate = () => {
-    setEditingTable(null);
-    const defaultLocationId = (!isAllLocations && activeLocationId && activeLocationId !== 'all')
-      ? activeLocationId
-      : (locations?.find(l => l.is_main)?.id || locations?.[0]?.id || '');
-    setTableForm({ 
-      table_number: '', 
-      area_id: '',
-      location_id: defaultLocationId 
-    });
-    setModalTab('datos');
-    setIsFormOpen(true);
-  };
-
-  const openEdit = (table) => {
-    setEditingTable(table);
-    setTableForm({ 
-      table_number: table.table_number,
-      area_id: table.area_id || ''
-    });
-    setModalTab('datos');
-    setIsFormOpen(true);
-  };
-
-  const openQr = (table) => {
-    setEditingTable(table);
-    setTableForm({ 
-      table_number: table.table_number,
-      area_id: table.area_id || ''
-    });
-    setModalTab('qr');
-    setIsFormOpen(true);
-  };
-
-  const handleSaveTable = async (e) => {
-    e.preventDefault();
-    if (!tableForm.table_number) return toast.error('Ingresa el identificador de la mesa');
-
-    setIsSubmittingTable(true);
-    try {
-      if (editingTable) {
-        const { error } = await supabase.from('restaurant_tables')
-          .update({ 
-            table_number: tableForm.table_number, 
-            area_id: tableForm.area_id || null,
-            updated_at: new Date() 
-          })
-          .eq('id', editingTable.id);
-        if (error) throw error;
-        toast.success('Mesa actualizada');
-      } else {
-        let effectiveLocationId = (!isAllLocations && activeLocationId && activeLocationId !== 'all')
-          ? activeLocationId
-          : (tableForm.location_id || locations?.find(l => l.is_main)?.id || locations?.[0]?.id);
-
-        if (!effectiveLocationId) {
-          try {
-            const { data: dbLocs } = await supabase.from('locations').select('id').eq('brand_id', brandId).limit(1);
-            if (dbLocs && dbLocs.length > 0) {
-              effectiveLocationId = dbLocs[0].id;
-            } else {
-              const { data: newLoc } = await supabase.from('locations').insert([{
-                brand_id: brandId,
-                name: 'Sede Principal',
-                is_main: true,
-                is_active: true,
-                operational_modes: ['dine_in', 'takeaway', 'delivery']
-              }]).select().single();
-              effectiveLocationId = newLoc?.id;
-            }
-          } catch (errLoc) {
-            console.error('Error auto-creating location for table:', errLoc);
-          }
-        }
-
-        if (!effectiveLocationId) {
-          toast.error('Por favor crea primero una sede en la sección de Sedes');
-          setIsSubmittingTable(false);
-          return;
-        }
-
-        const { error } = await supabase.from('restaurant_tables')
-          .insert([{ 
-            table_number: tableForm.table_number,
-            area_id: tableForm.area_id || null,
-            brand_id: brandId,
-            location_id: effectiveLocationId
-          }]);
-        if (error) throw error;
-        toast.success('Mesa creada');
-      }
-      setIsFormOpen(false);
-      setEditingTable(null);
-      fetchTables();
-    } catch (err) {
-      console.error(err);
-      toast.error('Error guardando mesa. Puede que el nombre ya exista.');
-    } finally {
-      setIsSubmittingTable(false);
-    }
-  };
-
-  const handleDeleteTable = async (id) => {
-    if (!window.confirm('¿Seguro que deseas eliminar esta mesa?')) return;
-    try {
-      const { error } = await supabase.from('restaurant_tables').delete().eq('id', id);
-      if (error) throw error;
-      toast.success('Mesa eliminada');
-      fetchTables();
-    } catch (err) {
-      console.error(err);
-      toast.error('Error al eliminar');
-    }
-  };
-
-  const toggleTableActive = async (table) => {
-    try {
-      const { error } = await supabase.from('restaurant_tables')
-        .update({ is_active: !table.is_active })
-        .eq('id', table.id);
-      if (error) throw error;
-      fetchTables();
-    } catch (err) {
-      console.error(err);
-      toast.error('Error actualizando estado');
-    }
-  };
-
-  const getTableUrl = (table) => {
-    const slug = activeBrand?.slug;
-    const baseUrl = window.location.origin;
-    // Solo incluimos &loc= si hay múltiples sedes y esta no es la sede principal
-    const hasMultipleLocations = locations && locations.length > 1;
-    const isMainLocation = locations?.find(l => l.id === table?.location_id)?.is_main;
-    const shouldIncludeLoc = hasMultipleLocations && !isMainLocation && table?.location_id;
-
-    const locParam = shouldIncludeLoc ? `&loc=${table.location_id}` : '';
-    return slug 
-      ? `${baseUrl}/${slug}/?mesa=${encodeURIComponent(table?.table_number || '')}${locParam}`
-      : `${baseUrl}?mesa=${encodeURIComponent(table?.table_number || '')}${locParam}`;
-  };
-
-  const handleCopyUrl = (table) => {
-    navigator.clipboard.writeText(getTableUrl(table));
-    toast.success('Enlace copiado al portapapeles');
-  };
-
-  const handleDownloadQr = () => {
-    const svg = document.getElementById(`qr-code-${editingTable.id}`);
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-    img.onload = () => {
-      canvas.width = img.width + 40; // Add padding
-      canvas.height = img.height + 40;
-      ctx.fillStyle = "white"; // White background
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 20, 20); // Draw image with 20px offset for padding
-      const pngFile = canvas.toDataURL("image/png");
-      const downloadLink = document.createElement("a");
-      downloadLink.download = `QR_Mesa_${editingTable.table_number}.png`;
-      downloadLink.href = pngFile;
-      downloadLink.click();
-    };
-    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
-  };
-
-  const handleDownloadAnyQr = (svgId, fileName = 'QR_Codigo', title = '', subtitle = '') => {
-    const svg = document.getElementById(svgId);
-    if (!svg) {
-      toast.error('No se pudo encontrar el código QR');
-      return;
-    }
-    try {
-      const svgData = new XMLSerializer().serializeToString(svg);
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      canvas.width = 500;
-      canvas.height = 580;
-      img.onload = () => {
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 50, 50, 400, 400);
-        ctx.fillStyle = '#111827';
-        ctx.font = 'bold 22px system-ui';
-        ctx.textAlign = 'center';
-        ctx.fillText(title || activeBrand?.name || 'Boku Bento', 250, 490);
-        ctx.fillStyle = '#6B7280';
-        ctx.font = 'normal 15px system-ui';
-        ctx.fillText(subtitle || 'Escanea para ordenar', 250, 520);
-
-        const a = document.createElement('a');
-        a.download = `${fileName}.png`;
-        a.href = canvas.toDataURL('image/png');
-        a.click();
-        toast.success('QR descargado');
-      };
-      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
-    } catch {
-      toast.error('Error descargando QR');
-    }
-  };
-
-  if (loadingTables) return (
-    <div className="flex items-center justify-center h-64 text-gray-400 text-sm font-medium">Cargando…</div>
-  );
+  if (loadingTables) {
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-400 text-sm font-medium">
+        Cargando…
+      </div>
+    );
+  }
 
   return (
     <div className={isEmbedded ? "" : "p-8 max-w-7xl mx-auto space-y-6"}>
+      {/* ── Header Principal (Modo Independiente) ── */}
       {!isEmbedded && (
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 backdrop-blur-xl p-6 rounded-[2rem] border border-white shadow-xl shadow-gray-200/40 mb-8">
           <div className="space-y-1">
@@ -565,7 +80,11 @@ export default function AdminTables({ isEmbedded = false }) {
             <h2 className="text-2xl font-black text-gray-900 tracking-tight">Gestión de Mesas</h2>
             <p className="text-xs text-gray-400 font-medium">Controla tus ubicaciones físicas y descarga sus códigos QR únicos.</p>
           </div>
-          <div className="flex gap-3 w-full sm:w-auto">
+          <div className="flex gap-3 w-full sm:w-auto flex-wrap">
+            <SecondaryButton onClick={() => setIsPrintSheetOpen(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 whitespace-nowrap">
+              <Printer size={16} />
+              Imprimir QRs
+            </SecondaryButton>
             <SecondaryButton onClick={() => setIsCampaignQrModalOpen(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 whitespace-nowrap">
               <QrCode size={16} />
               QRs Volantes & Redes
@@ -582,6 +101,7 @@ export default function AdminTables({ isEmbedded = false }) {
         </div>
       )}
 
+      {/* ── Header Reducido (Modo Embebido en Configuración) ── */}
       {isEmbedded && (
         <div className="flex justify-between items-center mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200/50">
            <div>
@@ -594,7 +114,6 @@ export default function AdminTables({ isEmbedded = false }) {
         </div>
       )}
 
-      
       {/* ── Selector de Pestañas: Mesas Físicas vs QRs de Redes ── */}
       <div className="flex items-center gap-2 p-1.5 bg-gray-100/90 rounded-2xl w-fit border border-gray-200/60 mb-6">
         <button
@@ -623,761 +142,82 @@ export default function AdminTables({ isEmbedded = false }) {
         </button>
       </div>
 
+      {/* ── Contenido de Pestañas ── */}
       {activeTab === 'tables' ? (
         <>
-          {/* ── Resumen de Rendimiento de Mesas y QRs Físicos ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-gray-200/80 shadow-2xs space-y-1">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Smartphone className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Escaneos Reales</span>
-          </p>
-          <p className="text-2xl font-black text-gray-900 tracking-tight">
-            {Object.values(tableMetrics).reduce((acc, m) => acc + (m.scans || 0), 0)}
-          </p>
-        </div>
-        <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-gray-200/80 shadow-2xs space-y-1">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-            <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Pedidos en Mesa</span>
-          </p>
-          <p className="text-2xl font-black text-gray-900 tracking-tight">
-            {Object.values(tableMetrics).reduce((acc, m) => acc + (m.orders || 0), 0)}
-          </p>
-        </div>
-        <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-gray-200/80 shadow-2xs space-y-1">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-            <DollarSign className="w-3.5 h-3.5 text-amber-600" />
-            <span>Facturación QR</span>
-          </p>
-          <p className="text-2xl font-black text-gray-900 tracking-tight">
-            ${Object.values(tableMetrics).reduce((acc, m) => acc + (m.revenue || 0), 0).toLocaleString('es-CO')}
-          </p>
-        </div>
-        <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-gray-200/80 shadow-2xs space-y-1">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-            <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
-            <span>Conversión QR</span>
-          </p>
-          <p className="text-2xl font-black text-gray-900 tracking-tight">
-            {(() => {
-              const scans = Object.values(tableMetrics).reduce((acc, m) => acc + (m.scans || 0), 0);
-              const orders = Object.values(tableMetrics).reduce((acc, m) => acc + (m.orders || 0), 0);
-              return scans > 0 ? Math.round((orders / scans) * 100) : 0;
-            })()}%
-          </p>
-        </div>
-      </div>
-
-      <TableContainer>
-        <table className="w-full min-w-[600px] border-collapse">
-          <thead>
-            <tr>
-              <Th>Identificador</Th>
-              <Th>Salón / Entorno</Th>
-              <Th>Métricas del QR (En Vivo)</Th>
-              <Th>Estado</Th>
-              <Th right>Acciones</Th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {tables.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="p-8 sm:p-12 text-center bg-gradient-to-b from-gray-50/80 to-white rounded-3xl border border-dashed border-gray-200">
-                  <div className="max-w-md mx-auto space-y-4">
-                    <div className="w-14 h-14 mx-auto rounded-2xl bg-[#2f4131] text-white flex items-center justify-center shadow-lg shadow-[#2f4131]/20">
-                      <Table size={28} />
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-bold text-gray-900">¿Cuántas mesas tienes en tu local?</h4>
-                      <p className="text-xs text-gray-500 mt-1">Generaremos tus códigos QR individuales listos para descargar e imprimir con un solo clic.</p>
-                    </div>
-                    <div className="flex items-center justify-center gap-2 pt-2">
-                      <input 
-                        type="number" 
-                        min="1" 
-                        max="50" 
-                        defaultValue="6"
-                        id="bulk-table-count"
-                        className="w-20 px-3 py-2 text-center text-sm font-bold bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2f4131] outline-none"
-                      />
-                      <button
-                        onClick={() => handleBulkCreateTables()}
-                        disabled={isBulkCreating}
-                        className="px-5 py-2.5 text-xs font-bold bg-[#2f4131] hover:bg-[#243326] text-white rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                      >
-                        {isBulkCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-amber-300" />}
-                        <span>Crear Mesas al Instante</span>
-                      </button>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            ) : tables.map((table) => (
-              <tr key={table.id} className="group hover:bg-gray-50/60 transition-all duration-300">
-                <td className="px-6 py-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-[1.2rem] bg-white shadow-sm border border-gray-100 flex items-center justify-center text-[#2f4131] group-hover:bg-[#2f4131] group-hover:text-white group-hover:border-[#2f4131] group-hover:shadow-[0_8px_16px_-4px_rgba(47,65,49,0.2)] transition-all duration-500">
-                       <Table size={20} className={table.is_active ? "" : "opacity-30"} />
-                    </div>
-                    <div className="space-y-0.5">
-                      <div className="font-bold text-gray-900 text-base tracking-tight group-hover:translate-x-1 transition-transform duration-300">{table.table_number}</div>
-                      {isAllLocations && table.locations?.name && (
-                        <div className="flex items-center gap-1.5 py-0.5">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#2f4131]/5 text-[#2f4131] text-[9px] font-black uppercase tracking-wider border border-[#2f4131]/10">
-                            <MapPin size={8} />
-                            {table.locations.name}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-6">
-                  <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-colors ${
-                      table.table_areas?.name 
-                        ? 'bg-indigo-50/50 border-indigo-100 text-indigo-600' 
-                        : 'bg-gray-50 border-gray-100 text-gray-400 italic font-medium lowercase tracking-normal'
-                    }`}>
-                      {table.table_areas?.name ? (
-                        <>
-                          <Layers size={10} className="mr-1.5" />
-                          {table.table_areas.name}
-                        </>
-                      ) : 'sin salón'}
-                    </span>
-                  </div>
-                </td>
-                {/* ── Métricas en Vivo de la Mesa / QR ── */}
-                <td className="px-6 py-6">
-                  {(() => {
-                    const m = tableMetrics[table.id] || { scans: 0, orders: 0, revenue: 0, conversionRate: 0 };
-                    const hasActivity = m.scans > 0 || m.orders > 0;
-                    return (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-bold ${
-                            m.scans > 0 ? 'bg-indigo-50 text-indigo-700 border border-indigo-200/60' : 'bg-gray-100 text-gray-500'
-                          }`} title="Dispositivos distintos que han abierto este QR">
-                            <span>📱</span>
-                            <span>{m.scans} {m.scans === 1 ? 'escaneo' : 'escaneos'}</span>
-                          </span>
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-bold ${
-                            m.orders > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs' : 'bg-gray-100 text-gray-400'
-                          }`} title="Pedidos generados">
-                            <span>🛍️</span>
-                            <span>{m.orders} {m.orders === 1 ? 'pedido' : 'pedidos'}</span>
-                          </span>
-                        </div>
-                        {hasActivity ? (
-                          <div className="flex items-center gap-2 text-[10px] text-gray-500 font-medium pt-0.5">
-                            <span className="font-black text-emerald-800">${Number(m.revenue).toLocaleString('es-CO')} COP</span>
-                            <span>•</span>
-                            <span className="font-bold text-gray-400">{m.conversionRate}% éxito</span>
-                          </div>
-                        ) : (
-                          <span className="text-[10px] text-gray-400 italic">Listo para escanear</span>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </td>
-                <td className="px-6 py-6">
-                  <button onClick={() => toggleTableActive(table)} className="active:scale-95 transition-transform">
-                    <Badge variant={table.is_active ? 'green' : 'gray'}>
-                      {table.is_active ? 'Activa' : 'Inactiva'}
-                    </Badge>
-                  </button>
-                </td>
-                <td className="px-6 py-6 text-right">
-                  <div className="flex justify-end items-center gap-2">
-                    <button onClick={() => openQr(table)}
-                      className="p-2.5 text-indigo-600 hover:bg-white hover:shadow-md hover:border-indigo-100 rounded-2xl transition-all border border-transparent flex items-center gap-2 font-bold text-[11px] uppercase tracking-wider">
-                      <QrCode size={18} />
-                      <span className="hidden sm:inline">QR</span>
-                    </button>
-                    <div className="w-px h-6 bg-gray-100 mx-1" />
-                    <button onClick={() => openEdit(table)}
-                      className="p-2.5 text-gray-400 hover:text-gray-900 hover:bg-white hover:shadow-md hover:border-gray-200 rounded-2xl transition-all border border-transparent flex items-center gap-1.5">
-                      <Edit3 size={18} />
-                    </button>
-                    <button onClick={() => handleDeleteTable(table.id)}
-                      className="p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50/50 rounded-2xl transition-all border border-transparent">
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </TableContainer>
+          <TablesMetricsCards tableMetrics={tableMetrics} />
+          <TablesListTable
+            tables={tables}
+            tableMetrics={tableMetrics}
+            isAllLocations={isAllLocations}
+            isBulkCreating={isBulkCreating}
+            handleBulkCreateTables={handleBulkCreateTables}
+            toggleTableActive={toggleTableActive}
+            openQr={openQr}
+            openEdit={openEdit}
+            handleDeleteTable={handleDeleteTable}
+          />
         </>
       ) : (
-        /* ── Vista 2: QRs de Redes & Campañas ── */
-        <div className="space-y-6">
-          {/* Banner Explicativo */}
-          <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-white p-5 rounded-3xl border border-emerald-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">🚀</span>
-                <h3 className="text-xs font-black uppercase tracking-wider text-emerald-950">
-                  QRs y Enlaces de Campaña para Domicilios
-                </h3>
-              </div>
-              <p className="text-xs text-emerald-900/80 leading-relaxed max-w-2xl">
-                A diferencia de las mesas físicas, estos QRs y enlaces están optimizados para poner en tus <strong>redes sociales, volantes o chats de WhatsApp</strong>. Abren el menú en modo Domicilio / Para Llevar y miden exactamente cuántas ventas te genera cada canal.
-              </p>
-            </div>
-            <button
-              onClick={() => setIsCampaignQrModalOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-[#2f4131] hover:bg-[#253527] text-white text-xs font-bold transition-all shadow-md shadow-[#2f4131]/20 shrink-0 flex items-center gap-2 active:scale-95 cursor-pointer"
-            >
-              <Plus size={16} />
-              <span>+ Campaña Personalizada</span>
-            </button>
-          </div>
-
-          {/* Grid de Canales Principales */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[
-              {
-                id: 'whatsapp',
-                name: 'WhatsApp Directo',
-                icon: '💬',
-                channel: 'whatsapp',
-                desc: 'Para estados de WhatsApp o mensajes a clientes',
-                gradient: 'from-emerald-500 to-teal-600',
-                border: 'border-emerald-200 hover:border-emerald-500'
-              },
-              {
-                id: 'instagram_bio',
-                name: 'Instagram Bio / Historias',
-                icon: '📸',
-                channel: 'instagram_bio',
-                desc: 'Para el enlace de tu perfil de Instagram o historias',
-                gradient: 'from-[#833AB4] via-[#FD1D1D] to-[#FCB045]',
-                border: 'border-pink-200 hover:border-pink-500'
-              },
-              {
-                id: 'facebook',
-                name: 'Facebook Ads / Página',
-                icon: '📘',
-                channel: 'facebook',
-                desc: 'Para anuncios pagados o botón de tu Fanpage',
-                gradient: 'from-[#1877F2] to-[#0A54BD]',
-                border: 'border-blue-200 hover:border-blue-500'
-              },
-              {
-                id: 'tiktok',
-                name: 'TikTok Bio',
-                icon: '🎵',
-                channel: 'tiktok',
-                desc: 'Para tu biografía o videos de TikTok',
-                gradient: 'from-gray-900 via-neutral-800 to-black',
-                border: 'border-neutral-300 hover:border-neutral-900'
-              },
-              {
-                id: 'volante_calle',
-                name: 'Volantes Calle / Flyers',
-                icon: '📄',
-                channel: 'volante_calle',
-                desc: 'Para volantes impresos a repartir en la calle',
-                gradient: 'from-amber-500 to-orange-600',
-                border: 'border-amber-200 hover:border-amber-500'
-              },
-              {
-                id: 'empaque_delivery',
-                name: 'Stickers de Empaque',
-                icon: '🛍️',
-                channel: 'empaque_delivery',
-                desc: 'Para pegar en las bolsas o cajas de comida',
-                gradient: 'from-rose-500 to-pink-600',
-                border: 'border-rose-200 hover:border-rose-500'
-              }
-            ].map(ch => {
-              const chUrl = `${window.location.origin}/${activeBrand?.slug || 'boku-bento'}/?src=${encodeURIComponent(ch.channel)}`;
-              const m = marketingMetrics[ch.channel] || { scans: 0, orders: 0, revenue: 0, conversionRate: 0 };
-              const qrId = `marketing-card-qr-${ch.id}`;
-
-              return (
-                <div 
-                  key={ch.id} 
-                  className={`bg-white rounded-3xl p-5 border shadow-sm transition-all duration-200 space-y-4 relative overflow-hidden flex flex-col justify-between ${ch.border}`}
-                >
-                  <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${ch.gradient}`} />
-
-                  <div className="space-y-3 pt-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{ch.icon}</span>
-                        <div>
-                          <h4 className="text-xs font-black uppercase tracking-tight text-gray-900">{ch.name}</h4>
-                          <p className="text-[10px] text-gray-400">{ch.desc}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* QR Preview Center */}
-                    <div className="p-3 bg-gray-50/70 rounded-2xl border border-gray-100 flex items-center justify-center">
-                      <div className="bg-white p-2.5 rounded-xl border border-gray-200 shadow-2xs">
-                        <QRCode
-                          id={qrId}
-                          value={chUrl}
-                          size={130}
-                          level="M"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Métricas del canal */}
-                    <div className="grid grid-cols-3 gap-1.5 text-center bg-gray-50/80 p-2 rounded-xl border border-gray-100">
-                      <div>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase">Escaneos</p>
-                        <p className="text-xs font-black text-gray-900">{m.scans}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase">Pedidos</p>
-                        <p className="text-xs font-black text-emerald-700">{m.orders}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase">Ventas</p>
-                        <p className="text-xs font-black text-gray-900">${Number(m.revenue).toLocaleString('es-CO')}</p>
-                      </div>
-                    </div>
-
-                    {/* Enlace limpio */}
-                    <div className="space-y-1">
-                      <code className="block text-[10px] font-mono text-gray-700 bg-gray-50 border border-gray-200 p-2 rounded-lg truncate select-all" title={chUrl}>
-                        {chUrl}
-                      </code>
-                    </div>
-                  </div>
-
-                  {/* Acciones del QR */}
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100">
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadAnyQr(qrId, `QR_${activeBrand?.slug || 'menu'}_${ch.channel}`, activeBrand?.name, `Campaña: ${ch.name}`)}
-                      className="py-2 px-3 rounded-xl bg-[#2f4131] hover:bg-[#253527] text-white text-xs font-bold transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Download size={14} />
-                      <span>Descargar</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(chUrl);
-                        toast.success(`Enlace de ${ch.name} copiado`);
-                      }}
-                      className="py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Copy size={14} />
-                      <span>Copiar Link</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <MarketingCampaignQrsTab
+          activeBrand={activeBrand}
+          marketingMetrics={marketingMetrics}
+          setIsCampaignQrModalOpen={setIsCampaignQrModalOpen}
+          handleDownloadAnyQr={handleDownloadAnyQr}
+        />
       )}
 
-      {isFormOpen && (
-        <Modal onClose={() => setIsFormOpen(false)}>
-          <ModalHeader 
-            title={editingTable ? `Gestionar Mesa — ${editingTable.table_number}` : 'Nueva Mesa'} 
-            subtitle={editingTable ? 'Edita la configuración o descarga el código QR de esta mesa.' : 'Identifica la mesa para luego vincularla a un código QR.'}
-            onClose={() => setIsFormOpen(false)} 
-          />
+      {/* ── Modales Especializados ── */}
+      <TableFormModal
+        isFormOpen={isFormOpen}
+        setIsFormOpen={setIsFormOpen}
+        editingTable={editingTable}
+        modalTab={modalTab}
+        setModalTab={setModalTab}
+        tableForm={tableForm}
+        setTableForm={setTableForm}
+        isSubmittingTable={isSubmittingTable}
+        handleSaveTable={handleSaveTable}
+        isAllLocations={isAllLocations}
+        locations={locations}
+        areas={areas}
+        getTableUrl={getTableUrl}
+        handleDownloadQr={handleDownloadQr}
+        handleCopyUrl={handleCopyUrl}
+      />
 
-          {/* Tabs — solo visibles en modo edición */}
-          {editingTable && (
-            <div className="flex px-7 gap-1 border-b border-gray-100 bg-gray-50/50">
-              {[
-                { id: 'datos', label: 'Datos', icon: <Edit3 size={14} /> },
-                { id: 'qr', label: 'QR & Enlace', icon: <QrCode size={14} /> }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setModalTab(tab.id)}
-                  className={`flex items-center gap-2 px-5 py-3.5 text-[11px] font-black uppercase tracking-widest border-b-2 transition-all ${
-                    modalTab === tab.id 
-                      ? 'border-[#2f4131] text-[#2f4131]' 
-                      : 'border-transparent text-gray-400 hover:text-gray-600'
-                  }`}
-                >
-                  {tab.icon}
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          )}
+      <AreasManagerModal
+        isAreaModalOpen={isAreaModalOpen}
+        setIsAreaModalOpen={setIsAreaModalOpen}
+        handleCreateArea={handleCreateArea}
+        handleDeleteArea={handleDeleteArea}
+        newAreaName={newAreaName}
+        setNewAreaName={setNewAreaName}
+        isSubmittingArea={isSubmittingArea}
+        areas={areas}
+        isAllLocations={isAllLocations}
+        locations={locations}
+        tableForm={tableForm}
+        setTableForm={setTableForm}
+      />
 
-          {/* Tab: Datos */}
-          {(modalTab === 'datos' || !editingTable) && (
-            <form onSubmit={handleSaveTable} className="p-7 space-y-6">
-              <div className="space-y-4">
-                <FormField>
-                  <label className="block text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">Identificador de Mesa</label>
-                  <TextInput
-                    value={tableForm.table_number}
-                    onChange={(e) => setTableForm({ ...tableForm, table_number: e.target.value })}
-                    placeholder="Ej. Mesa 1, Sala Principal, VIP..."
-                    required
-                  />
-                </FormField>
+      <CampaignQrModal
+        isCampaignQrModalOpen={isCampaignQrModalOpen}
+        setIsCampaignQrModalOpen={setIsCampaignQrModalOpen}
+        campaignChannel={campaignChannel}
+        setCampaignChannel={setCampaignChannel}
+        campaignCustomName={campaignCustomName}
+        setCampaignCustomName={setCampaignCustomName}
+        activeBrand={activeBrand}
+      />
 
-                {isAllLocations && !editingTable && locations.length > 1 && (
-                  <FormField label="Sede">
-                    <SelectInput
-                      value={tableForm.location_id || ''}
-                      onChange={(e) => setTableForm({ ...tableForm, location_id: e.target.value, area_id: '' })}
-                      required
-                    >
-                      <option value="" disabled>Seleccionar Sede...</option>
-                      {locations.map(loc => (
-                        <option key={loc.id} value={loc.id}>{loc.name}</option>
-                      ))}
-                    </SelectInput>
-                  </FormField>
-                )}
-
-                <FormField label="Salón / Entorno">
-                  <SelectInput
-                    value={tableForm.area_id}
-                    onChange={(e) => setTableForm({ ...tableForm, area_id: e.target.value })}
-                  >
-                    <option value="">Sin salón específico</option>
-                    {areas.map(area => (
-                      <option key={area.id} value={area.id}>
-                        {area.name} {isAllLocations && area.locations?.name ? `(${area.locations.name})` : ''}
-                      </option>
-                    ))}
-                  </SelectInput>
-                </FormField>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <div className="flex-1">
-                  <SecondaryButton 
-                    onClick={() => setIsFormOpen(false)}
-                    className="w-full justify-center"
-                  >
-                    Cancelar
-                  </SecondaryButton>
-                </div>
-                <div className="flex-1">
-                  <PrimaryButton 
-                    type="submit" 
-                    disabled={isSubmittingTable}
-                    className="w-full justify-center"
-                  >
-                    {isSubmittingTable ? 'Guardando...' : editingTable ? 'Guardar Cambios' : 'Crear Mesa'}
-                  </PrimaryButton>
-                </div>
-              </div>
-            </form>
-          )}
-
-          {/* Tab: QR & Enlace */}
-          {modalTab === 'qr' && editingTable && (
-            <div className="p-7 flex flex-col items-center justify-center space-y-6">
-              {/* Sede info */}
-              {editingTable.locations?.name && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-xl border border-gray-100 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                  <MapPin size={12} />
-                  {editingTable.locations.name}
-                </div>
-              )}
-
-              {/* QR Code */}
-              <div className="bg-white p-5 rounded-2xl shadow-lg shadow-gray-100 border border-gray-100">
-                <QRCode 
-                  id={`qr-code-${editingTable.id}`}
-                  value={getTableUrl(editingTable)} 
-                  size={220}
-                  level="H"
-                  className="w-full h-auto"
-                />
-              </div>
-
-              {/* URL preview */}
-              <div className="w-full max-w-sm bg-gray-50 rounded-xl border border-gray-100 p-3">
-                <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1.5">Enlace del Menú</p>
-                <p className="text-[11px] font-mono text-gray-600 break-all leading-relaxed select-all">{getTableUrl(editingTable)}</p>
-              </div>
-              
-              {/* Action buttons */}
-              <div className="flex flex-col gap-3 w-full max-w-sm">
-                {/* Ver Menú — abre en nueva pestaña */}
-                <a 
-                  href={getTableUrl(editingTable)} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2.5 w-full px-6 py-3.5 bg-[#2f4131] text-white rounded-xl font-bold text-[12px] uppercase tracking-widest shadow-lg shadow-[#2f4131]/20 hover:bg-[#3d5440] hover:shadow-xl active:scale-[0.98] transition-all"
-                >
-                  <ExternalLink size={16} />
-                  Ver Menú
-                </a>
-
-                <div className="flex gap-3">
-                  <PrimaryButton onClick={handleDownloadQr} className="flex-1 justify-center text-[11px]">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Descargar QR
-                  </PrimaryButton>
-                  <SecondaryButton onClick={() => handleCopyUrl(editingTable)} className="flex-1 justify-center text-[11px]">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                    </svg>
-                    Copiar URL
-                  </SecondaryButton>
-                </div>
-              </div>
-            </div>
-          )}
-        </Modal>
-      )}
-
-
-      {/* Modal de QRs para Volantes & Redes con Atribución */}
-      {isCampaignQrModalOpen && (
-        <Modal onClose={() => setIsCampaignQrModalOpen(false)}>
-          <ModalHeader 
-            title="Generador de QRs para Volantes & Campañas" 
-            onClose={() => setIsCampaignQrModalOpen(false)} 
-          />
-          <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
-            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200/80 space-y-1">
-              <h4 className="text-xs font-black uppercase tracking-wider text-amber-950">Atribución Inteligente de Ventas</h4>
-              <p className="text-xs text-amber-900/80 leading-relaxed">
-                Genera QRs especiales para imprimir en volantes callejeros, stickers de empaque o links de Instagram. Aluna y Clarity medirán cuántas personas escanean cada uno y cuánto dinero te generaron.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-500 block">
-                Selecciona el Tipo de Campaña:
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {[
-                  { id: 'volante_calle', label: '📄 Volante Calle' },
-                  { id: 'instagram_bio', label: '📸 Instagram Bio' },
-                  { id: 'whatsapp', label: '💬 WhatsApp' },
-                  { id: 'empaque_delivery', label: '🛍️ Empaque' },
-                  { id: 'custom', label: '✨ Personalizado' }
-                ].map(ch => (
-                  <button
-                    key={ch.id}
-                    onClick={() => setCampaignChannel(ch.id)}
-                    className={`p-2.5 rounded-xl text-xs font-bold border transition-all text-left ${
-                      campaignChannel === ch.id 
-                        ? 'bg-[#2f4131] text-white border-[#2f4131]' 
-                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
-                    }`}
-                  >
-                    {ch.label}
-                  </button>
-                ))}
-              </div>
-
-              {campaignChannel === 'custom' && (
-                <input
-                  type="text"
-                  placeholder="Nombre de campaña (ej: volante_octubre)"
-                  value={campaignCustomName}
-                  onChange={(e) => setCampaignCustomName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-gray-300 focus:outline-hidden"
-                />
-              )}
-
-              {(() => {
-                const finalChannel = campaignChannel === 'custom' 
-                  ? (campaignCustomName.trim().toLowerCase().replace(/\s+/g, '_') || 'campana_especial')
-                  : campaignChannel;
-                const campaignUrl = `${window.location.origin}/${activeBrand?.slug || 'boku-bento'}/?src=${encodeURIComponent(finalChannel)}`;
-
-                return (
-                  <div className="flex flex-col sm:flex-row items-center gap-6 p-5 bg-gray-50 rounded-2xl border border-gray-200">
-                    <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-xs shrink-0">
-                      <QRCode id="tables-campaign-qr" value={campaignUrl} size={130} level="H" />
-                    </div>
-                    <div className="space-y-3 flex-1 w-full">
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Enlace con Atribución:</span>
-                        <code className="block text-xs font-mono text-gray-800 break-all bg-white p-2 rounded-lg border border-gray-200">
-                          {campaignUrl}
-                        </code>
-                      </div>
-                      <div className="flex gap-2">
-                        <PrimaryButton 
-                          onClick={() => {
-                            const svg = document.getElementById('tables-campaign-qr');
-                            if (!svg) return;
-                            const svgData = new XMLSerializer().serializeToString(svg);
-                            const canvas = document.createElement('canvas');
-                            const ctx = canvas.getContext('2d');
-                            const img = new Image();
-                            canvas.width = 500;
-                            canvas.height = 580;
-                            img.onload = () => {
-                              ctx.fillStyle = '#FFFFFF';
-                              ctx.fillRect(0, 0, canvas.width, canvas.height);
-                              ctx.drawImage(img, 50, 50, 400, 400);
-                              ctx.fillStyle = '#111827';
-                              ctx.font = 'bold 20px system-ui';
-                              ctx.textAlign = 'center';
-                              ctx.fillText(activeBrand?.name || 'Menú Digital', 250, 490);
-                              ctx.fillStyle = '#6B7280';
-                              ctx.font = 'normal 15px system-ui';
-                              ctx.fillText(`Campaña: ${finalChannel}`, 250, 520);
-                              const link = document.createElement('a');
-                              link.download = `QR_${activeBrand?.slug || 'menu'}_${finalChannel}.png`;
-                              link.href = canvas.toDataURL('image/png');
-                              link.click();
-                              toast.success('QR descargado');
-                            };
-                            img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
-                          }}
-                          className="text-xs py-2 px-4 flex-1 justify-center"
-                        >
-                          Descargar PNG
-                        </PrimaryButton>
-                        <SecondaryButton 
-                          onClick={() => {
-                            navigator.clipboard.writeText(campaignUrl);
-                            toast.success('Enlace copiado');
-                          }}
-                          className="text-xs py-2 px-4 flex-1 justify-center"
-                        >
-                          Copiar Enlace
-                        </SecondaryButton>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Modal de Impresión de QRs en Lote */}
-      {isPrintSheetOpen && (
-        <Modal onClose={() => setIsPrintSheetOpen(false)}>
-          <style dangerouslySetInnerHTML={{ __html: `
-            @media print {
-              body * { visibility: hidden !important; }
-              #printable-qr-sheet, #printable-qr-sheet * { visibility: visible !important; }
-              #printable-qr-sheet { position: absolute; left: 0; top: 0; width: 100%; display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 24px !important; padding: 20px !important; }
-            }
-          `}} />
-          <ModalHeader 
-            title="Plantilla Imprimible de Mesas" 
-            onClose={() => setIsPrintSheetOpen(false)} 
-          />
-          <div className="p-6 max-h-[80vh] overflow-y-auto space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
-              <div>
-                <h4 className="text-sm font-bold text-emerald-950">Tarjetas listas para imprimir y colocar en tus mesas</h4>
-                <p className="text-xs text-emerald-700">Imprime en papel o cartulina para recortar. Cada código abre la carta asignando la comanda a su mesa.</p>
-              </div>
-              <PrimaryButton onClick={() => window.print()} className="gap-2 px-5 py-2.5 shadow-md whitespace-nowrap">
-                <Printer size={16} />
-                Imprimir Hoja
-              </PrimaryButton>
-            </div>
-
-            <div id="printable-qr-sheet" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-              {tables.map(table => (
-                <div key={table.id} className="p-5 bg-white border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center text-center space-y-2.5 break-inside-avoid">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[#2f4131] bg-[#2f4131]/5 px-2.5 py-0.5 rounded-full">{activeBrand?.name || 'Menú Digital'}</span>
-                  <div className="text-xl font-black text-gray-900 tracking-tight">{table.table_number}</div>
-                  <div className="p-2.5 bg-white rounded-xl shadow-xs border border-gray-100">
-                    <QRCode value={getTableUrl(table)} size={130} level="M" />
-                  </div>
-                  <p className="text-[10px] text-gray-500 font-medium">Escanea aquí con tu celular para ver la carta y pedir</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {isAreaModalOpen && (
-        <Modal onClose={() => setIsAreaModalOpen(false)}>
-          <ModalHeader 
-            title="Gestionar Salones / Áreas" 
-            subtitle="Crea entornos para organizar tus mesas (ej. Terraza, VIP)."
-            onClose={() => setIsAreaModalOpen(false)} 
-          />
-          <div className="p-7 space-y-6">
-            <form onSubmit={handleCreateArea} className="space-y-3">
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <TextInput 
-                    placeholder="Nuevo salón (ej. Terraza)"
-                    value={newAreaName}
-                    onChange={(e) => setNewAreaName(e.target.value)}
-                  />
-                </div>
-                <PrimaryButton type="submit" disabled={isSubmittingArea}>
-                  {isSubmittingArea ? '...' : 'Añadir'}
-                </PrimaryButton>
-              </div>
-              
-              {isAllLocations && locations.length > 1 && (
-                <div className="px-1">
-                  <SelectInput
-                    value={tableForm.location_id || ''}
-                    onChange={(e) => setTableForm({ ...tableForm, location_id: e.target.value })}
-                    className="text-[10px] font-bold h-9"
-                    required
-                  >
-                    <option value="" disabled>Sede para el salón...</option>
-                    {locations.map(loc => (
-                      <option key={loc.id} value={loc.id}>{loc.name}</option>
-                    ))}
-                  </SelectInput>
-                </div>
-              )}
-            </form>
-
-            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-              {areas.length === 0 ? (
-                <p className="text-center text-xs text-gray-400 py-4 italic">No hay salones creados.</p>
-              ) : areas.map(area => (
-                <div key={area.id} className="flex flex-col gap-1 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-700">{area.name}</span>
-                    <button onClick={() => handleDeleteArea(area.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-colors">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                      </svg>
-                    </button>
-                  </div>
-                  {isAllLocations && area.locations?.name && (
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                      <MapPin size={10} className="text-gray-300" />
-                      {area.locations.name}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-2">
-              <SecondaryButton onClick={() => setIsAreaModalOpen(false)} className="w-full justify-center">
-                Listo
-              </SecondaryButton>
-            </div>
-          </div>
-        </Modal>
-      )}
+      <PrintSheetModal
+        isPrintSheetOpen={isPrintSheetOpen}
+        setIsPrintSheetOpen={setIsPrintSheetOpen}
+        tables={tables}
+        getTableUrl={getTableUrl}
+        activeBrand={activeBrand}
+      />
     </div>
   );
 }
