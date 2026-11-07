@@ -83,6 +83,8 @@ export default function ManualOrderModal({
   const [splitCashAmount, setSplitCashAmount] = useState('');
   const [splitDigitalAmount, setSplitDigitalAmount] = useState('');
   const [splitDigitalMethod, setSplitDigitalMethod] = useState('nequi');
+  const [digitalAccountsList, setDigitalAccountsList] = useState([]);
+  const [selectedDigitalAccountId, setSelectedDigitalAccountId] = useState('');
 
   // Fetch catalog of products and locations
   useEffect(() => {
@@ -92,7 +94,7 @@ export default function ManualOrderModal({
     const fetchData = async () => {
       setLoadingCatalog(true);
       try {
-        const [prodsRes, locsRes, pmRes, rsRes] = await Promise.all([
+        const [prodsRes, locsRes, pmRes, rsRes, brandRes] = await Promise.all([
           supabase
             .from('products')
             .select('id, name, description, price, cost, image_url, category_id, is_active, requires_kitchen, subcategory, categories:category_id(id, name, slug)')
@@ -112,7 +114,12 @@ export default function ManualOrderModal({
           supabase
             .from('restaurant_settings')
             .select('id, brand_id, location_id, brand_concepts')
-            .eq('brand_id', brandId)
+            .eq('brand_id', brandId),
+          supabase
+            .from('brands')
+            .select('id, name, config')
+            .eq('id', brandId)
+            .single()
         ]);
 
         // Extraer configuración dinámica del Bento del Día
@@ -144,122 +151,69 @@ export default function ManualOrderModal({
 
         if (isMounted) {
           const allFetched = prodsRes.data || [];
-          // Incluir platos activos Y TAMBIÉN platos del día / bentos rotativos aunque estén inactivos en catálogo general
+          // Incluir productos activos en catálogo general Y platos expresamente seleccionados para hoy
           const rawProds = allFetched.filter(p => {
             if (p.is_active) return true;
             if (p.id === activeSpecialId || activeSecondaryIds.includes(p.id)) return true;
-            if (/bento/i.test(p.subcategory || '') || /bento/i.test(p.name) || p.category_id === 'b0000c01-0000-4000-a000-000000000001') return true;
             return false;
-          }).map(p => {
-            if (p.id === activeSpecialId || activeSecondaryIds.includes(p.id)) {
-              return { ...p, price: extractedPromoPrice || p.price };
-            }
-            return p;
           });
-
-          // Asegurar presencia inmediata de Bento Mediterráneo
-          const hasMedit = rawProds.some(p => p.id === 'b0000b18-0000-4000-a000-000000000018' || /mediterr[aá]neo/i.test(p.name));
-          if (!hasMedit) {
-            rawProds.unshift({
-              id: 'b0000b18-0000-4000-a000-000000000018',
-              name: 'Bento Mediterráneo (Fresco y Balanceado)',
-              description: 'Arroz blanco con perejil, hummus casero cremoso de garbanzo con aceite y páprika, champiñones al ajillo, pepino fresco, tomates cherry y rábano crocante. 👉 Proteína a elección (al limón): Filete de merluza dorada o pechuga de pollo al wok.',
-              price: 19000,
-              cost: 7500,
-              image_url: '/bento-mediterraneo.jpg',
-              category_id: 'b0000c01-0000-4000-a000-000000000001',
-              is_active: true,
-              requires_kitchen: true,
-              subcategory: 'Bentos Caseros',
-              categories: { id: 'b0000c01-0000-4000-a000-000000000001', name: 'BOKU Bentos Caseros', slug: 'boku-bentos' }
-            });
-          }
-
-          // Asegurar presencia y actualización de Bento Criollo Antioqueño (La Paisa)
-          const criolloIndex = rawProds.findIndex(p => p.id === 'b0000b11-0000-4000-a000-000000000001' || /criollo/i.test(p.name));
-          if (criolloIndex >= 0) {
-            rawProds[criolloIndex] = {
-              ...rawProds[criolloIndex],
-              name: 'Bento Criollo Antioqueño (La Paisa)',
-              description: 'La bandeja paisa de siempre, pero en el bowl de la casa: arroz blanco, fríjoles a elección (rojos o negros), carne a elección (molida, cerdo o pollo al wok), chorizo y morcilla, huevo frito, aguacate y maduritos melosos.',
-              price: 19000
-            };
-          } else {
-            rawProds.unshift({
-              id: 'b0000b11-0000-4000-a000-000000000001',
-              name: 'Bento Criollo Antioqueño (La Paisa)',
-              description: 'La bandeja paisa de siempre, pero en el bowl de la casa: arroz blanco, fríjoles a elección (rojos o negros), carne a elección (molida, cerdo o pollo al wok), chorizo y morcilla, huevo frito, aguacate y maduritos melosos.',
-              price: 19000,
-              cost: 7500,
-              image_url: 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/4l57b6hx21n_1792011029842.webp',
-              category_id: 'b0000c01-0000-4000-a000-000000000001',
-              is_active: true,
-              requires_kitchen: true,
-              subcategory: 'Bentos Caseros',
-              categories: { id: 'b0000c01-0000-4000-a000-000000000001', name: 'BOKU Bentos Caseros', slug: 'boku-bentos' }
-            });
-          }
-
-          // Auto-sincronizar silenciosamente a Supabase si el usuario tiene sesión activa de admin
-          supabase.auth.getSession().then(({ data: sessData }) => {
-            if (sessData?.session?.user && brandId) {
-              supabase.from('products').upsert([
-                {
-                  id: 'b0000b18-0000-4000-a000-000000000018',
-                  brand_id: brandId,
-                  name: 'Bento Mediterráneo (Fresco y Balanceado)',
-                  description: 'Arroz blanco con perejil, hummus casero cremoso de garbanzo con aceite y páprika, champiñones al ajillo, pepino fresco, tomates cherry y rábano crocante. 👉 Proteína a elección (al limón): Filete de merluza dorada o pechuga de pollo al wok.',
-                  price: 19000,
-                  cost: 7500,
-                  margin: 60.5,
-                  category_id: 'b0000c01-0000-4000-a000-000000000001',
-                  image_url: '/bento-mediterraneo.jpg',
-                  is_active: true,
-                  stock_status: 'in',
-                  requires_kitchen: true,
-                  station: 'kitchen',
-                  subcategory: 'Bentos Caseros'
-                },
-                {
-                  id: 'b0000b11-0000-4000-a000-000000000001',
-                  brand_id: brandId,
-                  name: 'Bento Criollo Antioqueño (La Paisa)',
-                  description: 'La bandeja paisa de siempre, pero en el bowl de la casa: arroz blanco, fríjoles a elección (rojos o negros), carne a elección (molida, cerdo o pollo al wok), chorizo y morcilla, huevo frito, aguacate y maduritos melosos.',
-                  price: 19000,
-                  cost: 7500,
-                  category_id: 'b0000c01-0000-4000-a000-000000000001',
-                  is_active: true,
-                  requires_kitchen: true
-                }
-              ], { onConflict: 'id' }).then(({ error: upsertErr }) => {
-                if (upsertErr) console.warn('Background sync products note:', upsertErr.message);
-              });
-            }
-          }).catch(() => {});
 
           setProducts(rawProds);
           const fetchedLocs = locsRes.data || [];
           setLocationsList(fetchedLocs);
 
-          // Cargar medios de pago configurados en base de datos; si no hay, usar los reales de Boku Bento
-          const splitOption = { id: 'split', label: '⚡ Pago Dividido (Nequi + Efectivo)' };
-          if (pmRes.data && pmRes.data.length > 0) {
-            const mapped = pmRes.data.map(m => {
-              const lower = (m.name || '').toLowerCase();
-              let id = 'nequi';
-              if (m.type === 'cash' || lower.includes('efectivo')) id = 'efectivo';
-              else if (m.type === 'card' || lower.includes('datafono') || lower.includes('datáfono')) id = 'datafono';
-              else id = m.id || 'nequi';
-              return { id, label: m.name };
+          // Fuente única de verdad para cuentas y medios de pago:
+          // Las cuentas financieras reales de la empresa viven en brands.config.financials.accounts
+          const brandConfig = brandRes.data?.config || {};
+          const finAccounts = Array.isArray(brandConfig?.financials?.accounts) && brandConfig.financials.accounts.length > 0
+            ? brandConfig.financials.accounts
+            : [
+                { id: 'acc_cash_main', name: 'Gaveta Física (Efectivo)', type: 'cash' },
+                { id: 'acc_nequi_main', name: 'Nequi / Bre-B', type: 'digital_wallet' },
+                { id: 'acc_daviplata_main', name: 'Daviplata', type: 'digital_wallet' }
+              ];
+
+          const cashAcc = finAccounts.find(a => a.type === 'cash' || /efectivo|gaveta/i.test(a.name)) || finAccounts[0];
+          const digAccs = finAccounts.filter(a => a.type !== 'cash' && !/efectivo|gaveta/i.test(a.name));
+
+          const builtMethods = [
+            { id: 'efectivo', accountId: cashAcc?.id || 'acc_cash_main', label: cashAcc?.name || 'Gaveta Física (Efectivo)', type: 'cash' }
+          ];
+
+          digAccs.forEach(acc => {
+            let mid = acc.id;
+            if (/nequi/i.test(acc.name)) mid = 'nequi';
+            else if (/daviplata/i.test(acc.name)) mid = 'daviplata';
+            builtMethods.push({ id: mid, accountId: acc.id, label: acc.name, type: acc.type || 'digital_wallet' });
+          });
+
+          // Si en payment_methods de base de datos hay otros métodos activos (ej. Datáfono), integrarlos
+          if (Array.isArray(pmRes.data)) {
+            pmRes.data.forEach(pm => {
+              const lower = (pm.name || '').toLowerCase();
+              const alreadyIn = builtMethods.some(b => 
+                b.label.toLowerCase() === lower || 
+                (lower.includes('nequi') && b.id === 'nequi') || 
+                (lower.includes('daviplata') && b.id === 'daviplata') || 
+                (lower.includes('efectivo') && b.id === 'efectivo')
+              );
+              if (!alreadyIn) {
+                builtMethods.push({ id: pm.id, accountId: pm.id, label: pm.name, type: pm.type });
+              }
             });
-            setActivePaymentMethods([...mapped, splitOption]);
-          } else {
-            setActivePaymentMethods([
-              { id: 'nequi', label: 'Nequi / Bre-B' },
-              { id: 'efectivo', label: 'Efectivo' },
-              { id: 'datafono', label: 'Datáfono' },
-              splitOption
-            ]);
+          }
+
+          builtMethods.push({ id: 'split', label: '⚡ Pago Dividido (Mixto)', type: 'split' });
+          setActivePaymentMethods(builtMethods);
+
+          const availableDigitals = digAccs.length > 0 ? digAccs : [
+            { id: 'acc_nequi_main', name: 'Nequi / Bre-B' },
+            { id: 'acc_daviplata_main', name: 'Daviplata' }
+          ];
+          setDigitalAccountsList(availableDigitals);
+          if (availableDigitals.length > 0) {
+            setSelectedDigitalAccountId(availableDigitals[0].id);
+            setSplitDigitalMethod(availableDigitals[0].id);
           }
 
           const defaultFee = Number(fetchedLocs[0]?.delivery_fee) || Number(restaurantSettings?.delivery_fee) || 4000;
@@ -394,10 +348,7 @@ export default function ManualOrderModal({
       if (selectedCategory === 'daily_specials') {
         matchesCategory = Boolean(
           p.id === dailySpecialData.activeSpecialId ||
-          dailySpecialData.activeSecondaryIds.includes(p.id) ||
-          /bento|almuerzo|especial del d[ií]a/i.test(p.name) ||
-          /bento/i.test(p.subcategory || '') ||
-          p.category_id === 'b0000c01-0000-4000-a000-000000000001'
+          dailySpecialData.activeSecondaryIds.includes(p.id)
         );
       } else if (selectedCategory !== 'all') {
         matchesCategory = p.category_id === selectedCategory;
@@ -828,7 +779,8 @@ export default function ManualOrderModal({
         if (paymentMethod === 'split') {
           const cashVal = Number(String(splitCashAmount).replace(/\D/g, '')) || 0;
           const digVal = Number(String(splitDigitalAmount).replace(/\D/g, '')) || 0;
-          const digLabel = splitDigitalMethod === 'datafono' ? 'Datáfono' : 'Nequi';
+          const selDig = digitalAccountsList.find(d => d.id === selectedDigitalAccountId || d.id === splitDigitalMethod) || digitalAccountsList[0];
+          const digLabel = selDig?.name || 'Billetera Digital';
           finalPaymentMethod = `Pago Dividido (Efectivo: ${formatCOP(cashVal)} + ${digLabel}: ${formatCOP(digVal)})`;
           const splitNote = `[⚡ Pago Mixto: ${formatCOP(cashVal)} Efectivo + ${formatCOP(digVal)} ${digLabel}]`;
           finalDeliveryNotes = finalDeliveryNotes ? `${finalDeliveryNotes}\n${splitNote}` : splitNote;
@@ -897,14 +849,16 @@ export default function ManualOrderModal({
         if (paymentMethod === 'split') {
           const cashVal = Number(String(splitCashAmount).replace(/\D/g, '')) || 0;
           const digVal = Number(String(splitDigitalAmount).replace(/\D/g, '')) || 0;
+          const selDig = digitalAccountsList.find(d => d.id === selectedDigitalAccountId || d.id === splitDigitalMethod) || digitalAccountsList[0];
+          const digLabel = selDig?.name || 'Billetera Digital';
           syncCollectionToFinancials({
             brandId,
             customerName: customerName.trim() || 'Cliente WhatsApp',
             amount: grandTotal,
             paymentMethod: 'Pago Dividido',
             splitPayments: [
-              { method: 'efectivo', amount: cashVal },
-              { method: splitDigitalMethod, amount: digVal }
+              { method: 'efectivo', accountId: 'acc_cash_main', amount: cashVal },
+              { method: digLabel, accountId: selDig?.id || 'acc_nequi_main', amount: digVal }
             ],
             isHistorical: false,
             notes: `Venta directa #${String(createdOrder.id).slice(0, 4).toUpperCase()}`
@@ -1092,19 +1046,30 @@ export default function ManualOrderModal({
 
             {/* Daily Special Banner Header */}
             {dailySpecialData.activeSpecialId && (
-              <div className="mb-3 p-3 rounded-2xl bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100/60 border border-amber-200/80 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-xl">🍱</span>
-                  <div>
-                    <div className="flex items-center gap-2">
+              <div className="mb-3 p-3 rounded-2xl bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100/60 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="flex items-start gap-2.5">
+                  <span className="text-xl shrink-0">🍱</span>
+                  <div className="space-y-0.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500 text-neutral-950 px-1.5 py-0.5 rounded-md">
                         Almuerzo Estrella de Hoy
                       </span>
                       <span className="text-xs font-black text-neutral-900">
-                        {products.find(p => p.id === dailySpecialData.activeSpecialId)?.name || 'Bento del Día'} ({formatCOP(dailySpecialData.promoPrice)})
+                        {products.find(p => p.id === dailySpecialData.activeSpecialId)?.name?.replace(/\s*\(Especial del Día\)/i, '') || 'Arroz con Pollo Criollo'} ({formatCOP(dailySpecialData.promoPrice)})
                       </span>
+                      {dailySpecialData.activeSecondaryIds.length > 0 && (
+                        <>
+                          <span className="text-neutral-300">•</span>
+                          <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white px-1.5 py-0.5 rounded-md">
+                            Opción de Hoy
+                          </span>
+                          <span className="text-xs font-bold text-neutral-800">
+                            {products.find(p => dailySpecialData.activeSecondaryIds.includes(p.id))?.name || 'Salmón Fresh'} ({formatCOP(products.find(p => dailySpecialData.activeSecondaryIds.includes(p.id))?.price || 22000)})
+                          </span>
+                        </>
+                      )}
                     </div>
-                    <p className="text-[11px] text-neutral-600 mt-0.5">
+                    <p className="text-[11px] text-neutral-600">
                       Entrada: <strong>{dailySpecialData.soupName}</strong> • Bebida: <strong>{dailySpecialData.drinkName}</strong>
                     </p>
                   </div>
@@ -1112,7 +1077,7 @@ export default function ManualOrderModal({
                 <button
                   type="button"
                   onClick={() => setSelectedCategory('daily_specials')}
-                  className="text-xs font-black px-3 py-1.5 rounded-xl bg-amber-500 text-neutral-950 hover:bg-amber-400 transition-all shadow-xs shrink-0 cursor-pointer"
+                  className="text-xs font-black px-3 py-1.5 rounded-xl bg-amber-500 text-neutral-950 hover:bg-amber-400 transition-all shadow-xs shrink-0 cursor-pointer self-start sm:self-auto"
                 >
                   Ver del Día ⭐
                 </button>
@@ -1134,7 +1099,6 @@ export default function ManualOrderModal({
                 {filteredProducts.map(p => {
                   const isPrimarySpecial = p.id === dailySpecialData.activeSpecialId;
                   const isSecondarySpecial = dailySpecialData.activeSecondaryIds.includes(p.id);
-                  const isSpecial = isPrimarySpecial || isSecondarySpecial || /especial del d[ií]a|bento del d[ií]a/i.test(p.subcategory || '') || /especial del d[ií]a/i.test(p.name);
                   return (
                     <button
                       key={p.id}
@@ -1148,11 +1112,7 @@ export default function ManualOrderModal({
                         </span>
                       ) : isSecondarySpecial ? (
                         <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wider bg-emerald-600 text-white px-1.5 py-0.5 rounded-md shadow-2xs">
-                          ⭐ Opción Hoy
-                        </span>
-                      ) : isSpecial ? (
-                        <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wider bg-amber-400 text-neutral-950 px-1.5 py-0.5 rounded-md">
-                          ⭐ Combo Hoy
+                          ⭐ Opción de Hoy
                         </span>
                       ) : null}
                       <p className="font-bold text-xs text-neutral-900 group-hover:text-amber-800 line-clamp-1 pr-8">
@@ -1679,19 +1639,23 @@ export default function ManualOrderModal({
                             </div>
                           </div>
 
-                          {/* Parte 2: Nequi / Digital */}
+                          {/* Parte 2: Billetera Digital Real */}
                           <div className="bg-white p-2.5 rounded-xl border border-neutral-200 shadow-2xs space-y-1">
                             <div className="flex items-center justify-between">
                               <label className="text-[10px] font-black uppercase text-purple-700 tracking-wider flex items-center gap-1">
-                                <span>🟣 {splitDigitalMethod === 'datafono' ? 'Datáfono' : 'Nequi'}</span>
+                                <span>🟣 Billetera Digital</span>
                               </label>
                               <select
-                                value={splitDigitalMethod}
-                                onChange={e => setSplitDigitalMethod(e.target.value)}
-                                className="text-[9px] font-black bg-neutral-100 border border-neutral-200 rounded px-1 py-0.5 text-neutral-700"
+                                value={selectedDigitalAccountId}
+                                onChange={e => {
+                                  setSelectedDigitalAccountId(e.target.value);
+                                  setSplitDigitalMethod(e.target.value);
+                                }}
+                                className="text-[10px] font-bold bg-neutral-100 border border-neutral-200 rounded px-1.5 py-0.5 text-neutral-800 focus:outline-hidden"
                               >
-                                <option value="nequi">Nequi</option>
-                                <option value="datafono">Datáfono</option>
+                                {digitalAccountsList.map(da => (
+                                  <option key={da.id} value={da.id}>{da.name}</option>
+                                ))}
                               </select>
                             </div>
                             <div className="relative">

@@ -56,6 +56,108 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, newOrder });
     }
 
+    // ── ACCIÓN ESPECIAL: SINCRONIZAR CONFIGURACIÓN MAESTRA DE PLATOS Y MEDIOS DE PAGO ──
+    if (req.method === 'POST' && action === 'sync_brand_setup') {
+      const targetBrandId = brandId || 'a63da806-a62a-49b9-a833-07e0976785ad';
+
+      // 1. Sincronizar restaurant_settings para los platos del día de hoy
+      const { data: setRows } = await supabase
+        .from('restaurant_settings')
+        .select('id, location_id, brand_concepts')
+        .eq('brand_id', targetBrandId);
+
+      const updatedSetRows = [];
+      if (Array.isArray(setRows) && setRows.length > 0) {
+        for (const row of setRows) {
+          let concepts = Array.isArray(row.brand_concepts) ? [...row.brand_concepts] : [];
+          const bentoIdx = concepts.findIndex(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config'));
+          const bentoConcept = {
+            id: 'bento_del_dia_config',
+            label: 'El Bento del Día',
+            updated_at: new Date().toISOString(),
+            manual_override_product_id: 'b0000b21-0000-4000-a000-000000000021', // Arroz con Pollo Criollo (Especial del Día)
+            secondary_product_ids: ['d07007ec-761b-4f40-bad5-799c1154b9ab'], // Salmón Fresh ($22.000)
+            soup_name: '🥣 Crema de plátano colicero (16 oz)',
+            drink_name: '🥤 Jugo del Día (5 oz)',
+            promo_price: 19000,
+            standard_price: 22000
+          };
+
+          if (bentoIdx >= 0) {
+            concepts[bentoIdx] = { ...concepts[bentoIdx], ...bentoConcept };
+          } else {
+            concepts.push(bentoConcept);
+          }
+
+          const { data: updRow } = await supabase
+            .from('restaurant_settings')
+            .update({
+              brand_concepts: concepts,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', row.id)
+            .select();
+          if (updRow) updatedSetRows.push(updRow);
+        }
+      }
+
+      // 2. Sincronizar catálogo de productos en Supabase (garantizar que ambos platos estén activos y con sus precios genuinos)
+      await supabase
+        .from('products')
+        .update({
+          is_active: true,
+          price: 19000,
+          subcategory: 'El Bento del Día'
+        })
+        .eq('id', 'b0000b21-0000-4000-a000-000000000021');
+
+      await supabase
+        .from('products')
+        .update({
+          is_active: true,
+          price: 22000,
+          subcategory: 'Bowls Poke Fresco'
+        })
+        .eq('id', 'd07007ec-761b-4f40-bad5-799c1154b9ab');
+
+      // 3. Sincronizar Daviplata en payment_methods de Postgres
+      const { data: existingMethods } = await supabase
+        .from('payment_methods')
+        .select('id, name, type')
+        .eq('brand_id', targetBrandId);
+
+      const hasDavi = (existingMethods || []).some(m => /daviplata/i.test(m.name || ''));
+      let daviCreated = null;
+      if (!hasDavi) {
+        const { data: newDavi } = await supabase
+          .from('payment_methods')
+          .insert([{
+            brand_id: targetBrandId,
+            name: 'Daviplata',
+            type: 'digital_wallet',
+            icon: 'solar:wallet-bold',
+            is_active: true,
+            details: {
+              bank_name: 'Daviplata',
+              account_number: '3244402642',
+              account_type: 'Billetera Digital',
+              holder_name: 'Boku Bento',
+              bre_b_key: '3244402642',
+              instructions: 'Transfiere a Daviplata al número 3244402642 y envía el comprobante.'
+            }
+          }])
+          .select();
+        daviCreated = newDavi;
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Master setup synced: daily dishes & Daviplata payment method verified',
+        daviCreated,
+        updatedSetRows
+      });
+    }
+
     if (!financials && req.method === 'POST') {
       return res.status(400).json({ error: 'Missing financials payload' });
     }
@@ -142,6 +244,42 @@ export default async function handler(req, res) {
           updated_at: new Date().toISOString()
         })
         .eq('id', brandId);
+    }
+
+    // C) Auto-sincronizar cuentas financieras con payment_methods en PostgreSQL
+    if (Array.isArray(financials?.accounts)) {
+      try {
+        const { data: existingMethods } = await supabase
+          .from('payment_methods')
+          .select('id, name')
+          .eq('brand_id', brandId);
+
+        for (const acc of financials.accounts) {
+          const accName = acc.name || '';
+          const alreadyExists = (existingMethods || []).some(m =>
+            m.name.toLowerCase().trim() === accName.toLowerCase().trim()
+          );
+
+          if (!alreadyExists && accName) {
+            const isCash = acc.type === 'cash' || /efectivo|gaveta/i.test(accName);
+            await supabase
+              .from('payment_methods')
+              .insert([{
+                brand_id: brandId,
+                name: accName,
+                type: isCash ? 'cash' : 'digital_wallet',
+                icon: isCash ? 'solar:money-bag-bold' : 'solar:wallet-bold',
+                is_active: true,
+                details: {
+                  bank_name: accName,
+                  instructions: `Pago vía ${accName}`
+                }
+              }]);
+          }
+        }
+      } catch (pmSyncErr) {
+        console.warn('Silent pm auto-sync warning:', pmSyncErr);
+      }
     }
 
     return res.status(200).json({

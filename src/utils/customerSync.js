@@ -447,6 +447,14 @@ export async function syncCollectionToFinancials({
         }
       })
       .eq('id', brandId);
+
+    if (typeof fetch === "function") {
+      fetch("/api/save-finances", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brandId, financials: updatedFin })
+      }).catch(() => {});
+    }
   } catch (err) {
     console.warn('[customerSync] syncCollectionToFinancials warning:', err);
   }

@@ -369,15 +369,20 @@ export function useFinanceActions({
           .ilike('name', cleanName);
 
         if (!existing || existing.length === 0) {
-          const methodType = type === 'cash' ? 'cash' : (type === 'bank' || type === 'card' ? 'card' : 'transfer');
+          const isCash = type === 'cash' || /efectivo|gaveta/i.test(cleanName);
+          const methodType = isCash ? 'cash' : (type === 'bank' || type === 'card' ? 'card' : 'digital_wallet');
           await supabase
             .from('payment_methods')
             .insert([{
               brand_id: brandId,
               name: cleanName,
               type: methodType,
+              icon: isCash ? 'solar:money-bag-bold' : (methodType === 'card' ? 'solar:card-2-bold' : 'solar:wallet-bold'),
               is_active: true,
-              instructions: `Pago vía ${cleanName}`
+              details: {
+                bank_name: cleanName,
+                instructions: 'Pago vía ' + cleanName
+              }
             }]);
         }
       } catch (pmErr) {

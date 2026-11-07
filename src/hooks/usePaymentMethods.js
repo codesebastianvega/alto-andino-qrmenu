@@ -40,7 +40,45 @@ export function usePaymentMethods(explicitBrandId = null) {
         }
       }
 
-      setPaymentMethods(data || []);
+      const existing = data || [];
+      const finAccounts = activeBrand?.config?.financials?.accounts || [];
+      const missingFinAccounts = finAccounts.filter(acc => {
+        if (!acc?.name) return false;
+        const norm = acc.name.toLowerCase().trim();
+        return !existing.some(m => (m.name || '').toLowerCase().trim() === norm);
+      });
+
+      if (missingFinAccounts.length > 0) {
+        try {
+          const toInsert = missingFinAccounts.map(acc => {
+            const isCash = acc.type === 'cash' || /efectivo|gaveta/i.test(acc.name);
+            return {
+              brand_id: brandId,
+              name: acc.name,
+              type: isCash ? 'cash' : 'digital_wallet',
+              icon: isCash ? 'solar:money-bag-bold' : 'solar:wallet-bold',
+              is_active: true,
+              details: {
+                bank_name: acc.name,
+                instructions: 'Pago vía ' + acc.name
+              }
+            };
+          });
+          const { data: newlyCreated } = await supabase
+            .from('payment_methods')
+            .insert(toInsert)
+            .select();
+
+          if (newlyCreated && newlyCreated.length > 0) {
+            setPaymentMethods([...existing, ...newlyCreated]);
+            return;
+          }
+        } catch (autoErr) {
+          console.warn('[usePaymentMethods] auto-sync note:', autoErr);
+        }
+      }
+
+      setPaymentMethods(existing);
     } catch (err) {
       console.error('Error fetching payment methods:', err);
       setError(err);
