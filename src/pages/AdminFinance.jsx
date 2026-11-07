@@ -455,6 +455,7 @@ export default function AdminFinance() {
         onClose={() => setShowExpenseModal(false)}
         accounts={accounts}
         onSave={recordExpense}
+        onInventoryUpdated={refreshAll}
       />
 
       <TransferFundsModal
