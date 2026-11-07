@@ -4,7 +4,7 @@ import { slugify } from "@/utils/stock";
 import { getProductImage } from "@/utils/images";
 import { StatusChip } from "./Buttons";
 import { toast } from "./Toast";
-import AAImage from "@/components/ui/AAImage";
+import AAImage, { globalLoadedImageCache } from "@/components/ui/AAImage";
 import { useMenuData } from "@/context/MenuDataContext";
 
 // Comentario guia encima de donde uses <img> o <AAImage>:
@@ -50,9 +50,15 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
   }), [item, productId, isOutOfStock, isScheduleRestricted, scheduleNotice]);
 
   const imageSrc = getProductImage(product);
-  const [imgLoaded, setImgLoaded] = React.useState(false);
+  const [imgLoaded, setImgLoaded] = React.useState(() => {
+    return Boolean(imageSrc && globalLoadedImageCache.has(imageSrc));
+  });
   React.useEffect(() => {
-    setImgLoaded(false);
+    if (imageSrc && globalLoadedImageCache.has(imageSrc)) {
+      setImgLoaded(true);
+    } else {
+      setImgLoaded(false);
+    }
   }, [imageSrc]);
 
   const handleQuickView = React.useCallback(() => onQuickView?.(product), [onQuickView, product]);

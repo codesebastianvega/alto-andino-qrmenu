@@ -22,12 +22,14 @@ export default function AAImage({
 
   React.useEffect(() => {
     if (safeSrc && globalLoadedImageCache.has(safeSrc)) {
+      onLoad?.({ target: imgRef.current });
       return;
     }
     if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
       if (safeSrc) globalLoadedImageCache.add(safeSrc);
+      onLoad?.({ target: imgRef.current });
     }
-  }, [safeSrc]);
+  }, [safeSrc, onLoad]);
 
   if ((!safeSrc || failed) && !rest.fallback) return null;
   if (failed && rest.fallback) return rest.fallback;
@@ -56,22 +58,12 @@ export default function AAImage({
     ...rest,
   };
 
-  if (priority) {
-    return (
-      <img
-        src={safeSrc}
-        {...common}
-        fetchpriority="high"
-        loading="eager"
-      />
-    );
-  }
-
   return (
     <img
       src={safeSrc}
       {...common}
-      loading="lazy"
+      fetchpriority={priority ? "high" : "auto"}
+      loading="eager"
     />
   );
 }
