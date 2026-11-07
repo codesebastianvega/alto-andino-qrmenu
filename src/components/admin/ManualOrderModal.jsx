@@ -31,8 +31,11 @@ export default function ManualOrderModal({
     getModifiers,
     restaurantSettings: menuSettings,
     locations: menuLocations = [],
+    rawModifierGroups = [],
     loading: menuDataLoading
   } = menuData || {};
+
+  const restaurantSettings = propRestaurantSettings || menuSettings || {};
 
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [products, setProducts] = useState([]);
@@ -465,53 +468,7 @@ export default function ManualOrderModal({
       ]
     };
 
-    // 1. Si el producto ya tiene modifierGroups en MenuDataContext o getModifiers, usarlos canónicamente
-    let rawGroups = product.modifierGroups;
-    if ((!rawGroups || rawGroups.length === 0) && typeof getModifiers === 'function') {
-      try {
-        rawGroups = getModifiers(product.id);
-      } catch (e) {
-        console.warn('Error fetching modifiers:', e);
-      }
-    }
-
-    if (rawGroups && Array.isArray(rawGroups) && rawGroups.length > 0) {
-      const normalizedGroups = rawGroups.map(g => ({
-        name: g.name,
-        min: g.min_select !== undefined ? g.min_select : (g.min || 0),
-        max: g.max_select !== undefined ? g.max_select : (g.max || 1),
-        included_count: g.included_count !== undefined ? g.included_count : (g.max_select === 1 || g.max === 1 ? 1 : 0),
-        options: (g.options || []).map(opt => ({
-          id: opt.id || opt.name,
-          name: opt.name,
-          extra: opt.extra !== undefined ? opt.extra : (opt.extra_price !== undefined ? opt.extra_price : (opt.price || 0)),
-          is_default: Boolean(opt.is_default)
-        }))
-      }));
-
-      const initialModifiers = {};
-      normalizedGroups.forEach(g => {
-        const defaultOpts = g.options.filter(o => o.is_default).map(o => o.name);
-        if (defaultOpts.length > 0) {
-          initialModifiers[g.name] = defaultOpts.slice(0, g.max);
-        } else if (g.min > 0 && g.options.length > 0) {
-          initialModifiers[g.name] = [g.options[0].name];
-        } else {
-          initialModifiers[g.name] = [];
-        }
-      });
-
-      setConfiguringProduct({
-        product,
-        groups: normalizedGroups
-      });
-      setSelectedModifiers(initialModifiers);
-      setItemKitchenNotes('');
-      setEditingItemIndex(null);
-      return;
-    }
-
-    // Determine modifier groups for special dishes
+    // ── PRIORIDAD 1: PLATOS ESPECIALES AUTORIZADOS DE HOY (TORI KATSU Y SALMÓN FRESH) ──
     const isToriKatsu = product.id === 'b0000b25-0000-4000-a000-000000000025' || /tori\s*katsu/i.test(product.name);
     const isSalmon = product.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab' || /salm[oó]n/i.test(product.name);
 
@@ -569,6 +526,81 @@ export default function ManualOrderModal({
       setItemKitchenNotes('');
       setEditingItemIndex(null);
       return;
+    }
+
+    // ── PRIORIDAD 2: MODIFICADORES CANÓNICOS RESUELTOS (OBJETOS O UUIDS) ──
+    let rawGroups = product.modifierGroups || product.modifier_groups;
+    if ((!rawGroups || rawGroups.length === 0) && typeof getModifiers === 'function') {
+      try {
+        rawGroups = getModifiers(product.id);
+      } catch (e) {
+        console.warn('Error fetching modifiers:', e);
+      }
+    }
+
+    if (rawGroups && Array.isArray(rawGroups) && rawGroups.length > 0) {
+      const normalizedGroups = rawGroups.map(g => {
+        if (!g) return null;
+        // Si ya es un objeto completo de grupo con opciones
+        if (typeof g === 'object' && Array.isArray(g.options) && g.options.length > 0) {
+          return {
+            name: g.name || 'Opciones',
+            min: g.min_select !== undefined ? g.min_select : (g.min || 0),
+            max: g.max_select !== undefined ? g.max_select : (g.max || 1),
+            included_count: g.included_count !== undefined ? g.included_count : (g.max_select === 1 || g.max === 1 ? 1 : 0),
+            options: g.options.map(opt => ({
+              id: opt.id || opt.name,
+              name: opt.name,
+              extra: opt.extra !== undefined ? opt.extra : (opt.extra_price !== undefined ? opt.extra_price : (opt.price || 0)),
+              is_default: Boolean(opt.is_default)
+            }))
+          };
+        }
+        // Si es UUID o nombre de grupo
+        const gKey = typeof g === 'string' ? g : (g.id || g.name);
+        if (gKey === 'b0000b20-0000-4000-a000-000000000002') return sharedSoupGroup;
+        if (gKey === 'b0000b20-0000-4000-a000-000000000001') return sharedDrinkGroup;
+        const foundMeta = (rawModifierGroups || []).find(x => x.id === gKey || x.name === gKey);
+        const opts = foundMeta?.options || foundMeta?.modifier_options || [];
+        if (opts.length > 0) {
+          return {
+            name: foundMeta.name || 'Opciones',
+            min: foundMeta.min_select || 0,
+            max: foundMeta.max_select || 1,
+            included_count: foundMeta.max_select === 1 ? 1 : 0,
+            options: opts.map(o => ({
+              id: o.id || o.name,
+              name: o.name,
+              extra: o.price || o.extra_price || 0,
+              is_default: Boolean(o.is_default)
+            }))
+          };
+        }
+        return null;
+      }).filter(Boolean);
+
+      if (normalizedGroups.length > 0) {
+        const initialModifiers = {};
+        normalizedGroups.forEach(g => {
+          const defaultOpts = g.options.filter(o => o.is_default).map(o => o.name);
+          if (defaultOpts.length > 0) {
+            initialModifiers[g.name] = defaultOpts.slice(0, g.max);
+          } else if (g.min > 0 && g.options.length > 0) {
+            initialModifiers[g.name] = [g.options[0].name];
+          } else {
+            initialModifiers[g.name] = [];
+          }
+        });
+
+        setConfiguringProduct({
+          product,
+          groups: normalizedGroups
+        });
+        setSelectedModifiers(initialModifiers);
+        setItemKitchenNotes('');
+        setEditingItemIndex(null);
+        return;
+      }
     }
 
     const isMediterraneo = product.id === 'b0000b18-0000-4000-a000-000000000018' || /mediterr[aá]neo/i.test(product.name);
