@@ -1021,22 +1021,34 @@ export const MenuDataProvider = ({ children }) => {
         return b.is_active !== false && (isAlwaysVisible || b.stock_status !== 'out');
       });
 
-      // Preservar cualquier plato activo ya categorizado y añadir los bentos visibles de hoy
-      const existingDbBentos = (grouped['boku-bentos'] || []).filter(p => !candidateBentos.some(c => c.id === p.id));
-      grouped['boku-bentos'] = [...visibleBentos, ...existingDbBentos];
+      // Filtro estricto: Bentos Caseros SOLO debe mostrar los autorizados de hoy (Tori Katsu y Salmon Fresh)
+      const sanitizedVisibleBentos = visibleBentos.filter(b => {
+        if (!b) return false;
+        if (b.id === 'b0000b21-0000-4000-a000-000000000021') return false;
+        if (/arroz con pollo/i.test(b.name || '')) return false;
+        return true;
+      });
+      grouped['boku-bentos'] = sanitizedVisibleBentos;
 
-      // ── PRESENCIA DE TORI KATSU Y SALMÓN EN BOKU BOWLS ──
+      // ── PRESENCIA DE TORI KATSU Y SALMÓN EN BOKU BOWLS CON SUS MODIFICADORES ──
       if (!grouped['boku-bowls']) grouped['boku-bowls'] = [];
-      const hasToriKatsuInBowls = grouped['boku-bowls'].some(p => p.id === 'b0000b25-0000-4000-a000-000000000025');
-      if (!hasToriKatsuInBowls) {
+      const toriInBowls = grouped['boku-bowls'].find(p => p.id === 'b0000b25-0000-4000-a000-000000000025');
+      if (toriInBowls) {
+        Object.assign(toriInBowls, pokeToriKatsu);
+        toriInBowls.price = 22000;
+        toriInBowls.original_price = 28000;
+        toriInBowls.modifierGroups = [toriSauceGroup, sharedSoupGroup, sharedDrinkGroup];
+      } else {
         grouped['boku-bowls'].unshift({
           ...pokeToriKatsu,
           categorySlug: 'boku-bowls',
           categoryId: '6316a6dc-8a4c-4cc1-874b-4f3d362ed635',
           categoryName: 'BOKU Bowls',
-          subcategory: 'Bowls Poke Fresco'
+          subcategory: 'Bowls Poke Fresco',
+          modifierGroups: [toriSauceGroup, sharedSoupGroup, sharedDrinkGroup]
         });
       }
+
       const salmonInBowls = grouped['boku-bowls'].find(p => p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab');
       if (salmonInBowls) {
         salmonInBowls.price = 22000;
@@ -1047,11 +1059,13 @@ export const MenuDataProvider = ({ children }) => {
         salmonInBowls.modifierGroups = [salmonPrepGroup, sharedSoupGroup, sharedDrinkGroup];
       }
 
-      // ── ELIMINACIÓN TOTAL Y DEFINITIVA DE LA BOLOÑESA DE TODAS LAS CATEGORÍAS ──
+      // ── ELIMINACIÓN TOTAL Y DEFINITIVA DE ARROZ CON POLLO Y BOLOÑESA DE TODAS LAS CATEGORÍAS ──
       Object.keys(grouped).forEach(k => {
         grouped[k] = (grouped[k] || []).filter(p => {
           const lower = (p.name || '').toLowerCase();
-          return !lower.includes('boloñesa') && 
+          return !lower.includes('arroz con pollo') &&
+                 p.id !== 'b0000b21-0000-4000-a000-000000000021' &&
+                 !lower.includes('boloñesa') && 
                  !lower.includes('bolonesa') && 
                  p.id !== 'b0000b17-0000-4000-a000-000000000007' &&
                  p.id !== 'b0000f02-0000-4000-a000-000000000002' &&

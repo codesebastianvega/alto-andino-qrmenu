@@ -353,10 +353,13 @@ export default function ManualOrderModal({
     if ((!list || list.length === 0) && products.length > 0) {
       list = products;
     }
-    // Deduplicate by ID
+    // Deduplicate by ID & strictly filter out legacy unconfigured dishes like Arroz con Pollo
     const map = new Map();
     (list || []).forEach(p => {
       if (p && p.id && !map.has(p.id)) {
+        if (p.id === 'b0000b21-0000-4000-a000-000000000021' || /arroz con pollo/i.test(p.name || '')) {
+          return;
+        }
         map.set(p.id, p);
       }
     });
@@ -400,11 +403,8 @@ export default function ManualOrderModal({
     return catalogProducts.filter(p => {
       let matchesCategory = true;
       if (selectedCategory === 'daily_specials' || selectedCategory === 'boku-bentos') {
+        // En Del Día / Almuerzos SOLO deben aparecer los platos específicamente configurados para hoy
         matchesCategory = Boolean(
-          p.categorySlug === 'boku-bentos' ||
-          p.categoryId === 'b0000c01-0000-4000-a000-000000000001' ||
-          p.is_daily_special ||
-          p.is_bento_del_dia ||
           p.id === dailySpecialData.activeSpecialId ||
           (Array.isArray(dailySpecialData.activeSecondaryIds) && dailySpecialData.activeSecondaryIds.includes(p.id))
         );
@@ -512,6 +512,65 @@ export default function ManualOrderModal({
     }
 
     // Determine modifier groups for special dishes
+    const isToriKatsu = product.id === 'b0000b25-0000-4000-a000-000000000025' || /tori\s*katsu/i.test(product.name);
+    const isSalmon = product.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab' || /salm[oó]n/i.test(product.name);
+
+    if (isToriKatsu) {
+      setConfiguringProduct({
+        product,
+        groups: [
+          {
+            name: '🥢 Salsa Tonkatsu',
+            min: 1,
+            max: 1,
+            included_count: 1,
+            options: [
+              { id: 'opt-tori-sauce-on', name: 'Tonkatsu bañada sobre la pechuga crocante', extra: 0, is_default: true },
+              { id: 'opt-tori-sauce-side', name: 'Tonkatsu en envase aparte', extra: 0 }
+            ]
+          },
+          sharedSoupGroup,
+          sharedDrinkGroup
+        ]
+      });
+      setSelectedModifiers({
+        '🥢 Salsa Tonkatsu': ['Tonkatsu bañada sobre la pechuga crocante'],
+        '🥣 Entrada Incluida': [currentSoupName],
+        '🥤 Bebida de la Casa Incluida': [currentDrinkName]
+      });
+      setItemKitchenNotes('');
+      setEditingItemIndex(null);
+      return;
+    }
+
+    if (isSalmon) {
+      setConfiguringProduct({
+        product,
+        groups: [
+          {
+            name: '🍣 Término del Salmón',
+            min: 1,
+            max: 1,
+            included_count: 1,
+            options: [
+              { id: 'opt-salmon-fresco', name: 'Salmón Fresco (Estilo Poke Crudo Marinado)', extra: 0, is_default: true },
+              { id: 'opt-salmon-salteado', name: 'Salmón Salteado al Wok (Sellado Caliente)', extra: 0 }
+            ]
+          },
+          sharedSoupGroup,
+          sharedDrinkGroup
+        ]
+      });
+      setSelectedModifiers({
+        '🍣 Término del Salmón': ['Salmón Fresco (Estilo Poke Crudo Marinado)'],
+        '🥣 Entrada Incluida': [currentSoupName],
+        '🥤 Bebida de la Casa Incluida': [currentDrinkName]
+      });
+      setItemKitchenNotes('');
+      setEditingItemIndex(null);
+      return;
+    }
+
     const isMediterraneo = product.id === 'b0000b18-0000-4000-a000-000000000018' || /mediterr[aá]neo/i.test(product.name);
     const isCriollo = product.id === 'b0000b11-0000-4000-a000-000000000001' || /criollo|la paisa/i.test(product.name);
     const isMestizo = product.id === 'b0000b14-0000-4000-a000-000000000004' || /mestizo/i.test(product.name);
