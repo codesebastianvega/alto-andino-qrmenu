@@ -1,706 +1,87 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { supabase } from '../config/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useMenuData } from '../context/MenuDataContext';
-import { toast as toastFn } from '../components/Toast';
-import { validateImageSize, compressAndWebp, getMaxImageSizeMB } from '../utils/images';
-import { PageHeader, PrimaryButton, FormField, TextInput, ImageGuidance } from '../components/admin/ui';
-import { Icon } from '@iconify/react';
-import { Loader2, Upload, Palette, Type } from 'lucide-react';
-
-const toast = {
-  success: (msg, opts) => toastFn.success(msg, { duration: 2500, ...opts }),
-  error: (msg, opts) => toastFn.error(msg, { duration: 4000, ...opts }),
-};
-
-const FONT_OPTIONS = [
-  { label: 'Inter (Sans Serif)', value: 'Inter' },
-  { label: 'Roboto (Moderno)', value: 'Roboto' },
-  { label: 'Outfit (Premium)', value: 'Outfit' },
-  { label: 'Playfair Display (Elegante)', value: 'Playfair Display' },
-  { label: 'Montserrat (Geométrico)', value: 'Montserrat' },
-];
+import React, { forwardRef } from 'react';
+import { Loader2 } from 'lucide-react';
+import { useAdminBrandingData } from '../hooks/branding/useAdminBrandingData';
+import BrandingHeader from '../components/admin/branding/BrandingHeader';
+import BrandingIdentitySection from '../components/admin/branding/BrandingIdentitySection';
+import BrandingColorsSection from '../components/admin/branding/BrandingColorsSection';
+import BrandingConceptsSection from '../components/admin/branding/BrandingConceptsSection';
+import BrandingLiveMobilePreview from '../components/admin/branding/BrandingLiveMobilePreview';
 
 const AdminBranding = forwardRef(function AdminBranding({ isEmbedded = false }, ref) {
-  const { activeBrand, activePlan, isFeatureLocked, refreshProfile, user } = useAuth();
-  const { refetchMenuData } = useMenuData();
-  const [settings, setSettings] = useState(null);
-  const [loadingSettings, setLoadingSettings] = useState(false);
-  
-  const [settingsForm, setSettingsForm] = useState({ 
-    business_name: '', 
-    primary_color: '#7db87a', 
-    logo_url: '',
-    theme_secondary: '#E6B05C',
-    theme_background: '#FAFAFA',
-    theme_card_bg: '#FFFFFF',
-    theme_text: '#1A1A1A',
-    theme_footer_bg: '#1A2421',
-    favicon_url: '',
-    font_family: 'Inter',
-    brand_concepts: []
-  });
+  const {
+    activeBrand,
+    loadingSettings,
+    settingsForm,
+    setSettingsForm,
+    isSubmittingSettings,
+    uploadingLogo,
+    uploadingFavicon,
+    isAdvancedLocked,
+    addConcept,
+    removeConcept,
+    updateConcept,
+    handleSaveSettings,
+    handleFileUpload,
+  } = useAdminBrandingData(ref);
 
-  const [isSubmittingSettings, setIsSubmittingSettings] = useState(false);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [uploadingFavicon, setUploadingFavicon] = useState(false);
-
-  // Fetch settings whenever activeBrand changes
-  useEffect(() => {
-    if (activeBrand?.id) {
-      fetchSettings();
-    }
-  }, [activeBrand?.id]);
-
-  const fetchSettings = async () => {
-    setLoadingSettings(true);
-    try {
-      const [settingsRes, brandRes] = await Promise.all([
-        supabase
-          .from('restaurant_settings')
-          .select('*')
-          .eq('brand_id', activeBrand.id)
-          .order('location_id', { ascending: true, nullsFirst: true })
-          .limit(1)
-          .maybeSingle(),
-        supabase.from('brands').select('name, logo_url').eq('id', activeBrand.id).single()
-      ]);
-
-      if (settingsRes.error) throw settingsRes.error;
-      
-      const data = settingsRes.data;
-      const bData = brandRes.data || {};
-      
-      if (data) {
-        setSettings(data);
-        setSettingsForm({
-          business_name: data.business_name || activeBrand.name || '',
-          primary_color: data.primary_color || '#7db87a',
-          logo_url: data.logo_url || activeBrand.logo_url || '',
-          theme_secondary: data.theme_secondary || '#E6B05C',
-          theme_background: data.theme_background || '#FAFAFA',
-          theme_card_bg: data.theme_card_bg || '#FFFFFF',
-          theme_text: data.theme_text || '#1A1A1A',
-          theme_footer_bg: data.theme_footer_bg || '#1A2421',
-          favicon_url: data.favicon_url || '',
-          font_family: data.font_family || 'Inter',
-          brand_concepts: (data.brand_concepts || []).filter(c => c && c.id !== 'operations_model' && c.id !== 'telegram_dispatch' && !c.fulfillment_modes && !c.bot_token)
-        });
-      } else {
-        // Initialize form with brand defaults if no settings found
-        setSettingsForm(prev => ({
-          ...prev,
-          business_name: activeBrand.name || '',
-          logo_url: activeBrand.logo_url || ''
-        }));
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error('Error al cargar configuración de branding');
-    } finally {
-      setLoadingSettings(false);
-    }
-  };
-
-  const addConcept = () => {
-    const newConcept = {
-      id: crypto.randomUUID(),
-      name: 'Nuevo Concepto',
-      description: '',
-      image_url: '',
-      accent_color: settingsForm.primary_color
-    };
-    setSettingsForm(prev => ({
-      ...prev,
-      brand_concepts: [...(prev.brand_concepts || []), newConcept]
-    }));
-  };
-
-  const removeConcept = (id) => {
-    setSettingsForm(prev => ({
-      ...prev,
-      brand_concepts: prev.brand_concepts.filter(c => c.id !== id)
-    }));
-  };
-
-  const updateConcept = (id, field, value) => {
-    setSettingsForm(prev => ({
-      ...prev,
-      brand_concepts: prev.brand_concepts.map(c => 
-        c.id === id ? { ...c, [field]: value } : c
-      )
-    }));
-  };
-
-  const handleSaveSettings = async (e) => {
-    if (e) e.preventDefault();
-    if (!activeBrand?.id) return;
-
-    setIsSubmittingSettings(true);
-    try {
-      const existingConcepts = Array.isArray(settings?.brand_concepts) ? settings.brand_concepts : [];
-      const systemConcepts = existingConcepts.filter(c => c && (c.id === 'operations_model' || c.id === 'telegram_dispatch' || c.fulfillment_modes || c.bot_token));
-
-      const payload = {
-        brand_id: activeBrand.id,
-        location_id: null,
-        business_name: settingsForm.business_name,
-        primary_color: settingsForm.primary_color,
-        logo_url: settingsForm.logo_url,
-        theme_secondary: settingsForm.theme_secondary,
-        theme_background: settingsForm.theme_background,
-        theme_card_bg: settingsForm.theme_card_bg,
-        theme_text: settingsForm.theme_text,
-        theme_footer_bg: settingsForm.theme_footer_bg,
-        favicon_url: settingsForm.favicon_url,
-        font_family: settingsForm.font_family,
-        brand_concepts: [...systemConcepts, ...(settingsForm.brand_concepts || [])],
-        updated_at: new Date()
-      };
-
-      const brandPayload = {
-        name: settingsForm.business_name,
-        logo_url: settingsForm.logo_url || null
-      };
-
-      const settingsQuery = settings?.id
-        ? supabase.from('restaurant_settings').update(payload).eq('id', settings.id).select().single()
-        : supabase.from('restaurant_settings').insert(payload).select().single();
-
-      const [settingsRes, brandRes] = await Promise.all([
-        settingsQuery,
-        supabase.from('brands').update(brandPayload).eq('id', activeBrand.id)
-      ]);
-
-      if (settingsRes.error) throw settingsRes.error;
-      if (brandRes.error) throw brandRes.error;
-      
-      if (settingsRes.data) setSettings(settingsRes.data);
-
-      const faviconUrl = settingsRes.data?.favicon_url || '/favicon.png';
-      document.querySelectorAll("link[rel~='icon']").forEach((link) => {
-        link.href = faviconUrl;
-      });
-
-      toast.success('¡Branding y perfil guardados correctamente!');
-      if (user) refreshProfile(user.id);
-      await refetchMenuData?.();
-    } catch (err) {
-      console.error('Error saving branding:', err);
-      toast.error('Error guardando configuración de branding');
-    } finally {
-      setIsSubmittingSettings(false);
-    }
-  };
-
-  // Expose save function to parent via ref
-  useImperativeHandle(ref, () => ({
-    save: handleSaveSettings
-  }), [activeBrand, settingsForm, user]);
-
-  // Plan gating logic - Lock advanced features for "Emprendedor" plan
-  const isLocked = isFeatureLocked('branding');
-  // Specifically requested by user: Emprendedor is restricted
-  const isEmprendedor = activePlan?.name === 'Emprendedor';
-  const isAdvancedLocked = isEmprendedor;
-
-  const handleFileUpload = async (e, type) => {
-    if (type === 'favicon' && isAdvancedLocked) {
-        toast.error('Actualiza tu plan para personalizar el favicon');
-        return;
-    }
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!validateImageSize(file, toast, activeBrand?.plan_id)) return;
-
-    if (type === 'logo') setUploadingLogo(true);
-    else setUploadingFavicon(true);
-
-    try {
-      // Comprimir a WebP
-      const compressedFile = await compressAndWebp(file, { maxWidthOrHeight: 800, maxSizeMB: 0.1 });
-      const fileName = `${activeBrand.id}/${type}_${Date.now()}.webp`;
-      const filePath = `branding/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('products') // Using 'products' bucket as per existing code, or 'branding' if preferred
-        .upload(filePath, compressedFile, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: publicData } = supabase.storage
-        .from('products')
-        .getPublicUrl(filePath);
-
-      setSettingsForm(prev => ({ ...prev, [`${type}_url`]: publicData.publicUrl }));
-      toast.success(`${type === 'logo' ? 'Logo' : 'Favicon'} subido correctamente`);
-    } catch (error) {
-      console.error(`Error uploading ${type}:`, error);
-      toast.error(`Error subiendo ${type}`);
-    } finally {
-      if (type === 'logo') setUploadingLogo(false);
-      else setUploadingFavicon(false);
-      if (e.target) e.target.value = '';
-    }
-  };
-
-  if (loadingSettings) return (
-    <div className="flex items-center justify-center h-64 text-gray-400 text-sm font-medium">
-      <Loader2 className="w-5 h-5 animate-spin mr-2" /> 
-      Cargando configuración...
-    </div>
-  );
+  if (loadingSettings) {
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-400 text-sm font-medium">
+        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+        Cargando configuración...
+      </div>
+    );
+  }
 
   return (
-    <div className={isEmbedded ? "" : "min-h-screen bg-[#FDFDFB] text-gray-900 selection:bg-indigo-100 italic-none p-4 sm:p-10 max-w-[1600px] mx-auto space-y-10 animate-fadeUp"}>
+    <div
+      className={
+        isEmbedded
+          ? ''
+          : 'min-h-screen bg-[#FDFDFB] text-gray-900 selection:bg-indigo-100 italic-none p-4 sm:p-10 max-w-[1600px] mx-auto space-y-10 animate-fadeUp'
+      }
+    >
       {!isEmbedded && (
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-fadeUp">
-            <PageHeader
-              badge="Configuración Visual"
-              title="Identidad de Marca"
-              subtitle={`Ajusta la apariencia visual, colores y logotipos de ${activeBrand?.name || 'tu marca'}.`}
-            />
+        <BrandingHeader
+          activeBrand={activeBrand}
+          onSave={handleSaveSettings}
+          isSubmitting={isSubmittingSettings}
+        />
+      )}
 
-            <div className="flex items-center gap-3 self-start md:self-auto">
-              <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-200/80 px-4 py-2.5 shadow-2xs">
-                <div className="w-8 h-8 rounded-lg bg-pink-50 flex items-center justify-center text-pink-600 shrink-0 border border-pink-100/60">
-                   <Icon icon="solar:palette-bold-duotone" className="text-base" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Marca Activa</p>
-                  <p className="text-xs font-bold text-gray-900">{activeBrand?.name || 'Cargando...'}</p>
-                </div>
-              </div>
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+        {/* Left Column: Forms */}
+        <div className="xl:col-span-8 space-y-6">
+          <BrandingIdentitySection
+            settingsForm={settingsForm}
+            setSettingsForm={setSettingsForm}
+            isAdvancedLocked={isAdvancedLocked}
+            activeBrand={activeBrand}
+            uploadingFavicon={uploadingFavicon}
+            uploadingLogo={uploadingLogo}
+            onFileUpload={handleFileUpload}
+          />
 
-              <button 
-                type="button" 
-                onClick={handleSaveSettings} 
-                disabled={isSubmittingSettings}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold shadow-xs transition-all cursor-pointer shrink-0 disabled:opacity-50"
-              >
-                {isSubmittingSettings ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Guardando...</span>
-                  </>
-                ) : (
-                  <>
-                    <Icon icon="solar:diskette-bold-duotone" className="text-base" />
-                    <span>Guardar Todo</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
+          <BrandingColorsSection
+            settingsForm={settingsForm}
+            setSettingsForm={setSettingsForm}
+            isAdvancedLocked={isAdvancedLocked}
+          />
 
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-          {/* Left Column: Forms */}
-          <div className="xl:col-span-8 space-y-6">
-            
-            {/* Section: Basic Identity */}
-            <section className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden transition-all">
-              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white">
-                 <div className="flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700 shrink-0 border border-emerald-100/60">
-                       <Icon icon="solar:shop-2-bold-duotone" className="text-xl" />
-                    </div>
-                    <div>
-                       <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">Identidad Visual</h3>
-                       <p className="text-xs text-gray-500 mt-0.5">Logotipo principal y favicon para la pestaña del navegador</p>
-                    </div>
-                 </div>
-              </div>
-            
-            <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <FormField label="Nombre del Negocio" htmlFor="business_name">
-                  <TextInput
-                    id="business_name"
-                    name="business_name"
-                    value={settingsForm.business_name}
-                    onChange={(e) => setSettingsForm({ ...settingsForm, business_name: e.target.value })}
-                    placeholder="Ej. Mi Restaurante Gourmet"
-                  />
-                </FormField>
-
-                <div className="relative">
-                    <FormField 
-                      htmlFor="favicon_url"
-                      label={
-                        <div className="flex items-center justify-between w-full">
-                          <span>Favicon (Pestaña Navegador)</span>
-                          {isAdvancedLocked && (
-                            <span className="text-[8px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100 flex items-center gap-1 font-black">
-                              <Icon icon="solar:crown-minimalistic-bold" /> PRO
-                            </span>
-                          )}
-                        </div>
-                      }
-                    >
-                    <div className="space-y-3">
-                        <div className="flex gap-2">
-                        <TextInput
-                            id="favicon_url"
-                            name="favicon_url"
-                            disabled={isAdvancedLocked}
-                            value={settingsForm.favicon_url}
-                            onChange={(e) => setSettingsForm({ ...settingsForm, favicon_url: e.target.value })}
-                            placeholder={isAdvancedLocked ? "Incluido en Plan Esencial..." : "URL del favicon..."}
-                            className="text-xs font-mono"
-                        />
-                        <label className={`shrink-0 p-2.5 bg-gray-100 rounded-xl transition-colors ${isAdvancedLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200 cursor-pointer'}`}>
-                            {uploadingFavicon ? <Loader2 size={18} className="animate-spin text-gray-400" /> : <Upload size={18} className="text-gray-600" />}
-                            {!isAdvancedLocked && <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'favicon')} disabled={uploadingFavicon} />}
-                        </label>
-                        </div>
-                        <ImageGuidance maxMB={getMaxImageSizeMB(activeBrand?.plan_id)} />
-                    </div>
-                    </FormField>
-                </div>
-              </div>
-
-              <div className="bg-gray-50/50 rounded-2xl p-5 border border-dashed border-gray-200 flex flex-col items-center justify-center gap-4 group">
-                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Logotipo Principal</p>
-                 <div className="relative w-full aspect-video max-h-32 rounded-xl overflow-hidden bg-white border border-gray-100 shadow-inner flex items-center justify-center p-6 transition-all group-hover:border-brand-primary/30">
-                    {settingsForm.logo_url ? (
-                       <img src={settingsForm.logo_url} className="max-w-full max-h-full object-contain drop-shadow-sm" alt="Logo" />
-                    ) : (
-                       <Icon icon="solar:gallery-wide-linear" className="text-gray-200" width="48" />
-                    )}
-                 </div>
-                 <label className="w-full">
-                    <div className="flex items-center justify-center gap-2 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm active:scale-[0.98]">
-                       {uploadingLogo ? <Loader2 size={14} className="animate-spin" /> : <Icon icon="solar:upload-linear" width="14" />}
-                       {settingsForm.logo_url ? 'Cambiar Logo' : 'Subir Logo'}
-                    </div>
-                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'logo')} disabled={uploadingLogo} />
-                 </label>
-                 <div className="w-full">
-                    <ImageGuidance maxMB={getMaxImageSizeMB(activeBrand?.plan_id)} />
-                 </div>
-              </div>
-            </div>
-          </section>
-
-
-          {/* Section: Palette & Fonts */}
-          <section className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden transition-all">
-            <div className="px-6 py-5 border-b border-gray-100 flex items-center gap-3.5 bg-white">
-               <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0 border border-purple-100/60">
-                  <Icon icon="solar:cosmetic-linear" className="text-xl" />
-               </div>
-               <div>
-                  <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">Colores y Tipografía</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">Personalización de fuentes y paleta cromática del menú digital</p>
-               </div>
-            </div>
-            
-            <div className="p-6 space-y-8">
-              {/* Typography */}
-              <div className="space-y-4">
-                 <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-2">
-                       <Type size={14} /> Tipografía Principal
-                    </p>
-                    {isAdvancedLocked && (
-                        <span className="text-[8px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100 uppercase font-black">Plan Esencial</span>
-                    )}
-                 </div>
-                 <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 ${isAdvancedLocked ? 'opacity-40 grayscale-[0.5] pointer-events-none' : ''}`}>
-                    {FONT_OPTIONS.map((font) => (
-                       <button
-                         key={font.value}
-                         onClick={() => setSettingsForm({...settingsForm, font_family: font.value})}
-                         className={`p-3 rounded-xl border text-left transition-all ${
-                            settingsForm.font_family === font.value 
-                            ? 'border-brand-primary bg-brand-primary/5 ring-1 ring-brand-primary' 
-                            : 'border-gray-100 hover:border-gray-200 bg-gray-50/30'
-                         }`}
-                         style={{ fontFamily: font.value }}
-                       >
-                          <div className="flex items-center justify-between">
-                             <span className="text-xs font-bold truncate">{font.label.split(' ')[0]}</span>
-                             {settingsForm.font_family === font.value && <div className="w-1.5 h-1.5 rounded-full bg-brand-primary" />}
-                          </div>
-                          <p className="text-[10px] text-gray-400 mt-0.5">ABCabc</p>
-                       </button>
-                    ))}
-                 </div>
-              </div>
-
-              <div className="h-px bg-gray-50" />
-
-              {/* Color Grid (2 Columns) */}
-              <div className="space-y-4">
-                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-2">
-                    <Palette size={14} /> Paleta de Colores
-                 </p>
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-                    <ColorInput 
-                      label="Color de Énfasis"
-                      value={settingsForm.primary_color}
-                      onChange={(val) => setSettingsForm({...settingsForm, primary_color: val})}
-                    />
-                    <ColorInput 
-                      label="Color Secundario"
-                      value={settingsForm.theme_secondary}
-                      onChange={(val) => setSettingsForm({...settingsForm, theme_secondary: val})}
-                      disabled={isAdvancedLocked}
-                      isPremium={isAdvancedLocked}
-                    />
-                    <ColorInput 
-                      label="Fondo de la App"
-                      value={settingsForm.theme_background}
-                      onChange={(val) => setSettingsForm({...settingsForm, theme_background: val})}
-                      disabled={isAdvancedLocked}
-                      isPremium={isAdvancedLocked}
-                    />
-                    <ColorInput 
-                      label="Texto General"
-                      value={settingsForm.theme_text}
-                      onChange={(val) => setSettingsForm({...settingsForm, theme_text: val})}
-                      disabled={isAdvancedLocked}
-                      isPremium={isAdvancedLocked}
-                    />
-                    <ColorInput 
-                      label="Tarjetas / Cards"
-                      value={settingsForm.theme_card_bg}
-                      onChange={(val) => setSettingsForm({...settingsForm, theme_card_bg: val})}
-                      disabled={isAdvancedLocked}
-                      isPremium={isAdvancedLocked}
-                    />
-                    <ColorInput 
-                      label="Pie de Página"
-                      value={settingsForm.theme_footer_bg}
-                      onChange={(val) => setSettingsForm({...settingsForm, theme_footer_bg: val})}
-                      disabled={isAdvancedLocked}
-                      isPremium={isAdvancedLocked}
-                    />
-                 </div>
-              </div>
-            </div>
-          </section>
-
-          {/* BRAND CONCEPTS SECTION */}
-          <section className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
-            <div className="p-6 sm:p-7">
-              <div className="flex items-center justify-between mb-6 pb-5 border-b border-gray-100">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 border border-amber-100/60">
-                    <Icon icon="solar:star-rainbow-bold" className="text-xl" />
-                  </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">Conceptos de Marca</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Sub-marcas o líneas de negocio (ej: Delicattesen)</p>
-                  </div>
-                </div>
-                <button 
-                  type="button"
-                  onClick={addConcept}
-                  className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-xs font-bold hover:bg-amber-100 transition-all border border-amber-200/60 cursor-pointer"
-                >
-                  <Icon icon="solar:add-circle-bold" className="text-base" />
-                  <span>Nuevo Concepto</span>
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {(settingsForm.brand_concepts || []).length === 0 ? (
-                  <div className="py-12 px-6 border-2 border-dashed border-gray-100 rounded-2xl text-center">
-                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Icon icon="solar:box-minimalistic-linear" width="32" className="text-gray-200" />
-                    </div>
-                    <p className="text-sm font-medium text-gray-400">No hay conceptos creados.</p>
-                    <p className="text-[11px] text-gray-400 mt-1 uppercase tracking-widest font-bold">Empieza añadiendo uno para tu marca</p>
-                  </div>
-                ) : (
-                  <div className="grid gap-4">
-                    {settingsForm.brand_concepts.map((concept) => (
-                      <div key={concept.id} className="p-5 bg-gray-50/60 rounded-xl border border-gray-200/80 relative group animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <button 
-                          type="button"
-                          onClick={() => removeConcept(concept.id)}
-                          className="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                        >
-                          <Icon icon="solar:trash-bin-trash-bold" width="20" />
-                        </button>
-
-                        <div className="grid sm:grid-cols-2 gap-6">
-                          <div className="space-y-4">
-                            <FormField label="Nombre del Concepto">
-                              <TextInput 
-                                value={concept.name}
-                                onChange={(e) => updateConcept(concept.id, 'name', e.target.value)}
-                                placeholder="Ej: Delicattesen"
-                              />
-                            </FormField>
-                            <FormField label="Descripción corta">
-                              <TextInput 
-                                value={concept.description}
-                                onChange={(e) => updateConcept(concept.id, 'description', e.target.value)}
-                                placeholder="Línea de productos premium..."
-                              />
-                            </FormField>
-                          </div>
-                          <div className="space-y-4">
-                            <FormField label="Color de Acento">
-                              <div className="flex items-center gap-3">
-                                <div 
-                                  className="w-10 h-10 rounded-xl border border-gray-200 shadow-inner shrink-0" 
-                                  style={{ backgroundColor: concept.accent_color }}
-                                />
-                                <TextInput 
-                                  value={concept.accent_color}
-                                  onChange={(e) => updateConcept(concept.id, 'accent_color', e.target.value)}
-                                  placeholder="#HEX"
-                                />
-                              </div>
-                            </FormField>
-                            <FormField label="URL de Imagen / Logo">
-                              <TextInput 
-                                value={concept.image_url}
-                                onChange={(e) => updateConcept(concept.id, 'image_url', e.target.value)}
-                                placeholder="https://..."
-                              />
-                              <ImageGuidance maxMB={getMaxImageSizeMB(activeBrand?.plan_id)} />
-                            </FormField>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
+          <BrandingConceptsSection
+            concepts={settingsForm.brand_concepts}
+            onAddConcept={addConcept}
+            onRemoveConcept={removeConcept}
+            onUpdateConcept={updateConcept}
+            activeBrand={activeBrand}
+          />
         </div>
 
         {/* Right Column: Previsualización */}
-        <div className="xl:col-span-4 lg:sticky top-24 space-y-6">
-           <div className="bg-[#0F170F] rounded-[3rem] p-3 shadow-2xl relative overflow-hidden border-8 border-[#1C2B1E]">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/4 h-5 bg-[#1C2B1E] rounded-b-2xl z-20" />
-              
-              <div 
-                className="aspect-[9/18.5] rounded-[2.5rem] overflow-hidden flex flex-col transition-all duration-500 relative"
-                style={{ backgroundColor: settingsForm.theme_background, fontFamily: settingsForm.font_family }}
-              >
-                 {/* Internal Preview UI */}
-                 <div className="p-6 flex justify-center py-10">
-                    {settingsForm.logo_url ? (
-                       <img src={settingsForm.logo_url} className="h-10 object-contain" alt="Preview logo" />
-                    ) : (
-                       <span className="text-base font-black tracking-tighter uppercase" style={{ color: settingsForm.theme_text }}>{settingsForm.business_name || 'BRAND'}</span>
-                    )}
-                 </div>
-
-                 <div className="px-6 flex-1 space-y-6">
-                    <div className="h-28 rounded-2xl p-4 flex flex-col justify-end overflow-hidden relative shadow-sm" style={{ backgroundColor: settingsForm.theme_secondary }}>
-                       <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-                       <div className="relative z-10 space-y-2">
-                          <div className="w-1/3 h-1.5 bg-white/30 rounded-full" />
-                          <div className="w-full h-3.5 bg-white/50 rounded-full" />
-                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                       {[1, 2].map(i => (
-                          <div 
-                            key={i} 
-                            className="aspect-[4/5] rounded-2xl shadow-sm p-3 flex flex-col justify-between transition-all border border-gray-100/50"
-                            style={{ backgroundColor: settingsForm.theme_card_bg }}
-                          >
-                             <div className="w-full aspect-square rounded-xl bg-gray-100 flex items-center justify-center text-gray-200">
-                                <Icon icon="solar:plate-linear" width="24" />
-                             </div>
-                             <div className="space-y-2 mt-2">
-                                <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: settingsForm.theme_text + '20' }} />
-                                <div className="w-3/4 h-2 rounded-full" style={{ backgroundColor: settingsForm.primary_color }} />
-                             </div>
-                          </div>
-                       ))}
-                    </div>
-
-                    <div className="pt-4 flex justify-center">
-                       <div 
-                        className="px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-xl transition-transform hover:scale-105 active:scale-95"
-                        style={{ backgroundColor: settingsForm.primary_color, color: '#FFFFFF' }}
-                      >
-                        Hacer Pedido
-                      </div>
-                    </div>
-                 </div>
-
-                 <div className="p-8 text-center" style={{ backgroundColor: settingsForm.theme_footer_bg }}>
-                    <div className="w-12 h-1 bg-white/10 rounded-full mx-auto" />
-                    <p className="text-[7px] text-white/30 uppercase font-black tracking-[0.3em] mt-5">Power by ALUNA</p>
-                 </div>
-              </div>
-           </div>
-
-           <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-2xs">
-              <div className="flex items-start gap-3.5">
-                 <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-100/60">
-                    <Icon icon="solar:magic-stick-3-bold-duotone" className="text-xl" />
-                 </div>
-                 <div>
-                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Previsualización Live</h4>
-                    <p className="text-[11px] text-gray-500 mt-1 leading-relaxed font-medium">
-                      Simulación en tiempo real de tu menú móvil. Recuerda guardar los cambios para aplicarlos.
-                    </p>
-                 </div>
-              </div>
-           </div>
-        </div>
+        <BrandingLiveMobilePreview settingsForm={settingsForm} />
       </div>
     </div>
   );
 });
-
-function ColorInput({ label, value, onChange, disabled = false, isPremium = false }) {
-  const inputId = label.toLowerCase().replace(/[^a-z0-9]/g, '-');
-  return (
-    <div className={`group relative ${disabled ? 'cursor-not-allowed' : ''}`}>
-       <div className="flex items-center justify-between mb-2">
-            <label htmlFor={`color-${inputId}`} className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">{label}</label>
-            {isPremium && (
-                <div className="flex items-center gap-1 text-[8px] font-black text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 uppercase tracking-tighter italic">
-                   PRO
-                </div>
-            )}
-       </div>
-       <div className={`flex items-center gap-2 ${disabled ? 'pointer-events-none opacity-40' : ''}`}>
-          <div className="relative shrink-0">
-            <input 
-              id={`color-${inputId}`}
-              name={`color-${inputId}`}
-              type="color" 
-              value={value} 
-              disabled={disabled}
-              onChange={(e) => onChange(e.target.value)}
-              className="w-11 h-11 rounded-1.5xl border border-gray-100 p-0.5 cursor-pointer appearance-none bg-white shadow-sm hover:shadow-md transition-all active:scale-95"
-            />
-            <div className="absolute inset-0 rounded-1.5xl pointer-events-none ring-1 ring-inset ring-black/5" />
-          </div>
-          <div className="relative flex-1">
-             <TextInput 
-               id={`text-${inputId}`}
-               name={`text-${inputId}`}
-               value={value} 
-               disabled={disabled}
-               onChange={(e) => onChange(e.target.value)}
-               placeholder="#000000"
-               className="font-mono text-xs uppercase pl-3 pr-8 !h-11"
-             />
-             <div 
-               className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border border-black/5 shadow-inner" 
-               style={{ backgroundColor: value }} 
-             />
-          </div>
-       </div>
-    </div>
-  );
-}
 
 export default AdminBranding;
