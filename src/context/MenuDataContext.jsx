@@ -416,18 +416,33 @@ export const MenuDataProvider = ({ children }) => {
     return hours;
   }, [businessHours, activeLocationId]);
 
-  // Ticker continuo cada 15s para reevaluar apertura/cierre automático según horario y expiración de pausas
-  const [statusTick, setStatusTick] = useState(0);
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setStatusTick(t => t + 1);
-    }, 15000);
-    return () => clearInterval(interval);
-  }, []);
+  // Evaluador de apertura/cierre automático con preservación de referencia
+  // Solo actualiza el estado si los valores reales de apertura/pausa cambian,
+  // evitando re-renderizar todo el árbol de componentes (66 consumidores) continuamente.
+  const [storeStatusInfo, setStoreStatusInfo] = useState(() => isRestaurantOpen(currentBusinessHours, brand?.config));
 
-  const storeStatusInfo = useMemo(() => {
-    return isRestaurantOpen(currentBusinessHours, brand?.config);
-  }, [currentBusinessHours, brand?.config, statusTick]);
+  useEffect(() => {
+    const checkStatus = () => {
+      const nextStatus = isRestaurantOpen(currentBusinessHours, brand?.config);
+      setStoreStatusInfo(prev => {
+        if (!prev && !nextStatus) return prev;
+        if (
+          prev?.isOpen === nextStatus?.isOpen &&
+          prev?.isManualPause === nextStatus?.isManualPause &&
+          prev?.isScheduleClosed === nextStatus?.isScheduleClosed &&
+          prev?.message === nextStatus?.message &&
+          prev?.reopenFormatted === nextStatus?.reopenFormatted
+        ) {
+          return prev; // Mantiene la misma referencia de objeto para evitar re-renders innecesarios
+        }
+        return nextStatus;
+      });
+    };
+
+    checkStatus();
+    const interval = setInterval(checkStatus, 30000);
+    return () => clearInterval(interval);
+  }, [currentBusinessHours, brand?.config]);
 
   const isAdminContext = typeof window !== 'undefined' && (
     window.location.pathname.startsWith('/admin') ||

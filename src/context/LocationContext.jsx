@@ -149,7 +149,7 @@ export const LocationProvider = ({ children }) => {
     };
   }, [activeBrand?.id, refreshLocations]);
 
-  const value = {
+  const value = useMemo(() => ({
     activeLocationId,
     activeLocation,
     locations,
@@ -160,7 +160,17 @@ export const LocationProvider = ({ children }) => {
     updateLocation,
     deleteLocation,
     refreshLocations
-  };
+  }), [
+    activeLocationId,
+    activeLocation,
+    locations,
+    loading,
+    switchLocation,
+    createLocation,
+    updateLocation,
+    deleteLocation,
+    refreshLocations
+  ]);
 
   return (
     <LocationContext.Provider value={value}>
