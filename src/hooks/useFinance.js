@@ -71,18 +71,52 @@ export function useFinance() {
   const fetchFinancialConfig = useCallback(async () => {
     if (!brandId) return;
     try {
-      const { data, error } = await supabase
-        .from('brands')
-        .select('config')
-        .eq('id', brandId)
-        .single();
+      let existingFin = null;
 
-      if (error) {
-        console.error('[useFinance] brand config error:', error);
-        return;
+      // 1. Capa A: restaurant_settings (concept 'financials_config')
+      try {
+        const { data: setRow } = await supabase
+          .from('restaurant_settings')
+          .select('brand_concepts')
+          .eq('brand_id', brandId)
+          .single();
+        const concepts = Array.isArray(setRow?.brand_concepts) ? setRow.brand_concepts : [];
+        const finConcept = concepts.find(c => c && c.id === 'financials_config');
+        if (finConcept?.data) {
+          existingFin = finConcept.data;
+        }
+      } catch (errSet) {
+        console.warn('[useFinance] read restaurant_settings notice:', errSet);
       }
 
-      const existingFin = data?.config?.financials || null;
+      // 2. Capa B: brands.config.financials
+      if (!existingFin) {
+        try {
+          const { data: brandRow } = await supabase
+            .from('brands')
+            .select('config')
+            .eq('id', brandId)
+            .single();
+          if (brandRow?.config?.financials) {
+            existingFin = brandRow.config.financials;
+          }
+        } catch (errBrand) {
+          console.warn('[useFinance] read brands config notice:', errBrand);
+        }
+      }
+
+      // 3. Capa C: LocalStorage de emergencia (resiliencia offline/inmediata)
+      if (!existingFin) {
+        try {
+          const cached = localStorage.getItem(`aa_financials_${brandId}`);
+          if (cached) {
+            existingFin = JSON.parse(cached);
+          }
+        } catch (errCache) {
+          console.warn('[useFinance] read localStorage notice:', errCache);
+        }
+      }
+
       if (existingFin) {
         const existingDiscarded = Array.isArray(existingFin.discarded_order_ids)
           ? existingFin.discarded_order_ids
@@ -158,21 +192,61 @@ export function useFinance() {
     if (!brandId) return;
     setSaving(true);
     try {
+      // 1. Guardar en memoria y en localStorage inmediatamente
       setFinancialConfig(newFinConfig);
       localStorage.setItem(`aa_financials_${brandId}`, JSON.stringify(newFinConfig));
 
-      const { data: brandData } = await supabase
-        .from('brands')
-        .select('config')
-        .eq('id', brandId)
-        .single();
+      // 2. Persistir en restaurant_settings (donde los administradores y gerentes tienen acceso RLS garantizado)
+      try {
+        const { data: setRow } = await supabase
+          .from('restaurant_settings')
+          .select('id, brand_concepts')
+          .eq('brand_id', brandId)
+          .single();
 
-      const { error } = await supabase
-        .from('brands')
-        .update({ config: { ...(brandData?.config || {}), financials: newFinConfig } })
-        .eq('id', brandId);
+        if (setRow) {
+          let concepts = Array.isArray(setRow.brand_concepts) ? [...setRow.brand_concepts] : [];
+          const idx = concepts.findIndex(c => c && c.id === 'financials_config');
+          const finConcept = {
+            id: 'financials_config',
+            updated_at: new Date().toISOString(),
+            data: newFinConfig
+          };
+          if (idx >= 0) concepts[idx] = finConcept;
+          else concepts.push(finConcept);
 
-      if (error) throw error;
+          await supabase
+            .from('restaurant_settings')
+            .update({ brand_concepts: concepts, updated_at: new Date().toISOString() })
+            .eq('id', setRow.id);
+        }
+      } catch (errRS) {
+        console.warn('[useFinance] persist restaurant_settings notice:', errRS);
+      }
+
+      // 3. Persistir en brands.config
+      try {
+        const { data: brandData } = await supabase
+          .from('brands')
+          .select('config')
+          .eq('id', brandId)
+          .single();
+
+        await supabase
+          .from('brands')
+          .update({ config: { ...(brandData?.config || {}), financials: newFinConfig } })
+          .eq('id', brandId);
+      } catch (errBrand) {
+        console.warn('[useFinance] persist brands notice:', errBrand);
+      }
+
+      // 4. Sincronizar vía endpoint serverless /api/save-finances (Service Role garantizado)
+      fetch('/api/save-finances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandId, financials: newFinConfig })
+      }).catch(errApi => console.warn('[useFinance] /api/save-finances async notice:', errApi));
+
     } catch (err) {
       console.error('[useFinance] persistConfig error:', err);
       toast.error('Error guardando datos financieros: ' + err.message);
