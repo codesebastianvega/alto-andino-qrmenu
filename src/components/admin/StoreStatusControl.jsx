@@ -31,8 +31,6 @@ const QUICK_MESSAGES = [
 
 const COUPON_PRESETS = [
   { code: 'VOLVER10', label: '10% de Descuento por la espera (Candado por Huella)', benefit: '10% OFF en su próxima compra' },
-  { code: 'DOMIGRATIS', label: 'Domicilio 100% Gratis (Pedidos +$25k)', benefit: 'Domicilio Gratis en su próximo pedido' },
-  { code: 'BOKU10', label: '10% OFF General', benefit: '10% de descuento en toda la carta' },
 ];
 
 export default function StoreStatusControl() {

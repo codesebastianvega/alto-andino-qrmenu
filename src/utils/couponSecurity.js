@@ -191,74 +191,8 @@ export function markCouponUsedOnDevice(code, brandId, phone = '') {
  * Default Starter Coupons for Boku Bento / Brands
  * These work out-of-the-box and can also be managed in Campañas & Descuentos.
  */
-export function getDefaultBrandCoupons(brandId) {
-  const disabledRaw = typeof window !== 'undefined'
-    ? localStorage.getItem(`aa_disabled_default_coupons_${brandId}`)
-    : null;
-  const disabledCodes = disabledRaw ? JSON.parse(disabledRaw) : [];
-
-  const defaults = [
-    {
-      id: `default-domigratis-${brandId}`,
-      brand_id: brandId,
-      name: 'Domicilio 100% Gratis (Cupón de Carrito)',
-      code: 'DOMIGRATIS',
-      type: 'free_delivery',
-      target: 'delivery',
-      value: 0,
-      min_order_amount: 25000,
-      is_active: !disabledCodes.includes('DOMIGRATIS'),
-      show_banner: false,
-      coupon_scope: 'general',
-      description: 'Envío gratis en pedidos desde $25.000 (1 uso por cliente)',
-      is_default_template: true
-    },
-    {
-      id: `default-boku10-${brandId}`,
-      brand_id: brandId,
-      name: '10% de Descuento en toda la Carta',
-      code: 'BOKU10',
-      type: 'percentage_discount',
-      target: 'all',
-      value: 10,
-      min_order_amount: 20000,
-      is_active: !disabledCodes.includes('BOKU10'),
-      show_banner: false,
-      coupon_scope: 'general',
-      description: '10% OFF en compras desde $20.000 (1 uso por cliente)',
-      is_default_template: true
-    },
-    {
-      id: `default-disculpaboku-${brandId}`,
-      brand_id: brandId,
-      name: '15% OFF Compensación Clientes (CRM)',
-      code: 'DISCULPABOKU',
-      type: 'percentage_discount',
-      target: 'all',
-      value: 15,
-      min_order_amount: 0,
-      is_active: !disabledCodes.includes('DISCULPABOKU'),
-      show_banner: false,
-      coupon_scope: 'crm_recovery',
-      description: 'Exclusivo para clientes con pedido cancelado o link de recuperación',
-      is_default_template: true
-    },
-    {
-      id: `default-volver10-${brandId}`,
-      brand_id: brandId,
-      name: '10% OFF Por Espera (Tienda en Pausa)',
-      code: 'VOLVER10',
-      type: 'percentage_discount',
-      target: 'all',
-      value: 10,
-      min_order_amount: 0,
-      is_active: !disabledCodes.includes('VOLVER10'),
-      show_banner: false,
-      coupon_scope: 'pause_only',
-      description: 'Solo se activa en celulares que entraron mientras la tienda estaba cerrada',
-      is_default_template: true
-    }
-  ];
-
-  return defaults;
+export function getDefaultBrandCoupons() {
+  // Las promociones y cupones deben provenir exclusivamente de la base de datos de cada restaurante.
+  // No inyectar cupones automáticos, inventados ni ficticios.
+  return [];
 }

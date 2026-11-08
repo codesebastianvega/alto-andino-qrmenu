@@ -61,11 +61,7 @@ export function useAdminPromotionsData() {
       const { data, error } = await query;
       if (error) throw error;
       const dbList = data || [];
-      const existingCodes = new Set(dbList.map(p => (p.code || '').trim().toUpperCase()).filter(Boolean));
-      const defaultCoupons = getDefaultBrandCoupons(activeBrandId).filter(
-        dc => !existingCodes.has((dc.code || '').trim().toUpperCase())
-      );
-      setPromotions([...dbList, ...defaultCoupons]);
+      setPromotions(dbList);
     } catch (err) {
       console.error('Error fetching promotions:', err);
       toast.error('Error al cargar promociones');

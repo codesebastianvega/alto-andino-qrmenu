@@ -747,12 +747,39 @@ export default function OrderStatus({ orderId }) {
             ))}
           </div>
 
-          <div className="flex justify-between items-center pt-4 border-t border-black/5">
-            <div className="flex flex-col">
-              <span className="font-bold text-sm text-black/60">Total del Pedido</span>
-              {order.service_fee > 0 && <span className="text-[10px] font-medium text-black/40">Incluye propina ${(order.service_fee).toLocaleString()}</span>}
+          {/* Desglose Transparente del Pedido */}
+          <div className="pt-3 border-t border-black/5 space-y-1.5 text-xs text-black/70">
+            <div className="flex justify-between items-center">
+              <span>Subtotal productos</span>
+              <span className="font-semibold text-[#1A1A1A]">
+                ${items.reduce((acc, it) => acc + ((Number(it.unit_price) || 0) * (Number(it.quantity) || 1)), 0).toLocaleString()}
+              </span>
             </div>
-            <span className="font-extrabold text-xl">${(order.total_amount || 0).toLocaleString()}</span>
+            {Number(order.discount_amount) > 0 && (
+              <div className="flex justify-between items-center text-emerald-700 font-bold">
+                <span>Descuento {order.discount_reason ? `(${order.discount_reason})` : ''}</span>
+                <span>-${Number(order.discount_amount).toLocaleString()}</span>
+              </div>
+            )}
+            {order.fulfillment_type === 'delivery' && (
+              <div className="flex justify-between items-center">
+                <span>Costo de Domicilio</span>
+                <span className={`font-semibold ${Number(order.delivery_fee) > 0 ? 'text-[#1A1A1A]' : 'text-emerald-700'}`}>
+                  {Number(order.delivery_fee) > 0 ? `${Number(order.delivery_fee).toLocaleString()}` : 'Gratis'}
+                </span>
+              </div>
+            )}
+            {Number(order.service_fee) > 0 && (
+              <div className="flex justify-between items-center">
+                <span>Servicio voluntario</span>
+                <span className="font-semibold text-[#1A1A1A]">${Number(order.service_fee).toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between items-center pt-3 border-t border-black/10 mt-2">
+            <span className="font-bold text-sm text-black/80">Total del Pedido</span>
+            <span className="font-extrabold text-xl text-[#1A1A1A]">${(order.total_amount || 0).toLocaleString()}</span>
           </div>
         </motion.div>
 

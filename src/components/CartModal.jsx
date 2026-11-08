@@ -369,7 +369,14 @@ export default function CartModal({ open, onClose }) {
   const [appliedCoupon, setAppliedCoupon] = useState(() => {
     try {
       const saved = localStorage.getItem("aa_applied_coupon");
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      // Limpiar cupones obsoletos, no existentes o plantillas de prueba
+      if (parsed?.code === 'DOMIGRATIS' || parsed?.code === 'BOKU10' || parsed?.is_default_template) {
+        localStorage.removeItem("aa_applied_coupon");
+        return null;
+      }
+      return parsed;
     } catch {
       return null;
     }
@@ -1792,7 +1799,7 @@ export default function CartModal({ open, onClose }) {
                 )}
               </div>
               <span className={`text-sm font-semibold ${deliveryFee > 0 ? 'text-emerald-700' : isFreeDeliveryPromoActive ? 'text-emerald-600 font-black' : 'text-neutral-600'}`}>
-                {deliveryFee > 0 ? formatCOP(deliveryFee) : isMealPlanDeliveryCovered ? 'Incluido en tu Plan 🛵' : isFreeDeliveryPromoActive ? '¡GRATIS! 🎉' : '$ 0'}
+                {deliveryFee > 0 ? formatCOP(deliveryFee) : isMealPlanDeliveryCovered ? 'Incluido en tu Plan 🛵' : isFreeDeliveryPromoActive ? '¡GRATIS! 🎉' : Number(currentLocation?.delivery_fee) > 0 ? formatCOP(Number(currentLocation.delivery_fee)) : '$ 0'}
               </span>
             </div>
           )}

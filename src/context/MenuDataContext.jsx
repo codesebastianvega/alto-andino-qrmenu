@@ -1265,15 +1265,10 @@ export const MenuDataProvider = ({ children }) => {
   const getModifiers = useCallback((group) => modifiers[group] || [], [modifiers]);
   const getAllProducts = useCallback(() => Object.values(productsByCategory).flat(), [productsByCategory]);
 
-  // Merge DB promotions with built-in starter coupons (DOMIGRATIS, BOKU10, DISCULPABOKU, VOLVER10)
+  // Promociones reales exclusivas de la base de datos para esta marca
   const mergedPromotions = useMemo(() => {
-    const dbList = promotions || [];
-    if (!activeBrandId) return dbList;
-    const defaults = getDefaultBrandCoupons(activeBrandId);
-    const dbCodes = new Set(dbList.map(p => (p.code || '').trim().toUpperCase()).filter(Boolean));
-    const missingDefaults = defaults.filter(d => !dbCodes.has(d.code.toUpperCase()));
-    return [...dbList, ...missingDefaults];
-  }, [promotions, activeBrandId]);
+    return promotions || [];
+  }, [promotions]);
 
   const activePromotions = useMemo(() => {
     if (!mergedPromotions || mergedPromotions.length === 0) return [];
