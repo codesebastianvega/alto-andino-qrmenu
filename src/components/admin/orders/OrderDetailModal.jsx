@@ -216,7 +216,7 @@ export const OrderDetailModal = ({
                       </span>
                       <div className="flex items-center gap-2">
                         <span className="font-black text-amber-950">${(Number(selectedOrder.delivery_fee) || 0).toLocaleString()}</span>
-                        {updateDeliveryFee && selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
+                        {updateDeliveryFee && selectedOrder.status !== 'cancelled' && (
                           <button
                             type="button"
                             onClick={() => {
@@ -689,7 +689,7 @@ export const OrderDetailModal = ({
               </div>
 
               {/* Tarjeta: Descuentos VIP & Total Acordado */}
-              {selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
+              {selectedOrder.status !== 'cancelled' && (
                 <div className="bg-slate-900 p-5 rounded-2xl shadow-sm text-white space-y-3.5">
                   <div className="flex items-center justify-between">
                     <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">

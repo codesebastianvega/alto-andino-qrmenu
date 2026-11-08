@@ -146,6 +146,7 @@ export default function CustomerProfileModal({
   }, [brandMethods, activeBrand]);
 
   const [settlingOrder, setSettlingOrder] = useState(null); // specific order object or 'all'
+  const [settleCustomAmount, setSettleCustomAmount] = useState('');
   const [settleMode, setSettleMode] = useState('historical'); // 'historical' | 'today'
   const [selectedPayMethod, setSelectedPayMethod] = useState('efectivo');
   const [isSubmittingSettle, setIsSubmittingSettle] = useState(false);
@@ -246,7 +247,11 @@ Te recordamos cordialmente tu saldo pendiente de ${amountStr}${orderInfo}.${paym
           await onSettleOrder(ord.id, selectedPayMethod, { isHistorical: settleMode === 'historical' });
         }
       } else if (settlingOrder?.id) {
-        await onSettleOrder(settlingOrder.id, selectedPayMethod, { isHistorical: settleMode === 'historical' });
+        const customAmt = settleCustomAmount !== '' ? Number(settleCustomAmount) : undefined;
+        await onSettleOrder(settlingOrder.id, selectedPayMethod, { 
+          isHistorical: settleMode === 'historical',
+          customAmount: customAmt
+        });
       }
       setSettlingOrder(null);
     } catch (err) {
@@ -684,7 +689,10 @@ Te recordamos cordialmente tu saldo pendiente de ${amountStr}${orderInfo}.${paym
                               </button>
                               <button
                                 type="button"
-                                onClick={() => setSettlingOrder(order)}
+                                onClick={() => {
+                                  setSettlingOrder(order);
+                                  setSettleCustomAmount(String(Number(order.total_amount || 0) - Number(order.paid_amount || 0)));
+                                }}
                                 className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-2xs transition-all cursor-pointer"
                               >
                                 💰 Cobrar
@@ -717,10 +725,10 @@ Te recordamos cordialmente tu saldo pendiente de ${amountStr}${orderInfo}.${paym
                       </div>
                       <div>
                         <h4 className="text-sm font-black text-gray-900 uppercase tracking-tight">
-                          Registrar Cobro
+                          Registrar Cobro / Ajustar
                         </h4>
                         <p className="text-xs font-bold text-emerald-700">
-                          {formatCurrency(settlingOrder === 'all' ? totalOwed : settlingOrder.total_amount)}
+                          Total actual: {formatCurrency(settlingOrder === 'all' ? totalOwed : settlingOrder.total_amount)}
                         </p>
                       </div>
                     </div>
@@ -774,6 +782,38 @@ Te recordamos cordialmente tu saldo pendiente de ${amountStr}${orderInfo}.${paym
                       </div>
                     );
                   })()}
+
+                  {/* Monto editable y cálculo automático de descuento */}
+                  {settlingOrder !== 'all' && (
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-wider text-gray-500 block mb-1">
+                        ¿Cuánto paga el cliente? ($ COP)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-black text-sm">$</span>
+                        <input
+                          type="number"
+                          value={settleCustomAmount}
+                          onChange={(e) => setSettleCustomAmount(e.target.value)}
+                          placeholder="Monto a pagar"
+                          className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-base font-black text-emerald-700 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      {settleCustomAmount !== '' && Number(settleCustomAmount) < Number(settlingOrder?.total_amount || 0) && (
+                        <div className="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs space-y-0.5">
+                          <div className="flex items-center justify-between text-amber-900 font-bold">
+                            <span>Descuento de Cortesía:</span>
+                            <span className="text-rose-600 font-black">
+                              -${(Number(settlingOrder.total_amount || 0) - Number(settleCustomAmount)).toLocaleString('es-CO')}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-amber-800">
+                            La diferencia se aplicará como descuento automático y el pedido quedará 100% saldado.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-2">

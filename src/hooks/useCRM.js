@@ -144,12 +144,28 @@ export function useCRM() {
     });
   }, [brandId]);
 
-  const settleCustomerOrder = useCallback(async (orderId, paymentMethod = 'efectivo', { isHistorical = false } = {}) => {
+  const settleCustomerOrder = useCallback(async (orderId, paymentMethod = 'efectivo', { isHistorical = false, customAmount, discountReason } = {}) => {
     try {
       const order = orders.find(o => o.id === orderId);
-      const total = Number(order?.total_amount || 0);
+      const originalTotal = Number(order?.total_amount || 0);
       const prevPaid = Number(order?.paid_amount || 0);
-      const remaining = Math.max(0, total - prevPaid);
+      const remaining = Math.max(0, originalTotal - prevPaid);
+
+      let finalTotal = originalTotal;
+      let finalDiscount = Number(order?.discount_amount || 0);
+      let finalReason = order?.discount_reason || null;
+      let actualCollected = remaining;
+
+      if (customAmount !== undefined && customAmount !== null && Number(customAmount) >= 0) {
+        const agreed = Number(customAmount);
+        actualCollected = agreed;
+        if (agreed < originalTotal) {
+          const diff = originalTotal - agreed;
+          finalDiscount += diff;
+          finalTotal = agreed;
+          finalReason = discountReason || `Descuento Cortesía (-${diff.toLocaleString('es-CO')})`;
+        }
+      }
 
       const cleanNotes = (order?.delivery_notes || '').replace(/\[\s*🤝?\s*FIADO[^\]]*\]/gi, '').trim();
       const finalNotes = isHistorical ? `${cleanNotes} [Ajuste Histórico Regularizado]`.trim() : cleanNotes;
@@ -160,8 +176,11 @@ export function useCRM() {
         .update({
           payment_status: 'paid',
           payment_method: finalMethod,
+          total_amount: finalTotal,
+          discount_amount: finalDiscount,
+          discount_reason: finalReason,
           delivery_notes: finalNotes || null,
-          paid_amount: total,
+          paid_amount: finalTotal,
           updated_at: new Date().toISOString()
         })
         .eq('id', orderId);
@@ -169,12 +188,12 @@ export function useCRM() {
       if (error) throw error;
 
       // Sync to Financial Ledger & Pocket Balance when it's a real collection today
-      if (!isHistorical && remaining > 0) {
+      if (!isHistorical && actualCollected > 0) {
         const { cleanName } = parseCustomerInfo(order?.customer_name, order?.delivery_address, order?.delivery_notes);
         await syncCollectionToFinancials({
           brandId,
           customerName: cleanName || 'Cliente',
-          amount: remaining,
+          amount: actualCollected,
           paymentMethod,
           isHistorical: false,
           notes: `Cobro desde CRM (#${String(orderId).slice(0, 4).toUpperCase()})`
