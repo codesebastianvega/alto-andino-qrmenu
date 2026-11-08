@@ -85,6 +85,7 @@ export default function AdminOrders() {
     updateOrderStatus,
     assignWaiter,
     applyDiscount,
+    updateDeliveryFee,
     cancelOrder,
     handleMergeOrders,
     onDragEnd,
@@ -325,6 +326,7 @@ export default function AdminOrders() {
         assignWaiter={assignWaiter}
         updateOrderStatus={updateOrderStatus}
         applyDiscount={applyDiscount}
+        updateDeliveryFee={updateDeliveryFee}
         cancelOrder={cancelOrder}
         isCancelling={isCancelling}
         setIsCancelling={setIsCancelling}

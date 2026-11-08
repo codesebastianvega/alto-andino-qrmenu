@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Icon } from "@iconify-icon/react";
-import { Info, ShoppingBag, ShieldCheck } from "lucide-react";
+import { Info, ShoppingBag, ShieldCheck, User } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { safeSessionStorage as sessionStorage } from "../utils/safeStorage";
 import { getTableId } from "@/utils/table";
@@ -170,6 +170,15 @@ export default function Header({ onCartOpen, onGuideOpen, cartCount = 0, current
           >
             <Info size={17} className="text-[#1A1A1A]/55 group-hover:text-[#1A1A1A]" />
           </button>
+
+          <a
+            href="#perfil"
+            aria-label="Mi Cuenta"
+            className="group flex h-9 w-9 items-center justify-center rounded-full border border-black/5 bg-white/45 transition-colors hover:bg-white"
+            title="Mi Cuenta e Historial"
+          >
+            <User size={17} className="text-[#1A1A1A]/65 group-hover:text-[#1A1A1A]" />
+          </a>
 
           <button
             type="button"

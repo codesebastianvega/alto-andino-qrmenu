@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Home, ReceiptText, ShieldAlert, Sparkles, Utensils, ShieldCheck } from "lucide-react";
+import { Home, ReceiptText, ShieldAlert, Sparkles, Utensils, ShieldCheck, User } from "lucide-react";
 import { useMenuData } from "../../context/MenuDataContext";
 import { useAuth } from "../../context/AuthContext";
 import { safeStorage as localStorage, safeSessionStorage as sessionStorage } from "../../utils/safeStorage";
@@ -55,6 +55,8 @@ export default function BottomTabBar({ currentHash, onAllergensOpen, showExperie
       icon: ShieldAlert, 
       action: onAllergensOpen 
     });
+
+    items.push({ id: "perfil", label: "Cuenta", icon: User, hash: "#perfil" });
 
     if (activeOrderId) {
       items.push({ id: "pedido", label: "Pedido", icon: ReceiptText, hash: `#order/${activeOrderId}` });

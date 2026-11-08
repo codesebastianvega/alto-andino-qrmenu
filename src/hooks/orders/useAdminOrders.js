@@ -467,30 +467,98 @@ export function useAdminOrders() {
     }
   };
 
-  const applyDiscount = async (orderId, percentage) => {
+  const applyDiscount = async (orderId, discountArg) => {
     try {
       setUpdatingStatus(orderId);
-      const itemsTotal = selectedOrder.order_items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-      const discountAmount = Math.round(itemsTotal * (percentage / 100));
-      const newTotal = Math.max(0, (itemsTotal + (Number(selectedOrder.service_fee) || 0)) - discountAmount);
+      const targetOrder = orders.find(o => o.id === orderId) || selectedOrder;
+      const itemsTotal = (targetOrder?.order_items || []).reduce((sum, item) => sum + ((Number(item.quantity) || 1) * (Number(item.unit_price) || 0)), 0);
+      const deliveryFee = Number(targetOrder?.delivery_fee || 0);
+      const serviceFee = Number(targetOrder?.service_fee || 0);
+      const baseSubtotal = itemsTotal + deliveryFee + serviceFee;
+
+      let discountAmount = 0;
+      let discountReason = '';
+
+      if (typeof discountArg === 'number') {
+        const pct = discountArg;
+        discountAmount = Math.round(itemsTotal * (pct / 100));
+        discountReason = pct === 100 ? 'Amigo VIP (100%)' : `Descuento ${pct}%`;
+      } else if (typeof discountArg === 'object' && discountArg !== null) {
+        const { percentage, amount, fixedTotal, reason } = discountArg;
+        if (fixedTotal !== undefined && fixedTotal !== null && fixedTotal !== '') {
+          const targetTotal = Math.max(0, Number(fixedTotal));
+          discountAmount = Math.max(0, baseSubtotal - targetTotal);
+          discountReason = reason?.trim() || `Total acordado: ${targetTotal.toLocaleString('es-CO')}`;
+        } else if (amount !== undefined && amount !== null && amount !== '') {
+          discountAmount = Math.min(baseSubtotal, Math.max(0, Number(amount)));
+          discountReason = reason?.trim() || `Cortesía -${discountAmount.toLocaleString('es-CO')}`;
+        } else if (percentage !== undefined && percentage !== null) {
+          const pct = Number(percentage);
+          discountAmount = Math.round(itemsTotal * (pct / 100));
+          discountReason = reason?.trim() || (pct === 100 ? 'Amigo VIP (100%)' : `Descuento ${pct}%`);
+        }
+      }
+
+      const newTotal = Math.max(0, baseSubtotal - discountAmount);
 
       const { error } = await supabase
         .from('orders')
         .update({ 
           discount_amount: discountAmount,
-          discount_reason: percentage === 100 ? 'Amigo VIP' : `Descuento ${percentage}%`,
-          total_amount: newTotal 
+          discount_reason: discountAmount > 0 ? (discountReason || 'Descuento') : null,
+          total_amount: newTotal,
+          updated_at: new Date().toISOString()
         })
         .eq('id', orderId);
 
       if (error) throw error;
-      toast('Descuento aplicado ✨');
+      toast.success(discountAmount > 0 ? `Descuento aplicado: -${discountAmount.toLocaleString('es-CO')}` : 'Descuento removido');
       
-      const updates = { discount_amount: discountAmount, total_amount: newTotal, discount_reason: percentage === 100 ? 'Amigo VIP' : `Descuento ${percentage}%` };
+      const updates = { 
+        discount_amount: discountAmount, 
+        total_amount: newTotal, 
+        discount_reason: discountAmount > 0 ? (discountReason || 'Descuento') : null 
+      };
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o));
-      setSelectedOrder(prev => ({ ...prev, ...updates }));
-    } catch {
+      setSelectedOrder(prev => (prev?.id === orderId ? { ...prev, ...updates } : prev));
+      fetchOrders();
+    } catch (err) {
+      console.error("Error al aplicar descuento:", err);
       toast.error('Error al aplicar descuento');
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
+  const updateDeliveryFee = async (orderId, newFee) => {
+    try {
+      setUpdatingStatus(orderId);
+      const targetOrder = orders.find(o => o.id === orderId) || selectedOrder;
+      const itemsTotal = (targetOrder?.order_items || []).reduce((sum, item) => sum + ((Number(item.quantity) || 1) * (Number(item.unit_price) || 0)), 0);
+      const serviceFee = Number(targetOrder?.service_fee || 0);
+      const discount = Number(targetOrder?.discount_amount || 0);
+      const fee = Math.max(0, Number(newFee || 0));
+      const newTotal = Math.max(0, itemsTotal + fee + serviceFee - discount);
+
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          delivery_fee: fee,
+          total_amount: newTotal,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+      toast.success(fee === 0 ? '🛵 Domicilio exonerado ($0)' : `🛵 Domicilio ajustado a ${fee.toLocaleString('es-CO')}`);
+      
+      const updates = { delivery_fee: fee, total_amount: newTotal };
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o));
+      setSelectedOrder(prev => (prev?.id === orderId ? { ...prev, ...updates } : prev));
+      fetchOrders();
+    } catch (err) {
+      console.error("Error al actualizar domicilio:", err);
+      toast.error('Error al actualizar costo de domicilio');
     } finally {
       setUpdatingStatus(null);
     }
@@ -527,18 +595,39 @@ export function useAdminOrders() {
 
       if (itemsError) throw itemsError;
 
-      const newTotal = Number(targetOrder.total_amount || 0) + Number(sourceOrder.total_amount || 0);
+      // Consolidar ítems recalculando con precisión sin duplicar cobro de domicilio
+      const { data: allTargetItems } = await supabase
+        .from('order_items')
+        .select('quantity, unit_price')
+        .eq('order_id', targetOrder.id);
+
+      const itemsSubtotal = (allTargetItems || []).reduce(
+        (sum, item) => sum + ((Number(item.quantity) || 1) * (Number(item.unit_price) || 0)), 
+        0
+      );
+
+      // El domicilio no se cobra dos veces por un mismo envío consolidado
+      const finalDeliveryFee = Math.max(Number(targetOrder.delivery_fee || 0), Number(sourceOrder.delivery_fee || 0));
       const newServiceFee = Number(targetOrder.service_fee || 0) + Number(sourceOrder.service_fee || 0);
       const newPaidAmount = Number(targetOrder.paid_amount || 0) + Number(sourceOrder.paid_amount || 0);
       const newDiscountAmount = Number(targetOrder.discount_amount || 0) + Number(sourceOrder.discount_amount || 0);
+      const newTotal = Math.max(0, itemsSubtotal + finalDeliveryFee + newServiceFee - newDiscountAmount);
+
+      // Si el método de pago tenía un monto anterior estático en efectivo, actualizarlo de forma limpia
+      let updatedPaymentMethod = targetOrder.payment_method;
+      if (updatedPaymentMethod && /pago exacto/i.test(updatedPaymentMethod)) {
+        updatedPaymentMethod = `Efectivo (Pago exacto: ${newTotal.toLocaleString('es-CO')})`;
+      }
 
       const { error: updateError } = await supabase
         .from('orders')
         .update({
           total_amount: newTotal,
+          delivery_fee: finalDeliveryFee,
           service_fee: newServiceFee,
           paid_amount: newPaidAmount,
           discount_amount: newDiscountAmount,
+          payment_method: updatedPaymentMethod,
           status: (targetOrder.status === 'ready' || targetOrder.status === 'delivered') ? 'new' : targetOrder.status
         })
         .eq('id', targetOrder.id);
@@ -789,6 +878,7 @@ Puedes realizar tu pago en efectivo en tu próxima visita o transferirnos por:
     updateOrderStatus,
     assignWaiter,
     applyDiscount,
+    updateDeliveryFee,
     cancelOrder,
     handleMergeOrders,
     onDragEnd,

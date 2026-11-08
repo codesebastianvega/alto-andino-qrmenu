@@ -569,6 +569,10 @@ export default function CartModal({ open, onClose }) {
 
   const deliveryFee = useMemo(() => {
     if (fulfillmentType !== 'delivery') return 0;
+    // Si el cliente está añadiendo productos a un pedido en curso, el flete ya está cubierto
+    if (typeof window !== 'undefined' && sessionStorage.getItem('aa_append_to_order_id')) {
+      return 0;
+    }
     // Solo cubrir el domicilio por Tiquetera si está redimiendo 1 almuerzo del plan (discountAmount > 0) y su plan incluye domicilio
     if (effectivePromo?.is_meal_plan && discountAmount > 0) {
       if (effectivePromo.includes_delivery) return 0;
@@ -1240,9 +1244,12 @@ export default function CartModal({ open, onClose }) {
         return;
       }
 
-      // Try to find an existing active order for this table to merge items
+      // Try to find an existing active order (para mesas o adición a pedido en curso)
+      const appendOrderId = typeof window !== 'undefined' ? sessionStorage.getItem('aa_append_to_order_id') : null;
+      let existingOrder = null;
+
       if (tableId) {
-        const { data: existingOrder, error: findError } = await supabase.from('orders')
+        const { data: tableOrder } = await supabase.from('orders')
           .select('*')
           .eq('table_id', tableId)
           .eq('brand_id', activeBrandId)
@@ -1250,35 +1257,47 @@ export default function CartModal({ open, onClose }) {
           .in('status', ['waiting_payment', 'new', 'preparing', 'ready'])
           .limit(1)
           .maybeSingle();
-        
-        console.log("🔍 [Order Flow] Existing order lookup:", { existingOrder, findError, searchParams: { tableId, activeBrandId } });
-        
-        if (existingOrder) {
-          // If we found an existing order, update its total and use its data
-          // Always reset status to 'new' when adding items to an existing order
-          // to ensure kitchen notification triggers correctly for the new items.
-          const updatePayload = {
-            total_amount: Number(existingOrder.total_amount) + Number(finalTotal),
-            discount_amount: Number(existingOrder.discount_amount || 0) + Number(discountAmount || 0),
-            discount_reason: effectivePromo ? (existingOrder.discount_reason ? `${existingOrder.discount_reason}, ${effectivePromo.code || effectivePromo.name}` : (effectivePromo.code || effectivePromo.name)) : existingOrder.discount_reason,
-            service_fee: Number(existingOrder.service_fee || 0) + Number(serviceFeeAmount),
-            status: 'new',
-            kitchen_status: hasKitchenItemsInOrder ? 'pending' : existingOrder.kitchen_status,
-            bar_status: hasBarItemsInOrder ? 'pending' : existingOrder.bar_status,
-            payment_status: isPOSMode && isPaid ? 'paid' : existingOrder.payment_status,
-            payment_method: isPOSMode ? (isPaid ? paymentMethod : existingOrder.payment_method) : paymentMethodSummary
-          };
+        if (tableOrder) existingOrder = tableOrder;
+      } else if (appendOrderId) {
+        const { data: activeOrder } = await supabase.from('orders')
+          .select('*')
+          .eq('id', appendOrderId)
+          .eq('brand_id', activeBrandId)
+          .in('status', ['waiting_payment', 'new', 'preparing'])
+          .maybeSingle();
+        if (activeOrder) existingOrder = activeOrder;
+      }
+      
+      if (existingOrder) {
+        // Al agregar a una orden existente, jamás duplicar cobro de domicilio
+        const isDeliveryAlreadyCovered = Number(existingOrder.delivery_fee || 0) > 0;
+        const subtotalAfterDiscount = Math.max(0, total - discountAmount);
+        const packaging = (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery') ? packagingFeeTotal : 0;
+        const deliveryToAdd = isDeliveryAlreadyCovered ? 0 : (fulfillmentType === 'delivery' ? deliveryFee : 0);
+        const additionTotal = subtotalAfterDiscount + deliveryToAdd + packaging + serviceFeeAmount;
 
-          const { data: updatedOrder, error: updateError } = await supabase.from('orders')
-            .update(updatePayload)
-            .eq('id', existingOrder.id)
-            .select()
-            .single();
-          
-          if (updateError) throw updateError;
-          orderData = updatedOrder;
-          console.log("✅ Pedido fusionado con orden existente:", orderData.id);
-        }
+        const updatePayload = {
+          total_amount: Number(existingOrder.total_amount) + Number(additionTotal),
+          discount_amount: Number(existingOrder.discount_amount || 0) + Number(discountAmount || 0),
+          discount_reason: effectivePromo ? (existingOrder.discount_reason ? `${existingOrder.discount_reason}, ${effectivePromo.code || effectivePromo.name}` : (effectivePromo.code || effectivePromo.name)) : existingOrder.discount_reason,
+          service_fee: Number(existingOrder.service_fee || 0) + Number(serviceFeeAmount),
+          status: 'new',
+          kitchen_status: hasKitchenItemsInOrder ? 'pending' : existingOrder.kitchen_status,
+          bar_status: hasBarItemsInOrder ? 'pending' : existingOrder.bar_status,
+          payment_status: isPOSMode && isPaid ? 'paid' : existingOrder.payment_status,
+          payment_method: isPOSMode ? (isPaid ? paymentMethod : existingOrder.payment_method) : paymentMethodSummary
+        };
+
+        const { data: updatedOrder, error: updateError } = await supabase.from('orders')
+          .update(updatePayload)
+          .eq('id', existingOrder.id)
+          .select()
+          .single();
+        
+        if (updateError) throw updateError;
+        orderData = updatedOrder;
+        if (typeof window !== 'undefined') sessionStorage.removeItem('aa_append_to_order_id');
+        console.log("✅ Pedido fusionado con orden existente sin duplicar domicilio:", orderData.id);
       }
 
       // If no existing order was found (or not applicable), create a new one

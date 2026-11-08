@@ -21,6 +21,7 @@ export const OrderDetailModal = ({
   assignWaiter,
   updateOrderStatus,
   applyDiscount,
+  updateDeliveryFee,
   cancelOrder,
   isCancelling,
   setIsCancelling,
@@ -39,6 +40,13 @@ export const OrderDetailModal = ({
   if (!selectedOrder) return null;
 
   const fulfillmentInfo = getFulfillmentLabel(selectedOrder.fulfillment_type);
+
+  // Estados para descuento personalizado y total acordado
+  const [customDiscountMode, setCustomDiscountMode] = useState('fixedTotal'); // 'fixedTotal' | 'amount'
+  const [customFixedTotal, setCustomFixedTotal] = useState('');
+  const [customAmountVal, setCustomAmountVal] = useState('');
+  const [customReasonVal, setCustomReasonVal] = useState('');
+  const [isCustomDiscountOpen, setIsCustomDiscountOpen] = useState(false);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-4">
@@ -197,6 +205,31 @@ export const OrderDetailModal = ({
                         Servicio Voluntario
                       </span>
                       <span>${selectedOrder.service_fee.toLocaleString()}</span>
+                    </div>
+                  )}
+
+                  {(selectedOrder.fulfillment_type === 'delivery' || Number(selectedOrder.delivery_fee || 0) > 0) && (
+                    <div className="flex justify-between items-center text-xs font-semibold text-slate-700 bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/70">
+                      <span className="flex items-center gap-1.5 text-amber-900 font-bold">
+                        <Icon icon="solar:box-delivery-bold" className="text-amber-600 text-sm" />
+                        Costo de Domicilio
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-amber-950">${(Number(selectedOrder.delivery_fee) || 0).toLocaleString()}</span>
+                        {updateDeliveryFee && selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const fee = Number(selectedOrder.delivery_fee || 0);
+                              updateDeliveryFee(selectedOrder.id, fee > 0 ? 0 : 4000);
+                            }}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-lg border transition-all cursor-pointer bg-white hover:bg-amber-100 text-amber-900 border-amber-300 shadow-2xs"
+                            title={Number(selectedOrder.delivery_fee || 0) > 0 ? 'Exonerar costo de domicilio' : 'Cobrar tarifa estándar de domicilio'}
+                          >
+                            {Number(selectedOrder.delivery_fee || 0) > 0 ? 'Exonerar ($0)' : 'Cobrar $4.000'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -655,33 +688,155 @@ export const OrderDetailModal = ({
                 )}
               </div>
 
-              {/* Tarjeta: Descuentos VIP */}
+              {/* Tarjeta: Descuentos VIP & Total Acordado */}
               {selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
-                <div className="bg-slate-900 p-5 rounded-2xl shadow-sm text-white space-y-3">
-                  <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <Icon icon="heroicons:sparkles" />
-                    Cortesía / Descuento Rápido
-                  </p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[10, 20, 50, 100].map(pct => (
-                      <button
-                        key={pct}
-                        onClick={async () => {
-                          await applyDiscount(selectedOrder.id, pct);
-                          if (selectedOrder.status === 'waiting_payment') {
-                            await updateOrderStatus(selectedOrder.id, "new", { 
-                              payment_status: "paid", 
-                              payment_method: selectedPaymentMethod 
-                            });
-                          }
-                        }}
-                        disabled={updatingStatus === selectedOrder.id}
-                        className="py-2.5 bg-slate-800 hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-all border border-slate-700 active:scale-95 disabled:opacity-50"
-                      >
-                        {pct}%
-                      </button>
-                    ))}
+                <div className="bg-slate-900 p-5 rounded-2xl shadow-sm text-white space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <Icon icon="heroicons:sparkles" />
+                      Cortesía / Descuento Rápido
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomDiscountOpen(prev => !prev)}
+                      className="text-[10px] font-bold text-amber-300 hover:text-amber-200 transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>{isCustomDiscountOpen ? 'Ver botones rápidos' : '⚙️ Personalizado'}</span>
+                    </button>
                   </div>
+
+                  {!isCustomDiscountOpen ? (
+                    <div className="grid grid-cols-4 gap-2">
+                      {[10, 20, 50, 100].map(pct => (
+                        <button
+                          key={pct}
+                          onClick={async () => {
+                            await applyDiscount(selectedOrder.id, pct);
+                            if (selectedOrder.status === 'waiting_payment') {
+                              await updateOrderStatus(selectedOrder.id, "new", { 
+                                payment_status: "paid", 
+                                payment_method: selectedPaymentMethod 
+                              });
+                            }
+                          }}
+                          disabled={updatingStatus === selectedOrder.id}
+                          className="py-2.5 bg-slate-800 hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-all border border-slate-700 active:scale-95 disabled:opacity-50"
+                        >
+                          {pct}%
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3 pt-1">
+                      {/* Tabs de modo: Total Acordado vs Descuento en Dinero */}
+                      <div className="grid grid-cols-2 gap-1.5 bg-slate-800 p-1 rounded-xl text-[11px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setCustomDiscountMode('fixedTotal')}
+                          className={`py-1.5 rounded-lg transition-all ${customDiscountMode === 'fixedTotal' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'}`}
+                        >
+                          Fijar Total a Pagar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCustomDiscountMode('amount')}
+                          className={`py-1.5 rounded-lg transition-all ${customDiscountMode === 'amount' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'}`}
+                        >
+                          Descuento en $ COP
+                        </button>
+                      </div>
+
+                      {customDiscountMode === 'fixedTotal' ? (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-slate-300 block">
+                            ¿Cuánto va a pagar el cliente en total? ($ COP)
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-black text-sm">$</span>
+                            <input
+                              type="number"
+                              placeholder="Ej: 50000"
+                              value={customFixedTotal}
+                              onChange={(e) => setCustomFixedTotal(e.target.value)}
+                              className="w-full pl-8 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm font-black text-emerald-400 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                          {customFixedTotal && Number(customFixedTotal) > 0 && (
+                            <p className="text-[10px] text-slate-400">
+                              Base actual: <span className="line-through text-slate-500">${((selectedOrder.order_items || []).reduce((s, it) => s + (it.quantity * it.unit_price), 0) + Number(selectedOrder.delivery_fee || 0)).toLocaleString()}</span> → Nuevo Total: <span className="font-bold text-emerald-400">${Number(customFixedTotal).toLocaleString()}</span> (Descuento automático: <span className="text-rose-400 font-bold">-${Math.max(0, ((selectedOrder.order_items || []).reduce((s, it) => s + (it.quantity * it.unit_price), 0) + Number(selectedOrder.delivery_fee || 0)) - Number(customFixedTotal)).toLocaleString()}</span>)
+                            </p>
+                          )}
+                          <button
+                            type="button"
+                            disabled={!customFixedTotal || Number(customFixedTotal) < 0 || updatingStatus === selectedOrder.id}
+                            onClick={async () => {
+                              await applyDiscount(selectedOrder.id, {
+                                fixedTotal: Number(customFixedTotal),
+                                reason: customReasonVal.trim() || `Total acordado: ${Number(customFixedTotal).toLocaleString('es-CO')}`
+                              });
+                              setCustomFixedTotal('');
+                              setIsCustomDiscountOpen(false);
+                            }}
+                            className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs"
+                          >
+                            ✓ Aplicar Total Acordado
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-slate-300 block">
+                            Monto exacto a descontar ($ COP)
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-black text-sm">-$</span>
+                            <input
+                              type="number"
+                              placeholder="Ej: 8500"
+                              value={customAmountVal}
+                              onChange={(e) => setCustomAmountVal(e.target.value)}
+                              className="w-full pl-8 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm font-black text-rose-400 placeholder-slate-500 focus:outline-none focus:border-rose-500"
+                            />
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Motivo (ej: Cortesía familiar, Amigo Boku)"
+                            value={customReasonVal}
+                            onChange={(e) => setCustomReasonVal(e.target.value)}
+                            className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
+                          />
+                          <button
+                            type="button"
+                            disabled={!customAmountVal || Number(customAmountVal) <= 0 || updatingStatus === selectedOrder.id}
+                            onClick={async () => {
+                              await applyDiscount(selectedOrder.id, {
+                                amount: Number(customAmountVal),
+                                reason: customReasonVal.trim() || `Descuento Cortesía -${Number(customAmountVal).toLocaleString('es-CO')}`
+                              });
+                              setCustomAmountVal('');
+                              setCustomReasonVal('');
+                              setIsCustomDiscountOpen(false);
+                            }}
+                            className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs"
+                          >
+                            ✓ Aplicar Descuento
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Botón para remover descuento si ya hay uno aplicado */}
+                  {selectedOrder.discount_amount > 0 && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await applyDiscount(selectedOrder.id, { amount: 0, reason: '' });
+                      }}
+                      className="w-full py-1.5 text-center text-[10px] text-rose-300 hover:text-rose-200 transition-colors font-bold underline cursor-pointer"
+                    >
+                      ✕ Quitar descuento aplicado (Restablecer valor normal)
+                    </button>
+                  )}
                 </div>
               )}
             </div>

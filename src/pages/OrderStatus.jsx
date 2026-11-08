@@ -523,6 +523,41 @@ export default function OrderStatus({ orderId }) {
         )}
 
         {/* =========================================
+            AGREGAR PRODUCTOS A ESTE MISMO PEDIDO
+        ========================================= */}
+        {['waiting_payment', 'new', 'preparing'].includes(order.status) && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }} 
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 rounded-[1.75rem] p-4 sm:p-5 mb-8 flex flex-col sm:flex-row items-center justify-between gap-3.5 shadow-2xs"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <ShoppingBag size={20} />
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm font-black text-amber-950">
+                  ¿Se te olvidó una bebida o postre?
+                </p>
+                <p className="text-[11px] text-amber-800 font-medium mt-0.5">
+                  Agrégalo a este mismo pedido sin cobro de domicilio adicional.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                sessionStorage.setItem('aa_append_to_order_id', order.id);
+                window.location.hash = '#menu';
+              }}
+              className="w-full sm:w-auto px-4 py-2.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-extrabold text-xs rounded-xl transition-all shadow-xs shrink-0 flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>+ Agregar a este pedido</span>
+            </button>
+          </motion.div>
+        )}
+
+        {/* =========================================
             ALERTA PAGO PENDIENTE (Si aplica)
         ========================================= */}
         {/* Si es EFECTIVO: recordatorio de efectivo y cambio */}
