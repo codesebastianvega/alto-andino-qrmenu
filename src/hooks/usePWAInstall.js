@@ -44,6 +44,11 @@ function checkIsAndroid() {
   return /Android/i.test(navigator.userAgent || '');
 }
 
+function checkIsSamsung() {
+  if (typeof navigator === 'undefined') return false;
+  return /SamsungBrowser/i.test(navigator.userAgent || '');
+}
+
 function checkIsInAppBrowser() {
   if (typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent || '';
@@ -62,6 +67,7 @@ export function usePWAInstall({ brandId, delayMs = 6000 } = {}) {
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
+  const [isSamsung, setIsSamsung] = useState(false);
   const [isInAppBrowser, setIsInAppBrowser] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   const [showIOSGuide, setShowIOSGuide] = useState(false);
@@ -74,6 +80,7 @@ export function usePWAInstall({ brandId, delayMs = 6000 } = {}) {
     setIsInstalled(standalone);
     setIsIOS(checkIsIOS());
     setIsAndroid(checkIsAndroid());
+    setIsSamsung(checkIsSamsung());
     setIsInAppBrowser(checkIsInAppBrowser());
 
     const updatePrompt = (prompt) => {
@@ -156,6 +163,7 @@ export function usePWAInstall({ brandId, delayMs = 6000 } = {}) {
     isInstalled,
     isIOS,
     isAndroid,
+    isSamsung,
     isInAppBrowser,
     showBanner,
     showIOSGuide,
