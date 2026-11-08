@@ -1,35 +1,26 @@
 /* @refresh reset */
-import { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Portal from "./Portal";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
-import { useCart } from "@/context/CartContext";
 import { useMenuData } from "@/context/MenuDataContext";
-import { formatCOP } from "@/utils/money";
 import { trackAnalyticsEvent } from "@/utils/analytics";
-import { toast } from "./Toast";
 import { getProductImage } from "@/utils/images";
-import AAImage from "@/components/ui/AAImage";
-import { Icon } from "@iconify-icon/react";
+import { useProductModifierGroups } from "./product-quick-view/hooks/useProductModifierGroups";
+import { useProductQuickViewLogic } from "./product-quick-view/hooks/useProductQuickViewLogic";
+import QuickViewMedia from "./product-quick-view/subcomponents/QuickViewMedia";
+import QuickViewHeader from "./product-quick-view/subcomponents/QuickViewHeader";
+import QuickViewModifierGroup from "./product-quick-view/subcomponents/QuickViewModifierGroup";
+import QuickViewSpecialNotes from "./product-quick-view/subcomponents/QuickViewSpecialNotes";
+import QuickViewFooter from "./product-quick-view/subcomponents/QuickViewFooter";
 
 export default function ProductQuickView({ open: isOpen, product, onClose, onAdd }) {
   // ── All hooks MUST be called unconditionally, in the same order, every render ──
-
   useLockBodyScroll(isOpen);
 
-  const { addItem } = useCart();
-
   const menuData = useMenuData();
-  const modifierGroupsData = menuData?.modifiers || {};
-  const getModifiers = (groupName) =>
-    menuData?.getModifiers
-      ? menuData.getModifiers(groupName)
-      : (modifierGroupsData[groupName] || []);
-
   const modalRef = useRef(null);
   const lastFocused = useRef(null);
   const scrollContainerRef = useRef(null);
-  const prevGroupsLength = useRef(0);
-  const initialRenderDone = useRef(false);
 
   // Selections per group: required → string id, optional → array of ids
   const [selections, setSelections] = useState({});
@@ -40,8 +31,6 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   useEffect(() => {
     setSelections({});
     setSpecialInstructions("");
-    initialRenderDone.current = false;
-    prevGroupsLength.current = 0;
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({ top: 0, behavior: 'instant' });
     }
@@ -58,7 +47,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
         });
       } catch {}
     }
-  }, [isOpen, product?.id]);
+  }, [isOpen, product?.id, product?.brand_id, product?.name]);
 
   // Keyboard / focus trap
   useEffect(() => {
@@ -74,11 +63,14 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
           'a,button,input,select,textarea,[tabindex]:not([tabindex="-1"])',
         );
         if (!focusables?.length) return;
-        const first = focusables[0], last = focusables[focusables.length - 1];
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
         if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault(); last.focus();
+          e.preventDefault();
+          last.focus();
         } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault(); first.focus();
+          e.preventDefault();
+          first.focus();
         }
       }
     };
@@ -95,371 +87,53 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   const subtitle = product?.subtitle || product?.description || product?.desc || "";
   const image = product ? getProductImage(product) : null;
 
-  const productAllergens = (product?.tags || []).map(tagName => {
-    return (menuData?.allergens || []).find(a => a.name === tagName);
-  }).filter(Boolean);
+  const productAllergens = (product?.tags || [])
+    .map((tagName) => (menuData?.allergens || []).find((a) => a.name === tagName))
+    .filter(Boolean);
 
-  const assignedGroups = product?.modifierGroups || product?.modifier_groups || [];
-  const rawModifierGroups = menuData?.rawModifierGroups || [];
-  // categorySlug is set by MenuDataContext when mapping products
-  const isCafe = product?.categorySlug === 'cafe';
+  // Modifier groups resolution hook
+  const { groups } = useProductModifierGroups({
+    isOpen,
+    product,
+    menuData,
+    selections,
+    setSelections,
+    scrollContainerRef
+  });
 
-  // Helper: resolve a group key (UUID or name) to its display name
-  const resolveGroupName = (key) => {
-    const found = rawModifierGroups.find(g => g.id === key || g.name === key);
-    return found?.name || key;
-  };
-
-  // Fallback: if a café product has no modifier groups in DB yet,
-  // inject milk-options UUID automatically (covers products not yet updated in admin)
-  const MILK_OPTIONS_ID = '1ec830c8-301a-4d98-a25f-bf34f0e4febe';
-  const effectiveGroups = (assignedGroups.length === 0 && isCafe)
-    ? [MILK_OPTIONS_ID]
-    : assignedGroups;
-
-  const modifierConfig =
-    product?.configOptions?.modifier_config ||
-    product?.config_options?.modifier_config ||
-    {};
-
-  const groups = useMemo(() => {
-    let result = [];
-    const addedIds = new Set();
-    const triggeredMap = {}; // group.id -> array of triggered sub_group_ids
-
-    // 1. Determine all triggered sub-groups based on current selections
-    Object.entries(selections).forEach(([selGroupName, selIds]) => {
-      const g = rawModifierGroups.find(x => x.name === selGroupName || x.id === selGroupName);
-      if (!g) return;
-      const opts = g.modifier_options || g.options || [];
-      selIds.forEach(id => {
-        const opt = opts.find(o => o.id === id);
-        if (opt && opt.nested_group_id) {
-          if (!triggeredMap[g.id]) triggeredMap[g.id] = [];
-          triggeredMap[g.id].push(opt.nested_group_id);
-        }
-      });
-    });
-
-    // Helper to add a group and its triggered sub-groups recursively
-    const addGroup = (groupItem) => {
-      // Direct group object with embedded options
-      if (groupItem && typeof groupItem === 'object' && Array.isArray(groupItem.options)) {
-        const groupKey = groupItem.id || groupItem.name;
-        if (addedIds.has(groupKey)) return;
-        addedIds.add(groupKey);
-        if (groupItem.id) addedIds.add(groupItem.id);
-        if (groupItem.name) addedIds.add(groupItem.name);
-
-        const displayName = groupItem.name;
-        const config = modifierConfig[groupKey] || modifierConfig[displayName];
-        let min = groupItem?.min_select ?? (groupItem?.is_required ? 1 : 0);
-        let max = groupItem?.max_select ?? (min > 0 ? 1 : 999);
-        let isRequired = groupItem?.is_required ?? (min > 0);
-
-        if (config === 'required') { min = 1; max = 1; isRequired = true; }
-        else if (config === 'optional') { min = 0; max = 999; isRequired = false; }
-        else if (typeof config === 'object') { min = config.min || 0; max = config.max || 999; isRequired = min > 0; }
-
-        const items = groupItem.options.map(opt => ({
-          ...opt,
-          id: opt.id,
-          name: opt.name,
-          price: opt.price || 0,
-          extra_price: opt.extra_price !== undefined ? opt.extra_price : (opt.price || 0),
-          selling_price: opt.price || 0,
-          is_default: Boolean(opt.is_default),
-          is_out: opt.is_out || opt.stock_status === 'out'
-        }));
-
-        result.push({
-          key: groupKey,
-          name: displayName,
-          type: config || (isRequired ? 'required' : 'optional'),
-          min,
-          max,
-          isRequired,
-          included_count: groupItem.included_count !== undefined ? groupItem.included_count : null,
-          allow_quantity: Boolean(groupItem.allow_quantity || (!isRequired && max > 1)),
-          items,
-        });
-        return;
-      }
-
-      // String key / UUID referencing rawModifierGroups
-      const groupKey = typeof groupItem === 'string' ? groupItem : (groupItem?.id || groupItem?.name);
-      if (!groupKey || addedIds.has(groupKey)) return;
-      
-      const groupMeta = rawModifierGroups.find(g => g.id === groupKey || g.name === groupKey);
-      if (!groupMeta) return;
-
-      // If it's a submodifier, it MUST be triggered or explicitly assigned to this product
-      const productGroupIds = product?.modifierGroups || product?.modifier_groups || [];
-      const isDirectlyAssigned = productGroupIds.some(pg => {
-        const id = typeof pg === 'string' ? pg : (pg?.id || pg?.name);
-        return id === groupMeta.id || id === groupMeta.name;
-      });
-      const isTriggered = Object.values(triggeredMap).flat().includes(groupMeta.id);
-      if (groupMeta.is_submodifier && !isTriggered && !isDirectlyAssigned) return;
-
-      addedIds.add(groupKey);
-      addedIds.add(groupMeta.id);
-      addedIds.add(groupMeta.name);
-
-      const displayName = groupMeta.name;
-      const config = modifierConfig[groupKey] || modifierConfig[displayName];
-      let min = groupMeta?.min_select ?? 0;
-      let max = groupMeta?.max_select ?? 999;
-      let isRequired = groupMeta?.is_required ?? false;
-
-      // Override with product-level config if present
-      if (config === 'required') { min = 1; max = 1; isRequired = true; }
-      else if (config === 'optional') { min = 0; max = 999; isRequired = false; }
-      else if (typeof config === 'object') { min = config.min || 0; max = config.max || 999; isRequired = min > 0; }
-      
-      const items = getModifiers(groupKey);
-      if (items.length > 0) {
-        result.push({
-          key: groupKey,
-          name: displayName,
-          type: config || (isRequired ? 'required' : 'optional'),
-          min,
-          max,
-          isRequired,
-          included_count: groupMeta.included_count !== undefined ? groupMeta.included_count : null,
-          allow_quantity: Boolean(groupMeta?.allow_quantity || (!isRequired && max > 1)),
-          items,
-        });
-
-        // Insert triggered sub-groups immediately after 
-        if (triggeredMap[groupMeta.id]) {
-          triggeredMap[groupMeta.id].forEach(subGroupId => addGroup(subGroupId));
-        }
-      }
-    };
-
-    effectiveGroups.forEach(addGroup);
-
-    return result;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveGroups.map(g => (typeof g === 'object' ? (g.id || g.name) : g)).join(","), JSON.stringify(modifierConfig), modifierGroupsData, rawModifierGroups, selections]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    if (!initialRenderDone.current) {
-      initialRenderDone.current = true;
-      prevGroupsLength.current = groups.length;
-      return;
-    }
-    if (groups.length > prevGroupsLength.current && prevGroupsLength.current > 0) {
-      setTimeout(() => {
-        if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollBy({
-            top: 180,
-            behavior: 'smooth'
-          });
-        }
-      }, 100);
-    }
-    prevGroupsLength.current = groups.length;
-  }, [groups.length, isOpen]);
-
-  // Auto-initialize default selections for groups
-  useEffect(() => {
-    if (!isOpen || groups.length === 0) return;
-    setSelections(prev => {
-      let changed = false;
-      const next = { ...prev };
-      groups.forEach(g => {
-        if (!next[g.name] || next[g.name].length === 0) {
-          const defaults = g.items.filter(it => it.is_default && !it.is_out).map(it => it.id);
-          if (defaults.length > 0) {
-            next[g.name] = defaults.slice(0, g.max);
-            changed = true;
-          }
-        }
-      });
-      return changed ? next : prev;
-    });
-  }, [isOpen, groups]);
-
-  const extraPrice = useMemo(() => {
-    let total = 0;
-    groups.forEach((g) => {
-      const sel = selections[g.name] || [];
-      const isIncludedGroup = g.included_count !== undefined && g.included_count !== null;
-      sel.forEach((selectedId, idx) => {
-        const item = g.items.find((i) => i.id === selectedId);
-        if (isIncludedGroup) {
-          if (idx >= g.included_count) {
-            total += (item?.extra_price !== undefined ? item.extra_price : (item?.selling_price || item?.price || 0));
-          }
-        } else {
-          total += item?.selling_price || item?.price || 0;
-        }
-      });
-    });
-    return total;
-  }, [selections, groups]);
-
-  // ── After all hooks: early exit if nothing to render ──
-  if (!isOpen || !product) return null;
-
-  const id = product.id;
-  const basePrice = typeof product.price === 'number' ? product.price : Number(String(product.price || 0).replace(/[^\d.-]/g, "")) || 0;
-  const finalPrice = basePrice + extraPrice;
-  const isOutOfStock = product.stock_status === "out";
-  const isScheduleRestricted = product.is_schedule_available === false;
-  const scheduleNotice = product.schedule_label || "Fuera de horario de servicio";
-  const missingRequired = groups
-    .filter((g) => (selections[g.name] || []).length < g.min)
-    .map((g) => g.name);
-
-  // canAdd strictly checks if it's possible to add (base valid + no missing required + in stock + within schedule)
-  const canAdd = !!id && Number.isFinite(basePrice) && basePrice > 0 && !isOutOfStock && !isScheduleRestricted && missingRequired.length === 0;
-
-  const handleIncrement = (groupName, itemId, e) => {
-    if (e) e.stopPropagation();
-    const group = groups.find((g) => g.name === groupName);
-    if (!group) return;
-    const targetItem = group.items?.find((i) => i.id === itemId);
-    if (targetItem?.is_out || targetItem?.stock_status === 'out') {
-      toast(`${targetItem?.name || 'Esta opción'} se encuentra agotada temporalmente`);
-      return;
-    }
-
-    setSelections((prev) => {
-      const current = prev[groupName] || [];
-      if (current.length >= group.max) {
-        toast(`Límite de ${group.max} ${group.max === 1 ? 'porción' : 'porciones'} alcanzado`);
-        return prev;
-      }
-      return { ...prev, [groupName]: [...current, itemId] };
-    });
-  };
-
-  const handleDecrement = (groupName, itemId, e) => {
-    if (e) e.stopPropagation();
-    setSelections((prev) => {
-      const current = prev[groupName] || [];
-      const index = current.lastIndexOf(itemId);
-      if (index === -1) return prev;
-      const next = [...current];
-      next.splice(index, 1);
-      return { ...prev, [groupName]: next };
-    });
-  };
-
-  const handleSelection = (groupName, itemId) => {
-    const group = groups.find(g => g.name === groupName);
-    if (!group) return;
-    const targetItem = group.items?.find((i) => i.id === itemId);
-    if (targetItem?.is_out || targetItem?.stock_status === 'out') {
-      toast(`${targetItem?.name || 'Esta opción'} se encuentra agotada temporalmente`);
-      return;
-    }
-
-    if (group.allow_quantity) {
-      const current = selections[groupName] || [];
-      const itemQty = current.filter(id => id === itemId).length;
-      if (itemQty === 0) {
-        handleIncrement(groupName, itemId);
-      } else {
-        if (current.length < group.max) {
-          handleIncrement(groupName, itemId);
-        } else {
-          toast(`Límite de ${group.max} porciones alcanzado`);
-        }
-      }
-      return;
-    }
-
-    setSelections((prev) => {
-      const current = prev[groupName] || [];
-      const isSelected = current.includes(itemId);
-
-      if (isSelected) {
-        // Enforce true radio behavior: cannot deselect if min is 1 and max is 1 and it's the only one selected
-        if (group.min === 1 && group.max === 1 && current.length === 1) {
-          return prev;
-        }
-        return { ...prev, [groupName]: current.filter(x => x !== itemId) };
-      } else {
-        if (group.max === 1) {
-          return { ...prev, [groupName]: [itemId] };
-        } else if (current.length < group.max) {
-          return { ...prev, [groupName]: [...current, itemId] };
-        } else {
-          toast(`Máximo ${group.max} opciones permitidas`);
-          return prev;
-        }
-      }
-    });
-  };
-
-  const handleAdd = () => {
-    if (isOutOfStock) { toast("Producto agotado"); return; }
-    if (!canAdd) { toast("Producto no disponible"); return; }
-    if (missingRequired.length > 0) {
-      const missingLabels = missingRequired.map((n) => n.replace(/-/g, " ")).join(", ");
-      toast(`⚠️ Por favor selecciona: ${missingLabels}`);
-      const firstMissingIdx = groups.findIndex(g => missingRequired.includes(g.name));
-      if (firstMissingIdx >= 0) {
-        const el = document.getElementById(`modifier-group-${firstMissingIdx}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }
-      return;
-    }
-    const selectedModifiers = {};
-    groups.forEach((g) => {
-      const sel = selections[g.name];
-      if (sel && sel.length > 0) {
-        if (g.allow_quantity) {
-          const counts = {};
-          sel.forEach(id => {
-            counts[id] = (counts[id] || 0) + 1;
-          });
-          const formatted = Object.entries(counts).map(([id, qty]) => {
-            const opt = g.items.find(o => o.id === id);
-            const name = opt ? opt.name : id;
-            return qty > 1 ? `${name} (x${qty})` : name;
-          });
-          selectedModifiers[g.name] = formatted;
-        } else {
-          // Map IDs to Names
-          const names = sel.map(id => {
-            const opt = g.items.find(o => o.id === id);
-            return opt ? opt.name : id;
-          });
-          selectedModifiers[g.name] = g.max === 1 ? names[0] : names;
-        }
-      }
-    });
-
-    // Ensure cart item has resolved image for consistency
-    const cartItem = { 
-      ...product, 
-      price: finalPrice, 
-      base_plan_price: basePrice,
-      extra_modifiers_price: extraPrice,
-      options: selectedModifiers,
-      note: specialInstructions.trim() || undefined,
-      image_url: image || product.image_url || product.image,
-      resolved_image: image // Extra field just in case
-    };
-
-    addItem(cartItem, 1);
-    onAdd?.();
-    onClose?.();
-  };
+  // Financial and selection logic hook
+  const {
+    extraPrice,
+    basePrice,
+    finalPrice,
+    isOutOfStock,
+    isScheduleRestricted,
+    scheduleNotice,
+    missingRequired,
+    canAdd,
+    handleIncrement,
+    handleDecrement,
+    handleSelection,
+    handleAdd
+  } = useProductQuickViewLogic({
+    product,
+    groups,
+    selections,
+    setSelections,
+    specialInstructions,
+    image,
+    onAdd,
+    onClose
+  });
 
   const stagger = (i) => ({
     animation: "fadeUp 0.35s ease-out forwards",
     animationDelay: `${i * 60}ms`,
     opacity: 0,
   });
+
+  // Early exit if modal is closed or no product is provided
+  if (!isOpen || !product) return null;
 
   return (
     <Portal>
@@ -482,7 +156,6 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
         >
           {/* Mobile bottom-sheet style, Desktop center-card style */}
           <div className="relative bg-white shadow-2xl overflow-hidden flex flex-col md:flex-row h-[90dvh] md:h-[80vh] rounded-t-3xl sm:rounded-3xl">
-            
             {/* Close button */}
             <button
               type="button"
@@ -490,408 +163,72 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
               aria-label="Cerrar"
               className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md z-20 transition-all border border-white/20"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
             </button>
 
             {/* Left Column: Image (Desktop) / Top Image (Mobile) */}
-            <div className="w-full h-44 sm:h-52 md:h-full md:w-5/12 lg:w-1/2 flex-shrink-0 relative bg-neutral-100">
-              <AAImage
-                src={image}
-                alt={title || "Producto"}
-                className={`w-full h-full object-cover ${isOutOfStock ? "grayscale contrast-90 brightness-95" : ""}`}
-                style={stagger(0)}
-                fallback={
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-100 text-neutral-300">
-                    <span className="text-6xl mb-2">🍽</span>
-                    <span className="text-xs font-semibold uppercase tracking-widest opacity-50">Sin imagen</span>
-                  </div>
-                }
-              />
-              {isOutOfStock && (
-                <div className="absolute inset-0 bg-neutral-900/35 backdrop-grayscale flex items-center justify-center z-10 pointer-events-none">
-                  <span className="bg-neutral-900/85 backdrop-blur-md text-white font-extrabold text-xs px-3 py-1.5 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1.5">
-                    <span>🚫</span>
-                    <span>Agotado por hoy</span>
-                  </span>
-                </div>
-              )}
-              {/* Desktop subtle gradient overlay */}
-              <div className="hidden md:block absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-black/10 pointer-events-none mix-blend-multiply" />
-              {/* Mobile subtle gradient overlay */}
-              <div className="md:hidden absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-            </div>
+            <QuickViewMedia
+              image={image}
+              title={title}
+              isOutOfStock={isOutOfStock}
+              staggerStyle={stagger(0)}
+            />
 
             {/* Right Column: Content */}
             <div className="flex-1 flex flex-col h-full overflow-hidden w-full md:w-7/12 lg:w-1/2 bg-white relative">
               <div ref={scrollContainerRef} className="flex-1 p-6 md:p-8 overflow-y-auto">
-                {/* Title & Subtitle */}
-                <div className="flex flex-wrap items-center gap-2" style={stagger(1)}>
-                  <h2 className="text-2xl md:text-3xl font-extrabold text-neutral-900 leading-tight tracking-tight">
-                    {title}
-                  </h2>
-                  {product.is_bento_del_dia && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-300 shadow-2xs">
-                      🔥 {product.daily_special_label || "Plato del Día"}
-                    </span>
-                  )}
-                </div>
-                {subtitle && (
-                  <p className="mt-3 text-sm md:text-base text-neutral-500 leading-relaxed" style={stagger(2)}>
-                    {subtitle}
-                  </p>
-                )}
-                {/* Alérgenos */}
-                {productAllergens.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-2" style={stagger(2)}>
-                    {productAllergens.map((alg) => (
-                      <span
-                        key={alg.id}
-                        className="flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700 shadow-sm"
-                        title={alg.name}
-                      >
-                        <span className="text-sm">{alg.emoji}</span>
-                        <span>{alg.name}</span>
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Schedule restriction notice */}
-                {isScheduleRestricted && (
-                  <div className="mt-4 p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 flex items-start gap-3 text-amber-900 shadow-2xs" style={stagger(2)}>
-                    <span className="text-xl shrink-0 mt-0.5">🕒</span>
-                    <div className="text-xs leading-relaxed">
-                      <p className="font-extrabold text-[13px] text-amber-950">Fuera de horario de servicio</p>
-                      <p className="text-amber-800 font-medium mt-0.5">
-                        {scheduleNotice}. Puedes consultar los detalles e ingredientes de este plato, pero no está habilitado para pedidos en este momento.
-                      </p>
-                    </div>
-                  </div>
-                )}
+                <QuickViewHeader
+                  title={title}
+                  subtitle={subtitle}
+                  product={product}
+                  productAllergens={productAllergens}
+                  isScheduleRestricted={isScheduleRestricted}
+                  scheduleNotice={scheduleNotice}
+                  stagger={stagger}
+                />
 
                 {/* Modifier groups */}
                 <div className="mt-5 space-y-6">
-                  {groups.map((group, gi) => {
-                    const groupSel = selections[group.name];
-                    const isRequired = group.type === "required";
-                    const label = group.name.replace(/-/g, " ");
-                    const isMissing = missingRequired.includes(group.name);
-
-                    return (
-                      <div key={group.name} id={`modifier-group-${gi}`} style={stagger(3 + gi)} className={`bg-white transition-all duration-200 ${isMissing ? 'p-3 rounded-2xl bg-amber-50/50 border border-amber-200/90 shadow-2xs' : ''}`}>
-                        <div className="flex items-center justify-between mb-3 pb-2 border-b border-neutral-100">
-                          <div>
-                            <p className="text-base font-bold text-neutral-900 capitalize">
-                              {label}
-                            </p>
-                            <p className="text-[11px] text-neutral-400 mt-0.5">
-                              {group.allow_quantity ? (
-                                <>
-                                  {group.min > 0 
-                                    ? `Elige mín. ${group.min} - máx. ${group.max} porciones` 
-                                    : `Límite: hasta ${group.max} porciones`
-                                  }
-                                  {groupSel && groupSel.length > 0 && (
-                                    <span className="ml-1.5 font-bold text-brand-primary">
-                                      ({groupSel.length}/{group.max} elegidas)
-                                    </span>
-                                  )}
-                                </>
-                              ) : (
-                                group.min > 0 && group.min === group.max 
-                                  ? `Elige ${group.min} opción`
-                                  : group.min > 0 
-                                    ? `Mín. ${group.min} - Máx. ${group.max}`
-                                    : group.max === 999 
-                                      ? "Elige extras (opcional)"
-                                      : `Límite: ${group.max} extras`
-                              )}
-                            </p>
-                          </div>
-                          {group.min > 0 ? (
-                            (groupSel || []).length >= group.min ? (
-                              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs">
-                                <span>✓</span> Listo
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs animate-pulse">
-                                <span>*</span> Obligatorio {group.min === 1 ? '(Elige 1)' : `(Elige ${group.min})`}
-                              </span>
-                            )
-                          ) : (
-                            <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400 bg-neutral-50 px-2 py-1 rounded border border-neutral-100">
-                              Opcional
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex flex-col gap-2.5">
-                          {group.items.map((item) => {
-                            const itemPrice = item.selling_price || item.price || 0;
-                            const isItemOut = item.is_out || item.stock_status === 'out';
-                            const optPortions = item.available_portions !== null && item.available_portions !== undefined ? Number(item.available_portions) : null;
-                            const isLastOpt = !isItemOut && optPortions === 1;
-                            const groupSel = selections[group.name] || [];
-                            const itemQty = groupSel.filter((id) => id === item.id).length;
-                            const isSelected = itemQty > 0;
-
-                            const baseClasses = "flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 w-full text-left select-none";
-                            
-                            const stateClasses = isItemOut
-                              ? "border-neutral-200 bg-neutral-100/70 opacity-60 cursor-not-allowed text-neutral-400"
-                              : isSelected
-                              ? "border-brand-primary bg-brand-primary/5 shadow-sm ring-1 ring-brand-primary cursor-pointer"
-                              : isMissing
-                              ? "border-amber-300 bg-amber-50 hover:bg-amber-100 cursor-pointer"
-                              : "border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50 cursor-pointer";
-
-                            return (
-                              <div
-                                key={item.id}
-                                role="button"
-                                tabIndex={isItemOut ? -1 : 0}
-                                aria-disabled={isItemOut}
-                                onClick={() => handleSelection(group.name, item.id)}
-                                onKeyDown={(e) => {
-                                  if ((e.key === "Enter" || e.key === " ") && !isItemOut) {
-                                    e.preventDefault();
-                                    handleSelection(group.name, item.id);
-                                  }
-                                }}
-                                className={`${baseClasses} ${stateClasses}`}
-                              >
-                                <div className="flex items-center gap-3">
-                                  {item.image_url ? (
-                                    <div className={`relative flex items-center justify-center w-10 h-10 rounded-xl bg-white border shadow-sm shrink-0 transition-all overflow-hidden ${isSelected ? 'border-brand-primary scale-105 ring-1 ring-brand-primary/50' : 'border-neutral-100'}`}>
-                                      <img 
-                                        src={item.image_url} 
-                                        alt={item.name} 
-                                        className={`w-full h-full object-cover rounded-xl ${isItemOut ? 'grayscale' : ''}`}
-                                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                      />
-                                      {isSelected && (
-                                        <div className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-brand-primary rounded-full border-2 border-white flex items-center justify-center text-[10px] font-black text-white shadow-sm">
-                                          {group.allow_quantity ? `x${itemQty}` : '✓'}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ) : item.emoji ? (
-                                    <div className={`relative flex items-center justify-center w-10 h-10 rounded-xl bg-white border shadow-sm shrink-0 transition-all ${isSelected ? 'border-brand-primary scale-105 ring-1 ring-brand-primary/50' : 'border-neutral-100'}`}>
-                                      <span className={`text-2xl leading-none filter drop-shadow-sm ${isItemOut ? 'grayscale opacity-60' : ''}`}>{item.emoji}</span>
-                                      {isSelected && (
-                                        <div className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-brand-primary rounded-full border-2 border-white flex items-center justify-center text-[10px] font-black text-white shadow-sm">
-                                          {group.allow_quantity ? `x${itemQty}` : '✓'}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ) : group.allow_quantity && isSelected ? (
-                                    <div className="min-w-[24px] h-6 px-1.5 rounded-full bg-brand-primary text-white flex items-center justify-center font-black text-[11px] shadow-sm shrink-0">
-                                      x{itemQty}
-                                    </div>
-                                  ) : group.max === 1 ? (
-                                    <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${isSelected ? 'border-brand-primary' : isItemOut ? 'border-neutral-200 bg-neutral-200' : 'border-neutral-300'}`}>
-                                      {isSelected && <div className="h-2.5 w-2.5 rounded-full bg-brand-primary" />}
-                                    </div>
-                                  ) : (
-                                    <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border-2 transition-colors ${isSelected ? 'border-brand-primary bg-brand-primary' : isItemOut ? 'border-neutral-200 bg-neutral-200' : 'border-neutral-300'}`}>
-                                      {isSelected && (
-                                        <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  <div className="flex flex-col">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className={`text-[13px] font-medium ${isItemOut ? 'line-through text-neutral-400' : isSelected ? 'text-brand-primary font-bold' : 'text-neutral-700'}`}>
-                                        {item.name}
-                                      </span>
-                                      {isItemOut && (
-                                        <span className="text-[9px] font-black uppercase tracking-wider text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 shadow-2xs">
-                                          Agotado
-                                        </span>
-                                      )}
-                                      {isLastOpt && (
-                                        <span className="text-[9px] font-black uppercase tracking-wider text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300 animate-pulse">
-                                          Última porción
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Right Side: Controls and Price */}
-                                {isItemOut ? (
-                                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider bg-neutral-200/50 px-2 py-0.5 rounded">
-                                    Agotado
-                                  </span>
-                                ) : group.allow_quantity && itemQty > 0 ? (
-                                  <div className="flex items-center gap-2.5 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
-                                    {itemPrice > 0 && (
-                                      <div className="flex flex-col items-end leading-tight mr-1">
-                                        {itemQty > 1 && (
-                                          <span className="text-[10px] text-neutral-400 font-medium">
-                                            {itemQty} × {formatCOP(itemPrice)}
-                                          </span>
-                                        )}
-                                        <span className="text-[13px] font-bold text-brand-primary">
-                                          +{formatCOP(itemPrice * itemQty)}
-                                        </span>
-                                      </div>
-                                    )}
-                                    <div className="flex items-center bg-neutral-100 p-0.5 rounded-xl border border-neutral-200 shadow-2xs">
-                                      <button
-                                        type="button"
-                                        onClick={(e) => handleDecrement(group.name, item.id, e)}
-                                        aria-label="Disminuir cantidad"
-                                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-white text-neutral-700 hover:bg-neutral-50 active:scale-95 shadow-2xs font-bold text-sm transition-all"
-                                      >
-                                        -
-                                      </button>
-                                      <span className="w-6 text-center text-xs font-black text-neutral-900">
-                                        {itemQty}
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => handleIncrement(group.name, item.id, e)}
-                                        disabled={groupSel.length >= group.max}
-                                        aria-label="Aumentar cantidad"
-                                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-brand-primary text-white hover:bg-brand-primary/90 active:scale-95 disabled:opacity-40 disabled:hover:bg-brand-primary shadow-2xs font-bold text-sm transition-all"
-                                      >
-                                        +
-                                      </button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-2 shrink-0 ml-2">
-                                    {group.included_count !== undefined && group.included_count !== null ? (
-                                      <div className="flex flex-col items-end shrink-0 leading-tight">
-                                        {isSelected && groupSel.indexOf(item.id) < group.included_count ? (
-                                          <span className="text-[11px] font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                                            Incluida
-                                          </span>
-                                        ) : isSelected && groupSel.indexOf(item.id) >= group.included_count ? (
-                                          <span className="text-[12px] font-black text-brand-primary">
-                                            +{formatCOP(item.extra_price || itemPrice)}
-                                          </span>
-                                        ) : groupSel.length >= group.included_count ? (
-                                          <span className="text-[12px] font-bold text-neutral-600">
-                                            +{formatCOP(item.extra_price || itemPrice)}
-                                          </span>
-                                        ) : (
-                                          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50/80 px-2 py-0.5 rounded-full border border-emerald-200/60">
-                                            Incluida
-                                          </span>
-                                        )}
-                                      </div>
-                                    ) : itemPrice > 0 ? (
-                                      <div className="flex flex-col items-end shrink-0 leading-tight">
-                                        {Number(item.extra_price) > itemPrice && (
-                                          <span className="text-[11px] font-medium text-neutral-400 line-through">
-                                            {formatCOP(item.extra_price)}
-                                          </span>
-                                        )}
-                                        <span
-                                          className={`text-[13px] font-bold ${
-                                            isSelected
-                                              ? "text-brand-primary"
-                                              : Number(item.extra_price) > itemPrice
-                                              ? "text-emerald-600"
-                                              : "text-neutral-500"
-                                          }`}
-                                        >
-                                          +{formatCOP(itemPrice)}
-                                        </span>
-                                      </div>
-                                    ) : null}
-                                    {group.allow_quantity && (
-                                      <div className="w-7 h-7 flex items-center justify-center rounded-lg bg-neutral-100 text-neutral-400 text-sm font-black border border-neutral-200/60 shadow-2xs">
-                                        +
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {groups.map((group, gi) => (
+                    <QuickViewModifierGroup
+                      key={group.name}
+                      group={group}
+                      gi={gi}
+                      selections={selections}
+                      missingRequired={missingRequired}
+                      stagger={stagger}
+                      handleSelection={handleSelection}
+                      handleIncrement={handleIncrement}
+                      handleDecrement={handleDecrement}
+                    />
+                  ))}
 
                   {/* Instrucciones especiales para cocina */}
-                  <div className="mt-6 pt-5 border-t border-neutral-100">
-                    <label className="flex items-center gap-2 text-xs font-black text-neutral-800 uppercase tracking-wider mb-2.5">
-                      <Icon icon="solar:notes-bold" className="text-base text-brand-primary" />
-                      <span>Instrucciones para cocina</span>
-                      <span className="text-[10px] lowercase text-neutral-400 font-semibold">(opcional)</span>
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={specialInstructions}
-                      onChange={(e) => setSpecialInstructions(e.target.value)}
-                      placeholder="Ej: Sin cebolla, término medio, salsa aparte..."
-                      className="w-full text-base sm:text-xs font-medium text-neutral-800 bg-neutral-50/80 hover:bg-neutral-50 focus:bg-white border border-neutral-200 rounded-2xl p-3.5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary resize-none transition-all placeholder:text-neutral-400"
-                      maxLength={150}
-                    />
-                    <div className="flex justify-end mt-1">
-                      <span className="text-[10px] font-semibold text-neutral-400 tabular-nums">
-                        {specialInstructions.length}/150
-                      </span>
-                    </div>
-                  </div>
+                  <QuickViewSpecialNotes
+                    specialInstructions={specialInstructions}
+                    setSpecialInstructions={setSpecialInstructions}
+                  />
                 </div>
               </div>
-              
+
               {/* Fixed Footer for Price and Button */}
-              <div className="flex-shrink-0 bg-white border-t border-neutral-100 shadow-[0_-10px_30px_rgba(0,0,0,0.04)] p-5 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] md:px-8 z-10" style={stagger(4 + groups.length)}>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-1">Total a pagar</p>
-                    <div className="flex items-baseline gap-2">
-                      {product.original_price && product.original_price > product.price && (
-                        <span className="text-base md:text-lg font-bold text-neutral-400 line-through">
-                          {formatCOP(product.original_price + extraPrice)}
-                        </span>
-                      )}
-                      <p className="text-3xl font-extrabold text-brand-primary leading-none tracking-tight">{formatCOP(finalPrice)}</p>
-                    </div>
-                  </div>
-                  {extraPrice > 0 && (
-                    <div className="text-right">
-                      <p className="text-xs font-semibold text-neutral-400">Base: {formatCOP(basePrice)}</p>
-                      <p className="text-sm font-bold text-[#cba258]">+{formatCOP(extraPrice)} extras</p>
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleAdd}
-                  disabled={!id || !Number.isFinite(basePrice) || basePrice <= 0 || isOutOfStock || isScheduleRestricted}
-                  className={`w-full h-14 rounded-2xl font-bold text-lg shadow-lg active:scale-[0.98] flex items-center justify-center gap-2 relative overflow-hidden group cursor-pointer transition-all ${
-                    missingRequired.length > 0
-                      ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/30'
-                      : 'bg-brand-primary text-white hover:brightness-105'
-                  } disabled:opacity-50 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:shadow-none disabled:active:scale-100 disabled:cursor-not-allowed`}
-                >
-                  <span className="relative z-10">
-                    {isOutOfStock
-                      ? "Agotado"
-                      : isScheduleRestricted
-                      ? `🕒 ${scheduleNotice}`
-                      : missingRequired.length > 0
-                      ? `⚠️ Falta ${missingRequired.length === 1 ? '1 opción obligatoria' : `${missingRequired.length} opciones obligatorias`}`
-                      : "Agregar al pedido"}
-                  </span>
-                  {canAdd && (
-                    <div className="absolute inset-0 h-full w-full block bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
-                  )}
-                </button>
-              </div>
+              <QuickViewFooter
+                product={product}
+                basePrice={basePrice}
+                extraPrice={extraPrice}
+                finalPrice={finalPrice}
+                canAdd={canAdd}
+                isOutOfStock={isOutOfStock}
+                isScheduleRestricted={isScheduleRestricted}
+                scheduleNotice={scheduleNotice}
+                missingRequired={missingRequired}
+                handleAdd={handleAdd}
+                staggerStyle={stagger(4 + groups.length)}
+              />
             </div>
-
           </div>
         </div>
       </div>
