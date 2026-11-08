@@ -11,8 +11,7 @@ import {
   ExternalLink,
   Copy,
   Check,
-  Download,
-  Layers
+  Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Portal from '../Portal';
@@ -26,8 +25,10 @@ export default function PWAInstallModalIOS({
 }) {
   const [copied, setCopied] = useState(false);
 
-  // Detección precisa de entorno y navegador
+  // Detección precisa de fabricante, entorno y navegador
   const isAndroidDevice = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent || '');
+  const isXiaomiBrowser = typeof navigator !== 'undefined' && /MiuiBrowser|XiaoMi/i.test(navigator.userAgent || '');
+  const isXiaomiDevice = typeof navigator !== 'undefined' && /XiaoMi|Redmi|POCO/i.test(navigator.userAgent || '');
   const isSamsungBrowser = typeof navigator !== 'undefined' && /SamsungBrowser/i.test(navigator.userAgent || '');
   const isInAppBrowser = typeof navigator !== 'undefined' && 
     /FBAN|FBAV|Instagram|WhatsApp|Line|Twitter|Snapchat|MicroMessenger|wv/i.test(navigator.userAgent || '');
@@ -38,6 +39,7 @@ export default function PWAInstallModalIOS({
   // Determinar pestaña inicial según el dispositivo real
   const getInitialTab = () => {
     if (isInAppBrowser) return 'inapp';
+    if (isXiaomiBrowser || isXiaomiDevice) return 'xiaomi';
     if (isSamsungBrowser) return 'samsung';
     if (isAndroidDevice) return 'chrome';
     if (isIOSDevice) return 'ios';
@@ -152,11 +154,24 @@ export default function PWAInstallModalIOS({
                   <span>WhatsApp</span>
                 </button>
               )}
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('xiaomi')}
+                className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shrink-0 cursor-pointer ${
+                  activeTab === 'xiaomi'
+                    ? 'bg-white text-orange-600 shadow-sm'
+                    : 'text-neutral-500 hover:text-neutral-800'
+                }`}
+              >
+                <span>🟠</span>
+                <span>Xiaomi</span>
+              </button>
               
               <button
                 type="button"
                 onClick={() => setActiveTab('chrome')}
-                className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
+                className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shrink-0 cursor-pointer ${
                   activeTab === 'chrome'
                     ? 'bg-white text-neutral-900 shadow-sm'
                     : 'text-neutral-500 hover:text-neutral-800'
@@ -169,7 +184,7 @@ export default function PWAInstallModalIOS({
               <button
                 type="button"
                 onClick={() => setActiveTab('samsung')}
-                className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
+                className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shrink-0 cursor-pointer ${
                   activeTab === 'samsung'
                     ? 'bg-white text-purple-700 shadow-sm'
                     : 'text-neutral-500 hover:text-neutral-800'
@@ -182,7 +197,7 @@ export default function PWAInstallModalIOS({
               <button
                 type="button"
                 onClick={() => setActiveTab('ios')}
-                className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
+                className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 shrink-0 cursor-pointer ${
                   activeTab === 'ios'
                     ? 'bg-white text-neutral-900 shadow-sm'
                     : 'text-neutral-500 hover:text-neutral-800'
@@ -208,7 +223,7 @@ export default function PWAInstallModalIOS({
                           Estás navegando dentro de WhatsApp o redes sociales
                         </p>
                         <p className="text-[11px] text-emerald-800 font-medium mt-1 leading-relaxed">
-                          Por seguridad, WhatsApp no permite instalar aplicaciones directamente en su visor interno. Debes abrir la página en tu navegador (Chrome o Samsung).
+                          Por seguridad, WhatsApp no permite instalar aplicaciones directamente en su visor interno. Debes abrir la página en tu navegador (Chrome o Navegador Mi).
                         </p>
                       </div>
                     </div>
@@ -245,6 +260,69 @@ export default function PWAInstallModalIOS({
                       2. Selecciona <strong>"Abrir en Chrome"</strong> o <strong>"Abrir en el navegador"</strong>.
                     </p>
                   </div>
+                </div>
+              )}
+
+              {/* ── PESTAÑA: XIAOMI / REDMI / POCO ── */}
+              {activeTab === 'xiaomi' && (
+                <div className="space-y-2.5 animate-fade-in">
+                  <div className="bg-orange-50 border border-orange-200/80 p-2.5 rounded-2xl text-orange-950 text-xs">
+                    <p className="font-bold leading-tight text-orange-900">
+                      En teléfonos Xiaomi, Redmi y POCO:
+                    </p>
+                    <p className="text-[11px] text-orange-800 font-medium mt-0.5 leading-snug">
+                      La barra de menú está en la parte <strong>inferior</strong>. La opción se llama <strong>"Añadir a inicio"</strong>:
+                    </p>
+                  </div>
+
+                  {/* Paso 1 Xiaomi */}
+                  <div className="flex items-start gap-3 bg-neutral-50 p-3 rounded-2xl border border-neutral-100">
+                    <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0 mt-0.5 shadow-xs font-black">
+                      <MenuIcon size={18} />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 block mb-0.5">
+                        Paso 1
+                      </span>
+                      <p className="text-xs font-semibold text-neutral-800 leading-snug">
+                        En la barra de <strong>abajo</strong>, toca el botón de <span className="font-bold text-orange-700">tres líneas (☰)</span> o tres puntos (⋮).
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Paso 2 Xiaomi */}
+                  <div className="flex items-start gap-3 bg-neutral-50 p-3 rounded-2xl border border-neutral-100">
+                    <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                      <PlusSquare size={18} />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 block mb-0.5">
+                        Paso 2
+                      </span>
+                      <p className="text-xs font-semibold text-neutral-800 leading-snug">
+                        En el menú que se despliega desde abajo, toca <span className="font-bold text-neutral-900">"Añadir a inicio"</span> (o <span className="font-bold text-blue-700">"Añadir a pantalla de inicio"</span>).
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Paso 3 Xiaomi */}
+                  <div className="flex items-start gap-3 bg-neutral-50 p-3 rounded-2xl border border-neutral-100">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                      <CheckCircle2 size={18} />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 block mb-0.5">
+                        Paso 3
+                      </span>
+                      <p className="text-xs font-semibold text-neutral-800 leading-snug">
+                        Confirma tocando <span className="font-bold text-emerald-700">"Añadir"</span>. ¡La app aparecerá en tu teléfono con su propio icono!
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-neutral-500 text-center font-medium bg-neutral-50 p-2.5 rounded-xl border border-neutral-100">
+                    💡 <em>Si usas Google Chrome en tu Xiaomi</em>: Toca los tres puntos (⋮) y selecciona <strong>"Instalar aplicación"</strong>.
+                  </p>
                 </div>
               )}
 
@@ -382,7 +460,7 @@ export default function PWAInstallModalIOS({
                         Paso 1
                       </span>
                       <p className="text-xs font-semibold text-neutral-800 leading-snug">
-                        Toca el botón <span className="font-bold text-blue-600">Compartir</span> (el cuadrado con la flecha hacia arriba) en la barra inferior de Safari.
+                        Toca el botón <span className="font-bold text-blue-600">Compartir</span> (el cuadro con la flecha hacia arriba) en la barra inferior de Safari.
                       </p>
                     </div>
                   </div>
