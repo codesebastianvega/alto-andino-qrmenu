@@ -1,434 +1,74 @@
-import React, { useEffect, useState, useRef } from "react";
-import { useCart, getItemUnit } from "@/context/CartContext";
-import SwipeRevealItem from "./SwipeRevealItem";
-import Portal from "./Portal";
-import { toast as toastFn } from "./Toast";
-import { getProductImage } from "@/utils/images";
-import { MILK_OPTIONS } from "@/config/milkOptions";
-import { formatCOP } from "@/utils/money";
-import AAImage from "@/components/ui/AAImage";
-import { Icon } from "@iconify-icon/react";
-import { supabase } from "@/config/supabase";
-import { translateGroup } from "@/utils/formatters";
-import { useRestaurantSettings } from "@/hooks/useRestaurantSettings";
-import { useAuth } from "@/context/AuthContext";
-import { useMenuData } from "@/context/MenuDataContext";
-import { isRestaurantOpen } from "@/utils/businessHours";
-import { usePlan } from "@/hooks/usePlan";
-import { safeStorage as localStorage, safeSessionStorage as sessionStorage } from "@/utils/safeStorage";
-import { createClientOrderId, submitOrderResilient } from "@/services/orderSync";
-import { getFulfillmentModes } from "@/constants/businessTypes";
-
-
-const toast = {
-  success: (msg) => toastFn(msg, { duration: 3000 }),
-  error: (msg) => toastFn(msg, { duration: 4000 })
-};
-
-const safeNum = (raw) => {
-  const n = String(raw || "").replace(/\D/g, "");
-  return n.startsWith("57") ? n : n ? `57${n}` : "";
-};
-const getTable = () => {
-  try {
-    const sp = new URL(location.href).searchParams;
-    const fromUrl = sp.get("mesa") || sp.get("t");
-    if (fromUrl) return fromUrl;
-
-    // Standardized localStorage key from App.jsx
-    const persisted = localStorage.getItem("aa_current_mesa");
-    if (persisted) return persisted;
-
-    // Fallback to legacy keys
-    for (const k of ["aa_table", "aa_table_num", "aa_t", "mesa", "table"]) {
-      const v = localStorage.getItem(k);
-      if (v) return v;
-    }
-    return "";
-  } catch {
-    return "";
-  }
-};
-
-const getLocationId = () => {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const urlLoc = params.get("loc") || params.get("l") || params.get("location");
-    if (urlLoc) return urlLoc;
-
-    // Standardized localStorage key from App.jsx
-    const persisted = localStorage.getItem("aa_current_location_id");
-    if (persisted) return persisted;
-    
-    return "";
-  } catch {
-    return "";
-  }
-};
-
-const getTableCandidates = (rawTable) => {
-  const original = String(rawTable || "").trim();
-  if (!original) return [];
-
-  const normalized = original.replace(/^mesa\s+/i, "").trim();
-  const prefixed = `Mesa ${normalized}`;
-  return [...new Set([original, normalized, prefixed].filter(Boolean))];
-};
-
-
-const findTableRecord = async ({ mesa, brandId, locationId }) => {
-  const candidates = getTableCandidates(mesa);
-  if (!candidates.length || !brandId) return null;
-
-  for (const candidate of candidates) {
-    let query = supabase
-      .from('restaurant_tables')
-      .select('id, location_id')
-      .eq('table_number', candidate)
-      .eq('brand_id', brandId);
-
-    if (locationId) {
-      query = query.eq('location_id', locationId);
-    }
-
-    const { data } = await query.maybeSingle();
-    if (data) return data;
-  }
-
-  return null;
-};
-
-// Using shared translateGroup from utils/formatters.js
-
-const buildWaText = ({ items = [], total = 0, note = "", brandName = "Aluna" }) => {
-  const mesa = getTable();
-  const lines = [`*Pedido ${brandName}*`];
-  if (mesa) lines.push(`Mesa: ${mesa}`);
-  items.forEach((it, idx) => {
-    const unit = getItemUnit(it);
-    const qty = Number(it.qty || 1);
-    const name = [it.name, it.variant].filter(Boolean).join(" · ");
-    const itemTotal = unit * qty;
-    lines.push(`• ${qty}× ${name} — ${formatCOP(itemTotal)}`);
-    // Opciones por líneas
-    const opts = it.options || {};
-    if (Array.isArray(opts)) {
-      if (opts.length) lines.push("  *Opciones:* " + opts.join(", "));
-    } else {
-      for (const [k, v] of Object.entries(opts)) {
-        if (!v || (Array.isArray(v) && v.length === 0)) continue;
-        const val = Array.isArray(v) ? v.join(", ") : v;
-        lines.push(`  *${translateGroup(k)}:* ${val}`);
-      }
-    }
-    if (it.milk) lines.push("  *Leche:* " + (MILK_OPTIONS.find((m) => m.id === it.milk)?.label || it.milk));
-    if (it.note) lines.push("  _Nota:_ " + it.note);
-    if (idx !== items.length - 1) lines.push("");
-  });
-  if (note) lines.push("_Nota general:_ " + note);
-  lines.push("*Total:* " + formatCOP(total));
-  return encodeURIComponent(lines.join("\n"));
-};
-
-const renderOptionsPills = (opts) => {
-  if (!opts) return null;
-  const parts = [];
-  if (Array.isArray(opts)) {
-    parts.push(...opts);
-  } else if (typeof opts === "object") {
-    for (const [k, v] of Object.entries(opts)) {
-      if (Array.isArray(v)) {
-        if (v.length > 0) {
-          parts.push(`${translateGroup(k)}: ${v.join(", ")}`);
-        }
-      } else if (v) {
-        parts.push(`${translateGroup(k)}: ${v}`);
-      }
-    }
-  }
-  
-  if (!parts.length) return null;
-  return (
-    <div className="mt-1.5 flex flex-wrap gap-1.5">
-      {parts.map((p, i) => (
-        <span
-          key={i}
-          className="inline-flex items-center rounded-md bg-stone-100 px-2 py-0.5 text-[11px] lg:text-xs font-semibold text-stone-600 ring-1 ring-inset ring-stone-200/80 shadow-sm"
-        >
-          {p}
-        </span>
-      ))}
-    </div>
-  );
-};
+import React from "react";
+import { useCartDrawer } from "./cart-drawer/hooks/useCartDrawer";
+import CartDrawerHeader from "./cart-drawer/subcomponents/CartDrawerHeader";
+import CartDrawerItemList from "./cart-drawer/subcomponents/CartDrawerItemList";
+import CartDrawerGeneralNote from "./cart-drawer/subcomponents/CartDrawerGeneralNote";
+import CartDrawerReceiptFooter from "./cart-drawer/subcomponents/CartDrawerReceiptFooter";
+import CartDrawerSuccessView from "./cart-drawer/subcomponents/CartDrawerSuccessView";
+import CartDrawerClearModal from "./cart-drawer/subcomponents/CartDrawerClearModal";
 
 export default function CartDrawer({ open, onClose }) {
-  const cart = useCart?.() || {};
-  const { restaurantSettings, currentBusinessHours, activeBrandId, brand: menuBrand } = useMenuData();
-  const { activeBrand } = useAuth();
-  
-  const brandId = activeBrandId || activeBrand?.id;
-  const { isWithinOrderLimit } = usePlan(brandId);
-  const isPOSMode = sessionStorage.getItem("aa_pos_mode") === "true";
-  const brandName = restaurantSettings?.business_name || activeBrand?.name || "Aluna";
-
   const {
-    items = [],
-    total = 0,
-    clearCart,
-    increment,
-    decrement,
-    removeItem,
-    updateItem,
-    addItem,
-
+    items,
+    total,
+    finalTotal,
     note,
     setNote,
-    setItemNote: setItemNoteCtx,
-    updateItemNote: updateItemNoteCtx,
-  } = cart;
+    clearCart,
+    increment,
+    removeItem,
+    setItemNote,
 
-  const [confirmingClear, setConfirmingClear] = useState(false);
-  const [includeTip, setIncludeTip] = useState(true);
-  const { settings } = useRestaurantSettings();
-  const isTipEnabled = settings?.is_service_fee_enabled === true;
-  const tipPercentage = settings?.service_fee_percentage || 0;
-  
-  const [lastSnapshot, setLastSnapshot] = useState(null);
-  const confirmBtnRef = useRef(null);
-  
-  // Track open state of per-item note input
-  const [openNoteIndex, setOpenNoteIndex] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+    isPOSMode,
+    isWithinOrderLimit,
+    currentBusinessHours,
+    menuBrand,
 
-  // Fulfillment modes & Business Type
-  const fulfillmentModes = getFulfillmentModes(restaurantSettings || settings);
-  const isDarkKitchen = fulfillmentModes.operations_model === 'dark_kitchen' || 
-    (fulfillmentModes.delivery && !fulfillmentModes.dine_in && !fulfillmentModes.takeaway);
+    includeTip,
+    setIncludeTip,
+    isTipEnabled,
+    tipPercentage,
+    serviceFeeAmount,
+    packagingFeeTotal,
 
-  // Fulfillment states
-  const initialMesa = getTable();
-  const flowFromStorage = localStorage.getItem("aa_fulfillment_flow");
-  const [fulfillmentType, setFulfillmentType] = useState(() => {
-    if (flowFromStorage && (flowFromStorage === 'takeaway' || flowFromStorage === 'delivery')) return flowFromStorage;
-    if (isDarkKitchen) return 'delivery';
-    if (initialMesa && fulfillmentModes.dine_in) return 'dine_in';
-    if (flowFromStorage && fulfillmentModes[flowFromStorage]) return flowFromStorage;
-    if (fulfillmentModes.takeaway) return 'takeaway';
-    if (fulfillmentModes.delivery) return 'delivery';
-    return 'dine_in';
-  });
+    openNoteIndex,
+    setOpenNoteIndex,
 
-  // Delivery Address states
-  const [deliveryAddress, setDeliveryAddress] = useState(() => {
-    return localStorage.getItem("aa_delivery_address") || "";
-  });
-  const [deliveryNotes, setDeliveryNotes] = useState(() => {
-    return localStorage.getItem("aa_delivery_notes") || "";
-  });
+    fulfillmentModes,
+    isDarkKitchen,
+    fulfillmentType,
+    setFulfillmentType,
+    deliveryAddress,
+    setDeliveryAddress,
+    deliveryNotes,
+    setDeliveryNotes,
+    scheduledTime,
+    setScheduledTime,
+    customerName,
+    setCustomerName,
+    customerPhone,
+    setCustomerPhone,
+    showFulfillmentSelector,
+    setShowFulfillmentSelector,
 
-  useEffect(() => {
-    if (deliveryAddress) localStorage.setItem("aa_delivery_address", deliveryAddress);
-  }, [deliveryAddress]);
+    isLeadRequired,
+    isLeadValid,
+    isSubmitting,
+    showSuccess,
+    setShowSuccess,
+    lastOrderId,
 
-  useEffect(() => {
-    if (deliveryNotes) localStorage.setItem("aa_delivery_notes", deliveryNotes);
-  }, [deliveryNotes]);
+    confirmingClear,
+    setConfirmingClear,
+    confirmBtnRef,
 
-  // Sync fulfillmentType to storage
-  useEffect(() => {
-    if (fulfillmentType) {
-      localStorage.setItem("aa_fulfillment_flow", fulfillmentType);
-    }
-  }, [fulfillmentType]);
-
-  const [scheduledTime, setScheduledTime] = useState("");
-  const [customerName, setCustomerName] = useState(() => {
-    if (isPOSMode) return "Mostrador";
-    return localStorage.getItem("aa_customer_name") || "";
-  });
-  const [customerPhone, setCustomerPhone] = useState(() => {
-    if (isPOSMode) return "0000000";
-    return localStorage.getItem("aa_customer_phone") || "";
-  });
-  const [showFulfillmentSelector, setShowFulfillmentSelector] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [lastOrderId, setLastOrderId] = useState("");
-
-  const isLeadRequired = !isPOSMode && (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' || fulfillmentType === 'scheduled');
-  const isAddressRequired = !isPOSMode && fulfillmentType === 'delivery';
-  const isLeadValid = !isLeadRequired || (
-    Boolean(customerName?.trim()) && 
-    Boolean(customerPhone?.trim()) && 
-    (!isAddressRequired || Boolean(deliveryAddress?.trim()))
-  );
-
-  const packagingFeeTotal = items.reduce((acc, it) => acc + ((Number(it.packaging_fee) || 0) * (Number(it.qty) || 1)), 0);
-  const serviceFeeAmount = (isTipEnabled && includeTip) ? Math.round(total * (tipPercentage / 100)) : 0;
-
-  const handleConfirmOrder = async (e) => {
-    e.preventDefault();
-    if (!items.length) return;
-    
-    setIsSubmitting(true);
-    try {
-      // 0. Check Business Hours
-      const { isOpen, message } = isRestaurantOpen(currentBusinessHours, menuBrand?.config);
-      if (!isOpen) {
-        toast.error(message);
-        setIsSubmitting(false);
-        return;
-      }
-      
-      // 0.1 Validate Order Limit (Skip for POS mode)
-      if (!isWithinOrderLimit && !isPOSMode) {
-        toast.error("El restaurante ha alcanzado su límite de pedidos por este mes. Por favor, intenta de nuevo más tarde.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      const mesa = getTable();
-      
-      // 1. Get exact table_id and location_id if dine_in
-      let tableId = null;
-      let orderLocationId = getLocationId();
-
-      if (fulfillmentType === 'dine_in' && mesa) {
-        const tableData = await findTableRecord({
-          mesa,
-          brandId: brandId,
-          locationId: orderLocationId
-        });
-
-        if (tableData) {
-          tableId = tableData.id;
-          if (tableData.location_id) orderLocationId = tableData.location_id;
-        } else {
-          console.warn('Table record not found for mesa:', mesa);
-        }
-
-      }
-
-      // 2. Persist atomically. If offline, keep the complete order in IndexedDB.
-      const finalTotal = fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount;
-
-      const formattedAddress = deliveryAddress?.trim();
-      const formattedNotes = deliveryNotes?.trim();
-      const fullCustomerName = (fulfillmentType === 'delivery' && formattedAddress)
-        ? `${customerName.trim()} [Dir: ${formattedAddress}${formattedNotes ? ` - ${formattedNotes}` : ''}]`
-        : customerName.trim();
-
-      const clientOrderId = createClientOrderId();
-      const orderPayload = {
-          brand_id: brandId,
-          location_id: orderLocationId || null,
-          status: (fulfillmentType === 'dine_in' || fulfillmentType === 'takeaway') ? 'new' : 'waiting_payment',
-          origin: fulfillmentType === 'dine_in' ? 'table' : (fulfillmentType === 'takeaway' ? 'takeaway' : 'delivery'),
-          fulfillment_type: fulfillmentType,
-          table_id: tableId,
-          total_amount: finalTotal,
-          service_fee: serviceFeeAmount,
-          customer_name: fullCustomerName || customerName,
-          customer_phone: customerPhone,
-          scheduled_time: scheduledTime || null
-      };
-
-      const orderItemsToInsert = items.map(it => ({
-          product_id: it.productId || it.id,
-          brand_id: brandId,
-          quantity: it.qty || 1,
-          unit_price: getItemUnit(it),
-          modifiers: it.options || {},
-          notes: it.note || ''
-      }));
-      const result = await submitOrderResilient({ clientOrderId, order: orderPayload, items: orderItemsToInsert });
-      const persistedOrderId = result.orderId || clientOrderId;
-
-      // 4. Handle Success
-      const snapshot = { items, note, total, orderId: persistedOrderId, pendingSync: result.queued };
-      localStorage.setItem("aa_last_order", JSON.stringify(snapshot));
-      localStorage.setItem("aa_active_order", persistedOrderId);
-      setLastOrderId(persistedOrderId);
-      if (result.queued) toast.success('Pedido guardado sin internet. Se enviara al volver la conexion.');
-
-      setShowSuccess(true);
-      // We do NOT clear target here so it still shows the items behind the success screen if desired
-      // or we can clear cart after user clicks "Entendido".
-      
-    } catch (err) {
-      console.error('Error enviando pedido:', err);
-      toast.error("Hubo un error al enviar el pedido. Por favor intenta de nuevo.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // setter flexible para nota por ítem
-  const setItemNote =
-    setItemNoteCtx || updateItemNoteCtx || ((index, value) => updateItem?.(index, { note: value }));
-
-  const handleDecrement = (item, idx) => {
-    if (item.qty <= 1) removeItem?.(item);
-    else decrement?.(idx);
-  };
-
-  const handleClearRequest = () => {
-    try {
-      setLastSnapshot(JSON.parse(JSON.stringify(items)));
-    } catch {
-      setLastSnapshot(items);
-    }
-    setConfirmingClear(true);
-  };
-
-  const clearCartNow = () => {
-    clearCart?.();
-    setConfirmingClear(false);
-    toastFn("Carrito vaciado", {
-      actionLabel: "Deshacer",
-      duration: 5000,
-      onAction: () => {
-        if (lastSnapshot) {
-          if (typeof cart.replaceWith === "function") {
-            cart.replaceWith(lastSnapshot);
-          } else {
-            cart.clear?.();
-            lastSnapshot.forEach((it) => addItem?.(it));
-          }
-        }
-      },
-    });
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (confirmingClear) confirmBtnRef.current?.focus();
-  }, [confirmingClear]);
-
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Escape") {
-        if (confirmingClear) setConfirmingClear(false);
-        else onClose?.();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, confirmingClear]);
+    handleDecrement,
+    handleClearRequest,
+    clearCartNow,
+    handleConfirmOrder
+  } = useCartDrawer({ open, onClose });
 
   if (!open) return null;
-
-  const getMilkLabel = (milkId) => {
-    return MILK_OPTIONS.find((m) => m.id === milkId)?.label || milkId;
-  };
 
   return (
     <>
@@ -446,559 +86,88 @@ export default function CartDrawer({ open, onClose }) {
           role="dialog"
           aria-modal="true"
         >
-          {/* Handle Mobile */}
-          <div className="flex-shrink-0 pt-3 flex justify-center pb-2 md:hidden">
-            <div className="h-1.5 w-12 rounded-full bg-neutral-300/80" />
-          </div>
-
           {/* Header */}
-          <div className="flex-shrink-0 flex items-center justify-between px-4 pb-3 pt-3 md:px-6 md:pt-6 md:pb-4 border-b border-neutral-100">
-            <div className="flex items-center gap-3">
-              <div className="bg-[#2f4131]/10 p-2 rounded-full hidden md:block">
-                <Icon icon="heroicons:shopping-cart" className="h-6 w-6 text-[#2f4131]" />
-              </div>
-              <div>
-                <h2 className="text-xl md:text-2xl font-bold tracking-tight text-neutral-900">
-                  Tu Pedido
-                </h2>
-                <p className="text-sm text-neutral-500 font-medium md:mt-0.5">
-                  {items.length} {items.length === 1 ? "artículo" : "artículos"}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {items.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleClearRequest}
-                  className="rounded-full p-2.5 text-neutral-400 hover:bg-red-50 hover:text-red-500 transition-colors hidden md:flex"
-                  aria-label="Vaciar carrito"
-                  title="Vaciar carrito"
-                >
-                  <Icon icon="heroicons:trash" className="h-5 w-5" />
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-full bg-neutral-100 p-2 text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900 transition-colors"
-                aria-label="Cerrar panel"
-              >
-                <Icon icon="heroicons:x-mark" className="h-5 w-5 md:h-6 md:w-6" />
-              </button>
-            </div>
-          </div>
+          <CartDrawerHeader
+            itemCount={items.length}
+            onClearRequest={handleClearRequest}
+            onClose={onClose}
+          />
 
-          {/* Lista scrolleable */}
+          {/* Lista scrolleable + Nota general */}
           <div className="flex-1 overflow-y-auto bg-neutral-50/50 md:bg-white relative">
-            {items.length ? (
-              <div className="flex flex-col">
-                {items.map((it, idx) => {
-                  const unit = getItemUnit(it);
-                  const qty = Number(it.qty || 1);
-                  const lineTotal = unit * qty;
-                  return (
-                    <div key={idx} className="group relative border-b border-neutral-100/80 bg-white p-4 md:px-6 md:py-4 transition-colors hover:bg-neutral-50/50">
-                      <div className="flex items-start gap-4 md:gap-5">
-                        <AAImage
-                          src={getProductImage(it)}
-                          alt=""
-                          aria-hidden="true"
-                          className="h-16 w-16 md:h-20 md:w-20 flex-shrink-0 rounded-2xl object-cover shadow-sm bg-neutral-100 border border-neutral-200/50"
-                        />
+            <CartDrawerItemList
+              items={items}
+              removeItem={removeItem}
+              increment={increment}
+              handleDecrement={handleDecrement}
+              openNoteIndex={openNoteIndex}
+              setOpenNoteIndex={setOpenNoteIndex}
+              setItemNote={setItemNote}
+              onClose={onClose}
+            />
 
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 pr-2">
-                              <h3 className="text-base md:text-lg font-bold text-neutral-900 leading-tight">{it.name}</h3>
-                              {it.variant && (
-                                <p className="text-sm text-neutral-500 mt-0.5">{it.variant}</p>
-                              )}
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <p className="whitespace-nowrap font-extrabold text-[#2f4131] md:text-lg">
-                                {formatCOP(lineTotal)}
-                              </p>
-                              <button
-                                type="button"
-                                onClick={() => removeItem?.(it)}
-                                className="mt-2 text-xs font-medium text-neutral-400 hover:text-red-500 transition-colors md:opacity-0 md:group-hover:opacity-100"
-                              >
-                                Eliminar
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Opciones extras (Modifiers) */}
-                          <div className="mt-2">
-                            {renderOptionsPills(it.options)}
-                          </div>
-
-                          {/* Leche */}
-                          {it.milk && (
-                            <div className="mt-1.5 flex items-center gap-1.5">
-                              <span className="inline-flex items-center rounded-md bg-[#2f4131]/5 px-2 py-1 text-xs font-medium text-[#2f4131] border border-[#2f4131]/10">
-                                🥛 Leche: {getMilkLabel(it.milk)}
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Controles de cantidad y Notas */}
-                          <div className="mt-4 flex items-center justify-between">
-                            <div className="inline-flex items-center rounded-lg bg-neutral-100 p-0.5 border border-neutral-200">
-                              <button
-                                type="button"
-                                onClick={() => handleDecrement(it, idx)}
-                                className="flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-md bg-white text-neutral-600 shadow-sm border border-neutral-200/50 hover:text-neutral-900 hover:bg-neutral-50 active:scale-95 transition-all focus:outline-none"
-                                aria-label="Restar"
-                              >
-                                -
-                              </button>
-                              <span className="w-10 text-center text-sm md:text-base font-bold text-neutral-900 tabular-nums">
-                                {it.qty}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => increment?.(idx)}
-                                className="flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-md bg-white text-neutral-600 shadow-sm border border-neutral-200/50 hover:text-neutral-900 hover:bg-neutral-50 active:scale-95 transition-all focus:outline-none"
-                                aria-label="Sumar"
-                              >
-                                +
-                              </button>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => setOpenNoteIndex(openNoteIndex === idx ? null : idx)}
-                              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                                it.note || openNoteIndex === idx
-                                  ? "text-[#cba258] bg-[#cba258]/10"
-                                  : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
-                              }`}
-                            >
-                              <Icon icon="heroicons:pencil" className="h-3.5 w-3.5" />
-                              {it.note ? "Editar nota" : "Añadir nota"}
-                            </button>
-                          </div>
-
-                          {/* Nota Toggleable */}
-                          {(openNoteIndex === idx || it.note) && (
-                            <div className="mt-3 overflow-hidden rounded-xl bg-amber-50/80 p-2.5 ring-1 ring-amber-200/50">
-                              <input
-                                type="text"
-                                value={it.note || ""}
-                                onChange={(e) => setItemNote(idx, e.target.value)}
-                                placeholder="Ejem: sin cebolla, sin pitillo..."
-                                className="w-full bg-transparent p-1 text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none font-medium"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center px-6">
-                <div className="rounded-full bg-neutral-50 p-6 mb-5 ring-1 ring-neutral-200/50">
-                  <Icon icon="heroicons:shopping-bag" className="h-12 w-12 text-neutral-300" />
-                </div>
-                <h3 className="text-xl font-bold text-neutral-900 mb-2">Tu carrito está vacío</h3>
-                <p className="text-neutral-500 max-w-[260px] leading-relaxed">
-                  ¿Aún no decides? Explora nuestro menú y encuentra algo delicioso.
-                </p>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="mt-8 rounded-full bg-[#2f4131] px-8 py-3 text-sm font-bold text-white shadow-lg shadow-[#2f4131]/20 hover:bg-[#202c21] hover:-translate-y-0.5 transition-all"
-                >
-                  Ver el menú
-                </button>
-              </div>
-            )}
-
-            {/* Nota general */}
             {items.length > 0 && (
-              <div className="p-4 md:px-6 md:py-4 pb-6 md:pb-6">
-                <div className="rounded-2xl bg-neutral-50 p-4 ring-1 ring-neutral-200/60 focus-within:ring-[#2f4131]/30 focus-within:bg-white transition-all">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Icon icon="heroicons:document-text" className="h-4 w-4 text-neutral-400" />
-                    <label className="text-xs font-bold uppercase tracking-widest text-neutral-500">Instrucciones Especiales</label>
-                  </div>
-                  <textarea
-                    value={note ?? ""}
-                    onChange={(e) => setNote?.(e.target.value)}
-                    placeholder="Ej: Tráiganlo cuando lleguemos todos, pago en efectivo..."
-                    className="w-full bg-transparent text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none font-medium min-h-[50px] resize-none"
-                    rows={2}
-                  />
-                </div>
-              </div>
+              <CartDrawerGeneralNote note={note} setNote={setNote} />
             )}
           </div>
 
           {/* Footer fijo (Receipt Style) */}
-          {items.length > 0 && (
-            <div className="flex-shrink-0 bg-white border-t border-neutral-100 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] z-10 relative">
-              <div className="px-4 py-3 md:px-6 md:py-4 border-b border-neutral-100/60 border-dashed">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm text-neutral-500 font-medium">Subtotal</span>
-                    <span className="text-sm font-semibold text-neutral-700">{formatCOP(total)}</span>
-                  </div>
-                  {packagingFeeTotal > 0 && (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery') && (
-                    <div className="flex justify-between items-center mb-1 animate-in fade-in slide-in-from-right-2">
-                      <span className="text-sm text-neutral-500 font-medium">Empaque</span>
-                      <span className="text-sm font-semibold text-neutral-700">{formatCOP(packagingFeeTotal)}</span>
-                    </div>
-                  )}
-                  {isTipEnabled && (
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="flex items-center gap-2 cursor-pointer group">
-                        <div className="relative flex items-center">
-                          <input 
-                            type="checkbox" 
-                            checked={includeTip} 
-                            onChange={(e) => setIncludeTip(e.target.checked)}
-                            className="w-4 h-4 text-[#2f4131] bg-gray-100 border-gray-300 rounded focus:ring-[#2f4131] cursor-pointer"
-                          />
-                        </div>
-                        <span className="text-sm text-neutral-500 font-medium group-hover:text-neutral-700 transition-colors">
-                          Incluir propina ({tipPercentage}%)
-                        </span>
-                      </label>
-                      <span className="text-sm font-semibold text-neutral-700">
-                        {includeTip ? formatCOP(serviceFeeAmount) : '-'}
-                      </span>
-                    </div>
-                  )}
-                  {!isTipEnabled && (
-                    <div className="flex justify-between items-center text-sm text-neutral-400">
-                      <span>Sin costo de servicio</span>
-                      <span>-</span>
-                    </div>
-                  )}
-              </div>
-              
-              <div
-                className="px-4 pt-3 pb-3 md:px-6 md:pt-4 md:pb-4"
-                style={{ paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 16px)" }}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-base md:text-lg font-bold text-neutral-900">Total</span>
-                  <span className="text-2xl md:text-3xl font-black tracking-tight text-[#2f4131]">
-                    {formatCOP(fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' ? total + packagingFeeTotal + serviceFeeAmount : total + serviceFeeAmount)}
-                   </span>
-                </div>
-                
-                <div className="flex flex-col gap-2.5">
-                  {(!isWithinOrderLimit && !isPOSMode) ? (
-                    <div className="bg-neutral-900 rounded-2xl p-5 flex items-start gap-3.5 animate-in fade-in slide-in-from-bottom-2 shadow-xl shadow-neutral-900/10">
-                      <div className="text-neutral-400 mt-0.5 flex-shrink-0">
-                        <Icon icon="heroicons:information-circle" className="text-2xl" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-neutral-100 leading-snug">
-                          El restaurante ha alcanzado su límite de pedidos por este mes. Por favor, intenta de nuevo más tarde.
-                        </p>
-                      </div>
-                    </div>
-                  ) : !showFulfillmentSelector ? (
-                    <div className="flex flex-col gap-2">
-                      {!isRestaurantOpen(currentBusinessHours, menuBrand?.config).isOpen && (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100">
-                          <Icon icon="heroicons:clock" className="text-lg" />
-                          <span>{isRestaurantOpen(currentBusinessHours, menuBrand?.config).message}</span>
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setShowFulfillmentSelector(true)}
-                        disabled={!items.length || !isRestaurantOpen(currentBusinessHours, menuBrand?.config).isOpen}
-                        className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] hover:bg-[#202c21] text-white shadow-[#2f4131]/20 hover:-translate-y-0.5 transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale disabled:hover:translate-y-0"
-                      >
-                        {isRestaurantOpen(currentBusinessHours, menuBrand?.config).isOpen ? (
-                          <>
-                            {isDarkKitchen ? "Siguiente: Datos de Entrega" : "Siguiente: Tipo de Pedido"}
-                            <Icon icon={isDarkKitchen ? "heroicons:truck" : "heroicons:arrow-right"} className="text-xl" />
-                          </>
-                        ) : (
-                          "Restaurante Cerrado"
-                        )}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-3 animate-in slide-in-from-bottom-4 duration-300">
-                      {/* Fulfillment Picker / Dark Kitchen Mode */}
-                      {isDarkKitchen ? (
-                        <div className="flex flex-col gap-2.5">
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setFulfillmentType('delivery');
-                                localStorage.setItem('aa_fulfillment_flow', 'delivery');
-                              }}
-                              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 transition-all font-bold text-xs ${
-                                fulfillmentType !== 'takeaway'
-                                  ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-xs scale-[1.01]"
-                                  : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
-                              }`}
-                            >
-                              <Icon icon="heroicons:truck" className="text-base text-amber-600" />
-                              <span>🛵 A Domicilio</span>
-                            </button>
+          <CartDrawerReceiptFooter
+            items={items}
+            total={total}
+            packagingFeeTotal={packagingFeeTotal}
+            fulfillmentType={fulfillmentType}
+            setFulfillmentType={setFulfillmentType}
+            isTipEnabled={isTipEnabled}
+            includeTip={includeTip}
+            setIncludeTip={setIncludeTip}
+            tipPercentage={tipPercentage}
+            serviceFeeAmount={serviceFeeAmount}
+            finalTotal={finalTotal}
+            isWithinOrderLimit={isWithinOrderLimit}
+            isPOSMode={isPOSMode}
+            currentBusinessHours={currentBusinessHours}
+            menuBrand={menuBrand}
+            showFulfillmentSelector={showFulfillmentSelector}
+            setShowFulfillmentSelector={setShowFulfillmentSelector}
+            isDarkKitchen={isDarkKitchen}
+            fulfillmentModes={fulfillmentModes}
+            scheduledTime={scheduledTime}
+            setScheduledTime={setScheduledTime}
+            isLeadRequired={isLeadRequired}
+            customerName={customerName}
+            setCustomerName={setCustomerName}
+            customerPhone={customerPhone}
+            setCustomerPhone={setCustomerPhone}
+            deliveryAddress={deliveryAddress}
+            setDeliveryAddress={setDeliveryAddress}
+            deliveryNotes={deliveryNotes}
+            setDeliveryNotes={setDeliveryNotes}
+            onConfirmOrder={handleConfirmOrder}
+            isSubmitting={isSubmitting}
+            isLeadValid={isLeadValid}
+            onClose={onClose}
+          />
 
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setFulfillmentType('takeaway');
-                                localStorage.setItem('aa_fulfillment_flow', 'takeaway');
-                              }}
-                              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 transition-all font-bold text-xs ${
-                                fulfillmentType === 'takeaway'
-                                  ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-xs scale-[1.01]"
-                                  : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
-                              }`}
-                            >
-                              <Icon icon="heroicons:shopping-bag" className="text-base text-amber-600" />
-                              <span>🛍️ Recoger en Local</span>
-                            </button>
-                          </div>
-                          {fulfillmentType === 'takeaway' ? (
-                            <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-950 font-bold">
-                              ✓ Recoges en cocina · Sin costo de envío
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-950">
-                              <span className="text-xs font-bold">Entrega a Domicilio</span>
-                              <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-950 px-2 py-0.5 rounded-md">
-                                Dark Kitchen
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-2">
-                          {[
-                            { id: 'dine_in', label: 'En Mesa', icon: 'heroicons:map-pin', enabled: fulfillmentModes.dine_in },
-                            { id: 'takeaway', label: 'Para Llevar', icon: 'heroicons:shopping-bag', enabled: fulfillmentModes.takeaway },
-                            { id: 'delivery', label: 'Domicilio', icon: 'heroicons:truck', enabled: fulfillmentModes.delivery },
-                            { id: 'scheduled', label: 'Programado', icon: 'heroicons:calendar', enabled: fulfillmentModes.scheduled }
-                          ].filter(opt => opt.enabled).map(opt => (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              onClick={() => setFulfillmentType(opt.id)}
-                              className={`flex flex-col items-center justify-center py-2.5 rounded-xl border-2 transition-all gap-1 ${
-                                fulfillmentType === opt.id 
-                                  ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-sm scale-[1.02]" 
-                                  : "border-neutral-100 bg-neutral-50 text-neutral-500 grayscale opacity-70"
-                              }`}
-                            >
-                              <Icon icon={opt.icon} className="text-xl" />
-                              <span className="text-[10px] font-bold uppercase">{opt.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Dynamic Inputs based on selection */}
-                      {fulfillmentType === 'scheduled' && (
-                        <input 
-                          type="datetime-local" 
-                          value={scheduledTime}
-                          onChange={e => setScheduledTime(e.target.value)}
-                          className="w-full h-11 px-4 rounded-xl border border-neutral-200 text-sm font-medium focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131] transition-all bg-white"
-                        />
-                      )}
-
-                      {isLeadRequired && (
-                        <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200 shadow-sm space-y-2.5">
-                          <div className="flex items-center justify-between px-1">
-                            <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest">
-                              {fulfillmentType === 'delivery' ? 'Datos de Contacto y Entrega' : 'Datos de Contacto'}
-                            </label>
-                            <span className="text-[10px] font-bold text-amber-500 bg-white px-2 py-0.5 rounded-full border border-amber-100">REQUERIDO</span>
-                          </div>
-                          <div className="flex gap-2">
-                             <input 
-                              type="text" 
-                              placeholder="Nombre Completo"
-                              value={customerName}
-                              onChange={e => {
-                                setCustomerName(e.target.value);
-                                localStorage.setItem("aa_customer_name", e.target.value);
-                              }}
-                              className="flex-1 h-11 px-3.5 rounded-xl border border-amber-200 bg-white text-sm font-medium focus:ring-2 focus:ring-amber-200/50"
-                            />
-                            <input 
-                              type="tel" 
-                              placeholder="Celular"
-                              value={customerPhone}
-                              onChange={e => {
-                                setCustomerPhone(e.target.value);
-                                localStorage.setItem("aa_customer_phone", e.target.value);
-                              }}
-                              className="w-2/5 h-11 px-3.5 rounded-xl border border-amber-200 bg-white text-sm font-medium focus:ring-2 focus:ring-amber-200/50"
-                            />
-                          </div>
-                          {fulfillmentType === 'delivery' && (
-                            <div className="space-y-2 pt-1 border-t border-amber-200/60">
-                              <input 
-                                type="text" 
-                                placeholder="Dirección completa y barrio (ej: Calle 4 #5-20, Centro)"
-                                value={deliveryAddress}
-                                onChange={e => {
-                                  setDeliveryAddress(e.target.value);
-                                  localStorage.setItem("aa_delivery_address", e.target.value);
-                                }}
-                                className="w-full h-11 px-3.5 rounded-xl border border-amber-200 bg-white text-sm font-medium focus:ring-2 focus:ring-amber-200/50"
-                              />
-                              <input 
-                                type="text" 
-                                placeholder="Indicaciones (Apto, torre, conjunto, timbre)"
-                                value={deliveryNotes}
-                                onChange={e => {
-                                  setDeliveryNotes(e.target.value);
-                                  localStorage.setItem("aa_delivery_notes", e.target.value);
-                                }}
-                                className="w-full h-11 px-3.5 rounded-xl border border-amber-200 bg-white text-sm font-medium focus:ring-2 focus:ring-amber-200/50"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setShowFulfillmentSelector(false)}
-                          className="w-12 h-14 flex items-center justify-center rounded-2xl bg-neutral-100 text-neutral-500 hover:bg-neutral-200 transition-colors"
-                        >
-                          <Icon icon="heroicons:arrow-left" className="text-xl" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleConfirmOrder}
-                          disabled={isSubmitting || !isLeadValid}
-                          className={`flex-1 h-14 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 ${
-                            !isLeadValid || isSubmitting
-                              ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
-                              : "bg-[#2f4131] text-white shadow-[#2f4131]/20 hover:bg-[#202c21]"
-                          }`}
-                        >
-                          {isSubmitting ? (
-                            <Icon icon="line-md:loading-loop" className="text-xl" />
-                          ) : (
-                            <>
-                              <Icon icon="heroicons:sparkles" className="text-xl" />
-                              Confirmar Pedido
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {!showFulfillmentSelector && (
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="flex h-12 w-full items-center justify-center rounded-xl text-sm font-bold text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
-                    >
-                      Seguir pidiendo
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-          
           {/* Full-drawer Success View */}
-          {showSuccess && (
-            <div className="absolute inset-0 z-[200] bg-white flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-300 rounded-t-[28px] md:rounded-none md:rounded-l-[32px]">
-              <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 scale-animation">
-                <Icon icon="heroicons:check-badge" className="text-5xl text-green-600" />
-              </div>
-              <h3 className="text-3xl font-black text-gray-900 mb-3">¡Pedido Recibido!</h3>
-              <p className="text-gray-500 mb-8 max-w-[280px]">
-                Tu pedido <span className="font-bold text-gray-900">#{lastOrderId?.slice(0, 4).toUpperCase()}</span> ha sido registrado. {(fulfillmentType === 'dine_in' || fulfillmentType === 'takeaway') ? 'En breve lo pasaremos a cocina para prepararlo.' : 'Por favor completa el pago para iniciar la preparación.'}
-              </p>
-              
-              <button
-                type="button"
-                onClick={() => {
-                  window.location.href = `#order/${lastOrderId}`;
-                  onClose();
-                  setShowSuccess(false);
-                  clearCart?.();
-                }}
-                className="w-full h-14 bg-orange-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-orange-100 mb-4 hover:bg-orange-600 transition-colors flex items-center justify-center gap-2"
-              >
-                Seguir Mi Pedido <Icon icon="heroicons:arrow-right" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setShowSuccess(false);
-                  clearCart?.();
-                  onClose();
-                }}
-                className="w-full h-14 bg-[#2f4131] text-white rounded-2xl font-bold text-lg mb-4 hover:bg-[#202c21] transition-colors"
-              >
-                Cerrar Menú
-              </button>
-            </div>
-          )}
+          <CartDrawerSuccessView
+            show={showSuccess}
+            lastOrderId={lastOrderId}
+            fulfillmentType={fulfillmentType}
+            onClose={onClose}
+            setShowSuccess={setShowSuccess}
+            clearCart={clearCart}
+          />
         </div>
       </div>
-      
-      {/* Diálogo de Confirmación */}
-      {confirmingClear && (
-        <Portal>
-          <div className="fixed inset-0 z-[120] flex items-center justify-center px-4">
-            <div
-              className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
-              onClick={() => setConfirmingClear(false)}
-            />
-            <div
-              role="dialog"
-              aria-modal="true"
-              className="relative z-10 w-full max-w-sm rounded-[24px] bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-200"
-            >
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-50 mb-4">
-                <Icon icon="heroicons:trash" className="h-8 w-8 text-red-500" />
-              </div>
-              <h3 className="text-center text-lg font-bold text-neutral-900 mb-2">
-                ¿Vaciar todo el carrito?
-              </h3>
-              <p className="text-center text-sm text-neutral-500 mb-6">
-                Esta acción eliminará todos los productos de tu pedido actual.
-              </p>
-              
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setConfirmingClear(false)}
-                  className="flex-1 rounded-xl bg-neutral-100 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-200 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  ref={confirmBtnRef}
-                  onClick={clearCartNow}
-                  className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-semibold text-white shadow-sm hover:bg-red-600 transition-colors"
-                >
-                  Vaciar carrito
-                </button>
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
+
+      {/* Diálogo de Confirmación para Vaciar Carrito */}
+      <CartDrawerClearModal
+        open={confirmingClear}
+        onClose={() => setConfirmingClear(false)}
+        confirmBtnRef={confirmBtnRef}
+        onConfirmClear={clearCartNow}
+      />
     </>
   );
 }
