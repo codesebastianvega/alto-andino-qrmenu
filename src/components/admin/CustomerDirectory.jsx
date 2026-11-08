@@ -87,7 +87,8 @@ export default function CustomerDirectory() {
     refresh,
     updateCustomerStage,
     toggleArchiveCustomer,
-    settleCustomerOrder
+    settleCustomerOrder,
+    adjustCustomerOrder
   } = useCRM();
   const { activeBrand } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
@@ -695,6 +696,36 @@ https://aluna-qrmenu.vercel.app/boku-bento/?src=recuperacion
               orderHistory: (prev.orderHistory || []).map(o => o.id === orderId ? { ...o, payment_status: 'paid', payment_method: options.isHistorical ? `${method} (Ajuste Histórico)` : method } : o)
             };
           });
+        }}
+        onAdjustOrder={async (orderId, adjustment) => {
+          const res = await adjustCustomerOrder(orderId, adjustment);
+          await refresh();
+          setSelectedCustomer(prev => {
+            if (!prev) return null;
+            const updateOrder = (o) => {
+              if (o.id !== orderId) return o;
+              return {
+                ...o,
+                total_amount: res.finalTotal,
+                discount_amount: res.finalDiscount,
+                discount_reason: res.finalReason,
+                delivery_fee: res.finalDeliveryFee
+              };
+            };
+            const updatedHistory = (prev.orderHistory || []).map(updateOrder);
+            const updatedPending = (prev.pendingOrders || []).map(updateOrder);
+            const newTotalOwed = updatedPending.reduce((sum, o) => {
+              const debt = Math.max(0, Number(o.total_amount || 0) - Number(o.paid_amount || 0));
+              return sum + debt;
+            }, 0);
+            return {
+              ...prev,
+              orderHistory: updatedHistory,
+              pendingOrders: updatedPending,
+              totalOwed: newTotalOwed
+            };
+          });
+          return res;
         }}
         onUpdateStage={(custKey, newStg) => {
           updateCustomerStage(custKey, newStg);

@@ -83,6 +83,7 @@ export default function CustomerProfileModal({
   brandName = 'Boku Bento', 
   onNavigateToPromotions,
   onSettleOrder,
+  onAdjustOrder,
   onUpdateStage,
   onArchiveCustomer
 }) {
@@ -152,6 +153,15 @@ export default function CustomerProfileModal({
   const [isSubmittingSettle, setIsSubmittingSettle] = useState(false);
   const [showStageSelector, setShowStageSelector] = useState(false);
 
+  // Estados para modal de ajuste de pedido / cortesía / exoneración de domicilio
+  const [adjustingOrder, setAdjustingOrder] = useState(null);
+  const [adjustFixedTotal, setAdjustFixedTotal] = useState('');
+  const [adjustDiscountAmount, setAdjustDiscountAmount] = useState('');
+  const [adjustDeliveryFee, setAdjustDeliveryFee] = useState(0);
+  const [adjustReason, setAdjustReason] = useState('');
+  const [adjustMode, setAdjustMode] = useState('fixedTotal'); // 'fixedTotal' | 'amount'
+  const [isSubmittingAdjust, setIsSubmittingAdjust] = useState(false);
+
   const currentSegment = customer.segment || 'ocasional';
   const seg = SEGMENT_CONFIG[currentSegment] || SEGMENT_CONFIG.ocasional;
   const isFriction = currentSegment === 'friccion';
@@ -170,6 +180,70 @@ export default function CustomerProfileModal({
     hour: '2-digit',
     minute: '2-digit'
   });
+
+  const handleOpenAdjust = (order) => {
+    setAdjustingOrder(order);
+    const orderItemsTotal = (order.order_items || []).reduce(
+      (sum, it) => sum + ((Number(it.quantity) || 1) * (Number(it.unit_price) || 0)), 
+      0
+    );
+    const gross = orderItemsTotal > 0 
+      ? orderItemsTotal 
+      : (Number(order.total_amount || 0) + Number(order.discount_amount || 0) - Number(order.delivery_fee || 0));
+
+    const currentFee = Number(order.delivery_fee || 0);
+    setAdjustDeliveryFee(currentFee);
+    setAdjustFixedTotal(String(order.total_amount || ''));
+    setAdjustDiscountAmount(String(order.discount_amount || ''));
+    setAdjustReason(order.discount_reason || '');
+    setAdjustMode('fixedTotal');
+  };
+
+  const adjustItemsTotal = useMemo(() => {
+    if (!adjustingOrder) return 0;
+    const itemsSum = (adjustingOrder.order_items || []).reduce(
+      (sum, it) => sum + ((Number(it.quantity) || 1) * (Number(it.unit_price) || 0)), 
+      0
+    );
+    if (itemsSum > 0) return itemsSum;
+    return Math.max(0, Number(adjustingOrder.total_amount || 0) + Number(adjustingOrder.discount_amount || 0) - Number(adjustingOrder.delivery_fee || 0));
+  }, [adjustingOrder]);
+
+  const adjustBaseWithDelivery = useMemo(() => {
+    return Math.max(0, adjustItemsTotal + Number(adjustDeliveryFee || 0));
+  }, [adjustItemsTotal, adjustDeliveryFee]);
+
+  const liveCalculatedTotal = useMemo(() => {
+    if (adjustMode === 'fixedTotal') {
+      if (!adjustFixedTotal || isNaN(Number(adjustFixedTotal))) return adjustBaseWithDelivery;
+      return Math.max(0, Number(adjustFixedTotal));
+    } else {
+      const disc = Number(adjustDiscountAmount || 0);
+      return Math.max(0, adjustBaseWithDelivery - disc);
+    }
+  }, [adjustMode, adjustFixedTotal, adjustDiscountAmount, adjustBaseWithDelivery]);
+
+  const liveCalculatedDiscount = useMemo(() => {
+    return Math.max(0, adjustBaseWithDelivery - liveCalculatedTotal);
+  }, [adjustBaseWithDelivery, liveCalculatedTotal]);
+
+  const handleSaveAdjustment = async () => {
+    if (!adjustingOrder || !onAdjustOrder) return;
+    try {
+      setIsSubmittingAdjust(true);
+      await onAdjustOrder(adjustingOrder.id, {
+        fixedTotal: liveCalculatedTotal,
+        discountAmount: liveCalculatedDiscount,
+        discountReason: adjustReason.trim() || `Cortesía acordada ($${liveCalculatedTotal.toLocaleString('es-CO')})`,
+        deliveryFee: adjustDeliveryFee
+      });
+      setAdjustingOrder(null);
+    } catch (err) {
+      alert('Error al guardar ajuste: ' + (err.message || 'Error desconocido'));
+    } finally {
+      setIsSubmittingAdjust(false);
+    }
+  };
 
   const sendWhatsApp = (type) => {
     const phone = (customer.phone || '').replace(/\D/g, '');
@@ -648,14 +722,40 @@ Te recordamos cordialmente tu saldo pendiente de ${amountStr}${orderInfo}.${paym
                           </div>
 
                           <div className="text-right shrink-0">
-                            <p className="text-sm font-black text-gray-900">{formatCurrency(order.total_amount)}</p>
+                            {Number(order.discount_amount || 0) > 0 ? (
+                              <div>
+                                <span className="text-[10px] text-gray-400 line-through block font-medium">
+                                  {formatCurrency(Number(order.total_amount || 0) + Number(order.discount_amount || 0))}
+                                </span>
+                                <p className="text-sm font-black text-emerald-700">{formatCurrency(order.total_amount)}</p>
+                              </div>
+                            ) : (
+                              <p className="text-sm font-black text-gray-900">{formatCurrency(order.total_amount)}</p>
+                            )}
                             {order.fulfillment_type && (
-                              <span className="text-[10px] text-gray-500 font-medium uppercase">
-                                {order.fulfillment_type === 'delivery' ? '🛵 Domicilio' : '🛍️ Para Llevar'}
+                              <span className="text-[10px] text-gray-500 font-medium uppercase block">
+                                {order.fulfillment_type === 'delivery' 
+                                  ? (Number(order.delivery_fee || 0) > 0 ? `🛵 Domicilio (${formatCurrency(order.delivery_fee)})` : '🛵 Domicilio Exonerado ($0)') 
+                                  : '🛍️ Para Llevar'}
                               </span>
                             )}
                           </div>
                         </div>
+
+                        {/* Banner de Descuento / Cortesía si aplica */}
+                        {Number(order.discount_amount || 0) > 0 && (
+                          <div className="p-2 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-semibold mb-2.5 border border-emerald-200/80 flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1.5 font-bold">
+                              <Tag className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              Cortesía: -{formatCurrency(order.discount_amount)}
+                            </span>
+                            {order.discount_reason && (
+                              <span className="text-[10px] text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md font-medium truncate max-w-[200px]" title={order.discount_reason}>
+                                "{order.discount_reason}"
+                              </span>
+                            )}
+                          </div>
+                        )}
 
                         {/* Motivo de cancelación si aplica */}
                         {isOrdCancelled && order.cancellation_reason && (
@@ -675,11 +775,19 @@ Te recordamos cordialmente tu saldo pendiente de ${amountStr}${orderInfo}.${paym
 
                         {/* Acciones si está pendiente / fiado */}
                         {isUnpaid && (
-                          <div className="mt-3 pt-2.5 border-t border-amber-200/60 flex items-center justify-between gap-2">
+                          <div className="mt-3 pt-2.5 border-t border-amber-200/60 flex items-center justify-between gap-2 flex-wrap">
                             <span className="text-[11px] font-bold text-amber-800">
                               Pendiente: {formatCurrency(order.total_amount)}
                             </span>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenAdjust(order)}
+                                className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-xs font-bold transition-all border border-indigo-200 flex items-center gap-1 cursor-pointer"
+                                title="Ajustar total, exonerar domicilio o aplicar descuento con motivo"
+                              >
+                                ✏️ Ajustar / Descuento
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => sendFiadoReminder(order)}
@@ -698,6 +806,19 @@ Te recordamos cordialmente tu saldo pendiente de ${amountStr}${orderInfo}.${paym
                                 💰 Cobrar
                               </button>
                             </div>
+                          </div>
+                        )}
+
+                        {/* Botón de ajuste para pedidos ya pagados o entregados */}
+                        {!isUnpaid && !isOrdCancelled && (
+                          <div className="mt-2 pt-2 border-t border-gray-100 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAdjust(order)}
+                              className="text-[10px] font-bold text-gray-400 hover:text-indigo-600 flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              ✏️ Ajustar comanda / cortesía
+                            </button>
                           </div>
                         )}
                       </div>
@@ -859,6 +980,242 @@ Te recordamos cordialmente tu saldo pendiente de ${amountStr}${orderInfo}.${paym
                       className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-1 shadow-xs cursor-pointer"
                     >
                       {isSubmittingSettle ? 'Guardando...' : 'Confirmar Cobro'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal de Ajuste de Total / Descuento / Domicilio ANTES de cobrar */}
+            {adjustingOrder && (
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-gray-200 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                  <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold text-lg">
+                        ✏️
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-gray-900 uppercase tracking-tight">
+                          Ajustar Pedido #{adjustingOrder.id?.slice(-4).toUpperCase()}
+                        </h4>
+                        <p className="text-xs text-gray-500 font-medium">
+                          Modifica el total acordado, exonera domicilio o aplica descuento con motivo.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAdjustingOrder(null)}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Resumen de items del pedido */}
+                  <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200/80 text-xs space-y-1">
+                    <div className="flex justify-between text-gray-600 font-medium">
+                      <span>Consumo de productos:</span>
+                      <span className="font-bold text-gray-900">{formatCurrency(adjustItemsTotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600 font-medium">
+                      <span>Tarifa de domicilio:</span>
+                      <span className={`font-bold ${adjustDeliveryFee > 0 ? 'text-amber-800' : 'text-emerald-700'}`}>
+                        {adjustDeliveryFee > 0 ? formatCurrency(adjustDeliveryFee) : 'Exonerado ($0)'}
+                      </span>
+                    </div>
+                    <div className="pt-1.5 border-t border-gray-200 flex justify-between font-black text-gray-900">
+                      <span>Base total comanda:</span>
+                      <span>{formatCurrency(adjustBaseWithDelivery)}</span>
+                    </div>
+                  </div>
+
+                  {/* Control de Domicilio */}
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-amber-50/70 border border-amber-200/80">
+                    <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                      🛵 Domicilio:
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setAdjustDeliveryFee(0)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                          adjustDeliveryFee === 0 
+                            ? 'bg-emerald-600 text-white shadow-xs' 
+                            : 'bg-white border border-amber-200 text-amber-800 hover:bg-amber-100'
+                        }`}
+                      >
+                        Exonerar ($0)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAdjustDeliveryFee(4000)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                          adjustDeliveryFee > 0 
+                            ? 'bg-amber-700 text-white shadow-xs' 
+                            : 'bg-white border border-amber-200 text-amber-800 hover:bg-amber-100'
+                        }`}
+                      >
+                        Cobrar $4.000
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Selector de Modo: Fijar Total vs Descuento */}
+                  <div className="grid grid-cols-2 gap-1.5 bg-gray-100 p-1 rounded-2xl text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdjustMode('fixedTotal');
+                        setAdjustFixedTotal(String(liveCalculatedTotal));
+                      }}
+                      className={`py-2 rounded-xl transition-all cursor-pointer ${adjustMode === 'fixedTotal' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'}`}
+                    >
+                      🎯 Fijar Total a Pagar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdjustMode('amount');
+                        setAdjustDiscountAmount(String(liveCalculatedDiscount));
+                      }}
+                      className={`py-2 rounded-xl transition-all cursor-pointer ${adjustMode === 'amount' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'}`}
+                    >
+                      🏷️ Descuento en $ COP
+                    </button>
+                  </div>
+
+                  {/* Input según modo seleccionado */}
+                  {adjustMode === 'fixedTotal' ? (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-700 block">
+                        ¿Cuánto va a pagar el cliente en total? ($ COP)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-gray-400 text-sm">$</span>
+                        <input
+                          type="number"
+                          value={adjustFixedTotal}
+                          onChange={(e) => setAdjustFixedTotal(e.target.value)}
+                          placeholder="Ej: 50000"
+                          className="w-full pl-8 pr-4 py-2.5 rounded-2xl border-2 border-emerald-500/50 focus:border-emerald-500 text-base font-black text-emerald-800 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-700 block">
+                        Monto a descontar del total ($ COP)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-gray-400 text-sm">-$</span>
+                        <input
+                          type="number"
+                          value={adjustDiscountAmount}
+                          onChange={(e) => setAdjustDiscountAmount(e.target.value)}
+                          placeholder="Ej: 10000"
+                          className="w-full pl-8 pr-4 py-2.5 rounded-2xl border-2 border-emerald-500/50 focus:border-emerald-500 text-base font-black text-emerald-800 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Botones de Cortesía Rápida */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 block">
+                      O aplicar porcentaje de cortesía:
+                    </span>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {[10, 20, 50, 100].map(pct => {
+                        const val = Math.round(adjustBaseWithDelivery * (pct / 100));
+                        return (
+                          <button
+                            key={pct}
+                            type="button"
+                            onClick={() => {
+                              if (adjustMode === 'fixedTotal') {
+                                setAdjustFixedTotal(String(Math.max(0, adjustBaseWithDelivery - val)));
+                              } else {
+                                setAdjustDiscountAmount(String(val));
+                              }
+                              if (pct === 100) setAdjustReason('Invitación de la casa (100% cortesía)');
+                              else setAdjustReason(`Cortesía ${pct}%`);
+                            }}
+                            className="py-1.5 bg-gray-100 hover:bg-emerald-100 text-gray-800 hover:text-emerald-900 rounded-xl text-xs font-black transition-all cursor-pointer"
+                          >
+                            {pct}%
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Motivo del Ajuste */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 block">
+                      Motivo del Descuento / Nota (Para no olvidarlo):
+                    </label>
+                    <input
+                      type="text"
+                      value={adjustReason}
+                      onChange={(e) => setAdjustReason(e.target.value)}
+                      placeholder="Ej: Cortesía acordada con clienta VIP / Precio cerrado"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs font-semibold text-gray-800 focus:outline-none focus:border-indigo-500"
+                    />
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {[
+                        `Cortesía acordada con ${customer.name?.split(' ')[0] || 'cliente'}`,
+                        'Cortesía clienta VIP',
+                        'Compensación por demora',
+                        'Precio cerrado por WhatsApp'
+                      ].map((preset, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setAdjustReason(preset)}
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors cursor-pointer"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Resumen en tiempo real */}
+                  <div className="p-3.5 rounded-2xl bg-slate-900 text-white space-y-1.5">
+                    <div className="flex justify-between text-xs text-slate-400">
+                      <span>Base productos + Domicilio:</span>
+                      <span>{formatCurrency(adjustBaseWithDelivery)}</span>
+                    </div>
+                    {liveCalculatedDiscount > 0 && (
+                      <div className="flex justify-between text-xs text-emerald-400 font-bold">
+                        <span>Descuento de Cortesía:</span>
+                        <span>-{formatCurrency(liveCalculatedDiscount)}</span>
+                      </div>
+                    )}
+                    <div className="pt-2 border-t border-slate-800 flex justify-between items-baseline">
+                      <span className="text-xs font-black text-slate-300">NUEVO TOTAL EN CARTERA:</span>
+                      <span className="text-xl font-black text-emerald-400">{formatCurrency(liveCalculatedTotal)}</span>
+                    </div>
+                  </div>
+
+                  {/* Botones de Guardar / Cancelar */}
+                  <div className="flex items-center gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setAdjustingOrder(null)}
+                      className="px-4 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-black transition-all cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isSubmittingAdjust}
+                      onClick={handleSaveAdjustment}
+                      className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-black transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {isSubmittingAdjust ? 'Guardando ajuste...' : '✓ Guardar Ajuste en Pedido y CRM YA'}
                     </button>
                   </div>
                 </div>

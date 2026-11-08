@@ -43,10 +43,10 @@ export function useCRM() {
           .from('orders')
           .select(`
             id, customer_id, customer_phone, customer_name, total_amount, created_at, status,
-            payment_status, payment_method, paid_amount,
+            payment_status, payment_method, paid_amount, delivery_fee, service_fee, discount_amount, discount_reason,
             cancellation_reason, cancelled_at, delivery_address, delivery_notes, origin, fulfillment_type,
             order_items (
-              id, quantity, 
+              id, quantity, unit_price,
               products ( name )
             )
           `)
@@ -207,6 +207,80 @@ export function useCRM() {
       throw err;
     }
   }, [orders, brandId, fetchData]);
+
+  // Adjust order total, discount, reason, and delivery fee directly from CRM
+  const adjustCustomerOrder = useCallback(async (orderId, { fixedTotal, discountAmount, percentage, discountReason, deliveryFee }) => {
+    try {
+      const targetOrder = orders.find(o => o.id === orderId);
+      if (!targetOrder) throw new Error('Pedido no encontrado');
+
+      // Calculate items total
+      const itemsTotal = (targetOrder.order_items || []).reduce(
+        (sum, it) => sum + ((Number(it.quantity) || 1) * (Number(it.unit_price) || 0)), 
+        0
+      );
+
+      // Current gross fallback if unit_price wasn't set on items
+      const currentGross = itemsTotal > 0
+        ? itemsTotal
+        : (Number(targetOrder.total_amount || 0) + Number(targetOrder.discount_amount || 0) - Number(targetOrder.delivery_fee || 0));
+
+      const newDeliveryFee = deliveryFee !== undefined ? Math.max(0, Number(deliveryFee)) : Number(targetOrder.delivery_fee || 0);
+      const baseSubtotal = Math.max(0, currentGross + newDeliveryFee);
+
+      let finalDiscount = 0;
+      let finalReason = discountReason?.trim() || '';
+
+      if (fixedTotal !== undefined && fixedTotal !== null && fixedTotal !== '') {
+        const targetTotal = Math.max(0, Number(fixedTotal));
+        finalDiscount = Math.max(0, baseSubtotal - targetTotal);
+        if (!finalReason) {
+          finalReason = `Total acordado: $${targetTotal.toLocaleString('es-CO')}`;
+        }
+      } else if (discountAmount !== undefined && discountAmount !== null && discountAmount !== '') {
+        finalDiscount = Math.min(baseSubtotal, Math.max(0, Number(discountAmount)));
+        if (!finalReason) {
+          finalReason = `Cortesía -$${finalDiscount.toLocaleString('es-CO')}`;
+        }
+      } else if (percentage !== undefined && percentage !== null) {
+        const pct = Number(percentage);
+        finalDiscount = Math.round(baseSubtotal * (pct / 100));
+        if (!finalReason) {
+          finalReason = pct === 100 ? 'Amigo VIP (100%)' : `Descuento ${pct}%`;
+        }
+      } else {
+        finalDiscount = Number(targetOrder.discount_amount || 0);
+      }
+
+      const finalTotal = Math.max(0, baseSubtotal - finalDiscount);
+
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          delivery_fee: newDeliveryFee,
+          discount_amount: finalDiscount,
+          discount_reason: finalDiscount > 0 ? finalReason : null,
+          total_amount: finalTotal,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      await fetchData();
+
+      return {
+        success: true,
+        finalTotal,
+        finalDiscount,
+        finalReason: finalDiscount > 0 ? finalReason : null,
+        finalDeliveryFee: newDeliveryFee
+      };
+    } catch (err) {
+      console.error('Error adjusting customer order in CRM:', err);
+      throw err;
+    }
+  }, [orders, fetchData]);
 
   // Transform data into a customer-centric list
   const customers = useMemo(() => {
@@ -576,6 +650,7 @@ export function useCRM() {
     refresh: fetchData,
     updateCustomerStage,
     toggleArchiveCustomer,
-    settleCustomerOrder
+    settleCustomerOrder,
+    adjustCustomerOrder
   };
 }

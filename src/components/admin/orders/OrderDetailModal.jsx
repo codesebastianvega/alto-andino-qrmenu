@@ -46,7 +46,7 @@ export const OrderDetailModal = ({
   const [customFixedTotal, setCustomFixedTotal] = useState('');
   const [customAmountVal, setCustomAmountVal] = useState('');
   const [customReasonVal, setCustomReasonVal] = useState('');
-  const [isCustomDiscountOpen, setIsCustomDiscountOpen] = useState(false);
+  const [isCustomDiscountOpen, setIsCustomDiscountOpen] = useState(true);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-4">
@@ -694,40 +694,51 @@ export const OrderDetailModal = ({
                   <div className="flex items-center justify-between">
                     <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
                       <Icon icon="heroicons:sparkles" />
-                      Cortesía / Descuento Rápido
+                      Cortesía, Descuento VIP y Total Acordado
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => setIsCustomDiscountOpen(prev => !prev)}
-                      className="text-[10px] font-bold text-amber-300 hover:text-amber-200 transition-colors flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>{isCustomDiscountOpen ? 'Ver botones rápidos' : '⚙️ Personalizado'}</span>
-                    </button>
                   </div>
 
-                  {!isCustomDiscountOpen ? (
+                  {/* Control de Domicilio directamente en el panel financiero */}
+                  {(selectedOrder.fulfillment_type === 'delivery' || Number(selectedOrder.delivery_fee || 0) > 0) && updateDeliveryFee && (
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800 border border-slate-700/80 text-xs">
+                      <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                        🛵 Domicilio: <strong className={Number(selectedOrder.delivery_fee || 0) > 0 ? 'text-amber-400 font-black' : 'text-emerald-400 font-black'}>{Number(selectedOrder.delivery_fee || 0) > 0 ? `$${Number(selectedOrder.delivery_fee).toLocaleString()}` : 'Exonerado ($0)'}</strong>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const fee = Number(selectedOrder.delivery_fee || 0);
+                          updateDeliveryFee(selectedOrder.id, fee > 0 ? 0 : 4000);
+                        }}
+                        className="text-[10px] font-black px-2.5 py-1 rounded-lg border transition-all cursor-pointer bg-slate-700 hover:bg-slate-600 text-amber-300 border-slate-600 shadow-2xs"
+                      >
+                        {Number(selectedOrder.delivery_fee || 0) > 0 ? 'Exonerar ($0)' : 'Cobrar $4.000'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Botones de Porcentaje Rápido */}
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">
+                      Cortesía Rápida (%):
+                    </span>
                     <div className="grid grid-cols-4 gap-2">
                       {[10, 20, 50, 100].map(pct => (
                         <button
                           key={pct}
                           onClick={async () => {
                             await applyDiscount(selectedOrder.id, pct);
-                            if (selectedOrder.status === 'waiting_payment') {
-                              await updateOrderStatus(selectedOrder.id, "new", { 
-                                payment_status: "paid", 
-                                payment_method: selectedPaymentMethod 
-                              });
-                            }
                           }}
                           disabled={updatingStatus === selectedOrder.id}
-                          className="py-2.5 bg-slate-800 hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-all border border-slate-700 active:scale-95 disabled:opacity-50"
+                          className="py-2 bg-slate-800 hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-all border border-slate-700 active:scale-95 disabled:opacity-50 cursor-pointer"
                         >
                           {pct}%
                         </button>
                       ))}
                     </div>
-                  ) : (
-                    <div className="space-y-3 pt-1">
+                  </div>
+
+                  <div className="space-y-3 pt-2 border-t border-slate-800">
                       {/* Tabs de modo: Total Acordado vs Descuento en Dinero */}
                       <div className="grid grid-cols-2 gap-1.5 bg-slate-800 p-1 rounded-xl text-[11px] font-bold">
                         <button
@@ -823,7 +834,6 @@ export const OrderDetailModal = ({
                         </div>
                       )}
                     </div>
-                  )}
 
                   {/* Botón para remover descuento si ya hay uno aplicado */}
                   {selectedOrder.discount_amount > 0 && (
