@@ -240,6 +240,14 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
   const [quickBannerProduct, setQuickBannerProduct] = useState(null);
   const [diyBannerProduct, setDiyBannerProduct] = useState(null);
 
+  const hasMealPlans = useMemo(() => {
+    const concepts = Array.isArray(restaurantSettings?.brand_concepts)
+      ? restaurantSettings.brand_concepts
+      : [];
+    const configConcept = concepts.find(c => c && c.id === 'meal_plans_config');
+    return Boolean(configConcept && (configConcept.program ? configConcept.program.is_enabled !== false : true));
+  }, [restaurantSettings]);
+
   const bannerProduct = useMemo(() => {
     if (!homeSettings?.menu_banner_product_id || typeof getAllProducts !== 'function') return null;
     return getAllProducts()?.find(p => p.id === homeSettings.menu_banner_product_id) || null;
@@ -631,84 +639,92 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
             </span>
           </div>
 
-          {/* SECCIÓN DÚO APPLE-STYLE (Club BOKU + Guía de Antojo) */}
-          <div className="w-full my-4">
-            <div className="flex md:grid md:grid-cols-2 gap-3 sm:gap-4 overflow-x-auto md:overflow-visible snap-x snap-mandatory scrollbar-none pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
-              {/* CARD 1: Club BOKU (Pase de Almuerzos) */}
-              <div className="min-w-[85vw] sm:min-w-[340px] md:min-w-0 snap-start flex-1 flex flex-col">
-                <MealPlanVIPBanner
-                  onOpenCart={onOpenCart}
-                  onInstallPWA={onInstallPWA}
-                  isPWAInstalled={isPWAInstalled}
-                />
-              </div>
-
-              {/* CARD 2: Guía de Antojo (Aluna) con gradiente personalizado de la marca */}
-              {instantProduct && storeStatusInfo?.isOpen !== false && (
-                <div className="min-w-[85vw] sm:min-w-[340px] md:min-w-0 snap-start flex-1 flex flex-col">
-                  <div
-                    data-clarity-unmask="true"
-                    className="relative z-20 w-full h-full rounded-[1.25rem] p-4 sm:p-4.5 border shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] flex flex-col justify-between transition-all duration-300 overflow-hidden group"
-                    style={{
-                      background: `linear-gradient(140deg, #FFFFFF 0%, #FAFAF9 35%, ${primaryColor}14 70%, ${accentColor}22 100%)`,
-                      borderColor: `${primaryColor}35`
-                    }}
-                  >
-                    {/* Glow ambiental con los tonos vivos de la marca */}
-                    <div
-                      className="absolute -top-10 -right-10 w-32 h-32 rounded-full blur-2xl pointer-events-none opacity-40 group-hover:opacity-65 transition-opacity duration-500"
-                      style={{ background: `radial-gradient(circle, ${primaryColor} 0%, ${accentColor} 100%)` }}
+          {/* SECCIÓN CARDS (Meal Plan VIP y/o Guía de Antojo) */}
+          {(hasMealPlans || (instantProduct && storeStatusInfo?.isOpen !== false)) && (
+            <div className="w-full my-4">
+              <div className={`flex gap-3 sm:gap-4 ${
+                hasMealPlans && (instantProduct && storeStatusInfo?.isOpen !== false)
+                  ? 'md:grid md:grid-cols-2 overflow-x-auto md:overflow-visible snap-x snap-mandatory scrollbar-none pb-2 -mx-4 px-4 sm:mx-0 sm:px-0'
+                  : 'w-full'
+              }`}>
+                {/* CARD 1: Meal Plan VIP Banner (Solo si está configurado en la marca) */}
+                {hasMealPlans && (
+                  <div className={`${instantProduct && storeStatusInfo?.isOpen !== false ? 'min-w-[85vw] sm:min-w-[340px] md:min-w-0 snap-start' : 'w-full'} flex-1 flex flex-col`}>
+                    <MealPlanVIPBanner
+                      onOpenCart={onOpenCart}
+                      onInstallPWA={onInstallPWA}
+                      isPWAInstalled={isPWAInstalled}
                     />
+                  </div>
+                )}
 
-                    <div className="relative z-10">
-                      <div className="flex items-center justify-between gap-2">
-                        <span
-                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-xs"
-                          style={{ background: `linear-gradient(135deg, ${primaryColor || '#8a0a0a'} 0%, ${accentColor || '#cba258'} 100%)` }}
-                        >
-                          <Sparkles size={11} className="animate-pulse" />
-                          <span>Guía de Antojo</span>
-                        </span>
-                        <span
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
-                          style={{
-                            backgroundColor: `${primaryColor}10`,
-                            borderColor: `${primaryColor}25`,
-                            color: primaryColor || '#8a0a0a'
-                          }}
-                        >
-                          Match en 2 clics
-                        </span>
+                {/* CARD 2: Guía de Antojo (Aluna) */}
+                {instantProduct && storeStatusInfo?.isOpen !== false && (
+                  <div className={`${hasMealPlans ? 'min-w-[85vw] sm:min-w-[340px] md:min-w-0 snap-start' : 'w-full'} flex-1 flex flex-col`}>
+                    <div
+                      data-clarity-unmask="true"
+                      className="relative z-20 w-full h-full rounded-[1.25rem] p-4 sm:p-4.5 border shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] flex flex-col justify-between transition-all duration-300 overflow-hidden group"
+                      style={{
+                        background: `linear-gradient(140deg, #FFFFFF 0%, #FAFAF9 35%, ${primaryColor}14 70%, ${accentColor}22 100%)`,
+                        borderColor: `${primaryColor}35`
+                      }}
+                    >
+                      {/* Glow ambiental con los tonos vivos de la marca */}
+                      <div
+                        className="absolute -top-10 -right-10 w-32 h-32 rounded-full blur-2xl pointer-events-none opacity-40 group-hover:opacity-65 transition-opacity duration-500"
+                        style={{ background: `radial-gradient(circle, ${primaryColor} 0%, ${accentColor} 100%)` }}
+                      />
+
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-xs"
+                            style={{ background: `linear-gradient(135deg, ${primaryColor || '#8a0a0a'} 0%, ${accentColor || '#cba258'} 100%)` }}
+                          >
+                            <Sparkles size={11} className="animate-pulse" />
+                            <span>Guía de Antojo</span>
+                          </span>
+                          <span
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                            style={{
+                              backgroundColor: `${primaryColor}10`,
+                              borderColor: `${primaryColor}25`,
+                              color: primaryColor || '#8a0a0a'
+                            }}
+                          >
+                            Match en 2 clics
+                          </span>
+                        </div>
+
+                        <h3 className="text-sm sm:text-base font-black text-stone-900 tracking-tight leading-snug mt-2.5">
+                          {greeting || '¿Qué se te antoja hoy?'}
+                        </h3>
+                        <p className="text-xs text-stone-600 font-medium leading-relaxed mt-1 line-clamp-2">
+                          Haz un match rápido con algo de la carta según tu apetito o momento del día.
+                        </p>
                       </div>
 
-                      <h3 className="text-sm sm:text-base font-black text-stone-900 tracking-tight leading-snug mt-2.5">
-                        {greeting || '¿Qué se te antoja hoy?'}
-                      </h3>
-                      <p className="text-xs text-stone-600 font-medium leading-relaxed mt-1 line-clamp-2">
-                        Haz un match rápido con algo de la carta según tu apetito o momento del día.
-                      </p>
-                    </div>
-
-                    <div className="relative z-10 flex items-center justify-between gap-2 mt-3.5 pt-3 border-t border-stone-200/60">
-                      <span className="text-[11px] font-bold text-stone-500 truncate flex items-center gap-1">
-                        <span>✨</span>
-                        <span>Asistente inteligente Aluna</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={openGuide}
-                        className="px-4 py-2 rounded-xl text-white font-black text-xs transition-all shadow-sm hover:shadow-md cursor-pointer flex items-center gap-1.5 shrink-0 active:scale-95 hover:brightness-105"
-                        style={{ background: `linear-gradient(135deg, ${primaryColor || '#8a0a0a'} 0%, ${accentColor || '#cba258'} 100%)` }}
-                      >
-                        <span>Abrir guía</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="relative z-10 flex items-center justify-between gap-2 mt-3.5 pt-3 border-t border-stone-200/60">
+                        <span className="text-[11px] font-bold text-stone-500 truncate flex items-center gap-1">
+                          <span>✨</span>
+                          <span>Asistente inteligente Aluna</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={openGuide}
+                          className="px-4 py-2 rounded-xl text-white font-black text-xs transition-all shadow-sm hover:shadow-md cursor-pointer flex items-center gap-1.5 shrink-0 active:scale-95 hover:brightness-105"
+                          style={{ background: `linear-gradient(135deg, ${primaryColor || '#8a0a0a'} 0%, ${accentColor || '#cba258'} 100%)` }}
+                        >
+                          <span>Abrir guía</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </motion.div>
       </div>
 
@@ -725,7 +741,7 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar bowls, cafe, postres..."
+            placeholder={categories && categories.length > 0 ? `Buscar ${categories.slice(0, 3).map(c => c.name.toLowerCase()).join(', ')}...` : "Buscar platos, bebidas, postres..."}
             className="w-full bg-white shadow-sm border border-black/5 focus:border-[#E6B05C]/50 rounded-full py-3 px-12 text-[#1A1A1A] text-sm font-medium placeholder:text-[#1A1A1A]/30 outline-none transition-all"
           />
           {query && (
@@ -800,7 +816,7 @@ export default function MenuHero({ query, setQuery, activeCategory, setActiveCat
             <div className="flex flex-col justify-center max-w-[70%]">
               <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                 <span className="bg-[#E6B05C] text-[#1A1A1A] text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full shadow-sm">
-                  {homeSettings?.menu_banner_tag || (bannerProduct ? 'Recomendado' : 'Menú BOKU')}
+                  {homeSettings?.menu_banner_tag || (bannerProduct ? 'Recomendado' : (effectiveBrand?.name ? `Menú ${effectiveBrand.name}` : 'Menú Digital'))}
                 </span>
                 <span className="text-white/70 text-[10px] font-bold">
                   {homeSettings?.menu_banner_subtitle && homeSettings.menu_banner_subtitle !== 'Talleres & Catas' 

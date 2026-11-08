@@ -428,6 +428,12 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
     (Math.max(0, usage.remainingCredits) / Math.max(1, usage.totalCredits)) * totalStamps
   );
 
+  const brandDisplayName = restaurantSettings?.business_name || menuBrand?.name || "Restaurante";
+
+  if (!programConfig?.is_enabled) {
+    return null;
+  }
+
   return (
     <>
       {/* TARJETA PASE VIP PREMIUM PARA EL COMENSAL (ESTILO APPLE LUMINOUS) */}
@@ -443,7 +449,7 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#cba258]/15 border border-[#cba258]/40 text-amber-950 text-[10px] font-black tracking-wide">
                     <Sparkles className="w-2.5 h-2.5 text-[#cba258]" />
-                    Club BOKU VIP • #{activePlan.code}
+                    {programConfig?.public_badge || `Club ${brandDisplayName}`} • #{activePlan.code}
                   </span>
                   <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
                     {activePlan.includes_delivery
@@ -590,7 +596,7 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
             <div className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/60 text-[10px] font-black uppercase tracking-wider">
                 <span>🥗</span>
-                <span>Club BOKU</span>
+                <span>{programConfig?.public_badge || `Club ${brandDisplayName}`}</span>
               </span>
               <span className="text-[10px] font-bold text-amber-900 bg-amber-50/90 px-2 py-0.5 rounded-full border border-amber-200/60">
                 Desde $15.000 / día
@@ -599,10 +605,10 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
 
             {/* Título y Subtítulo exactos solicitados */}
             <h3 className="text-sm sm:text-base font-black text-stone-900 tracking-tight leading-snug mt-2.5">
-              Club BOKU (Pase de Almuerzos)
+              {programConfig?.program_title || `${brandDisplayName} (Pase de Almuerzos)`}
             </h3>
             <p className="text-xs text-stone-500 font-medium leading-relaxed mt-1 line-clamp-2">
-              Tu almuerzo fit listo cada día en tu puerta a precio especial.
+              {programConfig?.program_subtitle || 'Tu almuerzo fit listo cada día en tu puerta a precio especial.'}
             </p>
           </div>
 
@@ -989,7 +995,7 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                   </div>
                   <div>
                     <h3 className="text-sm sm:text-base font-black text-[#1A1A1A] leading-tight">
-                      Club BOKU • Pase de Almuerzos
+                      {programConfig?.program_title || `${brandDisplayName} • Pase de Almuerzos`}
                     </h3>
                     <p className="text-[11px] text-stone-500">
                       Almuerzos personalizados con o sin sopa todos los días
@@ -1015,7 +1021,7 @@ export default function MealPlanVIPBanner({ onOpenCart, onInstallPWA, isPWAInsta
                       : 'text-stone-500 hover:text-stone-800'
                   }`}
                 >
-                  🔐 Ingresar a mi Pase Club BOKU
+                  🔐 Ingresar a mi Pase {brandDisplayName}
                 </button>
                 <button
                   type="button"

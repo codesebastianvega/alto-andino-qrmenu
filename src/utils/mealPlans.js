@@ -150,11 +150,21 @@ export function getMealPlanProgramConfig(restaurantSettings) {
     ? restaurantSettings.brand_concepts
     : [];
   const configConcept = concepts.find(c => c && c.id === 'meal_plans_config');
+  
+  // Si la marca NO tiene configurados planes de comida, el programa está deshabilitado
+  if (!configConcept) {
+    return {
+      ...DEFAULT_PROGRAM_CONFIG,
+      is_enabled: false
+    };
+  }
+
   const savedProgram = configConcept?.program || {};
 
   return {
     ...DEFAULT_PROGRAM_CONFIG,
     ...savedProgram,
+    is_enabled: savedProgram.is_enabled !== false,
     tiers:
       Array.isArray(savedProgram.tiers) && savedProgram.tiers.length > 0
         ? savedProgram.tiers
@@ -167,6 +177,9 @@ export function getConfiguredMealPlans(restaurantSettings) {
     ? restaurantSettings.brand_concepts
     : [];
   const configConcept = concepts.find(c => c && c.id === 'meal_plans_config');
+  if (!configConcept) {
+    return [];
+  }
   const savedPlans = Array.isArray(configConcept?.plans) ? configConcept.plans : [];
 
   const hasErika = savedPlans.some(
