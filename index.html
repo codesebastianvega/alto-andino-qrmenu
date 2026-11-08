@@ -6,6 +6,23 @@
     <meta name="theme-color" content="#111827" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>Aluna | Menús Digitales Premium</title>
+    <script>
+      window.__pwaDeferredPrompt = null;
+      window.__pwaListeners = [];
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.__pwaDeferredPrompt = e;
+        if (window.__pwaListeners) {
+          window.__pwaListeners.forEach(function(fn) { fn(e); });
+        }
+      });
+      window.addEventListener('appinstalled', function() {
+        window.__pwaDeferredPrompt = null;
+        if (window.__pwaListeners) {
+          window.__pwaListeners.forEach(function(fn) { fn(null); });
+        }
+      });
+    </script>
     <link rel="preconnect" href="https://wa.me" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

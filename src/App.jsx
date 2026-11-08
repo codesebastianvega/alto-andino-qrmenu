@@ -753,12 +753,14 @@ export default function App() {
             onInstall={promptPWAInstall}
             onDismiss={dismissPWABanner}
           />
-          <PWAInstallModalIOS
-            open={showPWAIOSGuide}
-            onClose={() => setShowPWAIOSGuide(false)}
-            brandName={pwaBrandName}
-            logoUrl={pwaLogoUrl}
-          />
+          {isPWAIOS && (
+            <PWAInstallModalIOS
+              open={showPWAIOSGuide}
+              onClose={() => setShowPWAIOSGuide(false)}
+              brandName={pwaBrandName}
+              logoUrl={pwaLogoUrl}
+            />
+          )}
         </Suspense>
       )}
 

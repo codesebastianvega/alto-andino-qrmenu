@@ -1,19 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from '../components/Toast';
 
 // Global shared state across component instances
-let globalDeferredPrompt = null;
+let globalDeferredPrompt = typeof window !== 'undefined' ? (window.__pwaDeferredPrompt || null) : null;
 const promptListeners = new Set();
 
 if (typeof window !== 'undefined') {
+  if (Array.isArray(window.__pwaListeners)) {
+    window.__pwaListeners.push((prompt) => {
+      globalDeferredPrompt = prompt;
+      promptListeners.forEach((listener) => listener(prompt));
+    });
+  }
+
   window.addEventListener('beforeinstallprompt', (e) => {
-    // Prevent the mini-infobar from appearing on mobile
     e.preventDefault();
     globalDeferredPrompt = e;
+    window.__pwaDeferredPrompt = e;
     promptListeners.forEach((listener) => listener(globalDeferredPrompt));
   });
 
   window.addEventListener('appinstalled', () => {
     globalDeferredPrompt = null;
+    window.__pwaDeferredPrompt = null;
     promptListeners.forEach((listener) => listener(null));
   });
 }
@@ -30,7 +39,7 @@ function checkIsStandalone() {
 function checkIsIOS() {
   if (typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent || '';
-  // IMPORTANTE: Un dispositivo Android JAMÁS debe detectarse como iOS
+  // Un dispositivo Android JAMÁS debe detectarse como iOS
   if (/Android/i.test(ua)) return false;
   return (
     (/iPad|iPhone|iPod/.test(ua) ||
@@ -59,11 +68,14 @@ const DISMISS_COOLDOWN_DAYS = 7;
 const DISMISS_COOLDOWN_MS = DISMISS_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
 
 /**
- * Hook para gestionar la instalación de la PWA de la marca/restaurante.
- * Compatible con Android, Windows, Mac y con guía especial nativa para iOS (Safari).
+ * Hook para gestionar la instalación de la PWA.
+ * En Android y PC: Instalación nativa directa en 1 clic (sin tutoriales).
+ * En iOS (Safari): Guía interactiva manual requerida por Apple.
  */
-export function usePWAInstall({ brandId, delayMs = 6000 } = {}) {
-  const [deferredPrompt, setDeferredPrompt] = useState(globalDeferredPrompt);
+export function usePWAInstall({ brandId, delayMs = 4000 } = {}) {
+  const [deferredPrompt, setDeferredPrompt] = useState(
+    () => globalDeferredPrompt || (typeof window !== 'undefined' ? window.__pwaDeferredPrompt : null)
+  );
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
@@ -78,22 +90,34 @@ export function usePWAInstall({ brandId, delayMs = 6000 } = {}) {
   useEffect(() => {
     const standalone = checkIsStandalone();
     setIsInstalled(standalone);
-    setIsIOS(checkIsIOS());
-    setIsAndroid(checkIsAndroid());
+    const ios = checkIsIOS();
+    const android = checkIsAndroid();
+    setIsIOS(ios);
+    setIsAndroid(android);
     setIsSamsung(checkIsSamsung());
     setIsInAppBrowser(checkIsInAppBrowser());
 
     const updatePrompt = (prompt) => {
       setDeferredPrompt(prompt);
+      // En Android, en cuanto el navegador entregue el prompt nativo, mostramos el banner de 1 clic
+      if (prompt && !standalone) {
+        setShowBanner(true);
+      }
     };
 
     promptListeners.add(updatePrompt);
+
+    // Si ya había un prompt capturado en window
+    if (window.__pwaDeferredPrompt && !deferredPrompt) {
+      updatePrompt(window.__pwaDeferredPrompt);
+    }
+
     return () => {
       promptListeners.delete(updatePrompt);
     };
-  }, []);
+  }, [deferredPrompt]);
 
-  // Control del temporizador inteligente para mostrar el banner
+  // Control del temporizador para mostrar el banner
   useEffect(() => {
     if (isInstalled) return;
 
@@ -103,63 +127,65 @@ export function usePWAInstall({ brandId, delayMs = 6000 } = {}) {
       if (dismissedAt) {
         const timeDiff = Date.now() - parseInt(dismissedAt, 10);
         if (timeDiff < DISMISS_COOLDOWN_MS) {
-          return; // Sigue en periodo de descanso
+          return;
         }
       }
-    } catch {
-      // Ignorar errores de localStorage
-    }
+    } catch {}
 
     const timer = setTimeout(() => {
-      // Mostrar solo si no está en modo standalone
       if (!checkIsStandalone()) {
-        setShowBanner(true);
+        const hasPrompt = !!deferredPrompt || !!globalDeferredPrompt || !!(typeof window !== 'undefined' && window.__pwaDeferredPrompt);
+        // En iOS mostramos siempre porque no hay prompt programático
+        // En Android/PC mostramos de inmediato si el prompt está listo
+        if (checkIsIOS() || hasPrompt) {
+          setShowBanner(true);
+        }
       }
     }, delayMs);
 
     return () => clearTimeout(timer);
-  }, [isInstalled, storageKey, delayMs]);
+  }, [isInstalled, storageKey, delayMs, deferredPrompt]);
 
   // Descartar banner con enfriamiento de 7 días
   const dismissBanner = useCallback(() => {
     setShowBanner(false);
     try {
       localStorage.setItem(storageKey, Date.now().toString());
-    } catch {
-      // Ignorar errores de localStorage
-    }
+    } catch {}
   }, [storageKey]);
 
-  // Ejecutar instalación
+  // Ejecutar instalación directa en 1 toque
   const promptInstall = useCallback(async () => {
     if (isInstalled) return;
 
-    if (deferredPrompt) {
-      // Android / Chrome / Edge / Desktop
+    const activePrompt = deferredPrompt || globalDeferredPrompt || (typeof window !== 'undefined' ? window.__pwaDeferredPrompt : null);
+
+    if (activePrompt) {
+      // Android / Chrome / Edge / Desktop: Disparo NATIVO directo de 1 solo clic
       try {
-        deferredPrompt.prompt();
-        const choice = await deferredPrompt.userChoice;
-        if (choice.outcome === 'accepted') {
+        activePrompt.prompt();
+        const choice = await activePrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
           setIsInstalled(true);
           setShowBanner(false);
         }
         globalDeferredPrompt = null;
+        if (typeof window !== 'undefined') window.__pwaDeferredPrompt = null;
         setDeferredPrompt(null);
       } catch (err) {
         console.error('Error al solicitar instalación PWA:', err);
       }
     } else if (isIOS) {
-      // En iOS Safari no existe prompt programático; abrimos la guía interactiva
+      // ÚNICAMENTE en iOS Safari abrimos la guía manual porque Apple no tiene API
       setShowIOSGuide(true);
     } else {
-      // Fallback para navegadores que no admiten beforeinstallprompt (o ya se descartó)
-      // Si estamos en un móvil no-iOS o desktop, podemos mostrar la guía
-      setShowIOSGuide(true);
+      // En Android: NUNCA mostrar la ventana de instrucciones
+      toast('Preparando instalador de un toque...');
     }
   }, [deferredPrompt, isIOS, isInstalled]);
 
   return {
-    canInstall: !isInstalled && (!!deferredPrompt || isIOS || isAndroid),
+    canInstall: !isInstalled && (!!deferredPrompt || !!globalDeferredPrompt || isIOS),
     isInstalled,
     isIOS,
     isAndroid,
