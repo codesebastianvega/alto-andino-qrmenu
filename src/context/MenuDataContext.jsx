@@ -491,6 +491,7 @@ export const MenuDataProvider = ({ children }) => {
     const dailySpecialConcept = (restaurantSettings?.brand_concepts || []).find(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config'));
     const isSpecialEnabled = dailySpecialConcept ? dailySpecialConcept.enabled !== false : false;
     const specialLabel = dailySpecialConcept?.label || (isBoku ? 'El Bento del Día' : 'Plato del Día');
+    const customPrices = dailySpecialConcept?.custom_prices || {};
     const promoPrice = Number(dailySpecialConcept?.promo_price) || 0;
     const standardPrice = Number(dailySpecialConcept?.standard_price) || 0;
     const soupName = dailySpecialConcept?.soup_name || (isBoku ? 'Sopa de apio casera (16 oz)' : 'Crema de verduras casera (16 oz)');
@@ -598,14 +599,23 @@ export const MenuDataProvider = ({ children }) => {
       let originalPrice = undefined;
 
       if (isSpecialToday) {
-        // Si es el Bento del Día programado o activo en Boku, usar promoPrice ($19.000)
-        finalPrice = isBoku
-          ? (promoPrice > 0 ? promoPrice : 19000)
-          : ((product.price !== undefined && product.price !== null && Number(product.price) > 0)
-            ? Number(product.price)
-            : (promoPrice > 0 ? promoPrice : 19000));
-        if (standardPrice > finalPrice) {
-          originalPrice = standardPrice;
+        const itemCustom = customPrices[product.id];
+        if (itemCustom && Number(itemCustom.promo_price) > 0) {
+          finalPrice = Number(itemCustom.promo_price);
+          originalPrice = Number(itemCustom.standard_price) || (finalPrice < 22000 ? 28000 : 34000);
+        } else {
+          // Si es el Bento del Día programado o activo en Boku, usar promoPrice ($19.000) o fallback según categoría
+          const defaultPromo = isBento ? (promoPrice > 0 && promoPrice <= 19000 ? promoPrice : 19000) : (Number(product.price) || 22000);
+          finalPrice = isBoku
+            ? defaultPromo
+            : ((product.price !== undefined && product.price !== null && Number(product.price) > 0)
+              ? Number(product.price)
+              : defaultPromo);
+          if (standardPrice > finalPrice) {
+            originalPrice = standardPrice;
+          } else if (isBento) {
+            originalPrice = 28000;
+          }
         }
         productSubcategory = specialLabel;
       } else if (isBento) {
@@ -764,15 +774,19 @@ export const MenuDataProvider = ({ children }) => {
       };
 
       // 0A. Poke Tori Katsu (Pechuga Crocante) - Nueva Línea Poke Premium
+      const toriCustom = customPrices['b0000b25-0000-4000-a000-000000000025'];
+      const toriPrice = toriCustom && Number(toriCustom.promo_price) > 0 ? Number(toriCustom.promo_price) : 22000;
+      const toriOrigPrice = toriCustom && Number(toriCustom.standard_price) > 0 ? Number(toriCustom.standard_price) : 28000;
+
       const pokeToriKatsu = {
         id: 'b0000b25-0000-4000-a000-000000000025',
         productId: 'b0000b25-0000-4000-a000-000000000025',
         name: 'Poke Tori Katsu (Pechuga Crocante)',
-        price: 22000,
-        original_price: 28000,
+        price: toriPrice,
+        original_price: toriOrigPrice,
         is_bento_del_dia: true,
         is_daily_special: true,
-        daily_special_label: '🔥 Línea Poke Premium ($22.000)',
+        daily_special_label: toriCustom?.label || `🔥 Línea Poke Premium ($${toriPrice.toLocaleString('es-CO')})`,
         subcategory: 'Línea Poke Premium',
         categorySlug: 'boku-bentos',
         categoryId: 'b0000c01-0000-4000-a000-000000000001',
@@ -795,16 +809,20 @@ export const MenuDataProvider = ({ children }) => {
 
       // 0B. Poke Salmón Fresh (Fresco o Salteado) - Nueva Línea Poke Premium
       const salmonRaw = (rawProducts || []).find(p => p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab');
+      const salmonCustom = customPrices['d07007ec-761b-4f40-bad5-799c1154b9ab'];
+      const salmonPrice = salmonCustom && Number(salmonCustom.promo_price) > 0 ? Number(salmonCustom.promo_price) : 22000;
+      const salmonOrigPrice = salmonCustom && Number(salmonCustom.standard_price) > 0 ? Number(salmonCustom.standard_price) : 34000;
+
       const pokeSalmonFresh = {
         ...(salmonRaw || {}),
         id: 'd07007ec-761b-4f40-bad5-799c1154b9ab',
         productId: 'd07007ec-761b-4f40-bad5-799c1154b9ab',
         name: 'Poke Salmón Fresh (Fresco o Salteado)',
-        price: 22000,
-        original_price: 34000,
+        price: salmonPrice,
+        original_price: salmonOrigPrice,
         is_bento_del_dia: true,
         is_daily_special: true,
-        daily_special_label: '🔥 Línea Poke Premium ($22.000)',
+        daily_special_label: salmonCustom?.label || `🔥 Línea Poke Premium ($${salmonPrice.toLocaleString('es-CO')})`,
         subcategory: 'Línea Poke Premium',
         categorySlug: 'boku-bentos',
         categoryId: 'b0000c01-0000-4000-a000-000000000001',
@@ -927,23 +945,35 @@ export const MenuDataProvider = ({ children }) => {
 
       let bentoHeroToday = null;
       if (starRaw) {
+        const starCustom = customPrices[starRaw.id];
+        const isStarPoke = starRaw.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab' || starRaw.id === 'b0000b25-0000-4000-a000-000000000025';
+        const isStarBento = starRaw.category_id === 'b0000c01-0000-4000-a000-000000000001' || starRaw.categories?.slug === 'boku-bentos';
+
+        const starFinalPrice = starCustom && Number(starCustom.promo_price) > 0
+          ? Number(starCustom.promo_price)
+          : (isStarPoke ? 22000 : (isStarBento ? (promoPrice > 0 && promoPrice <= 19000 ? promoPrice : 19000) : (promoPrice > 0 ? promoPrice : 19000)));
+
+        const starOriginalPrice = starCustom && Number(starCustom.standard_price) > 0
+          ? Number(starCustom.standard_price)
+          : (isStarPoke ? 34000 : (standardPrice > 0 ? standardPrice : 28000));
+
         if (starRaw.id === 'b0000b25-0000-4000-a000-000000000025') {
           bentoHeroToday = {
             ...pokeToriKatsu,
-            price: promoPrice > 0 ? promoPrice : 22000,
-            original_price: standardPrice > 0 ? standardPrice : 28000,
+            price: starFinalPrice,
+            original_price: starOriginalPrice,
             is_bento_del_dia: true,
             is_daily_special: true,
-            daily_special_label: specialLabel || 'Almuerzo Estrella de Hoy'
+            daily_special_label: starCustom?.label || specialLabel || 'Almuerzo Estrella de Hoy'
           };
         } else if (starRaw.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab') {
           bentoHeroToday = {
             ...pokeSalmonFresh,
-            price: promoPrice > 0 ? promoPrice : 22000,
-            original_price: standardPrice > 0 ? standardPrice : 34000,
+            price: starFinalPrice,
+            original_price: starOriginalPrice,
             is_bento_del_dia: true,
             is_daily_special: true,
-            daily_special_label: specialLabel || 'Almuerzo Estrella de Hoy'
+            daily_special_label: starCustom?.label || specialLabel || 'Almuerzo Estrella de Hoy'
           };
         } else {
           bentoHeroToday = {
@@ -951,11 +981,11 @@ export const MenuDataProvider = ({ children }) => {
             id: starRaw.id,
             productId: starRaw.id,
             name: starRaw.name,
-            price: promoPrice > 0 ? promoPrice : (Number(starRaw.price) || 19000),
-            original_price: standardPrice > 0 ? standardPrice : 22000,
+            price: starFinalPrice,
+            original_price: starOriginalPrice,
             is_bento_del_dia: true,
             is_daily_special: true,
-            daily_special_label: specialLabel || 'El Bento del Día',
+            daily_special_label: starCustom?.label || specialLabel || 'El Bento del Día',
             subcategory: 'Bentos Caseros',
             categorySlug: 'boku-bentos',
             categoryId: 'b0000c01-0000-4000-a000-000000000001',
@@ -977,21 +1007,51 @@ export const MenuDataProvider = ({ children }) => {
         }
       }
 
-      // 4. Platos Secundarios de Almuerzo configurados en la administración
+      // 4. Platos Secundarios de Almuerzo configurados en la administración (con precios independientes)
       const secondaryBentoList = (activeSecondaryIds || []).map(secId => {
-        if (secId === 'd07007ec-761b-4f40-bad5-799c1154b9ab') return pokeSalmonFresh;
-        if (secId === 'b0000b25-0000-4000-a000-000000000025') return pokeToriKatsu;
-        const rawSec = (rawProducts || []).find(p => p.id === secId);
-        if (!rawSec) return null;
-        return {
-          ...rawSec,
-          is_daily_special: true,
-          daily_special_label: 'Opción del Día',
-          categorySlug: 'boku-bentos',
-          categoryId: 'b0000c01-0000-4000-a000-000000000001',
-          categoryName: 'BOKU Bentos Caseros',
-          modifierGroups: rawSec.modifierGroups || [sharedSoupGroup, sharedDrinkGroup]
-        };
+        const secCustom = customPrices[secId];
+        let baseObj = null;
+        if (secId === 'd07007ec-761b-4f40-bad5-799c1154b9ab') {
+          baseObj = {
+            ...pokeSalmonFresh,
+            price: salmonPrice,
+            original_price: salmonOrigPrice
+          };
+        } else if (secId === 'b0000b25-0000-4000-a000-000000000025') {
+          baseObj = {
+            ...pokeToriKatsu,
+            price: toriPrice,
+            original_price: toriOrigPrice
+          };
+        } else {
+          const rawSec = (rawProducts || []).find(p => p.id === secId);
+          if (!rawSec) return null;
+          const isSecBento = rawSec.categories?.slug === 'boku-bentos' || rawSec.category_id === 'b0000c01-0000-4000-a000-000000000001';
+          const defaultSecPromo = isSecBento ? 19000 : (Number(rawSec.price) || 20000);
+          const defaultSecOrig = isSecBento ? 28000 : (Number(rawSec.price) ? Number(rawSec.price) + 4000 : 25000);
+
+          baseObj = {
+            ...rawSec,
+            price: defaultSecPromo,
+            original_price: defaultSecOrig,
+            is_daily_special: true,
+            daily_special_label: isSecBento ? 'Bento del Día' : 'Opción del Día',
+            categorySlug: 'boku-bentos',
+            categoryId: 'b0000c01-0000-4000-a000-000000000001',
+            categoryName: 'BOKU Bentos Caseros',
+            modifierGroups: rawSec.modifierGroups || [sharedSoupGroup, sharedDrinkGroup]
+          };
+        }
+
+        if (secCustom && Number(secCustom.promo_price) > 0) {
+          baseObj = {
+            ...baseObj,
+            price: Number(secCustom.promo_price),
+            original_price: Number(secCustom.standard_price) || baseObj.original_price,
+            daily_special_label: secCustom.label || baseObj.daily_special_label
+          };
+        }
+        return baseObj;
       }).filter(Boolean);
 
       // Ensamblar la sección superior de Bentos de Hoy: Bento Estrella + Opciones Secundarias (Deduplicados)

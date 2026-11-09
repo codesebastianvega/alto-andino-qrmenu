@@ -32,9 +32,10 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
     enabled: true,
     label: 'El Bento del Día',
     promo_price: 19000,
-    standard_price: 22000,
+    standard_price: 28000,
     manual_override_product_id: null,
     secondary_product_ids: [],
+    custom_prices: {},
     schedule: {
       1: 'b0000b11-0000-4000-a000-000000000001',
       2: 'b0000b12-0000-4000-a000-000000000002',
@@ -98,11 +99,12 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
             enabled: existingConcept.enabled !== false,
             label: existingConcept.label || (activeBrand.slug === 'boku-bento' ? 'El Bento del Día' : 'Plato del Día'),
             promo_price: existingConcept.promo_price ?? 19000,
-            standard_price: existingConcept.standard_price ?? 22000,
+            standard_price: existingConcept.standard_price ?? 28000,
             manual_override_product_id: existingConcept.manual_override_product_id || null,
             secondary_product_ids: Array.isArray(existingConcept.secondary_product_ids) 
               ? existingConcept.secondary_product_ids 
               : [],
+            custom_prices: existingConcept.custom_prices || {},
             schedule: existingConcept.schedule || prev.schedule,
             secondary_schedule: existingConcept.secondary_schedule || {},
             soup_name: existingConcept.soup_name || 'Crema de verduras casera (16 oz)',
@@ -169,9 +171,22 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
   // Handler: Add secondary product
   const handleAddSecondary = (productId) => {
     if (!productId) return;
+    const prod = productMap.get(productId);
+    const isBento = prod?.categories?.slug === 'boku-bentos' || prod?.category_id === 'b0000c01-0000-4000-a000-000000000001';
+    const isPoke = prod?.categories?.slug?.includes('poke') || prod?.name?.toLowerCase().includes('poke');
+    const defaultPromo = isBento ? 19000 : (isPoke ? 22000 : (Number(prod?.price) || 20000));
+    const defaultStandard = isBento ? 28000 : (isPoke ? 34000 : (Number(prod?.price) ? Number(prod.price) + 4000 : 25000));
+
     setConfig(prev => ({
       ...prev,
-      secondary_product_ids: Array.from(new Set([...(prev.secondary_product_ids || []), productId]))
+      secondary_product_ids: Array.from(new Set([...(prev.secondary_product_ids || []), productId])),
+      custom_prices: {
+        ...(prev.custom_prices || {}),
+        [productId]: prev.custom_prices?.[productId] || {
+          promo_price: defaultPromo,
+          standard_price: defaultStandard
+        }
+      }
     }));
     setSelectedSecondaryAddId('');
     toast.success('Plato añadido a las opciones de almuerzo de hoy');
@@ -179,10 +194,16 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
 
   // Handler: Remove secondary product
   const handleRemoveSecondary = (productId) => {
-    setConfig(prev => ({
-      ...prev,
-      secondary_product_ids: (prev.secondary_product_ids || []).filter(id => id !== productId)
-    }));
+    setConfig(prev => {
+      const nextSecondary = (prev.secondary_product_ids || []).filter(id => id !== productId);
+      const nextCustom = { ...(prev.custom_prices || {}) };
+      delete nextCustom[productId];
+      return {
+        ...prev,
+        secondary_product_ids: nextSecondary,
+        custom_prices: nextCustom
+      };
+    });
   };
 
   // Handler: Save & Publish
@@ -206,10 +227,11 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
         id: 'bento_del_dia_config',
         label: config.label?.trim() || (activeBrand?.slug === 'boku-bento' ? 'El Bento del Día' : 'Plato del Día'),
         enabled: Boolean(config.enabled),
-        promo_price: Number(config.promo_price) || 0,
-        standard_price: Number(config.standard_price) || 0,
+        promo_price: Number(config.promo_price) || 19000,
+        standard_price: Number(config.standard_price) || 28000,
         manual_override_product_id: config.manual_override_product_id || null,
         secondary_product_ids: config.secondary_product_ids || [],
+        custom_prices: config.custom_prices || {},
         schedule: config.schedule || {},
         secondary_schedule: config.secondary_schedule || {},
         soup_name: config.soup_name?.trim() || 'Crema de verduras casera (16 oz)',
@@ -249,10 +271,11 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
         const selectedPrimaryId = config.manual_override_product_id || config.schedule?.[todayDayNum];
         const selectedProd = selectedPrimaryId ? productMap.get(selectedPrimaryId) : null;
         if (selectedProd) {
+          const starPromoPrice = config.custom_prices?.[selectedProd.id]?.promo_price ?? (Number(config.promo_price) || 19000);
           await supabase
             .from('home_settings')
             .update({
-              hero_h1: `🍱 Bento del Día: ${selectedProd.name.replace(/\s*\(Especial del Día\)/i, '')} ($${(Number(config.promo_price) || 19000).toLocaleString('es-CO')})`,
+              hero_h1: `🍱 Bento del Día: ${selectedProd.name.replace(/\s*\(Especial del Día\)/i, '')} ($${Number(starPromoPrice).toLocaleString('es-CO')})`,
               hero_subtitle: `${selectedProd.description ? selectedProd.description.slice(0, 160) + '...' : ''} 🥣 Incluye ${config.soup_name || 'Crema'} + 🥤 ${config.drink_name || 'Jugo'}.`,
               updated_at: new Date().toISOString()
             })
@@ -425,37 +448,107 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
 
                   {/* Active Selected Card Preview */}
                   {primaryProduct ? (
-                    <div className="bg-white rounded-xl p-3 border border-amber-300/80 shadow-xs flex items-center gap-3 relative overflow-hidden">
-                      <div className="w-16 h-16 rounded-lg bg-neutral-100 overflow-hidden shrink-0 border border-neutral-200">
-                        {primaryProduct.image_url ? (
-                          <img src={primaryProduct.image_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-xl">🍽️</div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded">
-                            {primaryProduct.categories?.name || 'Plato'}
-                          </span>
-                          {!primaryProduct.is_active && (
-                            <span className="text-[10px] font-bold text-neutral-500 bg-neutral-100 px-1.5 py-0.2 rounded">
-                              ⏸️ Pausado en carta regular
-                            </span>
+                    <div className="bg-white rounded-xl p-3.5 border border-amber-300/80 shadow-xs space-y-2.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-14 h-14 rounded-lg bg-neutral-100 overflow-hidden shrink-0 border border-neutral-200">
+                          {primaryProduct.image_url ? (
+                            <img src={primaryProduct.image_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xl">🍽️</div>
                           )}
                         </div>
-                        <h5 className="text-sm font-bold text-neutral-900 truncate mt-0.5">
-                          {primaryProduct.name}
-                        </h5>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs font-black text-amber-700">
-                            Hoy: {formatCOP(config.promo_price)}
-                          </span>
-                          <span className="text-[11px] text-neutral-400 line-through">
-                            {formatCOP(config.standard_price || primaryProduct.price)}
-                          </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded">
+                              {primaryProduct.categories?.name || 'Plato'}
+                            </span>
+                            {!primaryProduct.is_active && (
+                              <span className="text-[10px] font-bold text-neutral-500 bg-neutral-100 px-1.5 py-0.2 rounded">
+                                ⏸️ Pausado en carta regular
+                              </span>
+                            )}
+                          </div>
+                          <h5 className="text-sm font-bold text-neutral-900 truncate mt-0.5">
+                            {primaryProduct.name}
+                          </h5>
+                          <p className="text-[10px] text-neutral-400">
+                            Carta regular: {formatCOP(primaryProduct.price)}
+                          </p>
                         </div>
                       </div>
+
+                      {/* Configuración de Precio para el Plato Estrella */}
+                      {(() => {
+                        const isBento = primaryProduct.categories?.slug === 'boku-bentos' || primaryProduct.category_id === 'b0000c01-0000-4000-a000-000000000001';
+                        const isPoke = primaryProduct.categories?.slug?.includes('poke') || primaryProduct.name?.toLowerCase().includes('poke');
+                        const defaultPromo = isBento ? 19000 : (isPoke ? 22000 : (Number(primaryProduct.price) || 19000));
+                        const defaultStandard = isBento ? 28000 : (isPoke ? 34000 : (Number(primaryProduct.price) ? Number(primaryProduct.price) + 4000 : 25000));
+
+                        const customVal = config.custom_prices?.[primaryProduct.id] || {};
+                        const currentPromo = customVal.promo_price ?? (isBento ? (config.promo_price <= 19000 ? config.promo_price : 19000) : (config.promo_price || defaultPromo));
+                        const currentStandard = customVal.standard_price ?? (config.standard_price || defaultStandard);
+
+                        return (
+                          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-amber-100 bg-amber-50/50 p-2 rounded-lg">
+                            <div>
+                              <label className="text-[9px] font-black uppercase text-amber-950 block mb-0.5">
+                                Precio Almuerzo (COP)
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs">$</span>
+                                <input
+                                  type="number"
+                                  value={currentPromo}
+                                  onChange={e => {
+                                    const val = Number(e.target.value) || 0;
+                                    setConfig(prev => ({
+                                      ...prev,
+                                      promo_price: isBento ? val : prev.promo_price,
+                                      custom_prices: {
+                                        ...(prev.custom_prices || {}),
+                                        [primaryProduct.id]: {
+                                          ...(prev.custom_prices?.[primaryProduct.id] || {}),
+                                          promo_price: val,
+                                          standard_price: currentStandard
+                                        }
+                                      }
+                                    }));
+                                  }}
+                                  className="w-full pl-6 pr-2 py-1.5 bg-white border border-neutral-300 rounded-lg text-xs font-black text-amber-900 focus:outline-none focus:border-amber-500"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-black uppercase text-neutral-500 block mb-0.5">
+                                Tachado Regular (COP)
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs">$</span>
+                                <input
+                                  type="number"
+                                  value={currentStandard}
+                                  onChange={e => {
+                                    const val = Number(e.target.value) || 0;
+                                    setConfig(prev => ({
+                                      ...prev,
+                                      standard_price: isBento ? val : prev.standard_price,
+                                      custom_prices: {
+                                        ...(prev.custom_prices || {}),
+                                        [primaryProduct.id]: {
+                                          ...(prev.custom_prices?.[primaryProduct.id] || {}),
+                                          promo_price: currentPromo,
+                                          standard_price: val
+                                        }
+                                      }
+                                    }));
+                                  }}
+                                  className="w-full pl-6 pr-2 py-1.5 bg-white border border-neutral-300 rounded-lg text-xs font-bold text-neutral-500 line-through focus:outline-none focus:border-amber-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <div className="p-4 rounded-xl border border-dashed border-neutral-300 text-center text-xs text-neutral-400">
@@ -512,38 +605,109 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                   </div>
 
                   {/* List of currently selected secondary options */}
-                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                    {secondaryProducts.map(p => (
-                      <div 
-                        key={p.id}
-                        className="bg-white rounded-xl p-2.5 border border-neutral-200 shadow-2xs flex items-center justify-between gap-3 group hover:border-amber-300 transition-all"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-10 h-10 rounded-lg bg-neutral-100 overflow-hidden shrink-0 border border-neutral-200">
-                            {p.image_url ? (
-                              <img src={p.image_url} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-sm">🍽️</div>
-                            )}
+                  <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                    {secondaryProducts.map(p => {
+                      const isBento = p.categories?.slug === 'boku-bentos' || p.category_id === 'b0000c01-0000-4000-a000-000000000001';
+                      const isPoke = p.categories?.slug?.includes('poke') || p.name?.toLowerCase().includes('poke') || p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab' || p.id === 'b0000b25-0000-4000-a000-000000000025';
+                      const defaultPromo = isBento ? 19000 : (isPoke ? 22000 : (Number(p.price) || 20000));
+                      const defaultStandard = isBento ? 28000 : (isPoke ? 34000 : (Number(p.price) ? Number(p.price) + 4000 : 25000));
+
+                      const customVal = config.custom_prices?.[p.id] || {};
+                      const currentPromo = customVal.promo_price ?? defaultPromo;
+                      const currentStandard = customVal.standard_price ?? defaultStandard;
+
+                      return (
+                        <div 
+                          key={p.id}
+                          className="bg-white rounded-xl p-3 border border-neutral-200 shadow-2xs space-y-2 group hover:border-amber-300 transition-all"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-10 h-10 rounded-lg bg-neutral-100 overflow-hidden shrink-0 border border-neutral-200">
+                                {p.image_url ? (
+                                  <img src={p.image_url} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-sm">🍽️</div>
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-neutral-900 truncate">{p.name}</p>
+                                <p className="text-[10px] text-neutral-500">
+                                  Sección: <span className="font-semibold text-neutral-700">{p.categories?.name || 'Catálogo'}</span> (Carta: {formatCOP(p.price)})
+                                </p>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSecondary(p.id)}
+                              className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+                              title="Quitar de las opciones de almuerzo de hoy"
+                            >
+                              <Trash2 size={13} />
+                            </button>
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-neutral-900 truncate">{p.name}</p>
-                            <p className="text-[10px] text-neutral-500">
-                              Sección original: <span className="font-semibold text-neutral-700">{p.categories?.name || 'Catálogo'}</span> • Combo: {formatCOP(config.promo_price)}
-                            </p>
+
+                          {/* Inputs de Precio Individual para este plato */}
+                          <div className="grid grid-cols-2 gap-2 bg-neutral-50 p-2 rounded-lg border border-neutral-200/70">
+                            <div>
+                              <label className="text-[9px] font-black uppercase text-amber-900 block mb-0.5">
+                                Precio Almuerzo (COP)
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-[10px]">$</span>
+                                <input
+                                  type="number"
+                                  value={currentPromo}
+                                  onChange={e => {
+                                    const val = Number(e.target.value) || 0;
+                                    setConfig(prev => ({
+                                      ...prev,
+                                      custom_prices: {
+                                        ...(prev.custom_prices || {}),
+                                        [p.id]: {
+                                          ...(prev.custom_prices?.[p.id] || {}),
+                                          promo_price: val,
+                                          standard_price: currentStandard
+                                        }
+                                      }
+                                    }));
+                                  }}
+                                  className="w-full pl-5 pr-1.5 py-1 bg-white border border-neutral-300 rounded text-xs font-black text-amber-900 focus:outline-none focus:border-amber-500"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-black uppercase text-neutral-500 block mb-0.5">
+                                Tachado Regular (COP)
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-[10px]">$</span>
+                                <input
+                                  type="number"
+                                  value={currentStandard}
+                                  onChange={e => {
+                                    const val = Number(e.target.value) || 0;
+                                    setConfig(prev => ({
+                                      ...prev,
+                                      custom_prices: {
+                                        ...(prev.custom_prices || {}),
+                                        [p.id]: {
+                                          ...(prev.custom_prices?.[p.id] || {}),
+                                          promo_price: currentPromo,
+                                          standard_price: val
+                                        }
+                                      }
+                                    }));
+                                  }}
+                                  className="w-full pl-5 pr-1.5 py-1 bg-white border border-neutral-300 rounded text-xs font-bold text-neutral-500 line-through focus:outline-none focus:border-amber-500"
+                                />
+                              </div>
+                            </div>
                           </div>
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSecondary(p.id)}
-                          className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
-                          title="Quitar de las opciones de almuerzo de hoy"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
 
                     {secondaryProducts.length === 0 && (
                       <div className="p-4 rounded-xl border border-dashed border-neutral-300 text-center text-xs text-neutral-400">
@@ -719,7 +883,7 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                 {/* Promo Price */}
                 <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-200 space-y-1.5">
                   <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider block">
-                    🔥 Precio Promo del Almuerzo (COP)
+                    🔥 Precio Base Bentos Caseros (COP)
                   </label>
                   <input
                     type="number"
@@ -729,24 +893,24 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                     placeholder="19000"
                   />
                   <p className="text-[10px] text-neutral-500">
-                    Precio final cobrado en el combo de almuerzo.
+                    Precio estándar para Bentos tradicionales en combo.
                   </p>
                 </div>
 
                 {/* Standard Price */}
                 <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-200 space-y-1.5">
                   <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider block">
-                    🍱 Precio Regular Tachado (COP)
+                    🍱 Precio Regular Tachado Bentos (COP)
                   </label>
                   <input
                     type="number"
                     value={config.standard_price || 0}
                     onChange={e => setConfig(prev => ({ ...prev, standard_price: Number(e.target.value) || 0 }))}
                     className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-neutral-300 bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
-                    placeholder="22000"
+                    placeholder="28000"
                   />
                   <p className="text-[10px] text-neutral-500">
-                    Precio tachado referencial para calcular el badge de ahorro ("Ahorras $3.000").
+                    Precio tachado referencial para calcular el badge de ahorro ("Ahorras $6.000").
                   </p>
                 </div>
 
@@ -782,6 +946,193 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                   <p className="text-[10px] text-neutral-500">
                     Opción predeterminada en el grupo de Bebida Incluida.
                   </p>
+                </div>
+              </div>
+
+              {/* Sección de Precios Específicos por Plato Activo Hoy */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-amber-950 flex items-center gap-1.5">
+                      <span>🏷️</span>
+                      <span>Precios Específicos por Plato en Almuerzo de Hoy</span>
+                    </h4>
+                    <p className="text-[11px] text-amber-900/80 font-medium">
+                      Configura el precio combo individual de cada plato activo hoy (Bentos a $19.000, Pokes a $22.000, o cualquier valor personalizado).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {/* Fila para Plato Estrella */}
+                  {primaryProduct && (() => {
+                    const isBento = primaryProduct.categories?.slug === 'boku-bentos' || primaryProduct.category_id === 'b0000c01-0000-4000-a000-000000000001';
+                    const isPoke = primaryProduct.categories?.slug?.includes('poke') || primaryProduct.name?.toLowerCase().includes('poke');
+                    const defaultPromo = isBento ? 19000 : (isPoke ? 22000 : (Number(primaryProduct.price) || 19000));
+                    const defaultStandard = isBento ? 28000 : (isPoke ? 34000 : (Number(primaryProduct.price) ? Number(primaryProduct.price) + 4000 : 25000));
+
+                    const customVal = config.custom_prices?.[primaryProduct.id] || {};
+                    const currentPromo = customVal.promo_price ?? (isBento ? (config.promo_price <= 19000 ? config.promo_price : 19000) : (config.promo_price || defaultPromo));
+                    const currentStandard = customVal.standard_price ?? (config.standard_price || defaultStandard);
+
+                    return (
+                      <div className="bg-white p-3 rounded-xl border border-amber-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-sm">⭐</span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-black text-neutral-900 truncate">
+                              {primaryProduct.name} <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded ml-1">Estrella</span>
+                            </p>
+                            <p className="text-[10px] text-neutral-400">
+                              Sección: {primaryProduct.categories?.name || 'Bentos'} • Regular en carta: {formatCOP(primaryProduct.price)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div>
+                            <span className="text-[9px] font-bold text-neutral-500 uppercase block">Precio Combo:</span>
+                            <div className="relative">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-[10px]">$</span>
+                              <input
+                                type="number"
+                                value={currentPromo}
+                                onChange={e => {
+                                  const val = Number(e.target.value) || 0;
+                                  setConfig(prev => ({
+                                    ...prev,
+                                    promo_price: isBento ? val : prev.promo_price,
+                                    custom_prices: {
+                                      ...(prev.custom_prices || {}),
+                                      [primaryProduct.id]: {
+                                        ...(prev.custom_prices?.[primaryProduct.id] || {}),
+                                        promo_price: val,
+                                        standard_price: currentStandard
+                                      }
+                                    }
+                                  }));
+                                }}
+                                className="w-28 pl-5 pr-1.5 py-1 bg-white border border-neutral-300 rounded text-xs font-black text-amber-900 focus:outline-none focus:border-amber-500"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-[9px] font-bold text-neutral-500 uppercase block">Tachado:</span>
+                            <div className="relative">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-[10px]">$</span>
+                              <input
+                                type="number"
+                                value={currentStandard}
+                                onChange={e => {
+                                  const val = Number(e.target.value) || 0;
+                                  setConfig(prev => ({
+                                    ...prev,
+                                    standard_price: isBento ? val : prev.standard_price,
+                                    custom_prices: {
+                                      ...(prev.custom_prices || {}),
+                                      [primaryProduct.id]: {
+                                        ...(prev.custom_prices?.[primaryProduct.id] || {}),
+                                        promo_price: currentPromo,
+                                        standard_price: val
+                                      }
+                                    }
+                                  }));
+                                }}
+                                className="w-28 pl-5 pr-1.5 py-1 bg-white border border-neutral-300 rounded text-xs font-bold text-neutral-500 line-through focus:outline-none focus:border-amber-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Filas para Platos Prestados / Secundarios */}
+                  {secondaryProducts.map(p => {
+                    const isBento = p.categories?.slug === 'boku-bentos' || p.category_id === 'b0000c01-0000-4000-a000-000000000001';
+                    const isPoke = p.categories?.slug?.includes('poke') || p.name?.toLowerCase().includes('poke') || p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab' || p.id === 'b0000b25-0000-4000-a000-000000000025';
+                    const defaultPromo = isBento ? 19000 : (isPoke ? 22000 : (Number(p.price) || 20000));
+                    const defaultStandard = isBento ? 28000 : (isPoke ? 34000 : (Number(p.price) ? Number(p.price) + 4000 : 25000));
+
+                    const customVal = config.custom_prices?.[p.id] || {};
+                    const currentPromo = customVal.promo_price ?? defaultPromo;
+                    const currentStandard = customVal.standard_price ?? defaultStandard;
+
+                    return (
+                      <div key={p.id} className="bg-white p-3 rounded-xl border border-neutral-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-sm">🍝</span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-black text-neutral-900 truncate">
+                              {p.name} <span className="text-[10px] font-bold text-neutral-600 bg-neutral-100 px-1.5 py-0.2 rounded ml-1">Opción</span>
+                            </p>
+                            <p className="text-[10px] text-neutral-400">
+                              Sección: {p.categories?.name || 'Catálogo'} • Regular en carta: {formatCOP(p.price)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div>
+                            <span className="text-[9px] font-bold text-neutral-500 uppercase block">Precio Combo:</span>
+                            <div className="relative">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-[10px]">$</span>
+                              <input
+                                type="number"
+                                value={currentPromo}
+                                onChange={e => {
+                                  const val = Number(e.target.value) || 0;
+                                  setConfig(prev => ({
+                                    ...prev,
+                                    custom_prices: {
+                                      ...(prev.custom_prices || {}),
+                                      [p.id]: {
+                                        ...(prev.custom_prices?.[p.id] || {}),
+                                        promo_price: val,
+                                        standard_price: currentStandard
+                                      }
+                                    }
+                                  }));
+                                }}
+                                className="w-28 pl-5 pr-1.5 py-1 bg-white border border-neutral-300 rounded text-xs font-black text-amber-900 focus:outline-none focus:border-amber-500"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-[9px] font-bold text-neutral-500 uppercase block">Tachado:</span>
+                            <div className="relative">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-[10px]">$</span>
+                              <input
+                                type="number"
+                                value={currentStandard}
+                                onChange={e => {
+                                  const val = Number(e.target.value) || 0;
+                                  setConfig(prev => ({
+                                    ...prev,
+                                    custom_prices: {
+                                      ...(prev.custom_prices || {}),
+                                      [p.id]: {
+                                        ...(prev.custom_prices?.[p.id] || {}),
+                                        promo_price: currentPromo,
+                                        standard_price: val
+                                      }
+                                    }
+                                  }));
+                                }}
+                                className="w-28 pl-5 pr-1.5 py-1 bg-white border border-neutral-300 rounded text-xs font-bold text-neutral-500 line-through focus:outline-none focus:border-amber-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {secondaryProducts.length === 0 && !primaryProduct && (
+                    <div className="p-3 text-center text-xs text-neutral-400">
+                      No hay platos configurados para el almuerzo de hoy.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
