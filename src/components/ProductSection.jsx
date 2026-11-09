@@ -329,7 +329,7 @@ export default function ProductSection({
     const otherTitle = otherGroup?.title || (otherItems.length > 0 ? defaultOtherTitle : "");
 
     const hasPromoHero = allAvailableItems.some(it => it.is_bento_del_dia || it.is_daily_special);
-    const isWeekendBento = allAvailableItems.some(it => it.category_id === 'b0000c01-0000-4000-a000-000000000001') && !hasPromoHero;
+    const isWeekendBento = !hasPromoHero;
 
     // If it's a weekend bento without a promo Bento del Día, gracefully render all items in a standard grid
     if (isWeekendBento && !heroId) {

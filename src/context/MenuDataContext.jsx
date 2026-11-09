@@ -165,56 +165,7 @@ export const MenuDataProvider = ({ children }) => {
         setPlanFeatures(features);
       }
 
-      const enrichedModGroups = (modsRes.data || []).map(group => {
-        const opts = Array.isArray(group.modifier_options) ? [...group.modifier_options] : [];
-        if (group.id === 'b0000d14-0000-4000-a000-000000000004') {
-          if (!opts.some(o => /ma[ií]z/i.test(o.name || ''))) {
-            opts.push({
-              id: 'boku-opt-maiz-tierno',
-              group_id: group.id,
-              name: 'Maíz Tierno Dulce',
-              emoji: '🌽',
-              price: 0,
-              extra_price: 1500,
-              is_active: true,
-              stock_status: 'in',
-              sort_order: 2
-            });
-          }
-          if (!opts.some(o => /zanahoria/i.test(o.name || ''))) {
-            opts.push({
-              id: 'boku-opt-zanahoria-fresca',
-              group_id: group.id,
-              name: 'Zanahoria Fresca Rallada',
-              emoji: '🥕',
-              price: 0,
-              extra_price: 1500,
-              is_active: true,
-              stock_status: 'in',
-              sort_order: 3
-            });
-          }
-        }
-        if (group.id === 'b0000d14-0000-4000-a000-000000000006') {
-          if (!opts.some(o => /ch[ií]a/i.test(o.name || ''))) {
-            opts.push({
-              id: 'boku-opt-semillas-chia',
-              group_id: group.id,
-              name: 'Semillas de Chía',
-              emoji: '🌱',
-              price: 0,
-              extra_price: 500,
-              is_active: true,
-              stock_status: 'in',
-              sort_order: 1
-            });
-          }
-        }
-        return { ...group, modifier_options: opts };
-      });
-
-      setAllCategories(catsRes.data || []);
-      setRawModifierGroups(enrichedModGroups);
+      setRawModifierGroups(modsRes.data || []);
       setExperiences(expRes.data || []);
       setAllergens(allgsRes.data || []);
       setLocations(locsRes.data || []);
@@ -483,37 +434,22 @@ export const MenuDataProvider = ({ children }) => {
 
     const hasLocProductConfig = statusMap.size > 0;
 
-    // 2. Plato / Especial del Día universal dynamic rotation
-    const isBoku = restaurantSettings?.brand_id === 'a63da806-a62a-49b9-a833-07e0976785ad' 
-      || brand?.id === 'a63da806-a62a-49b9-a833-07e0976785ad' 
-      || brand?.slug === 'boku-bento';
-
-    const dailySpecialConcept = (restaurantSettings?.brand_concepts || []).find(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config'));
+    // 2. Plato / Especial del Día universal & 100% dynamic rotation
+    const dailySpecialConcept = (restaurantSettings?.brand_concepts || []).find(
+      c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config')
+    );
     const isSpecialEnabled = dailySpecialConcept ? dailySpecialConcept.enabled !== false : false;
-    const specialLabel = dailySpecialConcept?.label || (isBoku ? 'El Bento del Día' : 'Plato del Día');
+    const specialLabel = dailySpecialConcept?.label || 'Plato del Día';
     const customPrices = dailySpecialConcept?.custom_prices || {};
     const promoPrice = Number(dailySpecialConcept?.promo_price) || 0;
     const standardPrice = Number(dailySpecialConcept?.standard_price) || 0;
-    const soupName = dailySpecialConcept?.soup_name || (isBoku ? 'Sopa de apio casera (16 oz)' : 'Crema de verduras casera (16 oz)');
-    const drinkName = dailySpecialConcept?.drink_name || (isBoku ? 'Limonada Verde Antioxidante (5 oz)' : 'Bebida natural de la Casa (5 oz)');
-    const defaultSchedule = {
-      1: 'b0000b11-0000-4000-a000-000000000001', // Lunes
-      2: 'b0000b12-0000-4000-a000-000000000002', // Martes
-      3: 'b0000b13-0000-4000-a000-000000000003', // Miércoles
-      4: 'b0000b14-0000-4000-a000-000000000004', // Jueves
-      5: 'b0000b15-0000-4000-a000-000000000005', // Viernes
-      6: null,
-      0: null
-    };
-    const specialSchedule = dailySpecialConcept?.schedule || defaultSchedule;
+    const specialSchedule = dailySpecialConcept?.schedule || {};
     const manualOverride = dailySpecialConcept?.manual_override_product_id;
     const now = new Date();
     const currentDayOfWeek = now.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-    
-    // Si es Boku, el Bento del Día configurado es Bento Tex-Mex (o el manualOverride activo)
-    const activeSpecialId = isBoku 
-      ? (manualOverride || specialSchedule[currentDayOfWeek] || 'b0000b25-0000-4000-a000-000000000025')
-      : (manualOverride || (isSpecialEnabled ? specialSchedule[currentDayOfWeek] : null));
+
+    // The active special ID: ONLY from manual override or schedule when enabled (NO fake hardcoded fallback!)
+    const activeSpecialId = manualOverride || (isSpecialEnabled ? specialSchedule[currentDayOfWeek] : null);
 
     // Platos adicionales seleccionados para el almuerzo ("Más Opciones del Día")
     const activeSecondaryIds = (
@@ -525,142 +461,89 @@ export const MenuDataProvider = ({ children }) => {
       return raw && raw.is_active !== false && raw.stock_status !== 'out';
     });
 
-    const isTodaySpecialItem = (id) => Boolean(id && (
-      id === activeSpecialId ||
-      activeSecondaryIds.includes(id)
-    ));
+    // Combo modifier groups (soup & drink) from DB if available
+    const lunchComboModifierGroups = (rawModifierGroups || []).filter(g =>
+      g.id === 'b0000b20-0000-4000-a000-000000000002' ||
+      g.id === 'b0000b20-0000-4000-a000-000000000001' ||
+      /entrada incluida/i.test(g.name || '') ||
+      /bebida.*incluida/i.test(g.name || '')
+    );
+
+    // Main daily special category (e.g. spotlight-split or hero category)
+    const specialCategory = (allCategories || []).find(c => 
+      c.visibility_config?.section_type === 'spotlight-split' ||
+      c.slug === 'boku-bentos' ||
+      (c.visibility_config?.subcategories || []).some(s => /bento del d[ií]a|plato del d[ií]a/i.test(s))
+    );
+    const specialCategorySlug = specialCategory?.slug || null;
 
     (rawProducts || []).forEach(product => {
-      const catSlug = product.categories?.slug || 'otros';
+      // 1. Si el producto está inactivo u oculto en base de datos, NUNCA se muestra en el menú público
+      if (product.is_active === false) return;
 
-      // ── Desactivar Desayunos por hoy en Boku Bento ──
-      if (isBoku && (product.category_id === 'b0000c04-0000-4000-a000-000000000004' || catSlug === 'boku-desayunos-brunch')) {
-        return;
-      }
+      // 2. Si el producto está agotado en base de datos, NUNCA se muestra en el menú público
+      if (product.stock_status === 'out') return;
 
-      // ── Desactivar Boloñesa en Boku Bento ──
-      if (isBoku && (
-        product.id === 'b0000f02-0000-4000-a000-000000000002' ||
-        product.id === 'b0000f03-0000-4000-a000-000000000003' ||
-        product.id === 'b0000b17-0000-4000-a000-000000000007' ||
-        product.name?.toLowerCase().includes('boloñesa') ||
-        product.name?.toLowerCase().includes('bolonesa')
-      )) {
-        return;
-      }
-
-      // Si el producto está inactivo o marcado como oculto, NUNCA se muestra en el menú público
-      if (product.is_active === false) {
-        return;
-      }
-
-      if (isBoku) {
-        if (product.id === 'b0000b13-0000-4000-a000-000000000003' || product.id === 'b0000b19-0000-4000-a000-000000000020') {
-          if (!isTodaySpecialItem(product.id)) return;
-        }
-      }
-
-      // Apply location product status override
+      // 3. Location-level override
       if (activeLocationId && activeLocationId !== 'all' && hasLocProductConfig) {
         const isActiveOverride = statusMap.get(product.id);
-        if (isActiveOverride === false) {
-          return;
-        }
+        if (isActiveOverride === false) return;
+        const stockOverride = stockStatusMap.get(product.id);
+        if (stockOverride === 'out') return;
       }
 
+      const catSlug = product.categories?.slug || 'otros';
       const cat = (allCategories || []).find(c => c.slug === catSlug || c.id === product.category_id);
       const catSchedule = getCategoryScheduleInfo(cat, now);
-      
-      // Apply location price override
-      let finalPrice = product.price;
+
+      // Price determination: base price from DB or location price
+      let basePrice = Number(product.price) || 0;
       if (activeLocationId && activeLocationId !== 'all') {
         const locPrice = priceMap.get(product.id);
         if (locPrice !== undefined && locPrice !== null) {
-          finalPrice = locPrice;
+          basePrice = Number(locPrice) || 0;
         }
       }
 
-      // Universal Daily Special Rotation
+      // Check if this specific item is the active daily special
       const isScheduledSpecial = Boolean(activeSpecialId && product.id === activeSpecialId);
-      let isExplicitSpecial = product.subcategory === specialLabel 
-        || product.subcategory === 'El Bento del Día' 
-        || (product.name && product.name.toLowerCase().includes('especial del día'));
+      const isSecondarySpecial = Boolean(activeSecondaryIds.includes(product.id));
+      const isSpecialToday = isScheduledSpecial || isSecondarySpecial;
 
-      // Si es Boku y es el Bento Hawaiano de ayer, no debe mostrarse como plato de hoy
-      if (isBoku && product.id === 'b0000b19-0000-4000-a000-000000000020') {
-        isExplicitSpecial = false;
-      }
-
-      const isSpecialToday = isScheduledSpecial || isExplicitSpecial;
-      const isBento = catSlug === 'boku-bentos' || product.category_id === 'b0000c01-0000-4000-a000-000000000001';
+      let finalPrice = basePrice;
+      let originalPrice = null;
       let productSubcategory = product.subcategory;
-      let originalPrice = undefined;
 
-      if (isSpecialToday) {
+      if (isScheduledSpecial) {
+        // Plato Estrella del Día:
         const itemCustom = customPrices[product.id];
-        const publicMenuPrice = Number(product.price) || 0;
+        const customPromo = itemCustom && Number(itemCustom.promo_price) > 0 ? Number(itemCustom.promo_price) : 0;
+        const customStandard = itemCustom && Number(itemCustom.standard_price) > 0 ? Number(itemCustom.standard_price) : 0;
 
+        // El precio promocional del plato estrella
+        finalPrice = customPromo > 0 ? customPromo : (promoPrice > 0 ? promoPrice : basePrice);
+        // El precio tachado hereda fielmente el precio del plato en la carta pública
+        const strikePrice = customStandard > 0 ? customStandard : (standardPrice > finalPrice ? standardPrice : basePrice);
+        originalPrice = strikePrice > finalPrice ? strikePrice : null;
+        productSubcategory = specialLabel;
+      } else if (isSecondarySpecial) {
+        // Opción adicional de almuerzo del día:
+        const itemCustom = customPrices[product.id];
         if (itemCustom && Number(itemCustom.promo_price) > 0) {
           finalPrice = Number(itemCustom.promo_price);
-          originalPrice = Number(itemCustom.standard_price) || (publicMenuPrice > finalPrice ? publicMenuPrice : null);
+          const strikePrice = Number(itemCustom.standard_price) > 0 ? Number(itemCustom.standard_price) : basePrice;
+          originalPrice = strikePrice > finalPrice ? strikePrice : null;
         } else {
-          // El precio promocional del plato del día
-          const defaultPromo = isScheduledSpecial 
-            ? (promoPrice > 0 ? promoPrice : 19000) 
-            : publicMenuPrice;
-          finalPrice = defaultPromo;
-          // Hereda el precio público del plato en la carta como precio tachado si hay descuento
-          originalPrice = (standardPrice > finalPrice)
-            ? standardPrice
-            : (publicMenuPrice > finalPrice ? publicMenuPrice : null);
+          finalPrice = basePrice;
+          originalPrice = null;
         }
-        productSubcategory = specialLabel;
-      } else if (isBento) {
-        // En Boku Bento, los bentos regulares fuera de la promo del día respetan su precio público de carta
-        if ((finalPrice === undefined || finalPrice === null || Number(finalPrice) === 0) && standardPrice > 0) {
-          finalPrice = standardPrice;
-        }
-        productSubcategory = product.subcategory || 'Bentos Tradicionales & Fusión';
-      }
-
-      // Tratamiento especial de Pasta Alfredo en BOKU BENTO (Pertenencia nativa a Pastas & Ramen)
-      let finalCatSlug = catSlug;
-      let finalCategoryId = product.category_id;
-      let finalCategoryName = cat?.name || product.categories?.name;
-      let finalName = product.name;
-      let finalDesc = product.description || '';
-      let finalImage = product.image_url;
-      let finalRecipeId = product.recipe_id;
-
-      if (isBoku && product.id === 'b0000b16-0000-4000-a000-000000000006') {
-        finalCatSlug = 'boku-pastas-ramen';
-        finalCategoryId = 'b0000c03-0000-4000-a000-000000000003';
-        finalCategoryName = 'BOKU Pastas & Ramen';
-        finalPrice = 26000;
+      } else {
+        // Plato regular del catálogo: mantiene su precio de base de datos
+        finalPrice = basePrice;
         originalPrice = null;
-        productSubcategory = 'Pastas Clásicas & Fusión';
-        finalImage = '/img/products/boku-pasta-alfredo.jpg';
-        finalRecipeId = 'ba000070-0000-4000-a000-000000000001';
-        finalDesc = 'Tornillos fusilli al dente en salsa cremosa Alfredo casera con pechuga de pollo en cubos dorados, champiñones frescos y queso parmesano rallado.';
       }
 
-      if (isBoku && product.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab') {
-        finalPrice = 22000;
-        originalPrice = 34000;
-        productSubcategory = 'Bowls Poke Fresco';
-        finalName = 'Poke Salmón Fresh (Fresco o Salteado)';
-        finalDesc = 'Cubos de salmón fresco magro (100g), arroz, láminas de rábano al limón, mango dulce, pepino, ajonjolí, semillas de girasol y ponzu cítrico. 👉 Término a elección: Fresco estilo Poke o Salteado al Wok. 🥣 Incluye: Sopita del día o Fruta + 🥤 Jugo del día.';
-      }
-
-      if (isBoku && product.id === 'b0000b25-0000-4000-a000-000000000025') {
-        finalPrice = 22000;
-        originalPrice = 28000;
-        productSubcategory = 'Bowls Poke Fresco';
-        finalName = 'Poke Tori Katsu (Pechuga Crocante)';
-        finalDesc = 'Pechuga apanada crocante en tiras con salsa tonkatsu, arroz, maíz sofrito, repollo morado, queso en cubos, tomates cherry, alga nori y verde del cebollín. 🥣 Incluye: Sopita del día o Fruta + 🥤 Jugo del día.';
-        finalImage = '/img/products/boku-tori-katsu.webp';
-      }
-
+      // Stock portions
       let finalStockStatus = product.stock_status || 'in';
       let finalAvailablePortions = (product.available_portions !== null && product.available_portions !== undefined)
         ? Number(product.available_portions)
@@ -670,34 +553,45 @@ export const MenuDataProvider = ({ children }) => {
         if (portionsMap.has(product.id)) finalAvailablePortions = portionsMap.get(product.id);
       }
 
+      // Modifiers: start with the product's own modifier groups
+      let itemModifierGroups = Array.isArray(product.modifier_groups) ? [...product.modifier_groups] : [];
+      // If it is the daily special combo, ensure it includes the lunch combo groups (soup & drink)
+      if (isSpecialToday && lunchComboModifierGroups.length > 0) {
+        lunchComboModifierGroups.forEach(cg => {
+          if (!itemModifierGroups.some(g => g.id === cg.id || g.name === cg.name)) {
+            itemModifierGroups.push(cg);
+          }
+        });
+      }
+
       const normalizedProduct = {
         id: product.id,
-        name: finalName,
+        name: product.name,
         is_active: product.is_active ?? true,
         price: finalPrice,
         original_price: originalPrice,
-        is_bento_del_dia: isSpecialToday,
+        is_bento_del_dia: isScheduledSpecial,
         is_daily_special: isSpecialToday,
-        daily_special_label: isSpecialToday ? specialLabel : null,
-        desc: finalDesc,
-        description: finalDesc,
+        daily_special_label: isScheduledSpecial ? specialLabel : (isSecondarySpecial ? 'Opción del Día' : null),
+        desc: product.description || '',
+        description: product.description || '',
         tags: product.tags || [],
         stock_status: finalStockStatus,
         available_portions: finalAvailablePortions,
         out_reason: product.out_reason,
-        image: finalImage,
-        image_url: finalImage,
-        recipe_id: finalRecipeId,
+        image: product.image_url,
+        image_url: product.image_url,
+        recipe_id: product.recipe_id,
         variants: product.variants || [],
-        modifierGroups: product.modifier_groups || [],
+        modifierGroups: itemModifierGroups,
         configOptions: product.config_options || {},
         is_upsell: product.is_upsell || false,
         requires_kitchen: product.requires_kitchen ?? true,
         station: product.station || (product.requires_kitchen === false ? 'none' : 'kitchen'),
         subcategory: productSubcategory,
-        categorySlug: finalCatSlug,
-        categoryId: finalCategoryId,
-        categoryName: finalCategoryName,
+        categorySlug: catSlug,
+        categoryId: product.category_id,
+        categoryName: cat?.name || product.categories?.name,
         is_schedule_available: isStorePausedForPublic ? false : catSchedule.isAvailableNow,
         schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : catSchedule.label,
         schedule_info: catSchedule,
@@ -706,457 +600,25 @@ export const MenuDataProvider = ({ children }) => {
       };
 
       if (product.is_addon !== true) {
-        if (!grouped[finalCatSlug]) grouped[finalCatSlug] = [];
-        grouped[finalCatSlug].push(normalizedProduct);
+        if (!grouped[catSlug]) grouped[catSlug] = [];
+        grouped[catSlug].push(normalizedProduct);
+
+        // Si este plato fue seleccionado como almuerzo especial y su categoría nativa no es la categoría de almuerzos,
+        // también lo presentamos en la categoría de almuerzos para conveniencia del comensal:
+        if (specialCategorySlug && catSlug !== specialCategorySlug && isSpecialToday) {
+          if (!grouped[specialCategorySlug]) grouped[specialCategorySlug] = [];
+          grouped[specialCategorySlug].push({
+            ...normalizedProduct,
+            categorySlug: specialCategorySlug,
+            categoryId: specialCategory.id,
+            categoryName: specialCategory.name
+          });
+        }
       }
     });
 
-    // ── DOBLE PRESENCIA Y ALMUERZOS DE HOY EN BOKU BENTO ──
-    if (isBoku) {
-      if (!grouped['boku-bentos']) grouped['boku-bentos'] = [];
-
-      // Horario dinámico tomado directamente de la configuración de la categoría en base de datos
-      const bentoCategoryObj = (allCategories || []).find(c => c.slug === 'boku-bentos' || c.id === 'b0000c01-0000-4000-a000-000000000001');
-      const bentoScheduleInfo = getCategoryScheduleInfo(bentoCategoryObj, now);
-      const bentoIsAvailable = isStorePausedForPublic ? false : bentoScheduleInfo.isAvailableNow;
-      const bentoScheduleLabel = isStorePausedForPublic ? '🔒 Cocina en Pausa' : (bentoScheduleInfo.label || 'Horario habitual');
-
-      // Modificadores Compartidos de Entrada y Bebida de la Casa
-      const sharedSoupGroup = {
-        id: 'b0000b20-0000-4000-a000-000000000002',
-        name: '🥣 Entrada Incluida',
-        min_select: 1,
-        max_select: 1,
-        is_required: true,
-        options: [
-          { id: 'opt-bento-sopa-dia', name: 'Sopita del día casera (16 oz)', price: 0, is_default: true },
-          { id: 'opt-bento-fruta', name: 'Porción de Fruta fresca picada', price: 0 },
-          { id: 'opt-bento-nosoup', name: 'Sin sopa ni fruta', price: 0 }
-        ]
-      };
-
-      const sharedDrinkGroup = {
-        id: 'b0000b20-0000-4000-a000-000000000001',
-        name: '🥤 Bebida del Día Incluida',
-        min_select: 1,
-        max_select: 1,
-        is_required: true,
-        options: [
-          { id: 'opt-bento-jugo-dia', name: 'Jugo del día refrescante (5 oz)', price: 0, is_default: true },
-          { id: 'opt-bento-hatsu-caja', name: 'Cambiar por Té Hatsu en Caja (200 ml)', price: 2000 },
-          { id: 'opt-bento-hatsu-lata', name: 'Cambiar por Té Hatsu en Lata (250 ml)', price: 4000 },
-          { id: 'opt-bento-nodrink', name: 'Sin bebida', price: 0 }
-        ]
-      };
-
-      // Modificador de Preparación de Salmón (Fresco vs Salteado)
-      const salmonPrepGroup = {
-        id: 'mg-salmon-prep',
-        name: '🍣 Término del Salmón',
-        min_select: 1,
-        max_select: 1,
-        is_required: true,
-        options: [
-          { id: 'opt-salmon-fresco', name: 'Salmón Fresco (Estilo Poke Crudo Marinado)', price: 0, is_default: true },
-          { id: 'opt-salmon-salteado', name: 'Salmón Salteado al Wok (Sellado Caliente)', price: 0 }
-        ]
-      };
-
-      // Modificador de Salsa Tonkatsu para Tori Katsu
-      const toriSauceGroup = {
-        id: 'mg-tori-sauce',
-        name: '🥢 Salsa Tonkatsu',
-        min_select: 1,
-        max_select: 1,
-        is_required: true,
-        options: [
-          { id: 'opt-tori-sauce-on', name: 'Tonkatsu bañada sobre la pechuga crocante', price: 0, is_default: true },
-          { id: 'opt-tori-sauce-side', name: 'Tonkatsu en envase aparte', price: 0 }
-        ]
-      };
-
-      // 0A. Poke Tori Katsu (Pechuga Crocante) - Hereda precio público de catálogo
-      const toriRaw = (rawProducts || []).find(p => p.id === 'b0000b25-0000-4000-a000-000000000025');
-      const toriMenuPrice = Number(toriRaw?.price) || 22000;
-      const toriCustom = customPrices['b0000b25-0000-4000-a000-000000000025'];
-      const toriPrice = toriCustom && Number(toriCustom.promo_price) > 0 ? Number(toriCustom.promo_price) : 22000;
-      const toriOrigPrice = toriCustom && Number(toriCustom.standard_price) > 0 ? Number(toriCustom.standard_price) : (toriPrice < toriMenuPrice ? toriMenuPrice : null);
-
-      const pokeToriKatsu = {
-        id: 'b0000b25-0000-4000-a000-000000000025',
-        productId: 'b0000b25-0000-4000-a000-000000000025',
-        name: 'Poke Tori Katsu (Pechuga Crocante)',
-        price: toriPrice,
-        original_price: toriOrigPrice,
-        is_bento_del_dia: true,
-        is_daily_special: true,
-        daily_special_label: toriCustom?.label || `🔥 Línea Poke Premium ($${toriPrice.toLocaleString('es-CO')})`,
-        subcategory: 'Línea Poke Premium',
-        categorySlug: 'boku-bentos',
-        categoryId: 'b0000c01-0000-4000-a000-000000000001',
-        categoryName: 'BOKU Bentos Caseros',
-        desc: 'Pechuga apanada crocante en tiras con salsa tonkatsu, arroz, maíz sofrito, repollo morado, queso en cubos, tomates cherry, alga nori y verde de cebollín. 🥣 ¡Combo completo! Incluye: Sopita del día o Fruta + 🥤 Jugo del día (5 oz).',
-        description: 'Pechuga apanada crocante en tiras con salsa tonkatsu, arroz, maíz sofrito, repollo morado, queso en cubos, tomates cherry, alga nori y verde de cebollín. 🥣 ¡Combo completo! Incluye: Sopita del día o Fruta + 🥤 Jugo del día (5 oz).',
-        image: '/img/products/boku-tori-katsu.webp',
-        image_url: '/img/products/boku-tori-katsu.webp',
-        recipe_id: null,
-        is_active: toriRaw?.is_active ?? true,
-        stock_status: toriRaw?.stock_status || 'in',
-        available_portions: toriRaw?.available_portions ?? null,
-        is_schedule_available: bentoIsAvailable,
-        schedule_label: bentoScheduleLabel,
-        modifierGroups: [
-          toriSauceGroup,
-          sharedSoupGroup,
-          sharedDrinkGroup
-        ]
-      };
-
-      // 0B. Poke Salmón Fresh (Fresco o Salteado) - Hereda precio público de catálogo ($34.000 tachado)
-      const salmonRaw = (rawProducts || []).find(p => p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab');
-      const salmonMenuPrice = Number(salmonRaw?.price) || 34000;
-      const salmonCustom = customPrices['d07007ec-761b-4f40-bad5-799c1154b9ab'];
-      const salmonPrice = salmonCustom && Number(salmonCustom.promo_price) > 0 ? Number(salmonCustom.promo_price) : 22000;
-      const salmonOrigPrice = salmonCustom && Number(salmonCustom.standard_price) > 0 ? Number(salmonCustom.standard_price) : (salmonPrice < salmonMenuPrice ? salmonMenuPrice : null);
-
-      const pokeSalmonFresh = {
-        ...(salmonRaw || {}),
-        id: 'd07007ec-761b-4f40-bad5-799c1154b9ab',
-        productId: 'd07007ec-761b-4f40-bad5-799c1154b9ab',
-        name: 'Poke Salmón Fresh (Fresco o Salteado)',
-        price: salmonPrice,
-        original_price: salmonOrigPrice,
-        is_bento_del_dia: true,
-        is_daily_special: true,
-        daily_special_label: salmonCustom?.label || `🔥 Línea Poke Premium ($${salmonPrice.toLocaleString('es-CO')})`,
-        subcategory: 'Línea Poke Premium',
-        categorySlug: 'boku-bentos',
-        categoryId: 'b0000c01-0000-4000-a000-000000000001',
-        categoryName: 'BOKU Bentos Caseros',
-        desc: 'Cubos de salmón fresco magro (100g), arroz, láminas de rábano al limón, mango dulce, pepino, ajonjolí, semillas de girasol y ponzu cítrico. 👉 Término a elección: Fresco estilo Poke o Salteado al Wok. 🥣 ¡Combo completo! Incluye: Sopita del día o Fruta + 🥤 Jugo del día (5 oz).',
-        description: 'Cubos de salmón fresco magro (100g), arroz, láminas de rábano al limón, mango dulce, pepino, ajonjolí, semillas de girasol y ponzu cítrico. 👉 Término a elección: Fresco estilo Poke o Salteado al Wok. 🥣 ¡Combo completo! Incluye: Sopita del día o Fruta + 🥤 Jugo del día (5 oz).',
-        image: salmonRaw?.image_url || 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/5nby4hb4t2_1791998655434.webp',
-        image_url: salmonRaw?.image_url || 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/5nby4hb4t2_1791998655434.webp',
-        recipe_id: salmonRaw?.recipe_id || 'ba000012-0000-4000-a000-000000000001',
-        is_active: salmonRaw?.is_active ?? true,
-        stock_status: salmonRaw?.stock_status || 'in',
-        available_portions: salmonRaw?.available_portions ?? null,
-        is_schedule_available: bentoIsAvailable,
-        schedule_label: bentoScheduleLabel,
-        modifierGroups: [
-          salmonPrepGroup,
-          sharedSoupGroup,
-          sharedDrinkGroup
-        ]
-      };
-
-      // 1. Bento Mediterráneo (Fresco y Balanceado) 🐠 - Regular
-      const bentoMediterraneo = {
-        id: 'b0000b18-0000-4000-a000-000000000018',
-        productId: 'b0000b18-0000-4000-a000-000000000018',
-        name: 'Bento Mediterráneo (Fresco y Balanceado)',
-        price: 22000,
-        original_price: null,
-        is_bento_del_dia: false,
-        is_daily_special: false,
-        daily_special_label: 'Nuevo Especial',
-        subcategory: 'Bentos Caseros',
-        categorySlug: 'boku-bentos',
-        categoryId: 'b0000c01-0000-4000-a000-000000000001',
-        categoryName: 'BOKU Bentos Caseros',
-        desc: 'Arroz blanco con perejil, hummus casero cremoso de garbanzo con aceite y páprika, champiñones al ajillo, pepino fresco, tomates cherry y rábano crocante. 👉 Proteína a elección (al limón): Filete de merluza dorada o pechuga de pollo al wok. 🥣 Combo completo: Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
-        description: 'Arroz blanco con perejil, hummus casero cremoso de garbanzo con aceite y páprika, champiñones al ajillo, pepino fresco, tomates cherry y rábano crocante. 👉 Proteína a elección (al limón): Filete de merluza dorada o pechuga de pollo al wok. 🥣 Combo completo: Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
-        image: '/bento-mediterraneo.jpg',
-        image_url: '/bento-mediterraneo.jpg',
-        recipe_id: null,
-        stock_status: 'in',
-        available_portions: 50,
-        is_schedule_available: bentoIsAvailable,
-        schedule_label: bentoScheduleLabel,
-        modifierGroups: [
-          {
-            id: 'mg-medit-protein',
-            name: '🐟 Proteína al Limón',
-            min_select: 1,
-            max_select: 2,
-            included_count: 1,
-            extra_price: 8000,
-            options: [
-              { id: 'opt-medit-merluza', name: 'Filete de merluza dorada', price: 0, extra_price: 8000, is_default: true },
-              { id: 'opt-medit-pollo', name: 'Pechuga de pollo al wok', price: 0, extra_price: 7000 }
-            ]
-          },
-          sharedSoupGroup,
-          sharedDrinkGroup
-        ]
-      };
-
-      // 2. Bento Criollo Antioqueño (La Paisa) - Regular en carta
-      const criolloRaw = (rawProducts || []).find(p => p.id === 'b0000b11-0000-4000-a000-000000000001');
-      const bentoCriollo = {
-        ...(criolloRaw || {}),
-        id: 'b0000b11-0000-4000-a000-000000000001',
-        productId: 'b0000b11-0000-4000-a000-000000000001',
-        name: 'Bento Criollo Antioqueño (La Paisa)',
-        price: 22000,
-        original_price: null,
-        is_bento_del_dia: false,
-        is_daily_special: false,
-        daily_special_label: 'Favorito de la Casa',
-        subcategory: 'Bentos Caseros',
-        categorySlug: 'boku-bentos',
-        categoryId: 'b0000c01-0000-4000-a000-000000000001',
-        categoryName: 'BOKU Bentos Caseros',
-        desc: 'La bandeja paisa de siempre, pero en el bowl de la casa: arroz blanco, fríjoles a elección (rojos o negros), carne a elección (molida, cerdo o pollo al wok), chorizo y morcilla, huevo frito, aguacate y maduritos melosos. 🥣 Combo completo: Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
-        description: 'La bandeja paisa de siempre, pero en el bowl de la casa: arroz blanco, fríjoles a elección (rojos o negros), carne a elección (molida, cerdo o pollo al wok), chorizo y morcilla, huevo frito, aguacate y maduritos melosos. 🥣 Combo completo: Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).',
-        image: criolloRaw?.image_url || 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/4l57b6hx21n_1792011029842.webp',
-        image_url: criolloRaw?.image_url || 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/4l57b6hx21n_1792011029842.webp',
-        recipe_id: 'ba000010-0000-4000-a000-000000000001',
-        stock_status: 'in',
-        available_portions: 50,
-        is_schedule_available: bentoIsAvailable,
-        schedule_label: bentoScheduleLabel,
-        modifierGroups: [
-          {
-            id: 'mg-criollo-frijol',
-            name: '🍲 Tu Fríjol',
-            min_select: 1,
-            max_select: 2,
-            included_count: 1,
-            extra_price: 4000,
-            options: [
-              { id: 'opt-criollo-frijol-rojo', name: 'Fríjoles rojos calados', price: 0, extra_price: 4000, is_default: true },
-              { id: 'opt-criollo-frijol-negro', name: 'Fríjoles negros', price: 0, extra_price: 4000 }
-            ]
-          },
-          {
-            id: 'mg-criollo-protein',
-            name: '🥩 Tu Proteína Criolla',
-            min_select: 1,
-            max_select: 3,
-            included_count: 1,
-            extra_price: 7000,
-            options: [
-              { id: 'opt-criollo-molida', name: 'Carne molida sazonada', price: 0, extra_price: 7000, is_default: true },
-              { id: 'opt-criollo-cerdo', name: 'Cerdo al wok en cubos', price: 0, extra_price: 7000 },
-              { id: 'opt-criollo-pollo', name: 'Pollo al wok en cubos', price: 0, extra_price: 7000 }
-            ]
-          },
-          sharedSoupGroup,
-          sharedDrinkGroup
-        ]
-      };
-
-      // 3. Bento Estrella del Día Dinámico (según configuración de la administración)
-      const starRaw = (rawProducts || []).find(p => p.id === activeSpecialId);
-
-      let bentoHeroToday = null;
-      if (starRaw) {
-        const starCustom = customPrices[starRaw.id];
-        const starMenuPrice = Number(starRaw.price) || 0;
-
-        const starFinalPrice = starCustom && Number(starCustom.promo_price) > 0
-          ? Number(starCustom.promo_price)
-          : (promoPrice > 0 ? promoPrice : 19000);
-
-        const starOriginalPrice = starCustom && Number(starCustom.standard_price) > 0
-          ? Number(starCustom.standard_price)
-          : (starMenuPrice > starFinalPrice ? starMenuPrice : null);
-
-        if (starRaw.id === 'b0000b25-0000-4000-a000-000000000025') {
-          bentoHeroToday = {
-            ...pokeToriKatsu,
-            price: starFinalPrice,
-            original_price: starOriginalPrice,
-            is_bento_del_dia: true,
-            is_daily_special: true,
-            daily_special_label: starCustom?.label || specialLabel || 'Almuerzo Estrella de Hoy'
-          };
-        } else if (starRaw.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab') {
-          bentoHeroToday = {
-            ...pokeSalmonFresh,
-            price: starFinalPrice,
-            original_price: starOriginalPrice,
-            is_bento_del_dia: true,
-            is_daily_special: true,
-            daily_special_label: starCustom?.label || specialLabel || 'Almuerzo Estrella de Hoy'
-          };
-        } else {
-          bentoHeroToday = {
-            ...starRaw,
-            id: starRaw.id,
-            productId: starRaw.id,
-            name: starRaw.name,
-            price: starFinalPrice,
-            original_price: starOriginalPrice,
-            is_bento_del_dia: true,
-            is_daily_special: true,
-            daily_special_label: starCustom?.label || specialLabel || 'El Bento del Día',
-            subcategory: 'Bentos Caseros',
-            categorySlug: 'boku-bentos',
-            categoryId: 'b0000c01-0000-4000-a000-000000000001',
-            categoryName: 'BOKU Bentos Caseros',
-            desc: starRaw.description || 'Almuerzo completo de la casa. 🥣 Combo completo: Entrada casera + 🥤 Bebida de la casa.',
-            description: starRaw.description || 'Almuerzo completo de la casa. 🥣 Combo completo: Entrada casera + 🥤 Bebida de la casa.',
-            image: starRaw.image_url || 'https://aluna-qrmenu.vercel.app/brand/boku-bento-mestizo.webp',
-            image_url: starRaw.image_url || 'https://aluna-qrmenu.vercel.app/brand/boku-bento-mestizo.webp',
-            recipe_id: starRaw.recipe_id || null,
-            stock_status: 'in',
-            available_portions: 50,
-            is_schedule_available: bentoIsAvailable,
-            schedule_label: bentoScheduleLabel,
-            modifierGroups: starRaw.modifierGroups || [
-              sharedSoupGroup,
-              sharedDrinkGroup
-            ]
-          };
-        }
-      }
-
-      // 4. Platos Secundarios de Almuerzo configurados en la administración (con precios independientes y herencia de carta)
-      const secondaryBentoList = (activeSecondaryIds || []).map(secId => {
-        const secCustom = customPrices[secId];
-        let baseObj = null;
-        if (secId === 'd07007ec-761b-4f40-bad5-799c1154b9ab') {
-          baseObj = {
-            ...pokeSalmonFresh,
-            price: salmonPrice,
-            original_price: salmonOrigPrice
-          };
-        } else if (secId === 'b0000b25-0000-4000-a000-000000000025') {
-          baseObj = {
-            ...pokeToriKatsu,
-            price: toriPrice,
-            original_price: toriOrigPrice
-          };
-        } else {
-          const rawSec = (rawProducts || []).find(p => p.id === secId);
-          if (!rawSec) return null;
-          const isSecBento = rawSec.categories?.slug === 'boku-bentos' || rawSec.category_id === 'b0000c01-0000-4000-a000-000000000001';
-          const secMenuPrice = Number(rawSec.price) || 0;
-          const customPromo = secCustom && Number(secCustom.promo_price) > 0 ? Number(secCustom.promo_price) : secMenuPrice;
-          const customStandard = secCustom && Number(secCustom.standard_price) > 0 ? Number(secCustom.standard_price) : (secMenuPrice > customPromo ? secMenuPrice : null);
-
-          baseObj = {
-            ...rawSec,
-            price: customPromo,
-            original_price: customStandard,
-            is_daily_special: true,
-            daily_special_label: isSecBento ? 'Opción Bento' : 'Opción del Día',
-            categorySlug: 'boku-bentos',
-            categoryId: 'b0000c01-0000-4000-a000-000000000001',
-            categoryName: 'BOKU Bentos Caseros',
-            is_schedule_available: bentoIsAvailable,
-            schedule_label: bentoScheduleLabel,
-            modifierGroups: rawSec.modifierGroups || [sharedSoupGroup, sharedDrinkGroup]
-          };
-        }
-
-        if (secCustom && Number(secCustom.promo_price) > 0) {
-          baseObj = {
-            ...baseObj,
-            price: Number(secCustom.promo_price),
-            original_price: Number(secCustom.standard_price) || baseObj.original_price,
-            daily_special_label: secCustom.label || baseObj.daily_special_label
-          };
-        }
-        return baseObj;
-      }).filter(Boolean);
-
-      // Ensamblar la sección superior de Bentos de Hoy: Bento Estrella + Opciones Secundarias (Deduplicados)
-      const dailyMap = new Map();
-      if (bentoHeroToday) dailyMap.set(bentoHeroToday.id, bentoHeroToday);
-      secondaryBentoList.forEach(item => {
-        if (!dailyMap.has(item.id)) dailyMap.set(item.id, item);
-      });
-
-      const candidateBentos = Array.from(dailyMap.values());
-
-      const visibleBentos = candidateBentos.filter(b => {
-        const raw = (rawProducts || []).find(p => p.id === b.id);
-        // Respetar fielmente su estado de Activo / Oculto y Stock
-        if (raw) {
-          if (raw.is_active === false) return false;
-          if (raw.stock_status === 'out') return false;
-          const locActive = statusMap.get(b.id);
-          if (locActive === false) return false;
-          const locStock = stockStatusMap.get(b.id);
-          if (locStock === 'out') return false;
-        }
-        return b.is_active !== false && b.stock_status !== 'out';
-      });
-
-      // Filtro estricto: Bentos Caseros SOLO debe mostrar los autorizados de hoy
-      const sanitizedVisibleBentos = visibleBentos.filter(b => {
-        if (!b) return false;
-        if (b.id === 'b0000b21-0000-4000-a000-000000000021') return false;
-        if (/arroz con pollo/i.test(b.name || '')) return false;
-        return true;
-      });
-      grouped['boku-bentos'] = sanitizedVisibleBentos;
-
-      // ── PRESENCIA DE TORI KATSU Y SALMÓN EN BOKU BOWLS CON SUS MODIFICADORES ──
-      if (!grouped['boku-bowls']) grouped['boku-bowls'] = [];
-      const toriInBowls = grouped['boku-bowls'].find(p => p.id === 'b0000b25-0000-4000-a000-000000000025');
-      if (toriRaw && toriRaw.is_active !== false && toriRaw.stock_status !== 'out') {
-        if (toriInBowls) {
-          Object.assign(toriInBowls, pokeToriKatsu);
-          toriInBowls.price = 22000;
-          toriInBowls.original_price = 28000;
-          toriInBowls.modifierGroups = [toriSauceGroup, sharedSoupGroup, sharedDrinkGroup];
-        } else {
-          grouped['boku-bowls'].unshift({
-            ...pokeToriKatsu,
-            categorySlug: 'boku-bowls',
-            categoryId: '6316a6dc-8a4c-4cc1-874b-4f3d362ed635',
-            categoryName: 'BOKU Bowls',
-            subcategory: 'Bowls Poke Fresco',
-            modifierGroups: [toriSauceGroup, sharedSoupGroup, sharedDrinkGroup]
-          });
-        }
-      } else if (toriInBowls) {
-        grouped['boku-bowls'] = grouped['boku-bowls'].filter(p => p.id !== 'b0000b25-0000-4000-a000-000000000025');
-      }
-
-      const salmonInBowls = grouped['boku-bowls'].find(p => p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab');
-      if (salmonRaw && salmonRaw.is_active !== false && salmonRaw.stock_status !== 'out') {
-        if (salmonInBowls) {
-          salmonInBowls.price = 22000;
-          salmonInBowls.original_price = 34000;
-          salmonInBowls.stock_status = salmonRaw.stock_status || 'in';
-          salmonInBowls.available_portions = salmonRaw.available_portions;
-          salmonInBowls.out_reason = null;
-          salmonInBowls.modifierGroups = [salmonPrepGroup, sharedSoupGroup, sharedDrinkGroup];
-        }
-      } else if (salmonInBowls) {
-        grouped['boku-bowls'] = grouped['boku-bowls'].filter(p => p.id !== 'd07007ec-761b-4f40-bad5-799c1154b9ab');
-      }
-
-      // ── SANITIZACIÓN FINAL Y ABSOLUTA EN TODAS LAS CATEGORÍAS ──
-      Object.keys(grouped).forEach(k => {
-        grouped[k] = (grouped[k] || []).filter(p => {
-          if (!p) return false;
-          const raw = (rawProducts || []).find(r => r.id === p.id);
-          // 1. Si está inactivo u oculto en base de datos o en el objeto, NUNCA MOSTRAR
-          if (raw && raw.is_active === false) return false;
-          if (p.is_active === false) return false;
-          // 2. Si está agotado en base de datos o en el objeto, NUNCA MOSTRAR DISPONIBLE
-          if (raw && raw.stock_status === 'out') return false;
-          if (p.stock_status === 'out') return false;
-
-          const lower = (p.name || '').toLowerCase();
-          return !lower.includes('arroz con pollo') &&
-                 p.id !== 'b0000b21-0000-4000-a000-000000000021' &&
-                 !lower.includes('boloñesa') && 
-                 !lower.includes('bolonesa') && 
-                 p.id !== 'b0000b17-0000-4000-a000-000000000007' &&
-                 p.id !== 'b0000f02-0000-4000-a000-000000000002' &&
-                 p.id !== 'b0000f03-0000-4000-a000-000000000003';
-        });
-      });
-    }
     return grouped;
-  }, [rawProducts, locationPrices, locationStatus, activeLocationId, restaurantSettings, allCategories, brand, storeStatusInfo, isStorePausedForPublic]);
+  }, [rawProducts, locationPrices, locationStatus, activeLocationId, restaurantSettings, allCategories, brand, rawModifierGroups, storeStatusInfo, isStorePausedForPublic]);
 
   // Compute categories reactively (Dayparting + Has Products + Location Filter)
   const categories = useMemo(() => {
@@ -1174,10 +636,7 @@ export const MenuDataProvider = ({ children }) => {
       // 1. Basic active status (desactivada manualmente por admin)
       if (cat.is_active === false) return false;
 
-      // Desactivación operativa: Desayunos & Brunch desactivados por hoy en Boku Bento
-      if (isBokuBrand && (cat.id === 'b0000c04-0000-4000-a000-000000000004' || cat.slug === 'boku-desayunos-brunch' || cat.name?.toLowerCase().includes('desayuno'))) {
-        return false;
-      }
+
 
       // 2. ESTRATEGIA HÍBRIDA de sede:
       //    Si la sede tiene categorías asignadas → modo estricto (solo esas).
