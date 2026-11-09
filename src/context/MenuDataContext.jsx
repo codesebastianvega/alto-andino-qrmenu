@@ -507,7 +507,8 @@ export const MenuDataProvider = ({ children }) => {
     };
     const specialSchedule = dailySpecialConcept?.schedule || defaultSchedule;
     const manualOverride = dailySpecialConcept?.manual_override_product_id;
-    const currentDayOfWeek = new Date().getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+    const now = new Date();
+    const currentDayOfWeek = now.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
     
     // Si es Boku, el Bento del Día configurado es Bento Tex-Mex (o el manualOverride activo)
     const activeSpecialId = isBoku 
@@ -571,7 +572,7 @@ export const MenuDataProvider = ({ children }) => {
       }
 
       const cat = (allCategories || []).find(c => c.slug === catSlug || c.id === product.category_id);
-      const catSchedule = getCategoryScheduleInfo(cat);
+      const catSchedule = getCategoryScheduleInfo(cat, now);
       
       // Apply location price override
       let finalPrice = product.price;
